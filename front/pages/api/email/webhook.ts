@@ -84,7 +84,7 @@ const replyToError = async (
     "[email] Error handling email."
   );
   const htmlContent =
-    `<p>Error running assistant:</p>\n` +
+    `<p>Error running agent:</p>\n` +
     `<p>(${error.type}) ${error.message}</p>\n`;
   await replyToEmail({ email, htmlContent });
 };
@@ -140,7 +140,7 @@ async function handler(
 
       const email = emailRes.value;
 
-      // Gating: only dust.tt emails are allowed to trigger the assistant
+      // Gating: only dust.tt emails are allowed to trigger the agent
       // WARNING: DO NOT UNGATE. Todo before ungating:
       // - ! check security, including but not limited to SPF dkim approach thorough review
       // - review from https://github.com/dust-tt/dust/pull/5365 for code refactoring and cleanup
@@ -150,7 +150,7 @@ async function handler(
           status_code: 401,
           api_error: {
             type: "invalid_request_error",
-            message: "Only dust.tt emails are allowed to trigger the assistant",
+            message: "Only dust.tt emails are allowed to trigger the agent",
           },
         });
       }
@@ -207,8 +207,8 @@ async function handler(
         await replyToError(email, {
           type: "invalid_email_error",
           message:
-            `Failed to match any valid assistant email. ` +
-            `Expected assistant email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+            `Failed to match any valid agent email. ` +
+            `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
         });
       }
 

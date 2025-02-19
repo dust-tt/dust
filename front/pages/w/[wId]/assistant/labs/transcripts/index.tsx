@@ -336,7 +336,7 @@ export default function LabsTranscriptsIndex({
     });
 
     const successMessage =
-      "The assistant that will help you summarize your transcripts has been set to @" +
+      "The agent that will help you summarize your transcripts has been set to @" +
       assistant.name;
     await makePatchRequest(
       transcriptsConfigurationId,
@@ -909,7 +909,7 @@ export default function LabsTranscriptsIndex({
                 <Page.Layout direction="vertical">
                   <Page.SectionHeader
                     title="Process transcripts automatically"
-                    description="After each transcribed meeting, Dust will run the assistant you selected and send you the result by email."
+                    description="After each transcribed meeting, Dust will run the agent you selected and send you the result by email."
                   />
                   <Page.Layout direction="vertical">
                     <Page.Layout direction="vertical">
@@ -941,8 +941,8 @@ export default function LabsTranscriptsIndex({
                         )}
                         <div className="mt-2">
                           <Page.P>
-                            The assistant that will process the transcripts
-                            received from{" "}
+                            The agent that will process the transcripts received
+                            from{" "}
                             {transcriptsConfigurationState.provider
                               .charAt(0)
                               .toUpperCase() +

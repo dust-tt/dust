@@ -14,6 +14,7 @@ import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
+import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
@@ -25,6 +26,7 @@ import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/go
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
+import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
@@ -50,7 +52,7 @@ export interface ConnectorProviderModelM {
   snowflake: SnowflakeConfigurationModel;
   zendesk: ZendeskConfiguration;
   bigquery: BigQueryConfigurationModel;
-  // TODO(salesforce): implement this
+  salesforce: SalesforceConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -86,6 +88,7 @@ export interface ConnectorProviderConfigurationTypeM {
   webcrawler: WebCrawlerConfigurationType;
   zendesk: null;
   bigquery: null;
+  salesforce: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -97,7 +100,7 @@ export type ConnectorProviderConfigurationType =
 
 export interface ConnectorProviderStrategy<
   // TODO(salesforce): implement this
-  T extends Exclude<ConnectorProvider, "salesforce">,
+  T extends ConnectorProvider,
 > {
   delete(connector: ConnectorResource, transaction: Transaction): Promise<void>;
 
@@ -118,8 +121,7 @@ export interface ConnectorProviderStrategy<
 
 export function getConnectorProviderStrategy(
   type: ConnectorProvider
-  // TODO(salesforce): implement this
-): ConnectorProviderStrategy<Exclude<ConnectorProvider, "salesforce">> {
+): ConnectorProviderStrategy<ConnectorProvider> {
   switch (type) {
     case "confluence":
       return new ConfluenceConnectorStrategy();
@@ -153,10 +155,8 @@ export function getConnectorProviderStrategy(
 
     case "bigquery":
       return new BigQueryConnectorStrategy();
-
-    // TODO(salesforce): implement this
     case "salesforce":
-      throw new Error("Connector type salesforce NOT IMPLEMENTED YET");
+      return new SalesforceConnectorStrategy();
 
     default:
       assertNever(type);

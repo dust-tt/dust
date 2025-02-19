@@ -50,8 +50,8 @@ export async function sendCancelSubscriptionEmail(
 First of all, thank you for being a long time user of Dust! We've evolved a lot since you first
 signed up and started using us. I invite you to check out our landing (https://dust.tt) for a quick
 overview of our current focus on amplifying teams potential with customizable and secure AI
-assistants. Our platform is extensible as you can turn any of your current Dust app into an
-assistant action. If you give it a spin, I'd love your feedback.
+agents. Our platform is extensible as you can turn any of your current Dust app into an
+agent action. If you give it a spin, I'd love your feedback.
 
 We noticed that you are still using our legacy API routes (https://dust.tt/api/v1/apps/[user]/...)
 which were deprecated in June and are scheduled for shutdown on December 15th. This is a final

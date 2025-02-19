@@ -279,7 +279,7 @@ async function renderDataSourcesConfigurations(
               id: dataSourceView.workspaceId,
             },
           },
-          "Assistant Builder: Error fetching content nodes for documents."
+          "Agent Builder: Error fetching content nodes for documents."
         );
 
         return {
@@ -338,8 +338,6 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView,
           {
             internalIds: sr.resources,
-            // We only want to fetch tables from the core API.
-            onlyCoreAPI: true,
             viewType: "tables",
           }
         );
@@ -358,7 +356,7 @@ async function renderTableDataSourcesConfigurations(
                 id: dataSourceView.workspaceId,
               },
             },
-            "Assistant Builder: Error fetching content nodes for tables."
+            "Agent Builder: Error fetching content nodes for tables."
           );
 
           return {

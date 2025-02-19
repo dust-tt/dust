@@ -12,10 +12,12 @@ import {
 } from "@connectors/connectors/google_drive/lib";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
+import { markFolderAsVisited } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveIncrementalSyncWorkflow,
   launchGoogleFixParentsConsistencyWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
+import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
 import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   _getLabels,
@@ -24,6 +26,7 @@ import {
   getDriveFileId,
   getInternalId,
 } from "@connectors/connectors/google_drive/temporal/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { throwOnError } from "@connectors/lib/cli";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { terminateWorkflow } from "@connectors/lib/temporal";
@@ -114,6 +117,64 @@ export const google_drive = async ({
           ],
       });
       return { status: res.status, content: res.data, type: typeof res.data };
+    }
+    case "upsert-file": {
+      const connector = await getConnector(args);
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      const fileId = args.fileId;
+      const now = Date.now();
+      const authCredentials = await getAuthObject(connector.connectionId);
+      const driveObject = await getGoogleDriveObject({
+        authCredentials,
+        driveObjectId: getDriveFileId(fileId),
+        cacheKey: { connectorId: connector.id, ts: now },
+      });
+      if (!driveObject) {
+        throw new Error(`Can't find google drive object: ${fileId}`);
+      }
+
+      const [, ...parents] = await getFileParentsMemoized(
+        connector.id,
+        authCredentials,
+        driveObject,
+        now
+      );
+      const reversedParents = parents.reverse();
+      const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+      // Upsert parents if missing
+      for (const parent of reversedParents) {
+        const file = await GoogleDriveFiles.findOne({
+          where: {
+            connectorId: connector.id,
+            driveFileId: parent,
+          },
+        });
+        if (!file) {
+          const parentDriveObject = await getGoogleDriveObject({
+            authCredentials,
+            driveObjectId: getDriveFileId(parent),
+            cacheKey: { connectorId: connector.id, ts: now },
+          });
+          if (!parentDriveObject) {
+            throw new Error(`Can't find google drive object: ${parent}`);
+          }
+
+          await markFolderAsVisited(connector.id, parent, now);
+        }
+      }
+
+      await syncOneFile(
+        connector.id,
+        authCredentials,
+        dataSourceConfig,
+        driveObject,
+        now
+      );
+
+      return { success: true };
     }
 
     case "get-google-parents": {

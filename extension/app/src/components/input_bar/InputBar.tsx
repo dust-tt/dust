@@ -22,9 +22,9 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 /**
  *
- * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
+ * @param additionalAgentConfiguration when trying an agent in a modal or drawer we
  * need to pass the agent configuration to the input bar (it may not be in the
- * user's list of assistants)
+ * user's list of agents)
  */
 export function AssistantInputBar({
   owner,

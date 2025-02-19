@@ -1,9 +1,6 @@
 import { createParser } from "eventsource-parser";
 
-import {
-  CoreAPIContentNode,
-  CoreAPIContentNodeType,
-} from "../../core/content_node";
+import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -217,7 +214,7 @@ export type CoreAPINodesSearchFilter = {
   data_source_views: CoreAPIDatasourceViewFilter[];
   node_ids?: string[];
   parent_id?: string;
-  node_types?: CoreAPIContentNodeType[];
+  node_types?: ContentNodeType[];
 };
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
@@ -1174,6 +1171,39 @@ export class CoreAPI {
         body: JSON.stringify({ text }),
       }
     );
+    return this._resultFromResponse(response);
+  }
+
+  async tableValidateCSVContent({
+    projectId,
+    dataSourceId,
+    upsertQueueBucketCSVPath,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    upsertQueueBucketCSVPath: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: CoreAPITableSchema;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/validate_csv_content`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+        }),
+      }
+    );
+
     return this._resultFromResponse(response);
   }
 

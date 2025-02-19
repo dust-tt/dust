@@ -195,21 +195,21 @@ export const Stories: CustomerStory[] = [
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
-      "Dust assistants significantly lowered their acquisition costs, allowing them to hire more salespeople.",
+      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
     href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
   {
-    title: "Kyriba's RFP Assistant for improving pre-sales efficiency",
+    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
   {
-    title: "Lifen uses Dust AI assistants to boost team productivity", // Soon to be replaced with Clay for RFP?
+    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
     content:
-      "Lifen uses Dust AI assistants to boost team productivity and save hours of work each week.",
+      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },

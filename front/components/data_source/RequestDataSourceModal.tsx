@@ -19,6 +19,7 @@ import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useEffect, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
@@ -33,6 +34,7 @@ export function RequestDataSourceModal({
   dataSources,
   owner,
 }: RequestDataSourceModal) {
+  const { isDark } = useTheme();
   const [selectedDataSource, setSelectedDataSource] =
     useState<DataSourceType | null>(null);
 
@@ -125,9 +127,10 @@ export function RequestDataSourceModal({
                           label={getDisplayNameForDataSource(
                             selectedDataSource
                           )}
-                          icon={getConnectorProviderLogoWithFallback(
-                            selectedDataSource.connectorProvider
-                          )}
+                          icon={getConnectorProviderLogoWithFallback({
+                            provider: selectedDataSource.connectorProvider,
+                            isDark,
+                          })}
                         />
                       ) : (
                         <Button
@@ -146,9 +149,10 @@ export function RequestDataSourceModal({
                               key={dataSource.sId}
                               label={getDisplayNameForDataSource(dataSource)}
                               onClick={() => setSelectedDataSource(dataSource)}
-                              icon={getConnectorProviderLogoWithFallback(
-                                dataSource.connectorProvider
-                              )}
+                              icon={getConnectorProviderLogoWithFallback({
+                                provider: dataSource.connectorProvider,
+                                isDark,
+                              })}
                             />
                           )
                       )}

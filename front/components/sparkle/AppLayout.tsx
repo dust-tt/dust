@@ -8,6 +8,7 @@ import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/con
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
+import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
@@ -61,15 +62,6 @@ export default function AppLayout({
   }, []);
 
   useEffect(() => {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
-      document.body.classList.add("dark", "s-dark");
-    } else {
-      document.body.classList.remove("dark", "s-dark");
-    }
-  }, []);
-
-  useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
       // Identify the user with GTM
       window.dataLayer = window.dataLayer || [];
@@ -89,7 +81,7 @@ export default function AppLayout({
   }, [user?.email, user?.fullName, user?.sId]);
 
   return (
-    <>
+    <ThemeProvider>
       <Head>
         <title>{pageTitle ? pageTitle : `Dust - ${owner.name}`}</title>
         <link rel="shortcut icon" href="/static/favicon.png" />
@@ -153,7 +145,7 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-black dark:text-white">
+        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-slate-950 dark:text-slate-50">
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
@@ -163,9 +155,9 @@ export default function AppLayout({
           >
             <div
               className={classNames(
-                "flex w-full flex-col border-b border-primary-50 pl-12 lg:pl-0",
+                "flex w-full flex-col pl-12 lg:pl-0",
                 !hideSidebar
-                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-black/80"
+                  ? "border-b border-structure-300/30 bg-white/80 backdrop-blur dark:border-structure-300-night/30 dark:bg-slate-950/80"
                   : "",
                 titleChildren ? "" : "lg:hidden"
               )}
@@ -197,6 +189,6 @@ export default function AppLayout({
               })(window,document,'script','dataLayer','${process.env.NEXT_PUBLIC_GTM_TRACKING_ID}');
             `}
       </Script>
-    </>
+    </ThemeProvider>
   );
 }

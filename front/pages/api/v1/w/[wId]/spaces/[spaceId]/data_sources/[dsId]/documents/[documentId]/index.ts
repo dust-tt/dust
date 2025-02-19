@@ -148,14 +148,6 @@ export const config = {
  *                 items:
  *                   type: string
  *                 description: Tags to associate with the document.
- *               parent_id:
- *                 type: string
- *                 description: 'Reserved for internal use, should not be set. Document ID of the direct parent to associate with the document.'
- *               parents:
- *                 type: array
- *                 items:
- *                   type: string
- *                 description: 'Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order.'
  *               timestamp:
  *                 type: number
  *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
@@ -499,16 +491,36 @@ async function handler(
         });
       }
 
+      // Prohibit passing parents when not coming from connectors.
+      if (!auth.isSystemKey() && r.data.parents) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Setting a custom hierarchy is not supported yet. Please omit the parents field.",
+          },
+        });
+      }
+      if (!auth.isSystemKey() && r.data.parent_id) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Setting a custom hierarchy is not supported yet. Please omit the parent_id field.",
+          },
+        });
+      }
+
       // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
-      const parentsDisclaimerMessage =
-        "The use of the parents field is discouraged, this field is intended for internal uses only.";
       if (r.data.parents) {
         if (r.data.parents.length === 0) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parents: parents must have at least one element.\n${parentsDisclaimerMessage}`,
+              message: `Invalid parents: parents must have at least one element.`,
             },
           });
         }
@@ -517,23 +529,22 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: `Invalid parents: parents[0] should be equal to document_id.\n${parentsDisclaimerMessage}`,
+              message: `Invalid parents: parents[0] should be equal to document_id.`,
             },
           });
         }
-      }
-      if (
-        r.data.parents &&
-        (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
-        r.data.parents[1] !== r.data.parent_id
-      ) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid parent id: parents[1] and parent_id should be equal.\n${parentsDisclaimerMessage}`,
-          },
-        });
+        if (
+          (r.data.parents.length >= 2 || r.data.parent_id !== null) &&
+          r.data.parents[1] !== r.data.parent_id
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parent id: parents[1] and parent_id should be equal.`,
+            },
+          });
+        }
       }
 
       const documentId = req.query.documentId as string;
@@ -541,13 +552,35 @@ async function handler(
       const title = r.data.title ?? "Untitled document";
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
+      const tags = r.data.tags || [`title:${title}`];
+      const titleInTags = tags
+        .find((t) => t.startsWith("title:"))
+        ?.split(":")
+        .slice(1)
+        .join(":");
+
+      if (titleInTags && titleInTags !== title) {
+        logger.error(
+          { documentId, titleInTags, title },
+          "[CoreNodes] Inconsistency between tags and title."
+        );
+        // TODO(2025-02-18 aubin): uncomment what follows.
+        // return apiError(req, res, {
+        //   status_code: 400,
+        //   api_error: {
+        //     type: "invalid_request_error",
+        //     message: `Invalid tags: title passed in tags does not match the document title.`,
+        //   },
+        // });
+      }
+
       if (r.data.async === true) {
         const enqueueRes = await enqueueUpsertDocument({
           upsertDocument: {
             workspaceId: owner.sId,
             dataSourceId: dataSource.sId,
             documentId,
-            tags: r.data.tags || [],
+            tags,
             parentId: r.data.parent_id || null,
             parents: r.data.parents || [documentId],
             timestamp: r.data.timestamp || null,

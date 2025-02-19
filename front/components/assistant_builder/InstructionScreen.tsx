@@ -48,7 +48,8 @@ import React, {
 } from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
+import { getModelProviderLogo } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
@@ -281,7 +282,7 @@ export function InstructionScreen({
           <Page.Header title="Instructions" />
           <Page.P>
             <span className="text-sm text-element-700 dark:text-element-700-night">
-              Command or guideline you provide to your assistant to direct its
+              Command or guideline you provide to your agent to direct its
               responses.
             </span>
           </Page.P>
@@ -401,6 +402,7 @@ interface ModelListProps {
 }
 
 function ModelList({ modelConfigs, onClick }: ModelListProps) {
+  const { isDark } = useTheme();
   const handleClick = (modelConfig: ModelConfigurationType) => {
     onClick({
       modelId: modelConfig.modelId,
@@ -414,7 +416,7 @@ function ModelList({ modelConfigs, onClick }: ModelListProps) {
       {modelConfigs.map((modelConfig) => (
         <DropdownMenuItem
           key={modelConfig.modelId}
-          icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
+          icon={getModelProviderLogo(modelConfig.providerId, isDark)}
           description={modelConfig.shortDescription}
           label={modelConfig.displayName}
           onClick={() => handleClick(modelConfig)}
@@ -622,7 +624,7 @@ function PromptHistory({
 
 const STATIC_SUGGESTIONS = [
   "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-  "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
+  "Give context on how you'd like the agent to act, e.g. 'Act like a senior analyst'.",
   "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
   "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
 ];

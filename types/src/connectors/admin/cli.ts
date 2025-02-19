@@ -112,6 +112,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),
+    t.literal("upsert-file"),
     t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
@@ -277,11 +278,14 @@ export const ZendeskCommandSchema = t.type({
     t.literal("resync-brand-metadata"),
   ]),
   args: t.type({
+    wId: t.union([t.string, t.undefined]),
+    dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
     brandId: t.union([t.number, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
+    ticketUrl: t.union([t.string, t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -326,6 +330,7 @@ export const MicrosoftCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("list-columns"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),

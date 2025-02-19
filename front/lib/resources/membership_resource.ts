@@ -467,9 +467,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
   }
 
-  /**
-   * Caller of this method should call `ServerSideTracking.trackRevokeMembership`.
-   */
+  // Use `revokeAndTrackMembership` from `@app/lib/api/membership` instead which
+  // handles tracking and usage updates.
   static async revokeMembership({
     user,
     workspace,
@@ -606,12 +605,15 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       });
     }
 
-    auditLog("Membership role updated", {
-      userId: user.id,
-      workspaceId: workspace.id,
-      previousRole,
-      newRole,
-    });
+    auditLog(
+      {
+        userId: user.id,
+        workspaceId: workspace.id,
+        previousRole,
+        newRole,
+      },
+      "Membership role updated"
+    );
     return new Ok({ previousRole, newRole });
   }
 

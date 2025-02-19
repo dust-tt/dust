@@ -36,14 +36,14 @@ export default function DustPlatform() {
             Build custom actions and&nbsp;application orchestration to&nbsp;fit
             your team's exact&nbsp;needs.
             <br />
-            <a href="https://docs.dust.tt" target="_blank">
-              <Button
-                variant="primary"
-                label="Go to Documentation"
-                size="md"
-                className="mt-8"
-              />
-            </a>
+            <Button
+              variant="primary"
+              label="Go to Documentation"
+              size="md"
+              className="mt-8"
+              href="https://docs.dust.tt"
+              target="_blank"
+            />
           </>
         }
       />
@@ -60,7 +60,7 @@ export default function DustPlatform() {
               <>
                 Dust Apps:
                 <br />
-                Expands your&nbsp;assistants' capabilities
+                Expands your&nbsp;agents' capabilities
               </>
             }
             content={[
@@ -106,7 +106,7 @@ export default function DustPlatform() {
             content={[
               <>
                 Dust's API enables programmatic interactions with all
-                of&nbsp;Dust including Data Sources and&nbsp;assistants
+                of&nbsp;Dust including Data Sources and&nbsp;agents
                 for&nbsp;advanced use&nbsp;cases.
               </>,
               <>

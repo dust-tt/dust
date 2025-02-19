@@ -34,7 +34,7 @@ export const SPREADSHEET_MIME_TYPES = [
   MIME_TYPES.MICROSOFT.SPREADSHEET,
 ] as readonly string[];
 
-function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
+function getVisualForFileContentNode(node: ContentNode & { type: "Document" }) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -42,44 +42,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "file" }) {
   return DocumentIcon;
 }
 
-// TODO(nodes-core) clean this up to always rely on the mime type.
-export function getVisualForContentNode(node: ContentNode, useMimeType = true) {
-  if (useMimeType) {
-    return getVisualForContentNodeBasedOnMimeType(node);
-  } else {
-    return getVisualForContentNodeBasedOnType(node);
-  }
-}
-
-function getVisualForContentNodeBasedOnType(node: ContentNode) {
-  switch (node.type) {
-    case "channel":
-      if (node.providerVisibility === "private") {
-        return LockIcon;
-      }
-      return ChatBubbleLeftRightIcon;
-
-    case "database":
-      return Square3Stack3DIcon;
-
-    case "file":
-      return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
-      );
-
-    case "folder":
-      return FolderIcon;
-
-    default:
-      assertNever(node.type);
-  }
-}
-
-function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
-  if (!node.mimeType) {
-    // Hotfix to allow using the connNodes param.
-    return getVisualForContentNodeBasedOnType(node);
-  }
+export function getVisualForContentNode(node: ContentNode) {
   if (CHANNEL_MIME_TYPES.includes(node.mimeType)) {
     if (node.providerVisibility === "private") {
       return LockIcon;
@@ -90,20 +53,23 @@ function getVisualForContentNodeBasedOnMimeType(node: ContentNode) {
     return Square3Stack3DIcon;
   }
   if (FILE_MIME_TYPES.includes(node.mimeType)) {
-    return getVisualForFileContentNode(node as ContentNode & { type: "file" });
+    return getVisualForFileContentNode(
+      node as ContentNode & { type: "Document" }
+    );
   }
   if (SPREADSHEET_MIME_TYPES.includes(node.mimeType)) {
     return FolderTableIcon;
   }
   switch (node.type) {
-    case "database":
+    case "Table":
       return Square3Stack3DIcon;
-    case "folder":
+    case "Folder":
       return FolderIcon;
-    // TODO(2025-01-24 aubin) once we remove the "channel" type, change this to case "file" and add an assertNever
-    default:
+    case "Document":
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "file" }
+        node as ContentNode & { type: "Document" }
       );
+    default:
+      assertNever(node.type);
   }
 }

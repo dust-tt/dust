@@ -739,9 +739,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        // [o1] Hack for OpenAI `o1*` models to not use streaming.
         let model_is_o1 = self.id.as_str().starts_with("o1");
-        let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
+        let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
                     "Generating multiple variations in streaming mode is not supported."
@@ -938,9 +937,7 @@ impl LLM for OpenAILLM {
     ) -> Result<LLMChatGeneration> {
         let is_reasoning_model =
             self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
-        // o1 and o1-mini do not support streaming.
-        let model_supports_streaming = !self.id.as_str().starts_with("o1");
-        // o1-mini specifically does not supoport any type of system messages.
+        // o1-mini specifically does not support any type of system messages.
         let remove_system_messages = self.id.as_str().starts_with("o1-mini");
         openai_compatible_chat_completion(
             self.chat_uri()?,
@@ -960,7 +957,7 @@ impl LLM for OpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            !model_supports_streaming, // disable provider streaming
+            false,
             // Some models (o1-mini) don't support any system messages.
             if remove_system_messages {
                 TransformSystemMessages::Remove

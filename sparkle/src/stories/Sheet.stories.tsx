@@ -131,11 +131,7 @@ export function SheetCustom() {
     <div>
       <Sheet>
         <SheetTrigger asChild>
-          <Button
-            aria-hidden="false"
-            variant="outline"
-            label="Assistant Demo"
-          />
+          <Button aria-hidden="false" variant="outline" label="Agent Demo" />
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>
@@ -148,7 +144,7 @@ export function SheetCustom() {
               <div className="s-flex s-flex-col s-gap-0">
                 <SheetTitle>@coucou</SheetTitle>
                 <SheetDescription>
-                  The assistant that allways says hello.
+                  The agent that allways says hello.
                 </SheetDescription>
               </div>
               <div className="s-flex s-gap-2">
@@ -176,17 +172,17 @@ const QIG: React.FC = () => (
         <Page.H>
           👩‍🎨🦸‍♀️🥷🧑‍🚀
           <br /> Why multiple
-          <br /> Assistants?
+          <br /> Agents?
         </Page.H>
 
         <Page.P>
-          The basic assistant is{" "}
+          The basic agent is{" "}
           <span className="font-bold text-success-500">@gpt4</span>. It is a raw
           model. “Raw” means it does not have particular instructions or access
           to knowledge.
         </Page.P>
         <Page.P>
-          You also have access to assistants that use a raw model (gpt4 for
+          You also have access to agents that use a raw model (gpt4 for
           instance), AND give them specific instructions and access to
           knowledge.{" "}
           <span className="font-bold">
@@ -194,8 +190,8 @@ const QIG: React.FC = () => (
           </span>
         </Page.P>
         <Page.P>
-          Assistants can be provided by Dust, by your company (Company
-          assistants), by your coworkers (Shared assistants).
+          Agents can be provided by Dust, by your company (Company agent), by s
+          your coworkers (Shared agents).
         </Page.P>
       </Page.Vertical>
 
@@ -205,12 +201,12 @@ const QIG: React.FC = () => (
           <br />
           How to make
           <br />
-          an Assistant?
+          an Agent?
         </Page.H>
-        <Page.P>You can build Assistants!</Page.P>
+        <Page.P>You can build agents!</Page.P>
         <Page.P>
-          Assistants start with an “instruction”. A simple text, explaining what
-          you want them to do.
+          Agents start with an “instruction”. A simple text, explaining what you
+          want them to do.
         </Page.P>
         <Page.P>
           For instance, <span className="italic">“Act as a doctor”</span>,{" "}
@@ -223,7 +219,7 @@ const QIG: React.FC = () => (
           We call them <span className="font-bold">Data sources.</span>
         </Page.P>
         <Page.P>
-          With the right Data source, assistants can answer demands like
+          With the right Data source, agents can answer demands like
           <span className="italic">
             “Have we been working with company X”
           </span>, <span className="italic">“How do we manage expenses”</span>,{" "}
@@ -244,7 +240,7 @@ const QIG: React.FC = () => (
       </Page.H>
 
       <Page.P>
-        To augment your assistants with knowledge, you give them data.
+        To augment your agents with knowledge, you give them data.
         <br /> Data can come in different ways in Dust.{" "}
         <span className="font-bold">Here are the three main ways:</span>
       </Page.P>
@@ -287,11 +283,11 @@ const QIG: React.FC = () => (
         Hello <br /> <span className="text-success-500">@mentions</span>
       </Page.H>
       <Page.P>
-        In Dust, you won't find just one AI assistant, but multiple ones.
+        In Dust, you won't find just one AI agent, but multiple ones.
       </Page.P>
       <Page.P>
-        You can call any assistant at any time by typing “@” and the name of the
-        assistant.
+        You can call any agent at any time by typing “@” and the name of the
+        agent.
       </Page.P>
     </Page.Vertical>
     <Page.Horizontal>
@@ -299,17 +295,17 @@ const QIG: React.FC = () => (
         <Page.H>
           👩‍🎨🦸‍♀️🥷🧑‍🚀
           <br /> Why multiple
-          <br /> Assistants?
+          <br /> agents?
         </Page.H>
 
         <Page.P>
-          The basic assistant is{" "}
+          The basic agent is{" "}
           <span className="font-bold text-success-500">@gpt4</span>. It is a raw
           model. “Raw” means it does not have particular instructions or access
           to knowledge.
         </Page.P>
         <Page.P>
-          You also have access to assistants that use a raw model (gpt4 for
+          You also have access to agents that use a raw model (gpt4 for
           instance), AND give them specific instructions and access to
           knowledge.{" "}
           <span className="font-bold">
@@ -317,8 +313,8 @@ const QIG: React.FC = () => (
           </span>
         </Page.P>
         <Page.P>
-          Assistants can be provided by Dust, by your company (Company
-          assistants), by your coworkers (Shared assistants).
+          Agents can be provided by Dust, by your company (Company agents), by
+          your coworkers (Shared agent).
         </Page.P>
       </Page.Vertical>
 
@@ -328,9 +324,9 @@ const QIG: React.FC = () => (
           <br />
           How to make
           <br />
-          an Assistant?
+          an agent?
         </Page.H>
-        <Page.P>You can build Assistants!</Page.P>
+        <Page.P>You can build agents!</Page.P>
         <Page.P>
           Assistants start with an “instruction”. A simple text, explaining what
           you want them to do.
@@ -346,7 +342,7 @@ const QIG: React.FC = () => (
           We call them <span className="font-bold">Data sources.</span>
         </Page.P>
         <Page.P>
-          With the right Data source, assistants can answer demands like
+          With the right Data source, agents can answer demands like
           <span className="italic">
             “Have we been working with company X”
           </span>, <span className="italic">“How do we manage expenses”</span>,{" "}
@@ -367,7 +363,7 @@ const QIG: React.FC = () => (
       </Page.H>
 
       <Page.P>
-        To augment your assistants with knowledge, you give them data.
+        To augment your agents with knowledge, you give them data.
         <br /> Data can come in different ways in Dust.{" "}
         <span className="font-bold">Here are the three main ways:</span>
       </Page.P>

@@ -122,6 +122,13 @@ const PEOPLE: Record<
     github: "https://github.com/clmrn",
     linkedIn: "https://www.linkedin.com/in/bruneauclement",
   },
+  tmartin: {
+    name: "Thibault Martin",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/168569391?v=4",
+    github: "https://github.com/thib-martin",
+    linkedIn: "https://www.linkedin.com/in/thibault-martin-27b19b5a/",
+  },
   jbelveze: {
     name: "Jules Belveze",
     title: "Software Engineer",
@@ -178,6 +185,13 @@ const PEOPLE: Record<
     github: "https://github.com/ameliedrhub",
     linkedIn: "https://www.linkedin.com/in/ameliedeltombe/",
   },
+  tvanneufville: {
+    name: "Theo Vanneufville",
+    title: "Operations",
+    image: "https://avatars.githubusercontent.com/u/190379594?v=4",
+    github: "https://github.com/theo-vanneufville",
+    linkedIn: "https://www.linkedin.com/in/th%C3%A9o-vanneufville-aab050193/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
@@ -217,7 +231,7 @@ const INVESTORS: { name: string; title: string }[] = [
   { name: "Konstantine Buhler", title: "Partner, Sequoia Capital" },
   { name: "Nat Friedman", title: "AI Grant" },
   { name: "Ross Fubini", title: "Partner, XYZ Ventures" },
-  { name: "Pietro Biezza", title: "Partner, Connect Ventures" },
+  { name: "Pietro Bezza", title: "Partner, Connect Ventures" },
   { name: "Olivier Pomel", title: "CEO, Datadog" },
   { name: "Charles Gorintin", title: "CTO, Alan" },
   { name: "Matthieu Rouif", title: "CEO, Photoroom" },
@@ -225,7 +239,7 @@ const INVESTORS: { name: string; title: string }[] = [
   { name: "Mathilde Colin", title: "CEO, Front" },
   { name: "Howie Liu", title: "CEO, Airtable" },
   { name: "Julien Chaumond", title: "CTO, HuggingFace" },
-  { name: "Igor Babushckin", title: "AI researcher" },
+  { name: "Igor Babuschkin", title: "AI researcher" },
 ];
 
 const Investor = ({ name, title }: { name: string; title: string }) => {
@@ -306,8 +320,8 @@ export default function About() {
               </P>
               <P>
                 Like Windows provided universal UI primitives that made
-                applications more productive, we proviude universal AI
-                primitives that make enterprise workflows more intelligent.
+                applications more productive, we provide universal AI primitives
+                that make enterprise workflows more intelligent.
               </P>
               <P>
                 Our infrastructure connects models to company data, turning raw
@@ -360,13 +374,13 @@ export default function About() {
               <P>
                 <Strong>We act as one team.</Strong> High-trust, high-energy,
                 low-ego. We build serious things without taking ourselves too
-                serioulsy.
+                seriously.
               </P>
             </div>
             <div className="flex flex-col">
               <P>
                 These principles guide our decisions and actions. If they
-                reasonate with you, we'd love to hear from you.
+                resonate with you, we'd love to hear from you.
               </P>
             </div>
 

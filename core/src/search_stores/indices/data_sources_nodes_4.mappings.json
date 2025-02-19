@@ -1,0 +1,64 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "data_source_id": {
+      "type": "keyword"
+    },
+    "data_source_internal_id": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "node_type": {
+      "type": "keyword"
+    },
+    "node_id": {
+      "type": "keyword"
+    },
+    "title": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "parents": {
+      "type": "keyword"
+    },
+    "parent_id": {
+      "type": "keyword"
+    },
+    "mime_type": {
+      "type": "keyword"
+    },
+    "source_url": {
+      "type": "keyword",
+      "index": false
+    },
+    "provider_visibility": {
+      "type": "keyword",
+      "index": false
+    },
+    "tags": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "tag_edge_analyzer"
+        },
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "tag_normalizer"
+        }
+      }
+    }
+  }
+}

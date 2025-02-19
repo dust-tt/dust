@@ -16,8 +16,6 @@ import {
   slugify,
   TABLE_PREFIX,
 } from "@dust-tt/types";
-import { Writable } from "stream";
-import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
@@ -25,11 +23,9 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import {
-  isUpsertTableArgs,
-  upsertDocument,
-  upsertTable,
-} from "@app/lib/api/data_sources";
+import { isUpsertTableArgs } from "@app/lib/api/data_sources";
+import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -38,28 +34,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
-
-class MemoryWritable extends Writable {
-  private chunks: string[];
-
-  constructor() {
-    super();
-    this.chunks = [];
-  }
-
-  _write(
-    chunk: any,
-    encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
-  ) {
-    this.chunks.push(chunk.toString());
-    callback();
-  }
-
-  getContent() {
-    return this.chunks.join("");
-  }
-}
 
 async function generateSnippet(
   auth: Authenticator,
@@ -220,7 +194,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
-    // Beware, most values here are default values that are overrided by the ...restArgs below.
+    // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -260,24 +234,26 @@ const upsertTableToDatasource: ProcessingFunction = async (
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
 
   const upsertTableRes = await upsertTable({
-    // Beware, most values here are default values that are overrided by the ...restArgs below,
-    // including description.
-    tableId,
-    name: slugify(file.fileName),
-    description: "Table uploaded from file",
-    truncate: true,
-    csv: content.trim(),
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
-    parents: [tableId],
-    async: false,
-    dataSource,
     auth,
-    title: upsertTitle ?? file.fileName,
-    mimeType: file.contentType,
-    sourceUrl: file.getPrivateUrl(auth),
+    params: {
+      // Beware, most values here are default values that are overridden by the ...restArgs below,
+      // including description.
+      tableId,
+      name: slugify(file.fileName),
+      description: "Table uploaded from file",
+      truncate: true,
+      csv: content.trim(),
+      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      parents: [tableId],
+      async: false,
+      title: upsertTitle ?? file.fileName,
+      mimeType: file.contentType,
+      sourceUrl: file.getPrivateUrl(auth),
 
-    // Used to override defaults, for manual file uploads where some fields are user-defined.
-    ...restArgs,
+      // Used to override defaults, for manual file uploads where some fields are user-defined.
+      ...restArgs,
+    },
+    dataSource,
   });
 
   if (upsertTableRes.isErr()) {
@@ -465,38 +441,14 @@ const maybeApplyProcessing: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
-async function getFileContent(
-  auth: Authenticator,
-  file: FileResource
-): Promise<string | null> {
-  // Create a stream to hold the content of the file
-  const writableStream = new MemoryWritable();
-
-  // Read from the processed file
-  await pipeline(
-    file.getReadStream({ auth, version: "processed" }),
-    writableStream
-  );
-
-  const content = writableStream.getContent();
-
-  if (!content) {
-    return null;
-  }
-
-  return content;
-}
-
 export async function processAndUpsertToDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource,
   {
     file,
-    optionalContent,
     upsertArgs,
   }: {
     file: FileResource;
-    optionalContent?: string;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
 ): Promise<
@@ -527,16 +479,15 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const content = optionalContent
-    ? optionalContent
-    : await getFileContent(auth, file);
+  // TODO(spolu): [CSV-FILE] move content extraction to the processing function so that we don't
+  // extract content for tables and instead submit with fileId
+  const content = await getFileContent(auth, file);
 
   if (!content) {
     logger.error(
       {
         fileId: file.sId,
         workspaceId: auth.workspace()?.sId,
-        contentSupplied: !!optionalContent,
       },
       "No content extracted from file."
     );

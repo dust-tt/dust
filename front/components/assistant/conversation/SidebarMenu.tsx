@@ -252,12 +252,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   <DropdownMenuTrigger asChild>
                     <Button size="sm" icon={MoreIcon} variant="outline" />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent mountPortal={false}>
-                    <DropdownMenuLabel>Assistants</DropdownMenuLabel>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel>Agent</DropdownMenuLabel>
                     <DropdownMenuItem
                       href={`/w/${owner.sId}/builder/assistants/create`}
                       icon={PlusIcon}
-                      label="Create new assistant"
+                      label="Create new agent"
                       data-gtm-label="assistantCreationButton"
                       data-gtm-location="sidebarMenu"
                     />
@@ -265,7 +265,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                       <DropdownMenuItem
                         href={`/w/${owner.sId}/builder/assistants`}
                         icon={RobotIcon}
-                        label="Manage assistants"
+                        label="Manage agents"
                         data-gtm-label="assistantManagementButton"
                         data-gtm-location="sidebarMenu"
                       />
@@ -379,7 +379,7 @@ const RenderConversation = ({
         <div className="flex items-center px-2 py-2">
           <Checkbox
             id={`conversation-${conversation.sId}`}
-            className="bg-white dark:bg-black"
+            className="bg-white dark:bg-slate-950"
             checked={selectedConversations.includes(conversation)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />

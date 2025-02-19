@@ -1,16 +1,6 @@
-import {
-  Chip,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuPortal,
-  DropdownMenuTrigger,
-  ScrollArea,
-  SearchInput,
-} from "@dust-tt/sparkle";
+import { Button, Chip, SearchInputWithPopover } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
 import React from "react";
-import { useRef } from "react";
 
 export interface TagSearchProps {
   searchInputValue: string;
@@ -35,80 +25,51 @@ export const TagSearchInput = ({
   isLoading,
   disabled = false,
 }: TagSearchProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const input = inputRef.current;
-    if (!input) {
-      return;
-    }
-
-    const preventSelection = () => {
-      const len = input.value.length;
-      requestAnimationFrame(() => {
-        input.setSelectionRange(len, len);
-      });
-    };
-
-    input.addEventListener("focus", preventSelection);
-    return () => input.removeEventListener("focus", preventSelection);
-  }, []);
-
   return (
     <div className="flex flex-col gap-3">
-      <div className="relative w-full" ref={containerRef}>
-        <SearchInput
-          name="tag-search"
-          ref={inputRef}
-          value={searchInputValue}
-          onChange={(value) => setSearchInputValue(value)}
-          onKeyDown={(e) => {
-            if (
-              (e.key === "Backspace" && !searchInputValue) ||
-              e.key === "Escape"
-            ) {
-              e.preventDefault();
-              inputRef.current?.focus();
-            }
-          }}
-          placeholder="Search labels..."
-          className="w-full"
-          isLoading={isLoading}
-          disabled={disabled}
-        />
-        <DropdownMenu
-          open={
-            availableTags.length > 0 ||
-            (searchInputValue.length > 0 && !isLoading)
+      <SearchInputWithPopover
+        name="tag-search"
+        placeholder="Search labels..."
+        value={searchInputValue}
+        onChange={(value) => setSearchInputValue(value)}
+        open={
+          availableTags.length > 0 ||
+          (searchInputValue.length > 0 && !isLoading)
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setSearchInputValue("");
           }
-        >
-          <DropdownMenuTrigger asChild>
-            <div className="absolute h-0 w-0 p-0" />
-          </DropdownMenuTrigger>
-          <DropdownMenuPortal>
-            <DropdownMenuContent align="start">
-              <ScrollArea>
-                {availableTags.length > 0 ? (
-                  availableTags.map((tag, i) => (
-                    <DropdownMenuItem
-                      key={`${tag.tag}-${i}`}
-                      label={tag.tag}
-                      onClick={() => {
-                        onTagAdd(tag);
-                        setSearchInputValue("");
-                        inputRef.current?.focus();
-                      }}
-                    />
-                  ))
-                ) : (
-                  <DropdownMenuItem label="No results" disabled />
-                )}
-              </ScrollArea>
-            </DropdownMenuContent>
-          </DropdownMenuPortal>
-        </DropdownMenu>
-      </div>
+        }}
+        isLoading={isLoading}
+        disabled={disabled}
+        mountPortal={false}
+      >
+        <div className="flex flex-col gap-2 pr-4">
+          {availableTags.length > 0 ? (
+            availableTags.map((tag, i) => (
+              <Button
+                key={`${tag.tag}-${i}`}
+                variant="ghost"
+                label={tag.tag}
+                size="sm"
+                className="justify-start"
+                onClick={() => {
+                  onTagAdd(tag);
+                  setSearchInputValue("");
+                }}
+              />
+            ))
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              label="No results found"
+              disabled
+            />
+          )}
+        </div>
+      </SearchInputWithPopover>
 
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (

@@ -17,10 +17,11 @@ import { CsvError, parse } from "csv-parse";
 import { DateTime } from "luxon";
 
 import config from "@app/lib/api/config";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-
-import type { DataSourceResource } from "../resources/data_source_resource";
 
 const MAX_TABLE_COLUMNS = 512;
 const MAX_COLUMN_NAME_LENGTH = 1024;
@@ -44,11 +45,15 @@ type InputValidationError = {
 };
 
 type NotFoundError = {
-  type: "table_not_found";
+  type: "table_not_found" | "file_not_found";
   message: string;
 };
 
-type DetectedHeadersType = { header: string[]; rowIndex: number };
+type DetectedHeadersType = {
+  header: string[];
+  rowIndex: number;
+  firstRow: string[];
+};
 
 export type TableOperationError =
   | {
@@ -117,7 +122,7 @@ export async function deleteTable({
   }
   // We do not delete the related AgentTablesQueryConfigurationTable entry if any.
   // This is because the table might be created again with the same name and we want to keep the configuration.
-  // The Assistant Builder displays an error on the action card if it misses a table.
+  // The agent Builder displays an error on the action card if it misses a table.
 
   return new Ok(null);
 }
@@ -133,8 +138,8 @@ export async function upsertTableFromCsv({
   tableParentId,
   tableParents,
   csv,
+  fileId,
   truncate,
-  detectedHeaders,
   title,
   mimeType,
   sourceUrl,
@@ -149,31 +154,13 @@ export async function upsertTableFromCsv({
   tableParentId: string | null;
   tableParents: string[];
   csv: string | null;
+  fileId: string | null;
   truncate: boolean;
-  detectedHeaders?: DetectedHeadersType;
   title: string;
   mimeType: string;
   sourceUrl: string | null;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
-  const owner = auth.workspace();
-
-  if (!owner) {
-    logger.error(
-      {
-        type: "internal_server_error",
-        message: "Failed to get workspace.",
-      },
-      "Failed to get workspace."
-    );
-    return new Err({
-      type: "internal_server_error",
-      coreAPIError: {
-        code: "workspace_not_found",
-        message: "Failed to get workspace.",
-      },
-      message: "Failed to get workspace.",
-    });
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   if (tableParentId && tableParents && tableParents[1] !== tableParentId) {
     return new Err({
@@ -182,11 +169,49 @@ export async function upsertTableFromCsv({
     });
   }
 
+  // TODO(spolu): [CSV-FILE] add ability to core to take a GCS file path directly
+  if (fileId) {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return new Err({
+        type: "not_found_error",
+        notFoundError: {
+          type: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
+        },
+      });
+    }
+    if (file.status !== "ready") {
+      return new Err({
+        type: "invalid_request_error",
+        message: "The file provided is not ready",
+      });
+    }
+
+    if (file.useCase !== "upsert_table") {
+      return new Err({
+        type: "invalid_request_error",
+        message:
+          "The file provided has not the expected `upsert_table` use-case",
+      });
+    }
+
+    const content = await getFileContent(auth, file);
+    if (!content) {
+      return new Err({
+        type: "invalid_request_error",
+        message: "The file provided is empty",
+      });
+    }
+
+    csv = content;
+  }
+
   const csvRowsRes = csv
     ? await rowsFromCsv({
         auth,
         csv,
-        detectedHeaders,
       })
     : null;
 
@@ -347,11 +372,9 @@ export async function upsertTableFromCsv({
 export async function rowsFromCsv({
   auth,
   csv,
-  detectedHeaders,
 }: {
   auth: Authenticator;
   csv: string;
-  detectedHeaders?: DetectedHeadersType;
 }): Promise<
   Result<
     { detectedHeaders: DetectedHeadersType; rows: CoreAPIRow[] },
@@ -369,16 +392,14 @@ export async function rowsFromCsv({
 
   // this differs with = {} in that it prevent errors when header values clash with object properties such as toString, constructor, ..
   const valuesByCol: Record<string, string[]> = Object.create(null);
-  let header, rowIndex;
+  let header, rowIndex, firstRow;
   try {
-    const headerRes = detectedHeaders
-      ? new Ok(detectedHeaders)
-      : await detectHeaders(csv, delimiter);
+    const headerRes = await detectHeaders(csv, delimiter);
 
     if (headerRes.isErr()) {
       return headerRes;
     }
-    ({ header, rowIndex } = headerRes.value);
+    ({ header, rowIndex, firstRow } = headerRes.value);
 
     const parser = parse(csv, { delimiter });
     let i = 0;
@@ -434,6 +455,8 @@ export async function rowsFromCsv({
             DateTime.fromSQL,
             // Google Spreadsheet date format parser.
             (text: string) => DateTime.fromFormat(text, "d-MMM-yyyy"),
+            // Full month name format parser
+            (text: string) => DateTime.fromFormat(text, "LLLL dd, yyyy"),
           ];
           const trimmedV = v.trim();
           for (const parse of dateParsers) {
@@ -526,7 +549,7 @@ export async function rowsFromCsv({
     "Parsing CSV"
   );
 
-  return new Ok({ detectedHeaders: { header, rowIndex }, rows });
+  return new Ok({ detectedHeaders: { header, rowIndex, firstRow }, rows });
 }
 
 async function staticHeaderDetection(
@@ -549,7 +572,7 @@ async function staticHeaderDetection(
     return new Err({ type: "invalid_header", message: header.error.message });
   }
 
-  return new Ok({ header: header.value, rowIndex: 1 });
+  return new Ok({ header: header.value, rowIndex: 1, firstRow });
 }
 
 export async function detectHeaders(

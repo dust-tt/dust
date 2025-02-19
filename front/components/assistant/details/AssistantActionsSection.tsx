@@ -1,25 +1,35 @@
 import {
   BracesIcon,
+  Button,
   ChatBubbleThoughtIcon,
+  Chip,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
   GithubIcon,
   Icon,
   IconButton,
+  Label,
   PlanetIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   AgentActionConfigurationType,
   AgentConfigurationType,
+  ConnectorProvider,
   ContentNodesViewType,
   DataSourceConfiguration,
+  DataSourceTag,
   DataSourceViewType,
   DustAppRunConfigurationType,
   LightWorkspaceType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
+  TagsFilter,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -39,6 +49,7 @@ import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -272,8 +283,8 @@ function renderOtherAction(
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={PlanetIcon} size="sm" />
           <div>
-            Assistant can navigate the web (browse any provided links, make a
-            google search, etc.) to answer.
+            Agent can navigate the web (browse any provided links, make a google
+            search, etc.) to answer.
           </div>
         </div>
       </ActionSection>
@@ -283,8 +294,8 @@ function renderOtherAction(
       <ActionSection title="Reasoning" key={`other-${index}`}>
         <Icon visual={ChatBubbleThoughtIcon} size="sm" />
         <div>
-          Assistant can perform step by step reasoning to solve complex
-          problems. Slow but powerful.
+          Agent can perform step by step reasoning to solve complex problems.
+          Slow but powerful.
         </div>
       </ActionSection>
     );
@@ -295,7 +306,7 @@ function renderOtherAction(
       <ActionSection title="Github" key={`other-${index}`}>
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={GithubIcon} size="sm" />
-          <div>Assistant can retrieve pull requests from Github.</div>
+          <div>Agent can retrieve pull requests from Github.</div>
         </div>
       </ActionSection>
     );
@@ -304,7 +315,7 @@ function renderOtherAction(
       <ActionSection title="Github" key={`other-${index}`}>
         <div className="flex gap-2 text-muted-foreground">
           <Icon visual={GithubIcon} size="sm" />
-          <div>Assistant can create issues on Github.</div>
+          <div>Agent can create issues on Github.</div>
         </div>
       </ActionSection>
     );
@@ -345,6 +356,7 @@ function DataSourceViewsSection({
   dataSourceConfigurations,
   viewType,
 }: DataSourceViewsSectionProps) {
+  const { isDark } = useTheme();
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -373,10 +385,10 @@ function DataSourceViewsSection({
 
           if (dataSourceView) {
             const { dataSource } = dataSourceView;
-            dsLogo = getConnectorProviderLogoWithFallback(
-              dataSource.connectorProvider,
-              FolderIcon
-            );
+            dsLogo = getConnectorProviderLogoWithFallback({
+              provider: dataSource.connectorProvider,
+              isDark,
+            });
             dataSourceName = getDisplayNameForDataSource(dataSource);
           }
 
@@ -389,6 +401,16 @@ function DataSourceViewsSection({
               label={dataSourceName}
               visual={dsLogo ?? FolderIcon}
               className="whitespace-nowrap"
+              actions={
+                <RetrievalActionTagsFilterPopover
+                  dustAPIDataSourceId={dsConfig.dataSourceViewId}
+                  tagsFilter={dsConfig.filter.tags ?? null}
+                  connectorProvider={
+                    dataSourceView?.dataSource.connectorProvider ?? null
+                  }
+                />
+              }
+              areActionsFading={false}
             >
               {dataSourceView && isAllSelected && (
                 <DataSourceViewPermissionTree
@@ -416,6 +438,105 @@ function DataSourceViewsSection({
         })}
       </Tree>
     </div>
+  );
+}
+
+function RetrievalActionTagsFilterPopover({
+  dustAPIDataSourceId,
+  tagsFilter,
+  connectorProvider,
+}: {
+  dustAPIDataSourceId: string;
+  tagsFilter: TagsFilter;
+  connectorProvider: ConnectorProvider | null;
+}) {
+  if (tagsFilter === null) {
+    return null;
+  }
+
+  const tagsAuto: boolean = tagsFilter === "auto";
+  const tagsIn: DataSourceTag[] = [];
+  const tagsNot: DataSourceTag[] = [];
+
+  if (tagsFilter !== "auto") {
+    tagsIn.push(
+      ...tagsFilter.in.map((tag) => ({
+        tag,
+        dustAPIDataSourceId,
+        connectorProvider,
+      }))
+    );
+    if (tagsFilter.not) {
+      tagsNot.push(
+        ...tagsFilter.not.map((tag) => ({
+          tag,
+          dustAPIDataSourceId,
+          connectorProvider,
+        }))
+      );
+    }
+  }
+
+  let tagsCounter: number | null = null;
+  let tagsLabel = "Filters";
+  if (tagsFilter === "auto") {
+    tagsLabel = "Filters (auto)";
+  } else if (
+    tagsFilter &&
+    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
+  ) {
+    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
+  }
+
+  return (
+    <PopoverRoot modal={true}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="xs"
+          label={tagsLabel}
+          isSelect
+          counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
+          isCounter={tagsCounter !== null}
+        />
+      </PopoverTrigger>
+      <PopoverContent>
+        <div className="flex flex-col gap-8">
+          {tagsIn.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label>Must have labels</Label>
+              <div className="flex flex-row flex-wrap gap-1">
+                {tagsIn.map((tag) => (
+                  <Chip key={tag.tag} label={tag.tag} color="slate" />
+                ))}
+              </div>
+            </div>
+          )}
+          {tagsNot.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label>Must not have labels</Label>
+              <div className="flex flex-row flex-wrap gap-1">
+                {tagsNot.map((tag) => (
+                  <Chip key={tag.tag} label={tag.tag} color="red" />
+                ))}
+              </div>
+            </div>
+          )}
+          {tagsAuto && (
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-row flex-wrap gap-1">
+                <Chip
+                  color="emerald"
+                  label="Dynamic filtering activated."
+                  icon={SparklesIcon}
+                  isBusy
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </PopoverRoot>
   );
 }
 
@@ -472,15 +593,17 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.type === "file") {
+                  if (node.type === "Document") {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.type === "file" ? "" : "pointer-events-none opacity-0"
+                  node.type === "Document"
+                    ? ""
+                    : "pointer-events-none opacity-0"
                 )}
-                disabled={node.type !== "file"}
+                disabled={node.type !== "Document"}
                 variant="outline"
               />
             </div>

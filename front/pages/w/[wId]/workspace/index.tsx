@@ -226,7 +226,7 @@ export default function WorkspaceAdmin({
               </Page.P>
               <Page.P variant="secondary">
                 Select the models you want available to your workspace for the
-                creation of AI Assistants.
+                creation of AI Agents.
               </Page.P>
             </div>
             <div className="grid grid-cols-2 gap-2">

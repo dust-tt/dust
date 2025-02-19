@@ -182,7 +182,7 @@ export function FeedbackSelector({
                 placeholder={
                   lastSelectedThumb === "up"
                     ? "What did you like?"
-                    : "Tell us what went wrong so we can make this assistant better."
+                    : "Tell us what went wrong so we can make this agent better."
                 }
                 className="mb-4 mt-4"
                 rows={3}

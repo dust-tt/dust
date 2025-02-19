@@ -31,10 +31,10 @@ const viewRequiresUser = (view?: string): boolean =>
  * @swagger
  * /api/v1/w/{wId}/assistant/agent_configurations:
  *   get:
- *     summary: List assistants
+ *     summary: List agents
  *     description: Get the agent configurations for the workspace identified by {wId}.
  *     tags:
- *       - Assistants
+ *       - Agents
  *     parameters:
  *       - in: path
  *         name: wId

@@ -14,6 +14,9 @@ inputs:
   workload_identity_provider:
     description: "Workload Identity Provider"
     required: true
+  depot_token:
+    description: "Depot project token"
+    required: true
 
 runs:
   using: "composite"
@@ -26,14 +29,52 @@ runs:
         workload_identity_provider: ${{ inputs.workload_identity_provider }}
         service_account: "github-build-invoker@${{ inputs.project_id }}.iam.gserviceaccount.com"
 
-    - name: "Set up Cloud SDK"
+    - name: "Configure GCP Artifact Auth"
       uses: "google-github-actions/setup-gcloud@v2"
+      with:
+        install_components: "docker-credential-gcr"
 
-    - name: Build image
+    - name: "Configure GCP Docker Auth"
       shell: bash
+      run: gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
+
+    - name: "Setup Depot"
+      uses: "depot/setup-action@v1"
+
+    - name: "Build and Push"
+      shell: bash
+      env:
+        DEPOT_TOKEN: ${{ inputs.depot_token }}
       run: |
-        chmod +x ./.github/actions/build-image/cloud-build.sh
-        ./.github/actions/build-image/cloud-build.sh \
-          --image-name=${{ inputs.component }} \
-          --region=${{ inputs.region }} \
-          --project-id=${{ inputs.project_id }}
+        COMPONENT="${{ inputs.component }}"
+
+        # Determine environment and base component name
+        if [[ ${COMPONENT} == *"-qa" ]]; then
+          ENV="qa"
+          BASE_COMPONENT=${COMPONENT%-qa}
+        elif [[ ${COMPONENT} == *"-edge" ]]; then
+          ENV="edge"
+          BASE_COMPONENT=${COMPONENT%-edge}
+        else
+          ENV="prod"
+          BASE_COMPONENT=${COMPONENT}
+        fi
+
+        CONFIG_FILE=".github/configs/${{ inputs.region }}/.env.${ENV}"
+
+        build_args=()
+        while IFS='=' read -r key value; do
+          [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
+        done < "$CONFIG_FILE"
+
+        depot build \
+          --project 3vz0lnf16v \
+          --platform linux/amd64 \
+          --cache-from type=gha,scope=${{ inputs.component }} \
+          --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
+          -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+          -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${{ inputs.component }}:${GITHUB_SHA::7} \
+          --build-arg COMMIT_HASH=${GITHUB_SHA::7} \
+          ${build_args[@]} \
+          --push \
+          .

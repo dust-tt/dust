@@ -42,6 +42,7 @@ describe("POST /api/w/[wId]/files", () => {
     expect(data.file.contentType).toBe("text/csv");
     expect(data.file.fileName).toBe("test.csv");
     expect(data.file.uploadUrl).toContain("http://localhost:9999");
+    expect(data.file.sId).toBeDefined();
   });
 
   itInTransaction(

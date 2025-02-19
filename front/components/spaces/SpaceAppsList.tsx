@@ -194,7 +194,7 @@ export const SpaceAppsList = ({
   return (
     <>
       {rows.length === 0 ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg border bg-structure-50">
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
           <Button
             label="Create App"
             disabled={!canWriteInSpace}

@@ -21,10 +21,11 @@ import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import {
-  MODEL_PROVIDER_LOGOS,
+  getModelProviderLogo,
   REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -59,6 +60,7 @@ interface ProviderManagementModalProps {
 export function ProviderManagementModal({
   owner,
 }: ProviderManagementModalProps) {
+  const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
@@ -153,9 +155,9 @@ export function ProviderManagementModal({
           <SheetTitle>Manage Providers</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="mt-8 divide-y divide-gray-200">
+          <div className="dark:divide-gray-200-night mt-8 divide-y divide-gray-200">
             <div className="flex items-center justify-between px-4 pb-4">
-              <span className="text-left font-bold text-foreground">
+              <span className="text-left font-bold text-foreground dark:text-foreground-night">
                 Make all providers available
               </span>
               <SliderToggle
@@ -176,7 +178,7 @@ export function ProviderManagementModal({
           <div className="flex flex-col gap-4">
             <ContextItem.List>
               {MODEL_PROVIDER_IDS.map((provider) => {
-                const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
+                const LogoComponent = getModelProviderLogo(provider, isDark);
                 if (!modelProviders[provider]) {
                   return null;
                 }
@@ -235,8 +237,7 @@ export function ProviderManagementModal({
           </div>
           <div className="px-4 pt-2 text-sm text-gray-500">
             Embedding models are used to create numerical representations of
-            your data powering the semantic search capabilities of your
-            assistants.
+            your data powering the semantic search capabilities of your agents.
           </div>
         </SheetContainer>
         <SheetFooter

@@ -2,7 +2,6 @@ import {
   BracesIcon,
   classNames,
   ExternalLinkIcon,
-  FolderIcon,
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
@@ -15,6 +14,7 @@ import { useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -22,7 +22,6 @@ import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
-
 export const TrackerDataSourceSelectedTree = ({
   owner,
   dataSourceConfigurations,
@@ -30,6 +29,7 @@ export const TrackerDataSourceSelectedTree = ({
   owner: LightWorkspaceType;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
 }) => {
+  const { isDark } = useTheme();
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
   );
@@ -48,10 +48,10 @@ export const TrackerDataSourceSelectedTree = ({
         {orderDatasourceViewSelectionConfigurationByImportance(
           Object.values(dataSourceConfigurations)
         ).map((dsConfig) => {
-          const LogoComponent = getConnectorProviderLogoWithFallback(
-            dsConfig.dataSourceView.dataSource.connectorProvider,
-            FolderIcon
-          );
+          const LogoComponent = getConnectorProviderLogoWithFallback({
+            provider: dsConfig.dataSourceView.dataSource.connectorProvider,
+            isDark,
+          });
 
           return (
             <Tree.Item
@@ -109,7 +109,7 @@ export const TrackerDataSourceSelectedTree = ({
                           size="xs"
                           icon={BracesIcon}
                           onClick={() => {
-                            if (node.type === "file") {
+                            if (node.type === "Document") {
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
@@ -117,11 +117,11 @@ export const TrackerDataSourceSelectedTree = ({
                             }
                           }}
                           className={classNames(
-                            node.type === "file"
+                            node.type === "Document"
                               ? ""
                               : "pointer-events-none opacity-0"
                           )}
-                          disabled={node.type !== "file"}
+                          disabled={node.type !== "Document"}
                           variant="outline"
                         />
                       </div>

@@ -41,7 +41,7 @@ export function HelpDropdown({
 
   const handleAskHelp = () => {
     if (router.pathname === "/w/[wId]/assistant/[cId]") {
-      // If we're on /assistant/new page, we just set the selected assistant on top of what's already there in the input bar if any.
+      // If we're on /assistant/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not loose your potential input when you click on the help button.
       setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
       setAnimate(true);
@@ -143,13 +143,10 @@ export function HelpDropdown({
           onClick={() => void handleHelpSubmit("How to invite new users?", [])}
         />
         <DropdownMenuItem
-          label="How to use assistants in Slack workflow?"
+          label="How to use agents in Slack workflow?"
           icon={ChatBubbleBottomCenterTextIcon}
           onClick={() =>
-            void handleHelpSubmit(
-              "How to use assistants in Slack workflow?",
-              []
-            )
+            void handleHelpSubmit("How to use agents in Slack workflow?", [])
           }
         />
         <DropdownMenuItem

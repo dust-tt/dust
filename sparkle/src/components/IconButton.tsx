@@ -42,16 +42,16 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-text-element-500 dark:s-text-element-500-night"
   ),
   ghost: cn(
-    "s-text-white dark:s-text-black",
+    "s-text-white dark:s-text-slate-950",
     "hover:s-text-slate-100 dark:hover:s-text-slate-100-night",
     "active:s-text-slate-200 dark:active:s-text-slate-200-night",
-    "s-text-white/50 dark:s-text-black/50"
+    "s-text-white/50 dark:s-text-slate-950/50"
   ),
   "ghost-secondary": cn(
     "s-text-white",
     "hover:s-text-slate-100 dark:hover:s-text-slate-100-night",
     "active:s-text-slate-200 dark:active:s-text-slate-200-night",
-    "s-text-white/50 dark:s-text-black/50"
+    "s-text-white/50 dark:s-text-slate-950/50"
   ),
 };
 

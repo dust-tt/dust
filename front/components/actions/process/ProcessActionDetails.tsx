@@ -82,10 +82,10 @@ function ProcessActionQuery({ action }: { action: ProcessActionType }) {
 function makeQueryDescription(action: ProcessActionType) {
   const { relativeTimeFrame, tagsIn, tagsNot } = action.params;
 
-  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsInAsString = tagsIn ? `, with labels ${tagsIn?.join(", ")}` : "";
   const tagsNotAsString =
     tagsNot && tagsNot.length > 0
-      ? `, excluding tags ${tagsNot?.join(", ")}`
+      ? `, excluding labels ${tagsNot?.join(", ")}`
       : "";
 
   const timeFrameAsString = relativeTimeFrame

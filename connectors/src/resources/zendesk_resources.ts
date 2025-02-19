@@ -1,5 +1,5 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { MIME_TYPES, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -210,6 +210,19 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
+  static async fetchByBrandSubdomain({
+    connectorId,
+    subdomain,
+  }: {
+    connectorId: number;
+    subdomain: string;
+  }): Promise<ZendeskBrandResource | null> {
+    const blob = await ZendeskBrand.findOne({
+      where: { connectorId, subdomain },
+    });
+    return blob && new this(this.model, blob.get());
+  }
+
   static async fetchByBrandIds({
     connectorId,
     brandIds,
@@ -298,7 +311,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
-      type: "folder",
+      type: "Folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: true,
@@ -308,6 +321,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
           ? "read"
           : "none",
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.BRAND,
     };
   }
 
@@ -319,12 +333,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getHelpCenterInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: richTitle ? `${this.name} - Help Center` : "Help Center",
       sourceUrl: null,
       expandable: true,
       permission: this.helpCenterPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
     };
   }
 
@@ -339,12 +354,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: richTitle ? `${this.name} - Tickets` : "Tickets",
       sourceUrl: null,
       expandable: expandable,
       permission: this.ticketsPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
     };
   }
 }
@@ -590,12 +606,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return {
       internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
       parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: expandable,
       permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     };
   }
 
@@ -673,13 +690,14 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return {
       internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
-      type: "file",
+      type: "Document",
       title: this.subject,
       sourceUrl: this.url,
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.TICKET,
     };
   }
 
@@ -874,13 +892,14 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
         brandId,
         categoryId,
       }),
-      type: "file",
+      type: "Document",
       title: this.name,
       sourceUrl: this.url,
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
     };
   }
 

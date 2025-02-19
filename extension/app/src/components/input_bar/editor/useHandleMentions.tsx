@@ -29,7 +29,7 @@ const useHandleMentions = (
 
     // Insert sticky mentions under two conditions:
     // 1. The editor is currently empty.
-    // 2. The editor contains only the sticky mention from a previously selected assistant.
+    // 2. The editor contains only the sticky mention from a previously selected agent.
     // This ensures that sticky mentions are maintained but not duplicated.
     if (editorIsEmpty || onlyContainsPreviousStickyMention) {
       const mentionsToInsert: EditorMention[] = [];

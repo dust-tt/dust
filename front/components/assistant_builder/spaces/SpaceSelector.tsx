@@ -142,7 +142,7 @@ export function SpaceSelector({
             <DialogTitle>Changing source selection</DialogTitle>
           </DialogHeader>
           <DialogContainer>
-            An assistant can access one source of data only. The other tools are
+            An agent can access one source of data only. The other tools are
             using a different source.
           </DialogContainer>
           <DialogFooter

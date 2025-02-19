@@ -1,0 +1,1 @@
+CREATE INDEX CONCURRENTLY "conversation_participants_user_id_action_updated" ON "conversation_participants" ("userId", "action", "updatedAt" DESC) INCLUDE ("id", "conversationId");

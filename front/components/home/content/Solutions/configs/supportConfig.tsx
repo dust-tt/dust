@@ -51,7 +51,7 @@ export const pageSettings: pageSettingsProps = {
   to: "to-sky-500",
   description: (
     <>
-      Equip your&nbsp;team with AI&nbsp;assistants to&nbsp;accelerate issue
+      Equip your&nbsp;team with AI&nbsp;agents to&nbsp;accelerate issue
       resolution and&nbsp;increase customer satisfaction.
     </>
   ),
@@ -197,9 +197,9 @@ export const Stories: CustomerStory[] = [
     src: "https://blog.dust.tt/content/images/size/w2000/2024/12/pennylane_dust_customer_story.png",
   },
   {
-    title: "Lifen uses Dust AI assistants to boost team productivity",
+    title: "Lifen uses Dust AI agents to boost team productivity",
     content:
-      "Lifen uses Dust AI assistants to boost team productivity and save hours of work each week.",
+      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },

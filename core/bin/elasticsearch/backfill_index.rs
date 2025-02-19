@@ -92,7 +92,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let store = PostgresStore::new(&db_uri).await?;
     // loop on all nodes in postgres using id as cursor, stopping when id is
     // greated than the last id in data_sources_nodes at start of backfill
-    let mut next_cursor = start_cursor;
+    let mut next_cursor = Some(start_cursor);
 
     // grab last id in data_sources_nodes
     let pool = store.raw_pool();
@@ -102,25 +102,16 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
     let last_id: i64 = last_id.get(0);
     println!("Last id in data_sources_nodes: {}", last_id);
-    while next_cursor <= last_id {
+    while let Some(next_cursor_value) = next_cursor {
         print!(
             "Processing {} nodes, starting at id {}. ",
-            batch_size, next_cursor
+            batch_size, next_cursor_value
         );
         let (nodes, next_id_cursor) =
-            get_node_batch(next_cursor, batch_size, Box::new(store.clone())).await?;
+            get_node_batch(next_cursor_value, batch_size, Box::new(store.clone())).await?;
 
-        next_cursor = match next_id_cursor {
-            Some(cursor) => cursor,
-            None => {
-                println!(
-                    "No more nodes to process (last id: {}). \nBackfill complete.",
-                    last_id
-                );
-                break;
-            }
-        };
-        //
+        next_cursor = next_id_cursor;
+
         let nodes_body: Vec<JsonBody<_>> = nodes
             .into_iter()
             .flat_map(|node| {
@@ -145,7 +136,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
     }
-
+    println!("Backfill complete.");
     Ok(())
 }
 

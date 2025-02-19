@@ -14,6 +14,7 @@ import { isValidZendeskSubdomain } from "@dust-tt/types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateConnectionConfirmationModalProps = {
@@ -29,6 +30,7 @@ export function CreateConnectionConfirmationModal({
   onClose,
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
 
@@ -69,19 +71,16 @@ export function CreateConnectionConfirmationModal({
             <Page.Vertical gap="lg" align="stretch">
               <Page.Header
                 title={`Connecting ${connectorProviderConfiguration.name}`}
-                icon={connectorProviderConfiguration.logoComponent}
+                icon={connectorProviderConfiguration.getLogoComponent(isDark)}
               />
-              <a
+              <Button
+                label="Read our guide"
+                size="xs"
+                variant="outline"
                 href={connectorProviderConfiguration.guideLink ?? ""}
                 target="_blank"
-              >
-                <Button
-                  label="Read our guide"
-                  size="xs"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                />
-              </a>
+                icon={BookOpenIcon}
+              />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
                 <>
@@ -163,7 +162,7 @@ export function CreateConnectionConfirmationModal({
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Acknowledge and Connect"
+                          ? "Acknowledge and connect"
                           : "Connect"
                     }
                   />

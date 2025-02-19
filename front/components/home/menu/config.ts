@@ -66,6 +66,10 @@ const LegalMenuConfig: MenuConfig = {
       href: "/home/security",
     },
     {
+      title: "Vulnerability Disclosure",
+      href: "/home/vulnerability",
+    },
+    {
       title: "Terms & Policies",
       href: "/terms",
       isExternal: true,

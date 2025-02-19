@@ -3,6 +3,8 @@ import {
   Button,
   ChevronDownIcon,
   ChevronUpIcon,
+  Chip,
+  Input,
   Spinner,
   Square3Stack3DIcon,
   TrashIcon,
@@ -91,101 +93,74 @@ export default function Block({
   });
 
   return (
-    <div className="">
+    <div>
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "border-material-300 group flex flex-auto flex-col rounded-lg border px-4 pb-3 pt-1"
+          "border-slate-300 dark:border-slate-700",
+          "flex flex-col rounded-lg border px-4 py-4"
         )}
       >
-        <div className="flex flex-row items-center">
-          <div className="mr-2 flex-initial">
-            <div className="">
-              <span className="rounded-md bg-gray-200 px-1 py-0.5 text-sm font-medium">
-                {block.type}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex flex-auto pr-2 font-bold text-gray-700">
-            <input
-              type="text"
+        <div className="flex w-full flex-row items-start justify-between pb-2">
+          <div className="flex flex-row items-start gap-2">
+            <Chip label={block.type} color="slate" size="sm" />
+            <Input
               placeholder="BLOCK_NAME"
-              className={classNames(
-                "block w-full rounded-md px-1 py-1 uppercase placeholder-gray-200",
-                readOnly
-                  ? "border-white ring-0 focus:border-white focus:ring-0"
-                  : nameError != ""
-                    ? "border-orange-400 focus:border-orange-400 focus:ring-0"
-                    : "border-white focus:border-gray-300 focus:ring-0"
-              )}
               readOnly={readOnly}
               value={block.name}
+              messageStatus={nameError != "" ? "error" : undefined}
+              message={nameError}
               onChange={(e) => handleNameChange(e.target.value.toUpperCase())}
             />
           </div>
 
-          <div
-            className={classNames(
-              readOnly || !canUseCache
-                ? "hidden"
-                : "ml-1 mr-2 flex flex-initial flex-row space-x-1"
-            )}
-          >
-            {block.config && block.config.use_cache ? (
+          <div className="flex flex-row items-start gap-1">
+            {!readOnly && canUseCache && (
               <Button
-                tooltip="Results are cached (faster)"
+                tooltip={
+                  block.config && block.config.use_cache
+                    ? "Results are cached (faster)"
+                    : "Results are computed at each run"
+                }
                 variant="ghost-secondary"
                 size="mini"
-                icon={Square3Stack3DIcon}
-                onClick={() => {
-                  handleUseCacheChange(false);
-                }}
-              />
-            ) : (
-              <Button
-                tooltip="Results are computed at each run"
-                variant="ghost-secondary"
-                size="mini"
-                icon={ArrowPathIcon}
-                onClick={() => {
-                  handleUseCacheChange(true);
-                }}
+                icon={
+                  block.config && block.config.use_cache
+                    ? Square3Stack3DIcon
+                    : ArrowPathIcon
+                }
+                onClick={() => handleUseCacheChange(!block.config?.use_cache)}
               />
             )}
-          </div>
 
-          <div
-            className={classNames(
-              readOnly
-                ? "hidden"
-                : "flex flex-initial flex-row items-center space-x-1"
+            {!readOnly && (
+              <>
+                <NewBlock
+                  disabled={readOnly}
+                  onClick={onBlockNew}
+                  spec={spec}
+                  small={true}
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={ChevronUpIcon}
+                  onClick={onBlockUp}
+                  size="mini"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={ChevronDownIcon}
+                  onClick={onBlockDown}
+                  size="mini"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={TrashIcon}
+                  onClick={onBlockDelete}
+                  size="mini"
+                />
+              </>
             )}
-          >
-            <NewBlock
-              disabled={readOnly}
-              onClick={onBlockNew}
-              spec={spec}
-              small={true}
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={ChevronUpIcon}
-              onClick={onBlockUp}
-              size="mini"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={ChevronDownIcon}
-              onClick={onBlockDown}
-              size="mini"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={TrashIcon}
-              onClick={onBlockDelete}
-              size="mini"
-            />
           </div>
         </div>
         <div className="flex">{children}</div>
@@ -195,14 +170,24 @@ export default function Block({
         {status &&
         status.status == "running" &&
         !["map", "reduce", "end"].includes(block.type) ? (
-          <div className="flex flex-row items-center text-sm text-gray-400">
+          <div
+            className={classNames(
+              "flex flex-row items-center text-sm",
+              "dark:text-gray-400-night text-gray-400"
+            )}
+          >
             <div className="ml-2 mr-2">
               <Spinner size="xs" variant="color" />
             </div>
             {` ${status.success_count} successes ${status.error_count} errors`}
           </div>
         ) : running && !(status && status.status != "running") ? (
-          <div className="flex flex-row items-center text-sm text-gray-400">
+          <div
+            className={classNames(
+              "flex flex-row items-center text-sm",
+              "dark:text-gray-400-night text-gray-400"
+            )}
+          >
             <div role="status">
               <div className="ml-2 mr-2">
                 <Spinner size="xs" variant="color" />

@@ -24,6 +24,7 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { UpsertDataSourceDocumentParams } from "@connectors/lib/data_sources";
@@ -50,7 +51,6 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
@@ -293,21 +293,8 @@ async function upsertConfluencePageToDataSource({
       dataSourceConfig,
       markdown
     );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title} Space ${spaceName}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-    });
 
-    const documentId = makePageInternalId(page.id);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    // We log the number of labels to help define the importance of labels in the future.
+    // Log labels info
     if (page.labels.results.length > 0) {
       localLogger.info(
         { labelsCount: page.labels.results.length },
@@ -315,10 +302,8 @@ async function upsertConfluencePageToDataSource({
       );
     }
 
-    // Limit to 10 custom tags.
-    const customTags = page.labels.results
-      .slice(0, 10)
-      .map((l) => `labels:${l.id}`);
+    // Use label names for tags instead of IDs
+    const customTags = page.labels.results.map((l) => l.name);
 
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
@@ -326,8 +311,25 @@ async function upsertConfluencePageToDataSource({
       `title:${page.title}`,
       `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
       `version:${page.version.number}`,
-      ...customTags,
+      ...filterCustomTags(customTags, localLogger),
     ];
+
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: `Page ${page.title}`,
+      createdAt: pageCreatedAt,
+      updatedAt: lastPageVersionCreatedAt,
+      content: renderedMarkdown,
+      additionalPrefixes: {
+        labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+      },
+    });
+
+    const documentId = makePageInternalId(page.id);
+    const documentUrl = makeConfluenceDocumentUrl({
+      baseUrl: confluenceConfig.url,
+      suffix: page._links.tinyui,
+    });
 
     await upsertDataSourceDocument({
       dataSourceConfig,
@@ -429,7 +431,7 @@ export async function confluenceCheckAndUpsertPageActivity({
   );
 
   // Check restrictions.
-  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  const { hasReadRestrictions } = pageRef;
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
     return false;
@@ -710,8 +712,6 @@ export async function fetchAndUpsertRootPagesActivity(params: {
       allowedRootPageIds.push(rootPageRef.id);
     }
   }
-
-  console.log(">> allowedRootPageIds", allowedRootPageIds);
 
   return allowedRootPageIds;
 }

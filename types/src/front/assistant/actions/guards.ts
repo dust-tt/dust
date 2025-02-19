@@ -230,17 +230,17 @@ export function throwIfInvalidAgentConfiguration(
 
   if (templateConfiguration) {
     if (templateConfiguration.scope === "global") {
-      throw new Error("Cannot create global assistant");
+      throw new Error("Cannot create global agent");
     }
   }
 
   if (agentConfiguration) {
     if (agentConfiguration.scope === "global") {
-      throw new Error("Cannot edit global assistant");
+      throw new Error("Cannot edit global agent");
     }
 
     if (agentConfiguration.status === "archived") {
-      throw new Error("Cannot edit archived assistant");
+      throw new Error("Cannot edit archived agent");
     }
   }
 }

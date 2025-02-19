@@ -1,8 +1,10 @@
 import {
   AnthropicLogo,
+  AnthropicWhiteLogo,
   GoogleLogo,
   MistralLogo,
   OpenaiLogo,
+  OpenaiWhiteLogo,
   PlanetIcon,
 } from "@dust-tt/sparkle";
 import type { ModelConfig, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
@@ -32,16 +34,47 @@ import type { ComponentType } from "react";
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 
-export const MODEL_PROVIDER_LOGOS: Record<ModelProvider, ComponentType> = {
-  openai: OpenaiLogo,
-  anthropic: AnthropicLogo,
-  mistral: MistralLogo,
-  google_ai_studio: GoogleLogo,
-  togetherai: PlanetIcon,
-  deepseek: PlanetIcon,
-  fireworks: PlanetIcon,
+type ModelProviderLogos = Record<
+  ModelProvider,
+  {
+    light: ComponentType;
+    dark?: ComponentType;
+  }
+>;
+
+const MODEL_PROVIDER_LOGOS: ModelProviderLogos = {
+  openai: {
+    light: OpenaiLogo,
+    dark: OpenaiWhiteLogo,
+  },
+  anthropic: {
+    light: AnthropicLogo,
+    dark: AnthropicWhiteLogo,
+  },
+  mistral: {
+    light: MistralLogo,
+  },
+  google_ai_studio: {
+    light: GoogleLogo,
+  },
+  togetherai: {
+    light: PlanetIcon,
+  },
+  deepseek: {
+    light: PlanetIcon,
+  },
+  fireworks: {
+    light: PlanetIcon,
+  },
 };
 
+export const getModelProviderLogo = (
+  provider: ModelProvider,
+  isDark: boolean
+) => {
+  const logos = MODEL_PROVIDER_LOGOS[provider];
+  return isDark && logos.dark ? logos.dark : logos.light;
+};
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_4O_MODEL_CONFIG,
   GPT_4O_MINI_MODEL_CONFIG,

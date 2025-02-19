@@ -414,7 +414,7 @@
  *           example: "webcrawler"
  *         assistantDefaultSelected:
  *           type: boolean
- *           description: Whether this datasource is selected by default for assistants
+ *           description: Whether this datasource is selected by default for agents
  *           example: true
  *     Table:
  *       type: object
