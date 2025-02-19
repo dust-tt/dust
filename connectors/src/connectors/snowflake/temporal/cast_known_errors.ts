@@ -71,6 +71,27 @@ function isSnowflakeIncorrectCredentialsError(
     err.message.startsWith("Incorrect username or password was specified")
   );
 }
+
+interface SnowflakeRoleNotFoundError extends SnowflakeError {
+  name: "OperationFailedError";
+  data: {
+    errorCode: "390189";
+    nextAction: "RETRY_LOGIN";
+  };
+}
+
+function isSnowflakeRoleNotFoundError(
+  err: unknown
+): err is SnowflakeRoleNotFoundError {
+  return (
+    isSnowflakeError(err) &&
+    err.message.startsWith("Role") &&
+    err.message.includes(
+      "specified in the connect string does not exist or not authorized."
+    )
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -86,7 +107,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         // technically, the one below could be transient;
         // we add it here to make the user aware that getting locked out of his account blocks the connection
         isSnowflakeAccountLockedError(err) ||
-        isSnowflakeIncorrectCredentialsError(err)
+        isSnowflakeIncorrectCredentialsError(err) ||
+        isSnowflakeRoleNotFoundError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }
