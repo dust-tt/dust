@@ -299,6 +299,16 @@ export async function upsertDocument({
     );
   }
 
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (title && title.length > 512) {
+    return new Err(
+      new DustError(
+        "title_too_long",
+        "Invalid title: title too long (max 512 characters)."
+      )
+    );
+  }
+
   let sourceUrl: string | null = null;
   if (source_url) {
     const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -621,6 +631,15 @@ export async function upsertTable({
       name: "dust_error",
       code: "invalid_parent_id",
       message: "Invalid parents: parents[1] and parent_id should be equal",
+    });
+  }
+
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (params.title && params.title.length > 512) {
+    return new Err({
+      name: "dust_error",
+      code: "title_too_long",
+      message: `Invalid title: title too long (max 512 characters).`,
     });
   }
 

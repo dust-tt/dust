@@ -547,6 +547,17 @@ async function handler(
         }
       }
 
+      // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+      if (r.data.title && r.data.title.length > 512) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid title: title too long (max 512 characters).`,
+          },
+        });
+      }
+
       const documentId = req.query.documentId as string;
 
       const title = r.data.title ?? "Untitled document";
