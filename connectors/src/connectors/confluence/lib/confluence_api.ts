@@ -131,10 +131,12 @@ export async function getActiveChildPageRefs(
     pageCursor,
     parentPageId,
     spaceId,
+    spaceKey,
   }: {
     pageCursor: string | null;
     parentPageId: string;
     spaceId: string;
+    spaceKey: string;
   }
 ) {
   // Fetch the child pages of the parent page.
@@ -152,11 +154,11 @@ export async function getActiveChildPageRefs(
     return { childPageRefs: [], nextPageCursor };
   }
 
-  // Fetch the details of the child pages (version and parentId).
+  // Fetch child page metadata (version, parent, permissions, etc.).
   const childPageRefs = await bulkFetchConfluencePageRefs(client, {
     limit: PAGE_FETCH_LIMIT,
     pageIds: activeChildPageIds,
-    spaceId,
+    spaceKey,
   });
 
   return { childPageRefs, nextPageCursor };
@@ -167,16 +169,16 @@ export async function bulkFetchConfluencePageRefs(
   {
     limit,
     pageIds,
-    spaceId,
+    spaceKey,
   }: {
     limit: number;
     pageIds: string[];
-    spaceId: string;
+    spaceKey: string;
   }
 ) {
   // Fetch page metadata (version, parent, permissions, etc.) for the given page IDs
   const pagesWithDetails = await client.getPagesByIdsInSpace({
-    spaceId,
+    spaceKey,
     pageIds,
     limit,
   });

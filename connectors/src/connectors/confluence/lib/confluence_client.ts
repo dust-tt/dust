@@ -590,21 +590,17 @@ export class ConfluenceClient {
   }
 
   async getPagesByIdsInSpace({
-    spaceId,
+    spaceKey,
     pageIds,
     limit,
   }: {
-    spaceId: string;
+    spaceKey: string;
     pageIds: string[];
     limit?: number;
   }) {
-    // First get space info to get the key.
-    // TODO(2025-02-18 flav) Save the key in the DB.
-    const space = await this.getSpaceById(spaceId);
-
     // Build CQL query to get pages with specific IDs.
     const idClause = pageIds?.length ? ` AND id in (${pageIds.join(",")})` : "";
-    const cqlQuery = `type=page AND space="${space.key}"${idClause}`;
+    const cqlQuery = `type=page AND space="${spaceKey}"${idClause}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,
