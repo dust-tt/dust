@@ -504,7 +504,7 @@ function RetrievalActionTagsFilterPopover({
         <div className="flex flex-col gap-8">
           {tagsIn.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must have labels</Label>
+              <Label>Must-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsIn.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} color="slate" />
@@ -514,7 +514,7 @@ function RetrievalActionTagsFilterPopover({
           )}
           {tagsNot.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must not have labels</Label>
+              <Label>Must-not-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsNot.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} color="red" />
@@ -527,7 +527,7 @@ function RetrievalActionTagsFilterPopover({
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
                   color="emerald"
-                  label="Dynamic filtering activated."
+                  label="Conversation filtering."
                   icon={SparklesIcon}
                   isBusy
                 />
