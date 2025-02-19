@@ -169,7 +169,8 @@ impl UpsertQueueCSVContent {
         let (i, _) = counts
             .iter()
             .enumerate()
-            .max_by_key(|&(_, count)| count)
+            // Negative index to prioritize earlier delimiters
+            .max_by_key(|&(i, count)| (count, -(i as i32)))
             .ok_or_else(|| anyhow!("No delimiter found"))?;
 
         Ok((
@@ -236,6 +237,13 @@ mod tests {
         let mut content = String::new();
         rdr.read_to_string(&mut content).await?;
         assert_eq!(content, csv);
+
+        let csv = "URL,Example\n\
+FOO,swap\tblocked\tstyle-src-elem\ttheme.js:2\n\
+BAR,acme";
+        let (delimiter, _) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        assert_eq!(delimiter, b',');
 
         Ok(())
     }
