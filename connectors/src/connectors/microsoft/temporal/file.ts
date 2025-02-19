@@ -11,6 +11,7 @@ import {
   getDriveItemInternalId,
   getFileDownloadURL,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
@@ -61,7 +62,7 @@ export async function syncOneFile({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   providerConfig: MicrosoftConfigurationResource;
-  file: microsoftgraph.DriveItem;
+  file: DriveItem;
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;

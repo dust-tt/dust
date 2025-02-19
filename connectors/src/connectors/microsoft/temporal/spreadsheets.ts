@@ -1,6 +1,7 @@
 import type { Result } from "@dust-tt/types";
 import { Err, MIME_TYPES, Ok, slugify } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
+import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -12,6 +13,7 @@ import {
   getWorksheets,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import { getColumnsFromListItem } from "@connectors/connectors/microsoft/lib/utils";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -34,7 +36,7 @@ const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 async function upsertSpreadsheetInDb(
   connector: ConnectorResource,
   internalId: string,
-  file: microsoftgraph.DriveItem,
+  file: DriveItem,
   parentInternalId: string
 ) {
   return MicrosoftNodeResource.upsert({
@@ -54,8 +56,8 @@ async function upsertSpreadsheetInDb(
 async function upsertWorksheetInDb(
   connector: ConnectorResource,
   internalId: string,
-  worksheet: microsoftgraph.WorkbookWorksheet,
-  spreadsheet: microsoftgraph.DriveItem
+  worksheet: WorkbookWorksheet,
+  spreadsheet: DriveItem
 ) {
   return MicrosoftNodeResource.upsert({
     internalId,
@@ -75,8 +77,8 @@ async function upsertWorksheetInDb(
 async function upsertMSTable(
   connector: ConnectorResource,
   internalId: string,
-  spreadsheet: microsoftgraph.DriveItem,
-  worksheet: microsoftgraph.WorkbookWorksheet,
+  spreadsheet: DriveItem,
+  worksheet: WorkbookWorksheet,
   parents: [string, string, ...string[]],
   rows: string[][],
   tags: string[]
@@ -131,9 +133,9 @@ async function processSheet({
 }: {
   client: Client;
   connector: ConnectorResource;
-  spreadsheet: microsoftgraph.DriveItem;
+  spreadsheet: DriveItem;
   spreadsheetInternalId: string;
-  worksheet: microsoftgraph.WorkbookWorksheet;
+  worksheet: WorkbookWorksheet;
   worksheetInternalId: string;
   localLogger: Logger;
   startSyncTs: number;
@@ -269,7 +271,7 @@ export async function handleSpreadSheet({
   startSyncTs,
 }: {
   connectorId: number;
-  file: microsoftgraph.DriveItem;
+  file: DriveItem;
   parentInternalId: string;
   localLogger: Logger;
   startSyncTs: number;

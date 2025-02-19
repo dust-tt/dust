@@ -1,14 +1,11 @@
 import type { LoggerInterface } from "@dust-tt/client";
 import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
-import type {
-  ColumnDefinition,
-  DriveItem,
-} from "@microsoft/microsoft-graph-types";
+import type { ColumnDefinition } from "@microsoft/microsoft-graph-types";
 
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
 
-import type { MicrosoftNodeType } from "./types";
+import type { DriveItem, MicrosoftNodeType } from "./types";
 import { isValidNodeType } from "./types";
 
 export function internalIdFromTypeAndPath({
@@ -68,48 +65,6 @@ export function getDriveInternalIdFromItemId(itemId: string) {
   });
 }
 
-async function getSiteLists(
-  client: Client,
-  siteId: string
-): Promise<microsoftgraph.List[]> {
-  const endpoint = `/sites/${siteId}/lists`;
-  const res = await clientApiGet(client, endpoint);
-  return res.value;
-}
-
-async function getSiteListByName(
-  client: Client,
-  siteId: string,
-  listName: string
-): Promise<microsoftgraph.List> {
-  const lists = await getSiteLists(client, siteId);
-  const list = lists.find((list) => list.name === listName);
-  if (!list) {
-    throw new Error(`List not found: ${listName}`);
-  }
-  return list;
-}
-
-// Parse DriveItem webUrl to get listName
-// Eg: https://casquedelumiere.sharepoint.com/sites/casquedelumiere/Shared%20Documents/folder_with_txt/simple_txt.txt => the listName is "Shared Documents"
-export const getListNameFromWebUrl = (webUrl: string) => {
-  const url = new URL(webUrl);
-  const pathParts = url.pathname.split("/");
-  const sitesIndex = pathParts.findIndex((part) => part === "sites");
-  if (sitesIndex === -1) {
-    throw new Error(
-      "Invalid webUrl format: missing sites segment, webUrl: " + webUrl
-    );
-  }
-  const listNameEncoded = pathParts[sitesIndex + 2];
-  if (!listNameEncoded) {
-    throw new Error(
-      "Invalid webUrl format: missing list name, webUrl: " + webUrl
-    );
-  }
-  return decodeURIComponent(listNameEncoded);
-};
-
 const isCustomColumn = (column: ColumnDefinition) => {
   return (
     !column.readOnly && // Not read-only
@@ -140,8 +95,8 @@ const isCustomColumn = (column: ColumnDefinition) => {
 
 export const getCachedListColumns = cacheWithRedis(
   _getListColumns,
-  ({ siteId, listName }) => {
-    return `${siteId}-${listName}`;
+  ({ siteId, listId }) => {
+    return `${siteId}-${listId}`;
   },
   60 * 10 * 1000 // 10 minutes
 );
@@ -149,15 +104,13 @@ export const getCachedListColumns = cacheWithRedis(
 export async function _getListColumns({
   client,
   siteId,
-  listName,
+  listId,
 }: {
   client: Client;
   siteId: string;
-  listName: string;
-}): Promise<microsoftgraph.ColumnDefinition[]> {
-  const list = await getSiteListByName(client, siteId, listName);
-
-  const endpoint = `/sites/${siteId}/lists/${list.id}/columns`;
+  listId: string;
+}): Promise<ColumnDefinition[]> {
+  const endpoint = `/sites/${siteId}/lists/${listId}/columns`;
   const res = await clientApiGet(client, endpoint);
   return res.value.filter(isCustomColumn);
 }
@@ -170,19 +123,25 @@ export const getColumnsFromListItem = async (
 ) => {
   const listItem = file.listItem;
   if (
+    !file.sharepointIds?.listId ||
+    !file.sharepointIds?.siteId ||
     !listItem ||
-    !listItem.parentReference?.siteId ||
-    !listItem.webUrl ||
     !listItem.fields
   ) {
+    logger.info(
+      {
+        file,
+        listItem,
+      },
+      "No list item or sharepointIds or fields found"
+    );
     return [];
   }
   try {
-    const listName = getListNameFromWebUrl(listItem.webUrl);
     const columns = await getCachedListColumns({
       client,
-      listName,
-      siteId: listItem.parentReference.siteId,
+      listId: file.sharepointIds.listId,
+      siteId: file.sharepointIds.siteId,
     });
 
     const columnsList: string[] = [];
@@ -194,6 +153,7 @@ export const getColumnsFromListItem = async (
         columnsList.push(`${column.displayName}:${v}`);
       }
     }
+
     return columnsList;
   } catch (e) {
     logger.error({ error: e }, "Error while getting columns from list item.");

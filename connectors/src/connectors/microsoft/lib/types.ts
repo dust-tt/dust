@@ -1,4 +1,27 @@
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem as MicrosoftDriveItem } from "@microsoft/microsoft-graph-types";
+
+export type DriveItem = Pick<
+  MicrosoftDriveItem,
+  | "id"
+  | "name"
+  | "parentReference"
+  | "webUrl"
+  | "file"
+  | "folder"
+  | "root"
+  | "deleted"
+  | "createdBy"
+  | "lastModifiedBy"
+  | "createdDateTime"
+  | "lastModifiedDateTime"
+  | "size"
+  | "sharepointIds"
+  | "listItem" // This must be expanded to get the fields
+>;
+
+// This must match the type above and be used when using the graph API
+export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
+  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields)";
 
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
@@ -36,19 +59,3 @@ export type MicrosoftNode = {
   mimeType: string | null;
   webUrl: string | null;
 };
-
-export function isMicrosoftDriveItem(obj: unknown): obj is DriveItem {
-  return (
-    typeof obj === "object" &&
-    obj !== null &&
-    "id" in obj &&
-    typeof obj.id === "string" &&
-    "name" in obj &&
-    typeof obj.name === "string" &&
-    "parentReference" in obj &&
-    typeof obj.parentReference === "object" &&
-    obj.parentReference !== null &&
-    "driveId" in obj.parentReference &&
-    typeof obj.parentReference.driveId === "string"
-  );
-}
