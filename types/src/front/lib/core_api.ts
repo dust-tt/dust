@@ -161,6 +161,9 @@ export function isRowMatchingSchema(
     if (v === null) {
       continue;
     }
+    if (typeof v === "string" && v.trim().length === 0) {
+      continue;
+    }
     const schemaEntry = schema.find((s) => s.name === k);
     if (!schemaEntry) {
       return false;
