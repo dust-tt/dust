@@ -11,7 +11,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { isValidZendeskSubdomain } from "@dust-tt/types";
-import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -152,28 +151,18 @@ export function CreateConnectionConfirmationModal({
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={
-                      connectorProviderConfiguration.connectorProvider ===
-                      "google_drive"
-                        ? WrenchScrewdriverIcon
-                        : CloudArrowLeftRightIcon
-                    }
+                    icon={CloudArrowLeftRightIcon}
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);
                     }}
-                    disabled={
-                      !isExtraConfigValid(extraConfig) ||
-                      isLoading ||
-                      connectorProviderConfiguration.connectorProvider ===
-                        "google_drive"
-                    }
+                    disabled={!isExtraConfigValid(extraConfig) || isLoading}
                     label={
                       isLoading
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Temporarily unavailable"
+                          ? "Acknowledge and connect"
                           : "Connect"
                     }
                   />
