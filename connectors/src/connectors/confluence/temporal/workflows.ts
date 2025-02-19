@@ -10,6 +10,7 @@ import {
 
 import type { ConfluencePageRef } from "@connectors/connectors/confluence/lib/confluence_api";
 import type * as activities from "@connectors/connectors/confluence/temporal/activities";
+import type { SpaceBlob } from "@connectors/connectors/confluence/temporal/activities";
 import type { SpaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import { spaceUpdatesSignal } from "@connectors/connectors/confluence/temporal/signals";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
 
 const {
-  confluenceGetSpaceNameActivity,
+  confluenceGetSpaceBlobActivity,
   confluenceGetTopLevelPageIdsActivity,
   confluenceRemoveSpaceActivity,
   confluenceRemoveUnvisitedPagesActivity,
@@ -150,26 +151,29 @@ export async function confluenceSpaceSyncWorkflow(
   );
   const { cloudId: confluenceCloudId, url: baseUrl } = confluenceConfig;
 
-  const spaceName = await confluenceGetSpaceNameActivity({
+  const space = await confluenceGetSpaceBlobActivity({
     ...params,
     confluenceCloudId: confluenceConfig?.cloudId,
   });
   // If the space does not exist, launch a workflow to remove the space.
-  if (spaceName === null) {
+  if (space === null) {
     return startConfluenceRemoveSpaceWorkflow(wInfo, connectorId, spaceId);
   }
 
   await confluenceUpsertSpaceFolderActivity({
     connectorId,
-    spaceId,
-    spaceName,
+    space: {
+      id: spaceId,
+      name: space.name,
+      key: space.key,
+    },
     baseUrl,
   });
 
   const allowedRootPageIds = await fetchAndUpsertRootPagesActivity({
     ...params,
     confluenceCloudId,
-    spaceName,
+    space,
     visitedAtMs,
   });
 
@@ -184,7 +188,7 @@ export async function confluenceSpaceSyncWorkflow(
           connectorId,
           pageCursor: nextPageCursor,
           rootPageId: allowedRootPageId,
-          spaceId,
+          space,
         });
 
       nextPageCursor = nextCursor; // Prepare for the next iteration.
@@ -205,7 +209,7 @@ export async function confluenceSpaceSyncWorkflow(
       args: [
         {
           ...params,
-          spaceName,
+          space,
           confluenceCloudId,
           visitedAtMs,
           topLevelPageRefs: [pageRef],
@@ -235,8 +239,7 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
   connectorId: ModelId;
   forceUpsert: boolean;
   isBatchSync: boolean;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   topLevelPageRefs: StackElement[];
   visitedAtMs: number;
 }
@@ -255,7 +258,7 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
 export async function confluenceSyncTopLevelChildPagesWorkflow(
   params: confluenceSyncTopLevelChildPagesWorkflowInput
 ) {
-  const { spaceName, topLevelPageRefs, visitedAtMs } = params;
+  const { space, topLevelPageRefs, visitedAtMs } = params;
   const stack: StackElement[] = [...topLevelPageRefs];
 
   while (stack.length > 0) {
@@ -271,7 +274,7 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
     if (isPageRef) {
       const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
         ...params,
-        spaceName,
+        space,
         pageRef: current,
         visitedAtMs,
       });
