@@ -790,7 +790,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "show_debug_tools"
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
-  | "tags_filters"
   | "salesforce_feature"
   | "advanced_notion_management"
 >();
@@ -2361,7 +2360,7 @@ export type GetWorkspaceUsageRequestType = z.infer<
 
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
-  fileName: z.string().max(256, "File name must be less than 256 characters"),
+  fileName: z.string().max(4096, "File name must be less than 4096 characters"),
   fileSize: z.number(),
   useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
   useCaseMetadata: z

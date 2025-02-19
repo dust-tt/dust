@@ -18,7 +18,6 @@ export const WHITELISTABLE_FEATURES = [
   "show_debug_tools",
   "labs_github_actions",
   "deepseek_r1_global_agent_feature",
-  "tags_filters",
   "salesforce_feature",
   "advanced_notion_management",
 ] as const;

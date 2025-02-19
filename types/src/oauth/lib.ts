@@ -59,6 +59,14 @@ export function isValidZendeskSubdomain(s: unknown): s is string {
   );
 }
 
+export function isValidSalesforceDomain(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    s.startsWith("https://") &&
+    s.endsWith(".salesforce.com")
+  );
+}
+
 // Credentials Providers
 
 export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
