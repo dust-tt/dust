@@ -222,6 +222,7 @@ export async function upsertCollectionWithChildren({
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId,
+    helpCenterId,
   });
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -407,6 +408,7 @@ export async function upsertArticle({
       documentId,
       connectorId,
       parentCollectionId,
+      helpCenterId,
     });
 
     await upsertDataSourceDocument({
