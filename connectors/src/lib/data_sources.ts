@@ -158,9 +158,7 @@ async function _upsertDataSourceDocument({
         timestamp,
         title,
         mime_type: mimeType,
-        tags: tags?.map((tag) =>
-          tag.startsWith("title:") ? tag : safeSubstring(tag, 0, 512)
-        ),
+        tags: tags?.map((tag) => safeSubstring(tag, 0, 512)),
         parent_id: parentId,
         parents,
         light_document_output: true,
