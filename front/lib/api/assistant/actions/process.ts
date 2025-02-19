@@ -487,7 +487,11 @@ async function processActionSpecification({
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
-  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+  if (
+    actionConfiguration.dataSources.some(
+      (ds) => ds.filter.tags?.mode === "auto"
+    )
+  ) {
     inputs.push(...retrievalTagsInputSpecification());
   }
 

@@ -92,7 +92,11 @@ AgentDataSourceConfiguration.init(
         if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
           throw new Error("Tags must be both set or both null");
         }
-        if (dsConfig.tagsMode === "custom") {
+        if (dsConfig.tagsMode === "auto") {
+          if (!dsConfig.tagsIn || !dsConfig.tagsNotIn) {
+            throw new Error("TagsIn/notIn must be set if tagsMode is auto.");
+          }
+        } else if (dsConfig.tagsMode === "custom") {
           if (!dsConfig.tagsIn?.length && !dsConfig.tagsNotIn?.length) {
             throw new Error(
               "TagsIn/notIn can't be both empty if tagsMode is custom"

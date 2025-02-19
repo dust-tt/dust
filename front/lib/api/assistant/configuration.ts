@@ -1304,16 +1304,14 @@ async function _createAgentDataSourcesConfigData(
         let tagsIn: string[] | null = null;
         let tagsNotIn: string[] | null = null;
 
-        if (tagsFilter === "auto") {
+        if (tagsFilter?.mode === "auto") {
           tagsMode = "auto";
-        } else if (
-          tagsFilter?.in &&
-          tagsFilter?.not &&
-          (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
-        ) {
+          tagsIn = tagsFilter.in ?? [];
+          tagsNotIn = tagsFilter.not ?? [];
+        } else if (tagsFilter?.mode === "custom") {
           tagsMode = "custom";
-          tagsIn = tagsFilter.in;
-          tagsNotIn = tagsFilter.not;
+          tagsIn = tagsFilter.in ?? [];
+          tagsNotIn = tagsFilter.not ?? [];
         }
 
         return AgentDataSourceConfiguration.create(
