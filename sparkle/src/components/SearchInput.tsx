@@ -118,7 +118,7 @@ export const SearchInputWithPopover = forwardRef<
       onOpenChange,
       value,
       onChange,
-      mountPortal = false,
+      mountPortal,
       mountPortalContainer,
       ...searchInputProps
     },
