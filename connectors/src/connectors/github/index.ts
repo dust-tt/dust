@@ -363,7 +363,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getIssuesInternalId(repoId),
               parentInternalId,
-              type: "Table",
+              type: "Folder",
               title: "Issues",
               sourceUrl: getIssuesUrl(repo.url),
               expandable: false,
@@ -628,7 +628,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getIssuesInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "Table",
+        type: "Folder",
         title: "Issues",
         sourceUrl: getIssuesUrl(repo.url),
         expandable: false,
