@@ -559,7 +559,11 @@ async function handler(
         .slice(1)
         .join(":");
 
-      if (titleInTags && titleInTags !== title) {
+      if (
+        titleInTags &&
+        !titleInTags.startsWith(title) &&
+        !title.startsWith(titleInTags)
+      ) {
         logger.error(
           { documentId, titleInTags, title },
           "[CoreNodes] Inconsistency between tags and title."
