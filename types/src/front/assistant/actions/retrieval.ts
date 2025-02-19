@@ -29,9 +29,18 @@ export function isTimeFrame(arg: RetrievalTimeframe): arg is TimeFrame {
   );
 }
 
-export type DataSourceFilter = {
+export type DataSourceFilterOld = {
   parents: { in: string[]; not: string[] } | null;
   tags?: { in: string[]; not: string[] } | "auto" | null;
+};
+
+export type DataSourceFilter = {
+  parents: { in: string[]; not: string[] } | null;
+  tags: {
+    in: string[];
+    not: string[];
+    mode: "custom" | "auto";
+  } | null;
 };
 
 export type DataSourceConfiguration = {
