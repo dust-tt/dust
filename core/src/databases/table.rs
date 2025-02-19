@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -701,39 +700,22 @@ impl Row {
                 // Booleans
                 Value::Bool(bool_val)
             } else {
-                // Various datetime formats
-                let dt: Option<DateTime<Utc>> = [
-                    // RFC3339
-                    DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
-                    // RFC2822
-                    DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
-                    // Google Spreadsheet format
-                    DateTime::parse_from_str(trimmed, "%d-%b-%Y").map(|dt| dt.into()),
-                    // SQL
-                    DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S").map(|dt| dt.into()),
-                    // HTTP date
-                    DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
-                        .map(|dt| dt.into()),
-                    // Date with full month, zero-padded number, full year
-                    DateTime::parse_from_str(trimmed, "%B %d, %Y").map(|dt| dt.into()),
-                ]
-                .iter()
-                .find_map(|result| result.ok());
-
-                if let Some(datetime) = dt {
-                    let mut dt_obj = serde_json::Map::new();
-                    dt_obj.insert("type".to_string(), Value::String("datetime".to_string()));
-                    dt_obj.insert(
-                        "epoch".to_string(),
-                        Value::Number(serde_json::Number::from(datetime.timestamp_millis())),
-                    );
-                    dt_obj.insert(
-                        "string_value".to_string(),
-                        Value::String(trimmed.to_string()),
-                    );
-                    Value::Object(dt_obj)
-                } else {
-                    Value::String(trimmed.to_string())
+                let dt = dateparser::parse(trimmed);
+                match dt {
+                    Ok(dt) => {
+                        let mut dt_obj = serde_json::Map::new();
+                        dt_obj.insert("type".to_string(), Value::String("datetime".to_string()));
+                        dt_obj.insert(
+                            "epoch".to_string(),
+                            Value::Number(serde_json::Number::from(dt.timestamp_millis())),
+                        );
+                        dt_obj.insert(
+                            "string_value".to_string(),
+                            Value::String(trimmed.to_string()),
+                        );
+                        Value::Object(dt_obj)
+                    }
+                    Err(_) => Value::String(trimmed.to_string()),
                 }
             };
 
@@ -825,6 +807,43 @@ mod tests {
 }"#
         .to_string();
         assert_eq!(local_table.render_dbml(None), expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_row_from_csv_record() -> anyhow::Result<()> {
+        let headers = vec!["test".to_string(), "date".to_string()];
+
+        let record = vec!["1", "2021-01-01T00:00:00Z"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.row_id(), "0");
+        assert_eq!(
+            row.content(),
+            &json!({
+                "test": 1.0,
+                "date": {
+                    "type": "datetime",
+                    "epoch": 1609459200000_i64,
+                    "string_value": "2021-01-01T00:00:00Z"
+                }
+            })
+        );
+
+        let record = vec!["123a", "March 2, 2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.row_id(), "0");
+        assert_eq!(
+            row.content(),
+            &json!({
+                "test": "123a",
+                "date": {
+                    "type": "datetime",
+                    "epoch": 1614698966329_i64,
+                    "string_value": "March 2, 2021"
+                }
+            })
+        );
 
         Ok(())
     }
