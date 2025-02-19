@@ -57,6 +57,12 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
  */
 export const HiddenContentNodeParentId = "__hidden_syncing_content__";
 
+export interface SpaceBlob {
+  id: string;
+  key: string;
+  name: string;
+}
+
 const logger = mainLogger.child({
   provider: "confluence",
 });
@@ -161,7 +167,7 @@ export async function confluenceSaveSuccessSyncActivity(connectorId: ModelId) {
   }
 }
 
-export async function confluenceGetSpaceNameActivity({
+export async function confluenceGetSpaceBlobActivity({
   confluenceCloudId,
   connectorId,
   spaceId,
@@ -169,7 +175,7 @@ export async function confluenceGetSpaceNameActivity({
   confluenceCloudId: string;
   connectorId: ModelId;
   spaceId: string;
-}) {
+}): Promise<SpaceBlob | null> {
   const localLogger = logger.child({
     spaceId,
   });
@@ -182,7 +188,11 @@ export async function confluenceGetSpaceNameActivity({
   try {
     const space = await client.getSpaceById(spaceId);
 
-    return space.name;
+    return {
+      id: space.id,
+      key: space.key,
+      name: space.name,
+    };
   } catch (err) {
     if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
       localLogger.info("Deleting stale Confluence space.");
@@ -207,16 +217,16 @@ export async function confluenceGetSpaceNameActivity({
  */
 export async function confluenceUpsertSpaceFolderActivity({
   connectorId,
-  spaceId,
-  spaceName,
+  space,
   baseUrl,
 }: {
   connectorId: ModelId;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   baseUrl: string;
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
+
+  const { id: spaceId, name: spaceName } = space;
 
   const spaceInDb = await ConfluenceSpace.findOne({
     where: { connectorId, spaceId },
@@ -370,8 +380,7 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
   pageRef: ConfluencePageRef;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   forceUpsert: boolean;
   visitedAtMs: number;
 }
@@ -385,14 +394,14 @@ export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
   pageRef,
-  spaceId,
-  spaceName,
+  space,
   forceUpsert,
   visitedAtMs,
 }: ConfluenceCheckAndUpsertPageActivityInput) {
   const connector = await fetchConfluenceConnector(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  const { id: spaceId, name: spaceName } = space;
   const { id: pageId } = pageRef;
 
   const loggerArgs = {
@@ -603,14 +612,16 @@ export async function confluenceGetActiveChildPageRefsActivity({
   parentPageId,
   confluenceCloudId,
   pageCursor,
-  spaceId,
+  space,
 }: {
   connectorId: ModelId;
   parentPageId: string;
   confluenceCloudId: string;
   pageCursor: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     pageCursor,
@@ -629,6 +640,7 @@ export async function confluenceGetActiveChildPageRefsActivity({
     pageCursor,
     parentPageId,
     spaceId,
+    spaceKey,
   });
 }
 
@@ -638,12 +650,14 @@ export async function confluenceGetActiveChildPageRefsActivity({
 async function getRootPageRefsActivity({
   connectorId,
   confluenceCloudId,
-  spaceId,
+  space,
 }: {
   connectorId: ModelId;
   confluenceCloudId: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     spaceId,
@@ -662,7 +676,7 @@ async function getRootPageRefsActivity({
     return await bulkFetchConfluencePageRefs(client, {
       limit: rootPages.length,
       pageIds: rootPages.map((rp) => rp.id),
-      spaceId,
+      spaceKey,
     });
   } catch (err) {
     if (err instanceof ConfluenceClientError && err.status === 404) {
@@ -681,17 +695,16 @@ export async function fetchAndUpsertRootPagesActivity(params: {
   connectorId: ModelId;
   forceUpsert: boolean;
   isBatchSync: boolean;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   visitedAtMs: number;
 }): Promise<string[]> {
-  const { connectorId, confluenceCloudId, spaceId } = params;
+  const { connectorId, confluenceCloudId, space } = params;
 
   // Get the root level pages for the space.
   const rootPageRefs = await getRootPageRefsActivity({
     connectorId,
     confluenceCloudId,
-    spaceId,
+    space,
   });
   if (rootPageRefs.length === 0) {
     return [];
@@ -721,14 +734,16 @@ export async function confluenceGetTopLevelPageIdsActivity({
   connectorId,
   pageCursor,
   rootPageId,
-  spaceId,
+  space,
 }: {
   confluenceCloudId: string;
   connectorId: ModelId;
   pageCursor: string | null;
   rootPageId: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     rootPageId,
@@ -748,6 +763,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
       pageCursor,
       parentPageId: rootPageId,
       spaceId,
+      spaceKey,
     }
   );
 
