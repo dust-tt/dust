@@ -615,10 +615,12 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { nodes: allSelectedResources, isNodesLoading } =
-    useDataSourceViewContentNodes({
+  const { resources: allSelectedResources, isResourcesLoading } =
+    useConnectorPermissions({
       owner,
-      dataSourceView,
+      dataSource,
+      filterPermission: "read",
+      parentId: null,
       viewType: "all",
       disabled: !canUpdatePermissions,
     });
@@ -636,7 +638,9 @@ export function ConnectorPermissionsModal({
           [r.internalId]: {
             isSelected: true,
             node: r,
-            parents: r.parentInternalIds || [],
+            // content nodes are not synced yet so we cannot access their parents via permissions
+            // this is not an issue for this component
+            parents: "not-synced-yet",
           },
         }),
         {}
@@ -848,7 +852,7 @@ export function ConnectorPermissionsModal({
                       canUpdatePermissions ? selectedNodes : undefined
                     }
                     setSelectedNodes={
-                      canUpdatePermissions && !isNodesLoading
+                      canUpdatePermissions && !isResourcesLoading
                         ? setSelectedNodes
                         : undefined
                     }
