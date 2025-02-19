@@ -144,6 +144,10 @@ export async function streamConversationToSlack(
       case "browse_params":
       case "conversation_include_file_params":
       case "github_get_pull_request_params":
+      case "github_create_issue_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         await postSlackMessageUpdate(
           {
             isComplete: false,
@@ -246,7 +250,7 @@ export async function streamConversationToSlack(
           await slackClient.chat.postEphemeral({
             channel: slackChannelId,
             user: slackUserId,
-            text: "You can use another assistant by using the dropdown in slack.",
+            text: "You can use another agent by using the dropdown in slack.",
             blocks: makeAssistantSelectionBlock(
               agentConfigurations,
               JSON.stringify({

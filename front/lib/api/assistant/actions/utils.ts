@@ -1,5 +1,6 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
+  ChatBubbleThoughtIcon,
   CommandLineIcon,
   GithubIcon,
   MagnifyingGlassIcon,
@@ -78,9 +79,23 @@ export const ACTION_SPECIFICATIONS: Record<
   },
   GITHUB_GET_PULL_REQUEST: {
     label: "Retrieve pull request",
-    description: "Retrieve a pull request from Github",
+    description: "Retrieve a pull request from GitHub",
     cardIcon: GithubIcon,
     dropDownIcon: GithubIcon,
+    flag: null,
+  },
+  GITHUB_CREATE_ISSUE: {
+    label: "Create issue",
+    description: "Create an issue on GitHub",
+    cardIcon: GithubIcon,
+    dropDownIcon: GithubIcon,
+    flag: null,
+  },
+  REASONING: {
+    label: "Reasoning",
+    description: "Complex step by step reasoning",
+    cardIcon: ChatBubbleThoughtIcon,
+    dropDownIcon: ChatBubbleThoughtIcon,
     flag: null,
   },
 };
@@ -192,6 +207,8 @@ export function getCitationsCount({
     case "browse_configuration":
     case "conversation_include_file_configuration":
     case "github_get_pull_request_configuration":
+    case "github_create_issue_configuration":
+    case "reasoning_configuration":
       return 0;
     default:
       assertNever(action);
@@ -200,7 +217,7 @@ export function getCitationsCount({
 
 /**
  * This is shared across action runners and used to compute the local step refsOffset (the current
- * refsOffset for the assistant actions up to the current step (`refsOffset`) to which we add the
+ * refsOffset for the agent actions up to the current step (`refsOffset`) to which we add the
  * actions that comes before the current action in the current step).
  *
  * @param agentConfiguration The agent configuration.

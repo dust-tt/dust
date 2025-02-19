@@ -1,6 +1,7 @@
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
+  DataSourceConfiguration,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -114,6 +115,8 @@ interface RetrievalActionBlob {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   functionCallId: string | null;
   functionCallName: string | null;
@@ -127,6 +130,8 @@ export class RetrievalAction extends BaseAction {
     relativeTimeFrame: TimeFrame | null;
     query: string | null;
     topK: number;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -153,6 +158,8 @@ export class RetrievalAction extends BaseAction {
         ? `${timeFrame.duration}${timeFrame.unit}`
         : "all",
       topK: this.params.topK,
+      tagsIn: this.params.tagsIn,
+      tagsNot: this.params.tagsNot,
     };
 
     return {
@@ -199,6 +206,74 @@ export class RetrievalAction extends BaseAction {
   }
 }
 
+export function applyDataSourceFilters(
+  config: any,
+  dataSources: DataSourceConfiguration[],
+  dataSourceViewsMap: Record<string, DataSourceViewResource>,
+  globalTagsIn: string[] | null,
+  globalTagsNot: string[] | null
+) {
+  for (const ds of dataSources) {
+    // Not: empty array in parents/tags.in means "no document match" since no documents has any
+    // tags/parents that is in the empty array.
+    if (!config.DATASOURCE.filter.parents) {
+      config.DATASOURCE.filter.parents = {};
+    }
+    if (ds.filter.parents?.in) {
+      if (!config.DATASOURCE.filter.parents.in_map) {
+        config.DATASOURCE.filter.parents.in_map = {};
+      }
+
+      const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+      // This should never happen since dataSourceViews are stored by id in the
+      // agent_data_source_configurations table.
+      assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+      // Note we use the dustAPIDataSourceId here since this is what is returned from the registry
+      // lookup.
+      config.DATASOURCE.filter.parents.in_map[
+        dsView.dataSource.dustAPIDataSourceId
+      ] = ds.filter.parents.in;
+    }
+    if (ds.filter.parents?.not) {
+      if (!config.DATASOURCE.filter.parents.not) {
+        config.DATASOURCE.filter.parents.not = [];
+      }
+      config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
+    }
+
+    // Handle tags filtering.
+    if (ds.filter.tags) {
+      if (!config.DATASOURCE.filter.tags?.in_map) {
+        config.DATASOURCE.filter.tags = {
+          in_map: {},
+          not_map: {},
+        };
+      }
+
+      const dsView = dataSourceViewsMap[ds.dataSourceViewId];
+      assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
+
+      const tagsIn =
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsIn ?? []), ...(ds.filter.tags.in ?? [])]
+          : ds.filter.tags.in;
+      const tagsNot =
+        ds.filter.tags.mode === "auto"
+          ? [...(globalTagsNot ?? []), ...(ds.filter.tags.not ?? [])]
+          : ds.filter.tags.not;
+
+      if (tagsIn && tagsNot && (tagsIn.length > 0 || tagsNot.length > 0)) {
+        config.DATASOURCE.filter.tags.in_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = tagsIn;
+        config.DATASOURCE.filter.tags.not_map[
+          dsView.dataSource.dustAPIDataSourceId
+        ] = tagsNot;
+      }
+    }
+  }
+}
 /**
  * Params generation.
  */
@@ -332,6 +407,23 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       }
     }
 
+    let globalTagsIn: string[] | null = null;
+    let globalTagsNot: string[] | null = null;
+    if (
+      rawInputs.tagsIn &&
+      Array.isArray(rawInputs.tagsIn) &&
+      rawInputs.tagsIn.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsIn = rawInputs.tagsIn;
+    }
+    if (
+      rawInputs.tagsNot &&
+      Array.isArray(rawInputs.tagsNot) &&
+      rawInputs.tagsNot.every((tag): tag is string => typeof tag === "string")
+    ) {
+      globalTagsNot = rawInputs.tagsNot;
+    }
+
     const topK = getRetrievalTopK({
       agentConfiguration,
       stepActions,
@@ -355,8 +447,11 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       retrievalConfigurationId: actionConfiguration.sId,
       functionCallId,
       functionCallName: actionConfiguration.name,
+      tagsIn: globalTagsIn,
+      tagsNot: globalTagsNot,
       agentMessageId: agentMessage.agentMessageId,
       step: step,
+      workspaceId: owner.id,
     });
 
     yield {
@@ -372,6 +467,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           relativeTimeFrame,
           query,
           topK,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -405,35 +502,13 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
       })
     );
 
-    for (const ds of actionConfiguration.dataSources) {
-      // Not: empty array in parents/tags.in means "no document match" since no documents has any
-      // tags/parents that is in the empty array.
-      if (!config.DATASOURCE.filter.parents) {
-        config.DATASOURCE.filter.parents = {};
-      }
-      if (ds.filter.parents?.in) {
-        if (!config.DATASOURCE.filter.parents.in_map) {
-          config.DATASOURCE.filter.parents.in_map = {};
-        }
-
-        const dsView = dataSourceViewsMap[ds.dataSourceViewId];
-        // This should never happen since dataSourceViews are stored by id in the
-        // agent_data_source_configurations table.
-        assert(dsView, `Data source view ${ds.dataSourceViewId} not found`);
-
-        // Note we use the dustAPIDataSourceId here since this is what is returned from the registry
-        // lookup.
-        config.DATASOURCE.filter.parents.in_map[
-          dsView.dataSource.dustAPIDataSourceId
-        ] = ds.filter.parents.in;
-      }
-      if (ds.filter.parents?.not) {
-        if (!config.DATASOURCE.filter.parents.not) {
-          config.DATASOURCE.filter.parents.not = [];
-        }
-        config.DATASOURCE.filter.parents.not.push(...ds.filter.parents.not);
-      }
-    }
+    applyDataSourceFilters(
+      config,
+      actionConfiguration.dataSources,
+      dataSourceViewsMap,
+      globalTagsIn,
+      globalTagsNot
+    );
 
     // Handle timestamp filtering.
     if (relativeTimeFrame) {
@@ -651,6 +726,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           relativeTimeFrame: relativeTimeFrame,
           query: query,
           topK,
+          tagsIn: globalTagsIn,
+          tagsNot: globalTagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -685,6 +762,33 @@ export function retrievalAutoTimeFrameInputSpecification() {
   };
 }
 
+export function retrievalTagsInputSpecification() {
+  return [
+    {
+      name: "tagsIn",
+      description:
+        "The list of labels to restrict the search based on the user request and past conversation context." +
+        "If multiple labels are provided, the search will return documents that have at least one of the labels." +
+        "You can't check that all labels are present, only that at least one is present." +
+        "If no labels are provided, the search will return all documents.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+    {
+      name: "tagsNot",
+      description:
+        "The list of labels to exclude from the search based on the user request and past conversation context." +
+        "Any document having one of these labels will be excluded from the search.",
+      type: "array" as const,
+      items: {
+        type: "string" as const,
+      },
+    },
+  ];
+}
+
 function retrievalActionSpecification({
   actionConfiguration,
   name,
@@ -701,6 +805,14 @@ function retrievalActionSpecification({
   }
   if (actionConfiguration.relativeTimeFrame === "auto") {
     inputs.push(retrievalAutoTimeFrameInputSpecification());
+  }
+
+  if (
+    actionConfiguration.dataSources.some(
+      (ds) => ds.filter.tags?.mode === "auto"
+    )
+  ) {
+    inputs.push(...retrievalTagsInputSpecification());
   }
 
   return {
@@ -791,6 +903,8 @@ export async function retrievalActionTypesFromAgentMessageIds(
           query: action.query,
           relativeTimeFrame,
           topK: action.topK,
+          tagsIn: action.tagsIn,
+          tagsNot: action.tagsNot,
         },
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,

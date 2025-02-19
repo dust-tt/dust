@@ -38,7 +38,7 @@ import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
-function nodeIdFromNotionId(notionId: string) {
+export function nodeIdFromNotionId(notionId: string) {
   return `notion-${notionId}`;
 }
 
@@ -96,15 +96,25 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    // Upserts to data_sources_folders (core) a top-level folder for the orphaned resources.
-    const folderId = nodeIdFromNotionId("unknown");
+    // For each connector, there are 2 special folders (root folders):
+    // - Syncing: contains all the pages visited during the sync process whose ancestry could not be resolved (one of the ancestors not synced yet).
+    // - Orphaned Resources: contains all the pages whose ancestors are not all synced/given access to.
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
-      folderId,
-      parents: [folderId],
+      folderId: nodeIdFromNotionId("unknown"),
+      parents: [nodeIdFromNotionId("unknown")],
       parentId: null,
       title: "Orphaned Resources",
       mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+    });
+    // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: nodeIdFromNotionId("syncing"),
+      parents: [nodeIdFromNotionId("syncing")],
+      parentId: null,
+      title: "Syncing",
+      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
     });
 
     try {
@@ -459,12 +469,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !page.parentId || page.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(page.parentId),
-        type: "file",
+        type: "Document",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable,
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.NOTION.PAGE,
       };
     };
 
@@ -481,12 +492,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !db.parentId || db.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(db.parentId),
-        type: "database",
+        type: "Table",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         expandable: true,
         permission: "read",
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
+        mimeType: MIME_TYPES.NOTION.DATABASE,
       };
     };
 
@@ -502,12 +514,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
-          type: "folder",
+          type: "Folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }
@@ -551,12 +564,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !page.parentId || page.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(page.parentId),
-        type: "file",
+        type: "Document",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
+        mimeType: MIME_TYPES.NOTION.PAGE,
       }))
     );
 
@@ -566,12 +580,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         !db.parentId || db.parentId === "workspace"
           ? null
           : nodeIdFromNotionId(db.parentId),
-      type: "database",
+      type: "Table",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
       permission: "read",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.NOTION.DATABASE,
     }));
 
     const contentNodes = pageNodes.concat(dbNodes);
@@ -583,12 +598,13 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
-          type: "folder",
+          type: "Folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }
@@ -604,6 +620,11 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
   }): Promise<Result<string[], Error>> {
     const notionId = notionIdFromNodeId(internalId);
 
+    // The two nodes unknonwn and syncing are special folders always found at the root (no parent).
+    if (notionId === "unknown" || notionId === "syncing") {
+      return new Ok([internalId]);
+    }
+
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
@@ -617,8 +638,8 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         this.connectorId,
         notionId,
         [],
-        memo,
-        undefined
+        false,
+        memo
       );
 
       return new Ok(parents.map((p) => nodeIdFromNotionId(p)));

@@ -1,4 +1,4 @@
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -6,7 +6,6 @@ import {
   Cog6ToothIcon,
   CubeIcon,
   DataTable,
-  FolderIcon,
   PencilSquareIcon,
   SearchInput,
   Spinner,
@@ -26,7 +25,6 @@ import type {
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { MouseEventHandler } from "react";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
@@ -38,7 +36,12 @@ import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
+import {
+  getConnectorProviderLogoWithFallback,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
 import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
@@ -46,15 +49,6 @@ import {
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
-
-import { ViewFolderAPIModal } from "../ViewFolderAPIModal";
-
-type MoreMenuItem = Omit<DropdownMenuItemProps, "children" | "onClick"> & {
-  label: string;
-  variant?: "default" | "warning";
-  onClick?: MouseEventHandler<HTMLDivElement>;
-  children?: undefined;
-};
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -65,18 +59,8 @@ export interface RowData {
   isLoading?: boolean;
   buttonOnClick?: (e: MouseEvent) => void;
   onClick?: () => void;
-  moreMenuItems?: MoreMenuItem[];
+  menuItems?: MenuItem[]; // changed from moreMenuItems
 }
-
-const REDIRECT_TO_EDIT_PERMISSIONS = [
-  "confluence",
-  "google_drive",
-  "microsoft",
-  "slack",
-  "intercom",
-  "snowflake",
-  "zendesk",
-];
 
 type StringColumnDef = ColumnDef<RowData, string>;
 type NumberColumnDef = ColumnDef<RowData, number>;
@@ -172,9 +156,6 @@ function getTableColumns(
   // The "Connect" or "Manage" button
   const actionColumn: ColumnDef<RowData, unknown> = {
     id: "action",
-    // meta: {
-    //   className: "w-28",
-    // },
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
@@ -216,7 +197,7 @@ function getTableColumns(
       className: "flex justify-end items-center",
     },
     cell: (ctx) => (
-      <DataTable.MoreButton moreMenuItems={ctx.row.original.moreMenuItems} />
+      <DataTable.MoreButton menuItems={ctx.row.original.menuItems} />
     ),
   };
 
@@ -265,6 +246,7 @@ export const SpaceResourcesList = ({
   onSelect,
   integrations,
 }: SpaceResourcesListProps) => {
+  const { isDark } = useTheme();
   const [assistantName, setAssistantName] = useState<string | null>(null);
   const { sId: assistantSId } = useAgentConfigurationSIdLookup({
     workspaceId: owner.sId,
@@ -320,11 +302,11 @@ export const SpaceResourcesList = ({
     return spaceDataSourceViews.map((dataSourceView) => {
       const provider = dataSourceView.dataSource.connectorProvider;
 
-      const moreMenuItems: MoreMenuItem[] = [];
-
+      const menuItems: MenuItem[] = [];
       if (isWebsiteOrFolder && canWriteInSpace) {
-        moreMenuItems.push({
+        menuItems.push({
           label: "Edit",
+          kind: "item",
           icon: PencilSquareIcon,
           onClick: (e) => {
             e.stopPropagation();
@@ -333,8 +315,9 @@ export const SpaceResourcesList = ({
           },
         });
         if (isFolder) {
-          moreMenuItems.push({
-            label: "API",
+          menuItems.push({
+            label: "Use from API",
+            kind: "item",
             icon: CubeIcon,
             onClick: (e) => {
               e.stopPropagation();
@@ -343,9 +326,10 @@ export const SpaceResourcesList = ({
             },
           });
         }
-        moreMenuItems.push({
+        menuItems.push({
           label: "Delete",
           icon: TrashIcon,
+          kind: "item",
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();
@@ -358,11 +342,11 @@ export const SpaceResourcesList = ({
       return {
         dataSourceView,
         label: getDataSourceNameFromView(dataSourceView),
-        icon: getConnectorProviderLogoWithFallback(provider, FolderIcon),
+        icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
         workspaceId: owner.sId,
         isAdmin,
         isLoading: provider ? isLoadingByProvider[provider] : false,
-        moreMenuItems,
+        menuItems,
         buttonOnClick: (e) => {
           e.stopPropagation();
           setSelectedDataSourceView(dataSourceView);
@@ -380,6 +364,7 @@ export const SpaceResourcesList = ({
     canWriteInSpace,
     isFolder,
     onSelect,
+    isDark,
   ]);
 
   const onSelectedDataUpdated = useCallback(async () => {
@@ -411,7 +396,10 @@ export const SpaceResourcesList = ({
         className={classNames(
           "flex gap-2",
           rows.length === 0
-            ? "h-36 w-full items-center justify-center rounded-xl bg-muted-background"
+            ? classNames(
+                "h-36 w-full items-center justify-center rounded-xl",
+                "bg-muted-background dark:bg-muted-background-night"
+              )
             : ""
         )}
       >
@@ -457,8 +445,7 @@ export const SpaceResourcesList = ({
                   if (view) {
                     setSelectedDataSourceView(view);
                     if (
-                      dataSource.connectorProvider &&
-                      REDIRECT_TO_EDIT_PERMISSIONS.includes(
+                      isConnectorPermissionsEditable(
                         dataSource.connectorProvider
                       )
                     ) {
@@ -548,7 +535,7 @@ export const SpaceResourcesList = ({
         <ConnectorPermissionsModal
           owner={owner}
           connector={selectedDataSourceView.dataSource.connector}
-          dataSource={selectedDataSourceView.dataSource}
+          dataSourceView={selectedDataSourceView}
           isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
           onClose={() => setShowConnectorPermissionsModal(false)}
           readOnly={false}

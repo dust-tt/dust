@@ -5,7 +5,7 @@ import type {
   TrackerDataSourceConfigurationType,
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
-import { CONNECTOR_TYPE_TO_NAME, Err, Ok, removeNulls } from "@dust-tt/types";
+import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { parseExpression } from "cron-parser";
 import _ from "lodash";
@@ -13,6 +13,7 @@ import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   TrackerConfigurationModel,
   TrackerDataSourceConfigurationModel,
@@ -698,7 +699,7 @@ export class TrackerConfigurationResource extends ResourceWithSpace<TrackerConfi
     if (this.generations?.length) {
       tracker.generations = this.generations.map((g) => {
         const dataSourceName = g.dataSource.connectorProvider
-          ? CONNECTOR_TYPE_TO_NAME[g.dataSource.connectorProvider]
+          ? CONNECTOR_CONFIGURATIONS[g.dataSource.connectorProvider].name
           : `Folder ${g.dataSource.name}`;
 
         return {

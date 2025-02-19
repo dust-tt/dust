@@ -3,6 +3,7 @@ import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
+import { nodeIdFromNotionId } from "@connectors/connectors/notion";
 import {
   getDatabaseChildrenOf,
   getNotionDatabaseFromConnectorsDb,
@@ -28,9 +29,9 @@ async function _getParents(
   connectorId: ModelId,
   pageOrDbId: string,
   seen: string[],
+  syncing: boolean = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  memoizationKey?: string,
-  onProgress?: () => Promise<void>
+  memoizationKey?: string
 ): Promise<string[]> {
   const parents: string[] = [pageOrDbId];
   const pageOrDb =
@@ -38,9 +39,15 @@ async function _getParents(
     (await getNotionDatabaseFromConnectorsDb(connectorId, pageOrDbId));
 
   if (!pageOrDb) {
-    // pageOrDb is either not synced yet (not an issue, see design doc) or
-    // is not in Dust's scope, in both cases we can just return the page id
-    return parents;
+    // pageOrDb is either 1. not synced yet (not an issue, see design doc) or 2. is not in Dust's scope.
+    // If called during the sync (with syncing: true) we assume 1 and add a special parent "syncing".
+    // Otherwise, we assume 2. and return the page in the Orphaned Resources.
+    // This indicates that the page's parents are not yet known.
+    if (syncing) {
+      return [pageOrDbId, "syncing"];
+    } else {
+      return [pageOrDbId, "unknown"];
+    }
   }
   switch (pageOrDb.parentType) {
     // First 3 cases are exceptions that we ignore, and just return the page id
@@ -88,9 +95,6 @@ async function _getParents(
         );
         return parents.concat(seen);
       }
-      if (onProgress) {
-        await onProgress();
-      }
       return parents.concat(
         // parentId cannot be undefined if parentType is page or database as per
         // Notion API
@@ -100,8 +104,8 @@ async function _getParents(
           connectorId,
           pageOrDb.parentId,
           seen,
-          memoizationKey,
-          onProgress
+          syncing,
+          memoizationKey
         )
       );
     }
@@ -113,10 +117,11 @@ async function _getParents(
 export const getParents = cacheWithRedis(
   _getParents,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-  (connectorId, pageOrDbId, seen, memoizationKey, onProgress) => {
+  (connectorId, pageOrDbId, seen, syncing, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
-  60 * 10 * 1000
+  // parents should be stable over the maximum time if memoized (almost a day).
+  23 * 60 * 60 * 1000
 );
 
 export async function updateAllParentsFields(
@@ -136,7 +141,8 @@ export async function updateAllParentsFields(
   const pageIdsToUpdate = await getPagesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
-    connectorId
+    connectorId,
+    onProgress
   );
 
   logger.info(
@@ -159,22 +165,21 @@ export async function updateAllParentsFields(
           connectorId,
           pageId,
           [],
-          memoizationKey,
-          onProgress
+          false,
+          memoizationKey
         );
 
-        const parents = pageOrDbIds.map((id) => `notion-${id}`);
-
-        logger.info(
-          {
-            connectorId,
-            pageId,
-          },
-          "Updating parents field for page"
-        );
+        const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
+        if (parents.length === 1) {
+          const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
+          logger.warn(
+            { parents, parentType: page?.parentType, parentId: page?.parentId },
+            "notionUpdateAllParentsFields: Page has no parent."
+          );
+        }
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          documentId: `notion-${pageId}`,
+          documentId: nodeIdFromNotionId(pageId),
           parents,
           parentId: parents[1] || null,
         });
@@ -199,7 +204,8 @@ export async function updateAllParentsFields(
 async function getPagesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
-  connectorId: ModelId
+  connectorId: ModelId,
+  onProgress?: () => Promise<void>
 ): Promise<Set<string>> {
   const pageIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
@@ -221,6 +227,9 @@ async function getPagesToUpdate(
   const visited = new Set<string>();
 
   while (toProcess.size > 0) {
+    if (onProgress) {
+      await onProgress();
+    }
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 

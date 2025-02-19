@@ -54,6 +54,7 @@ services:
     build:
       context: .
       dockerfile: elasticsearch.Dockerfile
+      network: host
       args:
         ES_VERSION: ${ES_LOCAL_VERSION}
     container_name: ${ES_LOCAL_CONTAINER_NAME}
@@ -66,7 +67,7 @@ services:
       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
       - xpack.security.enabled=true
       - xpack.security.http.ssl.enabled=false
-      - xpack.license.self_generated.type=trial
+      - xpack.license.self_generated.type=basic
       - xpack.ml.use_auto_machine_memory_percent=true
       - ES_JAVA_OPTS=-Xms${ES_LOCAL_HEAP_INIT} -Xmx${ES_LOCAL_HEAP_MAX}
     ulimits:

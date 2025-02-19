@@ -1,8 +1,11 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
 import type {
   AgentConfigurationScope,
+  AgentReasoningEffort,
   AppType,
   DataSourceViewSelectionConfigurations,
+  ModelIdType,
+  ModelProviderIdType,
   PlanType,
   ProcessSchemaPropertyType,
   SubscriptionType,
@@ -20,9 +23,13 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
@@ -57,6 +64,8 @@ export function isDefaultActionName(
       return action.name.includes(DEFAULT_PROCESS_ACTION_NAME);
     case "WEB_NAVIGATION":
       return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
+    case "REASONING":
+      return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
     default:
       return false;
   }
@@ -105,8 +114,16 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration (no configuraiton)
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 
-// Github configuraiton (no configuraiton)
+// Github configuration (no configuraiton)
 export type AssistantBuilderGithubConfiguration = Record<string, never>;
+
+// Reasoning configuration
+export type AssistantBuilderReasoningConfiguration = {
+  modelId: ModelIdType | null;
+  providerId: ModelProviderIdType | null;
+  temperature: number | null;
+  reasoningEffort: AgentReasoningEffort | null;
+};
 
 // Builder State
 
@@ -138,6 +155,14 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "GITHUB_GET_PULL_REQUEST";
       configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "GITHUB_CREATE_ISSUE";
+      configuration: AssistantBuilderGithubConfiguration;
+    }
+  | {
+      type: "REASONING";
+      configuration: AssistantBuilderReasoningConfiguration;
     }
 ) & {
   name: string;
@@ -316,7 +341,7 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
+export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "GITHUB_GET_PULL_REQUEST",
     configuration: {},
@@ -324,6 +349,31 @@ export function getDefaultGithubhGetPullRequestActionConfiguration(): AssistantB
     description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
     noConfigurationRequired: true,
   };
+}
+
+export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "GITHUB_CREATE_ISSUE",
+    configuration: {},
+    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
+    noConfigurationRequired: true,
+  };
+}
+
+export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "REASONING",
+    configuration: {
+      providerId: null,
+      modelId: null,
+      temperature: null,
+      reasoningEffort: null,
+    },
+    name: DEFAULT_REASONING_ACTION_NAME,
+    description: DEFAULT_REASONING_ACTION_DESCRIPTION,
+    noConfigurationRequired: false,
+  } satisfies AssistantBuilderActionConfiguration;
 }
 
 export function getDefaultActionConfiguration(
@@ -346,7 +396,11 @@ export function getDefaultActionConfiguration(
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
       case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubhGetPullRequestActionConfiguration();
+        return getDefaultGithubGetPullRequestActionConfiguration();
+      case "GITHUB_CREATE_ISSUE":
+        return getDefaultGithubCreateIssueActionConfiguration();
+      case "REASONING":
+        return getDefaultReasoningActionConfiguration();
       default:
         assertNever(actionType);
     }

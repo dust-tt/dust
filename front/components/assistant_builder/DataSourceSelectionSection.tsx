@@ -2,7 +2,6 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
-  FolderIcon,
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
@@ -15,9 +14,11 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
+import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -30,6 +31,7 @@ import { classNames } from "@app/lib/utils";
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
   openDataSourceModal: () => void;
+  onSave?: (dsConfigs: DataSourceViewSelectionConfigurations) => void;
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
 }
@@ -37,9 +39,11 @@ interface DataSourceSelectionSectionProps {
 export default function DataSourceSelectionSection({
   dataSourceConfigurations,
   openDataSourceModal,
+  onSave,
   owner,
   viewType,
 }: DataSourceSelectionSectionProps) {
+  const { isDark } = useTheme();
   const { dataSourceViews } = useContext(AssistantBuilderContext);
   const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
     null
@@ -61,7 +65,7 @@ export default function DataSourceSelectionSection({
 
       <div className="overflow-hidden pt-4">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
             Selected Data Sources
           </div>
           <div>
@@ -87,10 +91,10 @@ export default function DataSourceSelectionSection({
             {orderDatasourceViewSelectionConfigurationByImportance(
               Object.values(dataSourceConfigurations)
             ).map((dsConfig) => {
-              const LogoComponent = getConnectorProviderLogoWithFallback(
-                dsConfig.dataSourceView.dataSource.connectorProvider,
-                FolderIcon
-              );
+              const LogoComponent = getConnectorProviderLogoWithFallback({
+                provider: dsConfig.dataSourceView.dataSource.connectorProvider,
+                isDark,
+              });
 
               return (
                 <Tree.Item
@@ -105,6 +109,17 @@ export default function DataSourceSelectionSection({
                   )}
                   visual={LogoComponent}
                   className="whitespace-nowrap"
+                  actions={
+                    onSave && (
+                      <DataSourceTagsFilterDropdown
+                        owner={owner}
+                        dataSourceConfigurations={dataSourceConfigurations}
+                        currentDataSourceConfiguration={dsConfig}
+                        onSave={onSave}
+                      />
+                    )
+                  }
+                  areActionsFading={dsConfig.tagsFilter === null}
                 >
                   {dsConfig.isSelectAll && (
                     <DataSourceViewPermissionTree
@@ -148,7 +163,7 @@ export default function DataSourceSelectionSection({
                               size="xs"
                               icon={BracesIcon}
                               onClick={() => {
-                                if (node.type === "file") {
+                                if (node.type === "Document") {
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
@@ -156,11 +171,11 @@ export default function DataSourceSelectionSection({
                                 }
                               }}
                               className={classNames(
-                                node.type === "file"
+                                node.type === "Document"
                                   ? ""
                                   : "pointer-events-none opacity-0"
                               )}
-                              disabled={node.type !== "file"}
+                              disabled={node.type !== "Document"}
                               variant="outline"
                             />
                           </div>

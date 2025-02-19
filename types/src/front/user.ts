@@ -40,6 +40,7 @@ export type LightWorkspaceType = {
   segmentation: WorkspaceSegmentationType;
   whiteListedProviders: ModelProviderIdType[] | null;
   defaultEmbeddingProvider: EmbeddingProviderIdType | null;
+  metadata: Record<string, string | number | boolean | object> | null;
 };
 
 export type WorkspaceType = LightWorkspaceType & {

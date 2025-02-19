@@ -9,6 +9,7 @@ import type {
 import {
   Err,
   isSlackAutoReadPatterns,
+  MIME_TYPES,
   Ok,
   safeParseJSON,
 } from "@dust-tt/types";
@@ -402,13 +403,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
       const resources: ContentNode[] = slackChannels.map((ch) => ({
         internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
         parentInternalId: null,
-        type: "channel",
+        type: "Folder",
         title: `#${ch.slackChannelName}`,
         sourceUrl: `https://app.slack.com/client/${slackConfig.slackTeamId}/${ch.slackChannelId}`,
         expandable: false,
         permission: ch.permission,
         lastUpdatedAt: null,
         providerVisibility: ch.private ? "private" : "public",
+        mimeType: MIME_TYPES.SLACK.CHANNEL,
       }));
 
       resources.sort((a, b) => {
@@ -623,13 +625,14 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     const contentNodes: ContentNode[] = channels.map((ch) => ({
       internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
       parentInternalId: null,
-      type: "channel",
+      type: "Folder",
       title: `#${ch.slackChannelName}`,
       sourceUrl: getSlackChannelSourceUrl(ch.slackChannelId, slackConfig),
       expandable: false,
       permission: ch.permission,
       lastUpdatedAt: null,
       providerVisibility: ch.private ? "private" : "public",
+      mimeType: MIME_TYPES.SLACK.CHANNEL,
     }));
 
     return new Ok(contentNodes);

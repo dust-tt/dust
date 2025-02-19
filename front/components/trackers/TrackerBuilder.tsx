@@ -32,7 +32,7 @@ import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
 
-import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
+import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
@@ -340,7 +340,6 @@ export const TrackerBuilder = ({
               </DropdownMenu>
             )}
             <AdvancedSettings
-              owner={owner}
               generationSettings={{
                 modelSettings: {
                   modelId: tracker.modelId,
@@ -362,6 +361,7 @@ export const TrackerBuilder = ({
                   setEdited(true);
                 }
               }}
+              models={[]}
             />
             {initialTrackerId && (
               <Button
@@ -373,6 +373,7 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
+            r
           </div>
         </div>
 

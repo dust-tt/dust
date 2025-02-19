@@ -94,8 +94,8 @@ export const FeedbackSelectorPopoverContent = ({
     agentLastAuthor && (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback is available to editors of the assistant. The last
-          assistant editor is:
+          Your feedback is available to editors of the agent. The last agent
+          editor is:
         </Page.P>
         <div className="flex flex-row items-center gap-2">
           {agentLastAuthor.image && (
@@ -128,7 +128,7 @@ export type AgentStateClassification = "thinking" | "acting" | "done";
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
- * testing an assistant? see conversation/Conversation.tsx
+ * testing an agent? see conversation/Conversation.tsx
  * @returns
  */
 export function AgentMessage({
@@ -248,6 +248,10 @@ export function AgentMessage({
       case "browse_params":
       case "conversation_include_file_params":
       case "github_get_pull_request_params":
+      case "github_create_issue_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -591,8 +595,14 @@ export function AgentMessage({
           />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Assistant thoughts" variant="slate">
-              {agentMessage.chainOfThought}
+            <ContentMessage title="Agent thoughts" variant="slate">
+              <Markdown
+                content={agentMessage.chainOfThought}
+                isStreaming={false}
+                forcedTextSize="text-sm"
+                textColor="text-muted-foreground"
+                isLastMessage={false}
+              />
             </ContentMessage>
           ) : null}
         </div>
@@ -624,11 +634,13 @@ export function AgentMessage({
           </div>
         )}
         {agentMessage.status === "cancelled" && (
-          <Chip
-            label="Message generation was interrupted"
-            size="xs"
-            className="mt-4"
-          />
+          <div>
+            <Chip
+              label="The message generation was interrupted"
+              size="xs"
+              className="mt-4"
+            />
+          </div>
         )}
       </div>
     );

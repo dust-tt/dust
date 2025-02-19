@@ -81,6 +81,12 @@ export function isContentFragmentMessageTypeModel(
   return contentFragment.role === "content_fragment";
 }
 
+export function isUserMessageTypeModel(
+  userMessage: ModelMessageTypeMultiActions
+): userMessage is UserMessageTypeModel {
+  return userMessage.role === "user";
+}
+
 export type ModelConversationTypeMultiActions = {
   messages: ModelMessageTypeMultiActions[];
 };
@@ -90,7 +96,7 @@ export type ModelConversationTypeMultiActions = {
  */
 
 // Event sent when tokens are streamed as the the agent is generating a message.
-type TokensClassification = "tokens" | "chain_of_thought";
+export type TokensClassification = "tokens" | "chain_of_thought";
 export type GenerationTokensEvent = {
   type: "generation_tokens";
   created: number;

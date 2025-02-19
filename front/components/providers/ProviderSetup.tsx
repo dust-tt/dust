@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
@@ -159,6 +160,18 @@ export const MODEL_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     instructions: (
       <>
         <p>To use Deepseek models you must provide your API key.</p>
+        <p className="mt-2">
+          We'll never use your API key for anything other than to run your apps.
+        </p>
+      </>
+    ),
+  },
+  fireworks: {
+    title: "Fireworks",
+    fields: [{ name: "api_key", placeholder: "Fireworks API Key" }],
+    instructions: (
+      <>
+        <p>To use Fireworks models you must provide your API key.</p>
         <p className="mt-2">
           We'll never use your API key for anything other than to run your apps.
         </p>
@@ -337,9 +350,8 @@ export function ProviderSetup({
             {field.label}
           </label>
         )}
-        <input
+        <Input
           type={field.type || "text"}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-action-500 focus:ring-action-500 sm:text-sm"
           placeholder={field.placeholder}
           value={values[field.name]}
           onChange={(e) => {

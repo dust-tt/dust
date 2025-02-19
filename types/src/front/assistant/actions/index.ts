@@ -14,8 +14,9 @@ export type ActionGeneratedFileType = {
   snippet: string | null;
 };
 
-export type GithubBaseActionType = "github_get_pull_request_action";
-// | "github_create_issue_action"
+export type GithubBaseActionType =
+  | "github_get_pull_request_action"
+  | "github_create_issue_action";
 // | "github_review_pull_request_action";
 
 export type ConversationBaseActionType =
@@ -30,6 +31,7 @@ export type BaseActionType =
   | "websearch_action"
   | "browse_action"
   | "visualization_action"
+  | "reasoning_action"
   | ConversationBaseActionType
   | GithubBaseActionType;
 

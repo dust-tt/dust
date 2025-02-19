@@ -1,17 +1,13 @@
-import type {
-  DataSourceConfiguration,
-  ModelId,
-  ProcessConfigurationType,
-} from "@dust-tt/types";
+import type { ModelId, ProcessConfigurationType } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { renderRetrievalTimeframeType } from "@app/lib/api/assistant/configuration/helpers";
+import { getDataSource } from "@app/lib/api/assistant/configuration/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export async function fetchAgentProcessActionConfigurations({
@@ -82,12 +78,6 @@ export async function fetchAgentProcessActionConfigurations({
         type: "process_configuration",
         dataSources: dataSourceConfig.map(getDataSource),
         relativeTimeFrame: renderRetrievalTimeframeType(processConfig),
-        tagsFilter:
-          processConfig.tagsIn !== null
-            ? {
-                in: processConfig.tagsIn,
-              }
-            : null,
         schema: processConfig.schema,
         name: processConfig.name || DEFAULT_PROCESS_ACTION_NAME,
         description: processConfig.description,
@@ -98,27 +88,4 @@ export async function fetchAgentProcessActionConfigurations({
   }
 
   return actionsByConfigurationId;
-}
-
-function getDataSource(
-  dataSourceConfig: AgentDataSourceConfiguration
-): DataSourceConfiguration {
-  const { dataSourceView } = dataSourceConfig;
-
-  return {
-    workspaceId: dataSourceView.workspace.sId,
-    dataSourceViewId: DataSourceViewResource.modelIdToSId({
-      id: dataSourceView.id,
-      workspaceId: dataSourceView.workspaceId,
-    }),
-    filter: {
-      parents:
-        dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
-          ? {
-              in: dataSourceConfig.parentsIn,
-              not: dataSourceConfig.parentsNotIn,
-            }
-          : null,
-    },
-  };
 }

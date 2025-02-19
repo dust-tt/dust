@@ -4,10 +4,10 @@ import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
 import { vi } from "vitest";
 
-import { groupFactory } from "@app/tests/utils/GroupFactory";
-import { membershipFactory } from "@app/tests/utils/MembershipFactory";
-import { userFactory } from "@app/tests/utils/UserFactory";
-import { workspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -40,14 +40,19 @@ import { getSession } from "../../lib/auth";
 export const createPrivateApiMockRequest = async ({
   method = "GET",
   role = "user",
-}: { method?: RequestMethod; role?: MembershipRoleType } = {}) => {
-  const workspace = await workspaceFactory().basic().create();
-  const user = await userFactory().basic().create();
-  const globalGroup = await groupFactory().global(workspace).create();
+  isSuperUser = false,
+}: {
+  method?: RequestMethod;
+  role?: MembershipRoleType;
+  isSuperUser?: boolean;
+} = {}) => {
+  const workspace = await WorkspaceFactory.basic();
+  const user = await (isSuperUser
+    ? UserFactory.superUser()
+    : UserFactory.basic());
+  const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
 
-  const membership = await membershipFactory()
-    .associate(workspace, user, role)
-    .create();
+  const membership = await MembershipFactory.associate(workspace, user, role);
 
   // Mock the getSession function to return the user without going through the auth0 session
   vi.mocked(getSession).mockReturnValue(
@@ -68,5 +73,13 @@ export const createPrivateApiMockRequest = async ({
     headers: {},
   });
 
-  return { req, res, workspace, user, membership, globalGroup };
+  return {
+    req,
+    res,
+    workspace,
+    user,
+    membership,
+    globalGroup,
+    systemGroup,
+  };
 };

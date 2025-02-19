@@ -4,35 +4,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   Page,
-  Popover,
   ScrollArea,
-  ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
   APIError,
-  AssistantCreativityLevel,
   BuilderSuggestionsType,
   LightAgentConfigurationType,
   ModelConfigurationType,
-  ModelIdType,
   Result,
-  SupportedModel,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
-  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  Err,
-  GPT_4O_MODEL_ID,
-  md5,
-  MISTRAL_LARGE_MODEL_ID,
-  Ok,
-} from "@dust-tt/types";
+import { Err, md5, Ok } from "@dust-tt/types";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -47,47 +32,18 @@ import React, {
   useState,
 } from "react";
 
+import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { MODEL_PROVIDER_LOGOS } from "@app/components/providers/types";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
 } from "@app/lib/client/assistant_builder/instructions";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
-import { useModels } from "@app/lib/swr/models";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
-
-export const CREATIVITY_LEVELS = Object.entries(
-  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES
-).map(([k, v]) => ({
-  label:
-    ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES[k as AssistantCreativityLevel],
-  value: v,
-}));
-
-const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
-  GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-] as const;
-
-function isBestPerformingModel(modelId: ModelIdType) {
-  return BEST_PERFORMING_MODELS_ID.includes(modelId);
-}
-
-const getCreativityLevelFromTemperature = (temperature: number) => {
-  const closest = CREATIVITY_LEVELS.reduce((prev, curr) =>
-    Math.abs(curr.value - temperature) < Math.abs(prev.value - temperature)
-      ? curr
-      : prev
-  );
-  return closest;
-};
 
 const useInstructionEditorService = (editor: Editor | null) => {
   const editorService = useMemo(() => {
@@ -112,6 +68,7 @@ export function InstructionScreen({
   doTypewriterEffect,
   setDoTypewriterEffect,
   agentConfigurationId,
+  models,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
@@ -125,6 +82,7 @@ export function InstructionScreen({
   doTypewriterEffect: boolean;
   setDoTypewriterEffect: (doTypewriterEffect: boolean) => void;
   agentConfigurationId: string | null;
+  models: ModelConfigurationType[];
 }) {
   const editor = useEditor({
     extensions: [
@@ -234,22 +192,35 @@ export function InstructionScreen({
   ]);
 
   const currentCharacterCount = editor?.storage.characterCount.characters();
+  const displayError =
+    instructionsError ||
+    currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT;
 
   useEffect(() => {
     editor?.setOptions({
       editorProps: {
         attributes: {
-          class:
-            "overflow-auto min-h-60 h-full border bg-structure-50 transition-all " +
-            "duration-200 rounded-xl " +
-            (instructionsError ||
-            currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT
-              ? "border-warning-500 focus:ring-warning-500 p-2 focus:outline-warning-500 focus:border-warning-500"
-              : "border-structure-200 focus:ring-action-300 p-2 focus:outline-action-200 focus:border-action-300"),
+          class: classNames(
+            "overflow-auto min-h-60 h-full border rounded-xl p-2",
+            "transition-all duration-200 ",
+            "bg-structure-50 dark:bg-structure-50-night",
+            displayError
+              ? "border-warning-500 dark:border-warning-500-night"
+              : "border-structure-200 dark:border-structure-200-night",
+            displayError
+              ? "focus:ring-warning-500 dark:focus:ring-warning-500-night"
+              : "focus:ring-action-300 dark:focus:ring-action-300-night",
+            displayError
+              ? "focus:outline-warning-500 dark:focus:outline-warning-500-night"
+              : "focus:outline-action-200 dark:focus:outline-action-200-night",
+            displayError
+              ? "focus:border-warning-500 dark:focus:border-warning-500-night"
+              : "focus:border-action-300 dark:focus:border-action-300-night"
+          ),
         },
       },
     });
-  }, [editor, instructionsError, currentCharacterCount]);
+  }, [editor, displayError]);
 
   useEffect(() => {
     if (resetAt != null) {
@@ -266,8 +237,8 @@ export function InstructionScreen({
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
           <Page.P>
-            <span className="text-sm text-element-700">
-              Command or guideline you provide to your assistant to direct its
+            <span className="text-sm text-element-700 dark:text-element-700-night">
+              Command or guideline you provide to your agent to direct its
               responses.
             </span>
           </Page.P>
@@ -314,7 +285,6 @@ export function InstructionScreen({
           )}
         <div className="mt-2 self-end">
           <AdvancedSettings
-            owner={owner}
             generationSettings={builderState.generationSettings}
             setGenerationSettings={(generationSettings) => {
               setEdited(true);
@@ -323,6 +293,7 @@ export function InstructionScreen({
                 generationSettings,
               }));
             }}
+            models={models}
           />
         </div>
       </div>
@@ -371,172 +342,15 @@ const InstructionsCharacterCount = ({
     <span
       className={classNames(
         "text-end text-xs",
-        count >= maxCount ? "text-red-500" : "text-muted-foreground"
+        count >= maxCount
+          ? "text-red-500"
+          : "text-muted-foreground dark:text-muted-foreground-night"
       )}
     >
       {count} / {maxCount} characters
     </span>
   );
 };
-
-interface ModelListProps {
-  modelConfigs: ModelConfigurationType[];
-  onClick: (modelSettings: SupportedModel) => void;
-}
-
-function ModelList({ modelConfigs, onClick }: ModelListProps) {
-  const handleClick = (modelConfig: ModelConfigurationType) => {
-    onClick({
-      modelId: modelConfig.modelId,
-      providerId: modelConfig.providerId,
-      reasoningEffort: modelConfig.reasoningEffort,
-    });
-  };
-
-  return (
-    <>
-      {modelConfigs.map((modelConfig) => (
-        <DropdownMenuItem
-          key={modelConfig.modelId}
-          icon={MODEL_PROVIDER_LOGOS[modelConfig.providerId]}
-          description={modelConfig.shortDescription}
-          label={modelConfig.displayName}
-          onClick={() => handleClick(modelConfig)}
-        />
-      ))}
-    </>
-  );
-}
-
-export function AdvancedSettings({
-  owner,
-  generationSettings,
-  setGenerationSettings,
-}: {
-  owner: WorkspaceType;
-  generationSettings: AssistantBuilderState["generationSettings"];
-  setGenerationSettings: (
-    generationSettingsSettings: AssistantBuilderState["generationSettings"]
-  ) => void;
-}) {
-  const { models, isModelsLoading } = useModels({ owner });
-
-  if (isModelsLoading) {
-    return null;
-  }
-
-  const supportedModelConfig = getSupportedModelConfig(
-    generationSettings.modelSettings
-  );
-  if (!supportedModelConfig) {
-    // unreachable
-    alert("Unsupported model");
-  }
-
-  const bestPerformingModelConfigs: ModelConfigurationType[] = [];
-  const otherModelConfigs: ModelConfigurationType[] = [];
-  for (const modelConfig of models) {
-    if (isBestPerformingModel(modelConfig.modelId)) {
-      bestPerformingModelConfigs.push(modelConfig);
-    } else {
-      otherModelConfigs.push(modelConfig);
-    }
-  }
-
-  return (
-    <Popover
-      popoverTriggerAsChild
-      trigger={
-        <Button
-          label="Advanced settings"
-          variant="outline"
-          size="sm"
-          isSelect
-        />
-      }
-      content={
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col items-end gap-2">
-            <div className="w-full grow text-sm font-bold text-element-800">
-              Model selection
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getSupportedModelConfig(generationSettings.modelSettings)
-                      .displayName
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel label="Best performing models" />
-                <ScrollArea className="flex max-h-72 flex-col" hideScrollBar>
-                  <ModelList
-                    modelConfigs={bestPerformingModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <DropdownMenuLabel label="Other models" />
-                  <ModelList
-                    modelConfigs={otherModelConfigs}
-                    onClick={(modelSettings) => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        modelSettings,
-                      });
-                    }}
-                  />
-                  <ScrollBar className="py-0" />
-                </ScrollArea>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="w-full grow text-sm font-bold text-element-800">
-              Creativity level
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  isSelect
-                  label={
-                    getCreativityLevelFromTemperature(
-                      generationSettings?.temperature
-                    ).label
-                  }
-                  variant="outline"
-                  size="sm"
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {CREATIVITY_LEVELS.map(({ label, value }) => (
-                  <DropdownMenuItem
-                    key={label}
-                    label={label}
-                    onClick={() => {
-                      setGenerationSettings({
-                        ...generationSettings,
-                        temperature: value,
-                      });
-                    }}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      }
-    />
-  );
-}
 
 function PromptHistory({
   history,
@@ -598,7 +412,7 @@ function PromptHistory({
 
 const STATIC_SUGGESTIONS = [
   "Break down your instructions into steps to leverage the model's reasoning capabilities.",
-  "Give context on how you'd like the assistant to act, e.g. 'Act like a senior analyst'.",
+  "Give context on how you'd like the agent to act, e.g. 'Act like a senior analyst'.",
   "Add instructions on the format of the answer: tone of voice, answer in bullet points, in code blocks, etc...",
   "Try to be specific: tailor prompts with precise language to avoid ambiguity.",
 ];
@@ -734,7 +548,12 @@ function Suggestions({
       )}
     >
       <div className="relative flex flex-col">
-        <div className="flex items-center gap-2 text-base font-bold text-element-800">
+        <div
+          className={classNames(
+            "flex items-center gap-2 text-base font-bold",
+            "text-element-800 dark:text-element-800-night"
+          )}
+        >
           <div>Tips</div>
           {suggestionsStatus === "loading" && <Spinner size="xs" />}
         </div>
@@ -745,13 +564,17 @@ function Suggestions({
         >
           <div
             className={classNames(
-              "absolute bottom-0 left-0 top-8 w-8 border-l border-structure-200/80 bg-gradient-to-l from-white/0 to-white/70 transition-opacity duration-700 ease-out",
+              "absolute bottom-0 left-0 top-8 w-8 border-l bg-gradient-to-l transition-opacity duration-700 ease-out",
+              "border-structure-200/80 dark:border-structure-200-night/80",
+              "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showLeftGradients ? "opacity-100" : "opacity-0"
             )}
           />
           <div
             className={classNames(
-              "absolute bottom-0 right-0 top-8 w-8 border-r border-structure-200/80 bg-gradient-to-r from-white/0 to-white/70 transition-opacity duration-700 ease-out",
+              "absolute bottom-0 right-0 top-8 w-8 border-r bg-gradient-to-r transition-opacity duration-700 ease-out",
+              "border-structure-200/80 dark:border-structure-200-night/80",
+              "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showRightGradients ? "opacity-100" : "opacity-0"
             )}
           />

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
 
 import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
@@ -57,5 +58,25 @@ export const Basic: Story = {
     size: "sm",
     color: "slate",
     isBusy: true,
+    onRemove: undefined,
   },
 };
+
+export const ThinkingChip = () => (
+  <Chip
+    size="sm"
+    color="slate"
+    label="
+      Thinking, Searching"
+    isBusy
+  />
+);
+
+export const RemovableChip = () => (
+  <Chip
+    size="sm"
+    color="slate"
+    label="Remove me"
+    onRemove={() => alert("Removed")}
+  />
+);

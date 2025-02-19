@@ -1,5 +1,6 @@
 import {
   Button,
+  Chip,
   ContextItem,
   DocumentTextIcon,
   DropdownMenu,
@@ -9,11 +10,15 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
   Input,
-  Page,
+  LockIcon,
+  MagnifyingGlassIcon,
   SliderToggle,
+  Spinner,
   TableIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type {
+  ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
   GroupType,
@@ -21,25 +26,26 @@ import type {
   NotionFindUrlResponseType,
   SlackAutoReadPattern,
   SlackbotWhitelistType,
+  WorkspaceType,
+  ZendeskFetchTicketResponseType,
 } from "@dust-tt/types";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { ConnectorType } from "@dust-tt/types";
 import {
   ConnectorsAPI,
+  CoreAPI,
   isSlackAutoReadPatterns,
   safeParseJSON,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import type { ReactElement } from "react-markdown/lib/react-markdown";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -51,7 +57,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { useDocuments, useTables } from "@app/poke/swr";
+import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 
@@ -318,9 +324,9 @@ const DataSourcePage = ({
     total: totalDocuments,
     isDocumentsLoading,
     isDocumentsError,
-  } = useDocuments(owner, dataSource, limit, offsetDocument);
+  } = usePokeDocuments(owner, dataSource, limit, offsetDocument);
 
-  const { tables, total: totalTables } = useTables(
+  const { tables, total: totalTables } = usePokeTables(
     owner,
     dataSource,
     limit,
@@ -375,319 +381,313 @@ const DataSourcePage = ({
   };
 
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
-      <div className="mx-auto max-w-4xl">
-        <div className="px-8 py-8"></div>
-        <Page.Vertical align="stretch">
-          <div className="flex flex-row gap-2">
-            <Page.SectionHeader title={`${owner.name} → ${dataSource.name}`} />
-          </div>
-
-          <div className="flex flex-row gap-2 text-sm font-bold text-action-500">
-            <Link href={`/poke/${owner.sId}`}>&laquo; workspace </Link>
-            <div
-              className="cursor-pointer"
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Are you sure you want to access this sensible user data? (Access will be logged)"
-                  )
-                ) {
-                  void router.push(
-                    `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
-                  );
-                }
-              }}
-            >
-              🔒 search data
-            </div>
-          </div>
-          <PluginList
-            resourceType="data_sources"
-            workspaceResource={{
-              workspace: owner,
-              resourceId: dataSource.sId,
-            }}
-          />
-          <ViewDataSourceTable
-            dataSource={dataSource}
-            temporalWorkspace={temporalWorkspace}
-            coreDataSource={coreDataSource}
-            connector={connector}
-            temporalRunningWorkflows={temporalRunningWorkflows}
-          />
-
-          {dataSource.connectorProvider === "slack" && (
-            <>
-              <ConfigToggle
-                title="Slackbot enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="botEnabled"
-                featureKey="slackBotEnabled"
-              />
-              <SlackWhitelistBot
-                owner={owner}
-                connectorId={connector?.id}
-                groups={groupsForSlackBot}
-              />
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                <SlackChannelPatternInput
-                  initialValues={features.autoReadChannelPatterns || ""}
-                  owner={owner}
-                  dataSource={dataSource}
-                />
-              </div>
-            </>
-          )}
-          {dataSource.connectorProvider === "notion" && (
-            <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
-          )}
-          {dataSource.connectorProvider === "google_drive" && (
-            <>
-              <ConfigToggle
-                title="PDF syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="pdfEnabled"
-                featureKey="googleDrivePdfEnabled"
-              />
-              <ConfigToggle
-                title="CSV syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="csvEnabled"
-                featureKey="googleDriveCsvEnabled"
-              />
-
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="largeFilesEnabled"
-                featureKey="googleDriveLargeFilesEnabled"
-              />
-            </>
-          )}
-          {dataSource.connectorProvider === "microsoft" && (
-            <>
-              <ConfigToggle
-                title="Pdf syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="pdfEnabled"
-                featureKey="microsoftPdfEnabled"
-              />
-              <ConfigToggle
-                title="CSV syncing enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="csvEnabled"
-                featureKey="microsoftCsvEnabled"
-              />
-              <ConfigToggle
-                title="Large Files enabled?"
-                owner={owner}
-                features={features}
-                dataSource={dataSource}
-                configKey="largeFilesEnabled"
-                featureKey="microsoftLargeFilesEnabled"
-              />
-            </>
-          )}
-          {dataSource.connectorProvider === "github" && (
+    <div className="flex flex-row gap-x-6">
+      <ViewDataSourceTable
+        dataSource={dataSource}
+        temporalWorkspace={temporalWorkspace}
+        coreDataSource={coreDataSource}
+        connector={connector}
+        temporalRunningWorkflows={temporalRunningWorkflows}
+      />
+      <div className="mt-4 flex grow flex-col gap-y-4">
+        <PluginList
+          resourceType="data_sources"
+          workspaceResource={{
+            workspace: owner,
+            resourceId: dataSource.sId,
+          }}
+        />
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (
+              window.confirm(
+                "Are you sure you want to access this sensible user data? (Access will be logged)"
+              )
+            ) {
+              void router.push(
+                `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
+              );
+            }
+          }}
+          label="Search Data"
+          icon={LockIcon}
+        />
+        {dataSource.connectorProvider === "slack" && (
+          <>
             <ConfigToggle
-              title="Code sync enabled?"
+              title="Slackbot enabled?"
               owner={owner}
               features={features}
               dataSource={dataSource}
-              configKey="codeSyncEnabled"
-              featureKey="githubCodeSyncEnabled"
+              configKey="botEnabled"
+              featureKey="slackBotEnabled"
             />
-          )}
-
-          {!dataSource.connectorId ? (
-            <>
-              <div className="mt-4 flex flex-row">
-                <div className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <div className="flex flex-initial gap-x-2">
-                        <Button
-                          variant="ghost"
-                          disabled={offsetDocument < limit}
-                          onClick={() => {
-                            if (offsetDocument >= limit) {
-                              setOffsetDocument(offsetDocument - limit);
-                            } else {
-                              setOffsetDocument(0);
-                            }
-                          }}
-                          label="Previous"
-                        />
-                        <Button
-                          variant="ghost"
-                          label="Next"
-                          disabled={offsetDocument + limit >= totalDocuments}
-                          onClick={() => {
-                            if (offsetDocument + limit < totalDocuments) {
-                              setOffsetDocument(offsetDocument + limit);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                      {totalDocuments > 0 && (
-                        <span>
-                          Showing documents {offsetDocument + 1} -{" "}
-                          {lastDocument} of {totalDocuments} documents
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                {documents.length > 0 ? (
-                  <ContextItem.List>
-                    {documents.map((d) => (
-                      <ContextItem
-                        key={d.document_id}
-                        title={displayNameByDocId[d.document_id]}
-                        visual={
-                          <ContextItem.Visual
-                            visual={({ className }) =>
-                              DocumentTextIcon({
-                                className: className + " text-element-600",
-                              })
-                            }
-                          />
-                        }
-                        action={
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              icon={EyeIcon}
-                              onClick={() =>
-                                onDisplayDocumentSource(d.document_id)
-                              }
-                              tooltip="View"
-                            />
-                          </div>
-                        }
-                      >
-                        <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
-                            {Math.floor(d.text_size / 1024)} kb,{" "}
-                            {timeAgoFrom(d.timestamp)} ago
-                          </div>
-                        </ContextItem.Description>
-                      </ContextItem>
-                    ))}
-                  </ContextItem.List>
-                ) : (
-                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                    <p>Empty</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-row">
-                <div className="flex flex-1">
-                  <div className="flex flex-col">
-                    <div className="flex flex-row">
-                      <div className="flex flex-initial gap-x-2">
-                        <Button
-                          variant="ghost"
-                          disabled={offsetTable < limit}
-                          onClick={() => {
-                            if (offsetTable >= limit) {
-                              setOffsetTable(offsetTable - limit);
-                            } else {
-                              setOffsetTable(0);
-                            }
-                          }}
-                          label="Previous"
-                        />
-                        <Button
-                          variant="ghost"
-                          label="Next"
-                          disabled={offsetTable + limit >= totalTables}
-                          onClick={() => {
-                            if (offsetTable + limit < totalTables) {
-                              setOffsetTable(offsetTable + limit);
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
-                      {totalDocuments > 0 && (
-                        <span>
-                          Showing tables {offsetTable + 1} - {lastTable} of{" "}
-                          {totalTables} tables
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
-                {tables.length > 0 ? (
-                  <ContextItem.List>
-                    {tables.map((t) => (
-                      <ContextItem
-                        key={t.table_id}
-                        title={t.name}
-                        visual={
-                          <ContextItem.Visual
-                            visual={({ className }) =>
-                              TableIcon({
-                                className: className + " text-element-600",
-                              })
-                            }
-                          />
-                        }
-                      >
-                        <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
-                            {timeAgoFrom(t.timestamp)} ago
-                          </div>
-                        </ContextItem.Description>
-                      </ContextItem>
-                    ))}
-                  </ContextItem.List>
-                ) : (
-                  <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
-                    <p>Empty</p>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <PokePermissionTree
+            <SlackWhitelistBot
               owner={owner}
-              dataSource={dataSource}
-              onDocumentViewClick={onDisplayDocumentSource}
-              permissionFilter="read"
+              connectorId={connector?.id}
+              groups={groupsForSlackBot}
             />
-          )}
-        </Page.Vertical>
+            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+              <SlackChannelPatternInput
+                initialValues={features.autoReadChannelPatterns || ""}
+                owner={owner}
+                dataSource={dataSource}
+              />
+            </div>
+          </>
+        )}
+        {dataSource.connectorProvider === "notion" && (
+          <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+        )}
+        {dataSource.connectorProvider === "zendesk" && (
+          <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
+        )}
+        {dataSource.connectorProvider === "google_drive" && (
+          <>
+            <ConfigToggle
+              title="PDF syncing enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="pdfEnabled"
+              featureKey="googleDrivePdfEnabled"
+            />
+            <ConfigToggle
+              title="CSV syncing enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="csvEnabled"
+              featureKey="googleDriveCsvEnabled"
+            />
+
+            <ConfigToggle
+              title="Large Files enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="largeFilesEnabled"
+              featureKey="googleDriveLargeFilesEnabled"
+            />
+          </>
+        )}
+        {dataSource.connectorProvider === "microsoft" && (
+          <>
+            <ConfigToggle
+              title="Pdf syncing enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="pdfEnabled"
+              featureKey="microsoftPdfEnabled"
+            />
+            <ConfigToggle
+              title="CSV syncing enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="csvEnabled"
+              featureKey="microsoftCsvEnabled"
+            />
+            <ConfigToggle
+              title="Large Files enabled?"
+              owner={owner}
+              features={features}
+              dataSource={dataSource}
+              configKey="largeFilesEnabled"
+              featureKey="microsoftLargeFilesEnabled"
+            />
+          </>
+        )}
+        {dataSource.connectorProvider === "github" && (
+          <ConfigToggle
+            title="Code sync enabled?"
+            owner={owner}
+            features={features}
+            dataSource={dataSource}
+            configKey="codeSyncEnabled"
+            featureKey="githubCodeSyncEnabled"
+          />
+        )}
+        {!dataSource.connectorId ? (
+          <>
+            <div className="mt-4 flex flex-row">
+              <div className="flex flex-1">
+                <div className="flex flex-col">
+                  <div className="flex flex-row">
+                    <div className="flex flex-initial gap-x-2">
+                      <Button
+                        variant="ghost"
+                        disabled={offsetDocument < limit}
+                        onClick={() => {
+                          if (offsetDocument >= limit) {
+                            setOffsetDocument(offsetDocument - limit);
+                          } else {
+                            setOffsetDocument(0);
+                          }
+                        }}
+                        label="Previous"
+                      />
+                      <Button
+                        variant="ghost"
+                        label="Next"
+                        disabled={offsetDocument + limit >= totalDocuments}
+                        onClick={() => {
+                          if (offsetDocument + limit < totalDocuments) {
+                            setOffsetDocument(offsetDocument + limit);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                    {totalDocuments > 0 && (
+                      <span>
+                        Showing documents {offsetDocument + 1} - {lastDocument}{" "}
+                        of {totalDocuments} documents
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+              {documents.length > 0 ? (
+                <ContextItem.List>
+                  {documents.map((d) => (
+                    <ContextItem
+                      key={d.document_id}
+                      title={displayNameByDocId[d.document_id]}
+                      visual={
+                        <ContextItem.Visual
+                          visual={({ className }) =>
+                            DocumentTextIcon({
+                              className: className + " text-element-600",
+                            })
+                          }
+                        />
+                      }
+                      action={
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            icon={EyeIcon}
+                            onClick={() =>
+                              onDisplayDocumentSource(d.document_id)
+                            }
+                            tooltip="View"
+                          />
+                        </div>
+                      }
+                    >
+                      <ContextItem.Description>
+                        <div className="pt-2 text-sm text-element-700">
+                          {Math.floor(d.text_size / 1024)} kb,{" "}
+                          {timeAgoFrom(d.timestamp)} ago
+                        </div>
+                      </ContextItem.Description>
+                    </ContextItem>
+                  ))}
+                </ContextItem.List>
+              ) : (
+                <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                  <p>Empty</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-row">
+              <div className="flex flex-1">
+                <div className="flex flex-col">
+                  <div className="flex flex-row">
+                    <div className="flex flex-initial gap-x-2">
+                      <Button
+                        variant="ghost"
+                        disabled={offsetTable < limit}
+                        onClick={() => {
+                          if (offsetTable >= limit) {
+                            setOffsetTable(offsetTable - limit);
+                          } else {
+                            setOffsetTable(0);
+                          }
+                        }}
+                        label="Previous"
+                      />
+                      <Button
+                        variant="ghost"
+                        label="Next"
+                        disabled={offsetTable + limit >= totalTables}
+                        onClick={() => {
+                          if (offsetTable + limit < totalTables) {
+                            setOffsetTable(offsetTable + limit);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-auto pl-2 text-sm text-gray-700">
+                    {totalDocuments > 0 && (
+                      <span>
+                        Showing tables {offsetTable + 1} - {lastTable} of{" "}
+                        {totalTables} tables
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+              {tables.length > 0 ? (
+                <ContextItem.List>
+                  {tables.map((t) => (
+                    <ContextItem
+                      key={t.table_id}
+                      title={t.name}
+                      visual={
+                        <ContextItem.Visual
+                          visual={({ className }) =>
+                            TableIcon({
+                              className: className + " text-element-600",
+                            })
+                          }
+                        />
+                      }
+                    >
+                      <ContextItem.Description>
+                        <div className="pt-2 text-sm text-element-700">
+                          {timeAgoFrom(t.timestamp)} ago
+                        </div>
+                      </ContextItem.Description>
+                    </ContextItem>
+                  ))}
+                </ContextItem.List>
+              ) : (
+                <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+                  <p>Empty</p>
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <PokePermissionTree
+            owner={owner}
+            dataSource={dataSource}
+            onDocumentViewClick={onDisplayDocumentSource}
+            permissionFilter="read"
+          />
+        )}
       </div>
     </div>
   );
+};
+
+DataSourcePage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 async function handleCheckOrFindNotionUrl(
@@ -716,6 +716,35 @@ async function handleCheckOrFindNotionUrl(
     const err = await res.json();
     alert(
       `Failed to ${command} Notion URL: ${
+        err.error?.connectors_error?.message
+      }\n\n${JSON.stringify(err)}`
+    );
+    return null;
+  }
+  return res.json();
+}
+
+async function handleCheckZendeskTicket(
+  args:
+    | { brandId: number; ticketId: number; wId: string; dsId: string }
+    | { ticketUrl: string; wId: string; dsId: string }
+): Promise<ZendeskFetchTicketResponseType | null> {
+  const res = await fetch(`/api/poke/admin`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      majorCommand: "zendesk",
+      command: "fetch-ticket",
+      args,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    alert(
+      `Failed to check Zendesk ticket: ${
         err.error?.connectors_error?.message
       }\n\n${JSON.stringify(err)}`
     );
@@ -912,6 +941,145 @@ function NotionUrlCheckOrFind({
                     </>
                   )}
                 </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ZendeskTicketCheck({
+  owner,
+  dsId,
+}: {
+  owner: WorkspaceType;
+  dsId: string;
+}) {
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const [ticketId, setTicketId] = useState<number | null>(null);
+  const [ticketUrl, setTicketUrl] = useState<string | null>(null);
+
+  const [ticketDetails, setTicketDetails] =
+    useState<ZendeskFetchTicketResponseType | null>(null);
+
+  const [idsIsLoading, setIdsIsLoading] = useState(false);
+  const [urlIsLoading, setUrlIsLoading] = useState(false);
+
+  return (
+    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-gray-600">
+      <div className="ml-2 flex items-center gap-2">
+        <div className="w-32">Brand / Ticket IDs</div>
+        <div className="flex max-w-md grow items-center gap-4">
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Brand ID"
+              onChange={(e) => setBrandId(parseInt(e.target.value, 10))}
+              value={brandId?.toString()}
+            />
+          </div>
+          <div className="text-center text-gray-600">/</div>
+          <div className="flex-1">
+            <Input
+              type="number"
+              placeholder="Ticket ID"
+              onChange={(e) => setTicketId(parseInt(e.target.value, 10))}
+              value={ticketId?.toString()}
+            />
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={idsIsLoading ? undefined : "Check"}
+          disabled={!ticketId || !brandId || idsIsLoading}
+          onClick={async () => {
+            if (brandId && ticketId) {
+              setIdsIsLoading(true);
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  brandId,
+                  ticketId,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+              setIdsIsLoading(false);
+            }
+          }}
+        />
+      </div>
+      <div className="ml-2 mt-4 flex items-center gap-2">
+        <div className="w-32">Ticket URL</div>
+        <div className="max-w-md flex-1 grow items-center gap-4">
+          <Input
+            type="text"
+            placeholder="https://{subdomain}.zendesk.com/tickets/{ticket_id}"
+            onChange={(e) => setTicketUrl(e.target.value)}
+            value={ticketUrl ?? ""}
+          />
+        </div>
+        <Button
+          variant="outline"
+          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          label={urlIsLoading ? undefined : "Check"}
+          disabled={!ticketUrl || urlIsLoading}
+          onClick={async () => {
+            if (ticketUrl) {
+              setUrlIsLoading(true);
+              setTicketDetails(
+                await handleCheckZendeskTicket({
+                  ticketUrl,
+                  wId: owner.sId,
+                  dsId,
+                })
+              );
+              setUrlIsLoading(false);
+            }
+          }}
+        />
+      </div>
+      <div className="text-gray-800">
+        {ticketDetails && (
+          <div className="flex flex-col gap-2 rounded-md border pt-2 text-lg">
+            <div className="mb-4 ml-4 mt-2 flex gap-2">
+              <Tooltip
+                label={
+                  ticketDetails.isTicketOnDb
+                    ? "The ticket is synced with Dust."
+                    : "The ticket is not synced with Dust."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.isTicketOnDb ? "Synced" : "Not synced"}
+                    color={ticketDetails.isTicketOnDb ? "purple" : "pink"}
+                  />
+                }
+              />
+              <Tooltip
+                label={
+                  ticketDetails.ticket
+                    ? "The ticket can be found on Zendesk."
+                    : ticketUrl
+                      ? "The URL is malformed or does not lead to an existing ticket."
+                      : "The ticket or the brand was not found."
+                }
+                className="max-w-md"
+                trigger={
+                  <Chip
+                    label={ticketDetails.ticket ? "Found" : "Not Found"}
+                    color={ticketDetails.ticket ? "emerald" : "warning"}
+                  />
+                }
+              />
+            </div>
+            {ticketDetails.ticket && (
+              <div className="ml-4 pt-2 text-xs text-element-700">
+                <div className="mb-1 font-bold">Details</div>
+                <JsonViewer value={ticketDetails.ticket} rootName={false} />
               </div>
             )}
           </div>

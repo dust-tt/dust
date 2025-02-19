@@ -17,13 +17,15 @@ import {
 } from "@dust-tt/sparkle";
 import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
-import { isEqual } from "lodash";
+import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
 import {
-  MODEL_PROVIDER_LOGOS,
+  getModelProviderLogo,
+  REASONING_MODEL_CONFIGS,
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -34,19 +36,22 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   google_ai_studio: "Google",
   togetherai: "TogetherAI",
   deepseek: "Deepseek",
+  fireworks: "Fireworks",
 };
 
-const modelProviders: Record<ModelProviderIdType, string[]> =
-  USED_MODEL_CONFIGS.reduce(
-    (acc, model) => {
-      if (!model.isLegacy) {
-        acc[model.providerId] = acc[model.providerId] || [];
-        acc[model.providerId].push(model.displayName);
-      }
-      return acc;
-    },
-    {} as Record<ModelProviderIdType, string[]>
-  );
+const modelProviders: Record<ModelProviderIdType, string[]> = uniqBy(
+  [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
+  (m) => `${m.providerId}__${m.modelId}`
+).reduce(
+  (acc, model) => {
+    if (!model.isLegacy) {
+      acc[model.providerId] = acc[model.providerId] || [];
+      acc[model.providerId].push(model.displayName);
+    }
+    return acc;
+  },
+  {} as Record<ModelProviderIdType, string[]>
+);
 
 interface ProviderManagementModalProps {
   owner: WorkspaceType;
@@ -55,6 +60,7 @@ interface ProviderManagementModalProps {
 export function ProviderManagementModal({
   owner,
 }: ProviderManagementModalProps) {
+  const { isDark } = useTheme();
   const sendNotifications = useSendNotification();
 
   const initialProviderStates: ProviderStates = useMemo(() => {
@@ -149,9 +155,9 @@ export function ProviderManagementModal({
           <SheetTitle>Manage Providers</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="mt-8 divide-y divide-gray-200">
+          <div className="dark:divide-gray-200-night mt-8 divide-y divide-gray-200">
             <div className="flex items-center justify-between px-4 pb-4">
-              <span className="text-left font-bold text-foreground">
+              <span className="text-left font-bold text-foreground dark:text-foreground-night">
                 Make all providers available
               </span>
               <SliderToggle
@@ -172,7 +178,7 @@ export function ProviderManagementModal({
           <div className="flex flex-col gap-4">
             <ContextItem.List>
               {MODEL_PROVIDER_IDS.map((provider) => {
-                const LogoComponent = MODEL_PROVIDER_LOGOS[provider];
+                const LogoComponent = getModelProviderLogo(provider, isDark);
                 if (!modelProviders[provider]) {
                   return null;
                 }
@@ -231,8 +237,7 @@ export function ProviderManagementModal({
           </div>
           <div className="px-4 pt-2 text-sm text-gray-500">
             Embedding models are used to create numerical representations of
-            your data powering the semantic search capabilities of your
-            assistants.
+            your data powering the semantic search capabilities of your agents.
           </div>
         </SheetContainer>
         <SheetFooter

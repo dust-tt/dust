@@ -3,17 +3,20 @@ import { removeNulls } from "../shared/utils/general";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
+export const TABLE_PREFIX = "TABLE:";
+
 export type FileStatus = "created" | "failed" | "ready";
 
 export type FileUseCase =
   | "conversation"
   | "avatar"
   | "tool_output"
-  | "folder_document"
-  | "folder_table";
+  | "upsert_document"
+  | "upsert_table";
 
 export type FileUseCaseMetadata = {
   conversationId: string;
+  generatedTables?: string[];
 };
 
 export interface FileType {
@@ -21,6 +24,8 @@ export interface FileType {
   downloadUrl?: string;
   fileName: string;
   fileSize: number;
+  sId: string;
+  // TODO(spolu): move this to being the ModelId
   id: string;
   status: FileStatus;
   uploadUrl?: string;
@@ -90,6 +95,11 @@ const FILE_FORMATS = {
   "text/comma-separated-values": { cat: "delimited", exts: [".csv"] },
   "text/tsv": { cat: "delimited", exts: [".tsv"] },
   "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
+  "application/vnd.ms-excel": { cat: "delimited", exts: [".xls"] },
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+    cat: "delimited",
+    exts: [".xlsx"],
+  },
 
   // Data
   "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
@@ -177,6 +187,13 @@ export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
   return !!FILE_FORMATS[contentType as SupportedFileContentType];
+}
+
+// UseCases supported on the public API
+export function isPublicySupportedUseCase(
+  useCase: string
+): useCase is FileUseCase {
+  return ["conversation"].includes(useCase);
 }
 
 export function isSupportedImageContentType(

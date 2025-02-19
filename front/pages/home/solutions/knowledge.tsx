@@ -136,11 +136,7 @@ export default function Knowledge() {
                   ],
                 },
               ],
-              assistantBlocks: [
-                assistantExamples[3],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
+              assistantBlocks: [assistantExamples[3], assistantExamples[4]],
             },
           ]}
         />
@@ -160,12 +156,23 @@ Knowledge.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
-    name: "@docsNew",
+    name: "@askTeam",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates documentation based on&nbsp;product and&nbsp;tech team's
-        knowledge
+        Provide employees with a go-to person to answer questions about a
+        specific department.
+      </>
+    ),
+  },
+  {
+    emoji: "🚀",
+    name: "@weeklyHighlights",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Provide recurring recaps of projects, discussion channels or topics,
+        making it easy to scan over insights.
       </>
     ),
   },
@@ -182,25 +189,14 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
     ),
   },
   {
-    emoji: "🔎",
-    name: "@docsFromTickets",
+    emoji: "👨‍🎤",
+    name: "@onboardingBuddy",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Explores support tickets and&nbsp;support team conversations
-        to&nbsp;spot tribal operational knowledge that should be&nbsp;formalized
-        once and for&nbsp;all
-      </>
-    ),
-  },
-  {
-    emoji: "🚀",
-    name: "@First90Days",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Quizzes new team members on&nbsp;company knowledge as&nbsp;they onboard
-        on&nbsp;their specific team
+        Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome
+        and&nbsp;properly informed from&nbsp;day one and&nbsp;as they learn
+        about the&nbsp;company.
       </>
     ),
   },
@@ -215,17 +211,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
-  {
-    emoji: "👨‍🎤",
-    name: "@LikeImOnSales",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Explains technical concepts in&nbsp;the context of&nbsp;the company's
-        infrastructure and&nbsp;data model
-      </>
-    ),
-  },
 ];
 
 export function KnowledgeCaroussel() {
@@ -234,7 +219,7 @@ export function KnowledgeCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

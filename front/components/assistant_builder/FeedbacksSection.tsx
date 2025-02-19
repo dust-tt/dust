@@ -1,10 +1,14 @@
 import {
   Avatar,
-  Button,
+  Card,
+  CardActionButton,
+  cn,
   ExternalLinkIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
-  Page,
+  Hoverable,
+  Icon,
+  NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -75,7 +79,11 @@ export const FeedbacksSection = ({
     isAgentConfigurationFeedbacksLoading ||
     isAgentConfigurationHistoryLoading
   ) {
-    return <Spinner />;
+    return (
+      <div className="w-full p-6">
+        <Spinner variant="dark" />
+      </div>
+    );
   }
 
   if (
@@ -83,21 +91,23 @@ export const FeedbacksSection = ({
     (!agentConfigurationFeedbacks || agentConfigurationFeedbacks.length === 0)
   ) {
     return (
-      <div className="mt-3 text-sm text-element-700">No feedback yet.</div>
+      <div className="mt-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+        No feedback yet.
+      </div>
     );
   }
 
   if (!agentConfigurationHistory) {
     return (
-      <div className="mt-3 text-sm text-element-900">
+      <div className="mt-3 text-sm text-foreground dark:text-foreground-night">
         Error loading the previous agent versions.
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="mb-2 flex flex-col">
+    <>
+      <div className="flex flex-col gap-2">
         <AgentConfigurationVersionHeader
           agentConfiguration={agentConfigurationHistory[0]}
           agentConfigurationVersion={agentConfigurationHistory[0].version}
@@ -120,24 +130,17 @@ export const FeedbacksSection = ({
                   isLatestVersion={false}
                 />
               )}
-              {!previousFeedbackHasDifferentVersion && !isFirstFeedback && (
-                <div className="mx-4 my-1">
-                  <Page.Separator />
-                </div>
-              )}
-              <div className="mr-2">
-                <MemoizedFeedbackCard
-                  owner={owner}
-                  feedback={feedback as AgentMessageFeedbackWithMetadataType}
-                />
-              </div>
+              <MemoizedFeedbackCard
+                owner={owner}
+                feedback={feedback as AgentMessageFeedbackWithMetadataType}
+              />
             </div>
           );
         })}
       </div>
       {/* Invisible div to act as a scroll anchor for detecting when the user has scrolled to the bottom */}
       <div ref={bottomRef} className="h-1.5" />
-    </div>
+    </>
   );
 };
 
@@ -160,17 +163,22 @@ function AgentConfigurationVersionHeader({
         return `v${config.version}`;
       }
       const versionDate = new Date(config.versionCreatedAt);
-      return formatTimestampToFriendlyDate(versionDate.getTime(), "long");
+      return (
+        "Version: " +
+        formatTimestampToFriendlyDate(versionDate.getTime(), "long")
+      );
     },
     [isLatestVersion]
   );
 
   return (
-    <div className="mb-2 mt-4 text-xs font-semibold text-element-800">
-      {agentConfiguration
-        ? getAgentConfigurationVersionString(agentConfiguration)
-        : `v${agentConfigurationVersion}`}
-    </div>
+    <NavigationListLabel
+      label={
+        agentConfiguration
+          ? getAgentConfigurationVersionString(agentConfiguration)
+          : `v${agentConfigurationVersion}`
+      }
+    />
   );
 }
 
@@ -197,51 +205,80 @@ function FeedbackCard({ owner, feedback }: FeedbackCardProps) {
   );
 
   return (
-    <div className="rounded-lg p-2">
-      <div className="justify-content-around flex items-center">
-        <div className="flex w-full items-center gap-2">
+    <Card
+      action={
+        conversationUrl && (
+          <CardActionButton
+            size="mini"
+            icon={ExternalLinkIcon}
+            href={conversationUrl ?? ""}
+            disabled={!conversationUrl}
+            tooltip="View conversation"
+            target="_blank"
+          />
+        )
+      }
+    >
+      <div className="flex w-full flex-col gap-3 text-sm font-normal text-foreground dark:text-foreground-night">
+        <div className="flex w-full flex-row gap-3">
           {feedback.userImageUrl ? (
             <Avatar
-              size="xs"
+              size="sm"
               visual={feedback.userImageUrl}
               name={feedback.userName}
             />
           ) : (
-            <Spinner size="xs" />
+            <Spinner size="sm" />
           )}
-          <div className="flex-grow text-sm font-medium text-element-900">
-            {feedback.userName}
+          <div className="flex flex-col">
+            <div className="font-semibold">{feedback.userName}</div>
+            <div className="text-muted-foreground dark:text-muted-foreground-night">
+              {timeSinceFeedback} ago
+            </div>
           </div>
         </div>
-
-        <div className="flex flex-shrink-0 flex-row items-center text-xs text-muted-foreground">
-          {timeSinceFeedback} ago
-          <div className="flex h-8 w-8 items-center justify-center rounded">
-            {feedback.thumbDirection === "up" ? (
-              <HandThumbUpIcon className="h-4 w-4" />
-            ) : (
-              <HandThumbDownIcon className="h-4 w-4" />
+        <div className="flex w-full flex-row gap-3 text-base">
+          <div>
+            <div
+              className={cn(
+                "rounded-full bg-primary-300 p-2",
+                feedback.thumbDirection === "up"
+                  ? "bg-success-200"
+                  : "bg-amber-200"
+              )}
+            >
+              <Icon
+                size="xs"
+                className={cn(
+                  "text-foreground dark:text-foreground-night",
+                  feedback.thumbDirection === "up"
+                    ? "text-success-800 dark:text-success-800-night"
+                    : "text-amber-800 dark:text-amber-800-night"
+                )}
+                visual={
+                  feedback.thumbDirection === "up"
+                    ? HandThumbUpIcon
+                    : HandThumbDownIcon
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-col">
+            {feedback.content}
+            {conversationUrl && (
+              <div>
+                <Hoverable
+                  variant="primary"
+                  href={conversationUrl ?? ""}
+                  target="_blank"
+                >
+                  View conversation
+                </Hoverable>
+              </div>
             )}
           </div>
         </div>
-
-        <Button
-          variant="ghost"
-          size="xs"
-          href={conversationUrl ?? ""}
-          icon={ExternalLinkIcon}
-          disabled={!conversationUrl}
-          tooltip="View conversation"
-          target="_blank"
-        />
       </div>
-      {feedback.content && (
-        <div className="my-2 flex items-center">
-          <div className="flex-grow text-sm leading-relaxed text-element-800">
-            {feedback.content}
-          </div>
-        </div>
-      )}
-    </div>
+    </Card>
   );
 }

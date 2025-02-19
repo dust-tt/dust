@@ -6,6 +6,7 @@ import { assertNever, isMembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -13,7 +14,6 @@ import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
 export type PostMemberResponseBody = {
   member: UserTypeWithWorkspaces;
@@ -69,10 +69,7 @@ async function handler(
     case "POST":
       // TODO(@fontanierh): use DELETE for revoking membership
       if (req.body.role === "revoked") {
-        const revokeResult = await MembershipResource.revokeMembership({
-          user,
-          workspace: owner,
-        });
+        const revokeResult = await revokeAndTrackMembership(owner, user);
 
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
@@ -91,18 +88,6 @@ async function handler(
               assertNever(revokeResult.error.type);
           }
         }
-
-        if (revokeResult.isOk()) {
-          void ServerSideTracking.trackRevokeMembership({
-            user: user.toJSON(),
-            workspace: owner,
-            role: revokeResult.value.role,
-            startAt: revokeResult.value.startAt,
-            endAt: revokeResult.value.endAt,
-          });
-        }
-
-        await launchUpdateUsageWorkflow({ workspaceId: owner.sId });
       } else {
         const role = req.body.role;
         if (!isMembershipRoleType(role)) {

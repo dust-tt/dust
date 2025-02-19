@@ -58,10 +58,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    transaction?: Transaction
   ) {
-    return frontSequelize.transaction(async (transaction) => {
-      const space = await SpaceModel.create(blob, { transaction });
+    const createSpace = async (t: Transaction) => {
+      const space = await SpaceModel.create(blob, { transaction: t });
 
       for (const group of groups) {
         await GroupSpaceModel.create(
@@ -70,12 +71,18 @@ export class SpaceResource extends BaseResource<SpaceModel> {
             vaultId: space.id,
             workspaceId: space.workspaceId,
           },
-          { transaction }
+          { transaction: t }
         );
       }
 
       return new this(SpaceModel, space.get(), groups);
-    });
+    };
+
+    if (transaction) {
+      return createSpace(transaction);
+    }
+
+    return frontSequelize.transaction(createSpace);
   }
 
   static async makeDefaultsForWorkspace(
@@ -536,7 +543,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       return [
         {
           workspaceId: this.workspaceId,
-          roles: [{ role: "admin", permissions: ["admin"] }],
+          roles: [{ role: "admin", permissions: ["admin", "write"] }],
           groups: this.groups.map((group) => ({
             id: group.id,
             permissions: ["read", "write"],

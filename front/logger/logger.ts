@@ -48,3 +48,11 @@ const logger = pino(pinoOptions);
 
 export default logger;
 export type { Logger } from "pino";
+
+export function auditLog(
+  data: Record<string, unknown>,
+  message: string,
+  auditLogger = logger
+) {
+  auditLogger.info({ ...data, audit: true }, message);
+}

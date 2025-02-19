@@ -4,6 +4,7 @@ import type {
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
+  ModelConfigurationType,
   Result,
   UploadedContentFragment,
   UserType,
@@ -27,10 +28,12 @@ export function usePreviewAssistant({
   owner,
   builderState,
   isPreviewOpened,
+  reasoningModels,
 }: {
   owner: WorkspaceType;
   builderState: AssistantBuilderState;
   isPreviewOpened: boolean;
+  reasoningModels: ModelConfigurationType[];
 }): {
   shouldAnimate: boolean;
   isFading: boolean; // Add isFading to the return type
@@ -83,7 +86,7 @@ export function usePreviewAssistant({
       owner,
       builderState: {
         handle: builderState.handle,
-        description: "Draft Assistant",
+        description: "Draft Agent",
         instructions: builderState.instructions,
         avatarUrl: builderState.avatarUrl ?? getDefaultAvatarUrlForPreview(),
         scope: "private",
@@ -99,11 +102,12 @@ export function usePreviewAssistant({
         slackChannelsLinkedWithAgent: [],
       },
       isDraft: true,
+      reasoningModels,
     });
 
     if (!aRes.isOk()) {
       sendNotification({
-        title: "Error saving Draft Assistant",
+        title: "Error saving Draft Agent",
         description: aRes.error.message,
         type: "error",
       });
@@ -130,6 +134,7 @@ export function usePreviewAssistant({
     builderState.maxStepsPerRun,
     builderState.templateId,
     builderState.visualizationEnabled,
+    reasoningModels,
     sendNotification,
   ]);
 

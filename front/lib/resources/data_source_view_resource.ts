@@ -7,8 +7,15 @@ import type {
   DataSourceViewType,
   ModelId,
   Result,
+  UserType,
 } from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import {
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -20,6 +27,7 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
@@ -40,6 +48,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -88,19 +97,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   // Creation.
 
   private static async makeNew(
-    auth: Authenticator,
     blob: Omit<
       CreationAttributes<DataSourceViewModel>,
       "editedAt" | "editedByUserId" | "vaultId"
     >,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
       {
         ...blob,
-        editedByUserId: auth.user()?.id ?? null,
+        editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
       },
@@ -117,34 +126,40 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createDataSourceAndDefaultView(
-    auth: Authenticator,
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
-    space: SpaceResource
+    space: SpaceResource,
+    editedByUser?: UserType | null,
+    transaction?: Transaction
   ) {
-    return frontSequelize.transaction(async (transaction) => {
+    const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
-        auth,
         blob,
         space,
-        transaction
+        editedByUser,
+        t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-        auth,
-        dataSource.space,
+        space,
         dataSource,
-        transaction
+        editedByUser,
+        t
       );
-    });
+    };
+
+    if (transaction) {
+      return createDataSourceAndView(transaction);
+    }
+
+    return frontSequelize.transaction(createDataSourceAndView);
   }
 
   static async createViewInSpaceFromDataSource(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[]
+    parentsIn: string[],
+    editedByUser?: UserType | null
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -152,19 +167,19 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         kind: "custom",
       },
       space,
-      dataSource
+      dataSource,
+      editedByUser
     );
   }
 
   // This view has access to all documents, which is represented by null.
   private static async createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
-    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
+    editedByUser?: UserType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
-      auth,
       {
         dataSourceId: dataSource.id,
         parentsIn: null,
@@ -173,6 +188,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
+      editedByUser,
       transaction
     );
   }
@@ -510,6 +526,41 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   ): Promise<Result<undefined, Error>> {
     const currentParents = this.parentsIn || [];
 
+    if (this.kind === "default") {
+      return new Err(
+        new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
+    // Check parentsToAdd  exist in core as part of this data source view.
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+    const coreRes = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: [
+          {
+            data_source_id: this.dataSource.dustAPIDataSourceId,
+            view_filter: [],
+          },
+        ],
+        node_ids: parentsToAdd,
+      },
+    });
+
+    if (coreRes.isErr()) {
+      return new Err(new Error(coreRes.error.message));
+    }
+
+    // set to avoid O(n**2) complexity in check below
+    const coreParents = new Set(
+      coreRes.value.nodes.map((node) => node.node_id)
+    );
+    if (parentsToAdd.some((parent) => !coreParents.has(parent))) {
+      return new Err(
+        new Error("Some parents do not exist in this data source view.")
+      );
+    }
+
     // add new parents
     const newParents = [...new Set(currentParents), ...new Set(parentsToAdd)];
 
@@ -526,6 +577,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   async setParents(
     parentsIn: string[] | null
   ): Promise<Result<undefined, Error>> {
+    if (this.kind === "default") {
+      return new Err(
+        new Error("`parentsIn` cannot be set for default data source view")
+      );
+    }
+
     await this.update({ parentsIn });
     return new Ok(undefined);
   }

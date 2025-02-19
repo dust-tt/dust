@@ -1,6 +1,5 @@
 import { ArrowRightIcon, Button, Div3D, Hover3D } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
-import React from "react";
 
 import {
   Grid,
@@ -105,12 +104,13 @@ export default function Security() {
             <P size="lg" className="text-slate-50">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
-              <Strong>GDPR Compliant & SOC2 Type II Certified.</Strong>
+              <Strong>GDPR, HIPAA Compliant & SOC2 Type II Certified.</Strong>
             </P>
             <div className="flex flex-col items-center gap-12 py-8 lg:flex-row">
               <div className="hidden gap-6 py-8 lg:flex">
                 <img src="/static/landing/security/gdpr.svg" className="h-28" />
                 <img src="/static/landing/security/soc2.svg" className="h-28" />
+                <img src="static/landing/security/hipaa.svg" className="h-28" />
               </div>
               <Button
                 href="https://app.vanta.com/dust.tt/trust/f3ytzxpay31bwsiyuqjto"

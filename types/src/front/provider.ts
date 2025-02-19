@@ -18,4 +18,5 @@ export type CredentialsType = {
   GOOGLE_AI_STUDIO_API_KEY?: string;
   TOGETHERAI_API_KEY?: string;
   DEEPSEEK_API_KEY?: string;
+  FIREWORKS_API_KEY?: string;
 };

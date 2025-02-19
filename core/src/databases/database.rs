@@ -33,6 +33,7 @@ pub enum QueryDatabaseError {
 pub enum SqlDialect {
     DustSqlite,
     Snowflake,
+    Bigquery,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

@@ -24,10 +24,12 @@ pub mod data_sources {
     pub mod splitter;
 }
 pub mod databases {
+    pub mod csv;
     pub mod database;
     pub mod table;
     pub mod table_schema;
     pub mod remote_databases {
+        pub mod bigquery;
         pub mod get_remote_database;
         pub mod remote_database;
         pub mod snowflake;
@@ -55,7 +57,9 @@ pub mod providers {
     }
     pub mod anthropic;
     pub mod deepseek;
+    pub mod fireworks;
     pub mod google_ai_studio;
+    pub mod helpers;
     pub mod openai_compatible_helpers;
     pub mod togetherai;
 }
@@ -115,6 +119,7 @@ pub mod oauth {
         pub mod microsoft;
         pub mod mock;
         pub mod notion;
+        pub mod salesforce;
         pub mod slack;
         pub mod utils;
         pub mod zendesk;

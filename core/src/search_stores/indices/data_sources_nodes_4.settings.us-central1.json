@@ -1,0 +1,61 @@
+{
+  "number_of_shards": 2,
+  "number_of_replicas": 1,
+  "refresh_interval": "30s",
+  "analysis": {
+    "analyzer": {
+      "icu_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "icu_folding",
+          "lowercase",
+          "asciifolding",
+          "preserve_word_delimiter"
+        ]
+      },
+      "edge_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "lowercase",
+          "edge_ngram_filter"
+        ]
+      },
+      "tag_edge_analyzer": {
+        "type": "custom",
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "tags_cleaner",
+          "lowercase",
+          "edge_ngram_filter"
+        ]
+      }
+    },
+    "normalizer": {
+      "tag_normalizer": {
+        "type": "custom",
+        "filter": [
+          "tags_cleaner"
+        ]
+      }
+    },
+    "filter": {
+      "preserve_word_delimiter": {
+        "type": "word_delimiter",
+        "split_on_numerics": false,
+        "split_on_case_change": false
+      },
+      "edge_ngram_filter": {
+        "type": "edge_ngram",
+        "min_gram": 2,
+        "max_gram": 20
+      },
+      "tags_cleaner": {
+        "type": "pattern_replace",
+        "pattern": "^(createdAt:|updatedAt:|title:).*",
+        "replacement": ""
+      }
+    }
+  }
+}

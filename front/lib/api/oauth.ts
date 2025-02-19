@@ -10,6 +10,7 @@ import querystring from "querystring";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 export type OAuthError = {
@@ -38,7 +39,8 @@ const PROVIDER_STRATEGIES: Record<
   {
     setupUri: (
       connection: OAuthConnectionType,
-      useCase: OAuthUseCase
+      useCase: OAuthUseCase,
+      forceMeetScope?: boolean
     ) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
@@ -74,9 +76,9 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: (connection, useCase) => {
+    setupUri: (connection, useCase, forceMeetScope = false) => {
       const scopes =
-        useCase === "labs_transcripts"
+        useCase === "labs_transcripts" && forceMeetScope
           ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
           : [
               "https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -143,6 +145,7 @@ const PROVIDER_STRATEGIES: Record<
         "team:read",
         "users:read",
         "users:read.email",
+        "im:read",
         "mpim:history",
         "files:read",
       ];
@@ -309,6 +312,48 @@ const PROVIDER_STRATEGIES: Record<
       return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
     },
   },
+  salesforce: {
+    setupUri: (connection) => {
+      if (!connection.metadata.instance_url) {
+        throw new Error("Missing Salesforce instance URL");
+      }
+      if (
+        !connection.metadata.code_verifier ||
+        !connection.metadata.code_challenge
+      ) {
+        throw new Error("Missing PKCE code verifier or challenge");
+      }
+
+      return (
+        `${connection.metadata.instance_url}/services/oauth2/authorize` +
+        `?response_type=code` +
+        `&client_id=${config.getOAuthSalesforceClientId()}` +
+        `&state=${connection.connection_id}` +
+        `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("salesforce"))}` +
+        `&code_challenge=${connection.metadata.code_challenge}` +
+        `&code_challenge_method=S256`
+      );
+    },
+    codeFromQuery: (query) => {
+      return getStringFromQuery(query, "code");
+    },
+    connectionIdFromQuery: (query) => {
+      return getStringFromQuery(query, "state");
+    },
+    isExtraConfigValid: (extraConfig) => {
+      if (!extraConfig.instance_url) {
+        return false;
+      }
+      try {
+        const url = new URL(extraConfig.instance_url);
+        return (
+          url.protocol === "https:" && url.hostname.endsWith(".salesforce.com")
+        );
+      } catch {
+        return false;
+      }
+    },
+  },
 };
 
 export async function createConnectionAndGetSetupUrl(
@@ -352,7 +397,13 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
-  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection, useCase));
+  const forceMeetScope = (
+    await getFeatureFlags(auth.getNonNullableWorkspace())
+  ).includes("labs_transcripts_meet_scope");
+
+  return new Ok(
+    PROVIDER_STRATEGIES[provider].setupUri(connection, useCase, forceMeetScope)
+  );
 }
 
 export async function finalizeConnection(

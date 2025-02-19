@@ -24,6 +24,7 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { makeConfluenceDocumentUrl } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import type { UpsertDataSourceDocumentParams } from "@connectors/lib/data_sources";
@@ -50,12 +51,17 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
  */
 export const HiddenContentNodeParentId = "__hidden_syncing_content__";
+
+export interface SpaceBlob {
+  id: string;
+  key: string;
+  name: string;
+}
 
 const logger = mainLogger.child({
   provider: "confluence",
@@ -161,7 +167,7 @@ export async function confluenceSaveSuccessSyncActivity(connectorId: ModelId) {
   }
 }
 
-export async function confluenceGetSpaceNameActivity({
+export async function confluenceGetSpaceBlobActivity({
   confluenceCloudId,
   connectorId,
   spaceId,
@@ -169,7 +175,7 @@ export async function confluenceGetSpaceNameActivity({
   confluenceCloudId: string;
   connectorId: ModelId;
   spaceId: string;
-}) {
+}): Promise<SpaceBlob | null> {
   const localLogger = logger.child({
     spaceId,
   });
@@ -182,7 +188,11 @@ export async function confluenceGetSpaceNameActivity({
   try {
     const space = await client.getSpaceById(spaceId);
 
-    return space.name;
+    return {
+      id: space.id,
+      key: space.key,
+      name: space.name,
+    };
   } catch (err) {
     if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
       localLogger.info("Deleting stale Confluence space.");
@@ -207,19 +217,18 @@ export async function confluenceGetSpaceNameActivity({
  */
 export async function confluenceUpsertSpaceFolderActivity({
   connectorId,
-  spaceId,
-  spaceName,
+  space,
   baseUrl,
 }: {
   connectorId: ModelId;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   baseUrl: string;
 }) {
   const connector = await fetchConfluenceConnector(connectorId);
 
+  const { id: spaceId, name: spaceName } = space;
+
   const spaceInDb = await ConfluenceSpace.findOne({
-    attributes: ["urlSuffix"],
     where: { connectorId, spaceId },
   });
 
@@ -232,6 +241,11 @@ export async function confluenceUpsertSpaceFolderActivity({
     mimeType: MIME_TYPES.CONFLUENCE.SPACE,
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
+
+  // Update the space name in db.
+  if (spaceInDb && spaceInDb.name != spaceName) {
+    await spaceInDb.update({ name: spaceName });
+  }
 }
 
 export async function markPageHasVisited({
@@ -262,7 +276,7 @@ export async function markPageHasVisited({
 interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
-  parents: [string, ...string[], string];
+  parents: [string, string, ...string[]];
   confluenceConfig: ConfluenceConfiguration;
   syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;
@@ -289,21 +303,8 @@ async function upsertConfluencePageToDataSource({
       dataSourceConfig,
       markdown
     );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title} Space ${spaceName}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-    });
 
-    const documentId = makePageInternalId(page.id);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    // We log the number of labels to help define the importance of labels in the future.
+    // Log labels info
     if (page.labels.results.length > 0) {
       localLogger.info(
         { labelsCount: page.labels.results.length },
@@ -311,10 +312,8 @@ async function upsertConfluencePageToDataSource({
       );
     }
 
-    // Limit to 10 custom tags.
-    const customTags = page.labels.results
-      .slice(0, 10)
-      .map((l) => `labels:${l.id}`);
+    // Use label names for tags instead of IDs
+    const customTags = page.labels.results.map((l) => l.name);
 
     const tags = [
       `createdAt:${pageCreatedAt.getTime()}`,
@@ -322,8 +321,25 @@ async function upsertConfluencePageToDataSource({
       `title:${page.title}`,
       `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
       `version:${page.version.number}`,
-      ...customTags,
+      ...filterCustomTags(customTags, localLogger),
     ];
+
+    const renderedPage = await renderDocumentTitleAndContent({
+      dataSourceConfig,
+      title: `Page ${page.title}`,
+      createdAt: pageCreatedAt,
+      updatedAt: lastPageVersionCreatedAt,
+      content: renderedMarkdown,
+      additionalPrefixes: {
+        labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+      },
+    });
+
+    const documentId = makePageInternalId(page.id);
+    const documentUrl = makeConfluenceDocumentUrl({
+      baseUrl: confluenceConfig.url,
+      suffix: page._links.tinyui,
+    });
 
     await upsertDataSourceDocument({
       dataSourceConfig,
@@ -364,8 +380,7 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
   pageRef: ConfluencePageRef;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   forceUpsert: boolean;
   visitedAtMs: number;
 }
@@ -379,14 +394,14 @@ export async function confluenceCheckAndUpsertPageActivity({
   connectorId,
   isBatchSync,
   pageRef,
-  spaceId,
-  spaceName,
+  space,
   forceUpsert,
   visitedAtMs,
 }: ConfluenceCheckAndUpsertPageActivityInput) {
   const connector = await fetchConfluenceConnector(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
+  const { id: spaceId, name: spaceName } = space;
   const { id: pageId } = pageRef;
 
   const loggerArgs = {
@@ -425,7 +440,7 @@ export async function confluenceCheckAndUpsertPageActivity({
   );
 
   // Check restrictions.
-  const hasReadRestrictions = await pageHasReadRestrictions(client, pageId);
+  const { hasReadRestrictions } = pageRef;
   if (hasReadRestrictions) {
     localLogger.info("Skipping restricted Confluence page.");
     return false;
@@ -461,12 +476,24 @@ export async function confluenceCheckAndUpsertPageActivity({
     return false;
   }
 
+  let parents: [string, string, ...string[]];
+  if (page.parentId) {
+    // Exact parent Ids will be computed after all page imports within the space have been completed.
+    parents = [
+      makePageInternalId(page.id),
+      makePageInternalId(page.parentId),
+      HiddenContentNodeParentId,
+    ];
+  } else {
+    // In this case we already have the exact parents: the page itself and the space.
+    parents = [makePageInternalId(page.id), makeSpaceInternalId(spaceId)];
+  }
+
   localLogger.info("Upserting Confluence page.");
   await upsertConfluencePageToDataSource({
     page,
     spaceName,
-    // Parent Ids will be computed after all page imports within the space have been completed.
-    parents: [makePageInternalId(page.id), HiddenContentNodeParentId],
+    parents,
     confluenceConfig,
     syncType: isBatchSync ? "batch" : "incremental",
     dataSourceConfig,
@@ -585,14 +612,16 @@ export async function confluenceGetActiveChildPageRefsActivity({
   parentPageId,
   confluenceCloudId,
   pageCursor,
-  spaceId,
+  space,
 }: {
   connectorId: ModelId;
   parentPageId: string;
   confluenceCloudId: string;
   pageCursor: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     pageCursor,
@@ -611,6 +640,7 @@ export async function confluenceGetActiveChildPageRefsActivity({
     pageCursor,
     parentPageId,
     spaceId,
+    spaceKey,
   });
 }
 
@@ -620,12 +650,14 @@ export async function confluenceGetActiveChildPageRefsActivity({
 async function getRootPageRefsActivity({
   connectorId,
   confluenceCloudId,
-  spaceId,
+  space,
 }: {
   connectorId: ModelId;
   confluenceCloudId: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     spaceId,
@@ -644,7 +676,7 @@ async function getRootPageRefsActivity({
     return await bulkFetchConfluencePageRefs(client, {
       limit: rootPages.length,
       pageIds: rootPages.map((rp) => rp.id),
-      spaceId,
+      spaceKey,
     });
   } catch (err) {
     if (err instanceof ConfluenceClientError && err.status === 404) {
@@ -663,17 +695,16 @@ export async function fetchAndUpsertRootPagesActivity(params: {
   connectorId: ModelId;
   forceUpsert: boolean;
   isBatchSync: boolean;
-  spaceId: string;
-  spaceName: string;
+  space: SpaceBlob;
   visitedAtMs: number;
 }): Promise<string[]> {
-  const { connectorId, confluenceCloudId, spaceId } = params;
+  const { connectorId, confluenceCloudId, space } = params;
 
   // Get the root level pages for the space.
   const rootPageRefs = await getRootPageRefsActivity({
     connectorId,
     confluenceCloudId,
-    spaceId,
+    space,
   });
   if (rootPageRefs.length === 0) {
     return [];
@@ -695,8 +726,6 @@ export async function fetchAndUpsertRootPagesActivity(params: {
     }
   }
 
-  console.log(">> allowedRootPageIds", allowedRootPageIds);
-
   return allowedRootPageIds;
 }
 
@@ -705,14 +734,16 @@ export async function confluenceGetTopLevelPageIdsActivity({
   connectorId,
   pageCursor,
   rootPageId,
-  spaceId,
+  space,
 }: {
   confluenceCloudId: string;
   connectorId: ModelId;
   pageCursor: string | null;
   rootPageId: string;
-  spaceId: string;
+  space: SpaceBlob;
 }) {
+  const { id: spaceId, key: spaceKey } = space;
+
   const localLogger = logger.child({
     connectorId,
     rootPageId,
@@ -732,6 +763,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
       pageCursor,
       parentPageId: rootPageId,
       spaceId,
+      spaceKey,
     }
   );
 
@@ -751,7 +783,7 @@ export async function confluenceGetTopLevelPageIdsActivity({
 export async function confluenceUpdatePagesParentIdsActivity(
   connectorId: ModelId,
   spaceId: string,
-  visitedAtMs: number
+  visitedAtMs: number | null
 ) {
   const connector = await fetchConfluenceConnector(connectorId);
 
@@ -760,10 +792,7 @@ export async function confluenceUpdatePagesParentIdsActivity(
     where: {
       connectorId,
       spaceId,
-      lastVisitedAt: visitedAtMs,
-      parentId: {
-        [Op.not]: null,
-      },
+      ...(visitedAtMs ? { lastVisitedAt: visitedAtMs } : {}),
     },
   });
 

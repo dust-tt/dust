@@ -1,5 +1,4 @@
 import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { MANAGED_DS_DELETABLE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -9,6 +8,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -107,10 +108,10 @@ async function handler(
     case "DELETE": {
       const isAuthorized =
         space.canWrite(auth) ||
-        // Only allow to delete Snowflake connectors if the user is an admin.
+        // Only allow to remote database connectors if the user is an admin.
         (space.isSystem() &&
           space.canAdministrate(auth) &&
-          dataSource.connectorProvider === "snowflake");
+          isRemoteDatabase(dataSource));
 
       if (!isAuthorized) {
         return apiError(req, res, {
@@ -126,7 +127,7 @@ async function handler(
       if (
         dataSource.connectorId &&
         dataSource.connectorProvider &&
-        !MANAGED_DS_DELETABLE.includes(dataSource.connectorProvider)
+        !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable
       ) {
         return apiError(req, res, {
           status_code: 400,

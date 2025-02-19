@@ -35,8 +35,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        node::Node,
-        node::ProviderVisibility,
+        node::{Node, ProviderVisibility},
         qdrant::QdrantClients,
     },
     databases::{
@@ -51,7 +50,8 @@ use dust::{
     run,
     search_filter::{Filterable, SearchFilter},
     search_stores::search_store::{
-        ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions, SearchStore,
+        DatasourceViewFilter, ElasticsearchSearchStore, NodesSearchFilter, NodesSearchOptions,
+        SearchStore, TagsQueryType,
     },
     sqlite_workers::client::{self, HEARTBEAT_INTERVAL_MS},
     stores::{
@@ -1801,6 +1801,63 @@ async fn data_sources_documents_upsert(
     }
 }
 
+// Get a document blob from a data source.
+
+async fn data_sources_documents_retrieve_blob(
+    Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(ds) => match ds {
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            ),
+            Some(ds) => match ds
+                .retrieve_api_blob(state.store.clone(), &document_id)
+                .await
+            {
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to retrieve document blob",
+                    Some(e),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_document_not_found",
+                    &format!("No document found for id `{}`", document_id),
+                    None,
+                ),
+                Ok(Some(blob)) => {
+                    let blob_value = serde_json::to_value(blob).unwrap();
+                    (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(blob_value),
+                        }),
+                    )
+                }
+            },
+        },
+    }
+}
+
 /// List documents from a data source.
 
 #[derive(serde::Deserialize)]
@@ -2148,6 +2205,33 @@ async fn data_sources_delete(
 }
 
 #[derive(serde::Deserialize)]
+struct DatabasesTablesValidateCSVContentPayload {
+    upsert_queue_bucket_csv_path: String,
+}
+
+async fn tables_validate_csv_content(
+    Json(payload): Json<DatabasesTablesValidateCSVContentPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match LocalTable::validate_csv_content(&payload.upsert_queue_bucket_csv_path).await {
+        Ok(schema) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "schema": schema,
+                })),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::BAD_REQUEST,
+            "internal_csv_content",
+            "Failed to validate the CSV content",
+            Some(e),
+        ),
+    }
+}
+
+#[derive(serde::Deserialize)]
 struct DatabasesTablesUpsertPayload {
     table_id: String,
     name: String,
@@ -2456,6 +2540,50 @@ async fn tables_delete(
     }
 }
 
+async fn tables_retrieve_blob(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
+        Ok(Some(table)) => match table.retrieve_api_blob(state.databases_store.clone()).await {
+            Err(e) => error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve document blob",
+                Some(e),
+            ),
+            Ok(blob) => {
+                let blob_value = serde_json::to_value(blob).unwrap();
+                (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(blob_value),
+                    }),
+                )
+            }
+        },
+    }
+}
+
 async fn tables_update_parents(
     Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
@@ -2535,6 +2663,85 @@ async fn tables_update_parents(
                     })),
                 }),
             ),
+        },
+    }
+}
+
+#[derive(serde::Deserialize)]
+struct DatabasesTablesUpsertCSVContentPayload {
+    upsert_queue_bucket_csv_path: String,
+    truncate: Option<bool>,
+}
+
+async fn tables_csv_upsert(
+    Path((project_id, data_source_id, table_id)): Path<(i64, String, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DatabasesTablesUpsertCSVContentPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state
+        .store
+        .load_data_source_table(&project, &data_source_id, &table_id)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to load table",
+                Some(e),
+            )
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                &format!("No table found for id `{}`", table_id),
+                None,
+            )
+        }
+        Ok(Some(table)) => match LocalTable::from_table(table) {
+            Err(e) => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
+                    Some(e),
+                )
+            }
+            Ok(table) => {
+                match table
+                    .upsert_csv_content(
+                        state.store.clone(),
+                        state.databases_store.clone(),
+                        &payload.upsert_queue_bucket_csv_path,
+                        match payload.truncate {
+                            Some(v) => v,
+                            None => false,
+                        },
+                    )
+                    .await
+                {
+                    Err(e) => {
+                        return error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to upsert rows",
+                            Some(e),
+                        )
+                    }
+                    Ok(_) => (
+                        StatusCode::OK,
+                        Json(APIResponse {
+                            error: None,
+                            response: Some(json!({
+                                "success": true,
+                            })),
+                        }),
+                    ),
+                }
+            }
         },
     }
 }
@@ -3132,12 +3339,17 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let nodes = match state
+    let (nodes, next_cursor) = match state
         .search_store
-        .search_nodes(payload.query, payload.filter, payload.options)
+        .search_nodes(
+            payload.query,
+            payload.filter,
+            payload.options,
+            state.store.clone(),
+        )
         .await
     {
-        Ok(nodes) => nodes,
+        Ok((nodes, next_cursor)) => (nodes, next_cursor),
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3154,9 +3366,62 @@ async fn nodes_search(
             error: None,
             response: Some(json!({
                 "nodes": nodes,
+                "next_page_cursor": next_cursor,
             })),
         }),
     )
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TagsSearchPayload {
+    query: Option<String>,
+    query_type: Option<TagsQueryType>,
+    data_source_views: Vec<DatasourceViewFilter>,
+    node_ids: Option<Vec<String>>,
+    limit: Option<u64>,
+}
+
+async fn tags_search(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<TagsSearchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match state
+        .search_store
+        .search_tags(
+            payload.query,
+            payload.query_type,
+            payload.data_source_views,
+            payload.node_ids,
+            payload.limit,
+        )
+        .await
+    {
+        Ok(tags) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "tags": tags
+                        .into_iter()
+                        .map(|(k, v, ds)| json!({
+                            "tag": k,
+                            "match_count": v,
+                            "data_sources": ds.into_iter()
+                                .map(|(k, _v)| k)
+                                .collect::<Vec<_>>()
+                        }))
+                        .collect::<Vec<serde_json::Value>>()
+                })),
+            }),
+        ),
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list tags",
+            Some(e),
+        ),
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -3544,6 +3809,10 @@ fn main() {
             post(data_sources_documents_upsert),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/blob",
+            get(data_sources_documents_retrieve_blob),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/documents/:document_id/tags",
             patch(data_sources_documents_update_tags),
         )
@@ -3578,6 +3847,10 @@ fn main() {
         )
         // Databases
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/validate_csv_content",
+            post(tables_validate_csv_content),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/tables",
             post(tables_upsert),
         )
@@ -3598,8 +3871,16 @@ fn main() {
             delete(tables_delete),
         )
         .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/blob",
+            get(tables_retrieve_blob),
+        )
+        .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows",
             post(tables_rows_upsert),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/csv",
+            post(tables_csv_upsert),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/tables/:table_id/rows/:row_id",
@@ -3639,6 +3920,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
+        .route("/tags/search", post(tags_search))
 
         // Misc
         .route("/tokenize", post(tokenize))

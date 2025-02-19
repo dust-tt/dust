@@ -1,14 +1,16 @@
 import { createParser } from "eventsource-parser";
 
-import { CoreAPIContentNode } from "../../core/content_node";
+import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
   CoreAPIDataSourceDocumentSection,
   CoreAPIDocument,
+  CoreAPIDocumentBlob,
   CoreAPIDocumentVersion,
   CoreAPIFolder,
   CoreAPILightDocument,
+  CoreAPITableBlob,
   EmbedderType,
 } from "../../core/data_source";
 import { DustAppSecretType } from "../../front/dust_app_secret";
@@ -170,10 +172,38 @@ export type CoreAPISearchFilter = {
   } | null;
 };
 
+export type CoreAPISortSpec = {
+  field: string;
+  direction: "asc" | "desc";
+};
+
 export type CoreAPISearchOptions = {
   limit?: number;
-  offset?: number;
+  cursor?: string;
+  sort?: CoreAPISortSpec[];
 };
+
+export interface CoreAPISearchCursorRequest {
+  sort?: CoreAPISortSpec[];
+  limit?: number;
+  cursor?: string;
+}
+
+export interface CoreAPISearchNodesResponse {
+  nodes: CoreAPIContentNode[];
+  next_page_cursor: string | null;
+}
+
+export interface CoreAPISearchTagsResponse {
+  error: string | null;
+  response: {
+    tags: {
+      tag: string;
+      match_count: number;
+      data_sources: string[];
+    }[];
+  };
+}
 
 export type CoreAPIDatasourceViewFilter = {
   data_source_id: string;
@@ -184,7 +214,24 @@ export type CoreAPINodesSearchFilter = {
   data_source_views: CoreAPIDatasourceViewFilter[];
   node_ids?: string[];
   parent_id?: string;
+  node_types?: ContentNodeType[];
 };
+
+export interface CoreAPIUpsertDataSourceDocumentPayload {
+  projectId: string;
+  dataSourceId: string;
+  documentId: string;
+  timestamp?: number | null;
+  tags: string[];
+  parentId: string | null;
+  parents: string[];
+  sourceUrl?: string | null;
+  section: CoreAPIDataSourceDocumentSection;
+  credentials: CredentialsType;
+  lightDocumentOutput?: boolean;
+  title: string;
+  mimeType: string;
+}
 
 export class CoreAPI {
   _url: string;
@@ -861,21 +908,7 @@ export class CoreAPI {
     lightDocumentOutput = false,
     title,
     mimeType,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-    documentId: string;
-    timestamp?: number | null;
-    tags: string[];
-    parentId: string | null;
-    parents: string[];
-    sourceUrl?: string | null;
-    section: CoreAPIDataSourceDocumentSection;
-    credentials: CredentialsType;
-    lightDocumentOutput?: boolean;
-    title: string;
-    mimeType: string;
-  }): Promise<
+  }: CoreAPIUpsertDataSourceDocumentPayload): Promise<
     CoreAPIResponse<{
       document:
         | CoreAPIDocument
@@ -907,6 +940,30 @@ export class CoreAPI {
           title: title,
           mime_type: mimeType,
         }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async getDataSourceDocumentBlob({
+    projectId,
+    dataSourceId,
+    documentId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    documentId: string;
+  }): Promise<CoreAPIResponse<CoreAPIDocumentBlob>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/documents/${encodeURIComponent(documentId)}/blob`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -1114,6 +1171,39 @@ export class CoreAPI {
         body: JSON.stringify({ text }),
       }
     );
+    return this._resultFromResponse(response);
+  }
+
+  async tableValidateCSVContent({
+    projectId,
+    dataSourceId,
+    upsertQueueBucketCSVPath,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    upsertQueueBucketCSVPath: string;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: CoreAPITableSchema;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/validate_csv_content`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+        }),
+      }
+    );
+
     return this._resultFromResponse(response);
   }
 
@@ -1349,6 +1439,44 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async tableUpsertCSVContent({
+    projectId,
+    dataSourceId,
+    tableId,
+    upsertQueueBucketCSVPath,
+    truncate,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    tableId: string;
+    upsertQueueBucketCSVPath: string;
+    truncate?: boolean;
+  }): Promise<
+    CoreAPIResponse<{
+      schema: CoreAPITableSchema;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/${encodeURIComponent(tableId)}/csv`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          truncate: truncate || false,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getTableRow({
     projectId,
     dataSourceId,
@@ -1416,6 +1544,30 @@ export class CoreAPI {
       )}/rows?limit=${limit}&offset=${offset}${qs}`,
       {
         method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async getDataSourceTableBlob({
+    projectId,
+    dataSourceId,
+    tableId,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    tableId: string;
+  }): Promise<CoreAPIResponse<CoreAPITableBlob>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
+        dataSourceId
+      )}/tables/${encodeURIComponent(tableId)}/blob`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
     );
 
@@ -1539,11 +1691,7 @@ export class CoreAPI {
     query?: string;
     filter: CoreAPINodesSearchFilter;
     options?: CoreAPISearchOptions;
-  }): Promise<
-    CoreAPIResponse<{
-      nodes: CoreAPIContentNode[];
-    }>
-  > {
+  }): Promise<CoreAPIResponse<CoreAPISearchNodesResponse>> {
     const response = await this._fetchWithError(`${this._url}/nodes/search`, {
       method: "POST",
       headers: {
@@ -1555,6 +1703,33 @@ export class CoreAPI {
         options,
       }),
     });
+    return this._resultFromResponse(response);
+  }
+
+  async searchTags({
+    query,
+    queryType,
+    dataSources,
+  }: {
+    query?: string;
+    queryType?: string;
+    dataSources: string[];
+  }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
+    const response = await this._fetchWithError(`${this._url}/tags/search`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        data_source_views: dataSources.map((dataSource) => ({
+          data_source_id: dataSource,
+          view_filter: [],
+        })),
+        query,
+        query_type: queryType,
+      }),
+    });
+
     return this._resultFromResponse(response);
   }
 

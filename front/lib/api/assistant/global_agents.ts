@@ -19,8 +19,8 @@ import {
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
-  DEEPSEEK_CHAT_MODEL_CONFIG,
   DEFAULT_MAX_STEPS_USE_PER_RUN,
+  FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG,
   GEMINI_PRO_DEFAULT_MODEL_CONFIG,
   getLargeWhitelistedModel,
   getSmallWhitelistedModel,
@@ -34,6 +34,7 @@ import {
   O1_HIGH_REASONING_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
+  O3_MINI_HIGH_REASONING_MODEL_CONFIG,
 } from "@dust-tt/types";
 
 import {
@@ -200,7 +201,7 @@ function _getHelperGlobalAgent({
           {
             dataSourceViewId: config.getDustAppsHelperDatasourceViewId(),
             workspaceId: config.getDustAppsWorkspaceId(),
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "search_dust_docs",
@@ -299,6 +300,48 @@ function _getGPT4GlobalAgent({
     visualizationEnabled: true,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+function _getO3MiniGlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status: AgentConfigurationStatus = "active";
+
+  if (settings) {
+    status = settings.status;
+  }
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.O3_MINI,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "o3-mini",
+    description: O3_MINI_HIGH_REASONING_MODEL_CONFIG.description,
+    instructions: null,
+    pictureUrl: "https://dust.tt/static/systemavatar/o1_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.providerId,
+      modelId: O3_MINI_HIGH_REASONING_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    visualizationEnabled: true,
+    templateId: null,
     groupIds: [],
     requestedGroupIds: [],
   };
@@ -786,7 +829,7 @@ function _getGeminiProGlobalAgent({
   };
 }
 
-function _getDeepSeekGlobalAgent({
+function _getDeepSeekR1GlobalAgent({
   auth,
   settings,
 }: {
@@ -800,29 +843,25 @@ function _getDeepSeekGlobalAgent({
 
   return {
     id: -1,
-    sId: GLOBAL_AGENTS_SID.DEEPSEEK,
+    sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "deepseek",
-    description: DEEPSEEK_CHAT_MODEL_CONFIG.description,
-    instructions:
-      "Only use web search if the user's question require recent or up to date information. Browse a maximum of 8 web pages.",
+    name: "DeepSeek R1",
+    description:
+      "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
+    instructions: null,
     pictureUrl: "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
     status,
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: DEEPSEEK_CHAT_MODEL_CONFIG.providerId,
-      modelId: DEEPSEEK_CHAT_MODEL_CONFIG.modelId,
+      providerId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.providerId,
+      modelId: FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
-    actions: [
-      ..._getDefaultWebActionsForGlobalAgent({
-        agentSid: GLOBAL_AGENTS_SID.DEEPSEEK,
-      }),
-    ],
-    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    actions: [],
+    maxStepsPerRun: 1,
     visualizationEnabled: false,
     templateId: null,
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
@@ -985,7 +1024,7 @@ function _getGoogleDriveGlobalAgent(
     connectorProvider: "google_drive",
     agentId: GLOBAL_AGENTS_SID.GOOGLE_DRIVE,
     name: "googledrive",
-    description: "An assistant with context on your Google Drives.",
+    description: "An agent with context on your Google Drives.",
     pictureUrl: "https://dust.tt/static/systemavatar/drive_avatar_full.png",
     instructions:
       "Assist the user based on the retrieved data from their Google Drives." +
@@ -1009,7 +1048,7 @@ function _getSlackGlobalAgent(
     connectorProvider: "slack",
     agentId: GLOBAL_AGENTS_SID.SLACK,
     name: "slack",
-    description: "An assistant with context on your Slack Channels.",
+    description: "An agent with context on your Slack Channels.",
     pictureUrl: "https://dust.tt/static/systemavatar/slack_avatar_full.png",
     instructions:
       "Assist the user based on the retrieved data from their Slack channels." +
@@ -1033,8 +1072,7 @@ function _getGithubGlobalAgent(
     connectorProvider: "github",
     agentId: GLOBAL_AGENTS_SID.GITHUB,
     name: "github",
-    description:
-      "An assistant with context on your Github Issues and Discussions.",
+    description: "An agent with context on your Github Issues and Discussions.",
     pictureUrl: "https://dust.tt/static/systemavatar/github_avatar_full.png",
     instructions:
       "Assist the user based on the retrieved data from their Github Issues and Discussions." +
@@ -1058,7 +1096,7 @@ function _getNotionGlobalAgent(
     connectorProvider: "notion",
     agentId: GLOBAL_AGENTS_SID.NOTION,
     name: "notion",
-    description: "An assistant with context on your Notion Spaces.",
+    description: "An agent with context on your Notion Spaces.",
     pictureUrl: "https://dust.tt/static/systemavatar/notion_avatar_full.png",
     instructions:
       "Assist the user based on the retrieved data from their Notion Spaces." +
@@ -1082,7 +1120,7 @@ function _getIntercomGlobalAgent(
     connectorProvider: "intercom",
     agentId: GLOBAL_AGENTS_SID.INTERCOM,
     name: "intercom",
-    description: "An assistant with context on your Intercom Help Center data.",
+    description: "An agent with context on your Intercom Help Center data.",
     pictureUrl: "https://dust.tt/static/systemavatar/intercom_avatar_full.png",
     instructions:
       "Assist the user based on the retrieved data from their Intercom Workspace." +
@@ -1104,7 +1142,7 @@ function _getDustGlobalAgent(
   const owner = auth.getNonNullableWorkspace();
 
   const name = "dust";
-  const description = "An assistant with context on your company data.";
+  const description = "An agent with context on your company data.";
   const pictureUrl = "https://dust.tt/static/systemavatar/dust_avatar_full.png";
 
   const modelConfiguration = auth.isUpgraded()
@@ -1180,13 +1218,13 @@ function _getDustGlobalAgent(
     };
   }
 
-  const instructions = `The assistant answers with precision and brevity. It produces short and straight to the point answers. The assistant should not provide additional information or content that the user did not ask for. When possible, the assistant should answer using a single sentence.
-    # When the user asks a questions to the assistant, the assistant should analyze the situation as follows.
-    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the assistant's own knowledge), the assistant should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
-    2. If the users's question requires information that is recent and likely to be found on the public internet, the assistant should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
-    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the assistant should both search the internal company data sources and the public internet before answering the user's question.
-    4. If the user's query require neither internal company data or recent public knowledge, the assistant is allowed to answer without using any tool.
-    The assistant always respects the mardown format and generates spaces to nest content.`;
+  const instructions = `The agent answers with precision and brevity. It produces short and straight to the point answers. The agent should not provide additional information or content that the user did not ask for. When possible, the agent should answer using a single sentence.
+    # When the user asks a questions to the agent, the agent should analyze the situation as follows.
+    1. If the user's question requires information that is likely private or internal to the company (and therefore unlikely to be found on the public internet or within the agent's own knowledge), the agent should search in the company's internal data sources to answer the question. Searching in all datasources is the default behavior unless the user has specified the location in which case it is better to search only on the specific data source. It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
+    2. If the users's question requires information that is recent and likely to be found on the public internet, the agent should use the internet to answer the question. That means performing a websearch and potentially browse some webpages.
+    3. If it is not obvious whether the information would be included in the internal company data sources or on the public internet, the agent should both search the internal company data sources and the public internet before answering the user's question.
+    4. If the user's query require neither internal company data or recent public knowledge, the agent is allowed to answer without using any tool.
+    The agent always respects the mardown format and generates spaces to nest content.`;
 
   // We push one action with all data sources
   const actions: AgentActionConfigurationType[] = [
@@ -1201,7 +1239,7 @@ function _getDustGlobalAgent(
         dataSourceId: dsView.dataSource.sId,
         dataSourceViewId: dsView.sId,
         workspaceId: preFetchedDataSources.workspaceId,
-        filter: { parents: null },
+        filter: { parents: null, tags: null },
       })),
       name: "search_all_data_sources",
       description: `The user's entire workspace data sources`,
@@ -1234,7 +1272,7 @@ function _getDustGlobalAgent(
           {
             workspaceId: preFetchedDataSources.workspaceId,
             dataSourceViewId: dsView.sId,
-            filter: { parents: null },
+            filter: { parents: null, tags: null },
           },
         ],
         name: "hidden_dust_search_" + dsView.dataSource.name,
@@ -1320,6 +1358,9 @@ function getGlobalAgent(
     case GLOBAL_AGENTS_SID.O1_HIGH_REASONING:
       agentConfiguration = _getO1HighReasoningGlobalAgent({ auth, settings });
       break;
+    case GLOBAL_AGENTS_SID.O3_MINI:
+      agentConfiguration = _getO3MiniGlobalAgent({ auth, settings });
+      break;
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
       agentConfiguration = _getClaudeInstantGlobalAgent({ settings });
       break;
@@ -1358,8 +1399,8 @@ function getGlobalAgent(
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       agentConfiguration = _getGeminiProGlobalAgent({ auth, settings });
       break;
-    case GLOBAL_AGENTS_SID.DEEPSEEK:
-      agentConfiguration = _getDeepSeekGlobalAgent({ auth, settings });
+    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
+      agentConfiguration = _getDeepSeekR1GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
@@ -1459,7 +1500,7 @@ export async function getGlobalAgents(
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
-  // user assistants).
+  // user agents).
   let agentsIdsToFetch =
     agentIds ??
     Object.values(GLOBAL_AGENTS_SID).filter(
@@ -1483,9 +1524,9 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
-  if (!flags.includes("deepseek_feature")) {
+  if (!flags.includes("deepseek_r1_global_agent_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK
+      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
     );
   }
 

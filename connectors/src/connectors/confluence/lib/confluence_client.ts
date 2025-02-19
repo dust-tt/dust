@@ -22,6 +22,7 @@ const ConfluenceAccessibleResourcesCodec = t.array(
 const ConfluenceSpaceCodec = t.intersection([
   t.type({
     id: t.string,
+    key: t.string,
     name: t.string,
     _links: t.type({
       webui: t.string,
@@ -53,6 +54,49 @@ const ConfluencePageCodec = t.intersection([
     _links: t.type({
       tinyui: t.string,
     }),
+  }),
+  CatchAllCodec,
+]);
+
+const SearchConfluencePageCodec = t.intersection([
+  t.type({
+    id: t.string,
+    type: t.string,
+    status: t.string,
+    title: t.string,
+
+    // Version info.
+    version: t.type({
+      number: t.number,
+    }),
+
+    // Restrictions.
+    restrictions: t.type({
+      read: t.type({
+        restrictions: t.type({
+          user: t.type({
+            results: t.array(t.unknown),
+          }),
+          group: t.type({
+            results: t.array(t.unknown),
+          }),
+        }),
+      }),
+    }),
+
+    // Children info
+    childTypes: t.type({
+      page: t.type({
+        value: t.boolean,
+      }),
+    }),
+
+    // Ancestors (parent chain)
+    ancestors: t.array(
+      t.type({
+        id: t.string,
+      })
+    ),
   }),
   CatchAllCodec,
 ]);
@@ -546,43 +590,34 @@ export class ConfluenceClient {
   }
 
   async getPagesByIdsInSpace({
-    spaceId,
-    sort,
-    pageCursor,
+    spaceKey,
     pageIds,
     limit,
   }: {
-    spaceId: string;
-    sort?: "id" | "-modified-date";
-    pageCursor?: string | null;
-    pageIds?: string[];
+    spaceKey: string;
+    pageIds: string[];
     limit?: number;
   }) {
+    // Build CQL query to get pages with specific IDs.
+    const idClause = pageIds?.length ? ` AND id in (${pageIds.join(",")})` : "";
+    const cqlQuery = `type=page AND space="${spaceKey}"${idClause}`;
+
     const params = new URLSearchParams({
-      sort: sort ?? "id",
+      cql: cqlQuery,
       limit: limit?.toString() ?? "25",
-      status: "current",
-      "space-id": spaceId,
+      expand: [
+        "version", // to check if page changed.
+        "restrictions.read.restrictions.user", // to check user permissions.
+        "restrictions.read.restrictions.group", // to check group permissions.
+        "childTypes.page", // to know if it has children.
+        "ancestors", // to get parent info.
+      ].join(","),
     });
 
-    if (pageCursor) {
-      params.append("cursor", pageCursor);
-    }
-
-    if (pageIds && pageIds.length > 0) {
-      params.append("id", pageIds.join(","));
-    }
-
-    const pages = await this.request(
-      `${this.restApiBaseUrl}/pages?${params.toString()}`,
-      ConfluencePaginatedResults(ConfluencePageCodec)
+    return this.request(
+      `${this.legacyRestApiBaseUrl}/content/search?${params.toString()}`,
+      ConfluencePaginatedResults(SearchConfluencePageCodec)
     );
-    const nextPageCursor = extractCursorFromLinks(pages._links);
-
-    return {
-      pages: pages.results,
-      nextPageCursor,
-    };
   }
 
   async getPageById(pageId: string) {

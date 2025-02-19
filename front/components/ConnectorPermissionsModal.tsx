@@ -15,7 +15,6 @@ import {
   Icon,
   Input,
   LockIcon,
-  Modal,
   Page,
   Sheet,
   SheetContainer,
@@ -33,15 +32,15 @@ import type {
   ConnectorType,
   ContentNode,
   DataSourceType,
+  DataSourceViewType,
   LightWorkspaceType,
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
 import {
-  CONNECTOR_TYPE_TO_MISMATCH_ERROR,
+  assertNever,
   isOAuthProvider,
   isValidZendeskSubdomain,
-  MANAGED_DS_DELETABLE,
 } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
@@ -55,67 +54,32 @@ import { useSWRConfig } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
+import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
+import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { setupConnection } from "@app/components/spaces/AddConnectionMenu";
+import { AdvancedNotionManagement } from "@app/components/spaces/AdvancedNotionManagement";
 import { ConnectorDataUpdatedModal } from "@app/components/spaces/ConnectorDataUpdatedModal";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  isConnectorPermissionsEditable,
+} from "@app/lib/connector_providers";
+import {
+  getDisplayNameForDataSource,
+  isRemoteDatabase,
+} from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceActiveSubscription,
+} from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-
-import type { ContentNodeTreeItemStatus } from "./ContentNodeTree";
-import { ContentNodeTree } from "./ContentNodeTree";
-
-const PERMISSIONS_EDITABLE_CONNECTOR_TYPES: Set<ConnectorProvider> = new Set([
-  "confluence",
-  "slack",
-  "google_drive",
-  "microsoft",
-  "intercom",
-  "snowflake",
-  "zendesk",
-]);
-
-const CONNECTOR_TYPE_TO_PERMISSIONS: Record<
-  ConnectorProvider,
-  { selected: ConnectorPermission; unselected: ConnectorPermission } | undefined
-> = {
-  confluence: {
-    selected: "read",
-    unselected: "none",
-  },
-  slack: {
-    selected: "read_write",
-    unselected: "write",
-  },
-  google_drive: {
-    selected: "read",
-    unselected: "none",
-  },
-  microsoft: {
-    selected: "read",
-    unselected: "none",
-  },
-  notion: undefined,
-  github: undefined,
-  zendesk: {
-    selected: "read",
-    unselected: "none",
-  },
-  intercom: {
-    selected: "read",
-    unselected: "none",
-  },
-  webcrawler: undefined,
-  snowflake: {
-    selected: "read",
-    unselected: "none",
-  },
-};
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>
@@ -125,7 +89,7 @@ const getUseResourceHook =
       filterPermission: null,
       owner,
       parentId,
-      viewType: "documents",
+      viewType: "all",
     });
 
 export async function handleUpdatePermissions(
@@ -201,7 +165,8 @@ async function updateConnectorConnectionId(
   if (error.type === "connector_oauth_target_mismatch") {
     return {
       success: false,
-      error: CONNECTOR_TYPE_TO_MISMATCH_ERROR[provider as ConnectorProvider],
+      error:
+        CONNECTOR_CONFIGURATIONS[provider as ConnectorProvider].mismatchError,
     };
   }
   if (error.type === "connector_oauth_user_missing_rights") {
@@ -229,15 +194,21 @@ function DataSourceManagementModal({
   onClose,
 }: DataSourceManagementModalProps) {
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Manage Connection"
-      variant="side-sm"
-      hasChanged={false}
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <Page variant="modal">{children}</Page>
-    </Modal>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Manage Connection</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>{children}</SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -256,6 +227,7 @@ function DataSourceEditionModal({
   onEditPermissionsClick,
   owner,
 }: DataSourceEditionModalProps) {
+  const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
   const { user } = useUser();
 
@@ -286,10 +258,10 @@ function DataSourceEditionModal({
 
   const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
 
-  if (dataSource.connectorProvider === "snowflake") {
+  if (isRemoteDatabase(dataSource)) {
     return (
       <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
-        Edit Snowflake
+        Edit {connectorConfiguration.name}
       </DataSourceManagementModal>
     );
   }
@@ -299,7 +271,10 @@ function DataSourceEditionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`${connectorConfiguration.name} data & permissions`}
             />
@@ -312,7 +287,7 @@ function DataSourceEditionModal({
               </div>
               <div className="p-4 text-sm text-amber-900">
                 <b>Editing</b> can break the existing data structure in Dust and
-                Assistants using them.
+                Agents using them.
               </div>
 
               {connectorConfiguration.guideLink && (
@@ -366,8 +341,7 @@ function DataSourceEditionModal({
               icon={InformationCircleIcon}
             >
               Editing permission rights with a different account will likely
-              break the existing data structure in Dust and Assistants using
-              them.
+              break the existing data structure in Dust and Agents using them.
               {connectorConfiguration.guideLink && (
                 <div>
                   Read our{" "}
@@ -417,8 +391,8 @@ function DataSourceEditionModal({
               </DialogHeader>
               <DialogContainer>
                 The changes you are about to make may break existing{" "}
-                {connectorConfiguration.name} Data sources and the assistants
-                using them. Are you sure you want to continue?
+                {connectorConfiguration.name} Data sources and the agents using
+                them. Are you sure you want to continue?
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
@@ -453,6 +427,7 @@ function DataSourceDeletionModal({
   onClose,
   owner,
 }: DataSourceDeletionModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
   const { user } = useUser();
@@ -506,7 +481,10 @@ function DataSourceDeletionModal({
       <>
         <div className="mt-4 flex flex-col">
           <div className="flex items-center gap-2">
-            <Icon visual={connectorConfiguration.logoComponent} size="md" />
+            <Icon
+              visual={connectorConfiguration.getLogoComponent(isDark)}
+              size="md"
+            />
             <Page.SectionHeader
               title={`Deleting ${connectorConfiguration.name} connection`}
             />
@@ -517,7 +495,7 @@ function DataSourceDeletionModal({
               Important
             </div>
             <div className="p-4 text-sm text-amber-900">
-              <b>Deleting</b> will break Assistants using this data.
+              <b>Deleting</b> will break Agents using this data.
             </div>
           </div>
         </div>
@@ -556,9 +534,9 @@ function DataSourceDeletionModal({
               ) : (
                 <>
                   <DialogContainer>
-                    The changes you are about to make will break existing
-                    assistants using {connectorConfiguration.name}. Are you sure
-                    you want to continue?
+                    The changes you are about to make will break existing agents
+                    using {connectorConfiguration.name}. Are you sure you want
+                    to continue?
                   </DialogContainer>
                   <DialogFooter
                     leftButtonProps={{
@@ -585,7 +563,7 @@ function DataSourceDeletionModal({
 
 interface ConnectorPermissionsModalProps {
   connector: ConnectorType;
-  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
   isAdmin: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
@@ -596,7 +574,7 @@ interface ConnectorPermissionsModalProps {
 
 export function ConnectorPermissionsModal({
   connector,
-  dataSource,
+  dataSourceView,
   isAdmin,
   isOpen,
   onClose,
@@ -611,18 +589,25 @@ export function ConnectorPermissionsModal({
     Record<string, ContentNodeTreeItemStatus>
   >({});
 
-  const canUpdatePermissions = PERMISSIONS_EDITABLE_CONNECTOR_TYPES.has(
-    connector.type
+  const dataSource = dataSourceView.dataSource;
+
+  const isDeletable =
+    dataSource.connectorProvider &&
+    CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable;
+
+  const selectedPermission: ConnectorPermission = dataSource.connectorProvider
+    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+        .selected
+    : "none";
+
+  const unselectedPermission: ConnectorPermission = dataSource.connectorProvider
+    ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].permissions
+        .unselected
+    : "none";
+
+  const canUpdatePermissions = isConnectorPermissionsEditable(
+    dataSource.connectorProvider
   );
-  const selectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]?.selected) ||
-    "none";
-  const unselectedPermission: ConnectorPermission =
-    (dataSource.connectorProvider &&
-      CONNECTOR_TYPE_TO_PERMISSIONS[dataSource.connectorProvider]
-        ?.unselected) ||
-    "none";
 
   const useResourcesHook = useCallback(
     (parentId: string | null) =>
@@ -630,16 +615,18 @@ export function ConnectorPermissionsModal({
     [owner, dataSource]
   );
 
-  const { resources: allSelectedResources, isResourcesLoading } =
-    useConnectorPermissions({
-      dataSource,
-      filterPermission: "read",
+  const { nodes: allSelectedResources, isNodesLoading } =
+    useDataSourceViewContentNodes({
       owner,
-      parentId: null,
-      viewType: "documents",
-      includeParents: true,
+      dataSourceView,
+      viewType: "all",
       disabled: !canUpdatePermissions,
     });
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const advancedNotionManagement =
+    dataSource.connectorProvider === "notion" &&
+    featureFlags.includes("advanced_notion_management");
 
   const initialTreeSelectionModel = useMemo(
     () =>
@@ -803,10 +790,10 @@ export function ConnectorPermissionsModal({
                 </SheetTitle>
                 <div className="flex flex-row justify-end gap-2 py-1">
                   {(isOAuthProvider(connector.type) ||
-                    connector.type === "snowflake") && (
+                    isRemoteDatabase(dataSource)) && (
                     <Button
                       label={
-                        connector.type !== "snowflake"
+                        !isRemoteDatabase(dataSource)
                           ? "Edit permissions"
                           : "Edit connection"
                       }
@@ -817,7 +804,7 @@ export function ConnectorPermissionsModal({
                       }}
                     />
                   )}
-                  {MANAGED_DS_DELETABLE.includes(connector.type) && (
+                  {isDeletable && (
                     <Button
                       label="Delete connection"
                       variant="warning"
@@ -861,7 +848,7 @@ export function ConnectorPermissionsModal({
                       canUpdatePermissions ? selectedNodes : undefined
                     }
                     setSelectedNodes={
-                      canUpdatePermissions && !isResourcesLoading
+                      canUpdatePermissions && !isNodesLoading
                         ? setSelectedNodes
                         : undefined
                     }
@@ -869,7 +856,6 @@ export function ConnectorPermissionsModal({
                       CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
                     }
                   />
-
                   <div className="flex justify-end gap-2 border-t pt-4">
                     <Button
                       label="Cancel"
@@ -883,6 +869,13 @@ export function ConnectorPermissionsModal({
                       onClick={save}
                     />
                   </div>
+                  {advancedNotionManagement && (
+                    <AdvancedNotionManagement
+                      owner={owner}
+                      dataSource={dataSource}
+                      sendNotification={sendNotification}
+                    />
+                  )}
                 </div>
               </SheetContainer>
             </>
@@ -891,39 +884,75 @@ export function ConnectorPermissionsModal({
       </Sheet>
 
       {/* Keep existing modals for edition/deletion/data update states */}
-      {connector.type === "snowflake" ? (
-        <CreateOrUpdateConnectionSnowflakeModal
-          owner={owner}
-          connectorProviderConfiguration={
-            CONNECTOR_CONFIGURATIONS[connector.type]
-          }
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSourceToUpdate={dataSource}
-          onSuccess={() => {
-            setModalToShow("selection");
-          }}
-        />
-      ) : (
-        <DataSourceEditionModal
-          isOpen={modalToShow === "edition"}
-          onClose={() => closeModal(false)}
-          dataSource={dataSource}
-          owner={owner}
-          onEditPermissionsClick={async (
-            extraConfig: Record<string, string>
-          ) => {
-            await handleUpdatePermissions(
-              connector,
-              dataSource,
-              owner,
-              extraConfig,
-              sendNotification
+      {[connector].map((c) => {
+        switch (c.type) {
+          case "snowflake":
+            return (
+              <CreateOrUpdateConnectionSnowflakeModal
+                key={`snowflake-${modalToShow}`}
+                owner={owner}
+                connectorProviderConfiguration={
+                  CONNECTOR_CONFIGURATIONS[c.type]
+                }
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSourceToUpdate={dataSource}
+                onSuccess={() => {
+                  setModalToShow("selection");
+                }}
+              />
             );
-            closeModal(false);
-          }}
-        />
-      )}
+          case "bigquery":
+            return (
+              <CreateOrUpdateConnectionBigQueryModal
+                key={`bigquery-${modalToShow}`}
+                owner={owner}
+                connectorProviderConfiguration={
+                  CONNECTOR_CONFIGURATIONS[c.type]
+                }
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSourceToUpdate={dataSource}
+                onSuccess={() => {
+                  setModalToShow("selection");
+                }}
+              />
+            );
+          case "github":
+          case "confluence":
+          case "google_drive":
+          case "intercom":
+          case "notion":
+          case "slack":
+          case "microsoft":
+          case "zendesk":
+          case "webcrawler":
+          case "salesforce":
+            return (
+              <DataSourceEditionModal
+                key={`${c.type}-${modalToShow}`}
+                isOpen={modalToShow === "edition"}
+                onClose={() => closeModal(false)}
+                dataSource={dataSource}
+                owner={owner}
+                onEditPermissionsClick={async (
+                  extraConfig: Record<string, string>
+                ) => {
+                  await handleUpdatePermissions(
+                    connector,
+                    dataSource,
+                    owner,
+                    extraConfig,
+                    sendNotification
+                  );
+                  closeModal(false);
+                }}
+              />
+            );
+          default:
+            assertNever(c.type);
+        }
+      })}
 
       <DataSourceDeletionModal
         isOpen={modalToShow === "deletion"}

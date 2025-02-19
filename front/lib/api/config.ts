@@ -156,6 +156,9 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
+  getOAuthSalesforceClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SALESFORCE_CLIENT_ID");
+  },
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
@@ -170,25 +173,10 @@ const config = {
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
   },
-  getDustAppsSyncEnabled: (): boolean => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable("DUST_APPS_SYNC_ENABLED") ===
-      "true"
-    );
-  },
-  getDustAppsSyncMasterApiUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_URL");
-  },
-  getDustAppsSyncMasterWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_SYNC_MASTER_WORKSPACE_ID"
-    );
-  },
-  getDustAppsSyncMasterSpaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_SPACE_ID");
-  },
-  getDustAppsSyncMasterApiKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_KEY");
+  getMultiActionsAgentAnthropicBetaFlags: (): string[] | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
+    )?.split(",");
   },
 };
 

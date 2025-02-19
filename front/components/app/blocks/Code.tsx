@@ -1,5 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
+import { Label } from "@dust-tt/sparkle";
 import type { WorkspaceType } from "@dust-tt/types";
 import type {
   AppType,
@@ -9,7 +10,7 @@ import type {
 import type { BlockType, RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+import { shallowBlockClone } from "@app/lib/utils";
 
 import Block from "./Block";
 
@@ -55,6 +56,8 @@ export default function Code({
     onBlockUpdate(b);
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Block
       owner={owner}
@@ -73,38 +76,27 @@ export default function Code({
       onBlockNew={onBlockNew}
       canUseCache={false}
     >
-      <div className="mx-4 flex w-full flex-col">
-        <div className="flex flex-col space-y-1 text-sm font-medium leading-8 text-gray-700">
-          <div className="flex flex-initial items-center">code :</div>
+      <div className="flex w-full flex-col pt-2">
+        <div className="flex flex-col gap-2 text-sm">
+          <Label>Code</Label>
           <div className="flex w-full font-normal">
-            <div className="w-full leading-4">
-              <div
-                className={classNames(
-                  "border bg-slate-100",
-                  "border-slate-100"
-                )}
+            <div className="w-full">
+              <CodeEditor
+                data-color-mode={theme === "dark" ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleCodeChange(e.target.value)}
+                padding={15}
+                minHeight={80}
+                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
                 style={{
-                  minHeight: "80px",
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
                 }}
-              >
-                <CodeEditor
-                  data-color-mode="light"
-                  readOnly={readOnly}
-                  value={block.spec.code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleCodeChange(e.target.value)}
-                  padding={15}
-                  minHeight={78}
-                  className="bg-slate-100"
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                    backgroundColor: "rgb(241 245 249)",
-                  }}
-                />
-              </div>
+              />
             </div>
           </div>
         </div>

@@ -9,9 +9,9 @@ import { DataTypes } from "sequelize";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class AgentProcessConfiguration extends BaseModel<AgentProcessConfiguration> {
+export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -22,8 +22,6 @@ export class AgentProcessConfiguration extends BaseModel<AgentProcessConfigurati
   declare relativeTimeFrame: "auto" | "none" | "custom";
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
-
-  declare tagsIn: string[] | null;
 
   declare schema: ProcessSchemaPropertyType[];
 
@@ -58,10 +56,6 @@ AgentProcessConfiguration.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
-      allowNull: true,
-    },
-    tagsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     schema: {
@@ -116,7 +110,7 @@ AgentProcessConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Process Action
  */
-export class AgentProcessAction extends BaseModel<AgentProcessAction> {
+export class AgentProcessAction extends WorkspaceAwareModel<AgentProcessAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -125,6 +119,9 @@ export class AgentProcessAction extends BaseModel<AgentProcessAction> {
 
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
+
+  declare tagsIn: string[] | null;
+  declare tagsNot: string[] | null;
 
   declare schema: ProcessSchemaPropertyType[];
   declare outputs: ProcessActionOutputsType | null;
@@ -161,6 +158,14 @@ AgentProcessAction.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNot: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     schema: {

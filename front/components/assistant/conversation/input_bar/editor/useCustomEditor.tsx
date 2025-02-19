@@ -11,6 +11,7 @@ import { MentionWithPaste } from "@app/components/assistant/conversation/input_b
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { ParagraphExtension } from "@app/components/text_editor/extensions";
+import { isMobile } from "@app/lib/utils";
 
 export interface EditorMention {
   id: string;
@@ -184,7 +185,7 @@ const useCustomEditor = ({
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     enableInputRules: false, // Disable Markdown when typing.
-    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @assistant-name from plain text back into a mention.
+    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @agent-name from plain text back into a mention.
     extensions: [
       StarterKit.configure({
         heading: false,
@@ -234,6 +235,11 @@ const useCustomEditor = ({
           const mentionPluginState = MentionPluginKey.getState(view.state);
           // Let the mention extension handle the event if its dropdown is currently opened.
           if (mentionPluginState?.active) {
+            return false;
+          }
+
+          // On mobile, we want to let the user go to the next line and not immediately send
+          if (isMobile(navigator)) {
             return false;
           }
 

@@ -31,6 +31,8 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "notion":
       case "zendesk":
       case "snowflake":
+      case "bigquery":
+      case "salesforce":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":
         return ds.name;
@@ -72,15 +74,17 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
 
 export function isRemoteDatabase(
   ds: DataSource
-): ds is DataSource & WithConnector & { connectorProvider: "snowflake" } {
-  return ds.connectorProvider === "snowflake";
+): ds is DataSource &
+  WithConnector & { connectorProvider: "snowflake" | "bigquery" } {
+  return (
+    ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
+  );
 }
 
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
   "microsoft",
-  "snowflake",
 ];
 
 export function supportsDocumentsData(ds: DataSource): boolean {
@@ -90,6 +94,7 @@ export function supportsDocumentsData(ds: DataSource): boolean {
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
+      isRemoteDatabase(ds) ||
       (ds.connectorProvider &&
         STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );

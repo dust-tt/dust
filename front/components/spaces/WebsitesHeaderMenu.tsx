@@ -6,7 +6,7 @@ import type {
 } from "@dust-tt/types";
 import { useState } from "react";
 
-import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
+import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal";
 
 type WebsitesHeaderMenuProps = {
   owner: WorkspaceType;
@@ -33,6 +33,7 @@ export const WebsitesHeaderMenu = ({
         owner={owner}
         space={space}
         dataSourceView={dataSourceView}
+        canWriteInSpace={canWriteInSpace}
       />
       <Button
         size="sm"

@@ -23,6 +23,7 @@ import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -41,6 +42,10 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+
+// TODO(nodes-core): remove this upon project cleanup
+// copied from lib/api/data_source_view.ts
+const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -443,6 +448,7 @@ const SpaceDataSourceViewItem = ({
   space: SpaceType;
   node?: DataSourceViewContentNode;
 }): ReactElement => {
+  const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -451,7 +457,7 @@ const SpaceDataSourceViewItem = ({
     dataSourceView: item,
     owner,
     parentId: node?.internalId,
-    viewType: "documents",
+    viewType: "all",
     disabled: !isExpanded,
     swrOptions: {
       revalidateOnFocus: false,
@@ -467,7 +473,7 @@ const SpaceDataSourceViewItem = ({
     dataSourceView: item,
     owner,
     internalIds: [router.query.parentId as string],
-    viewType: "documents",
+    viewType: "all",
     disabled: !router.asPath.startsWith(basePath) || !router.query.parentId,
   });
 
@@ -487,10 +493,10 @@ const SpaceDataSourceViewItem = ({
 
   const LogoComponent = node
     ? getVisualForContentNode(node)
-    : getConnectorProviderLogoWithFallback(
-        item.dataSource.connectorProvider,
-        FolderIcon
-      );
+    : getConnectorProviderLogoWithFallback({
+        provider: item.dataSource.connectorProvider,
+        isDark,
+      });
 
   const dataSourceViewPath = node
     ? `${basePath}?parentId=${node?.internalId}`
@@ -501,6 +507,15 @@ const SpaceDataSourceViewItem = ({
   const notExpandableNodes = nodes.filter((node) => !node.expandable);
   const notExpandableNodesLabel =
     notExpandableNodes.length === 1 ? "item" : "items";
+
+  // TODO(nodes-core): remove this upon project cleanup
+  // if looking at a static datasource view with more than the pagination limit,
+  // show a ">" to indicate that there are more items
+  const staticDsPlusIfMoreThanLimit =
+    item.category === "folder" &&
+    nodes.length >= DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT
+      ? "+"
+      : "";
 
   return (
     <Tree.Item
@@ -533,7 +548,7 @@ const SpaceDataSourceViewItem = ({
               label={
                 expandableNodes.length
                   ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
-                  : `${notExpandableNodes.length} ${notExpandableNodesLabel}`
+                  : `${notExpandableNodes.length}${staticDsPlusIfMoreThanLimit} ${notExpandableNodesLabel}`
               }
               onItemClick={async () => {
                 await setNavigationSelection({ lastSpaceId: space.sId });

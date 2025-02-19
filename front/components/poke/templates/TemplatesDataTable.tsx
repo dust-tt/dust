@@ -6,7 +6,7 @@ import Link from "next/link";
 import React, { useState } from "react";
 
 import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { usePokeAssistantTemplates } from "@app/poke/swr";
+import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 
 export interface TemplatesDisplayType {
   id: string;
@@ -84,9 +84,14 @@ export function makeColumnsForTemplates() {
   ];
 }
 
-export function TemplatesDataTable() {
+export function TemplatesDataTable({
+  dustRegionSyncEnabled,
+}: {
+  dustRegionSyncEnabled: boolean;
+}) {
   const { assistantTemplates, isAssistantTemplatesLoading } =
     usePokeAssistantTemplates();
+  const { doPull, isPulling } = usePokePullTemplates();
   const [templateSearch, setTemplateSearch] = useState<string>("");
 
   const data = prepareTemplatesForDisplay(assistantTemplates);
@@ -96,6 +101,20 @@ export function TemplatesDataTable() {
     <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
+        {dustRegionSyncEnabled && (
+          <PokeButton
+            aria-label="Pull templates"
+            variant="outline"
+            size="sm"
+            disabled={isPulling}
+            asChild
+            onClick={async () => {
+              await doPull();
+            }}
+          >
+            <Link href="#">{isPulling ? <Spinner /> : "Pull templates"}</Link>
+          </PokeButton>
+        )}
         <PokeButton
           aria-label="Create template"
           variant="outline"

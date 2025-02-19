@@ -17,11 +17,13 @@ use parking_lot::RwLock;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::chat_messages::{AssistantChatMessage, ContentBlock, UserChatMessage};
-use super::llm::ChatMessageRole;
+use super::helpers::strip_tools_fromn_chat_history;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, TransformSystemMessages,
 };
+
+// ModelIds that support tools
+const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &["deepseek-chat"];
 
 pub struct DeepseekLLM {
     id: String,
@@ -129,25 +131,25 @@ impl LLM for DeepseekLLM {
             self.id.clone(),
             self.api_key.clone().unwrap(),
             // Pre-process messages if model is deepseek-reasoner.
-            match self.id.as_str() {
-                "deepseek-reasoner" => Some(pre_process_chat_history_for_r1(messages)),
-                _ => None,
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => Some(strip_tools_fromn_chat_history(messages)),
+                true => None,
             }
             .as_ref()
             .map(|m| m.as_ref())
             .unwrap_or(messages),
             // Remove functions if model is deepseek-reasoner.
-            match self.id.as_str() {
-                "deepseek-reasoner" => None,
-                _ => Some(functions),
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => None,
+                true => Some(functions),
             }
             .as_ref()
             .map(|m| m.as_ref())
             .unwrap_or(functions),
             // Remove function call if model is deepseek-reasoner.
-            match self.id.as_str() {
-                "deepseek-reasoner" => None,
-                _ => function_call,
+            match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
+                false => None,
+                true => function_call,
             },
             temperature,
             top_p,
@@ -234,58 +236,4 @@ impl Provider for DeepseekProvider {
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {
         unimplemented!()
     }
-}
-
-fn pre_process_chat_history_for_r1(messages: &Vec<ChatMessage>) -> Vec<ChatMessage> {
-    // For assistant messages, we remove function/tool calls (and we format them in the "contet" field instead).
-    // For function/tool result messages, we transform them into user messages.
-
-    let mut new_messages = Vec::new();
-    for message in messages {
-        match message {
-            ChatMessage::System(message) => {
-                new_messages.push(ChatMessage::System(message.clone()));
-            }
-            ChatMessage::User(message) => {
-                new_messages.push(ChatMessage::User(message.clone()));
-            }
-            ChatMessage::Assistant(message) => {
-                let mut content = message.content.clone().unwrap_or_default();
-                if !content.is_empty() {
-                    content = format!("{}\n", content);
-                }
-                if let Some(function_calls) = &message.function_calls {
-                    if function_calls.len() > 0 {
-                        let tool_calls_formatted = message
-                            .function_calls
-                            .clone()
-                            .unwrap_or_default()
-                            .iter()
-                            .map(|call| format!("function_call {}({})", call.name, call.arguments))
-                            .collect::<Vec<String>>()
-                            .join("\n");
-                        content = format!("{}{}", content, tool_calls_formatted);
-                    }
-                }
-                new_messages.push(ChatMessage::Assistant(AssistantChatMessage {
-                    content: Some(content),
-                    name: message.name.clone(),
-                    role: message.role.clone(),
-                    // Unused for r1:
-                    reasoning_content: None,
-                    function_call: None,
-                    function_calls: None,
-                }));
-            }
-            ChatMessage::Function(message) => {
-                new_messages.push(ChatMessage::User(UserChatMessage {
-                    content: ContentBlock::Text(message.content.clone()),
-                    role: ChatMessageRole::User,
-                    name: message.name.clone(),
-                }));
-            }
-        }
-    }
-
-    new_messages
 }

@@ -3,8 +3,8 @@ export const WHITELISTABLE_FEATURES = [
   "okta_enterprise_connection",
   "labs_transcripts",
   "labs_transcripts_full_storage",
+  "labs_transcripts_meet_scope",
   "document_tracker",
-  "use_app_for_header_detection",
   "openai_o1_feature",
   "openai_o1_mini_feature",
   "openai_o1_high_reasoning_feature",
@@ -13,11 +13,13 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_feature",
   "google_ai_studio_experimental_models_feature",
   "index_private_slack_channel",
-  "conversations_jit_actions",
   "disable_run_logs",
   "labs_trackers",
   "show_debug_tools",
   "labs_github_actions",
+  "deepseek_r1_global_agent_feature",
+  "salesforce_feature",
+  "advanced_notion_management",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

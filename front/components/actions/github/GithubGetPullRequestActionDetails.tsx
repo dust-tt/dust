@@ -17,7 +17,10 @@ export function GithubGetPullRequestActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <p className="text-sm font-normal text-muted-foreground">
-          {`https://github.com/${owner}/${repo}/pull/${pullNumber}`}
+          <a
+            href={`https://github.com/${owner}/${repo}/pull/${pullNumber}`}
+            target="_blank"
+          >{`https://github.com/${owner}/${repo}/pull/${pullNumber}`}</a>
         </p>
       </div>
     </ActionDetailsWrapper>

@@ -18,6 +18,10 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare parentsIn: string[] | null;
   declare parentsNotIn: string[] | null;
 
+  declare tagsMode: "custom" | "auto" | null;
+  declare tagsIn: string[] | null;
+  declare tagsNotIn: string[] | null;
+
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
@@ -53,6 +57,18 @@ AgentDataSourceConfiguration.init(
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
+    tagsMode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNotIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_data_source_configuration",
@@ -64,12 +80,34 @@ AgentDataSourceConfiguration.init(
     ],
     sequelize: frontSequelize,
     hooks: {
-      beforeValidate: (dataSourceConfig: AgentDataSourceConfiguration) => {
+      beforeValidate: (dsConfig: AgentDataSourceConfiguration) => {
+        // Checking parents.
         if (
-          (dataSourceConfig.parentsIn === null) !==
-          (dataSourceConfig.parentsNotIn === null)
+          (dsConfig.parentsIn === null) !==
+          (dsConfig.parentsNotIn === null)
         ) {
           throw new Error("Parents must be both set or both null");
+        }
+        // Checking tags.
+        if ((dsConfig.tagsIn === null) !== (dsConfig.tagsNotIn === null)) {
+          throw new Error("Tags must be both set or both null");
+        }
+        if (dsConfig.tagsMode === "auto") {
+          if (!dsConfig.tagsIn || !dsConfig.tagsNotIn) {
+            throw new Error("TagsIn/notIn must be set if tagsMode is auto.");
+          }
+        } else if (dsConfig.tagsMode === "custom") {
+          if (!dsConfig.tagsIn?.length && !dsConfig.tagsNotIn?.length) {
+            throw new Error(
+              "TagsIn/notIn can't be both empty if tagsMode is custom"
+            );
+          }
+        } else {
+          if (dsConfig.tagsIn !== null || dsConfig.tagsNotIn !== null) {
+            throw new Error(
+              "TagsIn/notIn must be null if tagsMode is auto or null"
+            );
+          }
         }
       },
     },

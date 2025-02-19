@@ -3,14 +3,16 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentModelConfigurationType,
+  AgentReasoningEffort,
   AgentsGetViewType,
   AgentStatus,
   AppType,
   DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
+  ModelIdType,
+  ModelProviderIdType,
   ProcessSchemaPropertyType,
-  ProcessTagsFilter,
   Result,
   RetrievalQuery,
   RetrievalTimeframe,
@@ -32,15 +34,19 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import {
   DEFAULT_BROWSE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
+import { fetchGithubActionConfigurations } from "@app/lib/api/assistant/configuration/github";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
+import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
 import {
   createTableDataSourceConfiguration,
@@ -60,6 +66,7 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
+import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { AgentTablesQueryConfiguration } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
@@ -72,8 +79,6 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
-
-import { fetchGithubActionConfigurations } from "./configuration/github";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
@@ -466,6 +471,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
     githubActionsConfigurationsPerAgent,
+    reasoningActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -475,6 +481,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchGithubActionConfigurations({ configurationIds, variant }),
+    fetchReasoningActionConfigurations({ configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -519,6 +526,21 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const githubActionsConfigurations =
         githubActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...githubActionsConfigurations);
+
+      // Reasoning configurations
+      const reasoningActionsConfigurations =
+        reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...reasoningActionsConfigurations);
+    }
+
+    const model: (typeof agentConfigurationType)["model"] = {
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+      temperature: agent.temperature,
+    };
+
+    if (agent.reasoningEffort) {
+      model.reasoningEffort = agent.reasoningEffort;
     }
 
     const agentConfigurationType: AgentConfigurationType = {
@@ -532,11 +554,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
       pictureUrl: agent.pictureUrl,
       description: agent.description,
       instructions: agent.instructions,
-      model: {
-        providerId: agent.providerId,
-        modelId: agent.modelId,
-        temperature: agent.temperature,
-      },
+      model,
       status: agent.status,
       actions,
       versionAuthorId: agent.authorId,
@@ -965,7 +983,6 @@ export async function createAgentActionConfiguration(
     | {
         type: "process_configuration";
         relativeTimeFrame: RetrievalTimeframe;
-        tagsFilter: ProcessTagsFilter | null;
         dataSources: DataSourceConfiguration[];
         schema: ProcessSchemaPropertyType[];
       }
@@ -977,6 +994,16 @@ export async function createAgentActionConfiguration(
       }
     | {
         type: "github_get_pull_request_configuration";
+      }
+    | {
+        type: "github_create_issue_configuration";
+      }
+    | {
+        type: "reasoning_configuration";
+        providerId: ModelProviderIdType;
+        modelId: ModelIdType;
+        temperature: number | null;
+        reasoningEffort: AgentReasoningEffort | null;
       }
   ) & {
     name: string | null;
@@ -1096,11 +1123,11 @@ export async function createAgentActionConfiguration(
             relativeTimeFrameUnit: isTimeFrame(action.relativeTimeFrame)
               ? action.relativeTimeFrame.unit
               : null,
-            tagsIn: action.tagsFilter?.in ?? null,
             agentConfigurationId: agentConfiguration.id,
             schema: action.schema,
             name: action.name,
             description: action.description,
+            workspaceId: owner.id,
           },
           { transaction: t }
         );
@@ -1115,7 +1142,6 @@ export async function createAgentActionConfiguration(
           sId: processConfig.sId,
           type: "process_configuration",
           relativeTimeFrame: action.relativeTimeFrame,
-          tagsFilter: action.tagsFilter,
           schema: action.schema,
           dataSources: action.dataSources,
           name: action.name || DEFAULT_PROCESS_ACTION_NAME,
@@ -1175,6 +1201,49 @@ export async function createAgentActionConfiguration(
         description: action.description,
       });
     }
+    case "github_create_issue_configuration": {
+      const githubConfig = await AgentGithubConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        actionType: "github_create_issue_action",
+        name: action.name,
+        description: action.description,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: githubConfig.id,
+        sId: githubConfig.sId,
+        type: "github_create_issue_configuration",
+        name: action.name || DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "reasoning_configuration": {
+      const reasoningConfig = await AgentReasoningConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        name: action.name,
+        description: action.description,
+        providerId: action.providerId,
+        modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: reasoningConfig.id,
+        sId: reasoningConfig.sId,
+        type: "reasoning_configuration",
+        providerId: action.providerId,
+        modelId: action.modelId,
+        temperature: action.temperature,
+        reasoningEffort: action.reasoningEffort,
+        name: action.name || DEFAULT_REASONING_ACTION_NAME,
+        description: action.description,
+      });
+    }
     default:
       assertNever(action);
   }
@@ -1228,6 +1297,21 @@ async function _createAgentDataSourcesConfigData(
           "Can't create AgentDataSourceConfiguration for retrieval: DataSourceView not found."
         );
 
+        const tagsFilter = dsConfig.filter.tags;
+        let tagsMode: "auto" | "custom" | null = null;
+        let tagsIn: string[] | null = null;
+        let tagsNotIn: string[] | null = null;
+
+        if (tagsFilter?.mode === "auto") {
+          tagsMode = "auto";
+          tagsIn = tagsFilter.in ?? [];
+          tagsNotIn = tagsFilter.not ?? [];
+        } else if (tagsFilter?.mode === "custom") {
+          tagsMode = "custom";
+          tagsIn = tagsFilter.in ?? [];
+          tagsNotIn = tagsFilter.not ?? [];
+        }
+
         return AgentDataSourceConfiguration.create(
           {
             dataSourceId: dataSourceView.dataSource.id,
@@ -1236,6 +1320,9 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            tagsMode,
+            tagsIn,
+            tagsNotIn,
             workspaceId: owner.id,
           },
           { transaction: t }

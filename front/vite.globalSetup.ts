@@ -9,6 +9,12 @@ export default async function setup() {
     );
   }
 
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error(
+      `NODE_ENV must be set to "test" (value: ${process.env.NODE_ENV}). Action: make sure your have the correct environnement variable set.`
+    );
+  }
+
   process.env = {
     // Keep essential Node vars
     NODE_ENV: process.env.NODE_ENV,
@@ -16,6 +22,7 @@ export default async function setup() {
 
     // Add any other essential vars you need to keep
     FRONT_DATABASE_URI: process.env.FRONT_DATABASE_URI,
+    DUST_US_URL: "http://fake-url",
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
   };
 }

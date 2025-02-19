@@ -177,20 +177,12 @@ export const UseCases: UseCaseProps = {
   ],
 };
 
-// export const Quote: QuoteProps = {
-//   quote:
-//     "It's pretty miraculous. The assistant answers (correctly!) tons of questions that I used to deal with. It gets the nuance right and cites its sources.",
-//   name: "Everett Berry ",
-//   title: "Head of GTM Engineering at Clay",
-//   logo: "/static/landing/logos/clay.png",
-// };
-
 export const Quote: QuoteProps = {
   quote:
-    "We built Dust assistants that do account summaries, meeting transcripts, CRM updates, follow-up email generation... This allowed Alan to reach 20%+ productivity gains in Sales productivity gains.",
-  name: "Charles Gorintin ",
-  title: "Co-founder at Alan",
-  logo: "/static/landing/logos/alan.png",
+    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
+  name: "Everett Berry ",
+  title: "Head of GTM Engineering at Clay",
+  logo: "/static/landing/logos/clay.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -203,21 +195,21 @@ export const Stories: CustomerStory[] = [
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
-      "Dust assistants significantly lowered their acquisition costs, allowing them to hire more salespeople.",
+      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
     href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
   },
   {
-    title: "Kyriba's RFP Assistant for improving pre-sales efficiency",
+    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
       "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
   {
-    title: "Lifen uses Dust AI assistants to boost team productivity", // Soon to be replaced with Clay for RFP?
+    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
     content:
-      "Lifen uses Dust AI assistants to boost team productivity and save hours of work each week.",
+      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },
@@ -225,66 +217,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "🖋️",
-    name: "@outboundDraft",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Generates personalized and&nbsp;effective cold emails or&nbsp;follow-up
-        emails with the&nbsp;context of&nbsp;the relationship
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@accountSummary",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates a&nbsp;snapshot by&nbsp;retrieving data from&nbsp;your CRM,
-        Slack, Notion, including health and&nbsp;sentiment to&nbsp;understand
-        where to&nbsp;focus attention
-      </>
-    ),
-  },
-  {
-    emoji: "📞",
-    name: "@callCoach",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Points to&nbsp;battle cards, competitive intelligence,
-        and&nbsp;objection handling documentation to&nbsp;increase conversion
-      </>
-    ),
-  },
-  {
     emoji: "📊",
-    name: "@salesMetrics",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>Answers any question on&nbsp;revenue metrics directly from&nbsp;Slack</>
-    ),
-  },
-  {
-    emoji: "🔮",
-    name: "@salesWisdom",
+    name: "@accountSnapshot",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Processes all call transcripts to&nbsp;extract recurring themes
-        or&nbsp;insights
+        Creates comprehensive account summaries by aggregating key historical
+        interactions from multiple data sources
       </>
     ),
   },
   {
-    emoji: "🚀",
-    name: "@salesShoutout",
+    emoji: "📝",
+    name: "@meetingRecap",
     backgroundColor: "bg-emerald-300",
     description: (
       <>
-        Highlights performance outliers across the&nbsp;team based on&nbsp;CRM
-        data and&nbsp;growth priorities
+        Automatically generates customized meeting summaries and follow-up
+        emails from call transcripts with enriched prospect information
+      </>
+    ),
+  },
+  {
+    emoji: "📋",
+    name: "@prospectHelper",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Streamlines response process for security questionnaires and RFPs by
+        auto-populating with current company data
+      </>
+    ),
+  },
+  {
+    emoji: "🎯",
+    name: "@salesCoach",
+    backgroundColor: "bg-emerald-300",
+    description: (
+      <>
+        Analyzes call transcripts to provide pitch optimization feedback and
+        identify patterns in deal outcomes
       </>
     ),
   },

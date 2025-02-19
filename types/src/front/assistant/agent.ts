@@ -12,6 +12,8 @@ import {
   DustAppRunParamsEvent,
 } from "../../front/assistant/actions/dust_app_run";
 import {
+  GithubCreateIssueConfigurationType,
+  GithubCreateIssueParamsEvent,
   GithubGetPullRequestConfigurationType,
   GithubGetPullRequestParamsEvent,
 } from "../../front/assistant/actions/github";
@@ -39,12 +41,20 @@ import {
 } from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import {
+  ReasoningConfigurationType,
+  ReasoningStartedEvent,
+  ReasoningThinkingEvent,
+  ReasoningTokensEvent,
+} from "./actions/reasoning";
 
 /**
  * Agent Action configuration
  */
 
-type GithubAgentActionConfigurationType = GithubGetPullRequestConfigurationType;
+type GithubAgentActionConfigurationType =
+  | GithubGetPullRequestConfigurationType
+  | GithubCreateIssueConfigurationType;
 
 export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
@@ -53,7 +63,8 @@ export type AgentActionConfigurationType =
   | ProcessConfigurationType
   | WebsearchConfigurationType
   | BrowseConfigurationType
-  | GithubAgentActionConfigurationType;
+  | GithubAgentActionConfigurationType
+  | ReasoningConfigurationType;
 
 type ConversationAgentActionConfigurationType =
   ConversationIncludeFileConfigurationType;
@@ -74,7 +85,8 @@ export type UnsavedAgentActionConfigurationType =
   | UnsavedConfiguration<ProcessConfigurationType>
   | UnsavedConfiguration<WebsearchConfigurationType>
   | UnsavedConfiguration<BrowseConfigurationType>
-  | UnsavedConfiguration<GithubAgentActionConfigurationType>;
+  | UnsavedConfiguration<GithubAgentActionConfigurationType>
+  | UnsavedConfiguration<ReasoningConfigurationType>;
 
 export type AgentAction =
   | AgentActionConfigurationType["type"]
@@ -137,7 +149,7 @@ export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
  * Agent configuration scope
- * - 'global' scope are Dust assistants, not editable, inside-list for all, cannot be overriden
+ * - 'global' scope are Dust agents, not editable, inside-list for all, cannot be overriden
  * - 'workspace' scope are editable by builders only,  inside-list by default but user can change it
  * - 'published' scope are editable by everybody, outside-list by default
  * - 'private' scope are editable by author only, inside-list for author, cannot be overriden (so no
@@ -318,7 +330,11 @@ export type AgentActionSpecificEvent =
   | WebsearchParamsEvent
   | BrowseParamsEvent
   | ConversationIncludeFileParamsEvent
-  | GithubGetPullRequestParamsEvent;
+  | GithubGetPullRequestParamsEvent
+  | GithubCreateIssueParamsEvent
+  | ReasoningStartedEvent
+  | ReasoningThinkingEvent
+  | ReasoningTokensEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

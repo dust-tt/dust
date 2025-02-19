@@ -27,14 +27,16 @@ import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React from "react";
 
+import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { SpaceDataTable } from "@app/components/poke/spaces/table";
 import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/table";
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
@@ -163,91 +165,89 @@ const WorkspacePage = ({
 
   return (
     <>
-      <div className="min-h-screen bg-structure-50">
-        <PokeNavbar />
-        <div className="ml-8 p-6">
-          <div className="flex justify-between gap-3">
-            <div className="flex-grow">
-              <span className="text-2xl font-bold">{owner.name}</span>
-              <div className="flex gap-4 pt-2">
-                <Button
-                  href={`/poke/${owner.sId}/memberships`}
-                  label="View members"
-                  variant="outline"
-                />
-                <DustAppLogsModal
-                  owner={owner}
-                  registry={registry}
-                  baseUrl={baseUrl}
-                />
-                <DeleteWorkspaceModal
-                  owner={owner}
-                  subscription={activeSubscription}
-                  dataSources={dataSources}
-                />
-              </div>
-            </div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    label={`Segmentation: ${owner.segmentation ?? "none"}`}
-                    variant="outline"
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {[null, "interesting"].map((segment) => (
-                    <DropdownMenuItem
-                      label={segment ?? "none"}
-                      key={segment ?? "all"}
-                      onClick={() => {
-                        void onWorkspaceUpdate(
-                          segment as WorkspaceSegmentationType
-                        );
-                      }}
-                    />
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+      <div className="ml-8 p-6">
+        <div className="flex justify-between gap-3">
+          <div className="flex-grow">
+            <span className="text-2xl font-bold">{owner.name}</span>
+            <div className="flex gap-4 pt-2">
+              <Button
+                href={`/poke/${owner.sId}/memberships`}
+                label="View members"
+                variant="outline"
+              />
+              <DustAppLogsModal
+                owner={owner}
+                registry={registry}
+                baseUrl={baseUrl}
+              />
+              <DeleteWorkspaceModal
+                owner={owner}
+                subscription={activeSubscription}
+                dataSources={dataSources}
+              />
             </div>
           </div>
-
-          <div className="flex-col justify-center">
-            <div className="flex flex-col space-y-8">
-              <div className="mt-4 flex flex-col space-x-3 lg:flex-row">
-                <WorkspaceInfoTable
-                  owner={owner}
-                  workspaceVerifiedDomain={workspaceVerifiedDomain}
-                  worspaceCreationDay={worspaceCreationDay}
-                  extensionConfig={extensionConfig}
+          <div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  isSelect
+                  label={`Segmentation: ${owner.segmentation ?? "none"}`}
+                  variant="outline"
+                  size="sm"
                 />
-                <div className="flex flex-grow flex-col gap-4">
-                  <PluginList
-                    resourceType="workspaces"
-                    workspaceResource={{
-                      workspace: owner,
-                      resourceId: owner.sId,
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {[null, "interesting"].map((segment) => (
+                  <DropdownMenuItem
+                    label={segment ?? "none"}
+                    key={segment ?? "all"}
+                    onClick={() => {
+                      void onWorkspaceUpdate(
+                        segment as WorkspaceSegmentationType
+                      );
                     }}
                   />
-                  <ActiveSubscriptionTable
-                    owner={owner}
-                    subscription={activeSubscription}
-                    subscriptions={subscriptions}
-                  />
-                </div>
-              </div>
-              <DataSourceDataTable owner={owner} />
-              <DataSourceViewsDataTable owner={owner} />
-              <SpaceDataTable owner={owner} />
-              <AssistantsDataTable owner={owner} />
-              <FeatureFlagsDataTable
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <div className="flex-col justify-center">
+          <div className="flex flex-col space-y-8">
+            <div className="mt-4 flex flex-col space-x-3 lg:flex-row">
+              <WorkspaceInfoTable
                 owner={owner}
-                whitelistableFeatures={whitelistableFeatures}
+                workspaceVerifiedDomain={workspaceVerifiedDomain}
+                worspaceCreationDay={worspaceCreationDay}
+                extensionConfig={extensionConfig}
               />
-              <TrackerDataTable owner={owner} />
+              <div className="flex flex-grow flex-col gap-4">
+                <PluginList
+                  resourceType="workspaces"
+                  workspaceResource={{
+                    workspace: owner,
+                    resourceId: owner.sId,
+                  }}
+                />
+                <ActiveSubscriptionTable
+                  owner={owner}
+                  subscription={activeSubscription}
+                  subscriptions={subscriptions}
+                />
+              </div>
             </div>
+            <DataSourceDataTable owner={owner} />
+            <DataSourceViewsDataTable owner={owner} />
+            <SpaceDataTable owner={owner} />
+            <AssistantsDataTable owner={owner} />
+            <AppDataTable owner={owner} />
+            <FeatureFlagsDataTable
+              owner={owner}
+              whitelistableFeatures={whitelistableFeatures}
+            />
+            <TrackerDataTable owner={owner} />
           </div>
         </div>
       </div>
@@ -404,4 +404,9 @@ export function DeleteWorkspaceModal({
     </Sheet>
   );
 }
+
+WorkspacePage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
+};
+
 export default WorkspacePage;

@@ -202,7 +202,7 @@ export function useFileUploaderService(conversationId?: string) {
 
       return new Ok({
         ...fileBlob,
-        fileId: fileUploaded.id,
+        fileId: fileUploaded.sId,
         isUploading: false,
         preview: isSupportedImageContentType(fileBlob.contentType)
           ? `${fileUploaded.downloadUrl}?action=view`

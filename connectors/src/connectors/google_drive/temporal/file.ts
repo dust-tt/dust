@@ -5,6 +5,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { GaxiosError } from "googleapis-common";
 import type { CreationAttributes } from "sequelize";
 
+import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
 import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import {
   getMimeTypesToDownload,
@@ -22,6 +23,7 @@ import {
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import {
   MAX_DOCUMENT_TXT_LEN,
   MAX_FILE_SIZE_TO_DOWNLOAD,
@@ -203,6 +205,7 @@ async function handleFileExport(
       provider: "google_drive",
       connectorId,
       parents,
+      tags: file.labels,
     });
   } else if (file.mimeType === "text/markdown") {
     const textContent = handleTextFile(res.data, maxDocumentLen);
@@ -228,6 +231,7 @@ async function handleFileExport(
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
   }
   if (result.isErr()) {
+    localLogger.error({ error: result.error }, "Could not handle file.");
     return null;
   }
 
@@ -475,6 +479,9 @@ async function upsertGdriveDocument(
     createdAt: file.createdAtMs ? new Date(file.createdAtMs) : undefined,
     lastEditor: file.lastEditor ? file.lastEditor.displayName : undefined,
     content: documentContent,
+    additionalPrefixes: {
+      labels: file.labels.join(", "),
+    },
   });
 
   if (documentContent === undefined) {
@@ -489,10 +496,12 @@ async function upsertGdriveDocument(
   if (file.createdAtMs) {
     tags.push(`createdAt:${file.createdAtMs}`);
   }
-  if (file.lastEditor) {
+  if (file.lastEditor?.displayName) {
     tags.push(`lastEditor:${file.lastEditor.displayName}`);
   }
   tags.push(`mimeType:${file.mimeType}`);
+
+  tags.push(...filterCustomTags(file.labels, localLogger));
 
   const documentLen = documentContent ? sectionLength(documentContent) : 0;
 
@@ -510,7 +519,7 @@ async function upsertGdriveDocument(
       dataSourceConfig,
       documentId,
       documentContent: content,
-      documentUrl: file.webViewLink,
+      documentUrl: getSourceUrlForGoogleDriveFiles(file),
       timestampMs: file.updatedAtMs,
       tags,
       parents,

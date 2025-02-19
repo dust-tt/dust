@@ -1,4 +1,9 @@
-import type { GithubBaseActionType } from "@dust-tt/types";
+import type {
+  GithubBaseActionType,
+  GithubGetPullRequestCommentType,
+  GithubGetPullRequestCommitType,
+  GithubGetPullRequestReviewType,
+} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -9,7 +14,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 
 // Shared Github actions configuration. Github actions do not have any parameter for now (we might
 // want to allow pinnig the repo in the future). Their configuration is shared and used to track
-// which specific action is enabled for an assistant.
+// which specific action is enabled for an agent.
 export class AgentGithubConfiguration extends WorkspaceAwareModel<AgentGithubConfiguration> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -89,11 +94,9 @@ export class AgentGithubGetPullRequestAction extends WorkspaceAwareModel<AgentGi
   declare pullNumber: number;
 
   declare pullBody: string | null;
-  declare pullCommits: Array<{
-    sha: string;
-    message: string;
-    author: string;
-  }> | null;
+  declare pullCommits: Array<GithubGetPullRequestCommitType> | null;
+  declare pullComments: Array<GithubGetPullRequestCommentType> | null;
+  declare pullReviews: Array<GithubGetPullRequestReviewType> | null;
   declare pullDiff: string | null;
 
   declare functionCallId: string | null;
@@ -134,6 +137,14 @@ AgentGithubGetPullRequestAction.init(
       type: DataTypes.ARRAY(DataTypes.JSONB),
       allowNull: true,
     },
+    pullComments: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: true,
+    },
+    pullReviews: {
+      type: DataTypes.ARRAY(DataTypes.JSONB),
+      allowNull: true,
+    },
     pullDiff: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -168,5 +179,91 @@ AgentGithubGetPullRequestAction.belongsTo(AgentMessage, {
 });
 
 AgentMessage.hasMany(AgentGithubGetPullRequestAction, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+/**
+ * GithubCreateIssue Action
+ */
+
+export class AgentGithubCreateIssueAction extends WorkspaceAwareModel<AgentGithubCreateIssueAction> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare owner: string;
+  declare repo: string;
+  declare title: string;
+  declare body: string;
+
+  declare issueNumber: number | null;
+
+  declare functionCallId: string | null;
+  declare functionCallName: string | null;
+
+  declare step: number;
+  declare agentMessageId: ForeignKey<AgentMessage["id"]>;
+}
+AgentGithubCreateIssueAction.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    owner: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    repo: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    title: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    body: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    issueNumber: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    functionCallId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    functionCallName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    step: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "agent_github_create_issue_action",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+AgentGithubCreateIssueAction.belongsTo(AgentMessage, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+AgentMessage.hasMany(AgentGithubCreateIssueAction, {
   foreignKey: { name: "agentMessageId", allowNull: false },
 });

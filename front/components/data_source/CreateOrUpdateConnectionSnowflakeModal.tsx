@@ -2,9 +2,15 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  Icon,
   Input,
-  Modal,
   Page,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
 } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
@@ -16,6 +22,7 @@ import type {
 import { isConnectorsAPIError } from "@dust-tt/types";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
@@ -43,6 +50,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   onSuccess: _onSuccess,
   dataSourceToUpdate,
 }: CreateOrUpdateConnectionSnowflakeModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<SnowflakeCredentials>({
@@ -82,25 +90,28 @@ export function CreateOrUpdateConnectionSnowflakeModal({
     setIsLoading(true);
 
     // First we post the credentials to OAuth service.
-    const getCredentialsRes = await fetch(`/api/w/${owner.sId}/credentials`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider: "snowflake",
-        credentials,
-      }),
-    });
+    const createCredentialsRes = await fetch(
+      `/api/w/${owner.sId}/credentials`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "snowflake",
+          credentials,
+        }),
+      }
+    );
 
-    if (!getCredentialsRes.ok) {
+    if (!createCredentialsRes.ok) {
       setError("Failed to create connection: cannot verify those credentials.");
       setIsLoading(false);
       return;
     }
 
     // Then we can try to create the connector.
-    const data = await getCredentialsRes.json();
+    const data = await createCredentialsRes.json();
 
     const createDataSourceRes = await createDatasource({
       provider: "snowflake",
@@ -200,41 +211,42 @@ export function CreateOrUpdateConnectionSnowflakeModal({
   };
 
   return (
-    <Modal
-      isOpen={isOpen}
-      title="Connection Setup"
-      onClose={onClose}
-      hasChanged={false}
-      variant="side-sm"
-    >
-      <Page variant="modal">
-        <div className="w-full">
-          <Page.Vertical sizing="grow">
-            <Page.Header
-              title={`Connecting ${connectorProviderConfiguration.name}`}
-              icon={connectorProviderConfiguration.logoComponent}
-            />
-            <a
-              href={connectorProviderConfiguration.guideLink ?? ""}
-              target="_blank"
-            >
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent size="lg">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <span className="[&>svg]:h-6 [&>svg]:w-6">
+              <Icon
+                visual={connectorProviderConfiguration.getLogoComponent(isDark)}
+              />
+            </span>
+            Connecting {connectorProviderConfiguration.name}
+          </SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
               <Button
                 label="Read our guide"
-                size="xs"
+                size="sm"
+                href={connectorProviderConfiguration.guideLink ?? ""}
+                target="_blank"
+                rel="noopener noreferrer"
                 variant="outline"
                 icon={BookOpenIcon}
               />
-            </a>
-            {connectorProviderConfiguration.limitations && (
-              <div className="flex flex-col gap-y-2">
-                <div className="grow text-sm font-medium text-element-800">
-                  Limitations
+
+              {connectorProviderConfiguration.limitations && (
+                <div className="flex flex-col gap-y-2">
+                  <div className="grow text-sm font-medium text-element-800">
+                    Limitations
+                  </div>
+                  <div className="text-sm font-normal text-element-700">
+                    {connectorProviderConfiguration.limitations}
+                  </div>
                 </div>
-                <div className="text-sm font-normal text-element-700">
-                  {connectorProviderConfiguration.limitations}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
 
             <Page.SectionHeader title="Snowflake Credentials" />
 
@@ -297,35 +309,31 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 }}
               />
             </div>
-
-            <div className="flex justify-center pt-2">
-              <div className="flex gap-2">
-                <Button
-                  variant="highlight"
-                  size="md"
-                  icon={CloudArrowLeftRightIcon}
-                  onClick={() => {
-                    setIsLoading(true);
-                    if (dataSourceToUpdate) {
-                      void updateSnowflakeConnection();
-                    } else {
-                      void createSnowflakeConnection();
-                    }
-                  }}
-                  disabled={isLoading || !areCredentialsValid()}
-                  label={
-                    isLoading
-                      ? "Connecting..."
-                      : dataSourceToUpdate
-                        ? "Update connection"
-                        : "Connect and select tables"
-                  }
-                />
-              </div>
-            </div>
-          </Page.Vertical>
-        </div>
-      </Page>
-    </Modal>
+          </div>
+        </SheetContainer>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: isLoading
+              ? "Connecting..."
+              : dataSourceToUpdate
+                ? "Update connection"
+                : "Connect and select tables",
+            icon: CloudArrowLeftRightIcon,
+            onClick: () => {
+              setIsLoading(true);
+              dataSourceToUpdate
+                ? void updateSnowflakeConnection()
+                : void createSnowflakeConnection();
+            },
+            disabled: isLoading || !areCredentialsValid(),
+            size: "md",
+          }}
+        />
+      </SheetContent>
+    </Sheet>
   );
 }

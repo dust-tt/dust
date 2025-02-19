@@ -1,11 +1,10 @@
 import {
   Button,
   Input,
-  Label,
   LogoSquareColorLogo,
   Page,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupItem,
 } from "@dust-tt/sparkle";
 import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -172,38 +171,36 @@ export default function Welcome({
               onValueChange={setAdminInterest}
               className="flex flex-col gap-2 sm:flex-row"
             >
-              <RadioGroupChoice
+              <RadioGroupItem
                 value="personnal"
-                label={<Label className="pl-1">Just for me</Label>}
-              ></RadioGroupChoice>
-              <RadioGroupChoice
+                id="personal"
+                label="Just for me"
+              />
+              <RadioGroupItem
                 value="team"
-                label={<Label className="pl-1">For me and my team</Label>}
-              ></RadioGroupChoice>
+                id="team"
+                label="For me and my team"
+              />
             </RadioGroup>
           </div>
         )}
         <div>
           <p className="pb-2 text-element-700">
-            How much do you know about AI assistants?
+            How much do you know about AI agent?
           </p>
           <RadioGroup
             value={expertise}
+            id={expertise}
             onValueChange={setExpertise}
             className="flex flex-col gap-2 sm:flex-row"
           >
-            <RadioGroupChoice
-              value="beginner"
-              label={<Label className="pl-1">Nothing!</Label>}
-            ></RadioGroupChoice>
-            <RadioGroupChoice
+            <RadioGroupItem value="beginner" id="beginner" label="Nothing!" />
+            <RadioGroupItem
               value="intermediate"
-              label={<Label className="pl-1">I know the basics</Label>}
-            ></RadioGroupChoice>
-            <RadioGroupChoice
-              value="advanced"
-              label={<Label className="pl-1">I'm a pro</Label>}
-            ></RadioGroupChoice>
+              id="intermediate"
+              label="I know the basics"
+            />
+            <RadioGroupItem value="advanced" id="advanced" label="I'm a pro" />
           </RadioGroup>
         </div>
         <div className="flex justify-end">

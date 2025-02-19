@@ -76,6 +76,7 @@ type MoreMenuItem = {
   icon: React.ComponentType;
   onClick: (e: React.MouseEvent) => void;
   variant?: "warning" | "default";
+  kind: "item";
 };
 
 type RowData = {
@@ -93,8 +94,7 @@ type RowData = {
 
 const calculateFeedback = (row: Row<RowData>) => {
   const feedbacks = row.original.feedbacks;
-  const totalFeedbacks = feedbacks ? feedbacks.up + feedbacks.down : 0;
-  return feedbacks && totalFeedbacks > 0 ? feedbacks.up / totalFeedbacks : 0;
+  return feedbacks ? feedbacks.up + feedbacks.down : 0;
 };
 
 const getTableColumns = () => {
@@ -109,10 +109,10 @@ const getTableColumns = () => {
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground">
+              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
-              <div className="overflow-hidden truncate text-sm text-muted-foreground">
+              <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {info.row.original.description}
               </div>
             </div>
@@ -136,7 +136,7 @@ const getTableColumns = () => {
           label={info.row.original.usage?.messageCount ?? 0}
         />
       ),
-      meta: { className: "w-16", tooltip: "Messages on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Messages in the last 30 days" },
     },
     {
       header: "Users",
@@ -152,7 +152,7 @@ const getTableColumns = () => {
           })}
         />
       ),
-      meta: { className: "w-16", tooltip: "Active users on the last 30 days" },
+      meta: { className: "w-16", tooltip: "Active users in the last 30 days" },
     },
     {
       header: "Feedback",
@@ -169,13 +169,13 @@ const getTableColumns = () => {
               <Tooltip
                 label={feedbacksCount}
                 trigger={
-                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex flex-row items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     <div className="flex flex-row items-center gap-1.5">
                       {f.up}
                       <Icon
                         visual={HandThumbUpIcon}
                         size="xs"
-                        className="text-primary-400"
+                        className="text-primary-400 dark:text-primary-400-night"
                       />
                     </div>
                     <div className="flex flex-row items-center gap-1.5">
@@ -183,7 +183,7 @@ const getTableColumns = () => {
                       <Icon
                         visual={HandThumbDownIcon}
                         size="xs"
-                        className="text-primary-400"
+                        className="text-primary-400 dark:text-primary-400-night"
                       />
                     </div>
                   </div>
@@ -197,7 +197,7 @@ const getTableColumns = () => {
         calculateFeedback(rowA) - calculateFeedback(rowB),
       meta: {
         className: "w-24",
-        tooltip: "Feedbacks users on the last 30 days",
+        tooltip: "Feedbacks in the last 30 days",
       },
     },
     {
@@ -226,9 +226,7 @@ const getTableColumns = () => {
           );
         }
         return (
-          <DataTable.MoreButton
-            moreMenuItems={info.row.original.moreMenuItems}
-          />
+          <DataTable.MoreButton menuItems={info.row.original.moreMenuItems} />
         );
       },
       meta: {
@@ -316,9 +314,10 @@ export function AssistantsTable({
                         }`
                       );
                     },
+                    kind: "item",
                   },
                   {
-                    label: "Copy assistant ID",
+                    label: "Copy agent ID",
                     "data-gtm-label": "assistantCopyButton",
                     "data-gtm-location": "assistantDetails",
                     icon: ClipboardIcon,
@@ -328,6 +327,7 @@ export function AssistantsTable({
                         agentConfiguration.sId
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Duplicate (New)",
@@ -340,6 +340,7 @@ export function AssistantsTable({
                         `/w/${owner.sId}/builder/assistants/new?flow=personal_assistants&duplicate=${agentConfiguration.sId}`
                       );
                     },
+                    kind: "item",
                   },
                   {
                     label: "Delete",
@@ -351,6 +352,7 @@ export function AssistantsTable({
                       e.stopPropagation();
                       setShowDeleteDialog({ open: true, agentConfiguration });
                     },
+                    kind: "item",
                   },
                 ]
               : [],

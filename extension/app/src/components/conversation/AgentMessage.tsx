@@ -90,7 +90,7 @@ export const FeedbackSelectorPopoverContent = ({
   return (
     <div className="mb-4 mt-2 flex flex-col gap-2">
       <Page.P variant="secondary">
-        Your feedback is available to editors of the assistant.
+        Your feedback is available to editors of the agent.
       </Page.P>
     </div>
   );
@@ -145,7 +145,7 @@ interface AgentMessageProps {
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
- * testing an assistant? see conversation/Conversation.tsx
+ * testing an agent? see conversation/Conversation.tsx
  * @returns
  */
 export function AgentMessage({
@@ -253,6 +253,11 @@ export function AgentMessage({
       case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
+      case "github_get_pull_request_params":
+      case "github_create_issue_params":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -303,7 +308,7 @@ export function AgentMessage({
             break;
           default:
             // Log message and do nothing. Don't crash if a new token classification is not handled here.
-            assertNeverAndIgnore(event.classification);
+            assertNeverAndIgnore(event);
             break;
         }
         break;
@@ -593,7 +598,7 @@ export function AgentMessage({
           <AgentMessageActions agentMessage={agentMessage} owner={owner} />
 
           {agentMessage.chainOfThought?.length ? (
-            <ContentMessage title="Assistant thoughts" variant="slate">
+            <ContentMessage title="Agent thoughts" variant="slate">
               {agentMessage.chainOfThought}
             </ContentMessage>
           ) : null}

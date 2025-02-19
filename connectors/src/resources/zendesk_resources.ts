@@ -1,5 +1,5 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { MIME_TYPES, Ok } from "@dust-tt/types";
 import type {
   Attributes,
   CreationAttributes,
@@ -210,6 +210,19 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return blob && new this(this.model, blob.get());
   }
 
+  static async fetchByBrandSubdomain({
+    connectorId,
+    subdomain,
+  }: {
+    connectorId: number;
+    subdomain: string;
+  }): Promise<ZendeskBrandResource | null> {
+    const blob = await ZendeskBrand.findOne({
+      where: { connectorId, subdomain },
+    });
+    return blob && new this(this.model, blob.get());
+  }
+
   static async fetchByBrandIds({
     connectorId,
     brandIds,
@@ -266,16 +279,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchHelpCenterReadAllowedBrands(
-    connectorId: number
-  ): Promise<ZendeskBrandResource[]> {
-    const brands = await ZendeskBrand.findAll({
-      where: { connectorId, helpCenterPermission: "read" },
-      attributes: ["brandId"],
-    });
-    return brands.map((brand) => new this(this.model, brand.get()));
-  }
-
   static async fetchTicketsAllowedBrandIds(
     connectorId: number
   ): Promise<number[]> {
@@ -296,30 +299,6 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return brands.map((brand) => brand.get().brandId);
   }
 
-  static async fetchBrandsWithNoPermission(
-    connectorId: number
-  ): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
-      where: { connectorId, ticketsPermission: "none" },
-      attributes: ["brandId"],
-    });
-    return brands.map((brand) => brand.get().brandId);
-  }
-
-  static async deleteBrandsWithNoPermission(
-    connectorId: number,
-    transaction?: Transaction
-  ): Promise<number> {
-    return ZendeskBrand.destroy({
-      where: {
-        connectorId,
-        helpCenterPermission: "none",
-        ticketsPermission: "none",
-      },
-      transaction,
-    });
-  }
-
   static async deleteByConnectorId(
     connectorId: number,
     transaction?: Transaction
@@ -332,7 +311,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
-      type: "folder",
+      type: "Folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: true,
@@ -342,6 +321,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
           ? "read"
           : "none",
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.BRAND,
     };
   }
 
@@ -353,12 +333,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getHelpCenterInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: richTitle ? `${this.name} - Help Center` : "Help Center",
       sourceUrl: null,
       expandable: true,
       permission: this.helpCenterPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
     };
   }
 
@@ -373,12 +354,13 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: richTitle ? `${this.name} - Tickets` : "Tickets",
       sourceUrl: null,
       expandable: expandable,
       permission: this.ticketsPermission,
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
     };
   }
 }
@@ -441,24 +423,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     };
   }
 
-  static async fetchReadForbiddenCategoryIds({
-    connectorId,
-    batchSize,
-  }: {
-    connectorId: number;
-    batchSize: number;
-  }): Promise<{ categoryId: number; brandId: number }[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId, permission: "none" },
-      attributes: ["categoryId", "brandId"],
-      limit: batchSize,
-    });
-    return categories.map((category) => {
-      const { categoryId, brandId } = category.get();
-      return { categoryId, brandId };
-    });
-  }
-
   static async fetchByConnector(
     connector: ConnectorResource
   ): Promise<ZendeskCategoryResource[]> {
@@ -466,19 +430,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       where: { connectorId: connector.id },
     });
     return categories.map((category) => new this(this.model, category.get()));
-  }
-
-  static async fetchIdsForConnector(
-    connectorId: number
-  ): Promise<{ categoryId: number; brandId: number }[]> {
-    const categories = await ZendeskCategory.findAll({
-      where: { connectorId },
-      attributes: ["categoryId", "brandId"],
-    });
-    return categories.map((category) => {
-      const { categoryId, brandId } = category.get();
-      return { categoryId, brandId };
-    });
   }
 
   static async fetchByCategoryId({
@@ -565,7 +516,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchByBrandIdReadOnly({
+  static async fetchSelectedCategoriesInBrand({
     connectorId,
     brandId,
   }: {
@@ -578,7 +529,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return categories.map((category) => new this(this.model, category.get()));
   }
 
-  static async fetchBrandUnselectedCategories({
+  static async fetchUnselectedCategoriesInBrand({
     connectorId,
     brandId,
   }: {
@@ -635,19 +586,6 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     await ZendeskCategory.destroy({ where: { connectorId }, transaction });
   }
 
-  static async revokePermissionsForBrand({
-    connectorId,
-    brandId,
-  }: {
-    connectorId: number;
-    brandId: number;
-  }) {
-    await ZendeskCategory.update(
-      { permission: "none" },
-      { where: { connectorId, brandId } }
-    );
-  }
-
   async grantPermissions(): Promise<void> {
     if (this.permission === "none") {
       await this.update({ permission: "read" });
@@ -668,12 +606,13 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return {
       internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
       parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
-      type: "folder",
+      type: "Folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: expandable,
       permission,
       lastUpdatedAt: this.updatedAt.getTime(),
+      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
     };
   }
 
@@ -751,13 +690,14 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return {
       internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
-      type: "file",
+      type: "Document",
       title: this.subject,
       sourceUrl: this.url,
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.TICKET,
     };
   }
 
@@ -952,13 +892,14 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
         brandId,
         categoryId,
       }),
-      type: "file",
+      type: "Document",
       title: this.name,
       sourceUrl: this.url,
       expandable: false,
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
+      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
     };
   }
 

@@ -45,8 +45,8 @@ export async function launchSnowflakeSyncWorkflow(
       memo: {
         connectorId,
       },
-      // Every 10 minutes.
-      cronSchedule: "*/10 * * * *",
+      // Every hour.
+      cronSchedule: `${connector.id % 60} * * * *`,
     });
   } catch (err) {
     return new Err(err as Error);
@@ -62,7 +62,7 @@ export async function stopSnowflakeSyncWorkflow(
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(
-      `[Confluence] Connector not found. ConnectorId: ${connectorId}`
+      `[Snowflake] Connector not found. ConnectorId: ${connectorId}`
     );
   }
 
@@ -85,7 +85,7 @@ export async function stopSnowflakeSyncWorkflow(
         workflowId,
         error: e,
       },
-      "Failed to stop Confluence workflow."
+      "Failed to stop Snowflake workflow."
     );
     return new Err(e as Error);
   }

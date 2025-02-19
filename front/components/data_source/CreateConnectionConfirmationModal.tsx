@@ -10,10 +10,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { isValidZendeskSubdomain } from "@dust-tt/types";
+import {
+  isValidSalesforceDomain,
+  isValidZendeskSubdomain,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 
 type CreateConnectionConfirmationModalProps = {
@@ -29,13 +33,26 @@ export function CreateConnectionConfirmationModal({
   onClose,
   onConfirm,
 }: CreateConnectionConfirmationModalProps) {
+  const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+  const [pkceLoadingStatus, setPkceLoadingStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
 
   const isExtraConfigValid = useCallback(
     (extraConfig: Record<string, string>) => {
       if (connectorProviderConfiguration.connectorProvider === "zendesk") {
         return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else if (
+        connectorProviderConfiguration.connectorProvider === "salesforce"
+      ) {
+        return (
+          !!extraConfig.instance_url &&
+          isValidSalesforceDomain(extraConfig.instance_url) &&
+          !!extraConfig.code_verifier &&
+          !!extraConfig.code_challenge
+        );
       } else {
         return true;
       }
@@ -50,6 +67,50 @@ export function CreateConnectionConfirmationModal({
       setExtraConfig({});
     }
   }, [isOpen, setIsLoading]);
+
+  useEffect(() => {
+    async function generatePKCE() {
+      if (
+        connectorProviderConfiguration.connectorProvider === "salesforce" &&
+        isValidSalesforceDomain(extraConfig.instance_url) &&
+        !extraConfig.code_verifier &&
+        pkceLoadingStatus === "idle"
+      ) {
+        setPkceLoadingStatus("loading");
+        try {
+          const response = await fetch(
+            `/api/oauth/pkce?domain=${extraConfig.instance_url}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (!response.ok) {
+            throw new Error("Failed to generate PKCE challenge");
+          }
+          const { code_verifier, code_challenge } = await response.json();
+          setExtraConfig((extraConfig) => ({
+            ...extraConfig,
+            code_verifier,
+            code_challenge,
+          }));
+          setPkceLoadingStatus("idle");
+        } catch (error) {
+          console.error("Error generating PKCE challenge:", error);
+          setPkceLoadingStatus("error");
+        }
+      }
+    }
+
+    void generatePKCE();
+  }, [
+    connectorProviderConfiguration.connectorProvider,
+    extraConfig.instance_url,
+    extraConfig.code_verifier,
+    pkceLoadingStatus,
+  ]);
 
   return (
     <Sheet
@@ -69,19 +130,16 @@ export function CreateConnectionConfirmationModal({
             <Page.Vertical gap="lg" align="stretch">
               <Page.Header
                 title={`Connecting ${connectorProviderConfiguration.name}`}
-                icon={connectorProviderConfiguration.logoComponent}
+                icon={connectorProviderConfiguration.getLogoComponent(isDark)}
               />
-              <a
+              <Button
+                label="Read our guide"
+                size="xs"
+                variant="outline"
                 href={connectorProviderConfiguration.guideLink ?? ""}
                 target="_blank"
-              >
-                <Button
-                  label="Read our guide"
-                  size="xs"
-                  variant="outline"
-                  icon={BookOpenIcon}
-                />
-              </a>
+                icon={BookOpenIcon}
+              />
               {connectorProviderConfiguration.connectorProvider ===
                 "google_drive" && (
                 <>
@@ -147,6 +205,20 @@ export function CreateConnectionConfirmationModal({
                 />
               )}
 
+              {connectorProviderConfiguration.connectorProvider ===
+                "salesforce" && (
+                <Input
+                  label="Salesforce instance URL"
+                  message="The URL of your Salesforce organization instance."
+                  name="instance_url"
+                  value={extraConfig.instance_url ?? ""}
+                  placeholder="https://my-org.salesforce.com"
+                  onChange={(e) => {
+                    setExtraConfig({ instance_url: e.target.value });
+                  }}
+                />
+              )}
+
               <div className="flex justify-center pt-2">
                 <div className="flex gap-2">
                   <Button
@@ -163,7 +235,7 @@ export function CreateConnectionConfirmationModal({
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Acknowledge and Connect"
+                          ? "Acknowledge and connect"
                           : "Connect"
                     }
                   />

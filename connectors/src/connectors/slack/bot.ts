@@ -8,6 +8,7 @@ import { DustAPI, isSupportedFileContentType } from "@dust-tt/client";
 import type {
   AgentMessageSuccessEvent,
   APIError,
+  CoreAPIDataSourceDocumentSection,
   LightAgentConfigurationType,
   ModelId,
   Result,
@@ -61,8 +62,6 @@ import {
   getBotUserIdMemoized,
   getUserName,
 } from "./temporal/activities";
-
-const { DUST_FRONT_API } = process.env;
 
 const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
 
@@ -131,11 +130,11 @@ export async function botAnswerMessage(
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occured. Our team has been notified",
+      text: "An unexpected error occurred. Our team has been notified",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error("An unexpected error occured"));
+    return new Err(new Error("An unexpected error occurred"));
   }
 }
 
@@ -181,11 +180,11 @@ export async function botReplaceMention(
     const slackClient = await getSlackClient(connector.id);
     await slackClient.chat.postMessage({
       channel: slackChannel,
-      text: "An unexpected error occured. Our team has been notified.",
+      text: "An unexpected error occurred. Our team has been notified.",
       thread_ts: slackMessageTs,
     });
 
-    return new Err(new Error("An unexpected error occured"));
+    return new Err(new Error("An unexpected error occurred"));
   }
 }
 
@@ -208,7 +207,7 @@ async function processErrorResult(
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
-        : `An error occured : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
+        : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
 
     const { slackChatBotMessage, mainMessage } =
       res.error instanceof SlackMessageError
@@ -349,10 +348,6 @@ async function answerMessage(
     userType: slackUserInfo.is_bot ? "bot" : "user",
   });
 
-  if (!DUST_FRONT_API) {
-    throw new Error("DUST_FRONT_API environment variable is not defined");
-  }
-
   if (slackUserInfo.is_bot) {
     const botName = slackUserInfo.real_name;
     requestedGroups = await slackConfig.getBotGroupIds(botName);
@@ -374,7 +369,7 @@ async function answerMessage(
       },
     },
     logger,
-    DUST_FRONT_API
+    apiConfig.getDustFrontAPIUrl()
   );
 
   // Do not await this promise, we want to continue the execution of the function in parallel.
@@ -440,7 +435,7 @@ async function answerMessage(
     ) || [];
 
   // First we look at mention override
-  // (eg: a mention coming from the Slack assistant picker from slack).
+  // (eg: a mention coming from the Slack agent picker from slack).
   if (mentionOverride) {
     const agentConfig = activeAgentConfigurations.find(
       (ac) => ac.sId === mentionOverride
@@ -455,16 +450,14 @@ async function answerMessage(
         assistantName: agentConfig.name,
       };
     } else {
-      return new Err(
-        new SlackExternalUserError("Cannot find selected assistant.")
-      );
+      return new Err(new SlackExternalUserError("Cannot find selected agent."));
     }
   }
 
   if (mentionCandidates.length > 1) {
     return new Err(
       new SlackExternalUserError(
-        "Only one assistant at a time can be called through Slack."
+        "Only one agent at a time can be called through Slack."
       )
     );
   }
@@ -536,7 +529,7 @@ async function answerMessage(
         assistantName: agentConfigurationToMention.name,
       };
     } else {
-      // If no mention is found and no channel-based routing rule is found, we use the default assistant.
+      // If no mention is found and no channel-based routing rule is found, we use the default agent.
       let defaultAssistant: LightAgentConfigurationType | null = null;
       defaultAssistant =
         activeAgentConfigurations.find((ac) => ac.sId === "dust") || null;
@@ -548,7 +541,7 @@ async function answerMessage(
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
-            "No assistant has been configured to reply on Slack."
+            "No agent has been configured to reply on Slack."
           )
         );
       }
@@ -775,10 +768,6 @@ async function makeContentFragments(
       continue;
     }
     if (shouldTake) {
-      if (slackBotMessages.find((sbm) => sbm.messageTs === reply.ts)) {
-        // If this message is a mention to the bot, we don't send it as a content fragment.
-        continue;
-      }
       allMessages.push(reply);
     }
   }
@@ -850,7 +839,7 @@ async function makeContentFragments(
         allContentFragments.push({
           title: fileName,
           url: fileRes.value.publicUrl,
-          fileId: fileRes.value.id,
+          fileId: fileRes.value.sId,
           context: null,
         });
       }
@@ -858,50 +847,84 @@ async function makeContentFragments(
   }
 
   const botUserId = await getBotUserIdMemoized(connector.id);
-  allMessages = allMessages.filter((m) => m.user !== botUserId);
-  if (allMessages.length === 0) {
-    return new Ok(null);
-  }
+  allMessages = allMessages.filter(
+    (m) =>
+      // If this message is from the bot, we don't send it as a content fragment.
+      m.user !== botUserId &&
+      // If this message is a mention to the bot, we don't send it as a content fragment.
+      !slackBotMessages.find((sbm) => sbm.messageTs === m.ts)
+  );
 
-  const channel = await slackClient.conversations.info({
-    channel: channelId,
-  });
+  let channelName: string | null = null;
+  try {
+    const channel = await slackClient.conversations.info({
+      channel: channelId,
+    });
 
-  if (channel.error) {
-    return new Err(
-      new Error(`Could not retrieve channel name: ${channel.error}`)
+    if (channel.error) {
+      return new Err(
+        new Error(`Could not retrieve channel name: ${channel.error}`)
+      );
+    }
+    if (!channel.channel || !channel.channel.name) {
+      return new Err(new Error("Could not retrieve channel name"));
+    }
+
+    channelName = channel.channel.name;
+  } catch (e) {
+    // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
+    // because we would trigger an oauth error otherwise.
+    // We now ask for the "im:read" scope since 17/02/2025
+    // We can remove this fallback in a few months.
+    channelName = "Unknown";
+    logger.warn(
+      {
+        error: e,
+      },
+      "Failed to retrieve channel name"
     );
   }
-  if (!channel.channel || !channel.channel.name) {
-    return new Err(new Error("Could not retrieve channel name"));
-  }
 
-  const content = await formatMessagesForUpsert({
-    dataSourceConfig: dataSourceConfigFromConnector(connector),
-    channelName: channel.channel.name,
-    messages: allMessages,
-    isThread: true,
-    connectorId: connector.id,
-    slackClient,
-  });
-
+  let document: CoreAPIDataSourceDocumentSection | null = null;
   let url: string | null = null;
-  if (allMessages[0]?.ts) {
+  if (allMessages.length === 0) {
     const permalinkRes = await slackClient.chat.getPermalink({
       channel: channelId,
-      message_ts: allMessages[0].ts,
+      message_ts: threadTs,
     });
     if (!permalinkRes.ok || !permalinkRes.permalink) {
       return new Err(new Error(permalinkRes.error));
     }
     url = permalinkRes.permalink;
+  } else {
+    document = await formatMessagesForUpsert({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      channelName: channelName,
+      messages: allMessages,
+      isThread: true,
+      connectorId: connector.id,
+      slackClient,
+    });
+
+    if (allMessages[0]?.ts) {
+      const permalinkRes = await slackClient.chat.getPermalink({
+        channel: channelId,
+        message_ts: allMessages[0].ts,
+      });
+      if (!permalinkRes.ok || !permalinkRes.permalink) {
+        return new Err(new Error(permalinkRes.error));
+      }
+      url = permalinkRes.permalink;
+    }
   }
 
   // Prepend $url to the content to make it available to the model.
-  const section = `$url: ${url}\n${sectionFullText(content)}`;
+  const section = document
+    ? `$url: ${url}\n${sectionFullText(document)}`
+    : `$url: ${url}\nNo messages previously sent in this thread.`;
 
   const contentType = "text/vnd.dust.attachment.slack.thread";
-  const fileName = `slack_thread-${channel.channel.name}-${threadTs}.txt`;
+  const fileName = `slack_thread-${channelName}-${threadTs}.txt`;
 
   const blob = new Blob([section]);
   const fileSize = blob.size;
@@ -920,9 +943,9 @@ async function makeContentFragments(
   }
 
   allContentFragments.push({
-    title: `Thread content from #${channel.channel.name}`,
+    title: `Thread content from #${channelName}`,
     url: url,
-    fileId: fileRes.value.id,
+    fileId: fileRes.value.sId,
     context: null,
   });
 

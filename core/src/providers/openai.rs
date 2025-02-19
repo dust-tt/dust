@@ -739,9 +739,8 @@ impl LLM for OpenAILLM {
             }
         }
 
-        // [o1] Hack for OpenAI `o1*` models to not use streaming.
         let model_is_o1 = self.id.as_str().starts_with("o1");
-        let (c, request_id) = if !model_is_o1 && event_sender.is_some() {
+        let (c, request_id) = if event_sender.is_some() {
             if n > 1 {
                 return Err(anyhow!(
                     "Generating multiple variations in streaming mode is not supported."
@@ -936,8 +935,10 @@ impl LLM for OpenAILLM {
         extras: Option<Value>,
         event_sender: Option<UnboundedSender<Value>>,
     ) -> Result<LLMChatGeneration> {
-        let model_is_o1 = self.id.as_str().starts_with("o1");
-        let model_is_o1_mini = self.id.as_str().starts_with("o1-mini");
+        let is_reasoning_model =
+            self.id.as_str().starts_with("o3") || self.id.as_str().starts_with("o1");
+        // o1-mini specifically does not support any type of system messages.
+        let remove_system_messages = self.id.as_str().starts_with("o1-mini");
         openai_compatible_chat_completion(
             self.chat_uri()?,
             self.id.clone(),
@@ -945,7 +946,7 @@ impl LLM for OpenAILLM {
             &messages,
             functions,
             function_call,
-            if model_is_o1 { 1.0 } else { temperature },
+            if is_reasoning_model { 1.0 } else { temperature },
             top_p,
             n,
             stop,
@@ -956,13 +957,14 @@ impl LLM for OpenAILLM {
             top_logprobs,
             extras,
             event_sender,
-            model_is_o1, // disable provider streaming if model is o1.
-            // If model is o1-mini, we remove system messages.
-            // If model is o1, we replace system messages with developer messages.
-            if model_is_o1_mini {
+            false,
+            // Some models (o1-mini) don't support any system messages.
+            if remove_system_messages {
                 TransformSystemMessages::Remove
-            } else if model_is_o1 {
+            // Other reasoning models replace system messages with developer messages.
+            } else if is_reasoning_model {
                 TransformSystemMessages::ReplaceWithDeveloper
+            // Standard non-reasoning models use regular system messages.
             } else {
                 TransformSystemMessages::Keep
             },

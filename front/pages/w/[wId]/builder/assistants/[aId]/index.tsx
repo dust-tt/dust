@@ -124,11 +124,11 @@ export default function EditAssistant({
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
   if (agentConfiguration.scope === "global") {
-    throw new Error("Cannot edit global assistant");
+    throw new Error("Cannot edit global agent");
   }
 
   if (agentConfiguration.status === "archived") {
-    throw new Error("Cannot edit archived assistant");
+    throw new Error("Cannot edit archived agent");
   }
 
   return (
@@ -153,6 +153,7 @@ export default function EditAssistant({
             modelSettings: {
               modelId: agentConfiguration.model.modelId,
               providerId: agentConfiguration.model.providerId,
+              reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
           },

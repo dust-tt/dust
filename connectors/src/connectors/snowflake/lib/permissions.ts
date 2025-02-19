@@ -4,12 +4,14 @@ import type {
   Result,
   SnowflakeCredentials,
 } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
-
 import {
-  getContentNodeFromInternalId,
-  getContentNodeTypeFromInternalId,
-} from "@connectors/connectors/snowflake/lib/content_nodes";
+  Err,
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  MIME_TYPES,
+  Ok,
+} from "@dust-tt/types";
+
 import {
   fetchDatabases,
   fetchSchemas,
@@ -20,7 +22,10 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import type { Logger } from "@connectors/logger/logger";
+import {
+  getContentNodeFromInternalId,
+  getContentNodeTypeFromInternalId,
+} from "@connectors/lib/remote_databases/content_nodes";
 
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
@@ -59,7 +64,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedDatabasesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -90,7 +99,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -114,7 +127,11 @@ export const fetchAvailableChildrenInSnowflake = async ({
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
-        return getContentNodeFromInternalId(internalId, permission);
+        return getContentNodeFromInternalId(
+          internalId,
+          permission,
+          MIME_TYPES.SNOWFLAKE
+        );
       })
     );
   }
@@ -146,13 +163,21 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read")
+      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SNOWFLAKE)
     ),
     ...availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     ),
     ...availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     ),
   ]);
 };
@@ -191,7 +216,11 @@ export const fetchSyncedChildren = async ({
         },
       });
       const schemaContentNodes = schemas.map((schema) =>
-        getContentNodeFromInternalId(schema.internalId, "read")
+        getContentNodeFromInternalId(
+          schema.internalId,
+          "read",
+          MIME_TYPES.SNOWFLAKE
+        )
       );
       return new Ok(schemaContentNodes);
     }
@@ -216,12 +245,22 @@ export const fetchSyncedChildren = async ({
       }),
     ]);
     const schemas = availableSchemas.map((schema) =>
-      getContentNodeFromInternalId(schema.internalId, "read")
+      getContentNodeFromInternalId(
+        schema.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     );
     availableTables.forEach((table) => {
       const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
       if (!schemas.find((s) => s.internalId === schemaToAdd)) {
-        schemas.push(getContentNodeFromInternalId(schemaToAdd, "none"));
+        schemas.push(
+          getContentNodeFromInternalId(
+            schemaToAdd,
+            "none",
+            MIME_TYPES.SNOWFLAKE
+          )
+        );
       }
     });
     return new Ok(schemas);
@@ -238,7 +277,11 @@ export const fetchSyncedChildren = async ({
       },
     });
     const tables = availableTables.map((table) =>
-      getContentNodeFromInternalId(table.internalId, "read")
+      getContentNodeFromInternalId(
+        table.internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      )
     );
     return new Ok(tables);
   }
@@ -263,156 +306,16 @@ export const getBatchContentNodes = async ({
   const nodes: ContentNode[] = [];
   for (const internalId of internalIds) {
     if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(internalId, "read");
+      const node = getContentNodeFromInternalId(
+        internalId,
+        "read",
+        MIME_TYPES.SNOWFLAKE
+      );
       nodes.push(node);
     }
   }
 
   return new Ok(nodes);
-};
-
-/**
- * Saves the nodes that the user has access to in the database.
- * We save only the nodes that the admin has given us access to.
- * 
- * Example of permissions: {
-      "MY_DB.PUBLIC": "read",
-      "MY_DB.SAMPLE_DATA.CATS": "read",
-      "MY_DB.SAMPLE_DATA.DOGS": "none",
-      "MY_OTHER_DB": "node",
-    }
- */
-export const saveNodesFromPermissions = async ({
-  connectorId,
-  credentials,
-  permissions,
-  logger,
-}: {
-  permissions: Record<string, string>;
-  connectorId: ModelId;
-  credentials: SnowflakeCredentials;
-  logger: Logger;
-}): Promise<Result<void, Error>> => {
-  for (const [internalId, permission] of Object.entries(permissions)) {
-    const [database, schema, table] = internalId.split(".");
-    const internalType = getContentNodeTypeFromInternalId(internalId);
-    const existingDb = await RemoteDatabaseModel.findOne({
-      where: { connectorId, name: database },
-    });
-
-    if (internalType === "database") {
-      if (permission === "read") {
-        if (!existingDb) {
-          await RemoteDatabaseModel.create({
-            connectorId,
-            internalId,
-            name: database as string,
-            permission: "selected",
-          });
-        }
-        // pushing the schemas in db with permission: "inherited" if they don't already exist
-        const fetchedSchemasRes = await fetchSchemas({
-          credentials,
-          fromDatabase: database,
-        });
-        if (fetchedSchemasRes.isErr()) {
-          return new Err(new Error(fetchedSchemasRes.error.message));
-        }
-        for (const schema of fetchedSchemasRes.value) {
-          const existingSchema = await RemoteSchemaModel.findOne({
-            where: {
-              connectorId,
-              internalId,
-            },
-          });
-          if (!existingSchema) {
-            await RemoteSchemaModel.create({
-              connectorId,
-              internalId: [database, schema.name].join("."),
-              name: schema.name,
-              databaseName: database as string,
-              permission: "inherited",
-            });
-          } else if (existingSchema.permission === "unselected") {
-            // we update the permission to prevent it from being deleted
-            // if it was selected we keep it that way, this way unselecting the database will not unselect the schema
-            await existingSchema.update({ permission: "inherited" });
-          }
-        }
-      } else if (permission === "none" && existingDb) {
-        await existingDb.update({ permission: "unselected" });
-      } else {
-        logger.error(
-          { internalId, permission, existingDb },
-          "Invalid permission for database."
-        );
-      }
-      continue;
-    }
-    if (internalType === "schema") {
-      const existingSchema = await RemoteSchemaModel.findOne({
-        where: {
-          connectorId,
-          internalId,
-        },
-      });
-      if (permission === "read") {
-        if (!existingSchema) {
-          await RemoteSchemaModel.create({
-            connectorId,
-            internalId,
-            name: schema as string,
-            databaseName: database as string,
-            permission: "selected",
-          });
-        } else {
-          await existingSchema.update({ permission: "selected" });
-        }
-      } else if (permission === "none" && existingSchema) {
-        const permission = existingDb ? "inherited" : "unselected";
-        await existingSchema.update({ permission });
-      } else {
-        logger.error(
-          { internalId, permission, existingSchema },
-          "Invalid permission for schema."
-        );
-      }
-      continue;
-    }
-    if (internalType === "table") {
-      const existingTable = await RemoteTableModel.findOne({
-        where: {
-          connectorId,
-          internalId,
-        },
-      });
-
-      if (permission === "read") {
-        if (existingTable) {
-          await existingTable.update({ permission: "selected" });
-        } else {
-          await RemoteTableModel.create({
-            connectorId,
-            internalId,
-            name: table as string,
-            schemaName: schema as string,
-            databaseName: database as string,
-            permission: "selected",
-          });
-        }
-      } else if (permission === "none" && existingTable) {
-        await existingTable.destroy();
-      } else {
-        logger.error(
-          { internalId, permission, existingTable },
-          "Invalid permission for table."
-        );
-      }
-      continue;
-    }
-  }
-
-  return new Ok(undefined);
 };
 
 /**

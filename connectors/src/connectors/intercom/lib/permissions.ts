@@ -1,4 +1,5 @@
 import type { ContentNode, ModelId } from "@dust-tt/types";
+import { MIME_TYPES } from "@dust-tt/types";
 
 import {
   getHelpCenterCollectionInternalId,
@@ -58,12 +59,13 @@ export async function retrieveSelectedNodes({
         connectorId,
         collection.helpCenterId
       ),
-      type: "folder",
+      type: "Folder",
       title: collection.name,
       sourceUrl: collection.url,
       expandable,
       permission: collection.permission,
       lastUpdatedAt: collection.updatedAt.getTime() || null,
+      mimeType: MIME_TYPES.INTERCOM.COLLECTION,
     });
   });
 
@@ -79,12 +81,13 @@ export async function retrieveSelectedNodes({
     teamsNodes.push({
       internalId: getTeamsInternalId(connectorId),
       parentInternalId: null,
-      type: "channel",
+      type: "Folder",
       title: "Conversations",
       sourceUrl: null,
-      expandable: false,
+      expandable: true,
       permission: "read",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
     });
   }
 
@@ -98,12 +101,13 @@ export async function retrieveSelectedNodes({
     teamsNodes.push({
       internalId: getTeamInternalId(connectorId, team.teamId),
       parentInternalId: getTeamsInternalId(connectorId),
-      type: "folder",
+      type: "Folder",
       title: team.name,
       sourceUrl: null,
       expandable: false,
       permission: team.permission,
       lastUpdatedAt: team.updatedAt.getTime() || null,
+      mimeType: MIME_TYPES.INTERCOM.TEAM,
     });
   });
 

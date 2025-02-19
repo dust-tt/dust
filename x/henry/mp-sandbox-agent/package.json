@@ -1,0 +1,17 @@
+{
+  "name": "mp-sandbox",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@micropython/micropython-webassembly-pyscript": "^1.24.1",
+    "dotenv": "^16.4.7",
+    "openai": "^4.85.1",
+    "zod": "^3.24.2"
+  }
+}

@@ -379,7 +379,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     );
     if (nodeIdsToDelete.length > 0) {
       await MicrosoftRootResource.batchDelete({
-        resourceIds: Object.keys(permissions),
+        resourceIds: nodeIdsToDelete,
         connectorId: connector.id,
       });
     }

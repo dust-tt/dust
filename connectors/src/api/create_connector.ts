@@ -8,6 +8,7 @@ import {
   ConnectorCreateRequestBodySchema,
   ioTsParsePayload,
   isConnectorProvider,
+  normalizeError,
   SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
 } from "@dust-tt/types";
@@ -131,8 +132,10 @@ const _createConnectorAPIHandler = async (
       case "google_drive":
       case "intercom":
       case "snowflake":
+      case "bigquery":
       case "zendesk":
-      case "microsoft": {
+      case "microsoft":
+      case "salesforce": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {
@@ -147,6 +150,7 @@ const _createConnectorAPIHandler = async (
         });
         break;
       }
+
       default:
         assertNever(req.params.connector_provider);
     }
@@ -183,24 +187,21 @@ const _createConnectorAPIHandler = async (
     return res.status(200).json(connector.toJSON());
   } catch (e) {
     logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
-    let errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
-    const maybeInnerErrorMessage = (
-      e as {
-        message?: string;
-      }
-    ).message;
-    if (maybeInnerErrorMessage) {
-      errorMessage += `: ${maybeInnerErrorMessage}`;
-    } else {
-      errorMessage += ".";
-    }
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: errorMessage,
+
+    const errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
+
+    return apiError(
+      req,
+      res,
+      {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: errorMessage,
+        },
       },
-    });
+      normalizeError(e)
+    );
   }
 };
 

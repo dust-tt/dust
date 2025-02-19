@@ -54,10 +54,11 @@ export function AssistantPicker({
         ) : (
           <Button
             icon={RobotIcon}
+            className="text-muted-foreground"
             variant="ghost"
             isSelect
             size={size}
-            tooltip="Pick an assistant"
+            tooltip="Pick an agent"
             disabled={isLoading ?? false}
           />
         )}

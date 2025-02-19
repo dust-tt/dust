@@ -1,21 +1,18 @@
 import type { ModelId } from "@dust-tt/types";
+import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
 
 import {
   getArticleInternalId,
   getCategoryInternalId,
-  getHelpCenterInternalId,
   getTicketInternalId,
-  getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { deleteArticle } from "@connectors/connectors/zendesk/lib/sync_article";
-import { deleteCategory } from "@connectors/connectors/zendesk/lib/sync_category";
 import { deleteTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskArticle,
   getZendeskBrandSubdomain,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
-import { getZendeskGarbageCollectionWorkflowId } from "@connectors/connectors/zendesk/temporal/client";
 import { ZENDESK_BATCH_SIZE } from "@connectors/connectors/zendesk/temporal/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
@@ -158,6 +155,9 @@ export async function removeMissingArticleBatchActivity({
     accessToken,
     subdomain,
   });
+  if (!brandSubdomain) {
+    throw new Error(`Brand ${brandId} not found in Zendesk.`);
+  }
 
   // not deleting in batch for now, assuming we won't have that many articles to delete at once
   await concurrentExecutor(
@@ -181,90 +181,6 @@ export async function removeMissingArticleBatchActivity({
     { concurrency: 10 }
   );
   return nextCursor;
-}
-
-/**
- * This activity is responsible for removing the categories that have no read permissions.
- */
-export async function removeForbiddenCategoriesActivity(
-  connectorId: number
-): Promise<{ hasMore: boolean }> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  const batchSize = 2; // we process categories 2 by 2 since each of them typically contains ~50 articles
-  const categoryIdsWithBrand =
-    await ZendeskCategoryResource.fetchReadForbiddenCategoryIds({
-      connectorId,
-      batchSize,
-    });
-  logger.info(
-    { ...loggerArgs, categoryCount: categoryIdsWithBrand.length },
-    "[Zendesk] Removing categories with no permission."
-  );
-
-  for (const ids of categoryIdsWithBrand) {
-    await deleteCategory({ connectorId, ...ids, dataSourceConfig });
-  }
-  return { hasMore: categoryIdsWithBrand.length === batchSize };
-}
-
-/**
- * This activity is responsible for cleaning up Brands that have no permission anymore.
- */
-export async function deleteBrandsWithNoPermissionActivity(
-  connectorId: ModelId
-): Promise<void> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
-  }
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
-    connectorId,
-    provider: "zendesk",
-    workflowId: getZendeskGarbageCollectionWorkflowId(connectorId),
-    dataSourceId: dataSourceConfig.dataSourceId,
-  };
-
-  // deleting from data_sources_folders (core)
-  const brands =
-    await ZendeskBrandResource.fetchBrandsWithNoPermission(connectorId);
-
-  await concurrentExecutor(
-    brands,
-    async (brandId) => {
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getHelpCenterInternalId({ connectorId, brandId }),
-      });
-      await deleteDataSourceFolder({
-        dataSourceConfig,
-        folderId: getTicketsInternalId({ connectorId, brandId }),
-      });
-    },
-    { concurrency: 10 }
-  );
-
-  // deleting from zendesk_brands (connectors)
-  const deletedCount =
-    await ZendeskBrandResource.deleteBrandsWithNoPermission(connectorId);
-
-  logger.info(
-    { ...loggerArgs, deletedCount },
-    "[Zendesk] Deleting brands with no permission."
-  );
 }
 
 /**

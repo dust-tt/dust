@@ -3,8 +3,9 @@ import {
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  Label,
   RadioGroup,
-  RadioGroupChoice,
+  RadioGroupCustomItem,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -108,7 +109,7 @@ export function ActionDustAppRun({
       ) : (
         <>
           <div className="text-sm text-element-700">
-            The assistant will execute a{" "}
+            The agent will execute a{" "}
             <a
               className="font-bold"
               href="https://docs.dust.tt"
@@ -156,38 +157,41 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app, index) => {
+                    ).map((app) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
                         <React.Fragment key={app.sId}>
-                          <RadioGroupChoice
+                          <RadioGroupCustomItem
                             value={app.sId}
+                            id={app.sId}
                             disabled={disabled}
                             iconPosition="start"
-                            className={classNames(index === 0 ? "pt-3" : "")}
-                            label={
+                            customItem={
                               <div className="flex items-center gap-1 pl-2">
                                 <Icon
                                   visual={CommandLineIcon}
                                   size="md"
                                   className={classNames(
                                     "inline-block flex-shrink-0 align-middle",
-                                    disabled ? "text-element-700" : ""
+                                    disabled
+                                      ? "text-element-700 dark:text-element-700-night"
+                                      : ""
                                   )}
                                 />
-                                <span
+                                <Label
                                   className={classNames(
                                     "font-bold",
                                     "align-middle",
                                     disabled
-                                      ? "text-element-700"
-                                      : "text-foreground"
+                                      ? "text-element-700 dark:text-element-700-night"
+                                      : "text-foreground dark:text-foreground-night"
                                   )}
+                                  htmlFor={app.sId}
                                 >
                                   {app.name +
                                     (disabled ? " (No description)" : "")}
-                                </span>
+                                </Label>
                               </div>
                             }
                             onClick={() => {
@@ -205,11 +209,11 @@ export function ActionDustAppRun({
                             }}
                           >
                             {app.description && (
-                              <div className="ml-10 mt-1 text-sm text-element-700">
+                              <div className="ml-10 mt-1 text-sm text-element-700 dark:text-element-700-night">
                                 {app.description}
                               </div>
                             )}
-                          </RadioGroupChoice>
+                          </RadioGroupCustomItem>
                           <Separator />
                         </React.Fragment>
                       );

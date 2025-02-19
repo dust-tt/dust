@@ -20,6 +20,7 @@ import {
 import type {
   AssistantBuilderRightPanelStatus,
   AssistantBuilderRightPanelTab,
+  ModelConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
@@ -57,6 +58,7 @@ interface AssistantBuilderRightPanelProps {
   builderState: AssistantBuilderState;
   agentConfigurationId: string | null;
   setAction: (action: AssistantBuilderSetActionType) => void;
+  reasoningModels: ModelConfigurationType[];
 }
 
 export default function AssistantBuilderRightPanel({
@@ -71,6 +73,7 @@ export default function AssistantBuilderRightPanel({
   builderState,
   agentConfigurationId,
   setAction,
+  reasoningModels,
 }: AssistantBuilderRightPanelProps) {
   const {
     shouldAnimate: shouldAnimatePreviewDrawer,
@@ -80,6 +83,7 @@ export default function AssistantBuilderRightPanel({
     owner,
     builderState,
     isPreviewOpened: rightPanelStatus.tab === "Preview",
+    reasoningModels,
   });
 
   const { user } = useUser();
@@ -124,7 +128,7 @@ export default function AssistantBuilderRightPanel({
               label="Preview"
               icon={ChatBubbleBottomCenterTextIcon}
             />
-            {/* The agentConfigurationId is truthy if not a new assistant */}
+            {/* The agentConfigurationId is truthy if not a new agent */}
             {agentConfigurationId && (
               <TabsTrigger
                 value="Performance"
@@ -329,7 +333,7 @@ const TemplateDropDownMenu = ({
             const confirmed = await confirm({
               title: "Are you sure you want to close the template?",
               message:
-                "Your assistant will remain as it is but will not display template's help any more.",
+                "Your agent will remain as it is but will not display template's help any more.",
               validateVariant: "warning",
             });
             if (confirmed) {
@@ -347,7 +351,7 @@ const TemplateDropDownMenu = ({
               const confirmed = await confirm({
                 title: "Are you sure?",
                 message:
-                  "You will lose the changes you have made to the assistant's instructions and go back to the template's default settings.",
+                  "You will lose the changes you have made to the agent's instructions and go back to the template's default settings.",
                 validateVariant: "warning",
               });
               if (confirmed) {
@@ -365,7 +369,7 @@ const TemplateDropDownMenu = ({
               const confirmed = await confirm({
                 title: "Are you sure?",
                 message:
-                  "You will lose the changes you have made to the assistant's tools.",
+                  "You will lose the changes you have made to the agent's tools.",
                 validateVariant: "warning",
               });
               if (confirmed) {

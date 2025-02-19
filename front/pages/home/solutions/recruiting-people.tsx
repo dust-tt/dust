@@ -87,8 +87,8 @@ export default function RecruitingPeople() {
                   content: (
                     <>
                       Extract yourself from&nbsp;admin ping pong. Allow team
-                      members to&nbsp;interact with an&nbsp;assistant that
-                      answers common people-related questions in&nbsp;Slack
+                      members to&nbsp;interact with an&nbsp;agent that answers
+                      common people-related questions in&nbsp;Slack
                       and&nbsp;points to&nbsp;the right internal resources.
                     </>
                   ),
@@ -129,7 +129,7 @@ export default function RecruitingPeople() {
                   ],
                 },
               ],
-              assistantBlocks: [assistantExamples[7], assistantExamples[6]],
+              assistantBlocks: [assistantExamples[4], assistantExamples[3]],
             },
           ]}
         />
@@ -176,8 +176,8 @@ export default function RecruitingPeople() {
               ],
               assistantBlocks: [
                 assistantExamples[2],
-                assistantExamples[3],
-                assistantExamples[4],
+                assistantExamples[5],
+                assistantExamples[7],
               ],
             },
           ]}
@@ -213,7 +213,7 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
   },
   {
     emoji: "👋",
-    name: "@peopleGeneral",
+    name: "@askHR",
     backgroundColor: "bg-amber-300",
     description: (
       <>
@@ -232,6 +232,25 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
         Drafts job descriptions and&nbsp;matching social media communications
         based on&nbsp;company templates
       </>
+    ),
+  },
+  {
+    emoji: "🏅",
+    name: "@reviewPrep",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Collects achievements, drafts actionable reviews, helps formulate
+        feedback
+      </>
+    ),
+  },
+  {
+    emoji: "🧑‍🏫",
+    name: "@trainingDraft",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>Designs training modules and&nbsp;crafts employee development plans</>
     ),
   },
   {
@@ -268,25 +287,6 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
       </>
     ),
   },
-  {
-    emoji: "🏅",
-    name: "@reviewPrep",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Collects achievements, drafts actionable reviews, helps formulate
-        feedback
-      </>
-    ),
-  },
-  {
-    emoji: "🧑‍🏫",
-    name: "@trainingDraft",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>Designs training modules and&nbsp;crafts employee development plans</>
-    ),
-  },
 ];
 
 export function RecruitingCaroussel() {
@@ -295,7 +295,7 @@ export function RecruitingCaroussel() {
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
-      assistants={assistantExamples}
+      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"

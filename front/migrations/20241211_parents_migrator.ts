@@ -379,6 +379,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
   },
   snowflake: null,
+  bigquery: null,
   webcrawler: null,
   zendesk: null,
   confluence: {
@@ -415,6 +416,7 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     },
   },
   intercom: null,
+  salesforce: null,
 };
 
 const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);

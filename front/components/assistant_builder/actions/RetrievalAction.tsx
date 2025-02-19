@@ -77,6 +77,13 @@ export function ActionRetrievalSearch({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType={"documents"}
       />
     </>
@@ -174,6 +181,13 @@ export function ActionRetrievalExhaustive({
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType={"documents"}
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
@@ -190,7 +204,9 @@ export function ActionRetrievalExhaustive({
         <div
           className={classNames(
             "text-sm font-semibold",
-            timeFrameDisabled ? "text-slate-400" : "text-foreground"
+            timeFrameDisabled
+              ? "text-slate-400 dark:text-slate-400-night"
+              : "text-foreground dark:text-foreground-night"
           )}
         >
           Only include data from the last
@@ -198,12 +214,12 @@ export function ActionRetrievalExhaustive({
         <input
           type="text"
           className={classNames(
-            "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+            "dark:border-gray-300-night h-8 w-16 rounded-md border-gray-300 text-center text-sm",
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50",
-            timeFrameDisabled ? "text-slate-400" : ""
+            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night",
+            timeFrameDisabled ? "text-slate-400 dark:text-slate-400-night" : ""
           )}
           value={timeFrame.value || ""}
           onChange={(e) => {

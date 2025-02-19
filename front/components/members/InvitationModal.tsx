@@ -85,7 +85,7 @@ export function InviteEmailModal({
     const existingMembersResponses = await Promise.all(
       inviteEmailsList.map(async (email) => {
         const response = await fetch(
-          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}&orderBy=name`
+          `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch member information");
@@ -219,14 +219,16 @@ export function InviteEmailModal({
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <div className="font-semibold text-foreground">Role:</div>
+                  <div className="font-semibold text-foreground dark:text-foreground-night">
+                    Role:
+                  </div>
                   <RoleDropDown
                     selectedRole={invitationRole}
                     onChange={setInvitationRole}
                   />
                 </div>
               </div>
-              <div className="text-element-700">
+              <div className="text-element-700 dark:text-element-700-night">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>

@@ -89,6 +89,7 @@ pub struct Node {
     pub parent_id: Option<String>,
     pub parents: Vec<String>,
     pub source_url: Option<String>,
+    pub tags: Option<Vec<String>>,
 }
 
 impl Node {
@@ -104,6 +105,7 @@ impl Node {
         parent_id: Option<String>,
         parents: Vec<String>,
         source_url: Option<String>,
+        tags: Option<Vec<String>>,
     ) -> Self {
         Node {
             data_source_id: data_source_id.to_string(),
@@ -117,6 +119,7 @@ impl Node {
             parent_id: parent_id.clone(),
             parents,
             source_url,
+            tags,
         }
     }
 
@@ -177,15 +180,15 @@ impl From<serde_json::Value> for Node {
 pub struct CoreContentNode {
     #[serde(flatten)]
     pub base: Node,
-    pub has_children: bool,
+    pub children_count: u64,
     pub parent_title: Option<String>,
 }
 
 impl CoreContentNode {
-    pub fn new(base: Node, has_children: bool, parent_title: Option<String>) -> Self {
+    pub fn new(base: Node, children_count: u64, parent_title: Option<String>) -> Self {
         CoreContentNode {
             base,
-            has_children,
+            children_count,
             parent_title,
         }
     }

@@ -16,6 +16,7 @@ import {
   PokeFormItem,
   PokeFormLabel,
   PokeFormMessage,
+  PokeFormTextArea,
 } from "@app/components/poke/shadcn/ui/form";
 import {
   PokeSelect,
@@ -53,6 +54,8 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
     return Object.fromEntries(
       Object.entries(manifest.args).map(([key, arg]) => {
         switch (arg.type) {
+          case "text":
+            return [key, ""];
           case "string":
             return [key, ""];
           case "number":
@@ -106,6 +109,7 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                   <PokeFormLabel>{arg.label}</PokeFormLabel>
                   <PokeFormControl>
                     <>
+                      {arg.type === "text" && <PokeFormTextArea {...field} />}
                       {arg.type === "string" && <PokeFormInput {...field} />}
                       {arg.type === "number" && (
                         <PokeFormInput

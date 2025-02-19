@@ -1,35 +1,26 @@
+import type { Transaction } from "sequelize";
 import { expect, it } from "vitest";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 
 export const itInTransaction = function (
   title: string,
-  fn: () => Promise<void>
+  fn: (t: Transaction) => Promise<void>
 ) {
-  return it(title, function () {
-    return new Promise<void>((resolve, reject) => {
-      frontSequelize
-        .transaction(() => {
-          return fn()
-            .then(() => {
-              resolve();
-            })
-            .catch((err: any) => {
-              reject(err);
-            })
-            .finally(() => {
-              throw "Rollback";
-            });
-        })
-        .catch((err: any) => {
-          if (err === "Rollback") {
-            return;
-          }
-          reject(err);
-          console.log("Error in test:");
-          console.log(err);
-        });
-    });
+  return it(title, async function () {
+    try {
+      await frontSequelize.transaction(async (t) => {
+        await fn(t);
+        throw "Rollback"; // Force rollback after successful execution
+      });
+    } catch (err) {
+      if (err === "Rollback") {
+        return;
+      }
+      console.log("Error in test:");
+      console.log(err);
+      throw err;
+    }
   });
 };
 

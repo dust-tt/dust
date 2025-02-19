@@ -249,14 +249,16 @@ function ContentNodeTreeChildren({
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (n.type === "file") {
+                      if (n.type === "Document") {
                         onDocumentViewClick(n.internalId);
                       }
                     }}
                     className={classNames(
-                      n.type === "file" ? "" : "pointer-events-none opacity-0"
+                      n.type === "Document"
+                        ? ""
+                        : "pointer-events-none opacity-0"
                     )}
-                    disabled={n.type !== "file"}
+                    disabled={n.type !== "Document"}
                     variant="outline"
                   />
                 )}
@@ -324,7 +326,9 @@ function ContentNodeTreeChildren({
       )}
       <div className="overflow-y-auto p-1">
         {isRoundedBackground ? (
-          <div className="rounded-xl border bg-structure-50 p-4">{tree}</div>
+          <div className="rounded-xl border bg-structure-50 p-4 dark:bg-structure-50-night">
+            {tree}
+          </div>
         ) : (
           tree
         )}

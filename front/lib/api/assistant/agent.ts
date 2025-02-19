@@ -24,10 +24,14 @@ import {
   isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
+  isTextContent,
+  isUserMessageTypeModel,
   isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
@@ -46,6 +50,7 @@ import {
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -348,7 +353,7 @@ async function* runMultiActionsAgent(
     return;
   }
 
-  let fallbackPrompt = "You are a conversational assistant";
+  let fallbackPrompt = "You are a conversational agent";
   if (
     agentConfiguration.actions.length ||
     agentConfiguration.visualizationEnabled
@@ -369,7 +374,6 @@ async function* runMultiActionsAgent(
 
   const prompt = await constructPromptMultiActions(auth, {
     userMessage,
-    conversation,
     agentConfiguration,
     fallbackPrompt,
     model,
@@ -473,8 +477,8 @@ async function* runMultiActionsAgent(
         error: {
           code: "duplicate_specification_name",
           message:
-            `Duplicate action name in assistant configuration: ${spec.name}. ` +
-            "Your assistants actions must have unique names.",
+            `Duplicate action name in agent configuration: ${spec.name}. ` +
+            "Your agents actions must have unique names.",
         },
       } satisfies AgentErrorEvent;
 
@@ -483,29 +487,47 @@ async function* runMultiActionsAgent(
     seen.add(spec.name);
   }
 
-  const config = cloneBaseConfig(
+  const runConfig = cloneBaseConfig(
     getDustProdAction("assistant-v2-multi-actions-agent").config
   );
   if (isLegacyAgent) {
-    config.MODEL.function_call =
+    runConfig.MODEL.function_call =
       specifications.length === 1 ? specifications[0].name : null;
   } else {
-    config.MODEL.function_call = specifications.length === 0 ? null : "auto";
+    runConfig.MODEL.function_call = specifications.length === 0 ? null : "auto";
   }
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-  config.MODEL.temperature = agentConfiguration.model.temperature;
+  runConfig.MODEL.provider_id = model.providerId;
+  runConfig.MODEL.model_id = model.modelId;
+  runConfig.MODEL.temperature = agentConfiguration.model.temperature;
   if (agentConfiguration.model.reasoningEffort) {
-    config.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+    runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
+  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+  if (anthropicBetaFlags) {
+    runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
+  }
+
+  const renderedConversation = modelConversationRes.value.modelConversation;
+  // Anthropic does not accept empty user message.
+  if (model.providerId === "anthropic") {
+    renderedConversation.messages.forEach((m) => {
+      if (isUserMessageTypeModel(m)) {
+        m.content.forEach((c) => {
+          if (isTextContent(c) && c.text.length === 0) {
+            c.text = "Answer according to provided context and instructions.";
+          }
+        });
+      }
+    });
   }
 
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
-    config,
+    runConfig,
     [
       {
-        conversation: modelConversationRes.value.modelConversation,
+        conversation: renderedConversation,
         specifications,
         prompt,
       },
@@ -601,7 +623,7 @@ async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "multi_actions_error",
-          message: `Error running assistant: ${event.content.message}`,
+          message: `Error running agent: ${event.content.message}`,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -643,7 +665,7 @@ async function* runMultiActionsAgent(
           messageId: agentMessage.sId,
           error: {
             code: "multi_actions_error",
-            message: `Error running assistant: ${e.error}`,
+            message: `Error running agent: ${e.error}`,
           },
         } satisfies AgentErrorEvent;
         return;
@@ -712,7 +734,7 @@ async function* runMultiActionsAgent(
       error: {
         code: "tool_use_limit_reached",
         message:
-          "The assistant attempted to use too many tools. This model error can be safely retried.",
+          "The agent attempted to use too many tools. This model error can be safely retried.",
       },
     } satisfies AgentErrorEvent;
     return;
@@ -741,7 +763,7 @@ async function* runMultiActionsAgent(
         messageId: agentMessage.sId,
         error: {
           code: "action_not_found",
-          message: `The assistant attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
+          message: `The agent attempted to run an invalid action (${a.name}). This model error can be safely retried.`,
         },
       } satisfies AgentErrorEvent;
       return;
@@ -1250,6 +1272,95 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isGithubCreateIssueConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "github_create_issue_params":
+          yield event;
+          break;
+        case "github_create_issue_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+        case "github_create_issue_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isReasoningConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "reasoning_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: event.error,
+          };
+          return;
+        case "reasoning_started":
+        case "reasoning_thinking":
+        case "reasoning_tokens":
+          yield event;
+          break;
+        case "reasoning_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+          agentMessage.actions.push(event.action);
+          break;
         default:
           assertNever(event);
       }

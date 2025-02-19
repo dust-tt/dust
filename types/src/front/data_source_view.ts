@@ -34,7 +34,14 @@ export type DataSourceViewSelectionConfiguration = {
   dataSourceView: DataSourceViewType;
   selectedResources: DataSourceViewContentNode[];
   isSelectAll: boolean;
+  tagsFilter: TagsFilter;
 };
+
+export type TagsFilter = {
+  in: string[];
+  not: string[];
+  mode: "custom" | "auto";
+} | null;
 
 export function defaultSelectionConfiguration(
   dataSourceView: DataSourceViewType
@@ -43,6 +50,7 @@ export function defaultSelectionConfiguration(
     dataSourceView: dataSourceView,
     isSelectAll: false,
     selectedResources: [],
+    tagsFilter: null,
   };
 }
 

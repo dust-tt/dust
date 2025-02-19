@@ -1,3 +1,4 @@
+import type { APIError, Result } from "@dust-tt/types";
 import * as t from "io-ts";
 
 import { callAction } from "@app/lib/actions/helpers";
@@ -23,7 +24,12 @@ export async function callDocTrackerSuggestChangesAction(
     providerId: string;
     modelId: string;
   }
-): Promise<DocTrackerSuggestChangesActionResult> {
+): Promise<
+  Result<
+    { result: DocTrackerSuggestChangesActionResult; runId: string | null },
+    APIError
+  >
+> {
   const action = getDustProdAction("doc-tracker-suggest-changes");
 
   const config = cloneBaseConfig(action.config);
@@ -41,11 +47,7 @@ export async function callDocTrackerSuggestChangesAction(
     responseValueSchema: DocTrackerSuggestChangesActionResultSchema,
   });
 
-  if (res.isErr()) {
-    throw res.error;
-  }
-
-  return res.value;
+  return res;
 }
 
 const DocTrackerSuggestChangesActionResultSchema = t.partial({

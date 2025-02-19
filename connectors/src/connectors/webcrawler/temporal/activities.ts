@@ -57,7 +57,8 @@ const CONCURRENCY = 1;
 export async function markAsCrawled(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(`Connector ${connectorId} not found.`);
+    logger.error({ connectorId }, "Connector not found");
+    return;
   }
 
   const webCrawlerConfig =
@@ -277,7 +278,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             webcrawlerConfigurationId: webCrawlerConfig.id,
             internalId: stableIdForUrl({
               url: folder,
-              ressourceType: "folder",
+              ressourceType: "Folder",
             }),
             lastSeenAt: new Date(),
           });
@@ -301,7 +302,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         }
         const documentId = stableIdForUrl({
           url: request.url,
-          ressourceType: "file",
+          ressourceType: "Document",
         });
 
         await WebCrawlerPage.upsert({
@@ -372,7 +373,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               upsertContext: {
                 sync_type: "batch",
               },
-              title: pageTitle,
+              title: stripNullBytes(pageTitle),
               mimeType: "text/html",
               async: true,
             });

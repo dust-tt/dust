@@ -1,4 +1,11 @@
-import { Modal, Spinner } from "@dust-tt/sparkle";
+import {
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
@@ -56,7 +63,7 @@ const importAssistant = async (
     setImporting(false);
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      window.alert(`Failed to import assistant. ${errorData.message}`);
+      window.alert(`Failed to import agent. ${errorData.message}`);
     } else {
       router.reload();
     }
@@ -73,20 +80,20 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
   const assistantButtons = (
     <div className="flex flex-row gap-2">
       <PokeButton
-        aria-label="Restore an assistant"
+        aria-label="Restore an agent"
         variant="outline"
         size="sm"
         onClick={() => setShowRestoreAssistantModal(true)}
       >
-        🔥 Restore an assistant
+        🔥 Restore an agent
       </PokeButton>
       <PokeButton
-        aria-label="Import an assistant"
+        aria-label="Import an agent"
         variant="outline"
         size="sm"
         onClick={() => importAssistant(owner, router, setImporting)}
       >
-        {importing ? <Spinner size="xs" /> : "📥"} Import assistant
+        {importing ? <Spinner size="xs" /> : "📥"} Import agent
       </PokeButton>
     </div>
   );
@@ -99,7 +106,7 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
         owner={owner}
       />
       <PokeDataTableConditionalFetch
-        header="Assistants"
+        header="Agents"
         globalActions={assistantButtons}
         owner={owner}
         useSWRHook={usePokeAgentConfigurations}
@@ -133,21 +140,27 @@ function RestoreAssistantModal({
   const router = useRouter();
 
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Restore an assistant"
-      variant="full-screen"
+    <Sheet
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div className="mx-auto mt-4 max-w-4xl">
-        {!!archivedAssistants?.length && (
-          <PokeDataTable
-            columns={makeColumnsForAssistants(owner, router.reload)}
-            data={prepareAgentConfigurationForDisplay(archivedAssistants)}
-          />
-        )}
-      </div>
-    </Modal>
+      <SheetContent size="xl">
+        <SheetHeader>
+          <SheetTitle>Restore an agent</SheetTitle>
+        </SheetHeader>
+        <SheetContainer>
+          {!!archivedAssistants?.length && (
+            <PokeDataTable
+              columns={makeColumnsForAssistants(owner, router.reload)}
+              data={prepareAgentConfigurationForDisplay(archivedAssistants)}
+            />
+          )}
+        </SheetContainer>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -20,10 +20,33 @@ const whitelistedCommands = [
     majorCommand: "notion",
     command: "find-url",
   },
-  { majorCommand: "slack", command: "whitelist-bot" },
+  {
+    majorCommand: "notion",
+    command: "delete-url",
+  },
+  {
+    majorCommand: "notion",
+    command: "upsert-page",
+  },
+  {
+    majorCommand: "notion",
+    command: "upsert-database",
+  },
+  {
+    majorCommand: "slack",
+    command: "whitelist-bot",
+  },
   {
     majorCommand: "connectors",
     command: "set-error",
+  },
+  {
+    majorCommand: "connectors",
+    command: "clear-error",
+  },
+  {
+    majorCommand: "zendesk",
+    command: "fetch-ticket",
   },
 ];
 

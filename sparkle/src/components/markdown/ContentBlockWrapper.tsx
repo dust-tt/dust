@@ -57,10 +57,9 @@ export function ContentBlockWrapper({
 
     // Replace invisible non-breaking spaces with regular spaces.
     if (rawContent["text/plain"]) {
-      rawContent["text/plain"] = rawContent["text/plain"].replaceAll(
-        "\xa0",
-        " "
-      );
+      rawContent["text/plain"] = rawContent["text/plain"]
+        .replaceAll("\xa0", " ")
+        .trim();
     }
 
     const data = new ClipboardItem(

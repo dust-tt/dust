@@ -62,7 +62,7 @@ export function AssistantPicker({
             variant="ghost-secondary"
             isSelect
             size={size}
-            tooltip="Pick an assistant"
+            tooltip="Pick an agent"
           />
         )}
       </DropdownMenuTrigger>

@@ -12,9 +12,11 @@ export const ConnectorsCommandSchema = t.type({
     t.literal("resume"),
     t.literal("full-resync"),
     t.literal("set-error"),
+    t.literal("clear-error"),
     t.literal("restart"),
     t.literal("get-parents"),
     t.literal("set-permission"),
+    t.literal("garbage-collect"),
   ]),
   args: t.record(
     t.string,
@@ -33,10 +35,12 @@ export const ConfluenceCommandSchema = t.type({
     t.literal("me"),
     t.literal("upsert-page"),
     t.literal("upsert-pages"),
+    t.literal("update-parents"),
   ]),
   args: t.type({
     connectorId: t.union([t.number, t.undefined]),
     pageId: t.union([t.number, t.undefined]),
+    spaceId: t.union([t.number, t.undefined]),
     file: t.union([t.string, t.undefined]),
     keyInFile: t.union([t.string, t.undefined]),
   }),
@@ -88,6 +92,7 @@ export const NotionCommandSchema = t.type({
     t.literal("search-pages"),
     t.literal("check-url"),
     t.literal("find-url"),
+    t.literal("delete-url"),
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
@@ -105,12 +110,17 @@ export const GoogleDriveCommandSchema = t.type({
   command: t.union([
     t.literal("garbage-collect-all"),
     t.literal("check-file"),
+    t.literal("get-google-parents"),
+    t.literal("clean-invalid-parents"),
+    t.literal("upsert-file"),
+    t.literal("update-core-parents"),
     t.literal("restart-google-webhooks"),
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
+    t.literal("list-labels"),
   ]),
   args: t.record(
     t.string,
@@ -129,6 +139,7 @@ export const SlackCommandSchema = t.type({
     t.literal("uninstall-for-unknown-team-ids"),
     t.literal("whitelist-domains"),
     t.literal("whitelist-bot"),
+    t.literal("sync-channel-metadata"),
   ]),
   args: t.record(
     t.string,
@@ -263,13 +274,18 @@ export const ZendeskCommandSchema = t.type({
     t.literal("resync-tickets"),
     t.literal("fetch-ticket"),
     t.literal("fetch-brand"),
+    t.literal("resync-help-centers"),
+    t.literal("resync-brand-metadata"),
   ]),
   args: t.type({
+    wId: t.union([t.string, t.undefined]),
+    dsId: t.union([t.string, t.undefined]),
     connectorId: t.union([t.number, t.undefined]),
     brandId: t.union([t.number, t.undefined]),
     query: t.union([t.string, t.undefined]),
     forceResync: t.union([t.literal("true"), t.undefined]),
     ticketId: t.union([t.number, t.undefined]),
+    ticketUrl: t.union([t.string, t.undefined]),
   }),
 });
 export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
@@ -288,13 +304,6 @@ export const ZendeskCountTicketsResponseSchema = t.type({
 });
 export type ZendeskCountTicketsResponseType = t.TypeOf<
   typeof ZendeskCountTicketsResponseSchema
->;
-
-export const ZendeskResyncTicketsResponseSchema = t.type({
-  success: t.literal(true),
-});
-export type ZendeskResyncTicketsResponseType = t.TypeOf<
-  typeof ZendeskResyncTicketsResponseSchema
 >;
 
 export const ZendeskFetchTicketResponseSchema = t.type({
@@ -324,6 +333,7 @@ export const MicrosoftCommandSchema = t.type({
     t.literal("start-incremental-sync"),
     t.literal("restart-all-incremental-sync-workflows"),
     t.literal("skip-file"),
+    t.literal("sync-node"),
     t.literal("get-parents"),
   ]),
   args: t.record(
@@ -419,6 +429,15 @@ export type NotionCheckUrlResponseType = t.TypeOf<
   typeof NotionCheckUrlResponseSchema
 >;
 
+export const NotionDeleteUrlResponseSchema = t.type({
+  deletedPage: t.boolean,
+  deletedDb: t.boolean,
+});
+
+export type NotionDeleteUrlResponseType = t.TypeOf<
+  typeof NotionDeleteUrlResponseSchema
+>;
+
 export const NotionFindUrlResponseSchema = t.type({
   page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
   db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
@@ -464,6 +483,7 @@ export const AdminResponseSchema = t.union([
   IntercomCheckTeamsResponseSchema,
   IntercomFetchConversationResponseSchema,
   NotionCheckUrlResponseSchema,
+  NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
@@ -472,7 +492,6 @@ export const AdminResponseSchema = t.union([
   IntercomForceResyncArticlesResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
   ZendeskCountTicketsResponseSchema,
-  ZendeskResyncTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskFetchBrandResponseSchema,
 ]);

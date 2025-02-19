@@ -1,6 +1,7 @@
 import { sendInitDbMessage } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 
+import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   ConfluenceConfiguration,
   ConfluencePage,
@@ -47,6 +48,7 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
+import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import {
   SlackBotWhitelistModel,
   SlackChannel,
@@ -118,6 +120,7 @@ async function main(): Promise<void> {
   await WebCrawlerPage.sync({ alter: true });
   await WebCrawlerConfigurationHeader.sync({ alter: true });
   await SnowflakeConfigurationModel.sync({ alter: true });
+  await BigQueryConfigurationModel.sync({ alter: true });
   await RemoteDatabaseModel.sync({ alter: true });
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });
@@ -127,6 +130,7 @@ async function main(): Promise<void> {
   await ZendeskCategory.sync({ alter: true });
   await ZendeskArticle.sync({ alter: true });
   await ZendeskTicket.sync({ alter: true });
+  await SalesforceConfigurationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

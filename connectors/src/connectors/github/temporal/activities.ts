@@ -149,9 +149,14 @@ async function renderIssue(
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: `Issue #${issue.number} [${repoName}]: ${issue.title}`,
+    title: `${issue.isPullRequest ? "Pull Request" : "Issue"} #${issue.number} [${repoName}]: ${issue.title}`,
     createdAt: issue.createdAt || issue.updatedAt,
     updatedAt: issue.updatedAt,
+    author: renderGithubUser(issue.creator),
+    additionalPrefixes: {
+      labels: issue.labels.join(", "),
+      isPullRequest: issue.isPullRequest.toString(),
+    },
     content: await renderMarkdownSection(dataSourceConfig, issue.body ?? "", {
       flavor: "gfm",
     }),
@@ -286,10 +291,9 @@ export async function githubUpsertIssueActivity(
     `isPullRequest:${issue.isPullRequest}`,
     `createdAt:${issue.createdAt.getTime()}`,
     `updatedAt:${issue.updatedAt.getTime()}`,
+    ...(issueAuthor ? [`author:${issueAuthor}`] : []),
+    ...issue.labels,
   ];
-  if (issueAuthor) {
-    tags.push(`author:${issueAuthor}`);
-  }
 
   const parents: [string, string, string] = [
     documentId,
@@ -717,8 +721,8 @@ async function deleteIssue(
     },
   });
   if (!issueInDb) {
-    throw new Error(
-      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id})`
+    logger.info(
+      `Issue not found in DB (issueNumber: ${issueNumber}, repoId: ${repoId}, connectorId: ${connector.id}), skipping deletion`
     );
   }
 
@@ -730,14 +734,16 @@ async function deleteIssue(
     logger.bindings()
   );
 
-  logger.info("Deleting GitHub issue from database.");
-  await GithubIssue.destroy({
-    where: {
-      repoId: repoId.toString(),
-      issueNumber,
-      connectorId: connector.id,
-    },
-  });
+  if (issueInDb) {
+    logger.info("Deleting GitHub issue from database.");
+    await GithubIssue.destroy({
+      where: {
+        repoId: repoId.toString(),
+        issueNumber,
+        connectorId: connector.id,
+      },
+    });
+  }
 }
 
 async function deleteDiscussion(

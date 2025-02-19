@@ -1,4 +1,4 @@
-import { Input, Label } from "@dust-tt/sparkle";
+import { Input, Label, TextArea } from "@dust-tt/sparkle";
 import type * as LabelPrimitive from "@radix-ui/react-label";
 import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
@@ -177,6 +177,25 @@ const FormInput = React.forwardRef<
 });
 FormInput.displayName = "FormInput";
 
+const FormTextArea = React.forwardRef<
+  HTMLTextAreaElement,
+  Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
+    value?: React.ComponentProps<typeof TextArea>["value"];
+  }
+>(({ className, value, ...props }, ref) => {
+  return (
+    <div ref={ref as React.RefObject<HTMLDivElement>}>
+      <TextArea
+        className={cn("border-2 border-border-dark bg-white", className)}
+        value={value ?? undefined}
+        minRows={2}
+        {...props}
+      />
+    </div>
+  );
+});
+FormTextArea.displayName = "FormTextArea";
+
 export {
   Form as PokeForm,
   FormControl as PokeFormControl,
@@ -186,4 +205,5 @@ export {
   FormItem as PokeFormItem,
   FormLabel as PokeFormLabel,
   FormMessage as PokeFormMessage,
+  FormTextArea as PokeFormTextArea,
 };

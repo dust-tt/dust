@@ -1,3 +1,5 @@
+import type { APIError, Result } from "@dust-tt/types";
+import { Ok } from "@dust-tt/types";
 import * as t from "io-ts";
 import _ from "lodash";
 
@@ -21,11 +23,22 @@ export async function callDocTrackerRetrievalAction(
     maintainedScope: TrackerMaintainedScopeType;
     parentsInMap: Record<string, string[] | null>;
   }
-): Promise<t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>> {
+): Promise<
+  Result<
+    {
+      result: t.TypeOf<typeof DocTrackerRetrievalActionValueSchema>;
+      runId: string | null;
+    },
+    APIError
+  >
+> {
   const ownerWorkspace = auth.getNonNullableWorkspace();
 
   if (!maintainedScope.length) {
-    return [];
+    return new Ok({
+      result: [],
+      runId: null,
+    });
   }
 
   if (
@@ -41,9 +54,12 @@ export async function callDocTrackerRetrievalAction(
     workspace_id: ownerWorkspace.sId,
     data_source_id: view.dataSourceViewId,
   }));
-  config.SEMANTIC_SEARCH.filter.parents = {
-    in_map: parentsInMap,
-  };
+
+  if (Object.keys(parentsInMap).length > 0) {
+    config.SEMANTIC_SEARCH.filter.parents = {
+      in_map: parentsInMap,
+    };
+  }
 
   config.SEMANTIC_SEARCH.target_document_tokens = targetDocumentTokens;
   config.SEMANTIC_SEARCH.top_k = topK;
@@ -55,11 +71,7 @@ export async function callDocTrackerRetrievalAction(
     responseValueSchema: DocTrackerRetrievalActionValueSchema,
   });
 
-  if (res.isErr()) {
-    throw res.error;
-  }
-
-  return res.value;
+  return res;
 }
 
 // Must map CoreAPIDocument

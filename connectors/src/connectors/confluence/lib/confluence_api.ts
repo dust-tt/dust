@@ -17,6 +17,7 @@ export async function getConfluenceCloudInformation(accessToken: string) {
   try {
     return await client.getCloudInformation();
   } catch (err) {
+    logger.error({ err }, "Error getting Confluence cloud information");
     return null;
   }
 }
@@ -115,9 +116,11 @@ export async function pageHasReadRestrictions(
 }
 
 export interface ConfluencePageRef {
+  hasChildren: boolean;
+  hasReadRestrictions: boolean;
   id: string;
-  version: number;
   parentId: string | null;
+  version: number;
 }
 
 const PAGE_FETCH_LIMIT = 100;
@@ -128,10 +131,12 @@ export async function getActiveChildPageRefs(
     pageCursor,
     parentPageId,
     spaceId,
+    spaceKey,
   }: {
     pageCursor: string | null;
     parentPageId: string;
     spaceId: string;
+    spaceKey: string;
   }
 ) {
   // Fetch the child pages of the parent page.
@@ -149,11 +154,11 @@ export async function getActiveChildPageRefs(
     return { childPageRefs: [], nextPageCursor };
   }
 
-  // Fetch the details of the child pages (version and parentId).
+  // Fetch child page metadata (version, parent, permissions, etc.).
   const childPageRefs = await bulkFetchConfluencePageRefs(client, {
     limit: PAGE_FETCH_LIMIT,
     pageIds: activeChildPageIds,
-    spaceId,
+    spaceKey,
   });
 
   return { childPageRefs, nextPageCursor };
@@ -164,26 +169,34 @@ export async function bulkFetchConfluencePageRefs(
   {
     limit,
     pageIds,
-    spaceId,
+    spaceKey,
   }: {
     limit: number;
     pageIds: string[];
-    spaceId: string;
+    spaceKey: string;
   }
 ) {
-  // Fetch the details of the pages (version and parentId).
+  // Fetch page metadata (version, parent, permissions, etc.) for the given page IDs
   const pagesWithDetails = await client.getPagesByIdsInSpace({
-    spaceId,
-    sort: "id",
+    spaceKey,
     pageIds,
     limit,
   });
 
-  const pageRefs: ConfluencePageRef[] = pagesWithDetails.pages.map((p) => ({
-    id: p.id,
-    version: p.version.number,
-    parentId: p.parentId,
-  }));
+  const pageRefs: ConfluencePageRef[] = pagesWithDetails.results.map((p) => {
+    const hasReadRestrictions =
+      p.restrictions.read.restrictions.group.results.length > 0 ||
+      p.restrictions.read.restrictions.user.results.length > 0;
+
+    return {
+      hasChildren: p.childTypes.page.value,
+      hasReadRestrictions,
+      id: p.id,
+      // Ancestors is an array of the page's ancestors, starting with the root page.
+      parentId: p.ancestors[p.ancestors.length - 1]?.id ?? null,
+      version: p.version.number,
+    };
+  });
 
   return pageRefs;
 }

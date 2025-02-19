@@ -6,7 +6,7 @@ import type {
 } from "@dust-tt/types";
 
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
-import SpaceWebsiteModal from "@app/components/spaces/SpaceWebsiteModal";
+import SpaceWebsiteModal from "@app/components/spaces/websites/SpaceWebsiteModal";
 import { useKillSwitches } from "@app/lib/swr/kill";
 
 interface EditSpaceStaticDatasourcesViewsProps {
@@ -60,6 +60,7 @@ export function EditSpaceStaticDatasourcesViews({
           owner={owner}
           space={space}
           dataSourceView={dataSourceView}
+          canWriteInSpace={canWriteInSpace}
         />
       ) : null}
       {canWriteInSpace ? (

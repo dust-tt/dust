@@ -7,6 +7,7 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
+import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
@@ -17,6 +18,7 @@ import type {
 } from "@connectors/connectors/interface";
 import { MicrosoftConnectorManager } from "@connectors/connectors/microsoft";
 import { NotionConnectorManager } from "@connectors/connectors/notion";
+import { SalesforceConnectorManager } from "@connectors/connectors/salesforce";
 import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
@@ -62,6 +64,11 @@ export function getConnectorManager({
       return new SnowflakeConnectorManager(connectorId);
     case "zendesk":
       return new ZendeskConnectorManager(connectorId);
+    case "bigquery":
+      return new BigQueryConnectorManager(connectorId);
+    // TODO(salesforce): implement this
+    case "salesforce":
+      return new SalesforceConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -118,6 +125,11 @@ export function createConnector({
       return SnowflakeConnectorManager.create(params);
     case "zendesk":
       return ZendeskConnectorManager.create(params);
+    case "bigquery":
+      return BigQueryConnectorManager.create(params);
+    // TODO(salesforce): implement this
+    case "salesforce":
+      return SalesforceConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

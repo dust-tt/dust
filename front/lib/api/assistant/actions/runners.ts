@@ -3,8 +3,10 @@ import type {
   BrowseConfigurationType,
   ConversationIncludeFileConfigurationType,
   DustAppRunConfigurationType,
+  GithubCreateIssueConfigurationType,
   GithubGetPullRequestConfigurationType,
   ProcessConfigurationType,
+  ReasoningConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
@@ -14,6 +16,7 @@ import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
+import { ReasoningConfigurationServerRunner } from "@app/lib/api/assistant/actions/reasoning";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
@@ -23,7 +26,10 @@ import type {
 } from "@app/lib/api/assistant/actions/types";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
-import { GithubGetPullRequestConfigurationServerRunner } from "./github";
+import {
+  GithubCreateIssueConfigurationServerRunner,
+  GithubGetPullRequestConfigurationServerRunner,
+} from "./github";
 
 interface ActionToConfigTypeMap {
   dust_app_run_configuration: DustAppRunConfigurationType;
@@ -34,6 +40,8 @@ interface ActionToConfigTypeMap {
   browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
+  github_create_issue_configuration: GithubCreateIssueConfigurationType;
+  reasoning_configuration: ReasoningConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -45,6 +53,8 @@ interface ActionTypeToClassMap {
   browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
+  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner;
+  reasoning_configuration: ReasoningConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -91,6 +101,8 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
     ConversationIncludeFileConfigurationServerRunner,
   github_get_pull_request_configuration:
     GithubGetPullRequestConfigurationServerRunner,
+  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
+  reasoning_configuration: ReasoningConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

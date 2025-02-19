@@ -1,9 +1,9 @@
 import { EnvironmentConfig, isDevelopment } from "@dust-tt/types";
 
-const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
+export const SUPPORTED_REGIONS = ["europe-west1", "us-central1"] as const;
 export type RegionType = (typeof SUPPORTED_REGIONS)[number];
 
-interface RegionInfo {
+export interface RegionInfo {
   name: RegionType;
   url: string;
 }
@@ -33,5 +33,25 @@ export const config = {
       name: otherRegion,
       url: this.getRegionUrl(otherRegion),
     };
+  },
+  getDustRegionSyncEnabled: (): boolean => {
+    return (
+      EnvironmentConfig.getEnvVariable("DUST_REGION") !== "us-central1" ||
+      isDevelopment()
+    );
+  },
+  getDustRegionSyncMasterUrl: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_US_URL");
+  },
+  getDustAppsSyncMasterWorkspaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_APPS_SYNC_MASTER_WORKSPACE_ID"
+    );
+  },
+  getDustAppsSyncMasterSpaceId: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_SPACE_ID");
+  },
+  getDustAppsSyncMasterApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DUST_APPS_SYNC_MASTER_API_KEY");
   },
 };

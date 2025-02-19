@@ -5,6 +5,7 @@ import type {
   DataSourceViewSelectionConfigurations,
   DustAppRunConfigurationType,
   ProcessConfigurationType,
+  ReasoningConfigurationType,
   RetrievalConfigurationType,
   TablesQueryConfigurationType,
   TemplateAgentConfigurationType,
@@ -13,8 +14,10 @@ import {
   assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isGithubCreateIssueConfiguration,
   isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
+  isReasoningConfiguration,
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
@@ -24,13 +27,16 @@ import {
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubhGetPullRequestActionConfiguration,
+  getDefaultGithubCreateIssueActionConfiguration,
+  getDefaultGithubGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
+  getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
   getDefaultRetrievalSearchActionConfiguration,
   getDefaultTablesQueryActionConfiguration,
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
+import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -108,7 +114,11 @@ async function initializeBuilderAction(
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
   } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubhGetPullRequestActionConfiguration();
+    return getDefaultGithubGetPullRequestActionConfiguration();
+  } else if (isGithubCreateIssueConfiguration(action)) {
+    return getDefaultGithubCreateIssueActionConfiguration();
+  } else if (isReasoningConfiguration(action)) {
+    return getReasoningActionConfiguration(action);
   } else {
     assertNever(action);
   }
@@ -182,12 +192,36 @@ async function getProcessActionConfiguration(
     };
   }
 
-  processConfiguration.configuration.tagsFilter = action.tagsFilter;
   processConfiguration.configuration.dataSourceConfigurations =
     await renderDataSourcesConfigurations(action, dataSourceViews);
   processConfiguration.configuration.schema = action.schema;
 
   return processConfiguration;
+}
+
+async function getReasoningActionConfiguration(
+  action: ReasoningConfigurationType
+): Promise<AssistantBuilderActionConfiguration> {
+  const builderAction = getDefaultReasoningActionConfiguration();
+  if (builderAction.type !== "REASONING") {
+    throw new Error("Reasoning action configuration is not valid");
+  }
+
+  const supportedReasoningModel = await REASONING_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === action.modelId &&
+      m.providerId === action.providerId &&
+      (m.reasoningEffort ?? null) === (action.reasoningEffort ?? null)
+  );
+
+  if (supportedReasoningModel) {
+    builderAction.configuration.modelId = supportedReasoningModel.modelId;
+    builderAction.configuration.providerId = supportedReasoningModel.providerId;
+    builderAction.configuration.reasoningEffort =
+      supportedReasoningModel.reasoningEffort ?? null;
+  }
+
+  return builderAction;
 }
 
 async function renderDataSourcesConfigurations(
@@ -198,6 +232,7 @@ async function renderDataSourcesConfigurations(
     dataSourceViewId: ds.dataSourceViewId,
     resources: ds.filter.parents?.in ?? null,
     isSelectAll: !ds.filter.parents,
+    tagsFilter: ds.filter.tags || null, // todo(TAF) Remove this when we don't need to support optional tags from builder.
   }));
 
   const dataSourceConfigurationsArray = await Promise.all(
@@ -218,6 +253,7 @@ async function renderDataSourcesConfigurations(
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -243,13 +279,14 @@ async function renderDataSourcesConfigurations(
               id: dataSourceView.workspaceId,
             },
           },
-          "Assistant Builder: Error fetching content nodes for documents."
+          "Agent Builder: Error fetching content nodes for documents."
         );
 
         return {
           dataSourceView: serializedDataSourceView,
           selectedResources: [],
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       }
 
@@ -257,6 +294,7 @@ async function renderDataSourcesConfigurations(
         dataSourceView: serializedDataSourceView,
         selectedResources: contentNodesRes.value.nodes,
         isSelectAll: sr.isSelectAll,
+        tagsFilter: sr.tagsFilter,
       };
     })
   );
@@ -277,8 +315,9 @@ async function renderTableDataSourcesConfigurations(
   const selectedResources = action.tables.map((table) => ({
     dataSourceViewId: table.dataSourceViewId,
     resources: [table.tableId],
-    // `isSelectAll` is always false for TablesQueryConfiguration.
+    // `isSelectAll`  & `tagsFilter` are always false for TablesQueryConfiguration.
     isSelectAll: false,
+    tagsFilter: null,
   }));
 
   const dataSourceConfigurationsArray: DataSourceViewSelectionConfiguration[] =
@@ -299,8 +338,6 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView,
           {
             internalIds: sr.resources,
-            // We only want to fetch tables from the core API.
-            onlyCoreAPI: true,
             viewType: "tables",
           }
         );
@@ -319,13 +356,14 @@ async function renderTableDataSourcesConfigurations(
                 id: dataSourceView.workspaceId,
               },
             },
-            "Assistant Builder: Error fetching content nodes for tables."
+            "Agent Builder: Error fetching content nodes for tables."
           );
 
           return {
             dataSourceView: serializedDataSourceView,
             selectedResources: [],
             isSelectAll: sr.isSelectAll,
+            tagsFilter: sr.tagsFilter,
           };
         }
 
@@ -333,6 +371,7 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView: serializedDataSourceView,
           selectedResources: contentNodesRes.value.nodes,
           isSelectAll: sr.isSelectAll,
+          tagsFilter: sr.tagsFilter,
         };
       })
     );

@@ -22,9 +22,15 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuItemProps,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   IconButton,
   Pagination,
+  ScrollArea,
+  ScrollBar,
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
@@ -257,16 +263,29 @@ export function DataTable<TData extends TBaseData>({
 
 interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
+  containerClassName?: string;
+  containerProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 DataTable.Root = function DataTableRoot({
   children,
+  className,
+  containerClassName,
+  containerProps,
   ...props
 }: DataTableRootProps) {
   return (
-    <table className="s-w-full s-table-fixed s-border-collapse" {...props}>
-      {children}
-    </table>
+    <div
+      className={cn("s-@container/table", containerClassName)}
+      {...containerProps}
+    >
+      <table
+        className={cn("s-w-full s-table-fixed s-border-collapse", className)}
+        {...props}
+      >
+        {children}
+      </table>
+    </div>
   );
 };
 
@@ -300,7 +319,8 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize s-text-foreground",
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize",
+        "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
       )}
@@ -343,8 +363,11 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-border-b s-border-separator s-transition-colors s-duration-300 s-ease-out",
-        onClick ? "s-cursor-pointer hover:s-bg-muted" : "",
+        "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
+        "s-border-separator dark:s-border-separator-night",
+        onClick
+          ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
+          : "",
         widthClassName,
         className
       )}
@@ -356,9 +379,33 @@ DataTable.Row = function Row({
   );
 };
 
-interface MoreButtonProps {
+interface BaseMenuItem {
+  kind: "item" | "submenu";
+  label: string;
+}
+
+interface RegularMenuItem
+  extends BaseMenuItem,
+    Omit<DropdownMenuItemProps, "children" | "label"> {
+  kind: "item";
+}
+
+type SubmenuEntry = {
+  id: string;
+  name: string;
+};
+
+interface SubmenuMenuItem extends BaseMenuItem {
+  kind: "submenu";
+  items: SubmenuEntry[];
+  onSelect: (itemId: string) => void;
+}
+
+export type MenuItem = RegularMenuItem | SubmenuMenuItem;
+
+export interface DataTableMoreButtonProps {
   className?: string;
-  moreMenuItems?: DropdownMenuItemProps[];
+  menuItems?: MenuItem[];
   dropdownMenuProps?: Omit<
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
@@ -367,17 +414,66 @@ interface MoreButtonProps {
 
 DataTable.MoreButton = function MoreButton({
   className,
-  moreMenuItems,
+  menuItems,
   dropdownMenuProps,
-}: MoreButtonProps) {
-  if (!moreMenuItems || moreMenuItems.length === 0) {
+}: DataTableMoreButtonProps) {
+  if (!menuItems?.length) {
     return null;
   }
 
+  const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
+    <DropdownMenuSub key={`${item.label}-${index}`}>
+      <DropdownMenuSubTrigger label={item.label} />
+      <DropdownMenuPortal>
+        <DropdownMenuSubContent>
+          <ScrollArea
+            className="s-min-w-24 s-flex s-max-h-72 s-flex-col"
+            hideScrollBar
+          >
+            {item.items.map((subItem) => (
+              <DropdownMenuItem
+                key={subItem.id}
+                label={subItem.name}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  item.onSelect(subItem.id);
+                }}
+              />
+            ))}
+            <ScrollBar className="s-py-0" />
+          </ScrollArea>
+        </DropdownMenuSubContent>
+      </DropdownMenuPortal>
+    </DropdownMenuSub>
+  );
+
+  const renderRegularItem = (item: RegularMenuItem, index: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { kind, ...itemProps } = item;
+    return (
+      <DropdownMenuItem
+        key={`item-${index}`}
+        {...itemProps}
+        onClick={(event) => {
+          event.stopPropagation();
+          itemProps.onClick?.(event);
+        }}
+      />
+    );
+  };
+
+  const renderMenuItem = (item: MenuItem, index: number) => {
+    switch (item.kind) {
+      case "submenu":
+        return renderSubmenuItem(item, index);
+      case "item":
+        return renderRegularItem(item, index);
+    }
+  };
+
   return (
     <DropdownMenu modal={false} {...dropdownMenuProps}>
-      <DropdownMenuTrigger // Necessary to allow clicking the dropdown in a table cell without clicking on the cell
-        // See https://github.com/radix-ui/primitives/issues/1242
+      <DropdownMenuTrigger
         onClick={(event) => {
           event.stopPropagation();
         }}
@@ -392,18 +488,7 @@ DataTable.MoreButton = function MoreButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          {moreMenuItems.map((item, index) => (
-            <DropdownMenuItem
-              key={index}
-              {...item}
-              onClick={(event) => {
-                event.stopPropagation();
-                item.onClick?.(event);
-              }}
-            />
-          ))}
-        </DropdownMenuGroup>
+        <DropdownMenuGroup>{menuItems.map(renderMenuItem)}</DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -483,15 +568,28 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={cn("s-mr-2 s-text-foreground", iconClassName)}
+          className={cn(
+            "s-mr-2 s-text-foreground dark:s-text-foreground-night",
+            iconClassName
+          )}
         />
       )}
       <div className="s-flex s-shrink s-truncate">
-        <span className="s-truncate s-text-sm s-text-foreground">
+        <span
+          className={cn(
+            "s-truncate s-text-sm",
+            "s-text-foreground dark:s-text-foreground-night"
+          )}
+        >
           {children}
         </span>
         {description && (
-          <span className="s-pl-2 s-text-sm s-text-muted-foreground">
+          <span
+            className={cn(
+              "s-pl-2 s-text-sm",
+              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+            )}
+          >
             {description}
           </span>
         )}
@@ -535,7 +633,8 @@ DataTable.BasicCellContent = function BasicCellContent({
             <div
               className={cn(
                 cellHeight,
-                "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+                "s-group s-flex s-items-center s-gap-2 s-text-sm",
+                "s-text-muted-foreground dark:s-text-muted-foreground-night",
                 className
               )}
               {...props}
@@ -561,7 +660,8 @@ DataTable.BasicCellContent = function BasicCellContent({
         <div
           className={cn(
             cellHeight,
-            "s-group s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground",
+            "s-group s-flex s-items-center s-gap-2 s-text-sm",
+            "s-text-muted-foreground dark:s-text-muted-foreground-night",
             className
           )}
           {...props}

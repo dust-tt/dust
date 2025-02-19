@@ -14,9 +14,8 @@ import {
   Ok,
   removeNulls,
   slugify,
+  TABLE_PREFIX,
 } from "@dust-tt/types";
-import { Writable } from "stream";
-import { pipeline } from "stream/promises";
 
 import { runAction } from "@app/lib/actions/server";
 import config from "@app/lib/api/config";
@@ -24,7 +23,9 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
+import { isUpsertTableArgs } from "@app/lib/api/data_sources";
 import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -33,28 +34,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
-
-class MemoryWritable extends Writable {
-  private chunks: string[];
-
-  constructor() {
-    super();
-    this.chunks = [];
-  }
-
-  _write(
-    chunk: any,
-    encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
-  ) {
-    this.chunks.push(chunk.toString());
-    callback();
-  }
-
-  getContent() {
-    return this.chunks.join("");
-  }
-}
 
 async function generateSnippet(
   auth: Authenticator,
@@ -203,13 +182,10 @@ async function generateSnippet(
 }
 
 // Upload to dataSource
-const upsertDocumentToDatasource: ProcessingFunction = async ({
+const upsertDocumentToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-  upsertArgs,
-}) => {
+  { file, content, dataSource, upsertArgs }
+) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
@@ -218,6 +194,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const upsertDocumentRes = await upsertDocument({
+    // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -245,37 +222,38 @@ const upsertDocumentToDatasource: ProcessingFunction = async ({
   return new Ok(undefined);
 };
 
-const upsertTableToDatasource: ProcessingFunction = async ({
+const upsertTableToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-  upsertArgs,
-}) => {
+  { file, content, dataSource, upsertArgs }
+) => {
   // Use the file sId as the table id to make it easy to track the table back to the file.
   let tableId = file.sId;
   if (upsertArgs && "tableId" in upsertArgs) {
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
-  const upsertTableRes = await upsertTable({
-    tableId,
-    name: slugify(file.fileName),
-    description: "Table uploaded from file",
-    truncate: true,
-    csv: content,
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
-    parents: [tableId],
-    async: false,
-    dataSource,
-    auth,
-    useAppForHeaderDetection: true,
-    title: upsertTitle ?? file.fileName,
-    mimeType: file.contentType,
-    sourceUrl: file.getPrivateUrl(auth),
 
-    // Used to override defaults, for manual file uploads where some fields are user-defined.
-    ...restArgs,
+  const upsertTableRes = await upsertTable({
+    auth,
+    params: {
+      // Beware, most values here are default values that are overridden by the ...restArgs below,
+      // including description.
+      tableId,
+      name: slugify(file.fileName),
+      description: "Table uploaded from file",
+      truncate: true,
+      csv: content.trim(),
+      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      parents: [tableId],
+      async: false,
+      title: upsertTitle ?? file.fileName,
+      mimeType: file.contentType,
+      sourceUrl: file.getPrivateUrl(auth),
+
+      // Used to override defaults, for manual file uploads where some fields are user-defined.
+      ...restArgs,
+    },
+    dataSource,
   });
 
   if (upsertTableRes.isErr()) {
@@ -287,32 +265,90 @@ const upsertTableToDatasource: ProcessingFunction = async ({
     });
   }
 
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        tableId,
+      ],
+    });
+  }
+
   return new Ok(undefined);
 };
 
-// Processing for datasource upserts.
-type ProcessingFunction = ({
+const upsertExcelToDatasource: ProcessingFunction = async (
   auth,
-  file,
-  content,
-  dataSource,
-}: {
-  auth: Authenticator;
-  file: FileResource;
-  content: string;
-  dataSource: DataSourceResource;
-  upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | Pick<
-        UpsertTableArgs,
-        | "name"
-        | "title"
-        | "description"
-        | "tableId"
-        | "tags"
-        | "useAppForHeaderDetection"
-      >;
-}) => Promise<Result<undefined, Error>>;
+  { file, content, dataSource, upsertArgs }
+) => {
+  // Excel files are processed in a special way, we need to extract the content of each worksheet and upsert it as a separate table.
+  let worksheetName: string | undefined;
+  let worksheetContent: string | undefined;
+
+  if (!isUpsertTableArgs(upsertArgs)) {
+    return new Err(new Error("Invalid upsert args"));
+  }
+
+  for (const line of content.split("\n")) {
+    if (line.startsWith(TABLE_PREFIX)) {
+      if (worksheetName && worksheetContent) {
+        const upsertTableArgs: UpsertTableArgs = {
+          ...upsertArgs,
+          title: `${file.fileName} ${worksheetName}`,
+          name: slugify(`${file.fileName} ${worksheetName}`),
+          tableId: `${file.sId}-${worksheetName}`,
+        };
+
+        await upsertTableToDatasource(auth, {
+          file,
+          content: worksheetContent,
+          dataSource,
+          upsertArgs: upsertTableArgs,
+        });
+      }
+      worksheetName = line.slice(TABLE_PREFIX.length);
+      worksheetContent = "";
+    } else {
+      worksheetContent += line + "\n";
+    }
+  }
+
+  if (!worksheetName || !worksheetContent) {
+    return new Err(new Error("Invalid Excel file"));
+  } else {
+    const upsertTableArgs: UpsertTableArgs = {
+      ...upsertArgs,
+      title: `${file.fileName} ${worksheetName}`,
+      name: slugify(`${file.fileName} ${worksheetName}`),
+      tableId: `${file.sId}-${worksheetName}`,
+    };
+
+    await upsertTableToDatasource(auth, {
+      file,
+      content: worksheetContent,
+      dataSource,
+      upsertArgs: upsertTableArgs,
+    });
+    return new Ok(undefined);
+  }
+};
+
+// Processing for datasource upserts.
+type ProcessingFunction = (
+  auth: Authenticator,
+  {
+    file,
+    content,
+    dataSource,
+  }: {
+    file: FileResource;
+    content: string;
+    dataSource: DataSourceResource;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
+  }
+) => Promise<Result<undefined, Error>>;
 
 const getProcessingFunction = ({
   contentType,
@@ -325,31 +361,45 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Use isSupportedDelimitedTextContentType() everywhere to have a common source of truth
-  if (isSupportedDelimitedTextContentType(contentType)) {
-    if (
-      useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_table"
-    ) {
-      return upsertTableToDatasource;
-    } else if (useCase === "folder_document") {
-      return upsertDocumentToDatasource;
-    } else {
-      return undefined;
-    }
+  switch (contentType) {
+    case "text/csv":
+    case "text/comma-separated-values":
+    case "text/tsv":
+    case "text/tab-separated-values":
+      if (
+        useCase === "conversation" ||
+        useCase === "tool_output" ||
+        useCase === "upsert_table"
+      ) {
+        return upsertTableToDatasource;
+      } else if (useCase === "upsert_document") {
+        return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    case "application/vnd.ms-excel":
+      if (useCase === "conversation" || useCase === "upsert_table") {
+        return upsertExcelToDatasource;
+      } else if (useCase === "upsert_document") {
+        return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
   }
 
   if (
     isSupportedPlainTextContentType(contentType) &&
-    (useCase === "conversation" ||
-      useCase === "tool_output" ||
-      useCase === "folder_document")
+    ["conversation", "tool_output", "upsert_document"].includes(useCase)
   ) {
     return upsertDocumentToDatasource;
   }
 
-  return undefined;
+  if (isSupportedPlainTextContentType(contentType)) {
+    return undefined;
+  }
+
+  assertNever(contentType);
 };
 
 export const isUpsertSupported = (arg: {
@@ -360,19 +410,15 @@ export const isUpsertSupported = (arg: {
   return !!processing;
 };
 
-const maybeApplyProcessing: ProcessingFunction = async ({
+const maybeApplyProcessing: ProcessingFunction = async (
   auth,
-  content,
-  file,
-  dataSource,
-  upsertArgs,
-}) => {
+  { content, file, dataSource, upsertArgs }
+) => {
   const processing = getProcessingFunction(file);
 
   if (processing) {
     const startTime = Date.now();
-    const res = await processing({
-      auth,
+    const res = await processing(auth, {
       file,
       content,
       dataSource,
@@ -395,49 +441,15 @@ const maybeApplyProcessing: ProcessingFunction = async ({
   return new Ok(undefined);
 };
 
-async function getFileContent(
-  auth: Authenticator,
-  file: FileResource
-): Promise<string | null> {
-  // Create a stream to hold the content of the file
-  const writableStream = new MemoryWritable();
-
-  // Read from the processed file
-  await pipeline(
-    file.getReadStream({ auth, version: "processed" }),
-    writableStream
-  );
-
-  const content = writableStream.getContent();
-
-  if (!content) {
-    return null;
-  }
-
-  return content;
-}
-
 export async function processAndUpsertToDataSource(
   auth: Authenticator,
   dataSource: DataSourceResource,
   {
     file,
-    optionalContent,
     upsertArgs,
   }: {
     file: FileResource;
-    optionalContent?: string;
-    upsertArgs?:
-      | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-      | Pick<
-          UpsertTableArgs,
-          | "name"
-          | "title"
-          | "description"
-          | "tableId"
-          | "tags"
-          | "useAppForHeaderDetection"
-        >;
+    upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
 ): Promise<
   Result<
@@ -467,16 +479,15 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  const content = optionalContent
-    ? optionalContent
-    : await getFileContent(auth, file);
+  // TODO(spolu): [CSV-FILE] move content extraction to the processing function so that we don't
+  // extract content for tables and instead submit with fileId
+  const content = await getFileContent(auth, file);
 
   if (!content) {
     logger.error(
       {
         fileId: file.sId,
         workspaceId: auth.workspace()?.sId,
-        contentSupplied: !!optionalContent,
       },
       "No content extracted from file."
     );
@@ -488,8 +499,7 @@ export async function processAndUpsertToDataSource(
   }
 
   const [processingRes, snippetRes] = await Promise.all([
-    maybeApplyProcessing({
-      auth,
+    maybeApplyProcessing(auth, {
       file,
       content,
       dataSource,
@@ -502,7 +512,8 @@ export async function processAndUpsertToDataSource(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to process the file : ${processingRes.error}`,
+      message: `Failed to process the file : ${processingRes.error.message}`,
+      processingError: processingRes.error,
     });
   }
 
@@ -510,7 +521,8 @@ export async function processAndUpsertToDataSource(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to generate snippet: ${snippetRes.error}`,
+      message: `Failed to generate snippet: ${snippetRes.error.message}`,
+      snippetError: snippetRes.error,
     });
   }
 

@@ -9,7 +9,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { handleDataSourceTableCSVUpsert } from "@app/lib/api/data_sources";
+import { upsertTable } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -41,8 +41,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
+        type: "workspace_not_found",
+        message: "The workspace was not found.",
       },
     });
   }
@@ -113,7 +113,7 @@ async function handler(
           },
         });
       }
-      const upsertRes = await handleDataSourceTableCSVUpsert({
+      const upsertRes = await upsertTable({
         auth,
         params: r.data,
         dataSource,
@@ -121,6 +121,11 @@ async function handler(
 
       if (upsertRes.isErr()) {
         switch (upsertRes.error.code) {
+          case "invalid_csv_and_file":
+          case "invalid_parents":
+          case "invalid_parent_id":
+          case "invalid_url":
+          case "title_too_long":
           case "missing_csv":
             return apiError(req, res, {
               status_code: 400,
@@ -137,15 +142,7 @@ async function handler(
                 message: upsertRes.error.message,
               },
             });
-          case "invalid_parent_id":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: upsertRes.error.message,
-              },
-            });
-          case "invalid_rows":
+          case "invalid_csv":
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -153,11 +150,19 @@ async function handler(
                 message: upsertRes.error.message,
               },
             });
-          case "resource_not_found":
+          case "table_not_found":
             return apiError(req, res, {
               status_code: 404,
               api_error: {
                 type: "table_not_found",
+                message: upsertRes.error.message,
+              },
+            });
+          case "file_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "file_not_found",
                 message: upsertRes.error.message,
               },
             });

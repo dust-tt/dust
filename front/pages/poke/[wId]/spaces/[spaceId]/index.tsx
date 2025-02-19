@@ -9,13 +9,13 @@ import type { ReactElement } from "react";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import PokeLayout from "@app/pages/poke/PokeLayout";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   members: UserTypeWithWorkspaces[];

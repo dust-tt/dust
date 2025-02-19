@@ -100,10 +100,12 @@ const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
     );
   },
   snowflake: null,
+  bigquery: null,
   webcrawler: null,
   zendesk: null, // no migration needed!
   confluence: (parents) => parents.map(getUpdatedConfluenceId),
   intercom: null, // no migration needed!
+  salesforce: null, // didn't exist at the time !
 };
 
 async function migrateAgentDataSourceConfigurations({

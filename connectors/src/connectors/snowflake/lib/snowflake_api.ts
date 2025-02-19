@@ -7,27 +7,21 @@ import * as reporter from "io-ts-reporters";
 import type { Connection, RowStatement, SnowflakeError } from "snowflake-sdk";
 import snowflake from "snowflake-sdk";
 
+import type {
+  RemoteDBDatabase,
+  RemoteDBSchema,
+  RemoteDBTable,
+  RemoteDBTree,
+} from "@connectors/lib/remote_databases/utils";
+import {
+  remoteDBDatabaseCodec,
+  remoteDBSchemaCodec,
+  remoteDBTableCodec,
+} from "@connectors/lib/remote_databases/utils";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SnowflakeRow = Record<string, any>;
-export type SnowflakeRows = Array<SnowflakeRow>;
-
-const snowflakeDatabaseCodec = t.type({
-  name: t.string,
-});
-type SnowflakeDatabase = t.TypeOf<typeof snowflakeDatabaseCodec>;
-
-const snowflakeSchemaCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-});
-type SnowflakeSchema = t.TypeOf<typeof snowflakeSchemaCodec>;
-
-const snowflakeTableCodec = t.type({
-  name: t.string,
-  database_name: t.string,
-  schema_name: t.string,
-});
-type SnowflakeTable = t.TypeOf<typeof snowflakeTableCodec>;
+type SnowflakeRow = Record<string, any>;
+type SnowflakeRows = Array<SnowflakeRow>;
 
 const snowflakeGrantCodec = t.type({
   privilege: t.string,
@@ -124,7 +118,6 @@ export async function connectToSnowflake(
   credentials: SnowflakeCredentials
 ): Promise<Result<Connection, Error>> {
   snowflake.configure({
-    // @ts-expect-error OFF is not in the types but it's a valid value.
     logLevel: "OFF",
   });
   try {
@@ -165,12 +158,12 @@ export const fetchDatabases = async ({
 }: {
   credentials: SnowflakeCredentials;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeDatabase>, Error>> => {
+}): Promise<Result<Array<RemoteDBDatabase>, Error>> => {
   const query = "SHOW DATABASES";
-  return _fetchRows<SnowflakeDatabase>({
+  return _fetchRows<RemoteDBDatabase>({
     credentials,
     query,
-    codec: snowflakeDatabaseCodec,
+    codec: remoteDBDatabaseCodec,
     connection,
   });
 };
@@ -186,14 +179,14 @@ export const fetchSchemas = async ({
   credentials: SnowflakeCredentials;
   fromDatabase?: string;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeSchema>, Error>> => {
+}): Promise<Result<Array<RemoteDBSchema>, Error>> => {
   const query = fromDatabase
     ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
     : "SHOW SCHEMAS";
-  return _fetchRows<SnowflakeSchema>({
+  return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
-    codec: snowflakeSchemaCodec,
+    codec: remoteDBSchemaCodec,
     connection,
   });
 };
@@ -209,33 +202,95 @@ export const fetchTables = async ({
   credentials: SnowflakeCredentials;
   fromSchema?: string;
   connection?: Connection;
-}): Promise<Result<Array<SnowflakeTable>, Error>> => {
+}): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
     : "SHOW TABLES";
 
-  return _fetchRows<SnowflakeTable>({
+  return _fetchRows<RemoteDBTable>({
     credentials,
     query,
-    codec: snowflakeTableCodec,
+    codec: remoteDBTableCodec,
     connection,
   });
+};
+
+export const fetchTree = async ({
+  credentials,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  connection: Connection;
+}): Promise<Result<RemoteDBTree, Error>> => {
+  const databasesRes = await fetchDatabases({ credentials, connection });
+  if (databasesRes.isErr()) {
+    return databasesRes;
+  }
+  const databases = databasesRes.value.filter(
+    (db) => !EXCLUDE_DATABASES.includes(db.name)
+  );
+
+  const schemasRes = await fetchSchemas({ credentials, connection });
+  if (schemasRes.isErr()) {
+    return schemasRes;
+  }
+  const schemas = schemasRes.value.filter(
+    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
+  );
+
+  const tablesRes = await fetchTables({ credentials, connection });
+  if (tablesRes.isErr()) {
+    return tablesRes;
+  }
+  const tables = tablesRes.value;
+
+  const tree = {
+    databases: databases.map((db) => ({
+      ...db,
+      schemas: schemas
+        .filter((s) => s.database_name === db.name)
+        .map((schema) => ({
+          ...schema,
+          tables: tables.filter((t) => t.schema_name === schema.name),
+        })),
+    })),
+  };
+
+  return new Ok(tree);
 };
 
 /**
  * Fetch the grants available for the Snowflake role,
  * including future grants, then check if the connection is read-only.
  */
-export const isConnectionReadonly = async ({
+
+export async function isConnectionReadonly({
   credentials,
   connection,
 }: {
   credentials: SnowflakeCredentials;
   connection: Connection;
-}): Promise<Result<void, TestConnectionError>> => {
+}): Promise<Result<void, TestConnectionError>> {
+  // Check current role and all inherited roles
+  return _checkRoleGrants(credentials, connection, credentials.role);
+}
+
+async function _checkRoleGrants(
+  credentials: SnowflakeCredentials,
+  connection: Connection,
+  roleName: string,
+  checkedRoles: Set<string> = new Set()
+): Promise<Result<void, TestConnectionError>> {
+  // Prevent infinite recursion with cycles in role hierarchy
+  if (checkedRoles.has(roleName)) {
+    return new Ok(undefined);
+  }
+  checkedRoles.add(roleName);
+
+  // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ROLE ${credentials.role}`,
+    query: `SHOW GRANTS TO ROLE ${roleName}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -245,9 +300,10 @@ export const isConnectionReadonly = async ({
     );
   }
 
+  // Check future grants
   const futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
     credentials,
-    query: `SHOW FUTURE GRANTS TO ROLE ${credentials.role}`,
+    query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
     codec: snowflakeFutureGrantCodec,
     connection,
   });
@@ -257,12 +313,24 @@ export const isConnectionReadonly = async ({
     );
   }
 
-  // We go ove each grant to greenlight them.
+  // Validate all grants (current and future)
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
-    if (["TABLE", "VIEW"].includes(grantOn)) {
-      // We only allow SELECT grants on tables.
+    if (
+      [
+        "TABLE",
+        "VIEW",
+        "EXTERNAL_TABLE",
+        "DYNAMIC_TABLE",
+        "EVENT_TABLE",
+        "STREAM",
+        "MATERIALIZED_VIEW",
+        "HYBRID_TABLE",
+        "ICEBERG_TABLE",
+        "STREAM",
+      ].includes(grantOn)
+    ) {
       if (g.privilege !== "SELECT") {
         return new Err(
           new TestConnectionError(
@@ -271,8 +339,29 @@ export const isConnectionReadonly = async ({
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE", "WAREHOUSE"].includes(grantOn)) {
-      // We only allow USAGE grants on schemas / databases / warehouses.
+    } else if (
+      [
+        "SCHEMA",
+        "DATABASE",
+        "WAREHOUSE",
+        "FILE_FORMAT",
+        "FUNCTION",
+        "PROCEDURE",
+        "STAGE",
+        "SEQUENCE",
+        "MODEL",
+      ].includes(grantOn)
+    ) {
+      if (!["USAGE", "READ"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-usage or read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (grantOn === "ROLE") {
+      // For roles, allow USAGE (role inheritance) but recursively check the parent role
       if (g.privilege !== "USAGE") {
         return new Err(
           new TestConnectionError(
@@ -281,8 +370,18 @@ export const isConnectionReadonly = async ({
           )
         );
       }
+      // Recursively check parent role's grants
+      const parentRoleCheck = await _checkRoleGrants(
+        credentials,
+        connection,
+        g.name,
+        checkedRoles
+      );
+      if (parentRoleCheck.isErr()) {
+        return parentRoleCheck;
+      }
     } else {
-      // We don't allow any other grants.
+      // We don't allow any other grants
       return new Err(
         new TestConnectionError(
           "NOT_READONLY",
@@ -293,7 +392,7 @@ export const isConnectionReadonly = async ({
   }
 
   return new Ok(undefined);
-};
+}
 
 // UTILS
 

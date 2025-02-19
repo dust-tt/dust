@@ -26,9 +26,9 @@ const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
 /**
  *
- * @param additionalAgentConfiguration when trying an assistant in a modal or drawer we
+ * @param additionalAgentConfiguration when trying an agent in a modal or drawer we
  * need to pass the agent configuration to the input bar (it may not be in the
- * user's list of assistants)
+ * user's list of agents)
  */
 export function AssistantInputBar({
   owner,
@@ -280,11 +280,22 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
-              "rounded-3xl bg-muted-background transition-all",
-              "border border-border-dark sm:border-border-dark/50 sm:focus-within:border-border-dark",
+              "rounded-3xl transition-all",
+              "bg-muted-background dark:bg-muted-background-night",
+              "border",
+              "border-border-dark dark:border-border-dark-night",
+              "sm:border-border-dark/50 sm:focus-within:border-border-dark",
+              "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               isFloating
-                ? "focus-within:ring-highlight/30sm:focus-within:ring-2 focus-within:ring-1"
-                : "focus-within:border-highlight-300",
+                ? classNames(
+                    "focus-within:ring-1 dark:focus-within:ring-1",
+                    "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
+                    "sm:focus-within:ring-2 dark:sm:focus-within:ring-2"
+                  )
+                : classNames(
+                    "focus-within:border-highlight-300",
+                    "dark:focus-within:border-highlight-300-night"
+                  ),
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

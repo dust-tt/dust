@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { BillingPeriod, PlanType } from "@dust-tt/types";
+import type { BillingPeriod, PlanType, WorkspaceType } from "@dust-tt/types";
 import React from "react";
 
 import type { PriceTableDisplay } from "@app/components/plans/PlansTables";
@@ -7,18 +7,34 @@ import { ProPriceTable } from "@app/components/plans/PlansTables";
 import { classNames } from "@app/lib/utils";
 
 export function ProPlansTable({
+  owner,
   size = "sm",
   className = "",
   plan,
   display,
   setBillingPeriod,
 }: {
+  owner: WorkspaceType;
   size?: "sm" | "xs";
   className?: string;
   plan?: PlanType;
   display: PriceTableDisplay;
   setBillingPeriod: (billingPeriod: BillingPeriod) => void;
 }) {
+  const isBusiness = owner.metadata?.isBusiness ?? false;
+
+  if (isBusiness) {
+    return (
+      <ProPriceTable
+        owner={owner}
+        display={display}
+        size={size}
+        plan={plan}
+        billingPeriod="monthly"
+      />
+    );
+  }
+
   return (
     <div className={classNames("w-full sm:px-0", className)}>
       <Tabs
@@ -32,6 +48,7 @@ export function ProPlansTable({
         <div className="mt-8">
           <TabsContent value="monthly">
             <ProPriceTable
+              owner={owner}
               display={display}
               size={size}
               plan={plan}
@@ -40,6 +57,7 @@ export function ProPlansTable({
           </TabsContent>
           <TabsContent value="yearly">
             <ProPriceTable
+              owner={owner}
               display={display}
               size={size}
               plan={plan}

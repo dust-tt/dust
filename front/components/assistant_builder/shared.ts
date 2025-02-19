@@ -40,6 +40,9 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   webcrawler: { singular: "page", plural: "pages" },
   snowflake: { singular: "table", plural: "tables" },
   zendesk: { singular: "element", plural: "elements" },
+  bigquery: { singular: "table", plural: "tables" },
+  // TODO(salesforce): double check this
+  salesforce: { singular: "record", plural: "records" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -278,7 +281,7 @@ export function getTableIdForContentNode(
   dataSource: DataSourceType,
   contentNode: LightContentNode
 ): string {
-  if (contentNode.type !== "database") {
+  if (contentNode.type !== "Table") {
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 
@@ -296,6 +299,11 @@ export function getTableIdForContentNode(
     case "snowflake":
     case "microsoft":
     case "notion":
+    case "bigquery":
+      return contentNode.internalId;
+
+    // TODO(salesforce): double check this
+    case "salesforce":
       return contentNode.internalId;
 
     case "confluence":

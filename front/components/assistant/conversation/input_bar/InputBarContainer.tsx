@@ -62,7 +62,6 @@ const InputBarContainer = ({
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
-
     // Focus at the end of the document when toggling expansion.
     editorService.focusEnd();
   }
@@ -99,14 +98,15 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 sm:py-3.5",
-    "whitespace-pre-wrap font-normal"
+    "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "whitespace-pre-wrap font-normal",
+    "pb-6 pt-4 sm:py-3.5" // Increased padding on mobile
   );
 
   return (
     <div
       id="InputBarContainer"
-      className="relative flex flex-1 flex-col pt-3 sm:flex-row sm:pt-0"
+      className="relative flex flex-1 cursor-text flex-col sm:flex-row sm:pt-0"
     >
       <EditorContent
         editor={editor}

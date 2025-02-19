@@ -198,7 +198,7 @@ pub trait Store {
         data_source_id: String,
         create_params: DocumentCreateParams,
     ) -> Result<Document>;
-    async fn update_data_source_document_tags(
+    async fn update_data_source_node_tags(
         &self,
         project: &Project,
         data_source_id: &str,
@@ -206,13 +206,6 @@ pub trait Store {
         add_tags: &Vec<String>,
         remove_tags: &Vec<String>,
     ) -> Result<Vec<String>>;
-    async fn update_data_source_document_parents(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        document_id: &str,
-        parents: &Vec<String>,
-    ) -> Result<()>;
     async fn update_data_source_document_chunk_count(
         &self,
         project: &Project,
@@ -287,13 +280,6 @@ pub trait Store {
         table_id: &str,
         schema: &TableSchema,
     ) -> Result<()>;
-    async fn update_data_source_table_parents(
-        &self,
-        project: &Project,
-        data_source_id: &str,
-        table_id: &str,
-        parents: &Vec<String>,
-    ) -> Result<()>;
     async fn invalidate_data_source_table_schema(
         &self,
         project: &Project,
@@ -360,6 +346,15 @@ pub trait Store {
         id_cursor: i64,
         batch_size: i64,
     ) -> Result<Vec<(Node, i64, i64)>>;
+    async fn update_data_source_node_parents(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        document_id: &str,
+        parents: &Vec<String>,
+    ) -> Result<()>;
+
+    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>>;
 
     // LLM Cache
     async fn llm_cache_get(
@@ -546,7 +541,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        created                  BIGINT NOT NULL,
        document_id              TEXT NOT NULL,
        timestamp                BIGINT NOT NULL,
-       tags_array               TEXT[] NOT NULL,
        hash                     TEXT NOT NULL,
        text_size                BIGINT NOT NULL,
        chunk_count              BIGINT NOT NULL,
@@ -576,7 +570,6 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        name                         TEXT NOT NULL, -- unique within datasource
        description                  TEXT NOT NULL,
        timestamp                    BIGINT NOT NULL,
-       tags_array                   TEXT[] NOT NULL,
        schema                       TEXT, -- json, kept up-to-date automatically with the last insert
        schema_stale_at              BIGINT, -- timestamp when the schema was last invalidated
        data_source                  BIGINT NOT NULL,
@@ -604,6 +597,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        provider_visibility          TEXT,
        parents                      TEXT[] NOT NULL,
        source_url                   TEXT,
+       tags_array                   TEXT[] NOT NULL DEFAULT array[]::text[],
        document                     BIGINT,
        \"table\"                    BIGINT,
        folder                       BIGINT,
@@ -619,7 +613,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 33] = [
+pub const SQL_INDEXES: [&'static str; 31] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -664,14 +658,10 @@ pub const SQL_INDEXES: [&'static str; 33] = [
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_data_source_document_id_created
        ON data_sources_documents (data_source, document_id, created DESC);",
-    "CREATE INDEX IF NOT EXISTS
-       idx_data_sources_documents_tags_array ON data_sources_documents USING GIN (tags_array);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_databases_table_ids_hash ON databases (table_ids_hash);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
        idx_tables_data_source_table_id ON tables (data_source, table_id);",
-    "CREATE INDEX IF NOT EXISTS
-       idx_tables_tags_array ON tables USING GIN (tags_array);",
     "CREATE UNIQUE INDEX IF NOT EXISTS
         idx_sqlite_workers_url ON sqlite_workers (url);",
     "CREATE INDEX IF NOT EXISTS

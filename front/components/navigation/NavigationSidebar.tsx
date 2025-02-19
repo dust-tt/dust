@@ -1,4 +1,5 @@
 import {
+  classNames,
   CollapseButton,
   NavigationList,
   NavigationListItem,
@@ -8,7 +9,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -17,9 +22,7 @@ import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
-import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
-import { useUser } from "@app/lib/swr/user";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -27,17 +30,23 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
+  user: UserTypeWithWorkspaces | null;
 }
 
 export const NavigationSidebar = React.forwardRef<
   HTMLDivElement,
   NavigationSidebarProps
 >(function NavigationSidebar(
-  { owner, subscription, subNavigation, children }: NavigationSidebarProps,
+  {
+    owner,
+    subscription,
+    subNavigation,
+    children,
+    user,
+  }: NavigationSidebarProps,
   ref
 ) {
   const router = useRouter();
-  const { user } = useUser();
   const [activePath, setActivePath] = useState("");
 
   useEffect(() => {
@@ -54,21 +63,14 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div ref={ref} className="flex min-w-0 grow flex-col bg-structure-50">
+    <div
+      ref={ref}
+      className={classNames(
+        "flex min-w-0 grow flex-col",
+        "bg-structure-50 dark:bg-structure-50-night"
+      )}
+    >
       <div className="flex flex-col">
-        {user && user.workspaces.length > 1 ? (
-          <WorkspacePicker
-            user={user}
-            workspace={owner}
-            onWorkspaceUpdate={async (workspace) => {
-              const assistantRoute = `/w/${workspace.sId}/assistant/new`;
-              if (workspace.id !== owner.id) {
-                await router.push(assistantRoute).then(() => router.reload());
-              }
-            }}
-          />
-        ) : null}
-
         <AppStatusBanner />
         {subscription.endDate && (
           <SubscriptionEndBanner endDate={subscription.endDate} />
@@ -116,7 +118,12 @@ export const NavigationSidebar = React.forwardRef<
                                   target={menu.target}
                                 />
                                 {menu.subMenuLabel && (
-                                  <div className="grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase text-slate-400">
+                                  <div
+                                    className={classNames(
+                                      "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
+                                      "text-slate-400 dark:text-slate-400-night"
+                                    )}
+                                  >
                                     {menu.subMenuLabel}
                                   </div>
                                 )}
@@ -149,7 +156,13 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {user && (
-        <div className="flex items-center gap-2 border-t border-border-dark p-2">
+        <div
+          className={classNames(
+            "flex items-center gap-2 border-t p-2",
+            "border-border-dark/60 dark:border-border-dark-night/60",
+            "text-foreground dark:text-foreground-night"
+          )}
+        >
           <UserMenu user={user} owner={owner} />
           <div className="flex-grow" />
           <HelpDropdown owner={owner} user={user} />
@@ -170,7 +183,14 @@ function AppStatusBanner() {
 
   if (dustStatus) {
     return (
-      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+      <div
+        className={classNames(
+          "space-y-2 border-y px-3 py-3 text-xs",
+          "border-pink-200 dark:border-pink-200-night",
+          "bg-pink-100 dark:bg-pink-100-night",
+          "text-pink-900 dark:text-pink-900-night"
+        )}
+      >
         <div className="font-bold">{dustStatus.name}</div>
         <div className="font-normal">{dustStatus.description}</div>
         <div>
@@ -185,7 +205,14 @@ function AppStatusBanner() {
   }
   if (providersStatus) {
     return (
-      <div className="space-y-2 border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+      <div
+        className={classNames(
+          "space-y-2 border-y px-3 py-3 text-xs",
+          "border-pink-200 dark:border-pink-200-night",
+          "bg-pink-100 dark:bg-pink-100-night",
+          "text-pink-900 dark:text-pink-900-night"
+        )}
+      >
         <div className="font-bold">{providersStatus.name}</div>
         <div className="font-normal">{providersStatus.description}</div>
       </div>
@@ -203,7 +230,14 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
   });
 
   return (
-    <div className="border-y border-pink-200 bg-pink-100 px-3 py-3 text-xs text-pink-900">
+    <div
+      className={classNames(
+        "border-y px-3 py-3 text-xs",
+        "border-pink-200 dark:border-pink-200-night",
+        "bg-pink-100 dark:bg-pink-100-night",
+        "text-pink-900 dark:text-pink-900-night"
+      )}
+    >
       <div className="font-bold">Subscription ending on {formattedEndDate}</div>
       <div className="font-normal">
         Connections will be deleted and members will be revoked. Details{" "}
@@ -222,7 +256,14 @@ function SubscriptionEndBanner({ endDate }: { endDate: number }) {
 
 function SubscriptionPastDueBanner() {
   return (
-    <div className="border-y border-warning-200 bg-warning-100 px-3 py-3 text-xs text-warning-900">
+    <div
+      className={classNames(
+        "border-y px-3 py-3 text-xs",
+        "border-warning-200 dark:border-warning-200-night",
+        "bg-warning-100 dark:bg-warning-100-night",
+        "text-warning-900 dark:text-warning-900-night"
+      )}
+    >
       <div className="font-bold">Your payment has failed!</div>
       <div className="font-normal">
         <br />

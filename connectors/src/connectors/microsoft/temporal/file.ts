@@ -11,7 +11,11 @@ import {
   getDriveItemInternalId,
   getFileDownloadURL,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import { typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
+import {
+  getColumnsFromListItem,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
@@ -22,6 +26,7 @@ import {
   handleTextExtraction,
   handleTextFile,
 } from "@connectors/connectors/shared/file";
+import { filterCustomTags } from "@connectors/connectors/shared/tags";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -57,7 +62,7 @@ export async function syncOneFile({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   providerConfig: MicrosoftConfigurationResource;
-  file: microsoftgraph.DriveItem;
+  file: DriveItem;
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
@@ -153,6 +158,13 @@ export async function syncOneFile({
     );
   }
 
+  // Handle custom columns (metadata) potentially set on the file
+  const columns = await getColumnsFromListItem(
+    file,
+    await getClient(connector.connectionId),
+    localLogger
+  );
+
   let result: Result<CoreAPIDataSourceDocumentSection | null, Error>;
 
   const resourceBlob: WithCreationAttributes<MicrosoftNodeModel> = {
@@ -163,7 +175,7 @@ export async function syncOneFile({
     name: file.name ?? "",
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
-    webUrl: file.webUrl ?? "",
+    webUrl: file.webUrl ?? null,
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {
@@ -188,6 +200,7 @@ export async function syncOneFile({
       provider: "microsoft",
       connectorId,
       parents,
+      tags: columns,
     });
 
     if (result.isErr()) {
@@ -245,7 +258,7 @@ export async function syncOneFile({
       ? new Date(file.createdDateTime)
       : undefined;
 
-    const tags = [`title:${file.name}`];
+    const tags = file.name ? [`title:${file.name}`] : [];
 
     if (file.lastModifiedDateTime) {
       tags.push(`updatedAt:${file.lastModifiedDateTime}`);
@@ -261,7 +274,10 @@ export async function syncOneFile({
 
     tags.push(`mimeType:${file.file.mimeType}`);
 
+    tags.push(...filterCustomTags(columns, localLogger));
+
     if (result.isErr()) {
+      localLogger.error({ error: result.error }, "Could not handle file.");
       if (fileResource) {
         await fileResource.delete();
       }
@@ -284,6 +300,9 @@ export async function syncOneFile({
             ? file.lastModifiedBy.user.displayName ?? undefined
             : undefined,
           content: documentSection,
+          additionalPrefixes: {
+            columns: columns.join(", "),
+          },
         });
 
         const upsertTimestampMs = updatedAt ? updatedAt.getTime() : undefined;

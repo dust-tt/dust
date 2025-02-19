@@ -7,22 +7,26 @@ import type {
 import { assertNever } from "@dust-tt/types";
 import type { CreationAttributes, Model, Transaction } from "sequelize";
 
+import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
+import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
 import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
+import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
 import { NotionConnectorStrategy } from "@connectors/resources/connector/notion";
+import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
@@ -47,6 +51,8 @@ export interface ConnectorProviderModelM {
   webcrawler: WebCrawlerConfigurationModel;
   snowflake: SnowflakeConfigurationModel;
   zendesk: ZendeskConfiguration;
+  bigquery: BigQueryConfigurationModel;
+  salesforce: SalesforceConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -81,6 +87,8 @@ export interface ConnectorProviderConfigurationTypeM {
   slack: SlackConfigurationType;
   webcrawler: WebCrawlerConfigurationType;
   zendesk: null;
+  bigquery: null;
+  salesforce: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -90,7 +98,10 @@ export type ConnectorProviderConfigurationTypeMapping = {
 export type ConnectorProviderConfigurationType =
   ConnectorProviderConfigurationTypeMapping[keyof ConnectorProviderConfigurationTypeMapping];
 
-export interface ConnectorProviderStrategy<T extends ConnectorProvider> {
+export interface ConnectorProviderStrategy<
+  // TODO(salesforce): implement this
+  T extends ConnectorProvider,
+> {
   delete(connector: ConnectorResource, transaction: Transaction): Promise<void>;
 
   makeNew(
@@ -141,6 +152,11 @@ export function getConnectorProviderStrategy(
 
     case "zendesk":
       return new ZendeskConnectorStrategy();
+
+    case "bigquery":
+      return new BigQueryConnectorStrategy();
+    case "salesforce":
+      return new SalesforceConnectorStrategy();
 
     default:
       assertNever(type);

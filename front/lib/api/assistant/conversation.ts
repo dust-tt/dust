@@ -46,6 +46,7 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import { isEqual, sortBy } from "lodash";
+import _ from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -67,7 +68,7 @@ import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
-import { maybeUpsertFileAttachment } from "@app/lib/api/files/utils";
+import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -239,56 +240,63 @@ export async function getUserConversations(
   }
 
   const participations = await ConversationParticipant.findAll({
-    attributes: ["userId", "updatedAt"],
+    attributes: ["userId", "updatedAt", "conversationId"],
     where: {
       userId: user.id,
       action: "posted",
     },
-    include: [
-      {
-        model: Conversation,
-        as: "conversation",
-        required: true,
-      },
-    ],
     order: [["updatedAt", "DESC"]],
   });
 
-  const conversations = participations.reduce<ConversationWithoutContentType[]>(
-    (acc, p) => {
-      if (!p.conversation) {
-        logger.error("Participation without conversation");
-        return acc;
-      }
-      if (
-        p.conversation.workspaceId !== owner.id ||
-        (p.conversation.visibility === "deleted" && !includeDeleted) ||
-        (p.conversation.visibility === "test" && !includeTest)
-      ) {
-        return acc;
-      }
+  const includedConversationVisibilities: ConversationVisibility[] = [
+    "unlisted",
+    "workspace",
+  ];
 
-      const conversation: ConversationWithoutContentType = {
-        id: p.conversation.id,
-        created: p.conversation.createdAt.getTime(),
-        updated: p.updatedAt.getTime(),
-        sId: p.conversation.sId,
+  if (includeDeleted) {
+    includedConversationVisibilities.push("deleted");
+  }
+  if (includeTest) {
+    includedConversationVisibilities.push("test");
+  }
+
+  const conversations = (
+    await Conversation.findAll({
+      where: {
+        id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
+        workspaceId: owner.id,
+        visibility: { [Op.in]: includedConversationVisibilities },
+      },
+    })
+  ).map(
+    (c) =>
+      ({
+        id: c.id,
+        created: c.createdAt.getTime(),
+        updated: c.updatedAt.getTime(),
+        sId: c.sId,
         owner,
-        title: p.conversation.title,
-        visibility: p.conversation.visibility,
-        requestedGroupIds: getConversationRequestedGroupIdsFromModel(
-          owner,
-          p.conversation
-        ),
+        title: c.title,
+        visibility: c.visibility,
+        requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
-      };
-
-      return [...acc, conversation];
-    },
-    []
+      }) satisfies ConversationWithoutContentType
   );
-  return conversations;
+
+  const conversationById = _.keyBy(conversations, "id");
+
+  return removeNulls(
+    participations.map((p) => {
+      const conv: ConversationWithoutContentType | null =
+        conversationById[p.conversationId];
+      if (!conv) {
+        // Deleted / test conversations.
+        return null;
+      }
+      return conv;
+    })
+  );
 }
 
 async function createOrUpdateParticipation({
@@ -299,26 +307,36 @@ async function createOrUpdateParticipation({
   conversation: ConversationType;
 }) {
   if (user) {
-    const participant = await ConversationParticipant.findOne({
-      where: {
-        conversationId: conversation.id,
-        userId: user.id,
-      },
+    await frontSequelize.transaction(async (t) => {
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user.id,
+        },
+        transaction: t,
+      });
+
+      if (participant) {
+        participant.changed("updatedAt", true);
+        await participant.update(
+          {
+            action: "posted",
+            updatedAt: new Date(),
+          },
+          { transaction: t }
+        );
+      } else {
+        await ConversationParticipant.create(
+          {
+            conversationId: conversation.id,
+            action: "posted",
+            userId: user.id,
+            workspaceId: conversation.owner.id,
+          },
+          { transaction: t }
+        );
+      }
     });
-    if (participant) {
-      participant.changed("updatedAt", true);
-      await participant.update({
-        action: "posted",
-        updatedAt: new Date(),
-      });
-    } else {
-      await ConversationParticipant.create({
-        conversationId: conversation.id,
-        action: "posted",
-        userId: user.id,
-        workspaceId: conversation.owner.id,
-      });
-    }
   }
 }
 
@@ -735,7 +753,7 @@ export async function* postUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };
@@ -1192,7 +1210,7 @@ export async function* editUserMessage(
           code: "provider_disabled",
           message:
             `Assistant ${agentConfig.name} is based on a model that was disabled ` +
-            `by your workspace admin. Please edit the assistant to use another model ` +
+            `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       };
@@ -1916,7 +1934,11 @@ async function* streamRunAgentEvents(
       case "browse_params":
       case "conversation_include_file_params":
       case "github_get_pull_request_params":
+      case "github_create_issue_params":
       case "generation_tokens":
+      case "reasoning_started":
+      case "reasoning_thinking":
+      case "reasoning_tokens":
         yield event;
         break;
 

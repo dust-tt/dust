@@ -22,10 +22,10 @@
   "paths": {
     "/api/v1/w/{wId}/assistant/agent_configurations": {
       "get": {
-        "summary": "List assistants",
+        "summary": "List agents",
         "description": "Get the agent configurations for the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -112,7 +112,7 @@
         "summary": "Get agent configuration",
         "description": "Retrieve the agent configuration identified by {sId} in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -176,7 +176,7 @@
         "summary": "Update agent configuration",
         "description": "Update the agent configuration identified by {sId} in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -254,10 +254,10 @@
     },
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
-        "summary": "Search assistants by name",
+        "summary": "Search agents by name",
         "description": "Search for agent configurations by name in the workspace identified by {wId}.",
         "tags": [
-          "Assistants"
+          "Agents"
         ],
         "parameters": [
           {
@@ -524,7 +524,7 @@
         "summary": "Get feedbacks for a conversation",
         "description": "Retrieves all feedback entries for a specific conversation.\nRequires authentication and read:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {
@@ -899,7 +899,7 @@
         "summary": "Submit feedback for a specific message in a conversation",
         "description": "Submit user feedback (thumbs up/down) for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {
@@ -997,7 +997,7 @@
         "summary": "Delete feedback for a specific message",
         "description": "Delete user feedback for a specific message in a conversation.\nRequires authentication and update:conversation scope.\n",
         "tags": [
-          "assistant"
+          "Feedbacks"
         ],
         "parameters": [
           {
@@ -1219,7 +1219,7 @@
     "/api/v1/w/{wId}/files": {
       "post": {
         "tags": [
-          "Datasources"
+          "Conversations"
         ],
         "summary": "Create a file upload URL",
         "parameters": [
@@ -1288,8 +1288,13 @@
                     "file": {
                       "type": "object",
                       "properties": {
+                        "sId": {
+                          "type": "string",
+                          "description": "Unique string identifier for the file"
+                        },
                         "uploadUrl": {
-                          "type": "string"
+                          "type": "string",
+                          "description": "Upload URL for the file"
                         }
                       }
                     }
@@ -2286,17 +2291,6 @@
                       "type": "string"
                     },
                     "description": "Tags to associate with the document."
-                  },
-                  "parent_id": {
-                    "type": "string",
-                    "description": "Reserved for internal use, should not be set. Document ID of the direct parent to associate with the document."
-                  },
-                  "parents": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Reserved for internal use, should not be set. Document and ancestor ids, with the following convention: parents[0] === documentId, parents[1] === parent_id, and then ancestors ids in order."
                   },
                   "timestamp": {
                     "type": "number",
@@ -3477,20 +3471,9 @@
                     },
                     "description": "Tags associated with the table"
                   },
-                  "parents": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "description": "Reserved for internal use, should not be set. Table and ancestor ids, with the following convention: parents[0] === table_id, parents[1] === parent_id, and then ancestors ids in order"
-                    }
-                  },
-                  "parent_id": {
-                    "type": "string",
-                    "description": "Reserved for internal use, should not be set. ID of the direct parent to associate with the table"
-                  },
                   "mime_type": {
                     "type": "string",
-                    "description": "Mime type of the table"
+                    "description": "Reserved for internal use, should not be set. Mime type of the table"
                   }
                 }
               }
@@ -3694,7 +3677,7 @@
             "in": "query",
             "name": "table",
             "required": true,
-            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned assistants.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace assistants and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the assistant messages.\n- \"all\": A concatenation of all the above tables.\n",
+            "description": "The name of the usage table to retrieve:\n- \"users\": The list of users categorized by their activity level.\n- \"assistant_messages\": The list of messages sent by users including the mentioned agents.\n- \"builders\": The list of builders categorized by their activity level.\n- \"assistants\": The list of workspace agents and their corresponding usage.\n- \"feedbacks\": The list of feedbacks given by users on the agent messages.\n- \"all\": A concatenation of all the above tables.\n",
             "schema": {
               "type": "string",
               "enum": [
@@ -4295,7 +4278,7 @@
           },
           "assistantDefaultSelected": {
             "type": "boolean",
-            "description": "Whether this datasource is selected by default for assistants",
+            "description": "Whether this datasource is selected by default for agents",
             "example": true
           }
         }

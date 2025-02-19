@@ -105,7 +105,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "N0RrhyTXfq",
       appHash:
-        "ba5637f356c55676c7e175719bbd4fa5059c5a99a519ec75aea78b452e2168dc",
+        "a5a24fb80df72394a41387a92ccf681d5ee35a90f00941d93200154e30d73b0a",
     },
     config: {
       MODEL: {
@@ -247,20 +247,6 @@ export const BaseDustProdActionRegistry = {
       },
     },
   },
-  "table-header-detection": {
-    app: {
-      appId: "Hllp6rDlNo",
-      appHash:
-        "50441165e07ce247227b95e55a3dd82cbc373e16455addb472adeee43f9f62d3",
-    },
-    config: {
-      MODEL: {
-        // `provider_id` and `model_id` must be set by caller.
-        use_cache: false,
-        use_stream: true,
-      },
-    },
-  },
   "conversation-file-summarizer": {
     app: {
       appId: "iy1pjLCMzZ",
@@ -272,6 +258,20 @@ export const BaseDustProdActionRegistry = {
         // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
         use_stream: false,
+      },
+    },
+  },
+  "assistant-v2-reason": {
+    app: {
+      appId: "hUJvIB2KDb",
+      appHash:
+        "f12559382a92cdd5924f207c5f6cf7e6f74e0a4552a97929958ffc99154fa149",
+    },
+    config: {
+      MODEL: {
+        // `provider_id` and `model_id` must be set by caller.
+        use_cache: false,
+        use_stream: true,
       },
     },
   },

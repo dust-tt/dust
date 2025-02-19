@@ -20,6 +20,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "google_ai_studio"
   | "togetherai"
   | "deepseek"
+  | "fireworks"
 >();
 
 const ModelLLMIdSchema = FlexibleEnumSchema<
@@ -30,6 +31,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gpt-4o-mini"
   | "o1"
   | "o1-mini"
+  | "o3-mini"
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
@@ -45,6 +47,9 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-1.5-flash-latest"
   | "gemini-2.0-flash-exp"
   | "gemini-2.0-flash-thinking-exp-01-21"
+  | "gemini-2.0-flash"
+  | "gemini-2.0-flash-lite-preview-02-05"
+  | "gemini-2.0-pro-exp-02-05"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
@@ -53,6 +58,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
   | "deepseek-reasoner" // deepseek api
+  | "accounts/fireworks/models/deepseek-r1" // fireworks
 >();
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
@@ -101,6 +107,10 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+    ".xlsx",
+  ],
+  "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
@@ -210,6 +220,7 @@ const UserMessageOriginSchema = FlexibleEnumSchema<
   | "api"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
@@ -268,6 +279,8 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "webcrawler"
   | "snowflake"
   | "zendesk"
+  | "bigquery"
+  | "salesforce"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -472,6 +485,7 @@ const BaseActionTypeSchema = FlexibleEnumSchema<
   | "process_action"
   | "websearch_action"
   | "browse_action"
+  | "reasoning_action"
   | "visualization_action"
 >();
 
@@ -502,6 +516,17 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("browse_action"),
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
+
+const ReasoningActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  output: z.string().nullable(),
+  thinking: z.string().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("reasoning_action"),
+});
+type ReasoningActionPublicType = z.infer<typeof ReasoningActionTypeSchema>;
 
 const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
@@ -681,23 +706,45 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
-const GithubPullRequestParamsSchema = z.object({
+const GithubGetPullRequestParamsSchema = z.object({
   owner: z.string(),
   repo: z.string(),
   pullNumber: z.number(),
 });
 
-const GithubPullCommitsSchema = z.object({
+const GithubPullCommitSchema = z.object({
   sha: z.string(),
   message: z.string(),
   author: z.string(),
 });
 
+const GithubPullCommentSchema = z.object({
+  createdAt: z.number(),
+  author: z.string(),
+  body: z.string(),
+});
+
+const GithubPullReviewCommentSchema = z.object({
+  body: z.string(),
+  path: z.string(),
+  line: z.number(),
+});
+
+const GithubPullReviewSchema = z.object({
+  createdAt: z.number(),
+  author: z.string(),
+  body: z.string(),
+  state: z.string(),
+  comments: GithubPullReviewCommentSchema.array(),
+});
+
 const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
-  params: GithubPullRequestParamsSchema,
+  params: GithubGetPullRequestParamsSchema,
   pullBody: z.string().nullable(),
-  pullCommits: GithubPullCommitsSchema.array().nullable(),
   pullDiff: z.string().nullable(),
+  pullCommits: GithubPullCommitSchema.array().nullable(),
+  pullComments: GithubPullCommentSchema.array().nullable(),
+  pullReviews: GithubPullReviewSchema.array().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
@@ -705,14 +752,31 @@ const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
   type: z.literal("github_get_pull_request_action"),
 });
 
+const GithubCreateIssueParamsSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+  title: z.string(),
+  body: z.string(),
+});
+
+const GithubCreateIssueActionSchema = BaseActionSchema.extend({
+  params: GithubCreateIssueParamsSchema,
+  issueNumber: z.number().nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  agentMessageId: ModelIdSchema,
+  step: z.number(),
+  type: z.literal("github_create_issue_action"),
+});
+
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
   | "labs_transcripts"
   | "labs_transcripts_full_storage"
+  | "labs_transcripts_meet_scope"
   | "labs_trackers"
   | "document_tracker"
-  | "use_app_for_header_detection"
   | "openai_o1_feature"
   | "openai_o1_mini_feature"
   | "openai_o1_high_reasoning_feature"
@@ -722,10 +786,12 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "google_ai_studio_experimental_models_feature"
   | "snowflake_connector_feature"
   | "index_private_slack_channel"
-  | "conversations_jit_actions"
   | "disable_run_logs"
   | "show_debug_tools"
   | "labs_github_actions"
+  | "deepseek_r1_global_agent_feature"
+  | "salesforce_feature"
+  | "advanced_notion_management"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -957,6 +1023,8 @@ const AgentActionTypeSchema = z.union([
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
   GithubGetPullRequestActionSchema,
+  GithubCreateIssueActionSchema,
+  ReasoningActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1102,6 +1170,14 @@ const GithubGetPullRequestParamsEventSchema = z.object({
   action: GithubGetPullRequestActionSchema,
 });
 
+const GithubCreateIssueParamsEventSchema = z.object({
+  type: z.literal("github_create_issue_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: GithubCreateIssueActionSchema,
+});
+
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1152,6 +1228,32 @@ const WebsearchParamsEventSchema = z.object({
   action: WebsearchActionTypeSchema,
 });
 
+const ReasoningStartedEventSchema = z.object({
+  type: z.literal("reasoning_started"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+});
+
+const ReasoningThinkingEventSchema = z.object({
+  type: z.literal("reasoning_thinking"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+});
+
+const ReasoningTokensEventSchema = z.object({
+  type: z.literal("reasoning_tokens"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: ReasoningActionTypeSchema,
+  content: z.string(),
+  classification: TokensClassificationSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1176,6 +1278,10 @@ const AgentActionSpecificEventSchema = z.union([
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
   GithubGetPullRequestParamsEventSchema,
+  GithubCreateIssueParamsEventSchema,
+  ReasoningStartedEventSchema,
+  ReasoningThinkingEventSchema,
+  ReasoningTokensEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2098,52 +2204,22 @@ export type PostTableParentsResponseType = z.infer<
   typeof PostTableParentsResponseSchema
 >;
 
-export const UpsertTableFromCsvRequestSchema = z.intersection(
-  z
-    .object({
-      name: z.string(),
-      description: z.string(),
-      timestamp: z.number().nullable().optional(),
-      tags: z.array(z.string()).nullable().optional(),
-      parentId: z.string().nullable().optional(),
-      parents: z.array(z.string()).nullable().optional(),
-      truncate: z.boolean(),
-      useAppForHeaderDetection: z.boolean().nullable().optional(),
-      async: z.boolean().optional(),
-      title: z.string(),
-      mimeType: z.string(),
-      sourceUrl: z.string().nullable().optional(),
-    })
-    .transform((o) => ({
-      name: o.name,
-      description: o.description,
-      timestamp: o.timestamp,
-      tags: o.tags,
-      parentId: o.parentId,
-      parents: o.parents,
-      truncate: o.truncate,
-      useAppForHeaderDetection: o.useAppForHeaderDetection,
-      async: o.async,
-      title: o.title,
-      mimeType: o.mimeType,
-      sourceUrl: o.sourceUrl,
-    })),
-  z.union([
-    z.object({ csv: z.string(), tableId: z.undefined() }).transform((o) => ({
-      csv: o.csv,
-      tableId: o.tableId,
-    })),
-    z
-      .object({
-        csv: z.string().optional(),
-        tableId: z.string(),
-      })
-      .transform((o) => ({
-        csv: o.csv,
-        tableId: o.tableId,
-      })),
-  ])
-);
+export const UpsertTableFromCsvRequestSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  timestamp: z.number().nullable().optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  parentId: z.string().nullable().optional(),
+  parents: z.array(z.string()).nullable().optional(),
+  truncate: z.boolean(),
+  async: z.boolean().optional(),
+  title: z.string(),
+  mimeType: z.string(),
+  sourceUrl: z.string().nullable().optional(),
+  tableId: z.string(),
+  csv: z.string().optional(),
+  fileId: z.string().optional(),
+});
 
 export type UpsertTableFromCsvRequestType = z.infer<
   typeof UpsertTableFromCsvRequestSchema
@@ -2181,7 +2257,7 @@ export const UpsertDatabaseTableRequestSchema = z.object({
   remote_database_table_id: z.string().nullable().optional(),
   remote_database_secret_id: z.string().nullable().optional(),
   title: z.string(),
-  mime_type: z.string(),
+  mime_type: z.string().nullable().optional(),
   source_url: z.string().nullable().optional(),
 });
 
@@ -2284,9 +2360,9 @@ export type GetWorkspaceUsageRequestType = z.infer<
 
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
-  fileName: z.string().max(256, "File name must be less than 256 characters"),
+  fileName: z.string().max(4096, "File name must be less than 4096 characters"),
   fileSize: z.number(),
-  useCase: z.union([z.literal("conversation"), z.literal("avatar")]),
+  useCase: z.union([z.literal("conversation"), z.literal("upsert_table")]),
   useCaseMetadata: z
     .object({
       conversationId: z.string(),
@@ -2302,15 +2378,17 @@ const FileTypeStatusSchema = FlexibleEnumSchema<
 >();
 
 const FileTypeUseCaseSchema = FlexibleEnumSchema<
-  "conversation" | "avatar" | "tool_output" | "folder_document" | "folder_table"
+  "conversation" | "avatar" | "tool_output" | "upsert_document" | "upsert_table"
 >();
 
 export const FileTypeSchema = z.object({
+  // TODO(spolu): move this to ModelIdSchema
+  id: z.string(),
+  sId: z.string(),
   contentType: z.string(),
   downloadUrl: z.string().optional(),
   fileName: z.string(),
   fileSize: z.number(),
-  id: z.string(),
   status: FileTypeStatusSchema,
   uploadUrl: z.string().optional(),
   publicUrl: z.string().optional(),
@@ -2397,6 +2475,12 @@ export function BrowseActionPublicType(
   action: AgentActionPublicType
 ): action is BrowseActionPublicType {
   return action.type === "browse_action";
+}
+
+export function isReasoningActionType(
+  action: AgentActionPublicType
+): action is ReasoningActionPublicType {
+  return action.type === "reasoning_action";
 }
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {

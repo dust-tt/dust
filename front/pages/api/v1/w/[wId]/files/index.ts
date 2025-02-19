@@ -3,6 +3,7 @@ import { FileUploadUrlRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   ensureFileSize,
+  isPublicySupportedUseCase,
   isSupportedFileContentType,
   rateLimiter,
 } from "@dust-tt/types";
@@ -21,7 +22,7 @@ import { apiError } from "@app/logger/withlogging";
  * /api/v1/w/{wId}/files:
  *   post:
  *     tags:
- *       - Datasources
+ *       - Conversations
  *     summary: Create a file upload URL
  *     parameters:
  *       - name: wId
@@ -71,8 +72,12 @@ import { apiError } from "@app/logger/withlogging";
  *                 file:
  *                   type: object
  *                   properties:
+ *                     sId:
+ *                       type: string
+ *                       description: Unique string identifier for the file
  *                     uploadUrl:
  *                       type: string
+ *                       description: Upload URL for the file
  *       400:
  *         description: Invalid request or unsupported file type
  *       401:
@@ -101,25 +106,39 @@ async function handler(
         });
       }
 
-      // Agressively rate limit file uploads.
-      const remaining = await rateLimiter({
-        key: `workspace:${owner.id}:file_uploads`,
-        maxPerTimeframe: 40,
-        timeframeSeconds: 60,
-        logger,
-      });
-      if (remaining < 0) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message: "You have reached the rate limit for this workspace.",
-          },
-        });
-      }
-
+      // Only useCase "conversation" is supported for public API.
       const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
         r.data;
+
+      if (!auth.isSystemKey()) {
+        // Agressively rate limit file uploads when not a system key.
+        const remaining = await rateLimiter({
+          key: `workspace:${owner.id}:file_uploads`,
+          maxPerTimeframe: 40,
+          timeframeSeconds: 60,
+          logger,
+        });
+        if (remaining < 0) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: "You have reached the rate limit for this workspace.",
+            },
+          });
+        }
+
+        // Limit use-case if not a system key.
+        if (!isPublicySupportedUseCase(useCase)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "The file use case is not supported by the API.",
+            },
+          });
+        }
+      }
 
       if (!isSupportedFileContentType(contentType)) {
         return apiError(req, res, {

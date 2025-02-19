@@ -9,12 +9,11 @@ import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
 
+import config from "@app/lib/file_storage/config";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
-
-const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,
@@ -31,11 +30,6 @@ export const EnqueueUpsertDocument = t.type({
   mimeType: t.string,
 });
 
-const DetectedHeaders = t.type({
-  header: t.array(t.string),
-  rowIndex: t.number,
-});
-
 export const EnqueueUpsertTable = t.type({
   workspaceId: t.string,
   dataSourceId: t.string,
@@ -47,9 +41,8 @@ export const EnqueueUpsertTable = t.type({
   tableParentId: t.union([t.string, t.undefined, t.null]),
   tableParents: t.union([t.array(t.string), t.undefined, t.null]),
   csv: t.union([t.string, t.null]),
+  fileId: t.union([t.string, t.null]),
   truncate: t.boolean,
-  useAppForHeaderDetection: t.union([t.boolean, t.undefined, t.null]),
-  detectedHeaders: t.union([DetectedHeaders, t.undefined]),
   title: t.string,
   mimeType: t.string,
   sourceUrl: t.union([t.string, t.undefined, t.null]),
@@ -142,18 +135,11 @@ async function enqueueUpsert({
       upsertQueueId: string;
       launchWorkflowFn: typeof launchUpsertTableWorkflow;
     }): Promise<Result<string, Error>> {
-  if (!DUST_UPSERT_QUEUE_BUCKET) {
-    throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
-  }
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("SERVICE_ACCOUNT is not set");
-  }
-
   const now = Date.now();
 
   try {
-    const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
-    const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
+    const storage = new Storage({ keyFilename: config.getServiceAccount() });
+    const bucket = storage.bucket(config.getGcsUpsertQueueBucket());
     await bucket
       .file(`${upsertQueueId}.json`)
       .save(JSON.stringify(upsertItem), {

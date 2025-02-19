@@ -6,6 +6,7 @@ import {
   isSupportedModel,
   ModelIdCodec,
   ModelProviderIdCodec,
+  ReasoningEffortCodec,
   SupportedModel,
 } from "../../lib/assistant";
 
@@ -51,6 +52,30 @@ export const GetAgentConfigurationsLeaderboardQuerySchema = t.type({
   ]),
 });
 
+const DataSourceFilterParentsCodec = t.union([
+  t.type({
+    in: t.array(t.string),
+    not: t.array(t.string),
+  }),
+  t.null,
+]);
+
+const OptionalDataSourceFilterTagsCodec = t.partial({
+  tags: t.union([
+    t.type({
+      in: t.array(t.string),
+      not: t.array(t.string),
+      mode: t.union([t.literal("custom"), t.literal("auto")]),
+    }),
+    t.null,
+  ]),
+});
+
+const DataSourceFilterCodec = t.intersection([
+  t.type({ parents: DataSourceFilterParentsCodec }),
+  OptionalDataSourceFilterTagsCodec,
+]);
+
 const RetrievalActionConfigurationSchema = t.type({
   type: t.literal("retrieval_configuration"),
   query: t.union([t.literal("auto"), t.literal("none")]),
@@ -67,15 +92,7 @@ const RetrievalActionConfigurationSchema = t.type({
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
 });
@@ -109,21 +126,25 @@ const GithubGetPullRequestActionConfigurationSchema = t.type({
   type: t.literal("github_get_pull_request_configuration"),
 });
 
+const GithubCreateIssueActionConfigurationSchema = t.type({
+  type: t.literal("github_create_issue_configuration"),
+});
+
+const ReasoningActionConfigurationSchema = t.type({
+  type: t.literal("reasoning_configuration"),
+  modelId: ModelIdCodec,
+  providerId: ModelProviderIdCodec,
+  temperature: t.union([t.number, t.null]),
+  reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
     t.type({
       dataSourceViewId: t.string,
       workspaceId: t.string,
-      filter: t.type({
-        parents: t.union([
-          t.type({
-            in: t.array(t.string),
-            not: t.array(t.string),
-          }),
-          t.null,
-        ]),
-      }),
+      filter: DataSourceFilterCodec,
     })
   ),
   relativeTimeFrame: t.union([
@@ -133,12 +154,6 @@ const ProcessActionConfigurationSchema = t.type({
       duration: t.number,
       unit: TimeframeUnitCodec,
     }),
-  ]),
-  tagsFilter: t.union([
-    t.type({
-      in: t.array(t.string),
-    }),
-    t.null,
   ]),
   schema: t.array(
     t.type({
@@ -172,6 +187,8 @@ const ActionConfigurationSchema = t.intersection([
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
     GithubGetPullRequestActionConfigurationSchema,
+    GithubCreateIssueActionConfigurationSchema,
+    ReasoningActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);
@@ -185,11 +202,7 @@ const ModelConfigurationSchema = t.intersection([
   // TODO(2024-11-04 flav) Clean up this legacy type.
   t.partial(multiActionsCommonFields),
   t.partial({
-    reasoningEffort: t.union([
-      t.literal("low"),
-      t.literal("medium"),
-      t.literal("high"),
-    ]),
+    reasoningEffort: ReasoningEffortCodec,
   }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(

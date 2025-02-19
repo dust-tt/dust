@@ -1,11 +1,14 @@
 import type {
   ConnectorPermission,
   ContentNode,
-  ContentNodeWithParentIds,
   DataSourceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { assertNever, ConnectorsAPI } from "@dust-tt/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  isValidContentNodesViewType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -32,15 +35,9 @@ const SetConnectorPermissionsRequestBodySchema = t.type({
   ),
 });
 
-export type GetDataSourcePermissionsResponseBody<
-  IncludeParents extends boolean = false,
-> = IncludeParents extends true
-  ? {
-      resources: ContentNodeWithParentIds[];
-    }
-  : {
-      resources: ContentNode[];
-    };
+export type GetDataSourcePermissionsResponseBody = {
+  resources: ContentNode[];
+};
 
 export type SetDataSourcePermissionsResponseBody = {
   success: true;
@@ -206,8 +203,6 @@ export async function getManagedDataSourcePermissionsHandler(
     }
   }
 
-  const includeParents = req.query.includeParents === "true";
-
   switch (filterPermission) {
     case "read":
       // We let users get the read  permissions of a connector
@@ -215,7 +210,7 @@ export async function getManagedDataSourcePermissionsHandler(
       break;
     case "write":
       // We let builders get the write permissions of a connector.
-      // `write` is used for selection of default slack channel in the workspace assistant
+      // `write` is used for selection of default slack channel in the workspace agent
       // builder.
       if (!auth.isBuilder()) {
         return apiError(req, res, {
@@ -249,13 +244,13 @@ export async function getManagedDataSourcePermissionsHandler(
   if (
     !viewType ||
     typeof viewType !== "string" ||
-    (viewType !== "tables" && viewType !== "documents")
+    !isValidContentNodesViewType(viewType)
   ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents",
+        message: "Invalid viewType. Required: tables | documents | all",
       },
     });
   }
@@ -269,7 +264,6 @@ export async function getManagedDataSourcePermissionsHandler(
     parentId,
     filterPermission,
     viewType,
-    includeParents,
   });
   if (permissionsRes.isErr()) {
     if (permissionsRes.error.type === "connector_rate_limit_error") {

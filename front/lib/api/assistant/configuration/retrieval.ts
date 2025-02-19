@@ -1,5 +1,6 @@
 import type {
   DataSourceConfiguration,
+  DataSourceFilter,
   ModelId,
   RetrievalConfigurationType,
 } from "@dust-tt/types";
@@ -107,10 +108,20 @@ export async function fetchAgentRetrievalActionConfigurations({
   return actionsByConfigurationId;
 }
 
-function getDataSource(
+export function getDataSource(
   dataSourceConfig: AgentDataSourceConfiguration
 ): DataSourceConfiguration {
   const { dataSourceView } = dataSourceConfig;
+
+  let tags: DataSourceFilter["tags"] = null;
+
+  if (dataSourceConfig.tagsMode) {
+    tags = {
+      in: dataSourceConfig.tagsIn ?? [],
+      not: dataSourceConfig.tagsNotIn ?? [],
+      mode: dataSourceConfig.tagsMode,
+    };
+  }
 
   return {
     workspaceId: dataSourceView.workspace.sId,
@@ -126,6 +137,7 @@ function getDataSource(
               not: dataSourceConfig.parentsNotIn,
             }
           : null,
+      tags,
     },
   };
 }

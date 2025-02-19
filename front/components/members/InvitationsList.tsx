@@ -2,6 +2,7 @@ import {
   Avatar,
   ChevronRightIcon,
   Chip,
+  classNames,
   DataTable,
   Page,
 } from "@dust-tt/sparkle";
@@ -84,13 +85,11 @@ export function InvitationsList({
 
   return (
     <>
-      {selectedInvite && (
-        <EditInvitationModal
-          invitation={selectedInvite}
-          owner={owner}
-          onClose={() => setSelectedInvite(null)}
-        />
-      )}
+      <EditInvitationModal
+        invitation={selectedInvite}
+        owner={owner}
+        onClose={() => setSelectedInvite(null)}
+      />
       <div className="flex flex-col gap-2">
         {filteredInvitations.length > 0 && (
           <Page.H variant="h5">Invitations</Page.H>
@@ -98,13 +97,20 @@ export function InvitationsList({
 
         {isInvitationsLoading ? (
           <div className="flex flex-col gap-2">
-            <div className="flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t border-structure-200 bg-structure-50 py-2 text-xs sm:text-sm">
+            <div
+              className={classNames(
+                "flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t py-2 text-xs sm:text-sm",
+                "border-structure-200 bg-structure-50 dark:border-structure-200-night dark:bg-structure-50-night"
+              )}
+            >
               <div className="hidden sm:block">
                 <Avatar size="xs" />
               </div>
               <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="font-medium text-foreground">Loading...</div>
-                <div className="grow font-normal text-element-700"></div>
+                <div className="font-medium text-foreground dark:text-foreground-night">
+                  Loading...
+                </div>
+                <div className="grow font-normal text-element-700 dark:text-element-700-night"></div>
               </div>
               <div>
                 <Chip size="xs" color="slate">

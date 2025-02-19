@@ -58,7 +58,6 @@ export type ProcessConfigurationType = {
 
   dataSources: DataSourceConfiguration[];
   relativeTimeFrame: RetrievalTimeframe;
-  tagsFilter: ProcessTagsFilter | null;
   schema: ProcessSchemaPropertyType[];
 
   name: string;
@@ -83,6 +82,8 @@ export interface ProcessActionType extends BaseAction {
 
   params: {
     relativeTimeFrame: TimeFrame | null;
+    tagsIn: string[] | null;
+    tagsNot: string[] | null;
   };
   schema: ProcessSchemaPropertyType[];
   outputs: ProcessActionOutputsType | null;

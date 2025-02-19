@@ -1,16 +1,20 @@
+import { BrowseActionType } from "../../front/assistant/actions/browse";
+import { ConversationIncludeFileActionType } from "../../front/assistant/actions/conversation/include_file";
+import { ConversationListFilesActionType } from "../../front/assistant/actions/conversation/list_files";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
+import {
+  GithubCreateIssueActionType,
+  GithubGetPullRequestActionType,
+} from "../../front/assistant/actions/github";
 import { ProcessActionType } from "../../front/assistant/actions/process";
+import { ReasoningActionType } from "../../front/assistant/actions/reasoning";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
 import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
+import { WebsearchActionType } from "../../front/assistant/actions/websearch";
 import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
-import { BrowseActionType } from "./actions/browse";
-import { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
-import { ConversationListFilesActionType } from "./actions/conversation/list_files";
-import { GithubGetPullRequestActionType } from "./actions/github";
-import { WebsearchActionType } from "./actions/websearch";
 
 /**
  * Mentions
@@ -69,6 +73,7 @@ export type UserMessageOrigin =
   | "email"
   | "gsheet"
   | "zapier"
+  | "n8n"
   | "make"
   | "zendesk"
   | "raycast"
@@ -112,13 +117,16 @@ export type ConfigurableAgentActionType =
   | TablesQueryActionType
   | ProcessActionType
   | WebsearchActionType
-  | BrowseActionType;
+  | BrowseActionType
+  | ReasoningActionType;
 
 export type ConversationAgentActionType =
   | ConversationListFilesActionType
   | ConversationIncludeFileActionType;
 
-export type GithubAgentActionType = GithubGetPullRequestActionType;
+export type GithubAgentActionType =
+  | GithubGetPullRequestActionType
+  | GithubCreateIssueActionType;
 
 export type AgentActionType =
   | ConfigurableAgentActionType
@@ -141,6 +149,8 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   conversation_list_files_action: "Listing files",
   conversation_include_file_action: "Reading file",
   github_get_pull_request_action: "Retrieving pull request",
+  github_create_issue_action: "Creating issue",
+  reasoning_action: "Reasoning",
 };
 
 /**
@@ -186,7 +196,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
 
 /**
  * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an assistant not in their list using the "test" button:
+ * when a user 'tests' an agent not in their list using the "test" button:
  * those conversations do not show in users' histories.
  */
 export type ConversationVisibility =
@@ -256,7 +266,8 @@ export interface ConversationParticipantsType {
 
 export type ConversationErrorType =
   | "conversation_not_found"
-  | "conversation_access_restricted";
+  | "conversation_access_restricted"
+  | "conversation_with_unavailable_agent";
 
 export class ConversationError extends Error {
   readonly type: ConversationErrorType;

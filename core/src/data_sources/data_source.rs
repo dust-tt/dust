@@ -236,6 +236,7 @@ impl From<Document> for Node {
             document.parent_id,
             document.parents.clone(),
             document.source_url,
+            Some(document.tags),
         )
     }
 }
@@ -315,6 +316,21 @@ pub struct DataSourceConfig {
 
     pub extras: Option<Value>,
     pub qdrant_config: QdrantDataSourceConfig,
+}
+
+// This type represent the blob required to upsert a document within a datasource.
+#[derive(serde::Serialize)]
+pub struct DocumnentBlobPayload {
+    pub document_id: String,
+    pub timestamp: u64,
+    pub tags: Vec<String>,
+    pub parent_id: Option<String>,
+    pub parents: Vec<String>,
+    pub source_url: Option<String>,
+    pub section: Section,
+    pub title: String,
+    pub mime_type: String,
+    pub provider_visibility: Option<ProviderVisibility>,
 }
 
 /// The `data_source_id` is the unique identifier that allows routing to the right data in SQL store
@@ -479,7 +495,7 @@ impl DataSource {
         parents: Vec<String>,
     ) -> Result<()> {
         store
-            .update_data_source_document_parents(
+            .update_data_source_node_parents(
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),
@@ -519,7 +535,7 @@ impl DataSource {
         remove_tags: Vec<String>,
     ) -> Result<Vec<String>> {
         let new_tags = store
-            .update_data_source_document_tags(
+            .update_data_source_node_tags(
                 &self.project,
                 &self.data_source_id(),
                 &document_id.to_string(),
@@ -933,8 +949,17 @@ impl DataSource {
             .collect::<Vec<_>>();
 
         // Chunk splits into a vectors of 128 chunks (Vec<Vec<String>>)
+
+        // if provider is mistral, we can only go to 32-size chunked splits
+        // because mistral does not accept more than 16k tokens per batch request
+        // (with 512 tokens per split)
+        let chunk_size = match embedder_config.provider_id {
+            ProviderID::Mistral => 32,
+            _ => 128,
+        };
+
         let chunked_splits = splits_to_embbed
-            .chunks(128)
+            .chunks(chunk_size)
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
@@ -2087,6 +2112,47 @@ impl DataSource {
         );
 
         Ok(())
+    }
+
+    pub async fn retrieve_api_blob(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        document_id: &str,
+    ) -> Result<Option<DocumnentBlobPayload>> {
+        let store = store.clone();
+
+        // Only fetch latest version by passing None as version_hash.
+        let d = match store
+            .load_data_source_document(&self.project, &self.data_source_id, document_id, &None)
+            .await?
+        {
+            Some(d) => d,
+            None => {
+                return Ok(None);
+            }
+        };
+
+        let document_id_hash = make_document_id_hash(document_id);
+
+        let stored_doc =
+            FileStorageDocument::get_stored_document(&self, d.created, &document_id_hash, &d.hash)
+                .await?;
+
+        // Create payload according to DataSourcesDocumentsUpsertPayload struct.
+        let api_blob = DocumnentBlobPayload {
+            document_id: document_id.to_string(),
+            timestamp: d.timestamp,
+            tags: d.get_tags(),
+            parent_id: d.parent_id,
+            parents: d.parents,
+            source_url: d.source_url,
+            section: stored_doc.sections,
+            title: d.title,
+            mime_type: d.mime_type,
+            provider_visibility: d.provider_visibility,
+        };
+
+        Ok(Some(api_blob))
     }
 }
 

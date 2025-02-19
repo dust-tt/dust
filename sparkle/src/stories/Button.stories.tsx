@@ -3,7 +3,7 @@ import React from "react";
 
 import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
 
-import { Button, PlusIcon, RobotIcon } from "../index_with_tw_base";
+import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
@@ -55,6 +55,15 @@ const meta = {
       description: "Whether the button should display a dropdown chevron",
       control: "boolean",
     },
+    isCounter: {
+      description: "Whether the button should display a counter",
+      control: "boolean",
+    },
+    counterValue: {
+      description: "Value to display in the counter (if isCounter is true)",
+      control: "text",
+      if: { arg: "isCounter", eq: true },
+    },
     tooltip: {
       description: "Optional tooltip text to display on hover",
       control: "text",
@@ -80,9 +89,61 @@ export const ExampleButton: Story = {
     isPulsing: false,
     isSelect: false,
     disabled: false,
+    isCounter: false,
+    counterValue: "1",
   },
 };
 
 export const MiniButton: Story = {
   render: () => <Button size="mini" icon={PlusIcon} />,
+};
+
+const ButtonBySize = ({
+  size,
+}: {
+  size: Exclude<React.ComponentProps<typeof Button>["size"], "mini">;
+}) => (
+  <>
+    <Separator />
+    <h3 className="s-text-primary dark:s-text-slate-50">
+      {size?.toUpperCase()}
+    </h3>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button size={size} label="Button" />
+      <Button size={size} variant="outline" label="Button" />
+      <Button size={size} variant="highlight" label="Button" />
+      <Button size={size} variant="warning" label="Button" />
+      <Button size={size} variant="ghost" label="Button" />
+      <Button
+        size={size}
+        variant="primary"
+        label="Button with href"
+        href="hello"
+      />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button size={size} label="Button" isLoading />
+      <Button size={size} variant="outline" label="Button" isLoading />
+      <Button size={size} variant="highlight" label="Button" isLoading />
+      <Button size={size} variant="warning" label="Button" isLoading />
+      <Button size={size} variant="ghost" label="Button" isLoading />
+    </div>
+    <div className="s-flex s-items-center s-gap-4">
+      <Button size={size} icon={PlusIcon} label="Button" />
+      <Button size={size} variant="outline" icon={PlusIcon} label="Button" />
+      <Button size={size} variant="highlight" icon={PlusIcon} label="Button" />
+      <Button size={size} variant="warning" icon={PlusIcon} label="Button" />
+      <Button size={size} variant="ghost" icon={PlusIcon} label="Button" />
+    </div>
+  </>
+);
+
+export const Gallery: Story = {
+  render: () => (
+    <div className="s-flex s-flex-col s-gap-4">
+      <ButtonBySize size="xs" />
+      <ButtonBySize size="sm" />
+      <ButtonBySize size="md" />
+    </div>
+  ),
 };

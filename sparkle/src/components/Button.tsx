@@ -3,6 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import {
+  Counter,
   Icon,
   LinkWrapper,
   LinkWrapperProps,
@@ -32,18 +33,59 @@ export const BUTTON_SIZES = ["mini", "xs", "sm", "md"] as const;
 export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
 
 const styleVariants: Record<ButtonVariantType, string> = {
-  primary:
-    "s-bg-primary s-text-white hover:s-bg-primary-light active:s-bg-primary-dark disabled:s-bg-primary-muted",
-  highlight:
-    "s-bg-highlight s-text-white hover:s-bg-highlight-light active:s-bg-highlight-dark disabled:s-bg-highlight-muted",
-  warning:
-    "s-bg-warning s-text-white hover:s-bg-warning-light active:s-bg-warning-dark disabled:s-bg-warning-muted",
-  outline:
-    "s-border s-text-primary-dark s-bg-background s-border-border-dark hover:s-text-primary hover:s-bg-primary-150 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-muted disabled:s-border-structure-100",
-  ghost:
-    "s-border s-border-primary-200/0 s-text-primary-950 hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
-  "ghost-secondary":
-    "s-border s-border-primary-200/0 s-text-muted-foreground hover:s-bg-primary-150 hover:s-text-primary-900 hover:s-border-primary-150 active:s-bg-primary-300 disabled:s-text-primary-400",
+  primary: cn(
+    "s-bg-primary-800 dark:s-bg-primary-800-night",
+    "s-text-primary-50 dark:s-text-primary-50-night",
+    "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
+    "active:s-bg-primary-dark dark:active:s-bg-primary-light-night",
+    "disabled:s-bg-primary-muted  disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
+  ),
+  highlight: cn(
+    "s-bg-highlight",
+    "s-text-highlight-50",
+    "hover:s-bg-highlight-light",
+    "active:s-bg-highlight-dark",
+    "disabled:s-bg-highlight-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-highlight-muted-night"
+  ),
+  warning: cn(
+    "s-bg-warning",
+    "s-text-warning-50",
+    "hover:s-bg-warning-light",
+    "active:s-bg-warning-dark",
+    "disabled:s-bg-warning-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-warning-muted-night"
+  ),
+  outline: cn(
+    "s-border",
+    "s-border-border-dark dark:s-border-primary-600",
+    "s-text-primary-800 dark:s-text-primary-800-night",
+    "s-bg-background dark:s-bg-background-night",
+    "hover:s-text-primary dark:hover:s-text-primary-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-border-primary-150 dark:hover:s-border-primary-500",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+    "disabled:s-border-primary-100 dark:disabled:s-border-primary-100-night"
+  ),
+  ghost: cn(
+    "s-border",
+    "s-border-border-dark/0  dark:s-border-primary-600/0",
+    "s-text-primary-950 dark:s-text-primary-950-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
+  "ghost-secondary": cn(
+    "s-border",
+    "s-border-primary-200/0 dark:s-border-primary-600/0",
+    "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "hover:s-bg-primary-150 dark:hover:s-bg-primary-700",
+    "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
+    "hover:s-border-border-dark dark:hover:s-border-primary-600",
+    "active:s-bg-primary-300 dark:active:s-bg-primary-900",
+    "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
+  ),
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
@@ -54,8 +96,11 @@ const sizeVariants: Record<ButtonSizeType, string> = {
 };
 
 const buttonVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors " +
+  cn(
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-medium s-ring-offset-background s-transition-colors",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
+    "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
+  ),
   {
     variants: {
       variant: styleVariants,
@@ -94,7 +139,6 @@ export interface MetaButtonProps
 const MetaButton = React.forwardRef<HTMLButtonElement, MetaButtonProps>(
   ({ className, asChild = false, children, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
-
     return (
       <Comp className={className} ref={ref} {...props}>
         {children}
@@ -110,6 +154,8 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isLoading?: boolean;
     isPulsing?: boolean;
     tooltip?: string;
+    isCounter?: boolean;
+    counterValue?: string;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -137,6 +183,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       tooltip,
       isSelect = false,
       isPulsing = false,
+      isCounter = false,
+      counterValue,
       size = "sm",
       href,
       target,
@@ -149,7 +197,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const iconsSize = size === "mini" ? "sm" : size;
-
     const spinnerVariant = isLoading
       ? (variant && spinnerVariantsMapIsLoading[variant]) || "slate400"
       : (variant && spinnerVariantsMap[variant]) || "slate400";
@@ -157,6 +204,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const renderIcon = (visual: React.ComponentType, extraClass = "") => (
       <Icon visual={visual} size={iconsSize} className={extraClass} />
     );
+
+    const showCounter = isCounter && counterValue != null;
+    const showContainer = label || showCounter;
 
     const content = (
       <>
@@ -167,7 +217,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ) : (
           icon && renderIcon(icon, "-s-mx-0.5")
         )}
-        {label}
+
+        {showContainer && (
+          <div className="s-flex s-items-center s-gap-2">
+            {label}
+            {showCounter && (
+              <Counter
+                value={Number(counterValue)}
+                variant={variant || "primary"}
+                size={size === "mini" ? "xs" : size}
+                isInButton={true}
+              />
+            )}
+          </div>
+        )}
         {isSelect && renderIcon(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
       </>
     );

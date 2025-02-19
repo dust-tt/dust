@@ -11,10 +11,9 @@ import {
   SparklesIcon,
   Spinner,
   TextArea,
-  XCircleIcon,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ProcessSchemaPropertyType,
   Result,
@@ -317,13 +316,6 @@ export function ActionProcess({
     return null;
   }
 
-  const foldersOnly =
-    Object.keys(actionConfiguration.dataSourceConfigurations).every(
-      (k) =>
-        actionConfiguration.dataSourceConfigurations[k].dataSourceView
-          .dataSource.connectorProvider === null
-    ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
-
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
     let fullInstructions = `${instructions}`;
@@ -394,7 +386,6 @@ export function ActionProcess({
         allowedSpaces={allowedSpaces}
         viewType="documents"
       />
-
       <div className="text-sm text-element-700">
         This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
@@ -410,113 +401,21 @@ export function ActionProcess({
         </Hoverable>
         .
       </div>
-
       <DataSourceSelectionSection
         owner={owner}
         dataSourceConfigurations={actionConfiguration.dataSourceConfigurations}
         openDataSourceModal={() => {
           setShowDataSourcesModal(true);
         }}
+        onSave={(dsConfigs) => {
+          setEdited(true);
+          updateAction((previousAction) => ({
+            ...previousAction,
+            dataSourceConfigurations: dsConfigs,
+          }));
+        }}
         viewType="documents"
       />
-
-      {(foldersOnly ||
-        (actionConfiguration.tagsFilter?.in || []).length > 0) && (
-        <div className="flex flex-col">
-          <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-foreground">
-              Folder tags filtering
-            </div>
-            <div>
-              <Button
-                label="Add tag filter"
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => {
-                    const tagsFilter = {
-                      in: [...(previousAction.tagsFilter?.in || []), ""],
-                    };
-                    return {
-                      ...previousAction,
-                      tagsFilter,
-                    };
-                  });
-                }}
-                disabled={
-                  !!actionConfiguration.tagsFilter &&
-                  actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
-                    .length > 0
-                }
-              />
-            </div>
-          </div>
-          {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
-            return (
-              <div className="flex flex-row gap-4" key={`tag-${i}`}>
-                <div className="flex">
-                  <Input
-                    placeholder="Enter tag"
-                    name="tags"
-                    value={t}
-                    onChange={(e) => {
-                      setEdited(true);
-                      updateAction((previousAction) => {
-                        const tags = [...(previousAction.tagsFilter?.in || [])];
-                        tags[i] = e.target.value;
-
-                        return {
-                          ...previousAction,
-                          tagsFilter: {
-                            in: tags,
-                          },
-                        };
-                      });
-                    }}
-                    message={
-                      t.length === 0
-                        ? "Tag is required"
-                        : (actionConfiguration.tagsFilter?.in || []).filter(
-                              (tag) => tag === t
-                            ).length > 1
-                          ? "Tag must be unique"
-                          : undefined
-                    }
-                    messageStatus="error"
-                  />
-                </div>
-                <div className="flex items-end pb-2">
-                  <IconButton
-                    icon={XCircleIcon}
-                    tooltip="Remove Property"
-                    variant="ghost"
-                    onClick={async () => {
-                      setEdited(true);
-                      updateAction((previousAction) => {
-                        const tags = (
-                          previousAction.tagsFilter?.in || []
-                        ).filter((tag) => tag !== t);
-
-                        return {
-                          ...previousAction,
-                          tagsFilter:
-                            tags.length > 0
-                              ? {
-                                  in: tags,
-                                }
-                              : null,
-                        };
-                      });
-                    }}
-                    className="ml-1"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
@@ -537,9 +436,8 @@ export function ActionProcess({
           />
         </div>
       )}
-
       <div className={"flex flex-row items-center gap-4 pb-4"}>
-        <div className="text-sm font-semibold text-foreground">
+        <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Process data from the last
         </div>
         <input
@@ -549,7 +447,7 @@ export function ActionProcess({
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50"
+            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
           )}
           value={actionConfiguration.timeFrame.value || ""}
           onChange={(e) => {
@@ -572,10 +470,9 @@ export function ActionProcess({
           onEdit={() => setEdited(true)}
         />
       </div>
-
       <div className="flex flex-col">
         <div className="flex flex-row items-start">
-          <div className="flex-grow pb-2 text-sm font-semibold text-foreground">
+          <div className="flex-grow pb-2 text-sm font-semibold text-foreground dark:text-foreground-night">
             Schema
           </div>
           {actionConfiguration.schema.length > 0 && !isGeneratingSchema && (

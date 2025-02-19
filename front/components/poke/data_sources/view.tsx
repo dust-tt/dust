@@ -1,10 +1,15 @@
-import { Chip, Modal } from "@dust-tt/sparkle";
+import {
+  Chip,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   CoreAPIDataSource,
   DataSourceType,
 } from "@dust-tt/types";
-import { isWebhookBasedProvider } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
@@ -16,6 +21,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 
 export function ViewDataSourceTable({
@@ -234,33 +240,39 @@ function RawObjectsModal({
   dataSource: DataSourceType;
 }) {
   return (
-    <Modal
-      isOpen={show}
-      onClose={onClose}
-      hasChanged={false}
-      title="Data source raw objects"
-      variant="dialogue"
+    <Dialog
+      open={show}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
     >
-      <div className="mx-2 my-4 overflow-y-auto">
-        <span className="text-sm font-bold">dataSource</span>
-        <JsonViewer
-          value={dataSource}
-          rootName={false}
-          defaultInspectDepth={1}
-        />
-        <span className="text-sm font-bold">coreDataSource</span>
-        <JsonViewer
-          value={coreDataSource}
-          rootName={false}
-          defaultInspectDepth={1}
-        />
-        <span className="text-sm font-bold">connector</span>
-        <JsonViewer
-          value={connector}
-          rootName={false}
-          defaultInspectDepth={1}
-        />
-      </div>
-    </Modal>
+      <DialogContent size="xl">
+        <DialogHeader>
+          <DialogTitle>Data source raw objects</DialogTitle>
+        </DialogHeader>
+        <div className="mx-2 my-4 overflow-y-auto">
+          <span className="text-sm font-bold">dataSource</span>
+          <JsonViewer
+            value={dataSource}
+            rootName={false}
+            defaultInspectDepth={1}
+          />
+          <span className="text-sm font-bold">coreDataSource</span>
+          <JsonViewer
+            value={coreDataSource}
+            rootName={false}
+            defaultInspectDepth={1}
+          />
+          <span className="text-sm font-bold">connector</span>
+          <JsonViewer
+            value={connector}
+            rootName={false}
+            defaultInspectDepth={1}
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

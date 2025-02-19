@@ -4,7 +4,7 @@ import type {
   ContentNodesViewType,
   ModelId,
 } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import type { Client } from "node-zendesk";
 
 import {
@@ -76,7 +76,16 @@ async function getRootLevelContentNodes(
   const brandsInDatabase =
     await ZendeskBrandResource.fetchAllReadOnly(connectorId);
   if (isReadPermissionsOnly) {
-    return brandsInDatabase.map((brand) => brand.toContentNode(connectorId));
+    return [
+      ...brandsInDatabase
+        .filter((b) => b.ticketsPermission === "read")
+        .map((b) => b.getTicketsContentNode(connectorId, { richTitle: true })),
+      ...brandsInDatabase
+        .filter((b) => b.helpCenterPermission === "read")
+        .map((b) =>
+          b.getHelpCenterContentNode(connectorId, { richTitle: true })
+        ),
+    ];
   } else {
     const { result: brands } = await zendeskApiClient.brand.list();
     return brands.map(
@@ -86,12 +95,13 @@ async function getRootLevelContentNodes(
           ?.toContentNode(connectorId) ?? {
           internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
-          type: "folder",
+          type: "Folder",
           title: brand.name || "Brand",
           sourceUrl: brand.brand_url,
           expandable: true,
           permission: "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.ZENDESK.BRAND,
         }
     );
   }
@@ -142,12 +152,13 @@ async function getBrandChildren(
     ) ?? {
       internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
       parentInternalId: parentInternalId,
-      type: "folder",
+      type: "Folder",
       title: "Tickets",
       sourceUrl: null,
       expandable: false,
       permission: "none",
       lastUpdatedAt: null,
+      mimeType: MIME_TYPES.ZENDESK.TICKETS,
     };
     nodes.push(ticketsNode);
 
@@ -161,12 +172,13 @@ async function getBrandChildren(
           brandId,
         }),
         parentInternalId: parentInternalId,
-        type: "folder",
+        type: "Folder",
         title: "Help Center",
         sourceUrl: null,
         expandable: true,
         permission: "none",
         lastUpdatedAt: null,
+        mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
       };
       nodes.push(helpCenterNode);
     }
@@ -218,12 +230,13 @@ async function getHelpCenterChildren(
             categoryId: category.id,
           }),
           parentInternalId: parentInternalId,
-          type: "folder",
+          type: "Folder",
           title: category.name,
           sourceUrl: category.html_url,
           expandable: false,
           permission: "none",
           lastUpdatedAt: null,
+          mimeType: MIME_TYPES.ZENDESK.CATEGORY,
         }
     );
   }

@@ -6,7 +6,6 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class AgentRetrievalConfiguration extends WorkspaceAwareModel<AgentRetrievalConfiguration> {
@@ -131,7 +130,7 @@ AgentRetrievalConfiguration.belongsTo(AgentConfiguration, {
 /**
  * Retrieval Action
  */
-export class AgentRetrievalAction extends BaseModel<AgentRetrievalAction> {
+export class AgentRetrievalAction extends WorkspaceAwareModel<AgentRetrievalAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runId: string | null;
@@ -142,6 +141,9 @@ export class AgentRetrievalAction extends BaseModel<AgentRetrievalAction> {
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
   declare topK: number;
+
+  declare tagsIn: string[] | null;
+  declare tagsNot: string[] | null;
 
   declare functionCallId: string | null;
   declare functionCallName: string | null;
@@ -179,6 +181,14 @@ AgentRetrievalAction.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    tagsIn: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    tagsNot: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     topK: {
@@ -353,7 +363,10 @@ RetrievalDocumentChunk.init(
   {
     modelName: "retrieval_document_chunk",
     sequelize: frontSequelize,
-    indexes: [{ fields: ["retrievalDocumentId"] }],
+    indexes: [
+      { fields: ["retrievalDocumentId"] },
+      { fields: ["workspaceId", "id"] },
+    ],
   }
 );
 

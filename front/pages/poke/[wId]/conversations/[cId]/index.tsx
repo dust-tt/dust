@@ -6,14 +6,15 @@ import type {
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 
-import PokeNavbar from "@app/components/poke/PokeNavbar";
+import PokeLayout from "@app/components/poke/PokeLayout";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { useConversation } from "@app/poke/swr";
+import { usePokeConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspaceId: string;
@@ -85,9 +86,9 @@ const AgentMessageView = ({
   return (
     <div className="ml-4 pt-2 text-sm text-element-700">
       <div className="font-bold">
-        [assistant] @{message.configuration.name} {"(sId="}
+        [agent] @{message.configuration.name} {"(sId="}
         <a
-          href={`../assistants/${message.configuration.sId}`}
+          href={`/poke/${multiActionsApp.app.workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
           className="text-action-500"
         >
@@ -174,10 +175,10 @@ const ConversationPage = ({
   conversationDataSourceId,
   multiActionsApp,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
-  const { conversation } = useConversation({ workspaceId, conversationId });
+  const { conversation } = usePokeConversation({ workspaceId, conversationId });
+
   return (
-    <div className="min-h-screen bg-structure-50">
-      <PokeNavbar />
+    <>
       {conversation && (
         <div className="mx-auto max-w-4xl pt-8">
           <Page.Vertical align="stretch">
@@ -238,8 +239,12 @@ const ConversationPage = ({
           </Page.Vertical>
         </div>
       )}
-    </div>
+    </>
   );
+};
+
+ConversationPage.getLayout = (page: ReactElement) => {
+  return <PokeLayout>{page}</PokeLayout>;
 };
 
 export default ConversationPage;

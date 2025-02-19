@@ -7,9 +7,13 @@ const PopoverRoot = PopoverPrimitive.Root;
 
 const PopoverTrigger = PopoverPrimitive.Trigger;
 
+const PopoverPortal = PopoverPrimitive.Portal;
+
 interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
+  mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const PopoverContent = React.forwardRef<
@@ -21,12 +25,14 @@ const PopoverContent = React.forwardRef<
       className,
       align = "center",
       sideOffset = 4,
+      mountPortal = true,
+      mountPortalContainer,
       fullWidth = false,
       ...props
     },
     ref
-  ) => (
-    <PopoverPrimitive.Portal>
+  ) => {
+    const content = (
       <PopoverPrimitive.Content
         ref={ref}
         align={align}
@@ -38,14 +44,33 @@ const PopoverContent = React.forwardRef<
           "data-[side=left]:s-slide-in-from-right-2",
           "data-[side=right]:s-slide-in-from-left-2",
           "data-[side=top]:s-slide-in-from-bottom-2",
-          "s-z-50 s-rounded-xl s-border s-bg-background s-text-primary-950 s-shadow-md s-outline-none",
+          "s-z-50 s-rounded-xl s-border s-shadow-md s-outline-none",
+          "s-bg-background dark:s-bg-background-night",
+          "s-text-primary-950 dark:s-text-primary-950-night",
+          "s-border-border dark:s-border-border-night",
           fullWidth ? "s-grow" : "s-w-72 s-p-4",
           className
         )}
         {...props}
       />
-    </PopoverPrimitive.Portal>
-  )
+    );
+
+    const dialogElements = document.querySelectorAll(
+      ".s-sheet[role=dialog][data-state=open]"
+    );
+
+    const defaultContainer = dialogElements[dialogElements.length - 1];
+
+    return mountPortal ? (
+      <PopoverPrimitive.Portal
+        container={mountPortalContainer || defaultContainer}
+      >
+        {content}
+      </PopoverPrimitive.Portal>
+    ) : (
+      content
+    );
+  }
 );
 
 interface PopoverProps extends Omit<PopoverContentProps, "content"> {
@@ -70,4 +95,4 @@ function Popover({
 
 PopoverContent.displayName = PopoverPrimitive.Content.displayName;
 
-export { Popover, PopoverContent, PopoverRoot, PopoverTrigger };
+export { Popover, PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger };
