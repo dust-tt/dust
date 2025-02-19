@@ -510,14 +510,26 @@ impl LocalTable {
         upsert_queue_bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
+        let now = utils::now();
         let rows = UpsertQueueCSVContent {
             upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
         }
         .parse()
         .await?;
+        let csv_parse_duration = utils::now() - now;
 
+        let now = utils::now();
         self.upsert_rows(store, databases_store, rows, truncate)
-            .await
+            .await?;
+        let upsert_duration = utils::now() - now;
+
+        info!(
+            csv_parse_duration = csv_parse_duration,
+            upsert_duration = upsert_duration,
+            "CSV upsert"
+        );
+
+        Ok(())
     }
 
     pub async fn retrieve_row(
