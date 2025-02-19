@@ -624,6 +624,19 @@ async function recurseUpdateParents(
     "Updating parents recursively"
   );
 
+  if (parentIds.includes(file.dustFileId)) {
+    logger.warn(
+      {
+        fileId: file.driveFileId,
+        parentIds,
+        name: file.name,
+        count: children.length,
+      },
+      "Infinite parent loop."
+    );
+    return;
+  }
+
   for (const child of children) {
     await recurseUpdateParents(
       connector,
