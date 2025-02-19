@@ -55,8 +55,16 @@ const PopoverContent = React.forwardRef<
       />
     );
 
+    const dialogElements = document.querySelectorAll(
+      ".s-sheet[role=dialog][data-state=open]"
+    );
+
+    const defaultContainer = dialogElements[dialogElements.length - 1];
+
     return mountPortal ? (
-      <PopoverPrimitive.Portal container={mountPortalContainer}>
+      <PopoverPrimitive.Portal
+        container={mountPortalContainer || defaultContainer}
+      >
         {content}
       </PopoverPrimitive.Portal>
     ) : (
