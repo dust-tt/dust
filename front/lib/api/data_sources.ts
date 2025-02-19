@@ -46,6 +46,7 @@ import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -300,11 +301,11 @@ export async function upsertDocument({
   }
 
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-  if (title && title.length > 512) {
+  if (title && title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err(
       new DustError(
         "title_too_long",
-        "Invalid title: title too long (max 512 characters)."
+        `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`
       )
     );
   }
@@ -635,11 +636,11 @@ export async function upsertTable({
   }
 
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-  if (params.title && params.title.length > 512) {
+  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
       name: "dust_error",
       code: "title_too_long",
-      message: `Invalid title: title too long (max 512 characters).`,
+      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
     });
   }
 

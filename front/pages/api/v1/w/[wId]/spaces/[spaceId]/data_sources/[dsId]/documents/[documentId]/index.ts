@@ -19,6 +19,7 @@ import { fromError } from "zod-validation-error";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -548,12 +549,12 @@ async function handler(
       }
 
       // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-      if (r.data.title && r.data.title.length > 512) {
+      if (r.data.title && r.data.title.length > MAX_NODE_TITLE_LENGTH) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid title: title too long (max 512 characters).`,
+            message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
           },
         });
       }
