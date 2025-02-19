@@ -36,11 +36,11 @@ runs:
 
     - name: "Setup Depot"
       uses: "depot/setup-action@v1"
-      with:
-        project-token: ${{ inputs.depot_token }}
 
     - name: "Build and Push"
       shell: bash
+      env:
+        DEPOT_TOKEN: ${{ inputs.depot_token }}
       run: |
         CONFIG_FILE=".github/configs/${{ inputs.region }}/.env.$(
           if [[ ${{ inputs.component }} == *"qa"* ]]; then echo "qa";
