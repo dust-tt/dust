@@ -56,7 +56,7 @@ export function DataSourceTagsFilterDropdown({
 
   const handleTagOperation = (
     tag: DataSourceTag,
-    mode: "in" | "not",
+    include: "in" | "not",
     operation: "add" | "remove"
   ) => {
     const newDsc = cloneDeep(currentDataSourceConfiguration);
@@ -66,11 +66,20 @@ export function DataSourceTagsFilterDropdown({
     }
 
     if (operation === "add") {
-      newDsc.tagsFilter[mode] = [...newDsc.tagsFilter[mode], tag.tag];
+      newDsc.tagsFilter[include] = [...newDsc.tagsFilter[include], tag.tag];
     } else {
-      newDsc.tagsFilter[mode] = newDsc.tagsFilter[mode].filter(
+      newDsc.tagsFilter[include] = newDsc.tagsFilter[include].filter(
         (t: string) => t !== tag.tag
       );
+    }
+
+    // If we removed all tags and we are not in auto mode, we should set back to null
+    if (
+      newDsc.tagsFilter.in.length === 0 &&
+      newDsc.tagsFilter.not.length === 0 &&
+      newDsc.tagsFilter.mode !== "auto"
+    ) {
+      newDsc.tagsFilter = null;
     }
 
     onSave({
@@ -82,10 +91,21 @@ export function DataSourceTagsFilterDropdown({
   const handleAutoFilter = (isChecked: boolean) => {
     const newDsc = cloneDeep(currentDataSourceConfiguration);
 
-    if (newDsc.tagsFilter) {
-      newDsc.tagsFilter.mode = isChecked ? "auto" : "custom";
-    } else if (isChecked) {
-      newDsc.tagsFilter = { in: [], not: [], mode: "auto" };
+    if (isChecked) {
+      if (!newDsc.tagsFilter) {
+        newDsc.tagsFilter = { in: [], not: [], mode: "auto" };
+      } else {
+        newDsc.tagsFilter.mode = "auto";
+      }
+    } else {
+      if (
+        newDsc.tagsFilter &&
+        (newDsc.tagsFilter.in.length > 0 || newDsc.tagsFilter.not.length > 0)
+      ) {
+        newDsc.tagsFilter.mode = "custom";
+      } else {
+        newDsc.tagsFilter = null;
+      }
     }
 
     onSave({
@@ -96,9 +116,8 @@ export function DataSourceTagsFilterDropdown({
 
   const tagsFilter = currentDataSourceConfiguration.tagsFilter;
   let tagsCounter: number | null = null;
-  const tagsLabel = "Filters";
 
-  if (tagsFilter && (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)) {
+  if (tagsFilter) {
     const isAuto = tagsFilter.mode === "auto";
     tagsCounter =
       tagsFilter.in.length + tagsFilter.not.length + (isAuto ? 1 : 0);
@@ -118,7 +137,7 @@ export function DataSourceTagsFilterDropdown({
         <Button
           variant="outline"
           size="xs"
-          label={tagsLabel}
+          label="Filters"
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
           isCounter={tagsCounter !== null}

@@ -475,13 +475,8 @@ function RetrievalActionTagsFilterPopover({
     );
   }
 
-  let tagsCounter: number | null = null;
-  const tagsLabel = "Filters";
-
-  if (tagsFilter && (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)) {
-    tagsCounter =
-      tagsFilter.in.length + tagsFilter.not.length + (isTagsAuto ? 1 : 0);
-  }
+  const tagsCounter =
+    tagsFilter.in.length + tagsFilter.not.length + (isTagsAuto ? 1 : 0);
 
   return (
     <PopoverRoot modal={true}>
@@ -489,7 +484,7 @@ function RetrievalActionTagsFilterPopover({
         <Button
           variant="outline"
           size="xs"
-          label={tagsLabel}
+          label="Filters"
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
           isCounter={tagsCounter !== null}
@@ -519,10 +514,11 @@ function RetrievalActionTagsFilterPopover({
           )}
           {isTagsAuto && (
             <div className="flex flex-col gap-2">
+              <Label>Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
                   color="emerald"
-                  label="Conversation filtering."
+                  label="Activated"
                   icon={SparklesIcon}
                   isBusy
                 />
