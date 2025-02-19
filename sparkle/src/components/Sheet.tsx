@@ -98,7 +98,7 @@ const SheetContent = React.forwardRef<
     <FocusScope trapped={trapFocusScope} asChild>
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ size, side }), className)}
+        className={cn(sheetVariants({ size, side }), className, "s-sheet")}
         {...props}
       >
         {children}
