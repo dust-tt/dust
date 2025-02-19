@@ -1,46 +1,38 @@
-# Stage 1: Builder
-FROM node:20.13.0 AS builder
+FROM node:20.13.0 AS front
+
+RUN apt-get update && apt-get install -y vim redis-tools postgresql-client htop
+
+ARG COMMIT_HASH
+ARG NEXT_PUBLIC_VIZ_URL
+ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ARG NEXT_PUBLIC_GTM_TRACKING_ID
+
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+ENV NEXT_PUBLIC_DUST_CLIENT_FACING_URL=$NEXT_PUBLIC_DUST_CLIENT_FACING_URL
+ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
+
+WORKDIR /types
+COPY /types/package*.json ./
+COPY /types/ .
+RUN npm ci
+RUN npm run build
+
+WORKDIR /sdks/js
+COPY /sdks/js/package*.json ./
+COPY /sdks/js/ .
+RUN npm ci
+RUN npm run build
 
 WORKDIR /app
 
-# Copy package files
-COPY types/package*.json ./types/
-COPY sdks/js/package*.json ./sdks/js/
-COPY front/package*.json ./front/
+COPY /front/package*.json ./
+RUN npm ci
 
-# Install dependencies in parallel with cache
-RUN --mount=type=cache,target=/root/.npm \
-    (cd types && npm ci) & \
-    (cd sdks/js && npm ci) & \
-    (cd front && npm ci) & \
-    wait
+COPY /front .
 
-# Copy source code
-COPY types/ ./types/
-COPY sdks/js/ ./sdks/js/
-COPY front/ ./front/
+# fake database URIs are needed because Sequelize will throw if the `url` parameter
+# is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
+RUN FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
 
-# Build each project in order
-RUN cd types && npm run build
-RUN cd sdks/js && npm run build
-RUN cd front && FRONT_DATABASE_URI="sqlite:foo.sqlite" npm run build
-
-# Stage 2: Production
-FROM node:20.13.0-alpine
-
-WORKDIR /app
-
-# Copy runtime dependencies
-COPY --from=builder /app/front/package*.json ./
-
-# Install production deps
-RUN npm ci --omit=dev --ignore-scripts
-
-# Copy built artifacts
-COPY --from=builder /app/types/dist ./types/dist
-COPY --from=builder /app/sdks/js/dist ./sdks/js/dist
-COPY --from=builder /app/front/.next ./front/.next
-COPY --from=builder /app/front/public ./front/public
-
-ENV NODE_ENV production
 CMD ["npm", "--silent", "run", "start"]
