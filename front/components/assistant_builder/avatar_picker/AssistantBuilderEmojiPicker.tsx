@@ -88,7 +88,7 @@ const AssistantBuilderEmojiPicker = React.forwardRef<
               label="Pick an Emoji"
             />
           </PopoverTrigger>
-          <PopoverContent mountPortal={false} className="p-4" fullWidth>
+          <PopoverContent className="p-4" fullWidth>
             <EmojiPicker
               theme="light"
               previewPosition="none"

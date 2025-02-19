@@ -43,7 +43,6 @@ export const TagSearchInput = ({
         }}
         isLoading={isLoading}
         disabled={disabled}
-        mountPortal={false}
       >
         <div className="flex flex-col gap-2 pr-4">
           {availableTags.length > 0 ? (
