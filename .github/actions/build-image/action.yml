@@ -34,6 +34,10 @@ runs:
       with:
         install_components: "docker-credential-gcr"
 
+    - name: "Configure GCP Docker Auth"
+      shell: bash
+      run: gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
+
     - name: "Setup Depot"
       uses: "depot/setup-action@v1"
 
