@@ -88,10 +88,6 @@ impl UpsertQueueCSVContent {
         let s = with_separators.to_lowercase().trim().to_string();
         let s = WHITESPACE.replace_all(&s, "_").to_string();
         let s = NON_ASCII.replace_all(&s, "_").to_string();
-        // let s = s
-        //     .chars()
-        //     .map(|c| if c.is_alphanumeric() { c } else { '_' }) // Replace non-word chars
-        //     .collect::<String>();
 
         UNDERSCORES.replace_all(&s, "_").to_string()
     }
