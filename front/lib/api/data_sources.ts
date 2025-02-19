@@ -336,7 +336,7 @@ export async function upsertDocument({
 
   if (titleInTags && titleInTags !== title) {
     logger.error(
-      { documentId, titleInTags, title },
+      { dataSourceId: dataSource.sId, documentId, titleInTags, title },
       "[CoreNodes] Inconsistency between tags and title."
     );
     // TODO(2025-02-18 aubin): uncomment what follows.
@@ -636,7 +636,12 @@ export async function upsertTable({
 
   if (titleInTags && titleInTags !== params.title) {
     logger.error(
-      { tableId, titleInTags, title: params.title },
+      {
+        dataSourceId: dataSource.sId,
+        tableId,
+        titleInTags,
+        title: params.title,
+      },
       "[CoreNodes] Inconsistency between tags and title."
     );
     // TODO(2025-02-18 aubin): uncomment what follows.

@@ -564,7 +564,7 @@ async function handler(
 
       if (titleInTags && titleInTags !== title) {
         logger.error(
-          { documentId, titleInTags, title },
+          { dataSourceId: dataSource.sId, documentId, titleInTags, title },
           "[CoreNodes] Inconsistency between tags and title."
         );
         // TODO(2025-02-18 aubin): uncomment what follows.
