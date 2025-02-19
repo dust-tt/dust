@@ -134,7 +134,8 @@ const _createConnectorAPIHandler = async (
       case "snowflake":
       case "bigquery":
       case "zendesk":
-      case "microsoft": {
+      case "microsoft":
+      case "salesforce": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {
@@ -148,13 +149,6 @@ const _createConnectorAPIHandler = async (
           },
         });
         break;
-      }
-
-      // TODO(salesforce): implement this
-      case "salesforce": {
-        throw new Error(
-          `Connector type ${req.params.connector_provider} NOT IMPLEMENTED YET`
-        );
       }
 
       default:

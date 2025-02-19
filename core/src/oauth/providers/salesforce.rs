@@ -2,7 +2,6 @@ use crate::{
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
-            PROVIDER_TIMEOUT_SECONDS,
         },
         providers::utils::execute_request,
     },
@@ -115,16 +114,11 @@ impl Provider for SalesforceConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Salesforce"))?;
 
-        let expires_in = raw_json["expires_in"]
-            .as_u64()
-            .ok_or_else(|| anyhow!("Missing `expires_in` in response from Salesforce"))?;
-
         // Salesforce refresh tokens don't expire and stay the same
         Ok(RefreshResult {
             access_token: access_token.to_string(),
-            access_token_expiry: Some(
-                utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
-            ),
+            // We don't know the expiry time, so we use 15 minutes as a default
+            access_token_expiry: Some(utils::now() + 15 * 60 * 1000),
             refresh_token: Some(refresh_token),
             raw_json,
         })

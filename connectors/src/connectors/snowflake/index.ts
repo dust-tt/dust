@@ -164,7 +164,7 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
   async clean(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
-      return new Err(new Error("Connector not found"));
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
 
     await SnowflakeConfigurationModel.destroy({
