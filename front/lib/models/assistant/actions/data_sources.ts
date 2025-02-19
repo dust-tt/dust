@@ -94,7 +94,7 @@ AgentDataSourceConfiguration.init(
         }
         if (dsConfig.tagsMode === "auto") {
           if (!dsConfig.tagsIn || !dsConfig.tagsNotIn) {
-            throw new Error("TagsIn/notIn must be set if tagsMode is custom.");
+            throw new Error("TagsIn/notIn must be set if tagsMode is auto.");
           }
         } else if (dsConfig.tagsMode === "custom") {
           if (!dsConfig.tagsIn?.length && !dsConfig.tagsNotIn?.length) {
