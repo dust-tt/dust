@@ -51,6 +51,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
@@ -287,6 +288,10 @@ async function upsertConfluencePageToDataSource({
   const markdown = turndownService.turndown(page.body.storage.value);
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
+
+  if (!markdown) {
+    logger.warn({ ...loggerArgs }, "Upserting page with empty content.");
+  }
 
   const renderedMarkdown = await renderMarkdownSection(
     dataSourceConfig,
