@@ -639,7 +639,7 @@ export function ConnectorPermissionsModal({
             node: r,
             // content nodes are not synced yet so we cannot access their parents via permissions
             // this is not an issue for this component
-            parents: "not-synced-yet",
+            parents: null,
           },
         }),
         {}

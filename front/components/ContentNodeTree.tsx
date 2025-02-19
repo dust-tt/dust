@@ -22,9 +22,7 @@ const unselectedChildren = (
   node: ContentNode,
   sendNotification: (notification: NotificationType) => void
 ) => {
-  if (
-    Object.entries(selection).some(([, v]) => v.parents === "not-synced-yet")
-  ) {
+  if (Object.entries(selection).some(([, v]) => v.parents === null)) {
     sendNotification({
       type: "error",
       title: "Deselecting partial selection unavailable.",
@@ -35,7 +33,8 @@ const unselectedChildren = (
   }
 
   return Object.entries(selection).reduce((acc, [k, v]) => {
-    const shouldUnselect = v.parents.includes(node.internalId);
+    // we checked above all parents were not null
+    const shouldUnselect = v.parents?.includes(node.internalId);
     return {
       ...acc,
       [k]: {
@@ -60,7 +59,7 @@ export type ContentNodeTreeItemStatus = {
   // when setting permissions on a connector, nodes that are to be selected /
   // unselected may not be synced yet so we cannot easily access their parents
   // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
-  parents: string[] | "not-synced-yet";
+  parents: string[] | null;
 };
 
 export type TreeSelectionModelUpdater = (
