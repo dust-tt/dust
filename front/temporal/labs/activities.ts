@@ -18,7 +18,7 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { default as apiConfig } from "@app/lib/api/config";
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -451,7 +451,7 @@ export async function processTranscriptActivity(
 
     const credentials = dustManagedCredentials();
 
-    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), localLogger);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
     const upsertRes = await coreAPI.upsertDataSourceDocument({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
@@ -684,7 +684,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${apiConfig.getDustAPIConfig().url}/w/${owner.sId}/assistant/${conversation.sId}"
+    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/assistant/${conversation.sId}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;
