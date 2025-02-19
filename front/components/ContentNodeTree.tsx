@@ -1,10 +1,10 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
   IconButton,
   ListCheckIcon,
-  NotificationType,
   SearchInput,
   Tooltip,
   Tree,
@@ -23,7 +23,7 @@ const unselectedChildren = (
   sendNotification: (notification: NotificationType) => void
 ) => {
   if (
-    Object.entries(selection).some(([_, v]) => v.parents === "not-synced-yet")
+    Object.entries(selection).some(([, v]) => v.parents === "not-synced-yet")
   ) {
     sendNotification({
       type: "error",

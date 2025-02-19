@@ -72,7 +72,6 @@ import {
   isRemoteDatabase,
 } from "@app/lib/data_sources";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
 import {
