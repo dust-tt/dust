@@ -42,6 +42,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+
 async function handleGoogleDriveExport(
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
@@ -230,6 +231,7 @@ async function handleFileExport(
     result = await handleTextExtraction(res.data, localLogger, file.mimeType);
   }
   if (result.isErr()) {
+    localLogger.error({ error: result.error }, "Could not handle file.");
     return null;
   }
 

@@ -277,6 +277,7 @@ export async function syncOneFile({
     tags.push(...filterCustomTags(columns, localLogger));
 
     if (result.isErr()) {
+      localLogger.error({ error: result.error }, "Could not handle file.");
       if (fileResource) {
         await fileResource.delete();
       }
