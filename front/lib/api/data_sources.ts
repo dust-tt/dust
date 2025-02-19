@@ -334,11 +334,7 @@ export async function upsertDocument({
     nonNullTags.push(`title:${title}`);
   }
 
-  if (
-    titleInTags &&
-    !titleInTags.startsWith(title) &&
-    !title.startsWith(titleInTags)
-  ) {
+  if (titleInTags && titleInTags !== title) {
     logger.error(
       { documentId, titleInTags, title },
       "[CoreNodes] Inconsistency between tags and title."
@@ -638,11 +634,7 @@ export async function upsertTable({
     tableTags.push(`title:${params.title}`);
   }
 
-  if (
-    titleInTags &&
-    !titleInTags.startsWith(params.title) &&
-    !params.title.startsWith(titleInTags)
-  ) {
+  if (titleInTags && titleInTags !== params.title) {
     logger.error(
       { tableId, titleInTags, title: params.title },
       "[CoreNodes] Inconsistency between tags and title."
