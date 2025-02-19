@@ -683,7 +683,7 @@ export async function upsertDataSourceRemoteTable({
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mime_type: mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
@@ -903,7 +903,7 @@ export async function upsertDataSourceTableFromCsv({
     tableId,
     truncate,
     async: true,
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mimeType,
     timestamp: null,
     tags: tags ?? null,
@@ -1330,7 +1330,7 @@ export async function _upsertDataSourceFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     parentId,
     parents,
     mimeType,
