@@ -74,7 +74,7 @@ export const MIME_TYPES = {
     provider: "google_drive",
     // Spreadsheets may contain many sheets, thus resemble folders and are
     // stored as such, but with the special mimeType below.
-    // For other files and sheets, we keep Google's mime types.
+    // For files and sheets, we keep Google's mime types.
     resourceTypes: ["SHARED_WITH_ME", "FOLDER", "SPREADSHEET"],
   }),
   INTERCOM: generateMimeTypes({
@@ -90,9 +90,9 @@ export const MIME_TYPES = {
   }),
   MICROSOFT: generateMimeTypes({
     provider: "microsoft",
-    // for files, we keep Microsoft's mime types Spreadsheets, that contain many
-    // sheet, resemble folders and are stored as such, but with the special
-    // mimetype below
+    // Spreadsheets may contain many sheets, thus resemble folders and are
+    // stored as such, but with the special mimeType below.
+    // For files and sheets, we keep Microsoft's mime types.
     resourceTypes: ["FOLDER", "SPREADSHEET"],
   }),
   NOTION: generateMimeTypes({
