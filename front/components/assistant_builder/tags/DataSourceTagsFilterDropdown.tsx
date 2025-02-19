@@ -144,12 +144,12 @@ export function DataSourceTagsFilterDropdown({
         <div className="flex flex-col gap-8 p-2">
           <div className="flex flex-col gap-2">
             <Page.SectionHeader
-              title="Manual fitering"
-              description="Match content that has any of the must have labels, ignore anything that has any of the must not have labels."
+              title="Filtering"
+              description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Must have labels</Label>
+            <Label>Must-have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueIn}
               setSearchInputValue={(value) =>
@@ -164,7 +164,7 @@ export function DataSourceTagsFilterDropdown({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Must not have labels</Label>
+            <Label>Must-not-have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueNot}
               setSearchInputValue={(value) =>
@@ -181,8 +181,8 @@ export function DataSourceTagsFilterDropdown({
           </div>
           <div className="flex flex-col gap-2">
             <Page.SectionHeader
-              title="Dynamic filtering"
-              description="Allow the assistant to automatically determine relevant labels to include or exclude based on conversation context, overriding manual label filters."
+              title="Conversation filtering"
+              description="Allow agents to determine filters to apply based on conversation context. This will override filtering settings above."
             />
           </div>
           <div className="flex flex-row items-center gap-2">
@@ -193,7 +193,7 @@ export function DataSourceTagsFilterDropdown({
               }}
               size="xs"
             />
-            <Label>Enable dynamic filtering</Label>
+            <Label>Enable conversation filtering</Label>
           </div>
         </div>
       </PopoverContent>
