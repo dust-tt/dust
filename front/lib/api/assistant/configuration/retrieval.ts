@@ -122,9 +122,14 @@ export function getDataSource(
     tags = {
       in: dataSourceConfig.tagsIn,
       not: dataSourceConfig.tagsNotIn,
+      mode: "custom",
     };
   } else if (dataSourceConfig.tagsMode === "auto") {
-    tags = "auto";
+    tags = {
+      in: [],
+      not: [],
+      mode: "auto",
+    };
   }
 
   return {

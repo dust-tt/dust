@@ -11,9 +11,9 @@ import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  TagsFilter,
   WorkspaceType,
 } from "@dust-tt/types";
+import { cloneDeep } from "lodash";
 import { useRef, useState } from "react";
 
 import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
@@ -39,12 +39,6 @@ export function DataSourceTagsFilterDropdown({
   const selectedTagsNot = getActionTags(currentDataSourceConfiguration, "not");
   const dustAPIDataSourceIds = [dataSource.dustAPIDataSourceId];
 
-  // State to save the tags filter before the dynamic filtering is enabled.
-  // This is used to restore the tags filter when the dynamic filtering is disabled right after it was enabled.
-  const [backUpTagsFilter, setBackUpTagsFilter] = useState<TagsFilter | null>(
-    null
-  );
-
   const {
     searchInputValueIn,
     searchInputValueNot,
@@ -65,12 +59,10 @@ export function DataSourceTagsFilterDropdown({
     mode: "in" | "not",
     operation: "add" | "remove"
   ) => {
-    const newDsc = { ...currentDataSourceConfiguration };
-    if (!newDsc.tagsFilter || newDsc.tagsFilter === "auto") {
-      newDsc.tagsFilter = { in: [], not: [] };
-    } else {
-      // We need a Deep copy otherwise we will mutate the original object and we will not be able to cancel the changes if we cancel the modal.
-      newDsc.tagsFilter = { ...newDsc.tagsFilter };
+    const newDsc = cloneDeep(currentDataSourceConfiguration);
+
+    if (!newDsc.tagsFilter) {
+      newDsc.tagsFilter = { in: [], not: [], mode: "custom" };
     }
 
     if (operation === "add") {
@@ -88,18 +80,12 @@ export function DataSourceTagsFilterDropdown({
   };
 
   const handleAutoFilter = (isChecked: boolean) => {
-    const newDsc = { ...currentDataSourceConfiguration };
+    const newDsc = cloneDeep(currentDataSourceConfiguration);
 
-    if (isChecked) {
-      if (newDsc.tagsFilter && newDsc.tagsFilter !== "auto") {
-        setBackUpTagsFilter({ ...newDsc.tagsFilter });
-      }
-      newDsc.tagsFilter = "auto";
-    } else if (backUpTagsFilter) {
-      newDsc.tagsFilter = backUpTagsFilter;
-      setBackUpTagsFilter(null);
-    } else {
-      newDsc.tagsFilter = null;
+    if (newDsc.tagsFilter) {
+      newDsc.tagsFilter.mode = isChecked ? "auto" : "custom";
+    } else if (isChecked) {
+      newDsc.tagsFilter = { in: [], not: [], mode: "auto" };
     }
 
     onSave({
@@ -110,14 +96,12 @@ export function DataSourceTagsFilterDropdown({
 
   const tagsFilter = currentDataSourceConfiguration.tagsFilter;
   let tagsCounter: number | null = null;
-  let tagsLabel = "Filters";
-  if (tagsFilter === "auto") {
-    tagsLabel = "Filters (auto)";
-  } else if (
-    tagsFilter &&
-    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
-  ) {
-    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
+  const tagsLabel = "Filters";
+
+  if (tagsFilter && (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)) {
+    const isAuto = tagsFilter.mode === "auto";
+    tagsCounter =
+      tagsFilter.in.length + tagsFilter.not.length + (isAuto ? 1 : 0);
   }
 
   return (
@@ -160,7 +144,6 @@ export function DataSourceTagsFilterDropdown({
               onTagAdd={(tag) => handleTagOperation(tag, "in", "add")}
               onTagRemove={(tag) => handleTagOperation(tag, "in", "remove")}
               isLoading={isLoadingIn}
-              disabled={tagsFilter === "auto"}
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -176,7 +159,6 @@ export function DataSourceTagsFilterDropdown({
               onTagRemove={(tag) => handleTagOperation(tag, "not", "remove")}
               tagChipColor="red"
               isLoading={isLoadingNot}
-              disabled={tagsFilter === "auto"}
             />
           </div>
           <div className="flex flex-col gap-2">
@@ -187,9 +169,9 @@ export function DataSourceTagsFilterDropdown({
           </div>
           <div className="flex flex-row items-center gap-2">
             <SliderToggle
-              selected={tagsFilter === "auto"}
+              selected={tagsFilter?.mode === "auto"}
               onClick={() => {
-                handleAutoFilter(tagsFilter !== "auto");
+                handleAutoFilter(tagsFilter?.mode !== "auto");
               }}
               size="xs"
             />
