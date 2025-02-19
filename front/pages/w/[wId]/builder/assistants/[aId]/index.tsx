@@ -153,6 +153,7 @@ export default function EditAssistant({
             modelSettings: {
               modelId: agentConfiguration.model.modelId,
               providerId: agentConfiguration.model.providerId,
+              reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
           },

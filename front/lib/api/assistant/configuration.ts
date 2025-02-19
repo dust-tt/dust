@@ -549,6 +549,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
         providerId: agent.providerId,
         modelId: agent.modelId,
         temperature: agent.temperature,
+        reasoningEffort: agent?.reasoningEffort ?? undefined,
       },
       status: agent.status,
       actions,

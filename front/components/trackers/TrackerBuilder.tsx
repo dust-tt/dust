@@ -32,7 +32,7 @@ import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useContext, useMemo, useState } from "react";
 
-import { AdvancedSettings } from "@app/components/assistant_builder/InstructionScreen";
+import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import { ConfirmContext } from "@app/components/Confirm";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import {
