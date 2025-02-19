@@ -19,7 +19,7 @@ export function RetrievalActionDetails({
   const documentCitations = makeDocumentCitations(action.documents ?? []);
 
   const isIncludeAction = !action.params.query;
-  action.agentMessageId;
+
   return (
     <ActionDetailsWrapper
       actionName={isIncludeAction ? "Include data" : "Search data"}
