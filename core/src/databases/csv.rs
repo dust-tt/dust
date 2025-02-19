@@ -18,6 +18,7 @@ pub struct UpsertQueueCSVContent {
 
 const MAX_TABLE_COLUMNS: usize = 512;
 const MAX_COLUMN_NAME_LENGTH: usize = 1024;
+const MAX_TABLE_ROWS: usize = 500_000;
 
 impl UpsertQueueCSVContent {
     async fn get_upsert_queue_bucket() -> Result<String> {
@@ -210,6 +211,9 @@ impl UpsertQueueCSVContent {
             let record = record?;
             let row = Row::from_csv_record(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
             row_idx += 1;
+            if row_idx > MAX_TABLE_ROWS {
+                Err(anyhow!("Too many rows in CSV file"))?;
+            }
             rows.push(row);
         }
 
