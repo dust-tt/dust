@@ -491,7 +491,7 @@ function RetrievalActionTagsFilterPopover({
         />
       </PopoverTrigger>
       <PopoverContent>
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
           {tagsIn.length > 0 && (
             <div className="flex flex-col gap-2">
               <Label>Must-have</Label>
