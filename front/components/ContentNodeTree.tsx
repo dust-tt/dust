@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   BracesIcon,
   Button,
@@ -7,6 +8,7 @@ import {
   SearchInput,
   Tooltip,
   Tree,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
@@ -17,10 +19,22 @@ import { classNames, timeAgoFrom } from "@app/lib/utils";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
-  node: ContentNode
-) =>
-  Object.entries(selection).reduce((acc, [k, v]) => {
-    const shouldUnselect = v.parents.includes(node.internalId);
+  node: ContentNode,
+  sendNotification: (notification: NotificationType) => void
+) => {
+  if (Object.entries(selection).some(([, v]) => v.parents === null)) {
+    sendNotification({
+      type: "error",
+      title: "Deselecting partial selection unavailable.",
+      description:
+        "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet",
+    });
+    return selection;
+  }
+
+  return Object.entries(selection).reduce((acc, [k, v]) => {
+    // we checked above all parents were not null
+    const shouldUnselect = v.parents?.includes(node.internalId);
     return {
       ...acc,
       [k]: {
@@ -30,6 +44,7 @@ const unselectedChildren = (
       },
     };
   }, {});
+};
 
 export type UseResourcesHook = (parentId: string | null) => {
   resources: ContentNode[];
@@ -41,7 +56,11 @@ export type UseResourcesHook = (parentId: string | null) => {
 export type ContentNodeTreeItemStatus = {
   isSelected: boolean;
   node: ContentNode;
-  parents: string[];
+  // when setting permissions on a connector, nodes that are to be selected /
+  // unselected may not be synced yet so we cannot easily access their parents
+  // In that case parents is null
+  // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
+  parents: string[] | null;
 };
 
 export type TreeSelectionModelUpdater = (
@@ -105,6 +124,7 @@ function ContentNodeTreeChildren({
   const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
     useContentNodeTreeContext();
 
+  const sendNotification = useSendNotification();
   const [search, setSearch] = useState("");
   // This is to control when to dislpay the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
@@ -198,7 +218,7 @@ function ContentNodeTreeChildren({
                         if (checkedState === "partial") {
                           // Handle clicking on partial : unselect all selected children
                           setSelectedNodes((prev) =>
-                            unselectedChildren(prev, n)
+                            unselectedChildren(prev, n, sendNotification)
                           );
                         } else {
                           setSelectedNodes((prev) => ({
