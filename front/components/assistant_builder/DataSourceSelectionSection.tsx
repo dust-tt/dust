@@ -124,6 +124,7 @@ export default function DataSourceSelectionSection({
                       />
                     )
                   }
+                  areActionsFading={dsConfig.tagsFilter === null}
                 >
                   {dsConfig.isSelectAll && (
                     <DataSourceViewPermissionTree
