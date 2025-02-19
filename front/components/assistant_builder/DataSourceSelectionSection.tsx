@@ -26,7 +26,6 @@ import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 interface DataSourceSelectionSectionProps {
@@ -53,9 +52,6 @@ export default function DataSourceSelectionSection({
     useState<DataSourceViewType | null>(null);
 
   const canAddDataSource = dataSourceViews.length > 0;
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
 
   return (
     <>
@@ -114,7 +110,6 @@ export default function DataSourceSelectionSection({
                   visual={LogoComponent}
                   className="whitespace-nowrap"
                   actions={
-                    shouldDisplayTagsFilters &&
                     onSave && (
                       <DataSourceTagsFilterDropdown
                         owner={owner}
