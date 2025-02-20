@@ -567,9 +567,7 @@ async function handler(
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":");
+        ?.substring(6);
       if (!titleInTags) {
         tags.push(`title:${title}`);
       }
