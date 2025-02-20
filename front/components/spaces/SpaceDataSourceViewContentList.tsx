@@ -25,7 +25,10 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
+import {
+  isValidContentNodesViewType,
+  MIN_SEARCH_QUERY_SIZE,
+} from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
@@ -59,7 +62,6 @@ import {
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { MIN_KEYWORD_SEARCH_LENGTH } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -289,17 +291,14 @@ export const SpaceDataSourceViewContentList = ({
 
   const isTyping = useMemo(() => {
     return (
-      dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH &&
+      dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE &&
       debouncedSearch !== dataSourceSearch &&
       searchFeatureFlag
     );
   }, [dataSourceSearch, debouncedSearch, searchFeatureFlag]);
 
   const nodes = useMemo(() => {
-    if (
-      dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH &&
-      searchFeatureFlag
-    ) {
+    if (dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE && searchFeatureFlag) {
       return searchResultNodes;
     }
     return childrenNodes;
@@ -424,7 +423,7 @@ export const SpaceDataSourceViewContentList = ({
     if (searchFeatureFlag) {
       const timeout = setTimeout(() => {
         setDebouncedSearch(
-          dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH
+          dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE
             ? dataSourceSearch
             : ""
         );

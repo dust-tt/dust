@@ -2,7 +2,7 @@ import type {
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
+import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -34,8 +34,6 @@ const SearchRequestBody = t.type({
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
 };
-
-export const MIN_KEYWORD_SEARCH_LENGTH = 3;
 
 async function handler(
   req: NextApiRequest,
@@ -93,12 +91,12 @@ async function handler(
     });
   }
 
-  if (query.length < MIN_KEYWORD_SEARCH_LENGTH) {
+  if (query.length < MIN_SEARCH_QUERY_SIZE) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Query must be at least ${MIN_KEYWORD_SEARCH_LENGTH} characters long.`,
+        message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
       },
     });
   }

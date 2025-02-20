@@ -215,6 +215,8 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
 >;
 
+export const MIN_SEARCH_QUERY_SIZE = 3;
+
 export const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),

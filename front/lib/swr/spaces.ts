@@ -2,13 +2,13 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
   DataSourceViewCategory,
+  DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
-import useSWR from "swr";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
@@ -28,10 +28,7 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import {
-  MIN_KEYWORD_SEARCH_LENGTH,
-  type PostSpaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 
 export function useSpaces({
   workspaceId,
@@ -621,7 +618,7 @@ export function useSpaceSearch({
 
   // Only create a key if we have a valid search
   const key =
-    search?.length >= MIN_KEYWORD_SEARCH_LENGTH && spaceId
+    search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
       ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
       : null;
 
@@ -649,7 +646,10 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    searchResultNodes: useMemo(
+      () => data?.nodes ?? [],
+      [data]
+    ) as DataSourceViewContentNode[],
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,
