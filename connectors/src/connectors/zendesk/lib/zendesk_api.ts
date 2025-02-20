@@ -296,10 +296,12 @@ export async function fetchZendeskCategoriesInBrand(
  * https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/
  */
 export async function fetchRecentlyUpdatedArticles({
+  subdomain,
   brandSubdomain,
   accessToken,
   startTime, // start time in Unix epoch time, in seconds
 }: {
+  subdomain: string;
   brandSubdomain: string;
   accessToken: string;
   startTime: number;
@@ -320,7 +322,7 @@ export async function fetchRecentlyUpdatedArticles({
   } catch (e) {
     if (isZendeskNotFoundError(e)) {
       const user = await fetchZendeskCurrentUser({
-        subdomain: brandSubdomain,
+        subdomain,
         accessToken,
       });
       // only admins and agents can fetch this endpoint: https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/#authenticating-the-requests
