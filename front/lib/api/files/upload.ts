@@ -130,7 +130,8 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
     const writeStream = file.getWriteStream({ auth, version: "processed" });
 
     const processedStream = await new TextExtraction(
-      config.getTextExtractionUrl()
+      config.getTextExtractionUrl(),
+      { enableOcr: true, logger }
     ).fromStream(readStream, file.contentType);
 
     await pipeline(processedStream, writeStream);

@@ -6,6 +6,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Readable } from "stream";
 
+import { LoggerInterface } from "../logger";
 import { Err, Ok, Result } from "../result";
 import { assertNever } from "../utils/assert_never";
 import {
@@ -92,9 +93,23 @@ export function isTextExtractionSupportedContentType(
 }
 
 const DEFAULT_HANDLER = "text";
+const DEFAULT_TIMEOUT_IN_MS = 60000;
 
 export class TextExtraction {
-  constructor(readonly url: string) {}
+  constructor(
+    readonly url: string,
+    readonly options: {
+      enableOcr: boolean;
+      logger: LoggerInterface;
+    }
+  ) {}
+
+  getAdditionalHeaders(): HeadersInit {
+    return {
+      "X-Tika-PDFOcrStrategy": this.options.enableOcr ? "auto" : "no_ocr",
+      "X-Tika-Timeout-Millis": DEFAULT_TIMEOUT_IN_MS.toString(),
+    };
+  }
 
   // Method to extract text from a buffer.
   async fromBuffer(
@@ -118,6 +133,7 @@ export class TextExtraction {
       method: "PUT",
       headers: {
         "Content-Type": contentType,
+        ...this.getAdditionalHeaders(),
       },
       body: Readable.toWeb(fileStream),
       duplex: "half",
@@ -166,6 +182,7 @@ export class TextExtraction {
         headers: {
           Accept: "application/json",
           "Content-Type": contentType,
+          ...this.getAdditionalHeaders(),
         },
         body: fileBuffer,
       });
@@ -183,6 +200,8 @@ export class TextExtraction {
 
       return new Ok(decodedReponse.right);
     } catch (err) {
+      this.options.logger.error({ error: err }, "Error while extracting text");
+
       const errorMessage =
         err instanceof Error ? err.message : "Unexpected error";
 
