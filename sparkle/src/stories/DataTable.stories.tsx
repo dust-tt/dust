@@ -421,3 +421,58 @@ export const DataTablePaginatedServerSideExample = () => {
     </div>
   );
 };
+
+export const DataTablePaginatedServerSideRowCountCappedExample = () => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 2,
+  });
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
+  const [filter, setFilter] = React.useState<string>("");
+  const rows = useMemo(() => {
+    if (sorting.length > 0) {
+      const order = sorting[0].desc ? -1 : 1;
+      return data
+        .sort((a: Data, b: Data) => {
+          return (
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
+          );
+        })
+        .slice(
+          pagination.pageIndex * pagination.pageSize,
+          (pagination.pageIndex + 1) * pagination.pageSize
+        );
+    }
+    return data.slice(
+      pagination.pageIndex * pagination.pageSize,
+      (pagination.pageIndex + 1) * pagination.pageSize
+    );
+  }, [data, pagination, sorting]);
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={rows}
+        totalRowCount={data.length}
+        rowCountIsCapped={true}
+        filter={filter}
+        filterColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        columns={columns}
+        sorting={sorting}
+        setSorting={setSorting}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        isServerSideSorting={true}
+      />
+    </div>
+  );
+};

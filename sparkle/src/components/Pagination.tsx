@@ -15,6 +15,7 @@ interface PaginationProps {
   showDetails?: boolean;
   showPageButtons?: boolean;
   rowCount: number;
+  rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
 }
@@ -24,6 +25,7 @@ export function Pagination({
   showDetails = true,
   showPageButtons = true,
   rowCount,
+  rowCountIsCapped = false,
   pagination,
   setPagination,
 }: PaginationProps) {
@@ -110,7 +112,9 @@ export function Pagination({
       >
         {controlsAreHidden
           ? `${rowCount} items`
-          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount} items`}
+          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount}${
+              rowCountIsCapped ? "+" : ""
+            } items`}
       </span>
     </div>
   );
