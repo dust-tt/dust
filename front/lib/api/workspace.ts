@@ -592,7 +592,7 @@ export async function checkSeatCountForWorkspace(
           }
           return new Err(
             new Error(
-              `Different count, Dust: ${activeSeats}, Stripe: ${currentQuantity}`
+              `Incorrect quantity on Stripe: ${currentQuantity}, correct value: ${activeSeats}.`
             )
           );
         }
@@ -601,9 +601,7 @@ export async function checkSeatCountForWorkspace(
       default:
         assertNever(usageToReport);
     }
-    return new Ok(
-      `Counted ${activeSeats} active seats in both Dust and Stripe.`
-    );
+    return new Ok(`Correctly found ${activeSeats} active seats on Stripe.`);
   }
   return new Err(new Error(`${REPORT_USAGE_METADATA_KEY} metadata not found.`));
 }
