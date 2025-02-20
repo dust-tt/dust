@@ -119,6 +119,7 @@ export default function DataSourceSelectionSection({
                       />
                     )
                   }
+                  // defaultCollapsed={false}
                   areActionsFading={dsConfig.tagsFilter === null}
                 >
                   {dsConfig.isSelectAll && (
@@ -141,6 +142,7 @@ export default function DataSourceSelectionSection({
                         type={node.expandable ? "node" : "leaf"}
                         visual={getVisualForContentNode(node)}
                         className="whitespace-nowrap"
+                        // defaultCollapsed={false}
                         actions={
                           <div className="mr-8 flex flex-row gap-2">
                             <IconButton
