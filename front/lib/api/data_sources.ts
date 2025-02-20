@@ -720,7 +720,8 @@ export async function upsertTable({
         const schemaRes = await coreAPI.tableValidateCSVContent({
           projectId: dataSource.dustAPIProjectId,
           dataSourceId: dataSource.dustAPIDataSourceId,
-          upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+          bucket: file.getBucketForVersion("processed").name,
+          bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
         });
 
         if (schemaRes.isErr()) {
