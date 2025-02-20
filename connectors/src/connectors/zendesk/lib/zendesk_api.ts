@@ -334,6 +334,10 @@ export async function fetchRecentlyUpdatedArticles({
           { ...e.data, role, suspended, active }
         );
       }
+      logger.warn(
+        { subdomain, brandSubdomain },
+        "[Zendesk] Could not fetch article diff."
+      );
       return { articles: [], hasMore: false, endTime: 0 };
     }
     throw e;
