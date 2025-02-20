@@ -7,6 +7,7 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -28,7 +29,6 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 
 export function useSpaces({
   workspaceId,

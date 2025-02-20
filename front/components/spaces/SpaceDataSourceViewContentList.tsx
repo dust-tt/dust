@@ -686,6 +686,7 @@ export const SpaceDataSourceViewContentList = ({
         )}
         {searchFeatureFlag &&
           rows.length === 0 &&
+          debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE &&
           !isSearchLoading &&
           !isSearchValidating &&
           !isTyping && (
