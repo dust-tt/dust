@@ -1,0 +1,81 @@
+import { Spinner } from "@dust-tt/sparkle";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@dust-tt/types";
+import type { Dispatch, SetStateAction } from "react";
+import { useMemo } from "react";
+
+import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
+import type { useCaseDataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { useSpaces } from "@app/lib/swr/spaces";
+
+interface DataSourceViewsSpaceSelectorProps {
+  allowedSpaces?: SpaceType[];
+  owner: LightWorkspaceType;
+  dataSourceViews: DataSourceViewType[];
+  useCase: useCaseDataSourceViewsSelector;
+  selectionConfigurations: DataSourceViewSelectionConfigurations;
+  setSelectionConfigurations: Dispatch<
+    SetStateAction<DataSourceViewSelectionConfigurations>
+  >;
+  viewType: ContentNodesViewType;
+  isRootSelectable: boolean;
+}
+
+export const DataSourceViewsSpaceSelector = ({
+  allowedSpaces,
+  dataSourceViews,
+  useCase,
+  owner,
+  selectionConfigurations,
+  setSelectionConfigurations,
+  viewType,
+  isRootSelectable,
+}: DataSourceViewsSpaceSelectorProps) => {
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+
+  const defaultSpace = useMemo(() => {
+    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
+    return firstKey
+      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
+      : "";
+  }, [selectionConfigurations]);
+
+  if (isSpacesLoading) {
+    return <Spinner />;
+  }
+
+  return (
+    <SpaceSelector
+      spaces={spaces}
+      allowedSpaces={allowedSpaces}
+      defaultSpace={defaultSpace}
+      renderChildren={(space) => {
+        const dataSourceViewsForSpace = space
+          ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
+          : dataSourceViews;
+
+        if (dataSourceViewsForSpace.length === 0) {
+          return <>No data source in this space.</>;
+        }
+
+        return (
+          <DataSourceViewsSelector
+            owner={owner}
+            useCase={useCase}
+            dataSourceViews={dataSourceViewsForSpace}
+            selectionConfigurations={selectionConfigurations}
+            setSelectionConfigurations={setSelectionConfigurations}
+            viewType={viewType}
+            isRootSelectable={isRootSelectable}
+          />
+        );
+      }}
+    />
+  );
+};
