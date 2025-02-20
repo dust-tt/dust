@@ -18,6 +18,7 @@ import {
   remoteDBSchemaCodec,
   remoteDBTableCodec,
 } from "@connectors/lib/remote_databases/utils";
+import logger from "@connectors/logger/logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -215,17 +216,29 @@ export const fetchTables = async ({
   });
 };
 
-export const fetchTree = async ({
-  credentials,
-  connection,
-}: {
-  credentials: SnowflakeCredentials;
-  connection: Connection;
-}): Promise<Result<RemoteDBTree, Error>> => {
+export const fetchTree = async (
+  {
+    credentials,
+    connection,
+  }: {
+    credentials: SnowflakeCredentials;
+    connection: Connection;
+  },
+  loggerArgs: { [key: string]: string | number }
+): Promise<Result<RemoteDBTree, Error>> => {
+  const localLogger = logger.child(loggerArgs);
+
   const databasesRes = await fetchDatabases({ credentials, connection });
   if (databasesRes.isErr()) {
     return databasesRes;
   }
+  localLogger.info(
+    {
+      databasesCount: databasesRes.value.length,
+    },
+    "Found databases in Snowflake"
+  );
+
   const databases = databasesRes.value.filter(
     (db) => !EXCLUDE_DATABASES.includes(db.name)
   );
@@ -237,12 +250,24 @@ export const fetchTree = async ({
   const schemas = schemasRes.value.filter(
     (s) => !EXCLUDE_SCHEMAS.includes(s.name)
   );
+  localLogger.info(
+    {
+      schemasCount: schemas.length,
+    },
+    "Found schemas in Snowflake"
+  );
 
   const tablesRes = await fetchTables({ credentials, connection });
   if (tablesRes.isErr()) {
     return tablesRes;
   }
   const tables = tablesRes.value;
+  localLogger.info(
+    {
+      tablesCount: tables.length,
+    },
+    "Found tables in Snowflake"
+  );
 
   const tree = {
     databases: databases.map((db) => ({
