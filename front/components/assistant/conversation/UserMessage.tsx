@@ -6,7 +6,6 @@ import {
   ConversationMessage,
   Markdown,
   PencilSquareIcon,
-  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
@@ -14,6 +13,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -30,10 +30,7 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useConversation,
-  useConversationMessages,
-} from "@app/lib/swr/conversations";
+import { useConversation, useEditMessage } from "@app/lib/swr/conversations";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -69,30 +66,15 @@ export function UserMessage({
     workspaceId: owner.sId,
   });
 
-  const sendNotification = useSendNotification();
-  const { mutateMessages } = useConversationMessages({
-    conversationId,
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
+  const doEditMessage = useEditMessage(owner);
 
+  const router = useRouter();
   async function switchThread(direction: "previous" | "next") {
-    if (conversation) {
-      await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/change_thread`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: message.sId,
-            direction,
-          }),
-        }
-      );
-      void mutateMessages();
-    }
+    // TODO get thread version
+    console.log("conversation", conversation, direction);
+    await router.push(
+      `/w/${owner.sId}/assistant/${conversationId}?threadVersion=${conversation?.currentThreadVersion}`
+    );
   }
 
   const submitEdit = async () => {
@@ -113,31 +95,7 @@ export function UserMessage({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    const body = {
-      content: text,
-      mentions,
-    };
-
-    const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/edit`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!mRes.ok) {
-      const data = await mRes.json();
-      sendNotification({
-        type: "error",
-        title: "Edit message",
-        description: `Error editing message: ${data.error.message}`,
-      });
-    }
-
+    await doEditMessage(conversation, message, text, mentions);
     setIsEditing(false);
   };
 
@@ -242,9 +200,9 @@ export function UserMessage({
     >
       {isEditing ? (
         <InputBarContainer
-          editMessage={message}
+          currentMessageValue={message}
           className="w-full p-0 py-0 sm:py-0 sm:leading-7"
-          editorServiceRef={editorServiceRef}
+          ref={editorServiceRef}
           selectedAssistant={null}
           onEnterKeyDown={submitEdit}
           actions={[]}

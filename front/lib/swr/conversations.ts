@@ -4,6 +4,8 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   LightWorkspaceType,
+  MentionType,
+  MessageType,
 } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -119,8 +121,6 @@ export function useConversationMessages({
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
-        console.log("pageIndex", pageIndex, previousPageData);
-
         if (!conversationId) {
           return null;
         }
@@ -282,3 +282,43 @@ export function useVisualizationRetry({
 
   return handleVisualizationRetry;
 }
+
+export const useEditMessage = (owner: LightWorkspaceType) => {
+  const sendNotification = useSendNotification();
+
+  const doEditMessage = async (
+    conversation: ConversationWithoutContentType | null,
+    message: MessageType,
+    text: string,
+    mentions: MentionType[]
+  ) => {
+    if (!conversation) {
+      return false;
+    }
+    const body = {
+      content: text,
+      mentions,
+    };
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/edit`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      sendNotification({
+        type: "error",
+        title: "Edit message",
+        description: `Error editing message: ${data.error.message}`,
+      });
+    }
+  };
+
+  return doEditMessage;
+};

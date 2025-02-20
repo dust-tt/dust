@@ -45,7 +45,7 @@ import {
   rateLimiter,
   removeNulls,
 } from "@dust-tt/types";
-import _, { isEqual, sortBy } from "lodash";
+import { isEqual, keyBy, sortBy, uniq } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -267,7 +267,7 @@ export async function getUserConversations(
   const conversations = (
     await Conversation.findAll({
       where: {
-        id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
+        id: { [Op.in]: uniq(participations.map((p) => p.conversationId)) },
         workspaceId: owner.id,
         visibility: { [Op.in]: includedConversationVisibilities },
       },
@@ -289,7 +289,7 @@ export async function getUserConversations(
       }) satisfies ConversationWithoutContentType
   );
 
-  const conversationById = _.keyBy(conversations, "id");
+  const conversationById = keyBy(conversations, "id");
 
   return removeNulls(
     participations.map((p) => {
@@ -1233,7 +1233,7 @@ export async function* editUserMessage(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
-      const newestMessage = await Message.findOne({
+      const lastMessageVersion = await Message.findOne({
         where: {
           rank: messageRow.rank,
           conversationId: conversation.id,
@@ -1242,14 +1242,14 @@ export async function* editUserMessage(
         order: [["version", "DESC"]],
         transaction: t,
       });
-      const lastVersion = newestMessage?.version ?? 0;
+      const lastVersion = lastMessageVersion?.version ?? 0;
       const maxThreadVersions: number = await Message.max("threadVersions", {
         where: {
           conversationId: conversation.id,
         },
         transaction: t,
       });
-      const newThreadVersion = Number(maxThreadVersions) + 1;
+      const newThreadVersion = maxThreadVersions + 1;
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(
@@ -1298,7 +1298,7 @@ export async function* editUserMessage(
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
-            previousVersionMessageId: newestMessage?.id,
+            previousVersionMessageId: lastMessageVersion?.id,
             version: lastVersion + 1,
             threadVersions: [
               newThreadVersion ?? conversation.currentThreadVersion,
@@ -1340,7 +1340,7 @@ export async function* editUserMessage(
           {
             where: {
               conversationId: conversation.id,
-              id: newestMessage?.id,
+              id: lastMessageVersion?.id,
             },
             transaction: t,
             hooks: false,
