@@ -166,7 +166,12 @@ export default function SpaceWebsiteModal({
         if (action.field === "url" && !webCrawlerConfiguration) {
           const validated = validateUrl(action.value);
           if (validated.valid) {
-            newState.name = urlToDataSourceName(action.value);
+            const name = urlToDataSourceName(action.value);
+            if (space.kind !== "global") {
+              newState.name = `${name} (${space.name})`;
+            } else {
+              newState.name = name;
+            }
           }
         }
         return newState;
