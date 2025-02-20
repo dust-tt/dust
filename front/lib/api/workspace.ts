@@ -23,7 +23,7 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
-import { getStripeClient, getStripeSubscription } from "@app/lib/plans/stripe";
+import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
@@ -529,8 +529,7 @@ export async function upgradeWorkspaceToBusinessPlan(
 }
 
 export async function checkSeatCountForWorkspace(
-  workspace: LightWorkspaceType,
-  {updateQuantity}: {updateQuantity: boolean}
+  workspace: LightWorkspaceType
 ): Promise<Result<string, Error>> {
   const subscription = await Subscription.findOne({
     where: {
@@ -578,18 +577,9 @@ export async function checkSeatCountForWorkspace(
       case "MAU_10":
         return new Err(new Error("Subscription is not PER_SEAT-based."));
       case "PER_SEAT":
-        const stripe = getStripeClient();
         const currentQuantity = item.quantity;
 
         if (currentQuantity !== activeSeats) {
-          if (updateQuantity) {
-            await stripe.subscriptionItems.update(item.id, {
-              quantity: activeSeats,
-            });
-            return new Ok(
-              `Quantity updated from ${currentQuantity} to ${activeSeats}.`
-            );
-          }
           return new Err(
             new Error(
               `Incorrect quantity on Stripe: ${currentQuantity}, correct value: ${activeSeats}.`

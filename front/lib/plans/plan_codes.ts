@@ -48,3 +48,14 @@ export const isUpgraded = (plan: PlanType | null): boolean => {
   }
   return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
 };
+
+/**
+ * Returns true if the plan is seat-based, meaning that users are billed based
+ * on the number of seats taken.
+ */
+export const isSeatBased = (plan: PlanType | null): boolean => {
+  if (!plan) {
+    return false;
+  }
+  return ![PRO_PLAN_SEAT_29_CODE, PRO_PLAN_SEAT_39_CODE].includes(plan.code);
+};
