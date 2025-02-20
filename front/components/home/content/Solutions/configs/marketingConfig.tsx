@@ -128,12 +128,12 @@ export const Benefits: BenefitsProps = {
 export const Metrics: MetricProps = {
   metrics: [
     {
-      value: "90%",
-      description: <>faster RFP response times</>,
+      value: "70%",
+      description: <>time reduction in localization</>,
     },
     {
-      value: "8h",
-      description: <> saved weekly per rep for selling</>,
+      value: "5X",
+      description: <> brand-compliant copy generation</>,
     },
   ],
   from: "from-amber-200",
@@ -174,10 +174,10 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
+  name: "Valentine Chelius",
+  title: "Head of Marketing at Fleet",
+  logo: "/static/landing/logos/fleet.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -194,13 +194,13 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
   },
-  // {
-  //   title: "Kyriba's RFP Agent for improving pre-sales efficiency",
-  //   content:
-  //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
-  //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  // },
+  {
+    title: "Building a Marketing Engine from Scratch at Fleet",
+    content:
+      "With just two interns, Valentine created a scalable marketing operation using Dust's AI capabilities for content and brand management.",
+    href: "https://blog.dust.tt/how-valentine-head-of-marketing-at-fleet-uses-dust/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_fleet.png",
+  },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:
