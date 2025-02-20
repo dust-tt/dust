@@ -58,8 +58,8 @@ export function PluginList({
   };
 
   return (
-    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
+    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
         <h2 className="text-md font-bold">Plugins :</h2>
       </div>
 

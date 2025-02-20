@@ -1,4 +1,5 @@
 import {
+  Button,
   ClipboardCheckIcon,
   ClipboardIcon,
   Label,
@@ -7,7 +8,6 @@ import {
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -141,13 +141,12 @@ const TableCellWithCopy = React.forwardRef<
     >
       <div className="flex items-center space-x-2">
         <Label>{label}</Label>
-        <PokeButton size="sm" variant="outline" onClick={handleCopy}>
-          {isCopied ? (
-            <ClipboardCheckIcon className="h-4 w-4" />
-          ) : (
-            <ClipboardIcon className="h-4 w-4" />
-          )}
-        </PokeButton>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleCopy}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        />
       </div>
     </TableCell>
   );
