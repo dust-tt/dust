@@ -104,7 +104,6 @@ export class RetrievalDocumentResource extends BaseResource<RetrievalDocument> {
           [Op.in]: actionIds,
         },
       },
-      order: [["documentTimestamp", "DESC"]],
       include: [
         {
           model: RetrievalDocumentChunk,
