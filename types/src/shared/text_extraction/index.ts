@@ -93,6 +93,7 @@ export function isTextExtractionSupportedContentType(
 }
 
 const DEFAULT_HANDLER = "text";
+const DEFAULT_TIMEOUT_IN_MS = 60000;
 
 export class TextExtraction {
   constructor(
@@ -106,7 +107,7 @@ export class TextExtraction {
   getAdditionalHeaders(): HeadersInit {
     return {
       "X-Tika-PDFOcrStrategy": this.options.enableOcr ? "auto" : "no_ocr",
-      "X-Tika-Timeout-Millis": "60000",
+      "X-Tika-Timeout-Millis": DEFAULT_TIMEOUT_IN_MS.toString(),
     };
   }
 
