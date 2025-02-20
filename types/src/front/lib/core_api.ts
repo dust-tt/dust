@@ -1231,11 +1231,13 @@ export class CoreAPI {
   async tableValidateCSVContent({
     projectId,
     dataSourceId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
   }: {
     projectId: string;
     dataSourceId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -1253,7 +1255,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
         }),
       }
     );
@@ -1497,13 +1500,15 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
     truncate,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
     truncate?: boolean;
   }): Promise<
     CoreAPIResponse<{
@@ -1522,7 +1527,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
           truncate: truncate || false,
         }),
       }

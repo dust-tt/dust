@@ -239,7 +239,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       }
 
       if ((url as string).endsWith("/validate_csv_content")) {
-        expect(req.upsert_queue_bucket_csv_path).toBe(
+        expect(req.bucket_csv_path).toBe(
           `files/w/${workspace.sId}/${file.sId}/processed`
         );
         return Promise.resolve(
