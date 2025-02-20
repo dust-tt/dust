@@ -5,7 +5,7 @@ import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
 import { isSeatBased } from "@app/lib/plans/plan_codes";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
-export const checkSeatCount = createPlugin(
+export const checkSeatCountPlugin = createPlugin(
   {
     id: "check-seat-count",
     name: "Check the seat count",
