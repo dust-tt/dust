@@ -18,6 +18,7 @@ export async function revokeAndTrackMembership(
   });
 
   if (revokeResult.isOk()) {
+    await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
     void ServerSideTracking.trackRevokeMembership({
       user: user.toJSON(),
       workspace,
@@ -25,8 +26,6 @@ export async function revokeAndTrackMembership(
       startAt: revokeResult.value.startAt,
       endAt: revokeResult.value.endAt,
     });
-
-    await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
   }
 
   return revokeResult;

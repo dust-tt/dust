@@ -73,6 +73,15 @@ async function handler(
           case "already_revoked":
             // Should not happen, but we ignore.
             break;
+          case "invalid_end_at":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Can't revoke membership before it has started.",
+              },
+            });
+            break;
           default:
             assertNever(revokeResult.error.type);
         }
