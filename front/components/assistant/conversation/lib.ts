@@ -76,6 +76,7 @@ export async function submitMessage({
   user,
   conversationId,
   messageData,
+  threadVersion,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -85,14 +86,18 @@ export async function submitMessage({
     mentions: MentionType[];
     contentFragments: UploadedContentFragment[];
   };
+  threadVersion?: number;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
+  const threadVersionParam = threadVersion
+    ? `?threadVersion=${threadVersion}`
+    : "";
   // Create a new content fragment.
   if (contentFragments.length > 0) {
     const contentFragmentsRes = await Promise.all(
       contentFragments.map((contentFragment) => {
         return fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment${threadVersionParam}`,
           {
             method: "POST",
             headers: {
@@ -127,7 +132,7 @@ export async function submitMessage({
 
   // Create a new user message.
   const mRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${threadVersionParam}`,
     {
       method: "POST",
       headers: {
@@ -219,6 +224,7 @@ export async function createConversationWithMessage({
     visibility,
     message: {
       content: input,
+      threadVersion: 0,
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,

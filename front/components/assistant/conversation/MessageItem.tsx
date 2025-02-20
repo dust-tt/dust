@@ -10,6 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  ConversationType,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
@@ -24,7 +25,7 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 
 interface MessageItemProps {
-  conversationId: string;
+  conversation: ConversationType;
   messageFeedback: AgentMessageFeedbackType | undefined;
   isInModal: boolean;
   isLastMessage: boolean;
@@ -36,7 +37,7 @@ interface MessageItemProps {
 const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
     {
-      conversationId,
+      conversation,
       messageFeedback,
       isLastMessage,
       message,
@@ -63,7 +64,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           isConversationShared: boolean;
         }) => {
           const res = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
+            `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/feedbacks`,
             {
               method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
               headers: {
@@ -86,7 +87,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               });
             }
             await mutate(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/feedbacks`
+              `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/feedbacks`
             );
           }
         }
@@ -164,7 +165,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           >
             <UserMessage
               citations={citations}
-              conversationId={conversationId}
+              conversation={conversation}
               isLastMessage={isLastMessage}
               message={message}
               owner={owner}
@@ -176,7 +177,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         return (
           <div key={`message-id-${sId}`} ref={ref} className="w-full">
             <AgentMessage
-              conversationId={conversationId}
+              conversation={conversation}
               isLastMessage={isLastMessage}
               message={message}
               messageFeedback={messageFeedbackWithSubmit}

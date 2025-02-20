@@ -6,6 +6,7 @@ interface ConversationsNavigationContextType {
   conversationsNavigationRef: RefObject<HTMLDivElement>;
   scrollConversationsToTop: () => void;
   activeConversationId: string | null;
+  threadVersion: number | undefined;
 }
 
 const ConversationsNavigationContext =
@@ -46,12 +47,17 @@ export function ConversationsNavigationProvider({
     return initialConversationId ?? null;
   }, [initialConversationId, router.query.cId]);
 
+  const threadVersion = router.query.threadVersion
+    ? Number(router.query.threadVersion)
+    : undefined;
+
   return (
     <ConversationsNavigationContext.Provider
       value={{
         conversationsNavigationRef,
         scrollConversationsToTop,
         activeConversationId,
+        threadVersion,
       }}
     >
       {children}

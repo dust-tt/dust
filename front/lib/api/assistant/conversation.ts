@@ -1243,20 +1243,20 @@ export async function* editUserMessage(
         transaction: t,
       });
       const lastVersion = lastMessageVersion?.version ?? 0;
-      const maxThreadVersions: number = await Message.max("threadVersions", {
+      const maxThreadVersions = await Message.max("threadVersions", {
         where: {
           conversationId: conversation.id,
         },
         transaction: t,
       });
-      const newThreadVersion = maxThreadVersions + 1;
+      const newThreadVersion = Number(maxThreadVersions) + 1;
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(
         workspace: WorkspaceType,
         messageRow: Message
       ) {
-        const previousThreadVersion = conversation.threadVersion;
+        const previousThreadVersion = lastMessageVersion?.threadVersions[0];
         if (newThreadVersion) {
           // Update threadVersions for all messages with lower rank
           // The Message model requires exactly one of userMessageId, agentMessageId, or contentFragmentId

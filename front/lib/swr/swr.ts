@@ -99,9 +99,6 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
   }
 }
 
-// Use for disabled useSWRInfiniteWithDefaults
-const emptyGetKey: SWRInfiniteKeyLoader<any, any> = () => null;
-
 export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   getKey: SWRInfiniteKeyLoader<TData, TKey>,
   fetcher: Fetcher<TData, TKey> | null,
@@ -110,33 +107,11 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
     keyFilter?: (key: TKey) => boolean;
   }
 ) {
-  const { mutate: globalMutate } = useSWRConfig();
-
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
-  const disabled = !!mergedConfig.disabled;
 
-  const myMutateWhenDisabled = useCallback(() => {
-    if (config?.keyFilter) {
-      return globalMutate(config?.keyFilter);
-    } else {
-      return globalMutate(getKey(0, null));
-    }
-  }, [globalMutate, getKey, config?.keyFilter]);
+  const result = useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
 
-  const result = useSWRInfinite<TData>(
-    disabled ? emptyGetKey : getKey,
-    fetcher,
-    mergedConfig
-  );
-
-  if (disabled) {
-    return {
-      ...result,
-      mutate: myMutateWhenDisabled,
-    };
-  } else {
-    return result;
-  }
+  return result;
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({

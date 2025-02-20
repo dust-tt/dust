@@ -48,7 +48,7 @@ export function ConversationContainer({
   isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
-  const { activeConversationId } = useConversationsNavigation();
+  const { activeConversationId, threadVersion } = useConversationsNavigation();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -69,9 +69,9 @@ export function ConversationContainer({
       disabled: true, // We don't need to fetch conversations here.
     },
   });
-
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
+    threadVersion,
     workspaceId: owner.sId,
     options: { disabled: true },
   });
@@ -122,6 +122,7 @@ export function ConversationContainer({
             owner,
             user,
             conversationId: activeConversationId,
+            threadVersion,
             messageData,
           });
 
@@ -304,6 +305,7 @@ export function ConversationContainer({
           owner={owner}
           user={user}
           conversationId={activeConversationId}
+          threadVersion={threadVersion}
           // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
           onStickyMentionsChange={onStickyMentionsChange}
         />

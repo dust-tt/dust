@@ -25,9 +25,11 @@ import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wI
 export function useConversation({
   conversationId,
   workspaceId,
+  threadVersion,
   options,
 }: {
   conversationId: string | null;
+  threadVersion?: number;
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
@@ -38,10 +40,12 @@ export function useConversation({
 } {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
-
+  const threadVersionParam = threadVersion
+    ? `?threadVersion=${threadVersion}`
+    : "";
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
-      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}${threadVersionParam}`
       : null,
     conversationFetcher,
     options
@@ -106,11 +110,13 @@ export const DEFAULT_PAGE_LIMIT = 50;
 
 export function useConversationMessages({
   conversationId,
+  threadVersion,
   workspaceId,
   limit = DEFAULT_PAGE_LIMIT,
   options,
 }: {
   conversationId: string | null;
+  threadVersion?: number;
   workspaceId: string;
   limit?: number;
   startAtRank?: number;
@@ -125,6 +131,9 @@ export function useConversationMessages({
           return null;
         }
 
+        const threadVersionParam = threadVersion
+          ? `&threadVersion=${threadVersion}`
+          : "";
         // If we have reached the last page and there are no more
         // messages or the previous page has no messages, return null.
         if (
@@ -135,10 +144,10 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${threadVersionParam}`;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}${threadVersionParam}`;
       },
       messagesFetcher,
       {
@@ -295,12 +304,17 @@ export const useEditMessage = (owner: LightWorkspaceType) => {
     if (!conversation) {
       return false;
     }
+    const threadVersionParam = conversation.threadVersion
+      ? `?threadVersion=${conversation.threadVersion}`
+      : "";
+
     const body = {
       content: text,
       mentions,
     };
+
     const mRes = await fetch(
-      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/edit`,
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/edit${threadVersionParam}`,
       {
         method: "POST",
         headers: {
@@ -318,6 +332,8 @@ export const useEditMessage = (owner: LightWorkspaceType) => {
         description: `Error editing message: ${data.error.message}`,
       });
     }
+
+    return mRes.json();
   };
 
   return doEditMessage;

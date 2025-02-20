@@ -9,6 +9,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  ConversationType,
   MentionType,
   UserMessageType,
   WorkspaceType,
@@ -30,11 +31,11 @@ import {
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
-import { useConversation, useEditMessage } from "@app/lib/swr/conversations";
+import { useEditMessage } from "@app/lib/swr/conversations";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
-  conversationId: string;
+  conversation: ConversationType;
   isLastMessage: boolean;
   message: UserMessageType;
   owner: WorkspaceType;
@@ -42,7 +43,7 @@ interface UserMessageProps {
 
 export function UserMessage({
   citations,
-  conversationId,
+  conversation,
   isLastMessage,
   message,
   owner,
@@ -56,10 +57,6 @@ export function UserMessage({
     }),
     []
   );
-  const { conversation } = useConversation({
-    conversationId,
-    workspaceId: owner.sId,
-  });
 
   // We use this specific hook because this component is involved in the new conversation page.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
@@ -72,7 +69,7 @@ export function UserMessage({
   async function switchThread(threadVersion: number | null) {
     if (threadVersion) {
       await router.push(
-        `/w/${owner.sId}/assistant/${conversationId}?threadVersion=${threadVersion}`
+        `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`
       );
     }
   }
@@ -95,8 +92,9 @@ export function UserMessage({
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
 
-    await doEditMessage(conversation, message, text, mentions);
+    const result = await doEditMessage(conversation, message, text, mentions);
     setIsEditing(false);
+    await switchThread(result.message.threadVersions[0]);
   };
 
   const buttons = [];
@@ -216,7 +214,7 @@ export function UserMessage({
       )}
       {message.mentions.length === 0 && isLastMessage && (
         <AgentSuggestion
-          conversationId={conversationId}
+          conversationId={conversation.sId}
           owner={owner}
           userMessage={message}
         />

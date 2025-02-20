@@ -36,6 +36,9 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
+  const threadVersion = req.query.threadVersion
+    ? Number(req.query.threadVersion)
+    : undefined;
 
   switch (req.method) {
     case "GET":
@@ -62,6 +65,7 @@ async function handler(
 
       const messagesRes = await fetchConversationMessages(auth, {
         conversationId,
+        threadVersion,
         paginationParams: paginationRes.value,
       });
 
@@ -91,7 +95,12 @@ async function handler(
 
       const { content, context, mentions } = bodyValidation.right;
 
-      const conversationRes = await getConversation(auth, conversationId);
+      const conversationRes = await getConversation(
+        auth,
+        conversationId,
+        false,
+        threadVersion
+      );
 
       if (conversationRes.isErr()) {
         return apiErrorForConversation(req, res, conversationRes.error);
