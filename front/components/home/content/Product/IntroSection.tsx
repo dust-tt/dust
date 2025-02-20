@@ -1,4 +1,4 @@
-import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
