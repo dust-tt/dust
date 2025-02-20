@@ -98,8 +98,11 @@ export class TextExtraction {
 
   getAdditionalHeaders(): HeadersInit {
     return this.ocrStrategy
-      ? { "X-Tika-PDFOcrStrategy": this.ocrStrategy }
-      : {};
+      ? {
+          "X-Tika-PDFOcrStrategy": this.ocrStrategy,
+          "X-Tika-Timeout-Millis": "60000",
+        }
+      : { "X-Tika-Timeout-Millis": "60000" };
   }
 
   // Method to extract text from a buffer.
