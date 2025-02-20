@@ -12,7 +12,8 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 async function checkWorkspaceSeatCount(
   workspace: LightWorkspaceType,
-  logger: Logger
+  logger: Logger,
+  execute: boolean
 ) {
   const subscription = await Subscription.findOne({
     where: {
@@ -21,28 +22,36 @@ async function checkWorkspaceSeatCount(
     },
     include: [Plan],
   });
+  const localLogger = logger.child({
+    workspaceId: workspace.sId,
+    subscription: subscription?.plan.code,
+  });
   if (
     subscription?.plan.code === PRO_PLAN_SEAT_29_CODE ||
     subscription?.plan.code === PRO_PLAN_SEAT_39_CODE
   ) {
-    const result = await checkSeatCountForWorkspace(workspace, false);
-    if (result.isOk()) {
-      logger.info(
-        { workspaceId: workspace.sId, message: result.value },
-        "Seat count check succeeded."
-      );
-    }
-    if (result.isErr()) {
-      logger.error(
-        { workspaceId: workspace.sId, error: result.error },
-        "Seat count check failed."
-      );
+    if (execute) {
+      const result = await checkSeatCountForWorkspace(workspace, false);
+      if (result.isOk()) {
+        localLogger.info(
+          { message: result.value },
+          "Seat count check succeeded."
+        );
+      }
+      if (result.isErr()) {
+        localLogger.error(
+          { workspaceId: workspace.sId, error: result.error },
+          "Seat count check failed."
+        );
+      }
+    } else {
+      localLogger.info("Found workspace.");
     }
   }
 }
 
-makeScript({}, async (args, logger) => {
+makeScript({}, async ({ execute }, logger) => {
   return runOnAllWorkspaces(async (workspace) => {
-    await checkWorkspaceSeatCount(workspace, logger);
+    await checkWorkspaceSeatCount(workspace, logger, execute);
   });
 });
