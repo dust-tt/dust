@@ -109,6 +109,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
   });
 
   const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
+    subdomain,
     brandSubdomain,
     accessToken,
     startTime,
