@@ -417,7 +417,7 @@ export function AgentMessage({
           <Button
             key="copy-msg-button"
             tooltip="Copy to clipboard"
-            variant="ghost"
+            variant="outline"
             size="xs"
             onClick={() => {
               void navigator.clipboard.writeText(
@@ -430,7 +430,7 @@ export function AgentMessage({
           <Button
             key="retry-msg-button"
             tooltip="Retry"
-            variant="ghost"
+            variant="outline"
             size="xs"
             onClick={() => {
               void retryHandler(agentMessageToRender);
