@@ -159,9 +159,9 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/support3.png"],
     },
     {
-      title: "Customer insights",
+      title: "Ticket insights",
       content:
-        "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
+        "Turn support interactions into learning opportunities that enhance your offering and service standards.",
       images: ["/static/landing/solutions/support4.png"],
     },
   ],
@@ -242,7 +242,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
-    name: "@CSInsights",
+    name: "@ticketInsights",
     description: (
       <>
         Identifies trends from customer feedback, helping teams proactively

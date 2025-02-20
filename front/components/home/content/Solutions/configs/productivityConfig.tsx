@@ -146,9 +146,9 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Meeting assistant",
+      title: "Meeting summaries",
       content:
-        "Convert meeting recordings into structured, actionable summaries within seconds.",
+        "Automatically convert transcripts into a summary of key decisions, owner assignments, and deadlines.",
       images: ["/static/landing/solutions/productivity1.png"],
     },
     {

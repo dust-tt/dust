@@ -102,7 +102,7 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Unlock the full potential of your data teams ",
+  sectionTitle: "Reduce toil, scale data education and deepen exploration",
   items: [
     {
       icon: MagicIcon,
@@ -146,9 +146,9 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Analytics self-service",
+      title: "Self-serve analytics",
       content:
-        "Execute complex data queries and generate visualizations automatically, answering business questions instantly.",
+        "Execute complex data queries and generate visualizations automatically to answer business questions instantly.",
       images: ["/static/landing/solutions/analytics1.png"],
     },
     {

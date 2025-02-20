@@ -56,8 +56,7 @@ export const pageSettings: pageSettingsProps = {
   to: "to-cyan-500",
   description: (
     <>
-      Scale IT support, automate routine requests, and keep your organization
-      running smoothly.
+      Scale IT support, automate routine requests, and keep your IT desk clean.
     </>
   ),
 };
@@ -102,7 +101,7 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Transform your IT support into a self-service powerhouse",
+  sectionTitle: "Create IT agents that knows your systems inside out",
   items: [
     {
       icon: MagicIcon,
