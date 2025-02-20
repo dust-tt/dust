@@ -15,14 +15,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "50mb",
-    },
-  },
-};
-
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
@@ -127,6 +119,7 @@ async function handler(
           case "invalid_url":
           case "title_too_long":
           case "missing_csv":
+          case "invalid_csv":
             return apiError(req, res, {
               status_code: 400,
               api_error: {
@@ -139,14 +132,6 @@ async function handler(
               status_code: 500,
               api_error: {
                 type: "data_source_error",
-                message: upsertRes.error.message,
-              },
-            });
-          case "invalid_csv":
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_rows_request_error",
                 message: upsertRes.error.message,
               },
             });
