@@ -699,8 +699,12 @@ impl Row {
             } else if let Ok(float) = trimmed.parse::<f64>() {
                 // Numbers
                 Value::Number(serde_json::Number::from_f64(float).unwrap())
-            } else if let Ok(bool_val) = trimmed.parse::<bool>() {
+            } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
                 // Booleans
+                "t" | "true" => Ok(true),
+                "f" | "false" => Ok(false),
+                _ => Err(anyhow!("Invalid boolean value")),
+            } {
                 Value::Bool(bool_val)
             } else {
                 // Various datetime formats
@@ -938,7 +942,6 @@ mod tests {
         let headers = vec!["a".to_string(), "b".to_string(), "c".to_string()];
         let record = vec!["2", "2.0", "0.1"];
         let row = Row::from_csv_record(&headers, record, 0)?;
-        println!("{:?}", row.content());
         assert_eq!(row.content()["a"], Value::Number(2.into()));
         assert_eq!(
             row.content()["b"],
@@ -948,6 +951,30 @@ mod tests {
             row.content()["c"],
             Value::Number(serde_json::Number::from_f64(0.1).unwrap())
         );
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["true", "false"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["TRUE", "FALSE"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["t", "f"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["trUe", "fALse"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
 
         Ok(())
     }

@@ -426,6 +426,9 @@ BAR,acme";
                    foo,123,0.231,true,2025-02-14T15:06:52.380Z\n\
                    ,,,,\n\
                     , , , , \n\
+                    , , ,TRUE , \n\
+                    , , ,FALSE, \n\
+                    , , ,t , \n\
                    bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
         let (delimiter, rdr) =
             UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
