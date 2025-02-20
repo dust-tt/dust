@@ -31,7 +31,7 @@ async function checkWorkspaceSeatCount(
     subscription?.plan.code === PRO_PLAN_SEAT_39_CODE
   ) {
     if (execute) {
-      const result = await checkSeatCountForWorkspace(workspace, false);
+      const result = await checkSeatCountForWorkspace(workspace);
       if (result.isOk()) {
         localLogger.info(
           { message: result.value },
