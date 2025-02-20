@@ -97,7 +97,7 @@ export const DocumentUploadOrEditModal = ({
 
   const [hasChanged, setHasChanged] = useState(false);
   const [isValidDocument, setIsValidDocument] = useState(false);
-  const [developerOptionsVisible, setDeveloperOptionsVisible] = useState(false);
+  const [labelsVisible, setLabelsVisible] = useState(true);
 
   const { document, isDocumentError, isDocumentLoading } =
     useDataSourceViewDocument({
@@ -460,22 +460,21 @@ export const DocumentUploadOrEditModal = ({
 
                   <div>
                     <Page.SectionHeader
-                      title="Developer Options"
+                      title="Labels"
                       action={{
-                        label: developerOptionsVisible ? "Hide" : "Show",
+                        label: labelsVisible ? "Hide" : "Show",
                         variant: "ghost",
-                        icon: developerOptionsVisible ? EyeSlashIcon : EyeIcon,
-                        onClick: () =>
-                          setDeveloperOptionsVisible(!developerOptionsVisible),
+                        icon: labelsVisible ? EyeSlashIcon : EyeIcon,
+                        onClick: () => setLabelsVisible(!labelsVisible),
                       }}
                     />
-                    {developerOptionsVisible && (
+                    {labelsVisible && (
                       <div className="pt-4">
                         <Page.SectionHeader
                           title=""
-                          description="Tags can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                          description="Labels can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
                           action={{
-                            label: "Add tag",
+                            label: "Add label",
                             variant: "ghost",
                             icon: PlusIcon,
                             onClick: () =>
@@ -485,45 +484,50 @@ export const DocumentUploadOrEditModal = ({
                               })),
                           }}
                         />
-                        {documentState.tags.map((tag, index) => (
-                          <div key={index} className="flex flex-grow flex-row">
-                            <div className="flex flex-1 flex-row gap-8">
-                              <div className="flex flex-1 flex-col">
-                                <Input
-                                  className="w-full"
-                                  placeholder="Tag"
-                                  name="tag"
-                                  value={tag}
-                                  onChange={(e) => {
-                                    const newTags = [...documentState.tags];
-                                    newTags[index] = e.target.value;
-                                    setDocumentState((prev) => ({
-                                      ...prev,
-                                      tags: newTags,
-                                    }));
-                                    setHasChanged(true);
-                                  }}
-                                />
-                              </div>
-                              <div className="flex">
-                                <Button
-                                  tooltip="Remove"
-                                  icon={TrashIcon}
-                                  variant="warning"
-                                  onClick={() => {
-                                    const newTags = [...documentState.tags];
-                                    newTags.splice(index, 1);
-                                    setDocumentState((prev) => ({
-                                      ...prev,
-                                      tags: newTags,
-                                    }));
-                                    setHasChanged(true);
-                                  }}
-                                />
+                        <div className="flex flex-col gap-2 pt-2">
+                          {documentState.tags.map((tag, index) => (
+                            <div
+                              key={index}
+                              className="flex flex-grow flex-row"
+                            >
+                              <div className="flex flex-1 flex-row gap-2">
+                                <div className="flex flex-1 flex-col">
+                                  <Input
+                                    className="w-full"
+                                    placeholder="Label"
+                                    name="label"
+                                    value={tag}
+                                    onChange={(e) => {
+                                      const newTags = [...documentState.tags];
+                                      newTags[index] = e.target.value;
+                                      setDocumentState((prev) => ({
+                                        ...prev,
+                                        tags: newTags,
+                                      }));
+                                      setHasChanged(true);
+                                    }}
+                                  />
+                                </div>
+                                <div className="flex">
+                                  <Button
+                                    tooltip="Remove"
+                                    icon={TrashIcon}
+                                    variant="warning"
+                                    onClick={() => {
+                                      const newTags = [...documentState.tags];
+                                      newTags.splice(index, 1);
+                                      setDocumentState((prev) => ({
+                                        ...prev,
+                                        tags: newTags,
+                                      }));
+                                      setHasChanged(true);
+                                    }}
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
