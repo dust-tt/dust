@@ -529,14 +529,9 @@ export async function upgradeWorkspaceToBusinessPlan(
 }
 
 export async function checkSeatCountForWorkspace(
-  auth: Authenticator,
   workspace: LightWorkspaceType,
   updateQuantity: boolean
 ): Promise<Result<string, Error>> {
-  if (!auth.isDustSuperUser()) {
-    throw new Error("Cannot upgrade workspace to plan: not allowed.");
-  }
-
   const subscription = await Subscription.findOne({
     where: {
       workspaceId: workspace.id,
