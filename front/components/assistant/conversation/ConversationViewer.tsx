@@ -43,8 +43,6 @@ import {
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 
-const DEFAULT_PAGE_LIMIT = 50;
-
 interface ConversationViewerProps {
   conversationId: string;
   isFading?: boolean;
@@ -101,7 +99,6 @@ const ConversationViewer = React.forwardRef<
   } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
-    limit: DEFAULT_PAGE_LIMIT,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({

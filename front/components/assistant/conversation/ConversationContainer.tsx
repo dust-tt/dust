@@ -73,7 +73,7 @@ export function ConversationContainer({
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
-    limit: 50,
+    options: { disabled: true },
   });
 
   const setInputbarMention = useCallback(

@@ -73,7 +73,7 @@ export function UserMessage({
   const { mutateMessages } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
-    limit: 50,
+    options: { disabled: true },
   });
 
   async function switchThread(direction: "previous" | "next") {

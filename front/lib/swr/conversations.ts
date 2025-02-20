@@ -100,21 +100,27 @@ export function useConversationFeedbacks({
   };
 }
 
+export const DEFAULT_PAGE_LIMIT = 50;
+
 export function useConversationMessages({
   conversationId,
   workspaceId,
-  limit,
+  limit = DEFAULT_PAGE_LIMIT,
+  options,
 }: {
   conversationId: string | null;
   workspaceId: string;
-  limit: number;
+  limit?: number;
   startAtRank?: number;
+  options?: { disabled: boolean };
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
+        console.log("pageIndex", pageIndex, previousPageData);
+
         if (!conversationId) {
           return null;
         }
@@ -138,6 +144,15 @@ export function useConversationMessages({
       {
         revalidateAll: false,
         revalidateOnFocus: false,
+        ...options,
+        keyFilter: (key) => {
+          return (
+            typeof key === "string" &&
+            key.startsWith(
+              `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages}`
+            )
+          );
+        },
       }
     );
 
