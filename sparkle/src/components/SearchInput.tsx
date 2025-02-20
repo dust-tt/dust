@@ -119,7 +119,7 @@ function BaseSearchInputWithPopover<T>(
     onChange,
     mountPortal,
     mountPortalContainer,
-    noResults = "No results found",
+    noResults,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -210,7 +210,7 @@ function BaseSearchInputWithPopover<T>(
               </div>
             ))
           ) : (
-            <div className="s-p-2 s-text-sm s-text-gray-500">{noResults}</div>
+            <div className="s-p-2 s-text-sm s-text-gray-500">{noResults ?? ""}</div>
           )}
           <ScrollBar className="s-py-0" />
         </ScrollArea>
