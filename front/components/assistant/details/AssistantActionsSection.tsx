@@ -514,7 +514,7 @@ function RetrievalActionTagsFilterPopover({
           )}
           {isTagsAuto && (
             <div className="flex flex-col gap-2">
-              <Label>Conversation filtering</Label>
+              <Label>In-Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
                   color="emerald"
