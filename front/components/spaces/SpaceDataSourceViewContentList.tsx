@@ -636,8 +636,8 @@ export const SpaceDataSourceViewContentList = ({
               </div>
             )}
         </div>
-        {isNodesLoading && (
-          <div className="mt-8 flex justify-center">
+        {(isNodesLoading || isSearchLoading || isSearchValidating) && (
+          <div className="absolute mt-16 flex justify-center">
             <Spinner />
           </div>
         )}
@@ -664,6 +664,14 @@ export const SpaceDataSourceViewContentList = ({
             columnsBreakpoints={columnsBreakpoints}
           />
         )}
+        {searchFeatureFlag &&
+          rows.length === 0 &&
+          !isSearchLoading &&
+          !isSearchValidating && (
+            <div className="mt-8 flex justify-center">
+              <div>No results found</div>
+            </div>
+          )}
         <ContentActions
           ref={contentActionsRef}
           dataSourceView={dataSourceView}
