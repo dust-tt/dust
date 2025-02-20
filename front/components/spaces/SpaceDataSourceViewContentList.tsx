@@ -1,6 +1,7 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
+  cn,
   Cog6ToothIcon,
   DataTable,
   DropdownMenu,
@@ -55,7 +56,8 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
@@ -209,7 +211,13 @@ export const SpaceDataSourceViewContentList = ({
   space,
   systemSpace,
 }: SpaceDataSourceViewContentListProps) => {
+  // TODO(20250220, search-kb): remove this once the feature flag is enabled by default
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
+
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const sendNotification = useSendNotification();
@@ -220,7 +228,10 @@ export const SpaceDataSourceViewContentList = ({
     urlPrefix: "table",
     initialPageSize: 25,
   });
-  const [viewType, setViewType] = useHashParam("viewType", DEFAULT_VIEW_TYPE);
+  const [viewType, setViewType] = useHashParam(
+    "viewType",
+    DEFAULT_VIEW_TYPE
+  ) as [ContentNodesViewType, (viewType: ContentNodesViewType) => void];
   const router = useRouter();
   const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
@@ -232,7 +243,7 @@ export const SpaceDataSourceViewContentList = ({
     disabled: !showSpaceUsage,
   });
   const handleViewTypeChange = useCallback(
-    (newViewType?: ContentNodesViewType) => {
+    (newViewType: ContentNodesViewType) => {
       if (newViewType !== viewType) {
         setPagination(
           { pageIndex: 0, pageSize: pagination.pageSize },
@@ -243,6 +254,13 @@ export const SpaceDataSourceViewContentList = ({
     },
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
+
+  const { resultNodes, isSearchLoading, isSearchValidating } = useSpaceSearch({
+    dataSourceViews: [dataSourceView],
+    owner,
+    viewType,
+    search: debouncedSearch,
+  });
 
   // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
   const isServerPagination = false;
@@ -256,7 +274,7 @@ export const SpaceDataSourceViewContentList = ({
   const {
     isNodesLoading,
     mutateRegardlessOfQueryParams: mutateContentNodes,
-    nodes,
+    nodes: childrenNodes,
     totalNodesCount,
   } = useDataSourceViewContentNodes({
     dataSourceView,
@@ -267,6 +285,13 @@ export const SpaceDataSourceViewContentList = ({
       ? viewType
       : DEFAULT_VIEW_TYPE,
   });
+
+  const nodes = useMemo(() => {
+    if (dataSourceSearch.length > 2 && searchFeatureFlag) {
+      return resultNodes;
+    }
+    return childrenNodes;
+  }, [dataSourceSearch.length, childrenNodes, resultNodes, searchFeatureFlag]);
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
@@ -377,6 +402,18 @@ export const SpaceDataSourceViewContentList = ({
     isDataSourceManaged,
   ]);
 
+  // Debounce the search input, and don't trigger the search if the query is < 3 characters
+  useEffect(() => {
+    if (searchFeatureFlag) {
+      const timeout = setTimeout(() => {
+        setDebouncedSearch(
+          dataSourceSearch.length >= 3 ? dataSourceSearch : ""
+        );
+      }, 300);
+      return () => clearTimeout(timeout);
+    }
+  }, [dataSourceSearch, searchFeatureFlag]);
+
   const rows: RowData[] = useMemo(
     () =>
       nodes?.map((contentNode) => ({
@@ -474,7 +511,11 @@ export const SpaceDataSourceViewContentList = ({
     );
 
   const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
-  const isEmpty = rows.length === 0 && !isNodesLoading;
+  const isEmpty =
+    rows.length === 0 &&
+    !isNodesLoading &&
+    dataSourceSearch.length === 0 &&
+    !isSearchLoading;
 
   return (
     // MultipleDocumentsUpload listens to the file drop context and uploads the files.
@@ -571,7 +612,7 @@ export const SpaceDataSourceViewContentList = ({
             !parentId &&
             space.kind === "system" && (
               <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-                {!isNodesLoading && rows.length === 0 && (
+                {isEmpty && (
                   <div>Connection ready. Select the data to sync.</div>
                 )}
 
@@ -604,9 +645,17 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={dataSourceSearch}
-            filterColumn="title"
-            className="pb-4"
+            filter={
+              // TODO(20250220, search-kb): remove this once the feature flag is enabled by default
+              searchFeatureFlag ? undefined : dataSourceSearch
+            }
+            filterColumn={
+              "title" // see todo above
+            }
+            className={cn(
+              "pb-4",
+              isSearchValidating && "pointer-events-none opacity-50"
+            )}
             sorting={sorting}
             setSorting={setSorting}
             totalRowCount={isServerPagination ? totalNodesCount : undefined}

@@ -9,6 +9,8 @@ import * as t from "io-ts";
 // More precisely, the "tables" (resp. "documents") view hides leaves that are documents (resp. tables).
 
 // Define a codec for ContentNodesViewType using io-ts.
+// WARNING: when changing this codec, search and map for comments on ContentNodesViewTypeCodec
+// because parts of the codebase could not use this type directly (and as such commented)
 export const ContentNodesViewTypeCodec = t.union([
   t.literal("tables"),
   t.literal("documents"),

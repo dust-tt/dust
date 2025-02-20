@@ -1,5 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewCategory,
   DataSourceViewType,
   LightWorkspaceType,
@@ -7,6 +8,7 @@ import type {
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
+import useSWR from "swr";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
@@ -26,6 +28,7 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { PostSpaceSearchResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 export function useSpaces({
   workspaceId,
@@ -586,5 +589,65 @@ export function useSystemSpace({
     isSystemSpaceLoading: !error && !data && !disabled,
     isSystemSpaceError: error,
     mutateSystemSpace: mutate,
+  };
+}
+
+export function useSpaceSearch({
+  dataSourceViews,
+  owner,
+  viewType,
+  search,
+}: {
+  dataSourceViews: DataSourceViewType[];
+  owner: LightWorkspaceType;
+  viewType: ContentNodesViewType;
+  search: string;
+}) {
+  const body = {
+    datasourceViewSids: dataSourceViews.map((dsv) => dsv.sId),
+    query: search,
+    viewType,
+  };
+
+  const spaceId = dataSourceViews[0]?.spaceId;
+
+  // Only create a key if we have a valid search
+  const key =
+    search?.length > 2 && spaceId
+      ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
+      : null;
+
+  const { data, error, mutate, isValidating, isLoading } = useSWR<
+    PostSpaceSearchResponseBody,
+    Error
+  >(
+    key as [string, typeof body],
+    async ([url, postBody]) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postBody),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch search results");
+      }
+
+      return res.json();
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
+  return {
+    resultNodes: data?.nodes ?? [],
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    mutate,
+    isSearchValidating: isValidating,
   };
 }
