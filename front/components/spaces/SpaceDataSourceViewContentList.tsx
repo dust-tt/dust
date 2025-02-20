@@ -435,6 +435,11 @@ export const SpaceDataSourceViewContentList = ({
     }
   }, [dataSourceSearch, searchFeatureFlag]);
 
+  // Reset search when we navigate to a folder
+  useEffect(() => {
+    setDataSourceSearch("");
+  }, [parentId]);
+
   const rows: RowData[] = useMemo(
     () =>
       nodes?.map((contentNode) => ({
