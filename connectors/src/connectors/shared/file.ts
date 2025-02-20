@@ -112,6 +112,7 @@ export async function handleTextExtraction(
 
   const pageRes = await new TextExtraction(apiConfig.getTextExtractionUrl(), {
     enableOcr: false,
+    logger: localLogger,
   }).fromBuffer(Buffer.from(data), mimeType);
 
   if (pageRes.isErr()) {

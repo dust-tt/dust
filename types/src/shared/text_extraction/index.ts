@@ -6,6 +6,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Readable } from "stream";
 
+import { LoggerInterface } from "../logger";
 import { Err, Ok, Result } from "../result";
 import { assertNever } from "../utils/assert_never";
 import {
@@ -94,7 +95,13 @@ export function isTextExtractionSupportedContentType(
 const DEFAULT_HANDLER = "text";
 
 export class TextExtraction {
-  constructor(readonly url: string, readonly options: { enableOcr: boolean }) {}
+  constructor(
+    readonly url: string,
+    readonly options: {
+      enableOcr: boolean;
+      logger: LoggerInterface;
+    }
+  ) {}
 
   getAdditionalHeaders(): HeadersInit {
     return {
@@ -192,6 +199,8 @@ export class TextExtraction {
 
       return new Ok(decodedReponse.right);
     } catch (err) {
+      this.options.logger.error({ error: err }, "Error while extracting text");
+
       const errorMessage =
         err instanceof Error ? err.message : "Unexpected error";
 
