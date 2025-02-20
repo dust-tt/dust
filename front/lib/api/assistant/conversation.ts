@@ -45,8 +45,7 @@ import {
   rateLimiter,
   removeNulls,
 } from "@dust-tt/types";
-import { isEqual, sortBy } from "lodash";
-import _ from "lodash";
+import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
