@@ -77,8 +77,7 @@ export function ZendeskConfigView({
       >
         <ContextItem.Description>
           <div className="text-element-700">
-            If activated, Dust will also sync the unresolved tickets (by default
-            only the closed and solved tickets are synced).
+            If activated, Dust will also sync the unresolved tickets.
           </div>
         </ContextItem.Description>
       </ContextItem>
