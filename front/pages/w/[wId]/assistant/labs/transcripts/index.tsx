@@ -34,7 +34,6 @@ import { useEffect, useState } from "react";
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -47,6 +46,7 @@ import {
 } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 
 const defaultTranscriptConfigurationState = {
   provider: "",
@@ -886,7 +886,7 @@ export default function LabsTranscriptsIndex({
                           {!isSpacesLoading &&
                             storeInFolder &&
                             selectionConfigurations && (
-                              <DataSourceViewsSelector
+                              <DataSourceViewsSpaceSelector
                                 useCase="transcriptsProcessing"
                                 dataSourceViews={dataSourcesViews}
                                 allowedSpaces={spaces}
@@ -897,7 +897,7 @@ export default function LabsTranscriptsIndex({
                                 setSelectionConfigurations={
                                   handleSetSelectionConfigurations
                                 }
-                                viewType={"documents"}
+                                viewType="documents"
                                 isRootSelectable={true}
                               />
                             )}
