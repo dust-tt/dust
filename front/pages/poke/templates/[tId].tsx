@@ -591,7 +591,7 @@ function TemplatesPage({
   }
 
   return (
-    <div className="mx-auto h-full max-w-7xl flex-grow flex-col items-center justify-center pt-8">
+    <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">
       <PokeForm {...form}>
         <form className="space-y-8">
           <div className="grid grid-cols-3 gap-4">
@@ -744,7 +744,7 @@ function TemplatesPage({
             name="presetActions"
             title="Preset Tools"
           />
-          <div className="flex gap-2 space-y-2">
+          <div className="space flex gap-2">
             <Button onClick={form.handleSubmit(onSubmit)} label="Save" />
             <Button
               type="button"
