@@ -135,7 +135,9 @@ export async function upsertTableFromCsv({
       });
     }
 
-    if (file.useCase !== "upsert_table") {
+    // Table upserts can come from both upsert_table and conversations use-cases (internal CSV apis
+    // and JIT).
+    if (!["upsert_table", "conversation"].includes(file.useCase)) {
       return new Err({
         type: "invalid_request_error",
         message:
