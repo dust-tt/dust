@@ -4,7 +4,6 @@ import {
   FolderIcon,
   GlobeAltIcon,
   ListCheckIcon,
-  Spinner,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
@@ -13,15 +12,12 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
-  SpaceType,
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
-import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type {
   ContentNodeTreeItemStatus,
   TreeSelectionModelUpdater,
@@ -39,7 +35,6 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useSpaces } from "@app/lib/swr/spaces";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 
@@ -85,15 +80,16 @@ const getNodesFromConfig = (
     {}
   );
 
+export type useCaseDataSourceViewsSelector =
+  | "spaceDatasourceManagement"
+  | "assistantBuilder"
+  | "transcriptsProcessing"
+  | "trackerBuilder";
+
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
-  useCase:
-    | "spaceDatasourceManagement"
-    | "assistantBuilder"
-    | "transcriptsProcessing"
-    | "trackerBuilder";
+  useCase: useCaseDataSourceViewsSelector;
   dataSourceViews: DataSourceViewType[];
-  allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
@@ -106,14 +102,11 @@ export function DataSourceViewsSelector({
   owner,
   useCase,
   dataSourceViews,
-  allowedSpaces,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
 }: DataSourceViewsSelectorProps) {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
 
@@ -161,84 +154,59 @@ export function DataSourceViewsSelector({
     managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
-  const defaultSpace = useMemo(() => {
-    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
-    return firstKey
-      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
-      : "";
-  }, [selectionConfigurations]);
-
-  const filteredSpaces = useMemo(() => {
-    const spaceIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
-
-    return spaces.filter((s) => spaceIds.includes(s.sId));
-  }, [spaces, dataSourceViews]);
-
-  if (isSpacesLoading) {
-    return <Spinner />;
-  }
-
-  if (filteredSpaces.length > 1) {
-    return (
-      <SpaceSelector
-        spaces={filteredSpaces}
-        allowedSpaces={allowedSpaces}
-        defaultSpace={defaultSpace}
-        renderChildren={(space) => {
-          const dataSourceViewsForSpace = space
-            ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
-            : dataSourceViews;
-
-          if (dataSourceViewsForSpace.length === 0) {
-            return <>No data source in this space.</>;
-          }
-
-          return (
-            <DataSourceViewsSelector
-              owner={owner}
-              useCase={useCase}
-              dataSourceViews={dataSourceViewsForSpace}
-              selectionConfigurations={selectionConfigurations}
-              setSelectionConfigurations={setSelectionConfigurations}
-              viewType={viewType}
-              isRootSelectable={isRootSelectable}
-            />
-          );
-        }}
-      />
-    );
-  } else {
-    return (
-      <Tree isLoading={false}>
-        {displayManagedDsv && (
-          <Tree.Item
-            key="connected"
-            label="Connected Data"
-            visual={CloudArrowLeftRightIcon}
-            type="node"
-          >
-            {orderDatasourceViews
-              .filter((dsv) => isManaged(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  isRootSelectable={isRootSelectable}
-                  defaultCollapsed={filteredDSVs.length > 1}
-                  useCase={useCase}
-                />
-              ))}
-          </Tree.Item>
-        )}
-        {managedDsv.length > 0 &&
-          useCase === "spaceDatasourceManagement" &&
-          managedDsv.map((dataSourceView) => (
+  return (
+    <Tree isLoading={false}>
+      {displayManagedDsv && (
+        <Tree.Item
+          key="connected"
+          label="Connected Data"
+          visual={CloudArrowLeftRightIcon}
+          type="node"
+        >
+          {orderDatasourceViews
+            .filter((dsv) => isManaged(dsv.dataSource))
+            .map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                isRootSelectable={isRootSelectable}
+                defaultCollapsed={filteredDSVs.length > 1}
+                useCase={useCase}
+              />
+            ))}
+        </Tree.Item>
+      )}
+      {managedDsv.length > 0 &&
+        useCase === "spaceDatasourceManagement" &&
+        managedDsv.map((dataSourceView) => (
+          <DataSourceViewSelector
+            key={dataSourceView.sId}
+            owner={owner}
+            selectionConfiguration={
+              selectionConfigurations[dataSourceView.sId] ??
+              defaultSelectionConfiguration(dataSourceView)
+            }
+            setSelectionConfigurations={setSelectionConfigurations}
+            viewType={viewType}
+            isRootSelectable={false}
+            defaultCollapsed={filteredDSVs.length > 1}
+            useCase={useCase}
+          />
+        ))}
+      {folders.length > 0 && (
+        <Tree.Item
+          key="folders"
+          label="Folders"
+          visual={FolderIcon}
+          type="node"
+        >
+          {folders.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}
               owner={owner}
@@ -248,62 +216,39 @@ export function DataSourceViewsSelector({
               }
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
-              isRootSelectable={false}
+              isRootSelectable={isRootSelectable}
               defaultCollapsed={filteredDSVs.length > 1}
               useCase={useCase}
             />
           ))}
-        {folders.length > 0 && (
-          <Tree.Item
-            key="folders"
-            label="Folders"
-            visual={FolderIcon}
-            type="node"
-          >
-            {folders.map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-                viewType={viewType}
-                isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
-                useCase={useCase}
-              />
-            ))}
-          </Tree.Item>
-        )}
-        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
-          <Tree.Item
-            key="websites"
-            label="Websites"
-            visual={GlobeAltIcon}
-            type="node"
-          >
-            {websites.map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-                viewType={viewType}
-                isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
-                useCase={useCase}
-              />
-            ))}
-          </Tree.Item>
-        )}
-      </Tree>
-    );
-  }
+        </Tree.Item>
+      )}
+      {websites.length > 0 && useCase !== "transcriptsProcessing" && (
+        <Tree.Item
+          key="websites"
+          label="Websites"
+          visual={GlobeAltIcon}
+          type="node"
+        >
+          {websites.map((dataSourceView) => (
+            <DataSourceViewSelector
+              key={dataSourceView.sId}
+              owner={owner}
+              selectionConfiguration={
+                selectionConfigurations[dataSourceView.sId] ??
+                defaultSelectionConfiguration(dataSourceView)
+              }
+              setSelectionConfigurations={setSelectionConfigurations}
+              viewType={viewType}
+              isRootSelectable={isRootSelectable}
+              defaultCollapsed={filteredDSVs.length > 1}
+              useCase={useCase}
+            />
+          ))}
+        </Tree.Item>
+      )}
+    </Tree>
+  );
 }
 
 interface DataSourceViewSelectorProps {
