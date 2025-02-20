@@ -530,7 +530,7 @@ export async function upgradeWorkspaceToBusinessPlan(
 
 export async function checkSeatCountForWorkspace(
   workspace: LightWorkspaceType,
-  updateQuantity: boolean
+  {updateQuantity}: {updateQuantity: boolean}
 ): Promise<Result<string, Error>> {
   const subscription = await Subscription.findOne({
     where: {
