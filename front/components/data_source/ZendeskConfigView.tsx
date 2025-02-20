@@ -1,12 +1,14 @@
 import {
   ContextItem,
-  IntercomLogo,
   SliderToggle,
   useSendNotification,
+  ZendeskLogo,
+  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 
 export function ZendeskConfigView({
@@ -20,6 +22,8 @@ export function ZendeskConfigView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
+  const { isDark } = useTheme();
+
   const configKey = "zendeskSyncUnresolvedTicketsEnabled";
 
   const { configValue, mutateConfig } = useConnectorConfig({
@@ -61,7 +65,11 @@ export function ZendeskConfigView({
     <ContextItem.List>
       <ContextItem
         title="Sync unresolved tickets"
-        visual={<ContextItem.Visual visual={IntercomLogo} />}
+        visual={
+          <ContextItem.Visual
+            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
+          />
+        }
         action={
           <div className="relative">
             <SliderToggle
