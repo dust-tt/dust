@@ -13,6 +13,7 @@ import {
   getCollectionInAppUrl,
   getHelpCenterArticleInternalId,
   getHelpCenterCollectionInternalId,
+  getHelpCenterInternalId,
   getParentIdsForArticle,
   getParentIdsForCollection,
 } from "@connectors/connectors/intercom/lib/utils";
@@ -50,6 +51,11 @@ export async function removeHelpCenter({
   helpCenter: IntercomHelpCenter;
   loggerArgs: Record<string, string | number>;
 }): Promise<void> {
+  await deleteDataSourceFolder({
+    dataSourceConfig,
+    folderId: getHelpCenterInternalId(connectorId, helpCenter.helpCenterId),
+  });
+
   const level1Collections = await IntercomCollection.findAll({
     where: {
       connectorId,
@@ -216,6 +222,7 @@ export async function upsertCollectionWithChildren({
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId,
+    helpCenterId,
   });
   await upsertDataSourceFolder({
     dataSourceConfig,
@@ -401,6 +408,7 @@ export async function upsertArticle({
       documentId,
       connectorId,
       parentCollectionId,
+      helpCenterId,
     });
 
     await upsertDataSourceDocument({

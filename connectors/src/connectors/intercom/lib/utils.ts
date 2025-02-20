@@ -121,15 +121,18 @@ export async function getParentIdsForArticle({
   documentId,
   connectorId,
   parentCollectionId,
+  helpCenterId,
 }: {
   documentId: string;
   connectorId: number;
   parentCollectionId: string;
+  helpCenterId: string;
 }): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
+    helpCenterId,
   });
 
   return [documentId, ...collectionParents];
@@ -138,9 +141,11 @@ export async function getParentIdsForArticle({
 export async function getParentIdsForCollection({
   connectorId,
   collectionId,
+  helpCenterId,
 }: {
   connectorId: number;
   collectionId: string;
+  helpCenterId: string;
 }): Promise<[string, ...string[]]> {
   const parentIds = [];
 
@@ -172,5 +177,6 @@ export async function getParentIdsForCollection({
   return [
     getHelpCenterCollectionInternalId(connectorId, collectionId),
     ...parentIds,
+    getHelpCenterInternalId(connectorId, helpCenterId),
   ];
 }
