@@ -19,7 +19,7 @@ import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
   supportsDocumentsData,
   supportsStructuredData,
@@ -91,7 +91,7 @@ export default function TrackerBuilderDataSourceModal({
             id="dataSourceViewsSelector"
             className="overflow-y-auto scrollbar-hide"
           >
-            <DataSourceViewsSelector
+            <DataSourceViewsSpaceSelector
               useCase="trackerBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
               allowedSpaces={allowedSpaces}
