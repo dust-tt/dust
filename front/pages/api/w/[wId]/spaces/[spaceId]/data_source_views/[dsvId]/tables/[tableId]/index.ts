@@ -10,14 +10,6 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "8mb",
-    },
-  },
-};
-
 export type GetDataSourceViewTableResponseBody = {
   table: CoreAPITable;
 };
