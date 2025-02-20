@@ -334,6 +334,7 @@ export async function fetchRecentlyUpdatedArticles({
           { ...e.data, role, suspended, active }
         );
       }
+      return { articles: [], hasMore: false, endTime: 0 };
     }
     throw e;
   }
