@@ -136,7 +136,7 @@ export function FeedbackSelector({
           <div className="flex items-center gap-2">
             <Button
               tooltip="I found this helpful"
-              variant={feedback?.thumb === "up" ? "primary" : "ghost"}
+              variant={feedback?.thumb === "up" ? "primary" : "outline"}
               size="xs"
               disabled={isSubmittingThumb}
               onClick={handleThumbUp}
@@ -149,7 +149,7 @@ export function FeedbackSelector({
             />
             <Button
               tooltip="Report an issue with this answer"
-              variant={feedback?.thumb === "down" ? "primary" : "ghost"}
+              variant={feedback?.thumb === "down" ? "primary" : "outline"}
               size="xs"
               disabled={isSubmittingThumb}
               onClick={handleThumbDown}
