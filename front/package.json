@@ -15,8 +15,7 @@
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "coverage": "vitest --coverage",
     "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh",
-    "prepare": "cd .. && husky .husky"
+    "create-db-migration": "./create_db_migration_file.sh"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",
@@ -159,7 +158,6 @@
     "eslint-plugin-jsdoc": "^48.4.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^3.2.0",
-    "husky": "^9.0.11",
     "jsdom": "^26.0.0",
     "node-fetch": "^2.7.0",
     "node-mocks-http": "^1.16.2",
