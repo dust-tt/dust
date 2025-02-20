@@ -46,13 +46,36 @@ export const DataSourceViewsSpaceSelector = ({
       : "";
   }, [selectionConfigurations]);
 
+  const filteredSpaces = useMemo(() => {
+    const spaceIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
+    return spaces.filter((s) => spaceIds.includes(s.sId));
+  }, [spaces, dataSourceViews]);
+
   if (isSpacesLoading) {
     return <Spinner />;
   }
 
+  if (filteredSpaces.length === 1) {
+    const dataSourceViewsForSpace = filteredSpaces[0]
+      ? dataSourceViews.filter((dsv) => dsv.spaceId === filteredSpaces[0].sId)
+      : dataSourceViews;
+
+    return (
+      <DataSourceViewsSelector
+        owner={owner}
+        useCase={useCase}
+        dataSourceViews={dataSourceViewsForSpace}
+        selectionConfigurations={selectionConfigurations}
+        setSelectionConfigurations={setSelectionConfigurations}
+        viewType={viewType}
+        isRootSelectable={isRootSelectable}
+      />
+    );
+  }
+
   return (
     <SpaceSelector
-      spaces={spaces}
+      spaces={filteredSpaces}
       allowedSpaces={allowedSpaces}
       defaultSpace={defaultSpace}
       renderChildren={(space) => {
