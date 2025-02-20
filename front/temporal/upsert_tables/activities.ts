@@ -86,7 +86,6 @@ export async function upsertTableActivity(
     tableTags: upsertQueueItem.tableTags || [],
     tableParentId: upsertQueueItem.tableParentId || null,
     tableParents: upsertQueueItem.tableParents || [],
-    csv: upsertQueueItem.csv,
     fileId: upsertQueueItem.fileId ?? null,
     truncate: upsertQueueItem.truncate,
     title: upsertQueueItem.title,
@@ -116,23 +115,6 @@ export async function upsertTableActivity(
       message: `Upsert error: ${JSON.stringify(tableRes.error)}`,
       type: "upsert_queue_upsert_table_error",
     };
-    if (
-      "csvParsingError" in tableRes.error &&
-      (tableRes.error.csvParsingError.type === "too_many_columns" ||
-        tableRes.error.csvParsingError.type === "invalid_header")
-    ) {
-      logger.error(
-        {
-          error: tableRes.error,
-          latencyMs: Date.now() - upsertTimestamp,
-          delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
-          csvSize: upsertQueueItem.csv?.length || 0,
-          panic: true,
-        },
-        "[UpsertQueue] Invalid table (headers or columns) -- skipping, this should have been caught prior to enqueuing"
-      );
-      return;
-    }
 
     throw error;
   }

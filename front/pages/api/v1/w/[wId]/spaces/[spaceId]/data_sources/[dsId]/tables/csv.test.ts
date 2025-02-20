@@ -14,7 +14,7 @@ import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./csv";
 
-const CORE_ROWS_FAKE_RESPONSE = {
+const CORE_TABLES_FAKE_RESPONSE = {
   response: {
     table: {
       project: { project_id: 47 },
@@ -96,77 +96,6 @@ vi.mock("@app/lib/file_storage", () => ({
 }));
 
 describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv", () => {
-  itInTransaction("returns when called with a valid CSV", async (t) => {
-    const { req, res, workspace, globalGroup } =
-      await createPublicApiMockRequest({
-        systemKey: true,
-        method: "POST",
-      });
-
-    const space = await SpaceFactory.global(workspace, t);
-    await GroupSpaceFactory.associate(space, globalGroup);
-    const dataSourceView = await DataSourceViewFactory.folder(
-      workspace,
-      space,
-      t
-    );
-
-    req.query.spaceId = space.sId;
-    req.query.dsId = dataSourceView.dataSource.sId;
-
-    req.body = {
-      name: "footable",
-      truncate: true,
-      title: "Wonderful table",
-      mimeType: "text/csv",
-      description: "desc",
-      csv: "foo,bar,viz\n1,2,3\n4,5,6",
-      tableId: "fooTable-1",
-    };
-
-    // First fetch is to create the table
-    global.fetch = vi.fn().mockImplementation(async (url, init) => {
-      const req = JSON.parse(init.body);
-
-      if ((url as string).endsWith("/tables")) {
-        expect(req.table_id).toBe("fooTable-1");
-        expect(req.name).toBe("footable");
-        expect(req.parents[0]).toBe("fooTable-1");
-        expect(req.source_url).toBeNull();
-        return Promise.resolve(
-          new Response(JSON.stringify(CORE_ROWS_FAKE_RESPONSE), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          })
-        );
-      }
-
-      if ((url as string).endsWith("/rows")) {
-        expect(req.rows[0].row_id).toBe("0");
-        expect(req.rows[0].value.bar).toBe(2);
-        expect(req.rows[1].value.foo).toBe(4);
-        return Promise.resolve(
-          new Response(
-            JSON.stringify({
-              response: {
-                success: true,
-              },
-            }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            }
-          )
-        );
-      }
-    });
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual(CORE_ROWS_FAKE_RESPONSE.response);
-  });
-
   itInTransaction("succesfully upserts a CSV received as file", async (t) => {
     const { req, res, workspace, globalGroup } =
       await createPublicApiMockRequest({
@@ -212,17 +141,18 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
         expect(req.parents[0]).toBe("fooTable-1");
         expect(req.source_url).toBeNull();
         return Promise.resolve(
-          new Response(JSON.stringify(CORE_ROWS_FAKE_RESPONSE), {
+          new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           })
         );
       }
 
-      if ((url as string).endsWith("/rows")) {
-        expect(req.rows[0].row_id).toBe("0");
-        expect(req.rows[0].value.bar).toBe(2);
-        expect(req.rows[1].value.foo).toBe(4);
+      if ((url as string).endsWith("/csv")) {
+        expect(req.upsert_queue_bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/processed`
+        );
+        expect(req.truncate).toBe(true);
         return Promise.resolve(
           new Response(
             JSON.stringify({
