@@ -69,6 +69,7 @@ interface ColumnBreakpoint {
 interface DataTableProps<TData extends TBaseData> {
   data: TData[];
   totalRowCount?: number;
+  rowCountIsCapped?: boolean;
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   widthClassName?: string;
@@ -95,6 +96,7 @@ function shouldRenderColumn(
 export function DataTable<TData extends TBaseData>({
   data,
   totalRowCount,
+  rowCountIsCapped = false,
   columns,
   className,
   widthClassName = "s-w-full",
@@ -254,6 +256,7 @@ export function DataTable<TData extends TBaseData>({
             pagination={table.getState().pagination}
             setPagination={table.setPagination}
             rowCount={table.getRowCount()}
+            rowCountIsCapped={rowCountIsCapped}
           />
         </div>
       )}
