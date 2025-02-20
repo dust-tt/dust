@@ -71,14 +71,15 @@ export async function zendeskSyncWorkflow({
 
   const brandIds = new Set<number>();
   const brandSignals = new Map<number, ZendeskUpdateSignal>();
+
   const brandHelpCenterIds = new Set<number>();
   const brandHelpCenterSignals = new Map<number, ZendeskUpdateSignal>();
+
   const brandTicketsIds = new Set<number>();
   const brandTicketSignals = new Map<number, ZendeskUpdateSignal>();
 
-  const categoryIds = new Set<number>();
-  const categoryBrands: Record<number, number> = {};
-  const categorySignals = new Map<number, ZendeskCategoryUpdateSignal>();
+  const categoryIds = new Set<string>();
+  const categorySignals = new Map<string, ZendeskCategoryUpdateSignal>();
 
   // If we get a signal, update the workflow state by adding help center ids.
   // Signals are sent when permissions are updated by the admin.
@@ -103,9 +104,9 @@ export async function zendeskSyncWorkflow({
             break;
           }
           case "category": {
-            categoryIds.add(signal.categoryId);
-            categoryBrands[signal.categoryId] = signal.brandId;
-            categorySignals.set(signal.categoryId, signal);
+            const { categoryId, brandId } = signal;
+            categoryIds.add(`${categoryId}-${brandId}`);
+            categorySignals.set(`${categoryId}-${brandId}`, signal);
             break;
           }
           default:
@@ -190,12 +191,10 @@ export async function zendeskSyncWorkflow({
   }
   while (categoryIds.size > 0) {
     const categoryIdsToProcess = new Set(categoryIds);
-    for (const categoryId of categoryIdsToProcess) {
-      const brandId = categoryBrands[categoryId];
-      if (!brandId) {
-        throw new Error(
-          "Unreachable: a category ID was pushed without a brand."
-        );
+    for (const categoryAndBrandId of categoryIdsToProcess) {
+      const [categoryId, brandId] = categoryAndBrandId.split("-").map(Number);
+      if (!categoryId || !brandId) {
+        throw new Error(`Unreachable: invalid id ${categoryAndBrandId}.`);
       }
 
       await executeChild(zendeskCategorySyncWorkflow, {
@@ -204,7 +203,7 @@ export async function zendeskSyncWorkflow({
         args: [{ connectorId, categoryId, brandId, currentSyncDateMs }],
         memo,
       });
-      categoryIds.delete(categoryId);
+      categoryIds.delete(categoryAndBrandId);
     }
   }
 
