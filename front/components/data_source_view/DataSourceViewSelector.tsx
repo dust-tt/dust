@@ -17,6 +17,7 @@ import { defaultSelectionConfiguration } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo } from "react";
+
 import type {
   ContentNodeTreeItemStatus,
   TreeSelectionModelUpdater,
