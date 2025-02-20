@@ -76,7 +76,7 @@ async function handler(
           switch (revokeResult.error.type) {
             case "not_found":
               logger.error(
-                { revokeResult },
+                { panic: true, revokeResult },
                 "Failed to revoke membership and track usage."
               );
               return apiError(req, res, {
@@ -89,7 +89,7 @@ async function handler(
             case "already_revoked":
             case "invalid_end_at":
               logger.error(
-                { revokeResult },
+                { panic: true, revokeResult },
                 "Failed to revoke membership and track usage."
               );
               break;
