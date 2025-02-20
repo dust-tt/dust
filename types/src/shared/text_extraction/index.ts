@@ -94,15 +94,13 @@ export function isTextExtractionSupportedContentType(
 const DEFAULT_HANDLER = "text";
 
 export class TextExtraction {
-  constructor(readonly url: string, readonly ocrStrategy?: "no_ocr" | "auto") {}
+  constructor(readonly url: string, readonly options: { enableOcr: boolean }) {}
 
   getAdditionalHeaders(): HeadersInit {
-    return this.ocrStrategy
-      ? {
-          "X-Tika-PDFOcrStrategy": this.ocrStrategy,
-          "X-Tika-Timeout-Millis": "60000",
-        }
-      : { "X-Tika-Timeout-Millis": "60000" };
+    return {
+      "X-Tika-PDFOcrStrategy": this.options.enableOcr ? "auto" : "no_ocr",
+      "X-Tika-Timeout-Millis": "60000",
+    };
   }
 
   // Method to extract text from a buffer.
