@@ -37,7 +37,7 @@ module.exports = {
       {
         source: "/platform-privacy",
         destination:
-          "https://dust-tt.notion.site/Platform-Privacy-Policy-37ceefcd8442428d99a5a062d4d310c5?pvs=4",
+          "https://dust-tt.notion.site/Platform-Privacy-Policy-c75f1cd20df04c58872f6aa43f768d41?pvs=74",
         permanent: true,
       },
       {
