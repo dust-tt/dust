@@ -28,6 +28,7 @@ const SearchRequestBody = t.type({
     t.literal("documents"),
     t.literal("all"),
   ]),
+  limit: t.number,
 });
 
 export type PostSpaceSearchResponseBody = {
@@ -73,7 +74,7 @@ async function handler(
     });
   }
 
-  const { datasourceViewSids, query, viewType } = bodyValidation.right;
+  const { datasourceViewSids, query, viewType, limit } = bodyValidation.right;
 
   if (datasourceViewSids.length === 0) {
     return apiError(req, res, {
@@ -119,6 +120,9 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
+    },
+    options: {
+      limit,
     },
   });
 

@@ -592,21 +592,26 @@ export function useSystemSpace({
   };
 }
 
+const DEFAULT_SEARCH_LIMIT = 20;
+
 export function useSpaceSearch({
   dataSourceViews,
   owner,
   viewType,
   search,
+  limit = DEFAULT_SEARCH_LIMIT,
 }: {
   dataSourceViews: DataSourceViewType[];
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
   search: string;
+  limit?: number;
 }) {
   const body = {
     datasourceViewSids: dataSourceViews.map((dsv) => dsv.sId),
     query: search,
     viewType,
+    limit,
   };
 
   const spaceId = dataSourceViews[0]?.spaceId;
