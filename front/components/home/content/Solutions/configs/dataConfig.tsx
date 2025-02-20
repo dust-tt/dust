@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "Data & Analytics",
+  title: <>Turn Data Into Business Decisions</>,
+  from: "from-purple-200",
+  to: "to-purple-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Transform complex data into instant insights, automate queries, and
+      democratize analytics across teams.
     </>
   ),
 };
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Unlock the full potential of your data teams ",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on insights",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize analysis time by automating query writing and data exploration.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Accelerate answers",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Instantly transform business questions into accurate queries and visualizations.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Democratize data",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Turn complex data models into accessible insights for the entire organization.",
     },
   ],
 };
@@ -148,31 +143,31 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "Analytics self-service",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Execute complex data queries and generate visualizations automatically, answering business questions instantly.",
+      images: ["/static/landing/solutions/analytics1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "SQL assistant",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Generate, debug and optimize SQL queries that align with your business logic and data models.",
+      images: ["/static/landing/solutions/analytics2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Data catalog",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Navigate your entire data ecosystem with instant access to schemas and relationships across tables.",
+      images: ["/static/landing/solutions/analytics3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Data runbooks",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Access and understand data team processes and documentation to streamline operations and troubleshooting.",
+      images: ["/static/landing/solutions/analytics4.png"],
     },
   ],
 };
@@ -217,46 +212,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🔬",
+    name: "@analyst",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
+        Answers advanced data questions on your behalf by writing and executing
+        queries and providing visualizations.
       </>
     ),
   },
   {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
+    emoji: "💬",
+    name: "@sqlWriter",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Generates simple SQL queries that understand business logic
+        and&nbsp;fixes or&nbsp;improves existing ones
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🔎",
+    name: "@dataCatalog",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Dives into your data model and answers questions about specific changes,
+        relationships, business definitions.
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "📈",
+    name: "@dataTeamDoc",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Answers questions about internal processes, business definitions
+        and&nbsp;runbooks on&nbsp;the data team.
       </>
     ),
   },

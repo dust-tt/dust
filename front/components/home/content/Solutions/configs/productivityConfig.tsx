@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "Productivity",
+  title: <>Get Things Done Faster, Better</>,
+  from: "from-violet-200",
+  to: "to-violet-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Automate routine tasks, enhance your communications, and get expert
+      feedback tied to your company resources.
     </>
   ),
 };
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Supercharge your personal productivity and growth",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on impact",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize your time by automating note-taking and content processing.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Enhance clarity",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Instantly transform complex information into clear, actionable insights.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Accelerate growth",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Turn every interaction into a learning opportunity with personalized guidance.",
     },
   ],
 };
@@ -148,41 +143,41 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "Meeting assistant",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Convert meeting recordings into structured, actionable summaries within seconds.",
+      images: ["/static/landing/solutions/productivity1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "Content digest",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Transform lengthy documents into clear summaries and key takeaways for quick comprehension.",
+      images: ["/static/landing/solutions/productivity2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Writing coach",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Enhance your communications with professional polish, improved clarity, and perfect grammar.",
+      images: ["/static/landing/solutions/productivity3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Personal mentor",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Access expert guidance and deep insights across any skill or knowledge domain.",
+      images: ["/static/landing/solutions/productivity4.png"],
     },
   ],
 };
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
+  name: "Boris Lipiainen",
+  title: "Chief Product and Technology Officer at Kyriba",
+  logo: "/static/landing/logos/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -217,47 +212,44 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
-      </>
-    ),
-  },
-  {
-    emoji: "📨",
-    name: "@prospectEngage",
+    emoji: "🎯",
+    name: "@meetingNotes",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Transforms your meeting recordings into structured summaries with clear
+        action items and key points.
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "📚",
+    name: "@docSummary",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Converts long documents into concise summaries and bullet points for
+        faster understanding.
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "✍️",
+    name: "@writeWell",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Polishes your writing with improved clarity, professional tone, and
+        perfect grammar.
       </>
+    ),
+  },
+  {
+    emoji: "🎓",
+    name: "@personalCoach",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>Provides expert guidance and detailed insights on your work.</>
     ),
   },
 ];

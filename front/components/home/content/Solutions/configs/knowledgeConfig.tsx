@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
+  uptitle: "Knowledge",
+  title: <>Make Company Knowledge Instantly Accessible.</>,
   from: "from-emerald-200",
   to: "to-emerald-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Transform organizational knowledge into structured insights and empower
+      teams with instant access to precise information.
     </>
   ),
 };
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Transform your company knowledge into actionable intelligence",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Drop tribal knowledge",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize productivity by making all company knowledge instantly accessible.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Accelerate learning",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Turn scattered information into organized, searchable knowledge for everyone.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Scale expertise",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Make every team member an expert with instant access to collective knowledge.",
     },
   ],
 };
@@ -148,31 +143,31 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "Company knowledge",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Answer employee questions instantly across departments using internal documentation and policies.",
+      images: ["/static/landing/solutions/knowledge1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "Product expert",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Provide comprehensive product information and documentation support to all employees.",
+      images: ["/static/landing/solutions/knowledge2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Activity digests",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Generate automated summaries of company activities, discussions, and project status updates.",
+      images: ["/static/landing/solutions/knowledge3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Market intelligence",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Track and structure relevant market information into actionable insights and custom reports.",
+      images: ["/static/landing/solutions/knowledge4.png"],
     },
   ],
 };
@@ -217,46 +212,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
-      </>
-    ),
-  },
-  {
-    emoji: "📨",
-    name: "@prospectEngage",
+    emoji: "📚",
+    name: "@companyGuide",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Answers questions about company policies, processes, and documentation
+        across all departments.
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "📱",
+    name: "@productExpert",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Provides instant answers about product features, documentation, and
+        technical specifications.
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "📡",
+    name: "@activityRadar",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Creates daily and weekly digests of key company activities, project
+        updates, and team discussions.
+      </>
+    ),
+  },
+  {
+    emoji: "🔍",
+    name: "@marketResearch",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Tracks competitor activities and market trends, delivering structured
+        insights and regular reports.
       </>
     ),
   },

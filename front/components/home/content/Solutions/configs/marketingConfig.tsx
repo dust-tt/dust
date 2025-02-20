@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "Marketing",
+  title: <>Create On-Brand Content At Scale</>,
+  from: "from-rose-200",
+  to: "to-rose-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Scale content production, maintain brand consistency, and optimize reach
+      across channels.
     </>
   ),
 };
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Elevate your content strategy to new heights",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on strategy",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize impact by automating content creation and optimization tasks.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Ensure consistency",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Maintain perfect brand alignment across all content and communication channels.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Scale production",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Transform your content workflow into an efficient, brand-compliant machine.",
     },
   ],
 };
@@ -148,31 +143,31 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "Content localization",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Translate and adapt content across languages while maintaining brand voice and cultural relevance.",
+      images: ["/static/landing/solutions/content1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "Content optimization",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Transform raw content into polished, SEO-optimized pieces that align with brand guidelines.",
+      images: ["/static/landing/solutions/content2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Brand copywriting",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Create engaging UX and social media content that consistently reflects your brand identity.",
+      images: ["/static/landing/solutions/content3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Competitor tracking",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Monitor market movements and competitor activities to inform your content strategy.",
+      images: ["/static/landing/solutions/content4.png"],
     },
   ],
 };
@@ -193,70 +188,70 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
-    title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
+    title: "How Qonto Achieved 70% Faster Localization with Dust",
     content:
-      "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
-    href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
+      "Qonto's Tolki assistant serves as a virtual polyglot, helping the content team localize content while maintaining brand voice and regional standards.",
+    href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_qonto.png",
   },
-  {
-    title: "Kyriba's RFP Agent for improving pre-sales efficiency",
-    content:
-      "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
-    href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
+  // {
+  //   title: "Kyriba's RFP Agent for improving pre-sales efficiency",
+  //   content:
+  //     "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
+  //   href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
+  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
+  // },
+  // {
+  //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
+  //   content:
+  //     "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
+  //   href: "https://blog.dust.tt/customer-story-lifen/",
+  //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+  // },
 ];
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🖋️",
+    name: "@contentWriter",
+    backgroundColor: "bg-pink-300",
     description: (
       <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
+        Creates content based on best-in class &nbsp;examples availble
+        internally
       </>
     ),
   },
   {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
+    emoji: "🖇️",
+    name: "@socialPost",
+    backgroundColor: "bg-pink-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Generates versioned&nbsp;content for social media outlets taking into
+        account company guidelines
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "♠️",
+    name: "@battleCard",
+    backgroundColor: "bg-pink-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Generates arguments for your product in comparison to a specific
+        competitor, in line with internal product guidelines and category
+        positioning
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🌍",
+    name: "@internationalizer",
+    backgroundColor: "bg-pink-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Transcreate all your content to adapt content for international markets
       </>
     ),
   },
