@@ -111,7 +111,8 @@ export async function handleTextExtraction(
   }
 
   const pageRes = await new TextExtraction(
-    apiConfig.getTextExtractionUrl()
+    apiConfig.getTextExtractionUrl(),
+    "no_ocr"
   ).fromBuffer(Buffer.from(data), mimeType);
 
   if (pageRes.isErr()) {

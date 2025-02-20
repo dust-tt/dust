@@ -94,7 +94,13 @@ export function isTextExtractionSupportedContentType(
 const DEFAULT_HANDLER = "text";
 
 export class TextExtraction {
-  constructor(readonly url: string) {}
+  constructor(readonly url: string, readonly ocrStrategy?: "no_ocr" | "auto") {}
+
+  getAdditionalHeaders(): HeadersInit {
+    return this.ocrStrategy
+      ? { "X-Tika-PDFOcrStrategy": this.ocrStrategy }
+      : {};
+  }
 
   // Method to extract text from a buffer.
   async fromBuffer(
@@ -118,6 +124,7 @@ export class TextExtraction {
       method: "PUT",
       headers: {
         "Content-Type": contentType,
+        ...this.getAdditionalHeaders(),
       },
       body: Readable.toWeb(fileStream),
       duplex: "half",
@@ -166,6 +173,7 @@ export class TextExtraction {
         headers: {
           Accept: "application/json",
           "Content-Type": contentType,
+          ...this.getAdditionalHeaders(),
         },
         body: fileBuffer,
       });
