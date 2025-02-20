@@ -164,7 +164,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/content3.png"],
     },
     {
-      title: "Competitor tracking",
+      title: "Market Intelligence",
       content:
         "Monitor market movements and competitor activities to inform your content strategy.",
       images: ["/static/landing/solutions/content4.png"],

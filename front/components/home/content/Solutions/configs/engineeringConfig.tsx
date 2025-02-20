@@ -148,7 +148,7 @@ export const UseCases: UseCaseProps = {
     {
       title: "First responder",
       content:
-        "Answer engineering questions across Slack, Github and JIRA using your internal documentation, keeping teams focused.",
+        "Fix code errors by retrieving internal documentation, updates, and Slack discussions. Stay focused on your core work.",
       images: ["/static/landing/solutions/eng1.png"],
     },
     {
@@ -164,9 +164,9 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/eng3.png"],
     },
     {
-      title: "Post-mortem assistant",
+      title: "FAQueen",
       content:
-        "Create thorough post-mortems following company practices, with automated context from previous incidents and changes.",
+        "Chat with any technical documentation to quickly find answers and follow step-by-step guidance.",
       images: ["/static/landing/solutions/eng4.png"],
     },
   ],

@@ -165,7 +165,7 @@ export const UseCases: UseCaseProps = {
     {
       title: "Prospect questions",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
+        "Answer prospect questions and RFPs instantly with fresh, expert insights on products, competitors, and security.",
       images: ["/static/landing/solutions/sales3.png"],
     },
     {

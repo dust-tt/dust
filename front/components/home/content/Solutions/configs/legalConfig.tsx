@@ -158,7 +158,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/legal2.png"],
     },
     {
-      title: "Legal research",
+      title: "Regulatory Change Management",
       content:
         "Search through case law and monitor regulatory updates to ensure ongoing compliance.",
       images: ["/static/landing/solutions/legal3.png"],
