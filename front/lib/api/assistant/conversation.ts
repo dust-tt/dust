@@ -252,13 +252,24 @@ export async function getUserConversations(
     order: [["updatedAt", "DESC"]],
   });
 
+  const includedConversationVisibilities: ConversationVisibility[] = [
+    "unlisted",
+    "workspace",
+  ];
+
+  if (includeDeleted) {
+    includedConversationVisibilities.push("deleted");
+  }
+  if (includeTest) {
+    includedConversationVisibilities.push("test");
+  }
+
   const conversations = (
     await Conversation.findAll({
       where: {
         id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
         workspaceId: owner.id,
-        ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
-        ...(includeTest ? {} : { visibility: { [Op.ne]: "test" } }),
+        visibility: { [Op.in]: includedConversationVisibilities },
       },
     })
   ).map(
@@ -285,7 +296,7 @@ export async function getUserConversations(
       const conv: ConversationWithoutContentType | null =
         conversationById[p.conversationId];
       if (!conv) {
-        logger.error("Participation without conversation");
+        // Deleted / test conversations.
         return null;
       }
       return conv;

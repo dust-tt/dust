@@ -13,6 +13,7 @@ interface PopoverContentProps
   extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
   fullWidth?: boolean;
   mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
 }
 
 const PopoverContent = React.forwardRef<
@@ -25,6 +26,7 @@ const PopoverContent = React.forwardRef<
       align = "center",
       sideOffset = 4,
       mountPortal = true,
+      mountPortalContainer,
       fullWidth = false,
       ...props
     },
@@ -53,8 +55,18 @@ const PopoverContent = React.forwardRef<
       />
     );
 
+    const dialogElements = document.querySelectorAll(
+      ".s-sheet[role=dialog][data-state=open]"
+    );
+
+    const defaultContainer = dialogElements[dialogElements.length - 1];
+
     return mountPortal ? (
-      <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal>
+      <PopoverPrimitive.Portal
+        container={mountPortalContainer || defaultContainer}
+      >
+        {content}
+      </PopoverPrimitive.Portal>
     ) : (
       content
     );

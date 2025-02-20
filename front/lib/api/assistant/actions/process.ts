@@ -294,22 +294,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       })
     );
 
-    // TODO(TAF): Remove this once tag filtering is rolled out
-    // This is overriden by a map if filters are provided in the data source configuration
-    if (
-      actionConfiguration.tagsFilter &&
-      actionConfiguration.tagsFilter.in &&
-      actionConfiguration.tagsFilter.in.length > 0
-    ) {
-      // Note: we explicitely ignore if `tagsFilter.in` is empty as there is no use-case for no
-      // retrieval at all.
-      if (!config.DATASOURCE.filter.tags) {
-        config.DATASOURCE.filter.tags = {};
-      }
-      config.DATASOURCE.filter.tags.in = actionConfiguration.tagsFilter.in;
-    }
-    // END-TODO(TAF)
-
     applyDataSourceFilters(
       config,
       actionConfiguration.dataSources,
@@ -487,7 +471,11 @@ async function processActionSpecification({
     inputs.push(retrievalAutoTimeFrameInputSpecification());
   }
 
-  if (actionConfiguration.dataSources.some((ds) => ds.filter.tags === "auto")) {
+  if (
+    actionConfiguration.dataSources.some(
+      (ds) => ds.filter.tags?.mode === "auto"
+    )
+  ) {
     inputs.push(...retrievalTagsInputSpecification());
   }
 

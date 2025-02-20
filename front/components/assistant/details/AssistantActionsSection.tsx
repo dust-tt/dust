@@ -454,39 +454,29 @@ function RetrievalActionTagsFilterPopover({
     return null;
   }
 
-  const tagsAuto: boolean = tagsFilter === "auto";
+  const isTagsAuto: boolean = tagsFilter.mode === "auto";
   const tagsIn: DataSourceTag[] = [];
   const tagsNot: DataSourceTag[] = [];
 
-  if (tagsFilter !== "auto") {
-    tagsIn.push(
-      ...tagsFilter.in.map((tag) => ({
+  tagsIn.push(
+    ...tagsFilter.in.map((tag) => ({
+      tag,
+      dustAPIDataSourceId,
+      connectorProvider,
+    }))
+  );
+  if (tagsFilter.not) {
+    tagsNot.push(
+      ...tagsFilter.not.map((tag) => ({
         tag,
         dustAPIDataSourceId,
         connectorProvider,
       }))
     );
-    if (tagsFilter.not) {
-      tagsNot.push(
-        ...tagsFilter.not.map((tag) => ({
-          tag,
-          dustAPIDataSourceId,
-          connectorProvider,
-        }))
-      );
-    }
   }
 
-  let tagsCounter: number | null = null;
-  let tagsLabel = "Filters";
-  if (tagsFilter === "auto") {
-    tagsLabel = "Filters (auto)";
-  } else if (
-    tagsFilter &&
-    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
-  ) {
-    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
-  }
+  const tagsCounter =
+    tagsFilter.in.length + tagsFilter.not.length + (isTagsAuto ? 1 : 0);
 
   return (
     <PopoverRoot modal={true}>
@@ -494,17 +484,17 @@ function RetrievalActionTagsFilterPopover({
         <Button
           variant="outline"
           size="xs"
-          label={tagsLabel}
+          label="Filters"
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
           isCounter={tagsCounter !== null}
         />
       </PopoverTrigger>
       <PopoverContent>
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
           {tagsIn.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must have labels</Label>
+              <Label>Must-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsIn.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} color="slate" />
@@ -514,7 +504,7 @@ function RetrievalActionTagsFilterPopover({
           )}
           {tagsNot.length > 0 && (
             <div className="flex flex-col gap-2">
-              <Label>Must not have labels</Label>
+              <Label>Must-not-have</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 {tagsNot.map((tag) => (
                   <Chip key={tag.tag} label={tag.tag} color="red" />
@@ -522,12 +512,13 @@ function RetrievalActionTagsFilterPopover({
               </div>
             </div>
           )}
-          {tagsAuto && (
+          {isTagsAuto && (
             <div className="flex flex-col gap-2">
+              <Label>In-Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
                   color="emerald"
-                  label="Dynamic filtering activated."
+                  label="Activated"
                   icon={SparklesIcon}
                   isBusy
                 />

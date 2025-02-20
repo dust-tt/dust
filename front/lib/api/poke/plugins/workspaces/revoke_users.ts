@@ -1,8 +1,8 @@
 import { concurrentExecutor, Err, Ok } from "@dust-tt/types";
 import assert from "assert";
 
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 
 export const revokeUsersPlugin = createPlugin(
@@ -46,10 +46,10 @@ export const revokeUsersPlugin = createPlugin(
     const revokedResults = await concurrentExecutor(
       users,
       async (user) => {
-        const res = await MembershipResource.revokeMembership({
-          user,
-          workspace: auth.getNonNullableWorkspace(),
-        });
+        const res = await revokeAndTrackMembership(
+          auth.getNonNullableWorkspace(),
+          user
+        );
         return {
           userId: user.sId,
           result: res,

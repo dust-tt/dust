@@ -2,7 +2,6 @@ import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis, MIME_TYPES, removeNulls } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type { DriveItem } from "@microsoft/microsoft-graph-types";
 import { heartbeat } from "@temporalio/activity";
 import * as _ from "lodash";
 
@@ -23,7 +22,10 @@ import {
   getSites,
   itemToMicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/graph_api";
-import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import type {
+  DriveItem,
+  MicrosoftNode,
+} from "@connectors/connectors/microsoft/lib/types";
 import {
   getDriveInternalIdFromItemId,
   internalIdFromTypeAndPath,
@@ -274,7 +276,7 @@ async function isParentAlreadyInNodes({
   folder: MicrosoftNode;
 }) {
   const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
-  let driveItem: microsoftgraph.DriveItem = await getItem(client, itemAPIPath);
+  let driveItem: DriveItem = await getItem(client, itemAPIPath);
 
   // check if the list already contains the drive of this folder
   if (
@@ -577,7 +579,10 @@ export async function syncDeltaForRootNodesInDrive({
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
       async (rootNodeId) =>
-        getItem(client, typeAndPathFromInternalId(rootNodeId).itemAPIPath),
+        getItem(
+          client,
+          typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+        ) as Promise<{ id: string }>,
       { concurrency: 5 }
     );
     microsoftNodes.forEach((rootNode) => {
@@ -712,7 +717,7 @@ export async function syncDeltaForRootNodesInDrive({
  *  As per recommendation, remove all but the last occurences of the same
  *  driveItem in the list
  */
-function removeAllButLastOccurences(deltaList: microsoftgraph.DriveItem[]) {
+function removeAllButLastOccurences(deltaList: DriveItem[]) {
   const uniqueDeltas = new Set<string>();
   const resultList = [];
   for (const driveItem of deltaList.reverse()) {

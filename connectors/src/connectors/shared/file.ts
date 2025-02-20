@@ -22,6 +22,9 @@ import {
 import type { Logger } from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+// We observed cases where tabular data was stored in ASCII in .txt files.
+const MAX_NUMBER_CHAR_RATIO = 0.66;
+
 export function handleTextFile(
   data: ArrayBuffer,
   maxDocumentLen: number
@@ -29,11 +32,12 @@ export function handleTextFile(
   if (data.byteLength > 4 * maxDocumentLen) {
     return new Err(new Error("file_too_big"));
   }
-  return new Ok({
-    prefix: null,
-    content: Buffer.from(data).toString("utf-8").trim(),
-    sections: [],
-  });
+  const content = Buffer.from(data).toString("utf-8").trim();
+  const digitCount = (content.match(/[\d\n\r]/g) || []).length;
+  if (digitCount / content.length > MAX_NUMBER_CHAR_RATIO) {
+    return new Err(new Error("too_many_digits"));
+  }
+  return new Ok({ prefix: null, content, sections: [] });
 }
 
 export async function handleCsvFile({

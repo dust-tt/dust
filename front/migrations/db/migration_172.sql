@@ -1,5 +1,10 @@
--- Migration created on Feb 18, 2025
-ALTER TABLE "public"."conversations" ADD COLUMN "currentThreadVersion" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "public"."messages" ADD COLUMN "nextVersionMessageId" BIGINT;
-ALTER TABLE "public"."messages" ADD COLUMN "previousVersionMessageId" BIGINT;
-ALTER TABLE "public"."messages" ADD COLUMN "threadVersions" INTEGER[] DEFAULT ARRAY[0]::INTEGER[];
+UPDATE agent_data_source_configurations as adsc
+    SET "tagsIn" = apc."tagsIn",
+        "tagsNotIn" = '{}',
+        "tagsMode" = 'custom'
+    FROM agent_process_configurations as apc
+    WHERE adsc."processConfigurationId" = apc.id
+        AND apc."tagsIn" IS NOT NULL
+        AND cardinality(apc."tagsIn") > 0;
+
+ALTER TABLE "public"."agent_process_configurations" DROP COLUMN "tagsIn";

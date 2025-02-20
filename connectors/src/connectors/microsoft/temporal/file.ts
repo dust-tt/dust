@@ -11,6 +11,7 @@ import {
   getDriveItemInternalId,
   getFileDownloadURL,
 } from "@connectors/connectors/microsoft/lib/graph_api";
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
@@ -61,7 +62,7 @@ export async function syncOneFile({
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
   providerConfig: MicrosoftConfigurationResource;
-  file: microsoftgraph.DriveItem;
+  file: DriveItem;
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
@@ -257,7 +258,7 @@ export async function syncOneFile({
       ? new Date(file.createdDateTime)
       : undefined;
 
-    const tags = [`title:${file.name}`];
+    const tags = file.name ? [`title:${file.name}`] : [];
 
     if (file.lastModifiedDateTime) {
       tags.push(`updatedAt:${file.lastModifiedDateTime}`);
@@ -276,6 +277,7 @@ export async function syncOneFile({
     tags.push(...filterCustomTags(columns, localLogger));
 
     if (result.isErr()) {
+      localLogger.error({ error: result.error }, "Could not handle file.");
       if (fileResource) {
         await fileResource.delete();
       }

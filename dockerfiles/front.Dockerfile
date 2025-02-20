@@ -15,19 +15,19 @@ ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
 WORKDIR /types
 COPY /types/package*.json ./
 COPY /types/ .
-RUN npm ci --omit=dev
+RUN npm ci
 RUN npm run build
 
 WORKDIR /sdks/js
 COPY /sdks/js/package*.json ./
 COPY /sdks/js/ .
-RUN npm ci --omit=dev
+RUN npm ci
 RUN npm run build
 
 WORKDIR /app
 
 COPY /front/package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci
 
 COPY /front .
 

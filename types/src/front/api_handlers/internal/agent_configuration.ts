@@ -65,8 +65,8 @@ const OptionalDataSourceFilterTagsCodec = t.partial({
     t.type({
       in: t.array(t.string),
       not: t.array(t.string),
+      mode: t.union([t.literal("custom"), t.literal("auto")]),
     }),
-    t.literal("auto"),
     t.null,
   ]),
 });
@@ -154,13 +154,6 @@ const ProcessActionConfigurationSchema = t.type({
       duration: t.number,
       unit: TimeframeUnitCodec,
     }),
-  ]),
-  // TODO(TAF) Refactor to use the same type as the retrieval action.
-  tagsFilter: t.union([
-    t.type({
-      in: t.array(t.string),
-    }),
-    t.null,
   ]),
   schema: t.array(
     t.type({

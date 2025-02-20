@@ -14,7 +14,7 @@ import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./csv";
 
-const CORE_FAKE_RESPONSE = {
+const CORE_ROWS_FAKE_RESPONSE = {
   response: {
     table: {
       project: { project_id: 47 },
@@ -41,6 +41,29 @@ const CORE_FAKE_RESPONSE = {
     },
   },
 };
+
+const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
+  response: {
+    schema: [
+      {
+        name: "foo",
+        value_type: "int",
+        possible_values: ["1", "4"],
+      },
+      {
+        name: "bar",
+        value_type: "int",
+        possible_values: ["2", "5"],
+      },
+      {
+        name: "baz",
+        value_type: "int",
+        possible_values: ["3", "6"],
+      },
+    ],
+  },
+};
+
 describe(
   "system-only authentication tests",
   createPublicApiSystemOnlyAuthenticationTests(handler)
@@ -111,7 +134,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
         expect(req.parents[0]).toBe("fooTable-1");
         expect(req.source_url).toBeNull();
         return Promise.resolve(
-          new Response(JSON.stringify(CORE_FAKE_RESPONSE), {
+          new Response(JSON.stringify(CORE_ROWS_FAKE_RESPONSE), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           })
@@ -141,7 +164,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData()).toEqual(CORE_FAKE_RESPONSE.response);
+    expect(res._getJSONData()).toEqual(CORE_ROWS_FAKE_RESPONSE.response);
   });
 
   itInTransaction("succesfully upserts a CSV received as file", async (t) => {
@@ -189,7 +212,7 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
         expect(req.parents[0]).toBe("fooTable-1");
         expect(req.source_url).toBeNull();
         return Promise.resolve(
-          new Response(JSON.stringify(CORE_FAKE_RESPONSE), {
+          new Response(JSON.stringify(CORE_ROWS_FAKE_RESPONSE), {
             status: 200,
             headers: { "Content-Type": "application/json" },
           })
@@ -212,6 +235,18 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
               headers: { "Content-Type": "application/json" },
             }
           )
+        );
+      }
+
+      if ((url as string).endsWith("/validate_csv_content")) {
+        expect(req.upsert_queue_bucket_csv_path).toBe(
+          `files/w/${workspace.sId}/${file.sId}/processed`
+        );
+        return Promise.resolve(
+          new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          })
         );
       }
     });

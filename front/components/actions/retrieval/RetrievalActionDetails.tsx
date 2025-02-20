@@ -98,14 +98,15 @@ function makeQueryDescription(action: RetrievalActionType) {
         ? `${relativeTimeFrame.duration} ${relativeTimeFrame.unit}s`
         : `${relativeTimeFrame.unit}`)
     : "across all time periods";
-  const tagsInAsString = tagsIn ? `, with tags ${tagsIn?.join(", ")}` : "";
+  const tagsInAsString =
+    tagsIn && tagsIn.length > 0 ? `, with labels ${tagsIn?.join(", ")}` : "";
   const tagsNotAsString =
     tagsNot && tagsNot.length > 0
-      ? `, excluding tags ${tagsNot?.join(", ")}`
+      ? `, excluding labels ${tagsNot?.join(", ")}`
       : "";
   if (!query) {
     return `Searching ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
   }
 
-  return `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}`;
+  return `Searching "${query}", ${timeFrameAsString}${tagsInAsString}${tagsNotAsString}.`;
 }

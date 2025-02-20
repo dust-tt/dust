@@ -118,9 +118,11 @@ jobs:
         uses: ./.github/actions/build-image
         with:
           project_id: ${{ steps.project.outputs.PROJECT_ID }}
-          region: ${{ inputs.regions }}
+          region: ${{ matrix.region }}
           component: ${{ inputs.component }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
 
       - name: Notify Failure
         if: failure()
@@ -164,7 +166,7 @@ jobs:
                 image_tag: '${{ needs.prepare.outputs.short_sha }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
-                run_playwright: ${{ inputs.run_playwright_tests }},
+                run_playwright: '${{ inputs.run_playwright_tests }}',
                 playwright_sha: '${{ github.sha }}'
               }
             })

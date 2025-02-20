@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -503,6 +503,35 @@ impl LocalTable {
         Ok(())
     }
 
+    pub async fn upsert_csv_content(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        databases_store: Box<dyn DatabasesStore + Sync + Send>,
+        upsert_queue_bucket_csv_path: &str,
+        truncate: bool,
+    ) -> Result<()> {
+        let now = utils::now();
+        let rows = UpsertQueueCSVContent {
+            upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+        }
+        .parse()
+        .await?;
+        let csv_parse_duration = utils::now() - now;
+
+        let now = utils::now();
+        self.upsert_rows(store, databases_store, rows, truncate)
+            .await?;
+        let upsert_duration = utils::now() - now;
+
+        info!(
+            csv_parse_duration = csv_parse_duration,
+            upsert_duration = upsert_duration,
+            "CSV upsert"
+        );
+
+        Ok(())
+    }
+
     pub async fn retrieve_row(
         &self,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
@@ -673,23 +702,39 @@ impl Row {
                 Value::Bool(bool_val)
             } else {
                 // Various datetime formats
-                let dt: Option<DateTime<Utc>> = [
+                let mut dt: Option<DateTime<Utc>> = [
                     // RFC3339
                     DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
                     // RFC2822
                     DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
-                    // Google Spreadsheet format
-                    DateTime::parse_from_str(trimmed, "%d-%b-%Y").map(|dt| dt.into()),
                     // SQL
                     DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S").map(|dt| dt.into()),
                     // HTTP date
                     DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
                         .map(|dt| dt.into()),
+                    // Google Spreadsheet format
+                    NaiveDate::parse_from_str(trimmed, "%d-%b-%Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(Utc).unwrap()
+                    }),
                     // Date with full month, zero-padded number, full year
-                    DateTime::parse_from_str(trimmed, "%B %d, %Y").map(|dt| dt.into()),
+                    NaiveDate::parse_from_str(trimmed, "%B %d %Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(Utc).unwrap()
+                    }),
                 ]
                 .iter()
                 .find_map(|result| result.ok());
+
+                // We fallback on dateparser for all other formats
+                if dt.is_none() {
+                    dt = dateparser::parse_with(
+                        trimmed,
+                        &Utc,
+                        NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+                    )
+                    .ok();
+                }
 
                 if let Some(datetime) = dt {
                     let mut dt_obj = serde_json::Map::new();
@@ -796,6 +841,97 @@ mod tests {
 }"#
         .to_string();
         assert_eq!(local_table.render_dbml(None), expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_row_from_csv_record() -> anyhow::Result<()> {
+        let headers = vec!["test".to_string(), "date".to_string()];
+
+        let record = vec!["1", "2021-01-01T00:00:00Z"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.row_id(), "0");
+        assert_eq!(
+            row.content(),
+            &json!({
+                "test": 1.0,
+                "date": {
+                    "type": "datetime",
+                    "epoch": 1609459200000_i64,
+                    "string_value": "2021-01-01T00:00:00Z"
+                }
+            })
+        );
+
+        let record = vec!["123a", "March 2, 2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::String("123a".to_string()));
+        assert_eq!(
+            row.content()["date"]["type"],
+            Value::String("datetime".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("March 2, 2021".to_string())
+        );
+
+        let record = vec!["true", "02-Jan-2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::Bool(true));
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("02-Jan-2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["false", "2024-02-19 15:30:45"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::Bool(false));
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("2024-02-19 15:30:45".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1708356645000_i64.into())
+        );
+
+        let record = vec!["", "2-Jan-2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("2-Jan-2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["", "January 02, 2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("January 02, 2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["", "Fri, 14 Feb 2025 15:10:34 GMT"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("Fri, 14 Feb 2025 15:10:34 GMT".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1739545834000_i64.into())
+        );
 
         Ok(())
     }

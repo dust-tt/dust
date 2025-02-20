@@ -11,9 +11,9 @@ import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  TagsFilter,
   WorkspaceType,
 } from "@dust-tt/types";
+import { cloneDeep } from "lodash";
 import { useRef, useState } from "react";
 
 import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
@@ -39,12 +39,6 @@ export function DataSourceTagsFilterDropdown({
   const selectedTagsNot = getActionTags(currentDataSourceConfiguration, "not");
   const dustAPIDataSourceIds = [dataSource.dustAPIDataSourceId];
 
-  // State to save the tags filter before the dynamic filtering is enabled.
-  // This is used to restore the tags filter when the dynamic filtering is disabled right after it was enabled.
-  const [backUpTagsFilter, setBackUpTagsFilter] = useState<TagsFilter | null>(
-    null
-  );
-
   const {
     searchInputValueIn,
     searchInputValueNot,
@@ -62,23 +56,30 @@ export function DataSourceTagsFilterDropdown({
 
   const handleTagOperation = (
     tag: DataSourceTag,
-    mode: "in" | "not",
+    include: "in" | "not",
     operation: "add" | "remove"
   ) => {
-    const newDsc = { ...currentDataSourceConfiguration };
-    if (!newDsc.tagsFilter || newDsc.tagsFilter === "auto") {
-      newDsc.tagsFilter = { in: [], not: [] };
-    } else {
-      // We need a Deep copy otherwise we will mutate the original object and we will not be able to cancel the changes if we cancel the modal.
-      newDsc.tagsFilter = { ...newDsc.tagsFilter };
+    const newDsc = cloneDeep(currentDataSourceConfiguration);
+
+    if (!newDsc.tagsFilter) {
+      newDsc.tagsFilter = { in: [], not: [], mode: "custom" };
     }
 
     if (operation === "add") {
-      newDsc.tagsFilter[mode] = [...newDsc.tagsFilter[mode], tag.tag];
+      newDsc.tagsFilter[include] = [...newDsc.tagsFilter[include], tag.tag];
     } else {
-      newDsc.tagsFilter[mode] = newDsc.tagsFilter[mode].filter(
+      newDsc.tagsFilter[include] = newDsc.tagsFilter[include].filter(
         (t: string) => t !== tag.tag
       );
+    }
+
+    // If we removed all tags and we are not in auto mode, we should set back to null
+    if (
+      newDsc.tagsFilter.in.length === 0 &&
+      newDsc.tagsFilter.not.length === 0 &&
+      newDsc.tagsFilter.mode !== "auto"
+    ) {
+      newDsc.tagsFilter = null;
     }
 
     onSave({
@@ -88,18 +89,23 @@ export function DataSourceTagsFilterDropdown({
   };
 
   const handleAutoFilter = (isChecked: boolean) => {
-    const newDsc = { ...currentDataSourceConfiguration };
+    const newDsc = cloneDeep(currentDataSourceConfiguration);
 
     if (isChecked) {
-      if (newDsc.tagsFilter && newDsc.tagsFilter !== "auto") {
-        setBackUpTagsFilter({ ...newDsc.tagsFilter });
+      if (!newDsc.tagsFilter) {
+        newDsc.tagsFilter = { in: [], not: [], mode: "auto" };
+      } else {
+        newDsc.tagsFilter.mode = "auto";
       }
-      newDsc.tagsFilter = "auto";
-    } else if (backUpTagsFilter) {
-      newDsc.tagsFilter = backUpTagsFilter;
-      setBackUpTagsFilter(null);
     } else {
-      newDsc.tagsFilter = null;
+      if (
+        newDsc.tagsFilter &&
+        (newDsc.tagsFilter.in.length > 0 || newDsc.tagsFilter.not.length > 0)
+      ) {
+        newDsc.tagsFilter.mode = "custom";
+      } else {
+        newDsc.tagsFilter = null;
+      }
     }
 
     onSave({
@@ -110,14 +116,11 @@ export function DataSourceTagsFilterDropdown({
 
   const tagsFilter = currentDataSourceConfiguration.tagsFilter;
   let tagsCounter: number | null = null;
-  let tagsLabel = "Filters";
-  if (tagsFilter === "auto") {
-    tagsLabel = "Filters (auto)";
-  } else if (
-    tagsFilter &&
-    (tagsFilter.in.length > 0 || tagsFilter.not.length > 0)
-  ) {
-    tagsCounter = tagsFilter.in.length + tagsFilter.not.length;
+
+  if (tagsFilter) {
+    const isAuto = tagsFilter.mode === "auto";
+    tagsCounter =
+      tagsFilter.in.length + tagsFilter.not.length + (isAuto ? 1 : 0);
   }
 
   return (
@@ -134,7 +137,7 @@ export function DataSourceTagsFilterDropdown({
         <Button
           variant="outline"
           size="xs"
-          label={tagsLabel}
+          label="Filters"
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}
           isCounter={tagsCounter !== null}
@@ -144,12 +147,12 @@ export function DataSourceTagsFilterDropdown({
         <div className="flex flex-col gap-8 p-2">
           <div className="flex flex-col gap-2">
             <Page.SectionHeader
-              title="Manual fitering"
-              description="Match content that has any of the must have labels, ignore anything that has any of the must not have labels."
+              title="Filtering"
+              description="Filter to only include content bearing must-have labels, and exclude content with must-not-have labels."
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Must have labels</Label>
+            <Label>Must-have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueIn}
               setSearchInputValue={(value) =>
@@ -160,11 +163,10 @@ export function DataSourceTagsFilterDropdown({
               onTagAdd={(tag) => handleTagOperation(tag, "in", "add")}
               onTagRemove={(tag) => handleTagOperation(tag, "in", "remove")}
               isLoading={isLoadingIn}
-              disabled={tagsFilter === "auto"}
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label>Must not have labels</Label>
+            <Label>Must-not-have labels</Label>
             <TagSearchInput
               searchInputValue={searchInputValueNot}
               setSearchInputValue={(value) =>
@@ -176,24 +178,23 @@ export function DataSourceTagsFilterDropdown({
               onTagRemove={(tag) => handleTagOperation(tag, "not", "remove")}
               tagChipColor="red"
               isLoading={isLoadingNot}
-              disabled={tagsFilter === "auto"}
             />
           </div>
           <div className="flex flex-col gap-2">
             <Page.SectionHeader
-              title="Dynamic filtering"
-              description="Allow the assistant to automatically determine relevant labels to include or exclude based on conversation context, overriding manual label filters."
+              title="In-Conversation filtering"
+              description="Allow agents to determine filters to apply based on conversation context. This will override filtering settings above."
             />
           </div>
           <div className="flex flex-row items-center gap-2">
             <SliderToggle
-              selected={tagsFilter === "auto"}
+              selected={tagsFilter?.mode === "auto"}
               onClick={() => {
-                handleAutoFilter(tagsFilter !== "auto");
+                handleAutoFilter(tagsFilter?.mode !== "auto");
               }}
               size="xs"
             />
-            <Label>Enable dynamic filtering</Label>
+            <Label>Enable In-conversation filtering</Label>
           </div>
         </div>
       </PopoverContent>

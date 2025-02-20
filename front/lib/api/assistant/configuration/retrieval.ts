@@ -114,17 +114,13 @@ export function getDataSource(
   const { dataSourceView } = dataSourceConfig;
 
   let tags: DataSourceFilter["tags"] = null;
-  if (
-    dataSourceConfig.tagsMode === "custom" &&
-    dataSourceConfig.tagsIn &&
-    dataSourceConfig.tagsNotIn
-  ) {
+
+  if (dataSourceConfig.tagsMode) {
     tags = {
-      in: dataSourceConfig.tagsIn,
-      not: dataSourceConfig.tagsNotIn,
+      in: dataSourceConfig.tagsIn ?? [],
+      not: dataSourceConfig.tagsNotIn ?? [],
+      mode: dataSourceConfig.tagsMode,
     };
-  } else if (dataSourceConfig.tagsMode === "auto") {
-    tags = "auto";
   }
 
   return {

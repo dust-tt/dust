@@ -54,6 +54,9 @@ export const MAX_SMALL_DOCUMENT_TXT_LEN = 500000;
 export const MAX_LARGE_DOCUMENT_TXT_LEN = 5000000;
 export const MAX_FILE_SIZE_TO_DOWNLOAD = 128 * 1024 * 1024;
 
+const MAX_TITLE_LENGTH = 512;
+const MAX_TAG_LENGTH = 512;
+
 type UpsertContext = {
   sync_type: "batch" | "incremental";
 };
@@ -156,9 +159,9 @@ async function _upsertDataSourceDocument({
         section: documentContent,
         source_url: documentUrl ?? null,
         timestamp,
-        title,
+        title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
         mime_type: mimeType,
-        tags: tags?.map((tag) => safeSubstring(tag, 0, 512)),
+        tags: tags?.map((tag) => safeSubstring(tag, 0, MAX_TAG_LENGTH)),
         parent_id: parentId,
         parents,
         light_document_output: true,
@@ -680,7 +683,7 @@ export async function upsertDataSourceRemoteTable({
     table_id: tableId,
     remote_database_table_id: remoteDatabaseTableId,
     remote_database_secret_id: remoteDatabaseSecretId,
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mime_type: mimeType,
   };
   const dustRequestConfig: AxiosRequestConfig = {
@@ -786,24 +789,25 @@ export async function upsertDataSourceRemoteTable({
  * Other errors are re-thrown.
  *
  * @param fn - Async function to execute that may throw a TablesError
- * @returns A boolean indicating if a TablesError was caught (true) or not (false)
+ * @returns The TablesError that was caught if any, null otherwise.
  * @throws Any non-TablesError that occurs during execution
  */
 
 export const ignoreTablesError = async (
   connectorName: string,
   fn: () => Promise<void>
-) => {
+): Promise<TablesError | null> => {
   try {
     await fn();
     logger.info(`[${connectorName}] Table upserted successfully.`);
+    return null;
   } catch (err) {
     if (err instanceof TablesError) {
       logger.warn(
         { error: err },
         "Invalid rows detected - skipping (but not failing)."
       );
-      return true;
+      return err;
     } else {
       logger.error(
         { error: err },
@@ -857,12 +861,34 @@ export async function upsertDataSourceTableFromCsv({
   );
 
   const now = new Date();
+  const blob = new Blob([tableCsv]);
 
-  if (new Blob([tableCsv]).size > MAX_CSV_SIZE) {
+  if (blob.size > MAX_CSV_SIZE) {
     throw new TablesError(
       "file_too_large",
       "The file is too large to be processed."
     );
+  }
+
+  const dustAPI = new DustAPI(
+    apiConfig.getDustAPIConfig(),
+    {
+      workspaceId: dataSourceConfig.workspaceId,
+      apiKey: dataSourceConfig.workspaceAPIKey,
+    },
+    logger,
+    apiConfig.getDustFrontAPIUrl()
+  );
+
+  const fileRes = await dustAPI.uploadFile({
+    contentType: "text/csv",
+    fileName: `${tableId}.csv`,
+    fileSize: blob.size,
+    useCase: "upsert_table",
+    fileObject: new File([blob], `${tableId}.csv`, { type: "text/csv" }),
+  });
+  if (fileRes.isErr()) {
+    throw fileRes.error;
   }
 
   const endpoint =
@@ -873,11 +899,11 @@ export async function upsertDataSourceTableFromCsv({
     parentId,
     parents,
     description: tableDescription,
-    csv: tableCsv,
+    fileId: fileRes.value.id,
     tableId,
     truncate,
     async: true,
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     mimeType,
     timestamp: null,
     tags: tags ?? null,
@@ -1304,7 +1330,7 @@ export async function _upsertDataSourceFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
-    title,
+    title: safeSubstring(title, 0, MAX_TITLE_LENGTH),
     parentId,
     parents,
     mimeType,

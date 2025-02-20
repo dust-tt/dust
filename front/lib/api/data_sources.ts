@@ -41,11 +41,11 @@ import type { Transaction } from "sequelize";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getFileContent } from "@app/lib/api/files/utils";
 import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -299,6 +299,16 @@ export async function upsertDocument({
     );
   }
 
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (title && title.length > MAX_NODE_TITLE_LENGTH) {
+    return new Err(
+      new DustError(
+        "title_too_long",
+        `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`
+      )
+    );
+  }
+
   let sourceUrl: string | null = null;
   if (source_url) {
     const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
@@ -325,6 +335,26 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+  const titleInTags = nonNullTags
+    .find((t) => t.startsWith("title:"))
+    ?.split(":")
+    .slice(1)
+    .join(":");
+  if (!titleInTags) {
+    nonNullTags.push(`title:${title}`);
+  }
+
+  if (titleInTags && titleInTags !== title) {
+    logger.error(
+      { dataSourceId: dataSource.sId, documentId, titleInTags, title },
+      "[CoreNodes] Inconsistency between tags and title."
+    );
+    // TODO(2025-02-18 aubin): uncomment what follows.
+    // new DustError(
+    //   "invalid_title_in_tags",
+    //   "Invalid tags: title passed in tags does not match the table title."
+    // )
+  }
 
   // Add selection of tags as prefix to the section if they are present.
   let tagsPrefix = "";
@@ -554,6 +584,7 @@ export async function upsertTable({
         | "invalid_url"
         | "table_not_found"
         | "file_not_found"
+        | "title_too_long"
         | "invalid_parent_id"
         | "invalid_parents"
         | "internal_error";
@@ -604,6 +635,45 @@ export async function upsertTable({
     });
   }
 
+  // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
+  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
+    return new Err({
+      name: "dust_error",
+      code: "title_too_long",
+      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+    });
+  }
+
+  const tableTags = params.tags ?? [];
+  const titleInTags = tableTags
+    .find((t) => t.startsWith("title:"))
+    ?.split(":")
+    .slice(1)
+    .join(":");
+  if (!titleInTags) {
+    tableTags.push(`title:${params.title}`);
+  }
+
+  if (titleInTags && titleInTags !== params.title) {
+    logger.error(
+      {
+        dataSourceId: dataSource.sId,
+        tableId,
+        titleInTags,
+        title: params.title,
+      },
+      "[CoreNodes] Inconsistency between tags and title."
+    );
+    // TODO(2025-02-18 aubin): uncomment what follows.
+    // return apiError(req, res, {
+    //   status_code: 400,
+    //   api_error: {
+    //     type: "invalid_request_error",
+    //     message: `Invalid tags: title passed in tags does not match the table title.`,
+    //   },
+    // });
+  }
+
   let standardizedSourceUrl: string | null = null;
   if (params.sourceUrl) {
     const { valid: isSourceUrlValid, standardized } = validateUrl(
@@ -632,6 +702,14 @@ export async function upsertTable({
           message: "Failed to parse CSV: " + csvRowsRes.error.message,
         });
       }
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          tableId,
+          method: "upsertTable",
+        },
+        "[CSV-FILE] Received direct CSV not file"
+      );
     }
 
     if (fileId) {
@@ -639,110 +717,19 @@ export async function upsertTable({
       if (file) {
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-        const [schemaRes, headersRes] = await Promise.all([
-          coreAPI.tableValidateCSVContent({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            upsertQueueBucketCSVPath: file.getCloudStoragePath(
-              auth,
-              "processed"
-            ),
-          }),
-          (async () => {
-            // TODO(spolu): [CSV-FILE] Remove this leg and enforce core check
-            const content = await getFileContent(auth, file);
-            if (!content) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_request_error",
-                message: "The file provided is empty",
-              });
-            }
-            const csvRowsRes = await rowsFromCsv({ auth, csv: content });
-            if (csvRowsRes.isErr()) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_csv",
-                message: "Failed to parse CSV: " + csvRowsRes.error.message,
-              });
-            } else {
-              return new Ok(csvRowsRes.value.detectedHeaders);
-            }
-          })(),
-        ]);
+        const schemaRes = await coreAPI.tableValidateCSVContent({
+          projectId: dataSource.dustAPIProjectId,
+          dataSourceId: dataSource.dustAPIDataSourceId,
+          upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+        });
 
         if (schemaRes.isErr()) {
-          // TODO(spolu): [CSV-FILE] Enforce core check
-          logger.info(
-            {
-              error: schemaRes.error,
-            },
-            "[CSV-FILE] error validating CSV content"
-          );
-
-          if (!headersRes.isErr()) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                error: schemaRes.error,
-                headers: headersRes.value,
-              },
-              "[CSV-FILE] mismatch: schema error but headers are valid"
-            );
-          }
-        }
-
-        if (headersRes.isErr()) {
-          logger.info(
-            {
-              error: headersRes.error,
-            },
-            "[CSV-FILE] error detecting headers"
-          );
-
-          if (!schemaRes.isErr()) {
-            logger.info(
-              {
-                error: headersRes.error,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers error but schema is valid"
-            );
-          }
-
           // If we have a schema error, we return early.
           return new Err({
             name: "dust_error",
             code: "invalid_csv",
-            message: headersRes.error.message,
+            message: schemaRes.error.message,
           });
-        }
-
-        if (!schemaRes.isErr() && !headersRes.isErr()) {
-          const schema = schemaRes.value.schema;
-          const headers = headersRes.value.header;
-          logger.info(
-            {
-              schema: schema.map((s) => s.name),
-              headers,
-            },
-            "[CSV-FILE] Validated CSV content"
-          );
-
-          const schemaHeaders = schema.map((s) => s.name);
-          if (
-            schemaHeaders.length !== headers.length ||
-            !schemaHeaders.every((v, i) => v === headers[i])
-          ) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                headers,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers and schema mismatch"
-            );
-          }
         }
       }
     }
@@ -755,7 +742,7 @@ export async function upsertTable({
         tableName: name,
         tableDescription: description,
         tableTimestamp: params.timestamp ?? null,
-        tableTags: params.tags ?? [],
+        tableTags,
         tableParentId,
         tableParents,
         csv: csv ?? null,
@@ -788,7 +775,7 @@ export async function upsertTable({
     tableName: name,
     tableDescription: description,
     tableTimestamp: params.timestamp ?? null,
-    tableTags: params.tags || [],
+    tableTags,
     tableParentId,
     tableParents,
     csv: csv ?? null,

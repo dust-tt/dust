@@ -23,9 +23,6 @@ export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessC
   declare relativeTimeFrameDuration: number | null;
   declare relativeTimeFrameUnit: TimeframeUnit | null;
 
-  // TODO(TAF): Remove this once tag filtering is rolled out
-  declare tagsIn: string[] | null;
-
   declare schema: ProcessSchemaPropertyType[];
 
   declare name: string | null;
@@ -59,11 +56,6 @@ AgentProcessConfiguration.init(
     },
     relativeTimeFrameUnit: {
       type: DataTypes.STRING,
-      allowNull: true,
-    },
-    // TODO(TAF): Remove this once tag filtering is rolled out
-    tagsIn: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
     schema: {

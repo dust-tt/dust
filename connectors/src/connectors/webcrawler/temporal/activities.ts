@@ -57,7 +57,8 @@ const CONCURRENCY = 1;
 export async function markAsCrawled(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(`Connector ${connectorId} not found.`);
+    logger.error({ connectorId }, "Connector not found");
+    return;
   }
 
   const webCrawlerConfig =
@@ -372,7 +373,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
               upsertContext: {
                 sync_type: "batch",
               },
-              title: pageTitle,
+              title: stripNullBytes(pageTitle),
               mimeType: "text/html",
               async: true,
             });

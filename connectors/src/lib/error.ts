@@ -22,7 +22,10 @@ type GeneralWorkflowErrorType =
   | "unhandled_internal_activity_error"
   | "workflow_timeout_failure";
 
-type TablesErrorType = "invalid_headers" | "file_too_large" | "invalid_csv";
+export type TablesErrorType =
+  | "invalid_headers"
+  | "file_too_large"
+  | "invalid_csv";
 
 // Combine both general and provider-specific error types.
 type WorkflowErrorType = GeneralWorkflowErrorType | ProviderErrorType;

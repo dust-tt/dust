@@ -11,10 +11,9 @@ import {
   SparklesIcon,
   Spinner,
   TextArea,
-  XCircleIcon,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   ProcessSchemaPropertyType,
   Result,
@@ -32,7 +31,6 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export function hasErrorActionProcess(
@@ -304,9 +302,6 @@ export function ActionProcess({
   const [isGeneratingSchema, setIsGeneratingSchema] = useState(false);
   const sendNotification = useSendNotification();
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const shouldDisplayTagsFilters = featureFlags.includes("tags_filters");
-
   useEffect(() => {
     if (actionConfiguration) {
       if (!actionConfiguration.timeFrame.value) {
@@ -320,17 +315,6 @@ export function ActionProcess({
   if (!actionConfiguration) {
     return null;
   }
-
-  const foldersOnly =
-    Object.keys(actionConfiguration.dataSourceConfigurations).every(
-      (k) =>
-        actionConfiguration.dataSourceConfigurations[k].dataSourceView
-          .dataSource.connectorProvider === null
-    ) && Object.keys(actionConfiguration.dataSourceConfigurations).length > 0;
-
-  const showLegacyTag =
-    (foldersOnly || (actionConfiguration.tagsFilter?.in || []).length > 0) &&
-    !shouldDisplayTagsFilters;
 
   const generateSchemaFromInstructions = async () => {
     setEdited(true);
@@ -433,103 +417,6 @@ export function ActionProcess({
         viewType="documents"
       />
 
-      {/* TODO(TAF): Remove this once tag filtering is rolled out */}
-      {showLegacyTag && (
-        <div className="flex flex-col">
-          <div className="flex flex-row items-center gap-4 pb-4">
-            <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
-              Folder tags filtering
-            </div>
-            <div>
-              <Button
-                label="Add tag filter"
-                variant="ghost"
-                size="xs"
-                onClick={() => {
-                  setEdited(true);
-                  updateAction((previousAction) => {
-                    const tagsFilter = {
-                      in: [...(previousAction.tagsFilter?.in || []), ""],
-                    };
-                    return {
-                      ...previousAction,
-                      tagsFilter,
-                    };
-                  });
-                }}
-                disabled={
-                  !!actionConfiguration.tagsFilter &&
-                  actionConfiguration.tagsFilter.in.filter((tag) => tag === "")
-                    .length > 0
-                }
-              />
-            </div>
-          </div>
-          {(actionConfiguration.tagsFilter?.in || []).map((t, i) => {
-            return (
-              <div className="flex flex-row gap-4" key={`tag-${i}`}>
-                <div className="flex">
-                  <Input
-                    placeholder="Enter tag"
-                    name="tags"
-                    value={t}
-                    onChange={(e) => {
-                      setEdited(true);
-                      updateAction((previousAction) => {
-                        const tags = [...(previousAction.tagsFilter?.in || [])];
-                        tags[i] = e.target.value;
-
-                        return {
-                          ...previousAction,
-                          tagsFilter: {
-                            in: tags,
-                          },
-                        };
-                      });
-                    }}
-                    message={
-                      t.length === 0
-                        ? "Tag is required"
-                        : (actionConfiguration.tagsFilter?.in || []).filter(
-                              (tag) => tag === t
-                            ).length > 1
-                          ? "Tag must be unique"
-                          : undefined
-                    }
-                    messageStatus="error"
-                  />
-                </div>
-                <div className="flex items-end pb-2">
-                  <IconButton
-                    icon={XCircleIcon}
-                    tooltip="Remove Property"
-                    variant="ghost"
-                    onClick={async () => {
-                      setEdited(true);
-                      updateAction((previousAction) => {
-                        const tags = (
-                          previousAction.tagsFilter?.in || []
-                        ).filter((tag) => tag !== t);
-
-                        return {
-                          ...previousAction,
-                          tagsFilter:
-                            tags.length > 0
-                              ? {
-                                  in: tags,
-                                }
-                              : null,
-                        };
-                      });
-                    }}
-                    className="ml-1"
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
           <div className="font-semibold text-element-800">Tool description</div>

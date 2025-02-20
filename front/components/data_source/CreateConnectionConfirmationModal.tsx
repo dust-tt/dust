@@ -10,8 +10,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { isValidZendeskSubdomain } from "@dust-tt/types";
-import { WrenchScrewdriverIcon } from "@heroicons/react/20/solid";
+import {
+  isValidSalesforceDomain,
+  isValidZendeskSubdomain,
+} from "@dust-tt/types";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -34,11 +36,23 @@ export function CreateConnectionConfirmationModal({
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+  const [pkceLoadingStatus, setPkceLoadingStatus] = useState<
+    "idle" | "loading" | "error"
+  >("idle");
 
   const isExtraConfigValid = useCallback(
     (extraConfig: Record<string, string>) => {
       if (connectorProviderConfiguration.connectorProvider === "zendesk") {
         return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
+      } else if (
+        connectorProviderConfiguration.connectorProvider === "salesforce"
+      ) {
+        return (
+          !!extraConfig.instance_url &&
+          isValidSalesforceDomain(extraConfig.instance_url) &&
+          !!extraConfig.code_verifier &&
+          !!extraConfig.code_challenge
+        );
       } else {
         return true;
       }
@@ -53,6 +67,50 @@ export function CreateConnectionConfirmationModal({
       setExtraConfig({});
     }
   }, [isOpen, setIsLoading]);
+
+  useEffect(() => {
+    async function generatePKCE() {
+      if (
+        connectorProviderConfiguration.connectorProvider === "salesforce" &&
+        isValidSalesforceDomain(extraConfig.instance_url) &&
+        !extraConfig.code_verifier &&
+        pkceLoadingStatus === "idle"
+      ) {
+        setPkceLoadingStatus("loading");
+        try {
+          const response = await fetch(
+            `/api/oauth/pkce?domain=${extraConfig.instance_url}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+          if (!response.ok) {
+            throw new Error("Failed to generate PKCE challenge");
+          }
+          const { code_verifier, code_challenge } = await response.json();
+          setExtraConfig((extraConfig) => ({
+            ...extraConfig,
+            code_verifier,
+            code_challenge,
+          }));
+          setPkceLoadingStatus("idle");
+        } catch (error) {
+          console.error("Error generating PKCE challenge:", error);
+          setPkceLoadingStatus("error");
+        }
+      }
+    }
+
+    void generatePKCE();
+  }, [
+    connectorProviderConfiguration.connectorProvider,
+    extraConfig.instance_url,
+    extraConfig.code_verifier,
+    pkceLoadingStatus,
+  ]);
 
   return (
     <Sheet
@@ -147,33 +205,37 @@ export function CreateConnectionConfirmationModal({
                 />
               )}
 
+              {connectorProviderConfiguration.connectorProvider ===
+                "salesforce" && (
+                <Input
+                  label="Salesforce instance URL"
+                  message="The URL of your Salesforce organization instance."
+                  name="instance_url"
+                  value={extraConfig.instance_url ?? ""}
+                  placeholder="https://my-org.salesforce.com"
+                  onChange={(e) => {
+                    setExtraConfig({ instance_url: e.target.value });
+                  }}
+                />
+              )}
+
               <div className="flex justify-center pt-2">
                 <div className="flex gap-2">
                   <Button
                     variant="highlight"
                     size="md"
-                    icon={
-                      connectorProviderConfiguration.connectorProvider ===
-                      "google_drive"
-                        ? WrenchScrewdriverIcon
-                        : CloudArrowLeftRightIcon
-                    }
+                    icon={CloudArrowLeftRightIcon}
                     onClick={() => {
                       setIsLoading(true);
                       onConfirm(extraConfig);
                     }}
-                    disabled={
-                      !isExtraConfigValid(extraConfig) ||
-                      isLoading ||
-                      connectorProviderConfiguration.connectorProvider ===
-                        "google_drive"
-                    }
+                    disabled={!isExtraConfigValid(extraConfig) || isLoading}
                     label={
                       isLoading
                         ? "Connecting..."
                         : connectorProviderConfiguration.connectorProvider ===
                             "google_drive"
-                          ? "Temporarily unavailable"
+                          ? "Acknowledge and connect"
                           : "Connect"
                     }
                   />

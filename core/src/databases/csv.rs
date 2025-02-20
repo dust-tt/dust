@@ -18,6 +18,7 @@ pub struct UpsertQueueCSVContent {
 
 const MAX_TABLE_COLUMNS: usize = 512;
 const MAX_COLUMN_NAME_LENGTH: usize = 1024;
+const MAX_TABLE_ROWS: usize = 500_000;
 
 impl UpsertQueueCSVContent {
     async fn get_upsert_queue_bucket() -> Result<String> {
@@ -64,6 +65,8 @@ impl UpsertQueueCSVContent {
         lazy_static! {
             static ref DIACRITICS: Regex = Regex::new(r"[\u{0300}-\u{036f}]").unwrap();
             static ref UNDERSCORES: Regex = Regex::new(r"_+").unwrap();
+            static ref WHITESPACE: Regex = Regex::new(r"\s+").unwrap();
+            static ref NON_ASCII: Regex = Regex::new(r"[^a-zA-Z0-9_]").unwrap();
         }
 
         let s = text
@@ -83,15 +86,9 @@ impl UpsertQueueCSVContent {
             with_separators.push(c);
         }
 
-        let s = with_separators
-            .to_lowercase()
-            .trim()
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join("_") // Replace spaces with _
-            .chars()
-            .map(|c| if c.is_alphanumeric() { c } else { '_' }) // Replace non-word chars
-            .collect::<String>();
+        let s = with_separators.to_lowercase().trim().to_string();
+        let s = WHITESPACE.replace_all(&s, "_").to_string();
+        let s = NON_ASCII.replace_all(&s, "_").to_string();
 
         UNDERSCORES.replace_all(&s, "_").to_string()
     }
@@ -151,7 +148,7 @@ impl UpsertQueueCSVContent {
         let n = rdr.read(&mut buffer).await?;
         buffer.truncate(n);
 
-        let candidates = b",;\t|";
+        let candidates = b",;\t";
 
         let mut counts = vec![0; candidates.len()];
         let mut in_quotes = false;
@@ -173,7 +170,8 @@ impl UpsertQueueCSVContent {
         let (i, _) = counts
             .iter()
             .enumerate()
-            .max_by_key(|&(_, count)| count)
+            // Negative index to prioritize earlier delimiters
+            .max_by_key(|&(i, count)| (count, -(i as i32)))
             .ok_or_else(|| anyhow!("No delimiter found"))?;
 
         Ok((
@@ -191,6 +189,7 @@ impl UpsertQueueCSVContent {
     {
         let mut csv = AsyncReaderBuilder::new()
             .delimiter(delimiter)
+            .flexible(true)
             .create_reader(TokioAsyncReadCompatExt::compat(rdr));
 
         let headers = UpsertQueueCSVContent::sanitize_headers(
@@ -212,6 +211,9 @@ impl UpsertQueueCSVContent {
             let record = record?;
             let row = Row::from_csv_record(&headers, record.iter().collect::<Vec<_>>(), row_idx)?;
             row_idx += 1;
+            if row_idx > MAX_TABLE_ROWS {
+                Err(anyhow!("Too many rows in CSV file"))?;
+            }
             rows.push(row);
         }
 
@@ -240,11 +242,21 @@ mod tests {
         rdr.read_to_string(&mut content).await?;
         assert_eq!(content, csv);
 
+        let csv = "URL,Example\n\
+FOO,swap\tblocked\tstyle-src-elem\ttheme.js:2\n\
+BAR,acme";
+        let (delimiter, _) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        assert_eq!(delimiter, b',');
+
         Ok(())
     }
 
     #[tokio::test]
     async fn test_sanitize_headers() -> anyhow::Result<()> {
+        // This test covers alignment of the slugification we were doing in front before moving
+        // this logic to core. It's important to preserve it as non truncated upserts would be
+        // impacted by a change of headers.
         let headers = vec![
             "helloWorld",
             "b,.,2Fkls",
@@ -257,6 +269,13 @@ mod tests {
             "a",
             "",
             "a",
+            "Тип задачи",
+            "Примечания",
+            "",
+            "重要度",
+            "入出荷数量(+ or -) の COU",
+            "旧_Offered price per video(2024.7)",
+            "🦄 IG User ID",
         ];
         let sanitized = UpsertQueueCSVContent::sanitize_headers(headers)?;
         assert_eq!(
@@ -264,7 +283,7 @@ mod tests {
             vec![
                 "helloworld",
                 "b_2fkls",
-                "æuu_cool_",
+                "_uu_cool_",
                 "_",
                 "a",
                 "c_d_",
@@ -272,7 +291,14 @@ mod tests {
                 "__dust_id",
                 "a_2",
                 "col_9",
-                "a_3"
+                "a_3",
+                "_3",
+                "_4",
+                "col_13",
+                "_5",
+                "_or_cou",
+                "_offered_price_per_video_2024_7_",
+                "_ig_user_id"
             ]
         );
         Ok(())
@@ -321,6 +347,37 @@ mod tests {
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].row_id, "MYID1");
         assert_eq!(rows[1].row_id, "MYID2");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_with_dust_id() -> anyhow::Result<()> {
+        let csv = "hellWorld,super-fast,__dust_id,c/foo,DATE\n\
+                   1,2.23,foo0,3,2025-02-14T15:06:52.380Z\n\
+                   4,hello world,foo1,6,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
+        let (delimiter, rdr) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?;
+
+        assert_eq!(rows.len(), 2);
+
+        // Test that __dust_id is used to define the row ids.
+        assert_eq!(rows[0].row_id, "foo0");
+        assert_eq!(rows[1].row_id, "foo1");
+
+        // Test that __dust_id is not inserted.
+        let row_0_concatenated_keys = rows[0]
+            .value
+            .as_object()
+            .unwrap()
+            .keys()
+            .into_iter()
+            .map(|k| k.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+
+        assert_eq!(row_0_concatenated_keys, "hellworld,super_fast,c_foo,date");
 
         Ok(())
     }

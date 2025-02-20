@@ -14,7 +14,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
-import { apiError, statsDClient } from "@app/logger/withlogging";
+import { apiError } from "@app/logger/withlogging";
 
 /**
  * @ignoreswagger
@@ -45,7 +45,6 @@ async function handler(
     });
   }
 
-  const owner = auth.getNonNullableWorkspace();
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   if (!auth.isSystemKey()) {
     return apiError(req, res, {
@@ -133,16 +132,38 @@ async function handler(
         });
       }
 
-      const statsDTags = [
-        `data_source_id:${dataSource.id}`,
-        `workspace_id:${owner.sId}`,
-        `data_source_name:${dataSource.name}`,
-        `folder_id:${fId}`,
-      ];
-      if (!r.data.parents || r.data.parents.length === 0) {
-        statsDClient.increment("folder_empty_parents.count", 1, statsDTags);
-      } else if (r.data.parents[0] != fId) {
-        statsDClient.increment("folder_no_self_ref.count", 1, statsDTags);
+      // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
+      if (parents) {
+        if (parents.length === 0) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents must have at least one element.`,
+            },
+          });
+        }
+        if (parents[0] !== fId) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parents: parents[0] should be equal to document_id.`,
+            },
+          });
+        }
+        if (
+          (parents.length >= 2 || parentId !== null) &&
+          parents[1] !== parentId
+        ) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid parent id: parents[1] and parent_id should be equal.`,
+            },
+          });
+        }
       }
 
       // Create folder with the Dust internal API.

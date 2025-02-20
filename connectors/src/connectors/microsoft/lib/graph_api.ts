@@ -2,9 +2,22 @@ import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
-import type * as MicrosoftGraph from "@microsoft/microsoft-graph-types";
+import type {
+  BaseItem,
+  Channel,
+  ChatMessage,
+  Drive,
+  Entity,
+  ItemReference,
+  Site,
+  Team,
+  WorkbookRange,
+  WorkbookWorksheet,
+} from "@microsoft/microsoft-graph-types";
 
+import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
 import type { MicrosoftNode } from "@connectors/connectors/microsoft/lib/types";
+import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
@@ -49,12 +62,12 @@ export async function clientApiPost(
 export async function getSites(
   client: Client,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.Site[]; nextLink?: string }> {
+): Promise<{ results: Site[]; nextLink?: string }> {
   const res = nextLink
     ? await clientApiGet(client, nextLink)
     : await clientApiGet(client, "/sites?search=*");
 
-  const results = res.value.filter((site: MicrosoftGraph.Site) => site.root);
+  const results = res.value.filter((site: Site) => site.root);
   if ("@odata.nextLink" in res) {
     return {
       results,
@@ -68,7 +81,7 @@ export async function getSubSites(
   client: Client,
   parentInternalId: string,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.Site[]; nextLink?: string }> {
+): Promise<{ results: Site[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -94,7 +107,7 @@ export async function getDrives(
   client: Client,
   parentInternalId: string,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.Drive[]; nextLink?: string }> {
+): Promise<{ results: Drive[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -122,7 +135,7 @@ export async function getFilesAndFolders(
   client: Client,
   parentInternalId: string,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.DriveItem[]; nextLink?: string }> {
+): Promise<{ results: DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -134,8 +147,8 @@ export async function getFilesAndFolders(
 
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children?$expand=listItem($expand=fields)`
-      : `${parentResourcePath}/children?$expand=listItem($expand=fields)`;
+      ? `${parentResourcePath}/root/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+      : `${parentResourcePath}/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`;
 
   const res = nextLink
     ? await clientApiGet(client, nextLink)
@@ -181,8 +194,8 @@ export async function getDeltaResults({
 
   const deltaPath =
     (nodeType === "folder"
-      ? itemAPIPath + "/delta?$expand=listItem($expand=fields)"
-      : itemAPIPath + "/root/delta?$expand=listItem($expand=fields)") +
+      ? `${itemAPIPath}/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink
@@ -214,9 +227,9 @@ export async function getFullDeltaResults(
   client: Client,
   parentInternalId: string,
   initialDeltaLink?: string
-): Promise<{ results: microsoftgraph.DriveItem[]; deltaLink: string }> {
+): Promise<{ results: DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
-  let allItems: microsoftgraph.DriveItem[] = [];
+  let allItems: DriveItem[] = [];
   let deltaLink: string | undefined = undefined;
 
   do {
@@ -242,7 +255,7 @@ export async function getWorksheets(
   internalId: string,
   nextLink?: string
 ): Promise<{
-  results: MicrosoftGraph.WorkbookWorksheet[];
+  results: WorkbookWorksheet[];
   nextLink?: string;
 }> {
   const { nodeType, itemAPIPath: itemApiPath } =
@@ -271,7 +284,7 @@ export async function getWorksheets(
 export async function getWorksheetContent(
   client: Client,
   internalId: string
-): Promise<MicrosoftGraph.WorkbookRange> {
+): Promise<WorkbookRange> {
   const { nodeType, itemAPIPath: itemApiPath } =
     typeAndPathFromInternalId(internalId);
 
@@ -290,7 +303,7 @@ export async function getWorksheetContent(
 export async function getTeams(
   client: Client,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.Team[]; nextLink?: string }> {
+): Promise<{ results: Team[]; nextLink?: string }> {
   const res = nextLink
     ? await clientApiGet(client, nextLink)
     : await clientApiGet(client, "/me/joinedTeams");
@@ -309,7 +322,7 @@ export async function getChannels(
   client: Client,
   parentInternalId: string,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.Channel[]; nextLink?: string }> {
+): Promise<{ results: Channel[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -337,7 +350,7 @@ export async function getMessages(
   client: Client,
   parentInternalId: string,
   nextLink?: string
-): Promise<{ results: MicrosoftGraph.ChatMessage[]; nextLink?: string }> {
+): Promise<{ results: ChatMessage[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
 
@@ -365,7 +378,7 @@ export async function getMessages(
  * Given a getter function with a single nextLink optional parameter, this function
  * fetches all items by following nextLinks
  */
-export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
+export async function getAllPaginatedEntities<T extends Entity>(
   getEntitiesFn: (
     nextLink?: string
   ) => Promise<{ results: T[]; nextLink?: string }>
@@ -385,7 +398,7 @@ export async function getAllPaginatedEntities<T extends MicrosoftGraph.Entity>(
 export async function getItem(
   client: Client,
   itemApiPath: string
-): Promise<MicrosoftGraph.Entity> {
+): Promise<Entity> {
   GraphError;
   return clientApiGet(client, itemApiPath);
 }
@@ -403,15 +416,15 @@ export async function getFileDownloadURL(client: Client, internalId: string) {
 }
 
 type MicrosoftEntity = {
-  folder: MicrosoftGraph.DriveItem;
-  drive: MicrosoftGraph.Drive;
-  site: MicrosoftGraph.Site;
-  team: MicrosoftGraph.Team;
-  file: MicrosoftGraph.DriveItem;
-  page: MicrosoftGraph.DriveItem;
-  channel: MicrosoftGraph.Channel;
-  message: MicrosoftGraph.ChatMessage;
-  worksheet: MicrosoftGraph.WorkbookWorksheet;
+  folder: DriveItem;
+  drive: Drive;
+  site: Site;
+  team: Team;
+  file: DriveItem;
+  page: DriveItem;
+  channel: Channel;
+  message: ChatMessage;
+  worksheet: WorkbookWorksheet;
 };
 
 export type MicrosoftEntityMapping = {
@@ -431,7 +444,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
 ): MicrosoftNode {
   switch (nodeType) {
     case "folder": {
-      const item = itemRaw as MicrosoftGraph.DriveItem;
+      const item = itemRaw as DriveItem;
       return {
         nodeType,
         name: item.name ?? null,
@@ -442,7 +455,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       };
     }
     case "file": {
-      const item = itemRaw as MicrosoftGraph.DriveItem;
+      const item = itemRaw as DriveItem;
       return {
         nodeType,
         name: item.name ?? null,
@@ -453,7 +466,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       };
     }
     case "drive": {
-      const item = itemRaw as MicrosoftGraph.Drive;
+      const item = itemRaw as Drive;
       return {
         nodeType,
         name: item.name ?? "unknown",
@@ -464,7 +477,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
       };
     }
     case "site": {
-      const item = itemRaw as MicrosoftGraph.Site;
+      const item = itemRaw as Site;
       return {
         nodeType,
         name: item.name ?? null,
@@ -488,7 +501,7 @@ export function itemToMicrosoftNode<T extends keyof MicrosoftEntityMapping>(
   }
 }
 
-export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
+export function getDriveItemInternalId(item: DriveItem) {
   const { parentReference } = item;
 
   if (!parentReference?.driveId) {
@@ -507,9 +520,7 @@ export function getDriveItemInternalId(item: MicrosoftGraph.DriveItem) {
   });
 }
 
-export function getParentReferenceInternalId(
-  parentReference: MicrosoftGraph.ItemReference
-) {
+export function getParentReferenceInternalId(parentReference: ItemReference) {
   if (!parentReference.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
@@ -528,7 +539,7 @@ export function getParentReferenceInternalId(
 }
 
 export function getWorksheetInternalId(
-  item: MicrosoftGraph.WorkbookWorksheet,
+  item: WorkbookWorksheet,
   parentInternalId: string
 ) {
   const { nodeType, itemAPIPath: parentItemApiPath } =
@@ -544,14 +555,14 @@ export function getWorksheetInternalId(
   });
 }
 
-export function getDriveInternalId(drive: MicrosoftGraph.Drive) {
+export function getDriveInternalId(drive: Drive) {
   return internalIdFromTypeAndPath({
     nodeType: "drive",
     itemAPIPath: `/drives/${drive.id}`,
   });
 }
 
-export function getDriveInternalIdFromItem(item: MicrosoftGraph.DriveItem) {
+export function getDriveInternalIdFromItem(item: DriveItem) {
   if (!item.parentReference?.driveId) {
     throw new Error("Unexpected: no drive id for item");
   }
@@ -562,7 +573,7 @@ export function getDriveInternalIdFromItem(item: MicrosoftGraph.DriveItem) {
   });
 }
 
-export function getSiteAPIPath(site: MicrosoftGraph.Site) {
+export function getSiteAPIPath(site: Site) {
   return `/sites/${site.id}`;
 }
 
@@ -576,7 +587,7 @@ export async function wrapMicrosoftGraphAPIWithResult<T>(
   }
 }
 
-export function extractPath(item: MicrosoftGraph.BaseItem) {
+export function extractPath(item: BaseItem) {
   const webUrl = item.webUrl;
   if (webUrl) {
     return decodeURI(webUrl);
