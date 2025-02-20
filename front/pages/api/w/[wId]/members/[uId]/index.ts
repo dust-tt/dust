@@ -13,6 +13,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostMemberResponseBody = {
@@ -82,7 +83,11 @@ async function handler(
                 },
               });
             case "already_revoked":
-              // Should not happen, but we ignore.
+            case "invalid_end_at":
+              logger.error(
+                { revokeResult },
+                "Failed to revoke membership and track usage."
+              );
               break;
             default:
               assertNever(revokeResult.error.type);

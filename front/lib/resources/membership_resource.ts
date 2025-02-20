@@ -483,7 +483,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     Result<
       { role: MembershipRoleType; startAt: Date; endAt: Date },
       {
-        type: "not_found" | "already_revoked";
+        type: "not_found" | "already_revoked" | "invalid_end_at";
       }
     >
   > {
@@ -496,7 +496,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return new Err({ type: "not_found" });
     }
     if (endAt < membership.startAt) {
-      throw new Error("endAt must be after startAt");
+      return new Err({ type: "invalid_end_at" });
     }
     if (membership.endAt) {
       return new Err({ type: "already_revoked" });
