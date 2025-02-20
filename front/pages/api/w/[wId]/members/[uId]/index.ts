@@ -75,6 +75,10 @@ async function handler(
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
             case "not_found":
+              logger.error(
+                { revokeResult },
+                "Failed to revoke membership and track usage."
+              );
               return apiError(req, res, {
                 status_code: 404,
                 api_error: {
