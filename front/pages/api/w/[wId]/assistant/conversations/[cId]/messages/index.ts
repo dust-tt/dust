@@ -60,11 +60,10 @@ async function handler(
         );
       }
 
-      const messagesRes = await fetchConversationMessages(
-        auth,
+      const messagesRes = await fetchConversationMessages(auth, {
         conversationId,
-        paginationRes.value
-      );
+        paginationParams: paginationRes.value,
+      });
 
       if (messagesRes.isErr()) {
         return apiErrorForConversation(req, res, messagesRes.error);

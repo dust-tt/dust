@@ -69,12 +69,12 @@ export function UserMessage({
   const doEditMessage = useEditMessage(owner);
 
   const router = useRouter();
-  async function switchThread(direction: "previous" | "next") {
-    // TODO get thread version
-    console.log("conversation", conversation, direction);
-    await router.push(
-      `/w/${owner.sId}/assistant/${conversationId}?threadVersion=${conversation?.currentThreadVersion}`
-    );
+  async function switchThread(threadVersion: number | null) {
+    if (threadVersion) {
+      await router.push(
+        `/w/${owner.sId}/assistant/${conversationId}?threadVersion=${threadVersion}`
+      );
+    }
   }
 
   const submitEdit = async () => {
@@ -129,21 +129,17 @@ export function UserMessage({
       />
     );
   } else {
-    if (message.previousVersionMessageId || message.nextVersionMessageId) {
+    if (message.previousThreadVersion || message.nextThreadVersion) {
       buttons.push(
         <Button
           key="previous-msg-button"
           tooltip="Previous"
           variant="outline"
           size="xs"
-          onClick={
-            message.previousVersionMessageId
-              ? async () => {
-                  await switchThread("previous");
-                }
-              : undefined
-          }
-          disabled={!message.previousVersionMessageId}
+          onClick={async () => {
+            await switchThread(message.previousThreadVersion);
+          }}
+          disabled={!message.previousThreadVersion}
           icon={ChevronLeftIcon}
           className="text-muted-foreground"
         />
@@ -155,14 +151,10 @@ export function UserMessage({
           tooltip="Next"
           variant="outline"
           size="xs"
-          onClick={
-            message.nextVersionMessageId
-              ? async () => {
-                  await switchThread("next");
-                }
-              : undefined
-          }
-          disabled={!message.nextVersionMessageId}
+          onClick={async () => {
+            await switchThread(message.nextThreadVersion);
+          }}
+          disabled={!message.nextThreadVersion}
           icon={ChevronRightIcon}
           className="text-muted-foreground"
         />

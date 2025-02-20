@@ -22,7 +22,7 @@ export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
-  declare currentThreadVersion: number;
+  declare lastThreadVersion: number;
 
   declare requestedGroupIds: number[][];
 
@@ -55,7 +55,7 @@ Conversation.init(
       allowNull: false,
       defaultValue: "unlisted",
     },
-    currentThreadVersion: {
+    lastThreadVersion: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
@@ -385,8 +385,8 @@ export class Message extends WorkspaceAwareModel<Message> {
   declare version: CreationOptional<number>;
   declare rank: number;
   declare threadVersions: CreationOptional<number[]>;
-  declare previousVersionMessageId: ForeignKey<Message["id"]> | null;
-  declare nextVersionMessageId: ForeignKey<Message["id"]> | null;
+  declare previousThreadVersion: CreationOptional<number>;
+  declare nextThreadVersion: CreationOptional<number>;
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<Conversation["id"]>;
@@ -434,12 +434,12 @@ Message.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    nextVersionMessageId: {
-      type: DataTypes.BIGINT,
+    nextThreadVersion: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
-    previousVersionMessageId: {
-      type: DataTypes.BIGINT,
+    previousThreadVersion: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     threadVersions: {

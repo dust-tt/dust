@@ -104,8 +104,8 @@ async function batchRenderUserMessages(
         origin: userMessage.userContextOrigin,
       },
       threadVersions: message.threadVersions,
-      previousVersionMessageId: message.previousVersionMessageId,
-      nextVersionMessageId: message.nextVersionMessageId,
+      previousThreadVersion: message.previousThreadVersion,
+      nextThreadVersion: message.nextThreadVersion,
     } satisfies UserMessageType;
     return { m, rank: message.rank, version: message.version };
   });
@@ -313,15 +313,22 @@ async function batchRenderContentFragment(
  * This function retrieves the latest version of each message for the current page,
  * because there's no easy way to fetch only the latest version of a message.
  */
-async function getMaxRankMessages(
-  conversation: Conversation,
-  paginationParams: PaginationParams
-): Promise<ModelId[]> {
+async function getMaxRankMessages({
+  conversation,
+  threadVersion,
+  paginationParams,
+}: {
+  conversation: Conversation;
+  threadVersion?: number;
+  paginationParams: PaginationParams;
+}): Promise<ModelId[]> {
   const { limit, orderColumn, orderDirection, lastValue } = paginationParams;
 
   const where: WhereOptions<Message> = {
     conversationId: conversation.id,
-    threadVersions: { [Op.contains]: [conversation.currentThreadVersion] },
+    threadVersions: {
+      [Op.contains]: [threadVersion ?? conversation.lastThreadVersion],
+    },
   };
 
   if (lastValue) {
@@ -348,13 +355,22 @@ async function getMaxRankMessages(
   return messages.map((m) => m.id);
 }
 
-async function fetchMessagesForPage(
-  conversation: Conversation,
-  paginationParams: PaginationParams
-): Promise<{ hasMore: boolean; messages: Message[] }> {
+async function fetchMessagesForPage({
+  conversation,
+  threadVersion,
+  paginationParams,
+}: {
+  conversation: Conversation;
+  threadVersion?: number;
+  paginationParams: PaginationParams;
+}): Promise<{ hasMore: boolean; messages: Message[] }> {
   const { orderColumn, orderDirection, limit } = paginationParams;
 
-  const messageIds = await getMaxRankMessages(conversation, paginationParams);
+  const messageIds = await getMaxRankMessages({
+    conversation,
+    threadVersion,
+    paginationParams,
+  });
 
   const hasMore = messageIds.length > limit;
   const relevantMessageIds = hasMore ? messageIds.slice(0, limit) : messageIds;
@@ -363,7 +379,9 @@ async function fetchMessagesForPage(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
-      threadVersions: { [Op.contains]: [conversation.currentThreadVersion] },
+      threadVersions: {
+        [Op.contains]: [threadVersion ?? conversation.lastThreadVersion],
+      },
       id: {
         [Op.in]: relevantMessageIds,
       },
@@ -439,8 +457,15 @@ export interface FetchConversationMessagesResponse {
 
 export async function fetchConversationMessages(
   auth: Authenticator,
-  conversationId: string,
-  paginationParams: PaginationParams
+  {
+    conversationId,
+    threadVersion,
+    paginationParams,
+  }: {
+    conversationId: string;
+    threadVersion?: number;
+    paginationParams: PaginationParams;
+  }
 ): Promise<Result<FetchConversationMessagesResponse, Error>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -459,10 +484,11 @@ export async function fetchConversationMessages(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  const { hasMore, messages } = await fetchMessagesForPage(
+  const { hasMore, messages } = await fetchMessagesForPage({
     conversation,
-    paginationParams
-  );
+    threadVersion,
+    paginationParams,
+  });
 
   const renderedMessagesRes = await batchRenderMessages(
     auth,

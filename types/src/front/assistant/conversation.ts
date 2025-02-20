@@ -102,8 +102,8 @@ export type UserMessageType = {
   content: string;
   context: UserMessageContext;
   threadVersions: number[];
-  previousVersionMessageId: ModelId | null;
-  nextVersionMessageId: ModelId | null;
+  previousThreadVersion: number | null;
+  nextThreadVersion: number | null;
 };
 export type UserMessageWithRankType = WithRank<UserMessageType>;
 
@@ -220,7 +220,7 @@ export type ConversationWithoutContentType = {
   title: string | null;
   visibility: ConversationVisibility;
   requestedGroupIds: string[][];
-  currentThreadVersion: number;
+  threadVersion: number;
 
   // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
   groupIds?: string[];

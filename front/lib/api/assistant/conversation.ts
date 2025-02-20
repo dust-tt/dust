@@ -121,7 +121,7 @@ export async function createConversation(
     title: title,
     visibility: visibility,
     requestedGroupIds: [],
-    currentThreadVersion: 0,
+    lastThreadVersion: 0,
   });
 
   return {
@@ -131,7 +131,7 @@ export async function createConversation(
     sId: conversation.sId,
     title: conversation.title,
     visibility: conversation.visibility,
-    currentThreadVersion: conversation.currentThreadVersion,
+    threadVersion: 0,
     content: [],
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -148,11 +148,9 @@ export async function updateConversation(
   {
     title,
     visibility,
-    currentThreadVersion,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
-    currentThreadVersion?: number;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
@@ -175,7 +173,6 @@ export async function updateConversation(
   await conversation.update({
     title: title,
     visibility: visibility,
-    currentThreadVersion: currentThreadVersion,
   });
 
   return getConversation(auth, conversationId);
@@ -282,7 +279,7 @@ export async function getUserConversations(
         owner,
         title: c.title,
         visibility: c.visibility,
-        currentThreadVersion: c.currentThreadVersion,
+        threadVersion: c.lastThreadVersion,
         requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
@@ -348,7 +345,8 @@ async function createOrUpdateParticipation({
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted?: boolean
+  includeDeleted?: boolean,
+  threadVersion?: number
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -374,7 +372,9 @@ export async function getConversation(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
-      threadVersions: { [Op.contains]: [conversation.currentThreadVersion] },
+      threadVersions: {
+        [Op.contains]: [threadVersion ?? conversation.lastThreadVersion],
+      },
     },
     order: [
       ["rank", "ASC"],
@@ -437,7 +437,7 @@ export async function getConversation(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
-    currentThreadVersion: conversation.currentThreadVersion,
+    threadVersion: threadVersion ?? conversation.lastThreadVersion,
     content,
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -797,7 +797,7 @@ export async function* postUserMessage(
         where: {
           conversationId: conversation.id,
           threadVersions: {
-            [Op.contains]: [conversation.currentThreadVersion],
+            [Op.contains]: [conversation.threadVersion],
           },
         },
         order: [["rank", "DESC"]],
@@ -811,7 +811,7 @@ export async function* postUserMessage(
           {
             sId: generateRandomModelSId(),
             rank: nextMessageRank++,
-            threadVersions: [conversation.currentThreadVersion],
+            threadVersions: [conversation.threadVersion],
             conversationId: conversation.id,
             parentId: lastMessage?.id,
             userMessageId: (
@@ -859,8 +859,8 @@ export async function* postUserMessage(
         context,
         rank: m.rank,
         threadVersions: m.threadVersions,
-        previousVersionMessageId: m.previousVersionMessageId,
-        nextVersionMessageId: m.nextVersionMessageId,
+        previousThreadVersion: m.previousThreadVersion,
+        nextThreadVersion: m.nextThreadVersion,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -899,7 +899,7 @@ export async function* postUserMessage(
                 {
                   sId: generateRandomModelSId(),
                   rank: nextMessageRank++,
-                  threadVersions: [conversation.currentThreadVersion],
+                  threadVersions: [conversation.threadVersion],
                   conversationId: conversation.id,
                   parentId: userMessage.id,
                   agentMessageId: agentMessageRow.id,
@@ -1256,6 +1256,7 @@ export async function* editUserMessage(
         workspace: WorkspaceType,
         messageRow: Message
       ) {
+        const previousThreadVersion = conversation.threadVersion;
         if (newThreadVersion) {
           // Update threadVersions for all messages with lower rank
           // The Message model requires exactly one of userMessageId, agentMessageId, or contentFragmentId
@@ -1271,7 +1272,7 @@ export async function* editUserMessage(
               where: {
                 conversationId: conversation.id,
                 threadVersions: {
-                  [Op.contains]: [conversation.currentThreadVersion],
+                  [Op.contains]: [conversation.threadVersion],
                 },
                 rank: { [Op.lt]: messageRow.rank },
               },
@@ -1282,14 +1283,14 @@ export async function* editUserMessage(
           );
           await Conversation.update(
             {
-              currentThreadVersion: newThreadVersion,
+              lastThreadVersion: newThreadVersion,
             },
             {
               where: { id: conversation.id },
               transaction: t,
             }
           );
-          conversation.currentThreadVersion = newThreadVersion;
+          conversation.threadVersion = newThreadVersion;
         }
 
         const newMessage = await Message.create(
@@ -1298,11 +1299,9 @@ export async function* editUserMessage(
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
-            previousVersionMessageId: lastMessageVersion?.id,
+            previousThreadVersion: previousThreadVersion,
             version: lastVersion + 1,
-            threadVersions: [
-              newThreadVersion ?? conversation.currentThreadVersion,
-            ],
+            threadVersions: [newThreadVersion ?? conversation.threadVersion],
             userMessageId: (
               await UserMessage.create(
                 {
@@ -1335,7 +1334,7 @@ export async function* editUserMessage(
         );
         await Message.update(
           {
-            nextVersionMessageId: newMessage.id,
+            nextThreadVersion: newThreadVersion,
           },
           {
             where: {
@@ -1365,8 +1364,8 @@ export async function* editUserMessage(
         context: message.context,
         rank: m.rank,
         threadVersions: m.threadVersions,
-        previousVersionMessageId: m.previousVersionMessageId,
-        nextVersionMessageId: m.nextVersionMessageId,
+        previousThreadVersion: m.previousThreadVersion,
+        nextThreadVersion: m.nextThreadVersion,
       };
 
       // For now agent messages are appended at the end of conversation
@@ -1377,7 +1376,7 @@ export async function* editUserMessage(
           where: {
             conversationId: conversation.id,
             threadVersions: {
-              [Op.contains]: [conversation.currentThreadVersion],
+              [Op.contains]: [conversation.threadVersion],
             },
           },
           transaction: t,
@@ -1419,7 +1418,7 @@ export async function* editUserMessage(
               {
                 sId: generateRandomModelSId(),
                 rank: nextMessageRank++,
-                threadVersions: [conversation.currentThreadVersion],
+                threadVersions: [conversation.threadVersion],
                 conversationId: conversation.id,
                 parentId: userMessage.id,
                 agentMessageId: agentMessageRow.id,
@@ -1867,7 +1866,7 @@ export async function postNewContentFragment(
         where: {
           conversationId: conversation.id,
           threadVersions: {
-            [Op.contains]: [conversation.currentThreadVersion],
+            [Op.contains]: [conversation.threadVersion],
           },
         },
         order: [["rank", "DESC"]],
@@ -1880,7 +1879,7 @@ export async function postNewContentFragment(
           sId: messageId,
           rank: nextMessageRank,
           parentId: lastMessage?.id,
-          threadVersions: [conversation.currentThreadVersion],
+          threadVersions: [conversation.threadVersion],
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,
           workspaceId: owner.id,
