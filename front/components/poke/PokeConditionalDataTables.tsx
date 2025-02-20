@@ -1,9 +1,8 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 
 interface PokeDataTableConditionalFetchProps<T, M> {
@@ -45,9 +44,11 @@ export function PokeDataTableConditionalFetch<T, M>({
   if (!shouldLoad) {
     content = (
       <div className="flex justify-center">
-        <PokeButton onClick={handleLoadClick} variant="outline">
-          {buttonText}
-        </PokeButton>
+        <Button
+          onClick={handleLoadClick}
+          variant="outline"
+          label={buttonText}
+        />
       </div>
     );
   } else if (isLoading) {
@@ -67,8 +68,8 @@ export function PokeDataTableConditionalFetch<T, M>({
   }
 
   return (
-    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
+    <div className="border-material-200 my-4 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
         <h2 className="text-md font-bold">{header} :</h2>
         {globalActions}
       </div>

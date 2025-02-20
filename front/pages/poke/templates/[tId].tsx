@@ -1,5 +1,6 @@
 import {
   AssistantCard,
+  Button,
   ColorPicker,
   Dialog,
   DialogContent,
@@ -41,7 +42,6 @@ import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeForm,
   PokeFormControl,
@@ -160,7 +160,7 @@ function PickerInputField({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <div ref={pickerRef}>
-                      <PokeButton variant="outline">{buttonLabel}</PokeButton>
+                      <Button variant="outline" label={buttonLabel} />
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -313,23 +313,22 @@ function PresetActionsField({
                 <PokeFormItem>
                   <PokeFormLabel className="capitalize">Remove</PokeFormLabel>
                   <div>
-                    <PokeButton
+                    <Button
                       variant="secondary"
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.preventDefault();
                         remove(index);
                       }}
-                    >
-                      Remove Tool
-                    </PokeButton>
+                      label="Remove Tool"
+                    />
                   </div>
                 </PokeFormItem>
               </div>
             ))}
             <br />
-            <PokeButton
+            <Button
               variant="secondary"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 const pendingAction = {
                   name: "",
@@ -340,9 +339,8 @@ function PresetActionsField({
                 // @ts-expect-error - TS killed me today
                 append(pendingAction);
               }}
-            >
-              Add Tool
-            </PokeButton>
+              label="Add Tool"
+            />
             <PokeFormMessage />
           </PokeFormItem>
         );
@@ -393,7 +391,7 @@ function SelectField({
                 </PokeSelectTrigger>
               </PokeFormControl>
               <PokeSelectContent>
-                <div className="bg-slate-100">
+                <div className="bg-slate-100 dark:bg-slate-100-night">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
                       {option.display ?? option.value}
@@ -429,9 +427,9 @@ function PreviewDialog({ form }: { form: any }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PokeButton variant="secondary">✨ Preview Template Card</PokeButton>
+        <Button variant="secondary" label="✨ Preview Template Card" />
       </DialogTrigger>
-      <DialogContent className="bg-structure-50 sm:max-w-[600px]">
+      <DialogContent className="bg-structure-50 dark:bg-structure-50-night dark:text-white sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Preview</DialogTitle>
         </DialogHeader>
@@ -581,7 +579,7 @@ function TemplatesPage({
 
   if (isSubmitting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-structure-50">
+      <div className="flex min-h-screen items-center justify-center bg-structure-50 dark:bg-structure-50-night">
         <div className="text-structure-900">Creating/Updating template...</div>
       </div>
     );
@@ -593,7 +591,7 @@ function TemplatesPage({
   }
 
   return (
-    <div className="mx-auto h-full max-w-7xl flex-grow flex-col items-center justify-center pt-8">
+    <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">
       <PokeForm {...form}>
         <form className="space-y-8">
           <div className="grid grid-cols-3 gap-4">
@@ -629,6 +627,33 @@ function TemplatesPage({
                       }}
                       labelledBy="Select"
                       hasSelectAll={false}
+                      className="dark:bg-structure-50-night dark:text-white [&_.dropdown-content]:dark:bg-structure-50-night [&_.dropdown-content]:dark:text-white [&_.dropdown-heading]:dark:bg-structure-50-night [&_.dropdown-heading]:dark:text-white [&_.select-item]:hover:bg-structure-100 [&_.select-item]:dark:hover:bg-structure-100-night [&_.select-panel]:dark:bg-structure-50-night [&_.select-panel]:dark:text-white"
+                      ItemRenderer={({
+                        checked,
+                        option,
+                        onClick,
+                        disabled,
+                      }: {
+                        checked: boolean;
+                        option: { label: string; value: string };
+                        onClick: () => void;
+                        disabled: boolean;
+                      }) => (
+                        <div
+                          className={`item-renderer ${
+                            disabled ? "opacity-50" : ""
+                          } cursor-pointer px-4 py-2`}
+                          onClick={onClick}
+                        >
+                          <input
+                            type="checkbox"
+                            onChange={() => {}}
+                            checked={checked}
+                            className="mr-2 accent-primary"
+                          />
+                          <span>{option.label}</span>
+                        </div>
+                      )}
                     />
                   </PokeFormControl>
                   <PokeFormMessage />
@@ -720,15 +745,13 @@ function TemplatesPage({
             title="Preset Tools"
           />
           <div className="space flex gap-2">
-            <PokeButton
-              onClick={form.handleSubmit(onSubmit)}
-              className="border border-structure-300"
-            >
-              Save
-            </PokeButton>
-            <PokeButton type="button" variant="destructive" onClick={onDelete}>
-              Delete this template
-            </PokeButton>
+            <Button onClick={form.handleSubmit(onSubmit)} label="Save" />
+            <Button
+              type="button"
+              variant="warning"
+              onClick={onDelete}
+              label="Delete this template"
+            />
           </div>
         </form>
       </PokeForm>

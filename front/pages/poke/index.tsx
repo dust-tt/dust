@@ -41,7 +41,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
       {workspaces.length === 0 && <p>No workspaces found.</p>}
       {workspaces.map((ws) => (
         <Link href={`/poke/${ws.sId}`} key={ws.id}>
-          <li className="border-material-100 w-80 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
+          <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
             <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
             <PokeTable>
               <PokeTableBody>

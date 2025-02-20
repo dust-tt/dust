@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -15,7 +16,6 @@ import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeForm } from "@app/components/poke/shadcn/ui/form";
 import {
   InputField,
@@ -97,7 +97,7 @@ export default function EnterpriseUpgradeDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PokeButton variant="outline">🏢 Upgrade to Enterprise</PokeButton>
+        <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
       <DialogContent className="bg-structure-50 sm:max-w-[600px]">
         <DialogHeader>
@@ -136,12 +136,7 @@ export default function EnterpriseUpgradeDialog({
                 </div>
               </div>
               <DialogFooter>
-                <PokeButton
-                  type="submit"
-                  className="border-warning-600 bg-warning-500 text-white"
-                >
-                  Upgrade
-                </PokeButton>
+                <Button type="submit" variant="warning" label="Upgrade" />
               </DialogFooter>
             </form>
           </PokeForm>

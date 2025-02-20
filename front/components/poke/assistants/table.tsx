@@ -1,10 +1,10 @@
 import {
+  Button,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
@@ -17,7 +17,6 @@ import { useState } from "react";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
@@ -79,22 +78,21 @@ export function AssistantsDataTable({ owner }: AssistantsDataTableProps) {
 
   const assistantButtons = (
     <div className="flex flex-row gap-2">
-      <PokeButton
+      <Button
         aria-label="Restore an agent"
         variant="outline"
         size="sm"
         onClick={() => setShowRestoreAssistantModal(true)}
-      >
-        🔥 Restore an agent
-      </PokeButton>
-      <PokeButton
+        label="🔥 Restore an agent"
+      />
+      <Button
         aria-label="Import an agent"
         variant="outline"
         size="sm"
         onClick={() => importAssistant(owner, router, setImporting)}
-      >
-        {importing ? <Spinner size="xs" /> : "📥"} Import agent
-      </PokeButton>
+        label={importing ? "📥 Importing..." : "📥 Import agent"}
+        isLoading={importing}
+      />
     </div>
   );
 
