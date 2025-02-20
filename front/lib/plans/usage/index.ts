@@ -14,7 +14,7 @@ import {
   REPORT_USAGE_METADATA_KEY,
 } from "@app/lib/plans/usage/types";
 
-function getUsageToReportForSubscriptionItem(
+export function getUsageToReportForSubscriptionItem(
   item: Stripe.SubscriptionItem
 ): Result<SupportedReportUsage | null, InvalidReportUsageError> {
   const usageToReport = item.price.metadata[REPORT_USAGE_METADATA_KEY];
