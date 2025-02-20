@@ -223,6 +223,10 @@ impl UpsertQueueCSVContent {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use crate::databases::table_schema::{TableSchema, TableSchemaFieldType};
+
     use super::*;
 
     #[tokio::test]
@@ -412,6 +416,30 @@ BAR,acme";
         assert!(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter)
             .await
             .is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_schema_end_to_end() -> anyhow::Result<()> {
+        let csv = "string,int,float,bool,date\n\
+                   foo,123,0.231,true,2025-02-14T15:06:52.380Z\n\
+                   ,,,,\n\
+                    , , , , \n\
+                   bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
+        let (delimiter, rdr) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = Arc::new(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?);
+        let schema = TableSchema::from_rows_async(rows).await?;
+
+        assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);
+        assert_eq!(schema.columns()[1].value_type, TableSchemaFieldType::Int);
+        assert_eq!(schema.columns()[2].value_type, TableSchemaFieldType::Float);
+        assert_eq!(schema.columns()[3].value_type, TableSchemaFieldType::Bool);
+        assert_eq!(
+            schema.columns()[4].value_type,
+            TableSchemaFieldType::DateTime
+        );
 
         Ok(())
     }

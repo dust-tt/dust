@@ -694,9 +694,11 @@ impl Row {
 
             let parsed_value = if trimmed.is_empty() {
                 Value::Null
-            } else if let Ok(num) = trimmed.parse::<f64>() {
+            } else if let Ok(int) = trimmed.parse::<i64>() {
+                Value::Number(int.into())
+            } else if let Ok(float) = trimmed.parse::<f64>() {
                 // Numbers
-                Value::Number(serde_json::Number::from_f64(num).unwrap())
+                Value::Number(serde_json::Number::from_f64(float).unwrap())
             } else if let Ok(bool_val) = trimmed.parse::<bool>() {
                 // Booleans
                 Value::Bool(bool_val)
@@ -855,7 +857,7 @@ mod tests {
         assert_eq!(
             row.content(),
             &json!({
-                "test": 1.0,
+                "test": 1,
                 "date": {
                     "type": "datetime",
                     "epoch": 1609459200000_i64,
@@ -931,6 +933,20 @@ mod tests {
         assert_eq!(
             row.content()["date"]["epoch"],
             Value::Number(1739545834000_i64.into())
+        );
+
+        let headers = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let record = vec!["2", "2.0", "0.1"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        println!("{:?}", row.content());
+        assert_eq!(row.content()["a"], Value::Number(2.into()));
+        assert_eq!(
+            row.content()["b"],
+            Value::Number(serde_json::Number::from_f64(2.0).unwrap())
+        );
+        assert_eq!(
+            row.content()["c"],
+            Value::Number(serde_json::Number::from_f64(0.1).unwrap())
         );
 
         Ok(())
