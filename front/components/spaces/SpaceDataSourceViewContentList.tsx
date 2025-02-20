@@ -59,6 +59,7 @@ import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
+const ROWS_COUNT_CAPPED = 1000;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -610,6 +611,7 @@ export const SpaceDataSourceViewContentList = ({
             sorting={sorting}
             setSorting={setSorting}
             totalRowCount={isServerPagination ? totalNodesCount : undefined}
+            rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
             pagination={pagination}
             setPagination={setPagination}
             columnsBreakpoints={columnsBreakpoints}
