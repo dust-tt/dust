@@ -60,7 +60,10 @@ export function getContentNodeInternalIdFromTableId(
   }
 }
 
-function expandable(node: CoreAPIContentNode, viewType: ContentNodesViewType) {
+function isExpandable(
+  node: CoreAPIContentNode,
+  viewType: ContentNodesViewType
+) {
   return (
     !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
     node.children_count > 0 &&
@@ -90,7 +93,7 @@ export function getContentNodeFromCoreNode(
     providerVisibility: coreNode.provider_visibility,
     parentInternalIds: coreNode.parents,
     type: coreNode.node_type,
-    expandable: expandable(coreNode, viewType),
+    expandable: isExpandable(coreNode, viewType),
     mimeType: coreNode.mime_type,
     preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
       coreNode.mime_type

@@ -28,7 +28,10 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type { PostSpaceSearchResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import {
+  MIN_KEYWORD_SEARCH_LENGTH,
+  type PostSpaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 export function useSpaces({
   workspaceId,
@@ -608,7 +611,7 @@ export function useSpaceSearch({
   limit?: number;
 }) {
   const body = {
-    datasourceViewSids: dataSourceViews.map((dsv) => dsv.sId),
+    datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     query: search,
     viewType,
     limit,
@@ -618,14 +621,11 @@ export function useSpaceSearch({
 
   // Only create a key if we have a valid search
   const key =
-    search?.length > 2 && spaceId
+    search?.length >= MIN_KEYWORD_SEARCH_LENGTH && spaceId
       ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
       : null;
 
-  const { data, error, mutate, isValidating, isLoading } = useSWR<
-    PostSpaceSearchResponseBody,
-    Error
-  >(
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     key as [string, typeof body],
     async ([url, postBody]) => {
       const res = await fetch(url, {
@@ -649,7 +649,7 @@ export function useSpaceSearch({
   );
 
   return {
-    resultNodes: data?.nodes ?? [],
+    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,

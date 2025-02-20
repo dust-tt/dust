@@ -59,6 +59,7 @@ import {
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { MIN_KEYWORD_SEARCH_LENGTH } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -254,12 +255,13 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const { resultNodes, isSearchLoading, isSearchValidating } = useSpaceSearch({
-    dataSourceViews: [dataSourceView],
-    owner,
-    viewType,
-    search: debouncedSearch,
-  });
+  const { searchResultNodes, isSearchLoading, isSearchValidating } =
+    useSpaceSearch({
+      dataSourceViews: [dataSourceView],
+      owner,
+      viewType,
+      search: debouncedSearch,
+    });
 
   // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
   const isServerPagination = false;
@@ -287,18 +289,26 @@ export const SpaceDataSourceViewContentList = ({
 
   const isTyping = useMemo(() => {
     return (
-      dataSourceSearch.length > 2 &&
+      dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH &&
       debouncedSearch !== dataSourceSearch &&
       searchFeatureFlag
     );
   }, [dataSourceSearch, debouncedSearch, searchFeatureFlag]);
 
   const nodes = useMemo(() => {
-    if (dataSourceSearch.length > 2 && searchFeatureFlag) {
-      return resultNodes;
+    if (
+      dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH &&
+      searchFeatureFlag
+    ) {
+      return searchResultNodes;
     }
     return childrenNodes;
-  }, [dataSourceSearch.length, childrenNodes, resultNodes, searchFeatureFlag]);
+  }, [
+    dataSourceSearch.length,
+    childrenNodes,
+    searchResultNodes,
+    searchFeatureFlag,
+  ]);
 
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
@@ -414,7 +424,9 @@ export const SpaceDataSourceViewContentList = ({
     if (searchFeatureFlag) {
       const timeout = setTimeout(() => {
         setDebouncedSearch(
-          dataSourceSearch.length >= 3 ? dataSourceSearch : ""
+          dataSourceSearch.length >= MIN_KEYWORD_SEARCH_LENGTH
+            ? dataSourceSearch
+            : ""
         );
       }, 300);
       return () => {

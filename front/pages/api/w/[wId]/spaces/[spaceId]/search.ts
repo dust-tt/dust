@@ -19,7 +19,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const SearchRequestBody = t.type({
-  datasourceViewSids: t.array(t.string),
+  datasourceViewIds: t.array(t.string),
   query: t.string,
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
@@ -34,6 +34,8 @@ const SearchRequestBody = t.type({
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
 };
+
+export const MIN_KEYWORD_SEARCH_LENGTH = 3;
 
 async function handler(
   req: NextApiRequest,
@@ -74,7 +76,12 @@ async function handler(
     });
   }
 
-  const { datasourceViewSids, query, viewType, limit } = bodyValidation.right;
+  const {
+    datasourceViewIds: datasourceViewSids,
+    query,
+    viewType,
+    limit,
+  } = bodyValidation.right;
 
   if (datasourceViewSids.length === 0) {
     return apiError(req, res, {
@@ -86,12 +93,12 @@ async function handler(
     });
   }
 
-  if (query.length < 3) {
+  if (query.length < MIN_KEYWORD_SEARCH_LENGTH) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Query must be at least 3 characters long.",
+        message: `Query must be at least ${MIN_KEYWORD_SEARCH_LENGTH} characters long.`,
       },
     });
   }
