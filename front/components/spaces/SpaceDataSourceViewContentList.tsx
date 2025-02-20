@@ -217,7 +217,6 @@ export const SpaceDataSourceViewContentList = ({
 
   const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const sendNotification = useSendNotification();
@@ -285,6 +284,14 @@ export const SpaceDataSourceViewContentList = ({
       ? viewType
       : DEFAULT_VIEW_TYPE,
   });
+
+  const isTyping = useMemo(() => {
+    return (
+      dataSourceSearch.length > 2 &&
+      debouncedSearch !== dataSourceSearch &&
+      searchFeatureFlag
+    );
+  }, [dataSourceSearch, debouncedSearch, searchFeatureFlag]);
 
   const nodes = useMemo(() => {
     if (dataSourceSearch.length > 2 && searchFeatureFlag) {
@@ -410,7 +417,9 @@ export const SpaceDataSourceViewContentList = ({
           dataSourceSearch.length >= 3 ? dataSourceSearch : ""
         );
       }, 300);
-      return () => clearTimeout(timeout);
+      return () => {
+        clearTimeout(timeout);
+      };
     }
   }, [dataSourceSearch, searchFeatureFlag]);
 
@@ -667,7 +676,8 @@ export const SpaceDataSourceViewContentList = ({
         {searchFeatureFlag &&
           rows.length === 0 &&
           !isSearchLoading &&
-          !isSearchValidating && (
+          !isSearchValidating &&
+          !isTyping && (
             <div className="mt-8 flex justify-center">
               <div>No results found</div>
             </div>
