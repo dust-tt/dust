@@ -539,7 +539,7 @@ export async function checkSeatCountForWorkspace(
     include: [Plan],
   });
   if (!subscription) {
-    return new Err(new Error("No subscription found."));
+    return new Err(new Error("Workspace has no active subscription."));
   }
   if (!subscription.stripeSubscriptionId) {
     return new Err(new Error("No Stripe subscription ID found."));
@@ -551,7 +551,7 @@ export async function checkSeatCountForWorkspace(
   if (!stripeSubscription) {
     return new Err(
       new Error(
-        `Cannot update usage in subscription: Stripe subscription ${subscription.stripeSubscriptionId} not found.`
+        `Cannot check usage in subscription: Stripe subscription ${subscription.stripeSubscriptionId} not found.`
       )
     );
   }
