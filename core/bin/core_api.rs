@@ -39,10 +39,11 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
+        csv::UpsertQueueCSVContent,
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store::store::{self as databases_store},
+    databases_store::store as databases_store,
     dataset,
     deno::js_executor::JSExecutor,
     project,
@@ -2206,13 +2207,39 @@ async fn data_sources_delete(
 
 #[derive(serde::Deserialize)]
 struct DatabasesTablesValidateCSVContentPayload {
-    upsert_queue_bucket_csv_path: String,
+    bucket: Option<String>,
+    bucket_csv_path: Option<String>,
+    upsert_queue_bucket_csv_path: Option<String>,
 }
 
 async fn tables_validate_csv_content(
     Json(payload): Json<DatabasesTablesValidateCSVContentPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match LocalTable::validate_csv_content(&payload.upsert_queue_bucket_csv_path).await {
+    // Backward compatibility moving from `upsert_queue_bucket_csv_path` to `bucket` and
+    // `bucket_csv_path`.
+    // TODO(spolu): to remove once front is migrated.
+    let (bucket, bucket_csv_path) = match (payload.bucket, payload.bucket_csv_path) {
+        (Some(bucket), Some(bucket_csv_path)) => (bucket, bucket_csv_path),
+        _ => match payload.upsert_queue_bucket_csv_path {
+            Some(upsert_queue_bucket_csv_path) => (
+                UpsertQueueCSVContent::get_upsert_queue_bucket()
+                    .await
+                    .unwrap(),
+                upsert_queue_bucket_csv_path,
+            ),
+            _ => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_csv_content",
+                    "Failed to validate the CSV content - either `bucket` and \
+                          `bucket_csv_path` or `upsert_queue_bucket_csv_path` should be defined",
+                    None,
+                );
+            }
+        },
+    };
+
+    match LocalTable::validate_csv_content(&bucket, &bucket_csv_path).await {
         Ok(schema) => (
             StatusCode::OK,
             Json(APIResponse {
@@ -2669,7 +2696,9 @@ async fn tables_update_parents(
 
 #[derive(serde::Deserialize)]
 struct DatabasesTablesUpsertCSVContentPayload {
-    upsert_queue_bucket_csv_path: String,
+    bucket: Option<String>,
+    bucket_csv_path: Option<String>,
+    upsert_queue_bucket_csv_path: Option<String>,
     truncate: Option<bool>,
 }
 
@@ -2679,6 +2708,30 @@ async fn tables_csv_upsert(
     Json(payload): Json<DatabasesTablesUpsertCSVContentPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
+
+    // Backward compatibility moving from `upsert_queue_bucket_csv_path` to `bucket` and
+    // `bucket_csv_path`.
+    // TODO(spolu): to remove once front is migrated.
+    let (bucket, bucket_csv_path) = match (payload.bucket, payload.bucket_csv_path) {
+        (Some(bucket), Some(bucket_csv_path)) => (bucket, bucket_csv_path),
+        _ => match payload.upsert_queue_bucket_csv_path {
+            Some(upsert_queue_bucket_csv_path) => (
+                UpsertQueueCSVContent::get_upsert_queue_bucket()
+                    .await
+                    .unwrap(),
+                upsert_queue_bucket_csv_path,
+            ),
+            _ => {
+                return error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_csv_content",
+                    "Failed to validate the CSV content - either `bucket` and \
+                          `bucket_csv_path` or `upsert_queue_bucket_csv_path` should be defined",
+                    None,
+                );
+            }
+        },
+    };
 
     match state
         .store
@@ -2715,7 +2768,8 @@ async fn tables_csv_upsert(
                     .upsert_csv_content(
                         state.store.clone(),
                         state.databases_store.clone(),
-                        &payload.upsert_queue_bucket_csv_path,
+                        &bucket,
+                        &bucket_csv_path,
                         match payload.truncate {
                             Some(v) => v,
                             None => false,

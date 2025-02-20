@@ -13,7 +13,8 @@ use unicode_normalization::UnicodeNormalization;
 use crate::{databases::table::Row, utils};
 
 pub struct UpsertQueueCSVContent {
-    pub upsert_queue_bucket_csv_path: String,
+    pub bucket: String,
+    pub bucket_csv_path: String,
 }
 
 const MAX_TABLE_COLUMNS: usize = 512;
@@ -21,7 +22,7 @@ const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl UpsertQueueCSVContent {
-    async fn get_upsert_queue_bucket() -> Result<String> {
+    pub async fn get_upsert_queue_bucket() -> Result<String> {
         match std::env::var("DUST_UPSERT_QUEUE_BUCKET") {
             Ok(bucket) => Ok(bucket),
             Err(_) => Err(anyhow!("DUST_UPSERT_QUEUE_BUCKET is not set")),
@@ -30,12 +31,12 @@ impl UpsertQueueCSVContent {
 
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let now = utils::now();
-        let bucket = Self::get_upsert_queue_bucket().await?;
-        let path = &self.upsert_queue_bucket_csv_path;
+        let bucket = &self.bucket;
+        let path = &self.bucket_csv_path;
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
-        let content = Object::download(&bucket, path).await?;
+        let content = Object::download(bucket, path).await?;
         let rdr = std::io::Cursor::new(content);
 
         // We buffer the reader to make sure we yield the thread while processing.

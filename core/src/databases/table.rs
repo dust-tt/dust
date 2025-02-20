@@ -507,12 +507,14 @@ impl LocalTable {
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
-        upsert_queue_bucket_csv_path: &str,
+        bucket: &str,
+        bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
         let now = utils::now();
         let rows = UpsertQueueCSVContent {
-            upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+            bucket: bucket.to_string(),
+            bucket_csv_path: bucket_csv_path.to_string(),
         }
         .parse()
         .await?;
@@ -615,11 +617,12 @@ impl LocalTable {
         Ok(schema)
     }
 
-    pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
+    pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
         let rows = Arc::new(
             UpsertQueueCSVContent {
-                upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+                bucket: bucket.to_string(),
+                bucket_csv_path: bucket_csv_path.to_string(),
             }
             .parse()
             .await?,
