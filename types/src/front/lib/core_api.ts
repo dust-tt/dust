@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
+import * as t from "io-ts";
 
-import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
+import { CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -243,17 +244,32 @@ export interface CoreAPISearchTagsResponse {
   };
 }
 
-export type CoreAPIDatasourceViewFilter = {
-  data_source_id: string;
-  view_filter: string[];
-};
+export const CoreAPIDatasourceViewFilterSchema = t.type({
+  data_source_id: t.string,
+  view_filter: t.array(t.string),
+});
 
-export type CoreAPINodesSearchFilter = {
-  data_source_views: CoreAPIDatasourceViewFilter[];
-  node_ids?: string[];
-  parent_id?: string;
-  node_types?: ContentNodeType[];
-};
+export type CoreAPIDatasourceViewFilter = t.TypeOf<
+  typeof CoreAPIDatasourceViewFilterSchema
+>;
+
+export const MIN_SEARCH_QUERY_SIZE = 3;
+
+export const CoreAPINodesSearchFilterSchema = t.intersection([
+  t.type({
+    data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
+  }),
+  t.partial({
+    node_ids: t.array(t.string),
+    parent_id: t.string,
+    node_types: t.array(t.string),
+    query: t.string,
+  }),
+]);
+
+export type CoreAPINodesSearchFilter = t.TypeOf<
+  typeof CoreAPINodesSearchFilterSchema
+>;
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;

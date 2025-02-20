@@ -1,10 +1,13 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  ContentNodesViewType,
   DataSourceViewCategory,
+  DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -586,5 +589,70 @@ export function useSystemSpace({
     isSystemSpaceLoading: !error && !data && !disabled,
     isSystemSpaceError: error,
     mutateSystemSpace: mutate,
+  };
+}
+
+const DEFAULT_SEARCH_LIMIT = 20;
+
+export function useSpaceSearch({
+  dataSourceViews,
+  owner,
+  viewType,
+  search,
+  limit = DEFAULT_SEARCH_LIMIT,
+}: {
+  dataSourceViews: DataSourceViewType[];
+  owner: LightWorkspaceType;
+  viewType: ContentNodesViewType;
+  search: string;
+  limit?: number;
+}) {
+  const body = {
+    datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
+    query: search,
+    viewType,
+    limit,
+  };
+
+  const spaceId = dataSourceViews[0]?.spaceId;
+
+  // Only create a key if we have a valid search
+  const key =
+    search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
+      ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
+      : null;
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    key as [string, typeof body],
+    async ([url, postBody]) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(postBody),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to fetch search results");
+      }
+
+      return res.json();
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
+  return {
+    searchResultNodes: useMemo(
+      () => data?.nodes ?? [],
+      [data]
+    ) as DataSourceViewContentNode[],
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    mutate,
+    isSearchValidating: isValidating,
   };
 }
