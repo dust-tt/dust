@@ -47,10 +47,7 @@ async function getCoreDataSourceId(
 function logInconsistencies(nodes: Node[], logger: typeof Logger) {
   const diff = Object.fromEntries(
     nodes
-      .filter((n) => {
-        const titleFromTag = getTitleFromTags(n);
-        return titleFromTag && !titleFromTag.startsWith(n.title);
-      })
+      .filter((n) => getTitleFromTags(n) !== n.title)
       .map((n) => [
         n.node_id,
         { tagTitle: getTitleFromTags(n), nodeTitle: n.title },
