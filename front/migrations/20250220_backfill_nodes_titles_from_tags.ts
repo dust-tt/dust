@@ -17,9 +17,8 @@ type Node = {
 
 function getTitleFromTags(node: Node): string | null {
   return (
-    node.tags_array
-      .filter((tag) => tag.startsWith("title:"))
-      .map((n) => n.replace("title:", ""))[0] || null
+    node.tags_array.find((tag) => tag.startsWith("title:"))?.substring(6) ||
+    null
   );
 }
 
