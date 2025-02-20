@@ -71,7 +71,7 @@ export const PatchDataSourceTableRequestBodySchema = t.type({
   parents: t.union([t.array(t.string), t.undefined, t.null]),
   truncate: t.boolean,
   async: t.union([t.boolean, t.undefined]),
-  csv: t.union([t.string, t.undefined]),
+  fileId: t.union([t.string, t.undefined]),
   title: t.string,
   mimeType: t.string,
   sourceUrl: t.union([t.string, t.undefined, t.null]),
