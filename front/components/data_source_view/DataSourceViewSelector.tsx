@@ -8,15 +8,17 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { defaultSelectionConfiguration } from "@dust-tt/types";
+import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -35,6 +37,14 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+
+// TODO[kw-search] Temporary type to be removed when the search results are refactored
+export type SearchResult = {
+  dataSourceCategory: DataSourceViewCategory;
+  dataSourceViewId: string;
+  selectedResources: DataSourceViewContentNode[];
+  searchResultId: string;
+};
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 
@@ -107,6 +117,9 @@ export function DataSourceViewsSelector({
   viewType,
   isRootSelectable,
 }: DataSourceViewsSelectorProps) {
+  // TODO[kw-search] fills in search resul
+  const [searchResults] = useState<SearchResult | undefined>();
+
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
 
@@ -155,13 +168,19 @@ export function DataSourceViewsSelector({
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
   return (
-    <Tree isLoading={false}>
+    <Tree
+      isLoading={false}
+      key={`dataSourceViewsSelector-${searchResults ? searchResults.searchResultId : ""}`}
+    >
       {displayManagedDsv && (
         <Tree.Item
           key="connected"
           label="Connected Data"
           visual={CloudArrowLeftRightIcon}
           type="node"
+          defaultCollapsed={
+            !searchResults || searchResults.dataSourceCategory !== "managed"
+          }
         >
           {orderDatasourceViews
             .filter((dsv) => isManaged(dsv.dataSource))
@@ -178,6 +197,7 @@ export function DataSourceViewsSelector({
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
                 useCase={useCase}
+                searchResults={searchResults}
               />
             ))}
         </Tree.Item>
@@ -205,6 +225,9 @@ export function DataSourceViewsSelector({
           label="Folders"
           visual={FolderIcon}
           type="node"
+          defaultCollapsed={
+            !searchResults || searchResults.dataSourceCategory !== "folder"
+          }
         >
           {folders.map((dataSourceView) => (
             <DataSourceViewSelector
@@ -219,6 +242,7 @@ export function DataSourceViewsSelector({
               isRootSelectable={isRootSelectable}
               defaultCollapsed={filteredDSVs.length > 1}
               useCase={useCase}
+              searchResults={searchResults}
             />
           ))}
         </Tree.Item>
@@ -229,6 +253,9 @@ export function DataSourceViewsSelector({
           label="Websites"
           visual={GlobeAltIcon}
           type="node"
+          defaultCollapsed={
+            !searchResults || searchResults.dataSourceCategory !== "website"
+          }
         >
           {websites.map((dataSourceView) => (
             <DataSourceViewSelector
@@ -243,6 +270,7 @@ export function DataSourceViewsSelector({
               isRootSelectable={isRootSelectable}
               defaultCollapsed={filteredDSVs.length > 1}
               useCase={useCase}
+              searchResults={searchResults}
             />
           ))}
         </Tree.Item>
@@ -263,6 +291,7 @@ interface DataSourceViewSelectorProps {
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
   useCase?: DataSourceViewsSelectorProps["useCase"];
+  searchResults?: SearchResult;
 }
 
 export function DataSourceViewSelector({
@@ -275,6 +304,7 @@ export function DataSourceViewSelector({
   isRootSelectable,
   defaultCollapsed = true,
   useCase,
+  searchResults,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -411,13 +441,25 @@ export function DataSourceViewSelector({
     [owner, dataSourceView, viewType, useContentNodes]
   );
 
+  const isExpanded = searchResults
+    ? searchResults.dataSourceViewId === dataSourceView.sId
+    : false;
+  const defaultExpandedIds =
+    isExpanded && searchResults
+      ? removeNulls([
+          ...new Set(
+            searchResults.selectedResources.flatMap((r) => r.parentInternalIds)
+          ),
+        ])
+      : undefined;
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
         key={dataSourceView.dataSource.id}
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}
         visual={LogoComponent}
-        defaultCollapsed={defaultCollapsed}
+        defaultCollapsed={defaultCollapsed && !isExpanded}
         type={canBeExpanded(dataSourceView.dataSource) ? "node" : "leaf"}
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
@@ -455,6 +497,7 @@ export function DataSourceViewSelector({
                 <Tree.Empty label="No documents" />
               )
             }
+            defaultExpandedIds={defaultExpandedIds}
           />
         )}
       </Tree.Item>
