@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "IT",
+  title: <>Automate Support, Empower Employees</>,
+  from: "from-cyan-200",
+  to: "to-cyan-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Scale IT support, automate routine requests, and keep your organization
+      running smoothly.
     </>
   ),
 };
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Transform your IT support into a self-service powerhouse",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on complex tasks",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize IT team efficiency by automating routine support requests.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Speed up resolution",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Instantly provide accurate solutions using your documented knowledge base.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Empower employees",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Turn IT support into a self-service experience that scales across the organization.",
     },
   ],
 };
@@ -148,31 +143,31 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "IT helpdesk",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Answer common employee IT questions instantly using your internal documentation and policies.",
+      images: ["/static/landing/solutions/it1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "IT ops assistant",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Support system administrators with troubleshooting guidance based on your documented procedures.",
+      images: ["/static/landing/solutions/it2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Procurement helper",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Guide employees through procurement processes and requirements with automated assistance.",
+      images: ["/static/landing/solutions/it3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Ticket analytics",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Analyze support patterns to identify improvement opportunities and optimize documentation.",
+      images: ["/static/landing/solutions/it4.png"],
     },
   ],
 };
@@ -217,46 +212,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
-      </>
-    ),
-  },
-  {
-    emoji: "📨",
-    name: "@prospectEngage",
+    emoji: "🔧",
+    name: "@itHelp",
     backgroundColor: "bg-sky-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Answers common IT questions and troubleshooting needs using your
+        internal documentation.
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🚨",
+    name: "@opsGuide",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Assists system administrators with technical troubleshooting and
+        infrastructure support.
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "💳",
+    name: "@procureHelp",
+    backgroundColor: "bg-sky-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Guides employees through procurement processes and requirements step by
+        step.
+      </>
+    ),
+  },
+  {
+    emoji: "📊",
+    name: "@ticketInsights",
+    backgroundColor: "bg-sky-300",
+    description: (
+      <>
+        Analyzes support patterns to identify common issues and improvement
+        opportunities.
       </>
     ),
   },

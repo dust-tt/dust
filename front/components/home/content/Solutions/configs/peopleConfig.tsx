@@ -50,19 +50,12 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "Recruiting & People",
+  title: <>Streamline Operations, Focus on People</>,
+  from: "from-indigo-200",
+  to: "to-indigo-500",
   description: (
-    <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
-    </>
+    <>Expedite HR operations and focus on what matters most - people.</>
   ),
 };
 
@@ -106,26 +99,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Transform HR operations into strategic impact",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Scale HR knowledge",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Turn policies into instant answers, enabling employee self-service.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Save HR time",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Automate routine tasks to invest more time in people development.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Support managers",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Deploy consistent coaching and feedback across all management levels.",
     },
   ],
 };
@@ -148,31 +140,31 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "HR helpdesk",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Answer employee questions instantly using your HR policies and documented processes.",
+      images: ["/static/landing/solutions/hr1.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "Recruiting assistant",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Streamline candidate screening, communications, and interview preparation with automated support.",
+      images: ["/static/landing/solutions/hr2.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Manager coach",
       content:
-        "Auto-complete security forms & RFPs with up-to-date company information.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Guide managers through feedback and reviews using company guidelines and best practices.",
+      images: ["/static/landing/solutions/hr3.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Onboarding guide",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Provide new employees with personalized guidance through company processes and culture.",
+      images: ["/static/landing/solutions/hr4.png"],
     },
   ],
 };
@@ -217,46 +209,48 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
+    emoji: "👋",
+    name: "@askHR",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
+        Answers questions the&nbsp;People team gets most regularly about company
+        processes and&nbsp;policies based on&nbsp;internal documentation
+        directly on&nbsp;Slack
       </>
     ),
   },
   {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
+    emoji: "🖋️",
+    name: "@hiringOps",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Drafts job descriptions and&nbsp;matching social media communications
+        based on&nbsp;company templates
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🏅",
+    name: "@reviewPrep",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Collects achievements, drafts actionable reviews, helps formulate
+        feedback
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🌱",
+    name: "@onboardingBuddy",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome
+        and&nbsp;properly informed from&nbsp;day one and&nbsp;as they learn
+        about the&nbsp;company
       </>
     ),
   },
