@@ -130,27 +130,29 @@ async function updateDatasets(
       }
 
       // Now update the dataset in front if it exists, or create one
-      const dataset = existingDatasets.find(
-        (d) => d.name === datasetToImport.name
-      );
-      if (dataset) {
-        if (
-          !_.isEqual(dataset.schema, datasetToImport.schema) ||
-          dataset.description !== datasetToImport.description
-        ) {
-          await dataset.update({
+      if (datasetToImport.schema) {
+        const dataset = existingDatasets.find(
+          (d) => d.name === datasetToImport.name
+        );
+        if (dataset) {
+          if (
+            !_.isEqual(dataset.schema, datasetToImport.schema) ||
+            dataset.description !== datasetToImport.description
+          ) {
+            await dataset.update({
+              description: datasetToImport.description,
+              schema: datasetToImport.schema,
+            });
+          }
+        } else {
+          await Dataset.create({
+            name: datasetToImport.name,
             description: datasetToImport.description,
+            appId: app.id,
+            workspaceId: owner.id,
             schema: datasetToImport.schema,
           });
         }
-      } else {
-        await Dataset.create({
-          name: datasetToImport.name,
-          description: datasetToImport.description,
-          appId: app.id,
-          workspaceId: owner.id,
-          schema: datasetToImport.schema,
-        });
       }
     }
   }
@@ -162,21 +164,24 @@ async function updateAppSpecifications(
   {
     app,
     savedSpecification,
+    coreSpecifications,
     savedConfig,
   }: {
     app: AppResource;
     savedSpecification: string;
+    coreSpecifications?: Record<string, string>;
     savedConfig: string;
   }
 ): Promise<Result<boolean, CoreAPIError | Error>> {
   logger.info({ sId: app.sId, name: app.name }, "Updating app specifications");
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
   // Specification and config have been modified and need to be imported
   if (
-    savedSpecification !== app.savedSpecification &&
+    savedSpecification !== app.savedSpecification ||
     savedConfig !== app.savedConfig
   ) {
     // Fetch all datasets from core for this app
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const coreDatasets = await coreAPI.getDatasets({
       projectId: app.dustAPIProjectId,
     });
@@ -283,6 +288,16 @@ async function updateAppSpecifications(
       "No changes to app specifications"
     );
   }
+
+  if (coreSpecifications) {
+    for (const specification of Object.values(coreSpecifications)) {
+      await coreAPI.saveSpecification({
+        projectId: app.dustAPIProjectId,
+        specification: specification,
+      });
+    }
+  }
+
   return new Ok(false);
 }
 
@@ -331,6 +346,7 @@ export async function importApp(
     const updateSpecificationsRes = await updateAppSpecifications(auth, {
       app,
       savedSpecification: appToImport.savedSpecification,
+      coreSpecifications: appToImport.coreSpecifications,
       savedConfig: appToImport.savedConfig,
     });
     if (updateSpecificationsRes.isErr()) {
@@ -402,6 +418,35 @@ export async function importApps(
   return apps;
 }
 
+export async function getSpecificationsHashesFromCore(app: AppResource) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const coreSpec = await coreAPI.getSpecificationHashes({
+    projectId: app.dustAPIProjectId,
+  });
+
+  if (coreSpec.isErr()) {
+    return null;
+  }
+
+  return coreSpec.value.hashes;
+}
+
+export async function getSpecificationFromCore(app: AppResource, hash: string) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const coreSpec = await coreAPI.getSpecification({
+    projectId: app.dustAPIProjectId,
+    specificationHash: hash,
+  });
+
+  if (coreSpec.isErr()) {
+    return null;
+  }
+
+  return coreSpec.value.specification;
+}
+
 interface CheckRes {
   deployed: boolean;
   appId: string;
@@ -467,8 +512,15 @@ export async function synchronizeDustApps(
     regionConfig.getDustRegionSyncMasterUrl()
   );
 
+  const actions = Object.values(BaseDustProdActionRegistry);
+  const appRequest = actions.map((action) => ({
+    appId: action.app.appId,
+    appHash: action.app.appHash,
+  }));
+
   const exportRes = await syncMasterApi.exportApps({
     appSpaceId: regionConfig.getDustAppsSyncMasterSpaceId(),
+    specifications: appRequest,
   });
 
   if (exportRes.isErr()) {

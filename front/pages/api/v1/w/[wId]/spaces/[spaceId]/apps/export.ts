@@ -9,6 +9,10 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  getSpecificationFromCore,
+  getSpecificationsHashesFromCore,
+} from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
 
 /**
@@ -43,23 +47,71 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const apps = await AppResource.listBySpace(auth, space);
+      const requiredSpecifications: {
+        appId: string;
+        appHash: string;
+      }[] = req.query.specifications
+        ? JSON.parse(req.query.specifications as string)
+        : undefined;
+
+      let apps = await AppResource.listBySpace(auth, space);
+
+      if (requiredSpecifications) {
+        apps = apps.filter((app) =>
+          requiredSpecifications.some((spec) => spec.appId === app.sId)
+        );
+      }
 
       const enhancedApps = await concurrentExecutor(
         apps.filter((app) => app.canRead(auth)),
+
         async (app) => {
-          const datasetsFromFront = await getDatasets(auth, app.toJSON());
+          const requiredSpecification =
+            requiredSpecifications &&
+            requiredSpecifications.find((spec) => spec.appId === app.sId);
+
+          const specsToFetch = requiredSpecification
+            ? [requiredSpecification.appHash]
+            : await getSpecificationsHashesFromCore(app);
+
+          const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
+            (ds) => ({ datasetId: ds.name, hash: "latest" })
+          );
+
+          const coreSpecifications: { [key: string]: string } = {};
+
+          if (specsToFetch) {
+            for (const hash of specsToFetch) {
+              const coreSpecification = await getSpecificationFromCore(
+                app,
+                hash
+              );
+              if (coreSpecification) {
+                // Parse dataset_id and hash from specification if it contains DATA section
+                const examplesMatch = coreSpecification.data.match(
+                  /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
+                );
+                if (examplesMatch) {
+                  const [, datasetId, hash] = examplesMatch;
+                  dataSetsToFetch.push({ datasetId, hash });
+                }
+
+                coreSpecifications[hash] = coreSpecification.data;
+              }
+            }
+          }
           const datasets = [];
-          for (const dataset of datasetsFromFront) {
+          for (const dataset of dataSetsToFetch) {
             const fromCore = await getDatasetHash(
               auth,
               app,
-              dataset.name,
-              "latest"
+              dataset.datasetId,
+              dataset.hash
             );
-            datasets.push(fromCore ?? dataset);
+            datasets.push(fromCore);
           }
-          return { ...app.toJSON(), datasets };
+
+          return { ...app.toJSON(), datasets, coreSpecifications };
         },
         { concurrency: 5 }
       );
