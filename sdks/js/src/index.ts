@@ -1108,21 +1108,10 @@ export class DustAPI {
     return new Ok(r.value.dataSourceView);
   }
 
-  async exportApps({
-    appSpaceId,
-    specifications,
-  }: {
-    appSpaceId: string;
-    specifications: {
-      appId: string;
-      appHash: string;
-    }[];
-  }) {
+  async exportApps({ appSpaceId }: { appSpaceId: string }) {
     const res = await this.request({
       method: "POST",
-      path: `spaces/${appSpaceId}/apps/export?specifications=${encodeURIComponent(
-        JSON.stringify(specifications)
-      )}`,
+      path: `spaces/${appSpaceId}/apps/export`,
     });
 
     const r = await this._resultFromResponse(GetAppsResponseSchema, res);

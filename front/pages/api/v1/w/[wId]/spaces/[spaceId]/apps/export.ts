@@ -47,32 +47,13 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const requiredSpecifications: {
-        appId: string;
-        appHash: string;
-      }[] = req.query.specifications
-        ? JSON.parse(req.query.specifications as string)
-        : undefined;
-
-      let apps = await AppResource.listBySpace(auth, space);
-
-      if (requiredSpecifications) {
-        apps = apps.filter((app) =>
-          requiredSpecifications.some((spec) => spec.appId === app.sId)
-        );
-      }
+      const apps = await AppResource.listBySpace(auth, space);
 
       const enhancedApps = await concurrentExecutor(
         apps.filter((app) => app.canRead(auth)),
 
         async (app) => {
-          const requiredSpecification =
-            requiredSpecifications &&
-            requiredSpecifications.find((spec) => spec.appId === app.sId);
-
-          const specsToFetch = requiredSpecification
-            ? [requiredSpecification.appHash]
-            : await getSpecificationsHashesFromCore(app);
+          const specsToFetch = await getSpecificationsHashesFromCore(app);
 
           const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
             (ds) => ({ datasetId: ds.name, hash: "latest" })
@@ -88,11 +69,11 @@ async function handler(
               );
               if (coreSpecification) {
                 // Parse dataset_id and hash from specification if it contains DATA section
-                const examplesMatch = coreSpecification.data.match(
+                const dataBlockMatch = coreSpecification.data.match(
                   /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
                 );
-                if (examplesMatch) {
-                  const [, datasetId, hash] = examplesMatch;
+                if (dataBlockMatch) {
+                  const [, datasetId, hash] = dataBlockMatch;
                   dataSetsToFetch.push({ datasetId, hash });
                 }
 
@@ -108,7 +89,9 @@ async function handler(
               dataset.datasetId,
               dataset.hash
             );
-            datasets.push(fromCore);
+            if (fromCore) {
+              datasets.push(fromCore);
+            }
           }
 
           return { ...app.toJSON(), datasets, coreSpecifications };
