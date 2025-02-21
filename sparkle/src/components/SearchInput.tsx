@@ -1,4 +1,4 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, Ref, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -96,79 +96,131 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
 SearchInput.displayName = "SearchInput";
 
-export interface SearchInputWithPopoverProps extends SearchInputProps {
-  children: React.ReactNode;
+type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   contentClassName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  items: T[];
+  renderItem: (item: T, selected: boolean) => React.ReactNode;
+  noResults?: string;
+};
+
+function BaseSearchInputWithPopover<T>(
+  {
+    items,
+    renderItem,
+    contentClassName,
+    className,
+    open,
+    onOpenChange,
+    value,
+    onChange,
+    mountPortal,
+    mountPortalContainer,
+    noResults,
+    ...searchInputProps
+  }: SearchInputWithPopoverBaseProps<T>,
+  ref: Ref<HTMLInputElement>
+) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
+
+  useEffect(() => {
+    itemRefs.current = new Array(items.length).fill(null);
+  }, [items.length]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [items]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || !items.length) {
+      return;
+    }
+
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        setSelectedIndex((current) => {
+          const newIndex = (current - 1 + items.length) % items.length;
+          itemRefs.current[newIndex]?.scrollIntoView({ block: "nearest" });
+          return newIndex;
+        });
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        setSelectedIndex((current) => {
+          const newIndex = (current + 1) % items.length;
+          itemRefs.current[newIndex]?.scrollIntoView({ block: "nearest" });
+          return newIndex;
+        });
+        break;
+      case "Enter":
+        e.preventDefault();
+        onOpenChange(false);
+        break;
+    }
+  };
+
+  return (
+    <PopoverRoot modal={false} open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <SearchInput
+          ref={ref}
+          className={cn("s-w-full", className)}
+          value={value}
+          onChange={(newValue) => {
+            onChange?.(newValue);
+            if (newValue && !open) {
+              onOpenChange(true);
+            }
+          }}
+          {...searchInputProps}
+          onKeyDown={handleKeyDown}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls="search-popover-content"
+        />
+      </PopoverTrigger>
+      <PopoverContent
+        className={cn(
+          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+          contentClassName
+        )}
+        sideOffset={0}
+        align="start"
+        id="search-popover-content"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={() => onOpenChange(false)}
+        mountPortal={mountPortal}
+        mountPortalContainer={mountPortalContainer}
+      >
+        <ScrollArea
+          role="listbox"
+          className="s-flex s-max-h-72 s-flex-col"
+          hideScrollBar
+        >
+          {items.length > 0 ? (
+            items.map((item, index) => (
+              <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
+                {renderItem(item, selectedIndex === index)}
+              </div>
+            ))
+          ) : (
+            <div className="s-p-2 s-text-sm s-text-gray-500">{noResults ?? ""}</div>
+          )}
+          <ScrollBar className="s-py-0" />
+        </ScrollArea>
+      </PopoverContent>
+    </PopoverRoot>
+  );
 }
 
-export const SearchInputWithPopover = forwardRef<
-  HTMLInputElement,
-  SearchInputWithPopoverProps
->(
-  (
-    {
-      children,
-      contentClassName,
-      className,
-      open,
-      onOpenChange,
-      value,
-      onChange,
-      mountPortal,
-      mountPortalContainer,
-      ...searchInputProps
-    },
-    ref
-  ) => {
-    return (
-      <PopoverRoot modal={false} open={open} onOpenChange={onOpenChange}>
-        <PopoverTrigger asChild>
-          <SearchInput
-            ref={ref}
-            className={cn("s-w-full", className)}
-            value={value}
-            onChange={(newValue) => {
-              onChange?.(newValue);
-              if (newValue && !open) {
-                onOpenChange(true);
-              }
-            }}
-            {...searchInputProps}
-            aria-expanded={open}
-            aria-haspopup="listbox"
-            aria-controls="search-popover-content"
-          />
-        </PopoverTrigger>
-        <PopoverContent
-          className={cn(
-            "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
-            contentClassName
-          )}
-          sideOffset={0}
-          align="start"
-          id="search-popover-content"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          onInteractOutside={() => onOpenChange(false)}
-          mountPortal={mountPortal}
-          mountPortalContainer={mountPortalContainer}
-        >
-          <ScrollArea
-            role="listbox"
-            className="s-flex s-max-h-72 s-flex-col"
-            hideScrollBar
-          >
-            {children}
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </PopoverContent>
-      </PopoverRoot>
-    );
-  }
-);
-
-SearchInputWithPopover.displayName = "SearchInputWithPopover";
+export const SearchInputWithPopover = forwardRef(
+  BaseSearchInputWithPopover
+) as <T>(
+  props: SearchInputWithPopoverBaseProps<T> & { ref?: Ref<HTMLInputElement> }
+) => ReturnType<typeof BaseSearchInputWithPopover>;
