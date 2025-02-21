@@ -5,6 +5,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeTracker } from "@app/poke/swr/trackers";
@@ -32,6 +33,7 @@ export default function TrackerDetailPage({
   owner,
   trackerId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { isDark } = useTheme();
   const { data, isLoading, isError } = usePokeTracker({
     owner,
     tId: trackerId,
@@ -62,7 +64,11 @@ export default function TrackerDetailPage({
                 </div>
                 <div className="ml-4 pt-2 text-sm text-element-700">
                   <div className="font-bold">Raw Data</div>
-                  <JsonViewer value={data} defaultInspectDepth={0} />
+                  <JsonViewer
+                    theme={isDark ? "dark" : "light"}
+                    value={data}
+                    defaultInspectDepth={0}
+                  />
                 </div>
               </div>
             </ContextItem.Description>
