@@ -1,4 +1,4 @@
-import { Button, Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
+import { Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
 import React from "react";
 
@@ -45,22 +45,23 @@ export const TagSearchInput = ({
         disabled={disabled}
         noResults="No results found"
         items={availableTags}
+        onItemSelect={(item) => {
+          onTagAdd(item);
+          setSearchInputValue("");
+        }}
         renderItem={(item, selected) => (
-          <Button
-            key={`${item.tag}`}
-            variant="ghost"
-            label={item.tag}
-            size="sm"
+          <div
             className={cn(
-              "justify-start",
-              selected &&
-                "border-border-dark bg-primary-150 text-primary-900 dark:border-primary-600 dark:bg-primary-700 dark:text-primary-900-night"
+              "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+              selected && "bg-structure-50 dark:bg-structure-50-night"
             )}
             onClick={() => {
               onTagAdd(item);
               setSearchInputValue("");
             }}
-          />
+          >
+            <span className="text-sm font-semibold">{item.tag}</span>
+          </div>
         )}
       ></SearchInputWithPopover>
 
