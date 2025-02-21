@@ -214,7 +214,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🔬",
     name: "@analyst",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
         Answers advanced data questions on your behalf by writing and executing
@@ -225,7 +225,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💬",
     name: "@sqlWriter",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
         Generates simple SQL queries that understand business logic
@@ -236,7 +236,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🔎",
     name: "@dataCatalog",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
         Dives into your data model and answers questions about specific changes,
@@ -247,7 +247,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📈",
     name: "@dataTeamDoc",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
         Answers questions about internal processes, business definitions

@@ -146,7 +146,7 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Company knowledge",
+      title: "Team knowledge",
       content:
         "Answer employee questions instantly across departments using internal documentation and policies.",
       images: ["/static/landing/solutions/knowledge1.png"],
@@ -214,7 +214,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📚",
     name: "@companyGuide",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-emerald-300",
     description: (
       <>
         Answers questions about company policies, processes, and documentation
@@ -225,7 +225,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📱",
     name: "@productExpert",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-emerald-300",
     description: (
       <>
         Provides instant answers about product features, documentation, and
@@ -236,7 +236,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📡",
     name: "@activityRadar",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-emerald-300",
     description: (
       <>
         Creates daily and weekly digests of key company activities, project
@@ -247,7 +247,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🔍",
     name: "@marketResearch",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-emerald-300",
     description: (
       <>
         Tracks competitor activities and market trends, delivering structured

@@ -52,8 +52,8 @@ interface HeroProps {
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-indigo-200",
-  to: "to-indigo-500",
+  from: "from-blue-200",
+  to: "to-blue-500",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
@@ -211,7 +211,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "👋",
     name: "@askHR",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Answers questions the&nbsp;People team gets most regularly about company
@@ -223,7 +223,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@hiringOps",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Drafts job descriptions and&nbsp;matching social media communications
@@ -234,7 +234,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🏅",
     name: "@reviewPrep",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Collects achievements, drafts actionable reviews, helps formulate
@@ -245,7 +245,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🌱",
     name: "@onboardingBuddy",
-    backgroundColor: "bg-amber-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome

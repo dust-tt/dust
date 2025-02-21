@@ -164,7 +164,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/productivity3.png"],
     },
     {
-      title: "Personal mentor",
+      title: "Domain Expert",
       content:
         "Access expert guidance and deep insights across any skill or knowledge domain.",
       images: ["/static/landing/solutions/productivity4.png"],
@@ -214,7 +214,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🎯",
     name: "@meetingNotes",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-violet-300",
     description: (
       <>
         Transforms your meeting recordings into structured summaries with clear
@@ -225,7 +225,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📚",
     name: "@docSummary",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-violet-300",
     description: (
       <>
         Converts long documents into concise summaries and bullet points for
@@ -236,7 +236,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "✍️",
     name: "@writeWell",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-violet-300",
     description: (
       <>
         Polishes your writing with improved clarity, professional tone, and
@@ -247,7 +247,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🎓",
     name: "@personalCoach",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-violet-300",
     description: (
       <>Provides expert guidance and detailed insights on your work.</>
     ),
