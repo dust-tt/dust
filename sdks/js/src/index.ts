@@ -1110,7 +1110,7 @@ export class DustAPI {
 
   async exportApps({ appSpaceId }: { appSpaceId: string }) {
     const res = await this.request({
-      method: "POST",
+      method: "GET",
       path: `spaces/${appSpaceId}/apps/export`,
     });
 
