@@ -21,16 +21,10 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  ContentNodeTreeItemStatus,
-  TreeSelectionModelUpdater,
-} from "@app/components/ContentNodeTree";
+import type { ContentNodeTreeItemStatus, TreeSelectionModelUpdater } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS, getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
@@ -119,7 +113,7 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   // TODO(20250221, search-kb): remove this once the feature flag is enabled by default
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = !featureFlags.includes("search_knowledge_builder");
+  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
 
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
