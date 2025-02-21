@@ -13,7 +13,6 @@ import type {
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
-import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
   fetchAvailableChildrenInSalesforce,
   fetchReadNodes,
@@ -25,6 +24,7 @@ import {
   getSalesforceConnection,
   testSalesforceConnection,
 } from "@connectors/connectors/salesforce/lib/salesforce_api";
+import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import {
@@ -66,26 +66,22 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
-    // Get connector.
-    const c = await ConnectorResource.fetchById(this.connectorId);
-    if (!c) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      throw new Error(`Connector ${this.connectorId} not found`);
+    // Get connector and credentials.
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
     }
+    const { connector, credentials } = getConnectorAndCredentialsRes.value;
 
     // If no connection ID is provided, we return the current connector ID.
     if (!connectionId) {
-      return new Ok(c.id.toString());
-    }
-
-    // Get credentials.
-    const credentialsRes = await getSalesforceCredentials(connectionId);
-    if (credentialsRes.isErr()) {
-      throw credentialsRes.error;
+      return new Ok(connector.id.toString());
     }
 
     // Test connection.
-    const connectionRes = await testSalesforceConnection(credentialsRes.value);
+    const connectionRes = await testSalesforceConnection(credentials);
     if (connectionRes.isErr()) {
       return new Err(
         new ConnectorManagerError(
@@ -95,19 +91,19 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       );
     }
     // await stopSalesforceSyncWorkflow(c.id);
-    await c.update({ connectionId });
+    await connector.update({ connectionId });
     // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
     // upserted again (to update their remoteDatabaseSecret).
     await RemoteTableModel.update(
       {
         lastUpsertedAt: null,
       },
-      { where: { connectorId: c.id } }
+      { where: { connectorId: connector.id } }
     );
     // We launch the workflow again so it syncs immediately.
     //await launchSalesforceSyncWorkflow(c.id);
 
-    return new Ok(c.id.toString());
+    return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
@@ -166,21 +162,14 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    // Get connection id.
-    const c = await ConnectorResource.fetchById(this.connectorId);
-    if (!c) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(
-        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
-      );
+    // Get connector and credentials.
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
     }
-
-    // Get credentials.
-    const credentialsRes = await getSalesforceCredentials(c.connectionId);
-    if (credentialsRes.isErr()) {
-      throw credentialsRes.error;
-    }
-    const credentials = credentialsRes.value;
+    const { connector, credentials } = getConnectorAndCredentialsRes.value;
 
     // Get connection.
     const connRes = await getSalesforceConnection(credentials);
@@ -196,7 +185,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     // TODO(salesforce): There is a big comment for the same code in snowflake.
     if (filterPermission === "read" && parentInternalId === null) {
       const fetchRes = await fetchReadNodes({
-        connectorId: c.id,
+        connectorId: connector.id,
       });
       if (fetchRes.isErr()) {
         throw fetchRes.error;
@@ -208,7 +197,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     // We display the db/schemas if we have access to at least one table within those.
     if (filterPermission === "read") {
       const fetchRes = await fetchSyncedChildren({
-        connectorId: c.id,
+        connectorId: connector.id,
         parentInternalId: parentInternalId,
       });
       if (fetchRes.isErr()) {
@@ -219,7 +208,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
 
     // We display all available nodes with our credentials.
     const fetchRes = await fetchAvailableChildrenInSalesforce({
-      connectorId: c.id,
+      connectorId: connector.id,
       credentials,
       parentInternalId: parentInternalId,
     });
@@ -234,25 +223,15 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>> {
-    const c = await ConnectorResource.fetchById(this.connectorId);
-    if (!c) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(
-        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
-      );
+    // Get connector and credentials just to check that the connector exists
+    // and that the credentials are valid.
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
     }
 
-    const connectionId = c.connectionId;
-
-    const credentialsRes = await getSalesforceCredentials(connectionId);
-    if (credentialsRes.isErr()) {
-      return new Err(
-        new ConnectorManagerError(
-          "EXTERNAL_OAUTH_TOKEN_ERROR",
-          "Salesforce authorization error, please re-authorize."
-        )
-      );
-    }
     await saveNodesFromPermissions({
       connectorId: this.connectorId,
       permissions,
