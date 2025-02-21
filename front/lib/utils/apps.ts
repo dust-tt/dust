@@ -512,15 +512,8 @@ export async function synchronizeDustApps(
     regionConfig.getDustRegionSyncMasterUrl()
   );
 
-  const actions = Object.values(BaseDustProdActionRegistry);
-  const appRequest = actions.map((action) => ({
-    appId: action.app.appId,
-    appHash: action.app.appHash,
-  }));
-
   const exportRes = await syncMasterApi.exportApps({
     appSpaceId: regionConfig.getDustAppsSyncMasterSpaceId(),
-    specifications: appRequest,
   });
 
   if (exportRes.isErr()) {
