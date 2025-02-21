@@ -23,8 +23,11 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import { isUpsertTableArgs } from "@app/lib/api/data_sources";
-import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import {
+  isUpsertTableArgs,
+  upsertDocument,
+  upsertTable,
+} from "@app/lib/api/data_sources";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -193,18 +196,19 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     documentId = upsertArgs.document_id;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
   const upsertDocumentRes = await upsertDocument({
     // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
     parents: [documentId],
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     dataSource,
     auth,
     mime_type: file.contentType,
-    title: upsertTitle ?? file.fileName,
+    title,
 
     // Used to override defaults.
     ...restArgs,
