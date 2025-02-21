@@ -76,6 +76,7 @@ function isExpandable(
 }
 
 export function getContentNodeFromCoreNode(
+  dataSourceView: DataSourceViewType,
   coreNode: CoreAPIContentNode,
   viewType: ContentNodesViewType
 ): DataSourceViewContentNode {
@@ -98,5 +99,6 @@ export function getContentNodeFromCoreNode(
     preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
       coreNode.mime_type
     ),
+    dataSourceView,
   };
 }

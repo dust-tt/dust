@@ -392,20 +392,27 @@ export async function fetchZendeskTickets(
   hasMore: boolean;
   nextLink: string | null;
 }> {
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
-    accessToken,
-  });
-  return {
-    tickets: response.tickets,
-    hasMore:
-      !response.end_of_stream &&
-      response.after_url !== null &&
-      response.tickets.length !== 0,
-    nextLink: response.after_url,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({
+      url:
+        url ?? // using the URL if we got one, reconstructing it otherwise
+        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
+      accessToken,
+    });
+    return {
+      tickets: response.tickets,
+      hasMore:
+        !response.end_of_stream &&
+        response.after_url !== null &&
+        response.tickets.length !== 0,
+      nextLink: response.after_url,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return { tickets: [], hasMore: false, nextLink: null };
+    }
+    throw e;
+  }
 }
 
 /**

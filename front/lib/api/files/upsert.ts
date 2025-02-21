@@ -23,8 +23,11 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import { isUpsertTableArgs } from "@app/lib/api/data_sources";
-import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import {
+  isUpsertTableArgs,
+  upsertDocument,
+  upsertTable,
+} from "@app/lib/api/data_sources";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -193,18 +196,19 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     documentId = upsertArgs.document_id;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
   const upsertDocumentRes = await upsertDocument({
     // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
     parents: [documentId],
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     dataSource,
     auth,
     mime_type: file.contentType,
-    title: upsertTitle ?? file.fileName,
+    title,
 
     // Used to override defaults.
     ...restArgs,
@@ -232,6 +236,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
 
   const upsertTableRes = await upsertTable({
     auth,
@@ -243,10 +248,14 @@ const upsertTableToDatasource: ProcessingFunction = async (
       description: "Table uploaded from file",
       truncate: true,
       csv: content.trim(),
-      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      tags: [
+        `title:${title}`,
+        `fileId:${file.sId}`,
+        `fileName:${file.fileName}`,
+      ],
       parents: [tableId],
       async: false,
-      title: upsertTitle ?? file.fileName,
+      title,
       mimeType: file.contentType,
       sourceUrl: file.getPrivateUrl(auth),
 
@@ -287,18 +296,23 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
 
-  if (!isUpsertTableArgs(upsertArgs)) {
+  if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
     return new Err(new Error("Invalid upsert args"));
   }
 
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
+        const title = `${file.fileName} ${worksheetName}`;
         const upsertTableArgs: UpsertTableArgs = {
           ...upsertArgs,
-          title: `${file.fileName} ${worksheetName}`,
-          name: slugify(`${file.fileName} ${worksheetName}`),
+          title,
+          name: slugify(title),
           tableId: `${file.sId}-${worksheetName}`,
+          description: "Table uploaded from excel file",
+          truncate: true,
+          mimeType: "text/csv",
+          sourceUrl: file.getPrivateUrl(auth),
         };
 
         await upsertTableToDatasource(auth, {
@@ -318,11 +332,16 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   if (!worksheetName || !worksheetContent) {
     return new Err(new Error("Invalid Excel file"));
   } else {
+    const title = `${file.fileName} ${worksheetName}`;
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
-      title: `${file.fileName} ${worksheetName}`,
-      name: slugify(`${file.fileName} ${worksheetName}`),
+      title,
+      name: slugify(title),
       tableId: `${file.sId}-${worksheetName}`,
+      description: "Table uploaded from excel file",
+      truncate: true,
+      mimeType: "text/csv",
+      sourceUrl: file.getPrivateUrl(auth),
     };
 
     await upsertTableToDatasource(auth, {

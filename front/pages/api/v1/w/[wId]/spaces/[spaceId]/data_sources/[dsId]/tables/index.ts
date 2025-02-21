@@ -334,7 +334,7 @@ async function handler(
         } else {
           const titleTag = tags?.find((t) => t.startsWith("title:"));
           if (titleTag) {
-            title = titleTag.split(":").slice(1).join(":");
+            title = titleTag.substring(6);
           } else {
             title = name;
           }

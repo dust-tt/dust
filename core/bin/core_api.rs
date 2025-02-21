@@ -39,10 +39,11 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
+        csv::UpsertQueueCSVContent,
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
-    databases_store::store::{self as databases_store},
+    databases_store::store as databases_store,
     dataset,
     deno::js_executor::JSExecutor,
     project,
@@ -2206,13 +2207,14 @@ async fn data_sources_delete(
 
 #[derive(serde::Deserialize)]
 struct DatabasesTablesValidateCSVContentPayload {
-    upsert_queue_bucket_csv_path: String,
+    bucket: String,
+    bucket_csv_path: String,
 }
 
 async fn tables_validate_csv_content(
     Json(payload): Json<DatabasesTablesValidateCSVContentPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match LocalTable::validate_csv_content(&payload.upsert_queue_bucket_csv_path).await {
+    match LocalTable::validate_csv_content(&payload.bucket, &payload.bucket_csv_path).await {
         Ok(schema) => (
             StatusCode::OK,
             Json(APIResponse {
@@ -2669,7 +2671,8 @@ async fn tables_update_parents(
 
 #[derive(serde::Deserialize)]
 struct DatabasesTablesUpsertCSVContentPayload {
-    upsert_queue_bucket_csv_path: String,
+    bucket: String,
+    bucket_csv_path: String,
     truncate: Option<bool>,
 }
 
@@ -2715,7 +2718,8 @@ async fn tables_csv_upsert(
                     .upsert_csv_content(
                         state.store.clone(),
                         state.databases_store.clone(),
-                        &payload.upsert_queue_bucket_csv_path,
+                        &payload.bucket,
+                        &payload.bucket_csv_path,
                         match payload.truncate {
                             Some(v) => v,
                             None => false,

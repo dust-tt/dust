@@ -411,6 +411,7 @@ export function DataSourceViewSelector({
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
+              dataSourceView,
               parentInternalIds: v.parents,
             })),
           isSelectAll: false,
