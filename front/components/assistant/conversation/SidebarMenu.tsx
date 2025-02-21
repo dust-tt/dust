@@ -61,70 +61,147 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     workspaceId: owner.sId,
   });
   const [isMultiSelect, setIsMultiSelect] = useState(false);
-  const [selectedConversations, setSelectedConversations] = useState<
-    ConversationWithoutContentType[]
+  const [selectedConversationIds, setSelectedConversationIds] = useState<
+    string[]
   >([]);
-  const doDelete = useDeleteConversation(owner);
-
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
   const sendNotification = useSendNotification();
+  const doDelete = useDeleteConversation(owner);
+
+  // Helper to get visible conversations based on filter
+  const getVisibleConversations = useCallback(
+    (conversations: ConversationWithoutContentType[]) => {
+      return conversations.filter((conversation) => {
+        if (!titleFilter) {
+          return true;
+        }
+        return subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(conversation.title ?? "").toLowerCase()
+        );
+      });
+    },
+    [titleFilter]
+  );
+
+  // Safe delete helper with error handling
+  const safeDelete = useCallback(
+    async (conversation: ConversationWithoutContentType) => {
+      try {
+        await doDelete(conversation);
+        return true;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to delete conversation",
+          description: `Failed to delete conversation "${conversation.title || "Untitled"}". Please try again.`,
+        });
+        return false;
+      }
+    },
+    [doDelete, sendNotification]
+  );
 
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
-    setSelectedConversations([]);
-  }, [setIsMultiSelect, setSelectedConversations]);
+    setSelectedConversationIds([]);
+  }, []);
 
   const toggleConversationSelection = useCallback(
     (c: ConversationWithoutContentType) => {
-      if (selectedConversations.includes(c)) {
-        setSelectedConversations((prev) => prev.filter((id) => id !== c));
+      if (selectedConversationIds.includes(c.sId)) {
+        setSelectedConversationIds((prev) => prev.filter((id) => id !== c.sId));
       } else {
-        setSelectedConversations((prev) => [...prev, c]);
+        setSelectedConversationIds((prev) => [...prev, c.sId]);
       }
     },
-    [selectedConversations, setSelectedConversations]
+    [selectedConversationIds]
   );
 
   const deleteSelection = useCallback(async () => {
     setIsDeleting(true);
-    if (selectedConversations.length > 0) {
-      for (const conversation of selectedConversations) {
-        await doDelete(conversation);
+    try {
+      const visibleConversations = getVisibleConversations(conversations);
+      const conversationsToDelete = visibleConversations.filter((c) =>
+        selectedConversationIds.includes(c.sId)
+      );
+
+      if (conversationsToDelete.length === 0) {
+        sendNotification({
+          type: "error",
+          title: "No conversations selected",
+          description: "Please select conversations to delete",
+        });
+        return;
       }
-      toggleMultiSelect();
+
+      const results = await Promise.allSettled(
+        conversationsToDelete.map((conversation) => safeDelete(conversation))
+      );
+
+      const successCount = results.filter(
+        (r) => r.status === "fulfilled" && r.value === true
+      ).length;
+
+      if (successCount > 0) {
+        sendNotification({
+          type: "success",
+          title: "Conversations deleted",
+          description: `Successfully deleted ${successCount} conversation${successCount > 1 ? "s" : ""}`,
+        });
+        toggleMultiSelect();
+      }
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(null);
     }
-    setIsDeleting(false);
-    setShowDeleteDialog(null);
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        selectedConversations.length > 1
-          ? `${selectedConversations.length} conversations have been deleted.`
-          : `${selectedConversations.length} conversation has been deleted.`,
-    });
-  }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
+  }, [
+    conversations,
+    selectedConversationIds,
+    getVisibleConversations,
+    safeDelete,
+    sendNotification,
+    toggleMultiSelect,
+  ]);
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
-    for (const conversation of conversations) {
-      await doDelete(conversation);
+    try {
+      const visibleConversations = getVisibleConversations(conversations);
+
+      if (visibleConversations.length === 0) {
+        sendNotification({
+          type: "error",
+          title: "No conversations to delete",
+          description: "No conversations match the current filter",
+        });
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        visibleConversations.map((conversation) => safeDelete(conversation))
+      );
+
+      const successCount = results.filter(
+        (r) => r.status === "fulfilled" && r.value === true
+      ).length;
+
+      if (successCount > 0) {
+        sendNotification({
+          type: "success",
+          title: "Conversations deleted",
+          description: `Successfully deleted ${successCount} conversation${successCount > 1 ? "s" : ""}`,
+        });
+      }
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(null);
     }
-    sendNotification({
-      type: "success",
-      title: "Conversations successfully deleted",
-      description:
-        conversations.length > 1
-          ? `${conversations.length} conversations have been deleted.`
-          : `${conversations.length} conversation has been deleted.`,
-    });
-    setIsDeleting(false);
-    setShowDeleteDialog(null);
-  }, [conversations, doDelete, sendNotification]);
+  }, [conversations, getVisibleConversations, safeDelete, sendNotification]);
 
   const groupConversationsByDate = (
     conversations: ConversationWithoutContentType[]
@@ -192,7 +269,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         onClose={() => setShowDeleteDialog(null)}
         onDelete={showDeleteDialog === "all" ? deleteAll : deleteSelection}
         type={showDeleteDialog || "all"}
-        selectedCount={selectedConversations.length}
+        selectedCount={selectedConversationIds.length}
       />
       <div
         className={classNames(
@@ -208,10 +285,10 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
               <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
                 <Button
                   variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
+                    selectedConversationIds.length === 0 ? "outline" : "warning"
                   }
                   label="Delete"
-                  disabled={selectedConversations.length === 0}
+                  disabled={selectedConversationIds.length === 0}
                   onClick={() => setShowDeleteDialog("selection")}
                 />
                 <Button
@@ -303,7 +380,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                     conversations={conversationsByDate[dateLabel as GroupLabel]}
                     dateLabel={dateLabel}
                     isMultiSelect={isMultiSelect}
-                    selectedConversations={selectedConversations}
+                    selectedConversationIds={selectedConversationIds}
                     toggleConversationSelection={toggleConversationSelection}
                     router={router}
                     owner={owner}
@@ -325,7 +402,7 @@ const RenderConversations = ({
   conversations: ConversationWithoutContentType[];
   dateLabel: string;
   isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
+  selectedConversationIds: string[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
@@ -355,14 +432,14 @@ const RenderConversations = ({
 const RenderConversation = ({
   conversation,
   isMultiSelect,
-  selectedConversations,
+  selectedConversationIds,
   toggleConversationSelection,
   router,
   owner,
 }: {
   conversation: ConversationWithoutContentType;
   isMultiSelect: boolean;
-  selectedConversations: ConversationWithoutContentType[];
+  selectedConversationIds: string[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
   router: NextRouter;
   owner: WorkspaceType;
@@ -380,7 +457,7 @@ const RenderConversation = ({
           <Checkbox
             id={`conversation-${conversation.sId}`}
             className="bg-white dark:bg-slate-950"
-            checked={selectedConversations.includes(conversation)}
+            checked={selectedConversationIds.includes(conversation.sId)}
             onCheckedChange={() => toggleConversationSelection(conversation)}
           />
           <Label
