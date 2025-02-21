@@ -54,7 +54,7 @@ export const TagSearchInput = ({
             className={cn(
               "justify-start",
               selected &&
-                "dark:text-primary-night border-primary-150 bg-primary-150 text-primary dark:border-primary-500 dark:bg-primary-700"
+                "border-border-dark bg-primary-150 text-primary-900 dark:border-primary-600 dark:bg-primary-700 dark:text-primary-900-night"
             )}
             onClick={() => {
               onTagAdd(item);
