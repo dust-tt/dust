@@ -1,21 +1,26 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 
 import { cn } from "@sparkle/lib";
 
-export const preBlockVariants = {
-  base: cn(
+export const preBlockVariants = cva(
+  [
     "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
-    "s-border-border-dark dark:s-border-border-dark-night"
-  ),
-  variant: {
-    muted: "s-bg-gray-700 s-text-gray-500 dark:s-bg-muted-background-night",
-    surface: "s-bg-muted-background dark:s-bg-muted-background-night",
-  },
-};
+    "s-border-border-dark dark:s-border-border-dark-night",
+  ],
+  {
+    variants: {
+      variant: {
+        muted: "s-bg-gray-700 s-text-gray-500 dark:s-bg-muted-background-night",
+        surface: "s-bg-muted-background dark:s-bg-muted-background-night",
+      },
+    },
+  }
+);
 
 interface PreBlockProps {
   children: React.ReactNode;
-  variant?: keyof typeof preBlockVariants.variant;
+  variant?: "muted" | "surface";
 }
 
 export function PreBlock({ children, variant = "surface" }: PreBlockProps) {
@@ -33,9 +38,7 @@ export function PreBlock({ children, variant = "surface" }: PreBlockProps) {
   }
 
   return (
-    <pre
-      className={cn(preBlockVariants.base, preBlockVariants.variant[variant])}
-    >
+    <pre className={preBlockVariants({ variant })}>
       {validChildrenContent ? children : fallbackData || children}
     </pre>
   );

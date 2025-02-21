@@ -1,10 +1,11 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 
 import { cn } from "@sparkle/lib";
 
-export const ulBlockVariants = {
-  base: "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
-};
+export const ulBlockVariants = cva([
+  "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
+]);
 
 interface UlBlockProps {
   children: React.ReactNode;
@@ -14,15 +15,13 @@ interface UlBlockProps {
 
 export function UlBlock({ children, textColor, textSize }: UlBlockProps) {
   return (
-    <ul className={cn(ulBlockVariants.base, textColor, textSize)}>
-      {children}
-    </ul>
+    <ul className={cn(ulBlockVariants(), textColor, textSize)}>{children}</ul>
   );
 }
 
-export const olBlockVariants = {
-  base: "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
-};
+export const olBlockVariants = cva([
+  "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
+]);
 
 interface OlBlockProps {
   children: React.ReactNode;
@@ -38,15 +37,15 @@ export function OlBlock({
   textSize,
 }: OlBlockProps) {
   return (
-    <ol start={start} className={cn(olBlockVariants.base, textColor, textSize)}>
+    <ol start={start} className={cn(olBlockVariants(), textColor, textSize)}>
       {children}
     </ol>
   );
 }
 
-export const liBlockVariants = {
-  base: "s-break-words first:s-pt-0 last:s-pb-0 s-py-1 @md:s-py-2",
-};
+export const liBlockVariants = cva([
+  "s-break-words first:s-pt-0 last:s-pb-0 s-py-1 @md:s-py-2",
+]);
 
 interface LiBlockProps {
   children: React.ReactNode;
@@ -62,7 +61,7 @@ export function LiBlock({
   textSize,
 }: LiBlockProps) {
   return (
-    <li className={cn(liBlockVariants.base, textColor, textSize, className)}>
+    <li className={cn(liBlockVariants(), textColor, textSize, className)}>
       {children}
     </li>
   );

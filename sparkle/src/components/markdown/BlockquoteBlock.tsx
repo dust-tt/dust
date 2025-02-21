@@ -1,25 +1,29 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 
 import { ContentBlockWrapper } from "@sparkle/components";
-import { cn } from "@sparkle/lib/utils";
 
-export const blockquoteVariants = {
-  base: "s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12",
-  variant: {
-    muted: cn(
-      "s-text-foreground dark:s-text-foreground-night",
-      "s-bg-white dark:s-bg-muted-background-night"
-    ),
-    surface: cn(
-      "s-text-foreground dark:s-text-foreground-night",
-      "s-bg-muted-background dark:s-bg-muted-background-night"
-    ),
-  },
-};
+export const blockquoteVariants = cva(
+  ["s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12"],
+  {
+    variants: {
+      variant: {
+        muted: [
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-bg-white dark:s-bg-muted-background-night",
+        ],
+        surface: [
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-bg-muted-background dark:s-bg-muted-background-night",
+        ],
+      },
+    },
+  }
+);
 
 interface BlockquoteBlockProps {
   children: React.ReactNode;
-  variant?: keyof typeof blockquoteVariants.variant;
+  variant?: "muted" | "surface";
 }
 
 export function BlockquoteBlock({
@@ -44,12 +48,7 @@ export function BlockquoteBlock({
 
   return (
     <ContentBlockWrapper content={clipboardContent} className="s-my-2">
-      <blockquote
-        className={cn(
-          blockquoteVariants.base,
-          blockquoteVariants.variant[variant]
-        )}
-      >
+      <blockquote className={blockquoteVariants({ variant })}>
         {children}
       </blockquote>
     </ContentBlockWrapper>
