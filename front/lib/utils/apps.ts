@@ -176,7 +176,7 @@ async function updateAppSpecifications(
   logger.info({ sId: app.sId, name: app.name }, "Updating app specifications");
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  // Specification and config have been modified and need to be imported
+  // Specification or config have been modified and need to be imported
   if (
     savedSpecification !== app.savedSpecification ||
     savedConfig !== app.savedConfig
