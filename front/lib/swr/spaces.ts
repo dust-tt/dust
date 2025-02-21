@@ -599,12 +599,14 @@ export function useSpaceSearch({
   owner,
   viewType,
   search,
+  disabled = false,
   limit = DEFAULT_SEARCH_LIMIT,
 }: {
   dataSourceViews: DataSourceViewType[];
   owner: LightWorkspaceType;
   viewType: ContentNodesViewType;
   search: string;
+  disabled?: boolean;
   limit?: number;
 }) {
   const body = {
@@ -642,6 +644,7 @@ export function useSpaceSearch({
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      disabled,
     }
   );
 
