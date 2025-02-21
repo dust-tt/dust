@@ -160,7 +160,7 @@ async function handler(
       return [];
     }
 
-    return getContentNodeFromCoreNode(dataSourceView, node, viewType);
+    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
   return res.status(200).json({ nodes });
 }

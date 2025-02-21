@@ -7,7 +7,7 @@ import type {
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.SLACK.CHANNEL,
@@ -76,7 +76,7 @@ function isExpandable(
 }
 
 export function getContentNodeFromCoreNode(
-  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  dataSourceView: DataSourceViewType,
   coreNode: CoreAPIContentNode,
   viewType: ContentNodesViewType
 ): DataSourceViewContentNode {
@@ -99,9 +99,6 @@ export function getContentNodeFromCoreNode(
     preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
       coreNode.mime_type
     ),
-    dataSourceView:
-      dataSourceView instanceof DataSourceViewResource
-        ? dataSourceView.toJSON()
-        : dataSourceView,
+    dataSourceView,
   };
 }
