@@ -145,7 +145,7 @@ const useEditorService = (editor: Editor | null) => {
         }
 
         return {
-          markdown: markdownSerializer?.serialize(editor.state.doc),
+          markdown: markdownSerializer?.serialize(editor.state.doc) ?? "",
           mentions: this.getTextAndMentions().mentions,
         };
       },
