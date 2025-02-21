@@ -24,10 +24,16 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-import type { ContentNodeTreeItemStatus, TreeSelectionModelUpdater } from "@app/components/ContentNodeTree";
+import type {
+  ContentNodeTreeItemStatus,
+  TreeSelectionModelUpdater,
+} from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { CONNECTOR_CONFIGURATIONS, getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
   canBeExpanded,
@@ -185,6 +191,38 @@ export function DataSourceViewsSelector({
     managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
+  function updateSelectionWithNode(
+    item: DataSourceViewContentNode,
+    prevState: DataSourceViewSelectionConfigurations
+  ): DataSourceViewSelectionConfigurations {
+    const dsv = item.dataSourceView;
+    const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
+
+    const exists = prevConfig.selectedResources.some(
+      (r) => r.internalId === item.internalId
+    );
+
+    const newResources = exists
+      ? prevConfig.selectedResources
+      : [
+          ...prevConfig.selectedResources,
+          {
+            ...item,
+            dataSourceView: dsv,
+            parentInternalIds: item.parentInternalIds || [],
+          },
+        ];
+
+    return {
+      ...prevState,
+      [dsv.sId]: {
+        ...prevConfig,
+        selectedResources: newResources,
+        isSelectAll: false,
+      },
+    };
+  }
+
   return (
     <div>
       <SearchInputWithPopover
@@ -199,25 +237,28 @@ export function DataSourceViewsSelector({
         }}
         items={searchResultNodes}
         renderItem={(item) => (
-            <ContextItem
-              title={item.title}
-              onClick={() => {
-                setSearchResult(item)
-                setSearchDsv("")
-              }}
-              visual={CONTENT_NODE_TYPE_ICONS[item.type]}
-              subElement={
-                <ContextItem.Visual
-                  visual={
-                    item.dataSourceView.dataSource.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[
-                          item.dataSourceView.dataSource.connectorProvider
-                        ].getLogoComponent()
-                      : FolderIcon
-                  }
-                />
-              }
-            />
+          <ContextItem
+            title={item.title}
+            onClick={() => {
+              setSearchResult(item);
+              setSearchDsv("");
+              setSelectionConfigurations((prevState) =>
+                updateSelectionWithNode(item, prevState)
+              );
+            }}
+            visual={CONTENT_NODE_TYPE_ICONS[item.type]}
+            subElement={
+              <ContextItem.Visual
+                visual={
+                  item.dataSourceView.dataSource.connectorProvider
+                    ? CONNECTOR_CONFIGURATIONS[
+                        item.dataSourceView.dataSource.connectorProvider
+                      ].getLogoComponent()
+                    : FolderIcon
+                }
+              />
+            }
+          />
         )}
         noResults="No results found"
       />
@@ -308,7 +349,8 @@ export function DataSourceViewsSelector({
             visual={GlobeAltIcon}
             type="node"
             defaultCollapsed={
-              !searchResult || !isWebsite(searchResult.dataSourceView.dataSource)
+              !searchResult ||
+              !isWebsite(searchResult.dataSourceView.dataSource)
             }
           >
             {websites.map((dataSourceView) => (
