@@ -1,4 +1,4 @@
-import { Button, Chip, SearchInputWithPopover } from "@dust-tt/sparkle";
+import { Button, Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
 import type { DataSourceTag } from "@dust-tt/types";
 import React from "react";
 
@@ -43,32 +43,26 @@ export const TagSearchInput = ({
         }}
         isLoading={isLoading}
         disabled={disabled}
-      >
-        <div className="flex flex-col gap-2 pr-4">
-          {availableTags.length > 0 ? (
-            availableTags.map((tag, i) => (
-              <Button
-                key={`${tag.tag}-${i}`}
-                variant="ghost"
-                label={tag.tag}
-                size="sm"
-                className="justify-start"
-                onClick={() => {
-                  onTagAdd(tag);
-                  setSearchInputValue("");
-                }}
-              />
-            ))
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              label="No results found"
-              disabled
-            />
-          )}
-        </div>
-      </SearchInputWithPopover>
+        noResults="No results found"
+        items={availableTags}
+        renderItem={(item, selected) => (
+          <Button
+            key={`${item.tag}`}
+            variant="ghost"
+            label={item.tag}
+            size="sm"
+            className={cn(
+              "justify-start",
+              selected &&
+                "border-border-dark bg-primary-150 text-primary-900 dark:border-primary-600 dark:bg-primary-700 dark:text-primary-900-night"
+            )}
+            onClick={() => {
+              onTagAdd(item);
+              setSearchInputValue("");
+            }}
+          />
+        )}
+      ></SearchInputWithPopover>
 
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (
