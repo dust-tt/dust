@@ -10,7 +10,7 @@ export const blockquoteVariants = cva(
       variant: {
         muted: [
           "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-white dark:s-bg-muted-background-night",
+          "s-bg-slate-100 dark:s-bg-muted-night",
         ],
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
