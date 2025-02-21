@@ -68,11 +68,7 @@ async function generateSnippet(
     });
 
     if (schemaRes.isErr()) {
-      return new Err({
-        name: "dust_error",
-        code: "invalid_csv",
-        message: schemaRes.error.message,
-      });
+      return new Err(new Error("Invalid CSV content"));
     }
 
     let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;

@@ -577,7 +577,7 @@ export async function upsertTable({
         | "invalid_csv_and_file"
         | "missing_csv"
         | "data_source_error"
-        | "invalid_csv"
+        | "invalid_csv_content"
         | "invalid_url"
         | "table_not_found"
         | "file_not_found"
@@ -697,13 +697,20 @@ export async function upsertTable({
         bucket: file.getBucketForVersion("processed").name,
         bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
       });
-
       if (schemaRes.isErr()) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_csv",
-          message: schemaRes.error.message,
-        });
+        if (schemaRes.error.code === "invalid_csv_content") {
+          return new Err({
+            name: "dust_error",
+            code: "invalid_csv_content",
+            message: schemaRes.error.message,
+          });
+        } else {
+          return new Err({
+            name: "dust_error",
+            code: "internal_error",
+            message: schemaRes.error.message,
+          });
+        }
       }
     }
 
