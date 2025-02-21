@@ -2,17 +2,14 @@ import {
   Button,
   CloudArrowLeftRightIcon,
   ContextItem,
-  DocumentIcon,
   FolderIcon,
   GlobeAltIcon,
   ListCheckIcon,
   SearchInputWithPopover,
-  TableIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type {
   ContentNodesViewType,
-  ContentNodeType,
   DataSourceViewContentNode,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
@@ -22,7 +19,7 @@ import type {
 import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -35,6 +32,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
+import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -47,16 +45,8 @@ import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
-export const CONTENT_NODE_TYPE_ICONS: Record<
-  ContentNodeType,
-  React.JSX.Element
-> = {
-  Document: <DocumentIcon />,
-  Table: <TableIcon />,
-  Folder: <FolderIcon />,
-};
-
 const ONLY_ONE_SPACE_PER_SELECTION = true;
+const MIN_SEARCH_QUERY_SIZE = 3;
 
 const getUseResourceHook =
   (
@@ -134,15 +124,29 @@ export function DataSourceViewsSelector({
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
   >();
-  const [searchDsv, setSearchDsv] = useState("");
+  const [searchSpaceText, setSearchSpaceText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
   const { searchResultNodes } = useSpaceSearch({
     dataSourceViews,
     owner,
     viewType,
-    search: searchDsv,
+    search: debouncedSearch,
     disabled: !searchFeatureFlag,
   });
+
+  useEffect(() => {
+    if (searchFeatureFlag) {
+      const timeout = setTimeout(() => {
+        setDebouncedSearch(
+          searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
+        );
+      }, 300);
+      return () => {
+        clearTimeout(timeout);
+      };
+    }
+  }, [searchSpaceText, searchFeatureFlag]);
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
@@ -191,7 +195,7 @@ export function DataSourceViewsSelector({
     managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
-  function updateSelectionWithNode(
+  function updateSelection(
     item: DataSourceViewContentNode,
     prevState: DataSourceViewSelectionConfigurations
   ): DataSourceViewSelectionConfigurations {
@@ -227,13 +231,13 @@ export function DataSourceViewsSelector({
     <div>
       {searchFeatureFlag && (
         <SearchInputWithPopover
-          value={searchDsv}
-          onChange={setSearchDsv}
+          value={searchSpaceText}
+          onChange={setSearchSpaceText}
           name="search-dsv"
-          open={searchResultNodes.length > 0 && !!searchDsv}
+          open={searchResultNodes.length > 0 && !!searchSpaceText}
           onOpenChange={(open) => {
             if (!open) {
-              setSearchDsv("");
+              setSearchSpaceText("");
             }
           }}
           items={searchResultNodes}
@@ -242,12 +246,12 @@ export function DataSourceViewsSelector({
               title={item.title}
               onClick={() => {
                 setSearchResult(item);
-                setSearchDsv("");
+                setSearchSpaceText("");
                 setSelectionConfigurations((prevState) =>
-                  updateSelectionWithNode(item, prevState)
+                  updateSelection(item, prevState)
                 );
               }}
-              visual={CONTENT_NODE_TYPE_ICONS[item.type]}
+              visual={getVisualForContentNode(item)({})}
               subElement={
                 <ContextItem.Visual
                   visual={
@@ -294,7 +298,7 @@ export function DataSourceViewsSelector({
                   isRootSelectable={isRootSelectable}
                   defaultCollapsed={filteredDSVs.length > 1}
                   useCase={useCase}
-                  searchResults={searchResult}
+                  searchResult={searchResult}
                 />
               ))}
           </Tree.Item>
@@ -339,7 +343,7 @@ export function DataSourceViewsSelector({
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
                 useCase={useCase}
-                searchResults={searchResult}
+                searchResult={searchResult}
               />
             ))}
           </Tree.Item>
@@ -368,7 +372,7 @@ export function DataSourceViewsSelector({
                 isRootSelectable={isRootSelectable}
                 defaultCollapsed={filteredDSVs.length > 1}
                 useCase={useCase}
-                searchResults={searchResult}
+                searchResult={searchResult}
               />
             ))}
           </Tree.Item>
@@ -390,7 +394,7 @@ interface DataSourceViewSelectorProps {
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
   useCase?: DataSourceViewsSelectorProps["useCase"];
-  searchResults?: DataSourceViewContentNode;
+  searchResult?: DataSourceViewContentNode;
 }
 
 export function DataSourceViewSelector({
@@ -403,7 +407,7 @@ export function DataSourceViewSelector({
   isRootSelectable,
   defaultCollapsed = true,
   useCase,
-  searchResults,
+  searchResult,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -541,14 +545,12 @@ export function DataSourceViewSelector({
     [owner, dataSourceView, viewType, useContentNodes]
   );
 
-  const isExpanded = searchResults
-    ? searchResults.dataSourceView.sId === dataSourceView.sId
+  const isExpanded = searchResult
+    ? searchResult.dataSourceView.sId === dataSourceView.sId
     : false;
   const defaultExpandedIds =
-    isExpanded && searchResults
-      ? removeNulls([
-          ...new Set([searchResults].flatMap((r) => r.parentInternalIds)),
-        ])
+    isExpanded && searchResult
+      ? removeNulls([...new Set(searchResult.parentInternalIds)])
       : undefined;
 
   return (
