@@ -24,16 +24,10 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-import type {
-  ContentNodeTreeItemStatus,
-  TreeSelectionModelUpdater,
-} from "@app/components/ContentNodeTree";
+import type { ContentNodeTreeItemStatus, TreeSelectionModelUpdater } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS, getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
   canBeExpanded,
@@ -205,10 +199,12 @@ export function DataSourceViewsSelector({
         }}
         items={searchResultNodes}
         renderItem={(item) => (
-          <div className="items-center">
             <ContextItem
               title={item.title}
-              onClick={() => setSearchResult(item)}
+              onClick={() => {
+                setSearchResult(item)
+                setSearchDsv("")
+              }}
               visual={CONTENT_NODE_TYPE_ICONS[item.type]}
               subElement={
                 <ContextItem.Visual
@@ -222,7 +218,6 @@ export function DataSourceViewsSelector({
                 />
               }
             />
-          </div>
         )}
         noResults="No results found"
       />
@@ -313,7 +308,7 @@ export function DataSourceViewsSelector({
             visual={GlobeAltIcon}
             type="node"
             defaultCollapsed={
-              !searchResult || isWebsite(searchResult.dataSourceView.dataSource)
+              !searchResult || !isWebsite(searchResult.dataSourceView.dataSource)
             }
           >
             {websites.map((dataSourceView) => (
