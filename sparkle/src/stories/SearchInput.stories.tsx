@@ -86,11 +86,15 @@ export function SearchInputWithPopoverScrollableExample() {
       open={open}
       onOpenChange={setOpen}
       items={filteredItems}
-      renderItem={(item, selected ) => (
+      onItemSelect={(item) => console.log(item)}
+      renderItem={(item, selected) => (
         <div
           key={item}
           role="option"
-          className={cn("s-cursor-pointer s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night", selected && "s-bg-primary-100")}
+          className={cn(
+            "s-cursor-pointer s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+            selected && "s-bg-primary-100"
+          )}
           onClick={() => {
             setValue(item);
             setOpen(false);

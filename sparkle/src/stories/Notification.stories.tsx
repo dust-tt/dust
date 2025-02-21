@@ -19,7 +19,6 @@ export const Example = () => {
   );
 };
 
-
 const NotificationExample = () => {
   const sendNotification = useSendNotification();
 
