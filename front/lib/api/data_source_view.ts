@@ -196,7 +196,7 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: resultNodes.map((node) =>
-      getContentNodeFromCoreNode(node, viewType)
+      getContentNodeFromCoreNode(dataSourceView, node, viewType)
     ),
     total: resultNodes.length,
     nextPageCursor: nextPageCursor,

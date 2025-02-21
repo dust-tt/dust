@@ -1,7 +1,4 @@
-import {
-  AdminCommandType,
-  AdminResponseType,
-} from "../../connectors/admin/cli";
+import { AdminCommandType, AdminResponseType } from "../../connectors/admin/cli";
 import { ConnectorsAPIError, isConnectorsAPIError } from "../../connectors/api";
 import { UpdateConnectorConfigurationType } from "../../connectors/api_handlers/connector_configuration";
 import { ConnectorCreateRequestBody } from "../../connectors/api_handlers/create_connector";
@@ -12,6 +9,7 @@ import { ContentNodeType } from "../../core/content_node";
 import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { DataSourceViewType } from "../data_source_view";
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
@@ -87,18 +85,19 @@ export type ProviderVisibility = "public" | "private";
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
+  dataSourceView: DataSourceViewType;
+  expandable: boolean;
   internalId: string;
+  lastUpdatedAt: number | null;
+  mimeType: string;
   // The direct parent ID of this content node
   parentInternalId: string | null;
-  type: ContentNodeType;
-  title: string;
-  sourceUrl: string | null;
-  expandable: boolean;
-  preventSelection?: boolean;
   permission: ConnectorPermission;
-  lastUpdatedAt: number | null;
+  preventSelection?: boolean;
   providerVisibility?: ProviderVisibility;
-  mimeType: string;
+  sourceUrl: string | null;
+  title: string;
+  type: ContentNodeType;
 }
 
 type GetContentNodesReturnType<Key extends string> = ConnectorsAPIResponse<{
