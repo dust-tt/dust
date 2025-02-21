@@ -88,6 +88,7 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
+export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";

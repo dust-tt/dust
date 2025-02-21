@@ -1,11 +1,35 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 
 import { ContentBlockWrapper } from "@sparkle/components";
-import { cn } from "@sparkle/lib/utils";
 
-type BlockquoteBlockProps = { children: React.ReactNode };
+export const blockquoteVariants = cva(
+  ["s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12"],
+  {
+    variants: {
+      variant: {
+        muted: [
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-bg-slate-100 dark:s-bg-muted-night",
+        ],
+        surface: [
+          "s-text-foreground dark:s-text-foreground-night",
+          "s-bg-muted-background dark:s-bg-muted-background-night",
+        ],
+      },
+    },
+  }
+);
 
-export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
+interface BlockquoteBlockProps {
+  children: React.ReactNode;
+  variant?: "muted" | "surface";
+}
+
+export function BlockquoteBlock({
+  children,
+  variant = "surface",
+}: BlockquoteBlockProps) {
   const elementAt1 = React.Children.toArray(children)[1];
   const childrenContent =
     elementAt1 && React.isValidElement(elementAt1)
@@ -24,14 +48,7 @@ export function BlockquoteBlock({ children }: BlockquoteBlockProps) {
 
   return (
     <ContentBlockWrapper content={clipboardContent} className="s-my-2">
-      <blockquote
-        className={cn(
-          "s-w-full s-text-base s-italic",
-          "s-rounded-2xl s-py-3 s-pl-5 s-pr-12",
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-muted-background dark:s-bg-muted-background-night"
-        )}
-      >
+      <blockquote className={blockquoteVariants({ variant })}>
         {children}
       </blockquote>
     </ContentBlockWrapper>
