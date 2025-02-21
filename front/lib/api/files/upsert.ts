@@ -236,6 +236,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
 
   const upsertTableRes = await upsertTable({
     auth,
@@ -247,10 +248,14 @@ const upsertTableToDatasource: ProcessingFunction = async (
       description: "Table uploaded from file",
       truncate: true,
       csv: content.trim(),
-      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      tags: [
+        `title:${title}`,
+        `fileId:${file.sId}`,
+        `fileName:${file.fileName}`,
+      ],
       parents: [tableId],
       async: false,
-      title: upsertTitle ?? file.fileName,
+      title,
       mimeType: file.contentType,
       sourceUrl: file.getPrivateUrl(auth),
 
