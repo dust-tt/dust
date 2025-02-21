@@ -61,7 +61,7 @@ const PopoverContent = React.forwardRef<
     );
 
     useEffect(() => {
-      if (mountPortal && container) {
+      if (mountPortal && !container) {
         const dialogElements = document.querySelectorAll(
           ".s-sheet[role=dialog][data-state=open]"
         );
