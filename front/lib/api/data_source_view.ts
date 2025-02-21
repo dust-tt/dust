@@ -21,7 +21,7 @@ import type {
 import { isCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
 export function filterAndCropContentNodesByView(
@@ -196,7 +196,13 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: resultNodes.map((node) =>
-      getContentNodeFromCoreNode(node, viewType)
+      getContentNodeFromCoreNode(
+        dataSourceView instanceof DataSourceViewResource
+          ? dataSourceView.toJSON()
+          : dataSourceView,
+        node,
+        viewType
+      )
     ),
     total: resultNodes.length,
     nextPageCursor: nextPageCursor,
