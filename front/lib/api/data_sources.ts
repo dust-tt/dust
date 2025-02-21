@@ -337,9 +337,7 @@ export async function upsertDocument({
   const nonNullTags = tags || [];
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
+    ?.substring(6);
   if (!titleInTags) {
     nonNullTags.push(`title:${title}`);
   }
@@ -647,9 +645,7 @@ export async function upsertTable({
   const tableTags = params.tags ?? [];
   const titleInTags = tableTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
+    ?.substring(6);
   if (!titleInTags) {
     tableTags.push(`title:${params.title}`);
   }
