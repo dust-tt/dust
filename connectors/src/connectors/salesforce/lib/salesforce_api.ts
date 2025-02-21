@@ -1,35 +1,45 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { Connection, QueryResult, Record } from "jsforce";
+import type { Connection } from "jsforce";
 import jsforce from "jsforce";
 
-import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import {
+  INTERNAL_ID_DATABASE,
+  INTERNAL_ID_SCHEMA_CUSTOM,
+  INTERNAL_ID_SCHEMA_STANDARD,
+  isCustomSchemaInternalId,
+  isValidSchemaInternalId,
+} from "@connectors/connectors/salesforce/lib/internal_ids";
+import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import type {
+  RemoteDBDatabase,
+  RemoteDBSchema,
+  RemoteDBTable,
+} from "@connectors/lib/remote_databases/utils";
 
-type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
+const SF_API_VERSION = "57.0";
 
-export class TestConnectionError extends Error {
-  code: TestConnectionErrorCode;
-
-  constructor(code: TestConnectionErrorCode, message: string) {
-    super(message);
-    this.name = "TestSalesforceConnectionError";
-    this.code = code;
-  }
-}
-
-const SALESFORCE_API_VERSION = "57.0";
-
+/**
 /**
  * Get a Salesforce connection for the given connection ID.
  */
-const getSalesforceConnection = async (connectionId: string) => {
-  const { accessToken, instanceUrl } =
-    await getSalesforceCredentials(connectionId);
-  return new jsforce.Connection({
-    instanceUrl,
-    accessToken,
-    version: SALESFORCE_API_VERSION,
-  });
+export const getSalesforceConnection = async (
+  credentials: SalesforceAPICredentials
+): Promise<Result<Connection, Error>> => {
+  const { accessToken, instanceUrl } = credentials;
+
+  try {
+    const conn = new jsforce.Connection({
+      instanceUrl,
+      accessToken,
+      version: SF_API_VERSION,
+    });
+    await conn.identity();
+    return new Ok(conn);
+  } catch (err) {
+    console.error("Connection failed:", err);
+    return new Err(new Error("Connection failed"));
+  }
 };
 
 /**
@@ -37,80 +47,94 @@ const getSalesforceConnection = async (connectionId: string) => {
  * Used to check if the credentials are valid and the connection is successful.
  */
 export async function testSalesforceConnection(
-  connectionId: string
+  credentials: SalesforceAPICredentials
 ): Promise<Result<undefined, Error>> {
-  const conn = await getSalesforceConnection(connectionId);
+  const connRes = await getSalesforceConnection(credentials);
+  if (connRes.isErr()) {
+    return new Err(new Error("Connection failed"));
+  }
+  const conn = connRes.value;
 
   try {
-    const userInfo = await conn.identity();
-    console.log("Successfully connected to Salesforce:", userInfo);
+    await conn.identity();
     return new Ok(undefined);
   } catch (err) {
-    // TODO SF: Handle different error types.
-    console.error("Connection failed:", err);
-    return new Err(new Error("Connection failed"));
+    // TODO(salesforce): Handle different error types.
+    console.error("Can't connect to Salesforce:", err);
+    return new Err(new Error("Can't connect to Salesforce."));
   }
 }
 
 /**
- * Get all objects from Salesforce.
+ * Fetch the databases available in the Salesforce account.
+ * In Salesforce, databases are the equivalent of projects.
+ * Credentials are scoped to a project, so we can't fetch the databases of another project.
  */
-export async function getSalesforceObjects({
-  connectionId,
-  connection,
-}: {
-  connectionId: string;
-  connection?: Connection;
-}): Promise<Result<string[], Error>> {
-  const conn = connection ?? (await getSalesforceConnection(connectionId));
+export const fetchDatabases = (): RemoteDBDatabase[] => {
+  // Salesforce do not have a concept of databases per say, the most similar concept is a project.
+  // Since credentials are always scoped to a project, we directly return a single database with the project name.
+  return [{ name: INTERNAL_ID_DATABASE }];
+};
 
+/**
+ * Fetch the schemas available in the Salesforce account.
+ * In Salesforce, we have two types of objects: standard and custom.
+ * We fetch them separately and return them as two different schemas.
+ */
+export const fetchSchemas = (): RemoteDBSchema[] => {
+  return [
+    {
+      name: INTERNAL_ID_SCHEMA_STANDARD,
+      database_name: INTERNAL_ID_DATABASE,
+    },
+    {
+      name: INTERNAL_ID_SCHEMA_CUSTOM,
+      database_name: INTERNAL_ID_DATABASE,
+    },
+  ];
+};
+
+/**
+ * Fetch the tables available in the Salesforce account.
+ * In Salesforce, objects are the equivalent of tables.
+ */
+export async function fetchTables({
+  credentials,
+  parentInternalId,
+}: {
+  credentials: SalesforceAPICredentials;
+  parentInternalId: string;
+}): Promise<Result<Array<RemoteDBTable>, Error>> {
+  // Validate parent schema.
+  if (!isValidSchemaInternalId(parentInternalId)) {
+    return new Err(new Error(`Invalid schema: ${parentInternalId}`));
+  }
+  const isCustomSchema = isCustomSchemaInternalId(parentInternalId);
+  const schemaName = isCustomSchema
+    ? INTERNAL_ID_SCHEMA_CUSTOM
+    : INTERNAL_ID_SCHEMA_STANDARD;
+
+  // Get a Salesforce connection.
+  const connRes = await getSalesforceConnection(credentials);
+  if (connRes.isErr()) {
+    return new Err(new Error("Can't connect to Salesforce."));
+  }
+
+  // Fetch the tables.
   try {
-    const tables = await conn.describeGlobal();
-    console.log(
-      "Available Salesforce objects:",
-      tables.sobjects.map((obj) => obj.name)
+    const tables = await connRes.value.describeGlobal();
+
+    return new Ok(
+      tables.sobjects
+        .filter((obj) => (isCustomSchema ? obj.custom : !obj.custom))
+        .map((obj) => ({
+          name: obj.name,
+          database_name: INTERNAL_ID_DATABASE,
+          schema_name: schemaName,
+        }))
     );
-    return new Ok(tables.sobjects.map((obj) => obj.name));
   } catch (err) {
     console.error("Connection failed:", err);
     return new Err(new Error("Connection failed"));
   }
-}
-
-/**
- * Get all fields for a given object from Salesforce.
- */
-export async function getSalesforceObjectFields({
-  connectionId,
-  objectName,
-  connection,
-}: {
-  connectionId: string;
-  objectName: string;
-  connection?: Connection;
-}): Promise<Result<string[], Error>> {
-  const conn = connection ?? (await getSalesforceConnection(connectionId));
-
-  const fields = await conn.describe(objectName);
-  return new Ok(fields.fields.map((field) => field.name));
-}
-
-/**
- * Get all records for a given object from Salesforce.
- */
-export async function getSalesforceObjectRecords({
-  connectionId,
-  objectName,
-  connection,
-}: {
-  connectionId: string;
-  objectName: string;
-  connection?: Connection;
-}): Promise<Result<QueryResult<Record>, Error>> {
-  const conn = connection ?? (await getSalesforceConnection(connectionId));
-
-  const records = await conn.query(
-    `SELECT FIELDS(ALL) FROM ${objectName} LIMIT 10`
-  );
-  return new Ok(records);
 }

@@ -1,4 +1,9 @@
-import type { ContentNode, Result } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import type {
@@ -9,10 +14,30 @@ import type {
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import {
+  fetchAvailableChildrenInSalesforce,
+  fetchReadNodes,
+  fetchSyncedChildren,
+  getBatchContentNodes,
+  getContentNodeParents,
+} from "@connectors/connectors/salesforce/lib/permissions";
+import {
+  getSalesforceConnection,
+  testSalesforceConnection,
+} from "@connectors/connectors/salesforce/lib/salesforce_api";
+import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
-import logger from "@connectors/logger/logger";
+import {
+  getConnector,
+  saveNodesFromPermissions,
+} from "@connectors/lib/remote_databases/utils";
+import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({
+  connector: "salesforce",
+});
 
 export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -41,15 +66,48 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
-    // TODO(salesforce): implement this
-
-    void connectionId;
-
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
+    // Get connector.
+    const c = await ConnectorResource.fetchById(this.connectorId);
+    if (!c) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
       throw new Error(`Connector ${this.connectorId} not found`);
     }
-    return new Ok(connector.id.toString());
+
+    // If no connection ID is provided, we return the current connector ID.
+    if (!connectionId) {
+      return new Ok(c.id.toString());
+    }
+
+    // Get credentials.
+    const credentialsRes = await getSalesforceCredentials(connectionId);
+    if (credentialsRes.isErr()) {
+      throw credentialsRes.error;
+    }
+
+    // Test connection.
+    const connectionRes = await testSalesforceConnection(credentialsRes.value);
+    if (connectionRes.isErr()) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          connectionRes.error.message
+        )
+      );
+    }
+    // await stopSalesforceSyncWorkflow(c.id);
+    await c.update({ connectionId });
+    // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
+    // upserted again (to update their remoteDatabaseSecret).
+    await RemoteTableModel.update(
+      {
+        lastUpsertedAt: null,
+      },
+      { where: { connectorId: c.id } }
+    );
+    // We launch the workflow again so it syncs immediately.
+    //await launchSalesforceSyncWorkflow(c.id);
+
+    return new Ok(c.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
@@ -86,17 +144,96 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Not implemented");
   }
 
-  async sync(): Promise<Result<string, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
+  async sync({
+    fromTs,
+  }: {
+    fromTs: number | null;
+  }): Promise<Result<string, Error>> {
+    logger.info({ fromTs }, "To be implemented");
+    throw new Error("Method sync not implemented.");
   }
 
-  async retrievePermissions(): Promise<
+  /**
+   * For Salesforce the tree is:
+   * Project > Standard Objects & Custom Objects > Objects.
+   */
+  async retrievePermissions({
+    parentInternalId,
+    filterPermission,
+  }: {
+    parentInternalId: string | null;
+    filterPermission: ConnectorPermission | null;
+  }): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    // TODO(salesforce): implement this
+    // Get connection id.
+    const c = await ConnectorResource.fetchById(this.connectorId);
+    if (!c) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      return new Err(
+        new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
+      );
+    }
 
+    // Get credentials.
+    const credentialsRes = await getSalesforceCredentials(c.connectionId);
+    if (credentialsRes.isErr()) {
+      throw credentialsRes.error;
+    }
+    const credentials = credentialsRes.value;
+
+    // Get connection.
+    const connRes = await getSalesforceConnection(credentials);
+    if (connRes.isErr()) {
+      return new Err(
+        new ConnectorManagerError(
+          "EXTERNAL_OAUTH_TOKEN_ERROR",
+          "Salesforce authorization error, please re-authorize."
+        )
+      );
+    }
+
+    // TODO(salesforce): There is a big comment for the same code in snowflake.
+    if (filterPermission === "read" && parentInternalId === null) {
+      const fetchRes = await fetchReadNodes({
+        connectorId: c.id,
+      });
+      if (fetchRes.isErr()) {
+        throw fetchRes.error;
+      }
+      return fetchRes;
+    }
+
+    // We display the nodes that we were given access to by the admin.
+    // We display the db/schemas if we have access to at least one table within those.
+    if (filterPermission === "read") {
+      const fetchRes = await fetchSyncedChildren({
+        connectorId: c.id,
+        parentInternalId: parentInternalId,
+      });
+      if (fetchRes.isErr()) {
+        throw fetchRes.error;
+      }
+      return fetchRes;
+    }
+
+    // We display all available nodes with our credentials.
+    const fetchRes = await fetchAvailableChildrenInSalesforce({
+      connectorId: c.id,
+      credentials,
+      parentInternalId: parentInternalId,
+    });
+    if (fetchRes.isErr()) {
+      throw fetchRes.error;
+    }
+    return fetchRes;
+  }
+
+  async setPermissions({
+    permissions,
+  }: {
+    permissions: Record<string, ConnectorPermission>;
+  }): Promise<Result<void, Error>> {
     const c = await ConnectorResource.fetchById(this.connectorId);
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
@@ -107,66 +244,92 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
 
     const connectionId = c.connectionId;
 
-    const { accessToken, instanceUrl } =
-      await getSalesforceCredentials(connectionId);
+    const credentialsRes = await getSalesforceCredentials(connectionId);
+    if (credentialsRes.isErr()) {
+      return new Err(
+        new ConnectorManagerError(
+          "EXTERNAL_OAUTH_TOKEN_ERROR",
+          "Salesforce authorization error, please re-authorize."
+        )
+      );
+    }
+    await saveNodesFromPermissions({
+      connectorId: this.connectorId,
+      permissions,
+    });
 
-    void accessToken;
-    void instanceUrl;
+    // TODO(salesforce): implement this
+    // const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
+    // if (launchRes.isErr()) {
+    //   return launchRes;
+    // }
 
-    return new Ok([]);
+    return new Ok(undefined);
   }
 
-  async setPermissions(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
+  async retrieveBatchContentNodes({
+    internalIds,
+  }: {
+    internalIds: string[];
+    viewType: ContentNodesViewType;
+  }): Promise<Result<ContentNode[], Error>> {
+    const connectorRes = await getConnector({
+      connectorId: this.connectorId,
+      logger,
+    });
+    if (connectorRes.isErr()) {
+      return connectorRes;
+    }
+    const connector = connectorRes.value.connector;
 
-    throw new Error("Not implemented");
+    const nodesRes = await getBatchContentNodes({
+      connectorId: connector.id,
+      internalIds,
+    });
+    if (nodesRes.isErr()) {
+      return nodesRes;
+    }
+    return new Ok(nodesRes.value);
   }
 
-  async retrieveBatchContentNodes(): Promise<Result<ContentNode[], Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
-  }
-
-  async retrieveContentNodeParents(): Promise<Result<string[], Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
-  }
-
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
-  }
-
-  async garbageCollect(): Promise<Result<string, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>> {
+    const parentsRes = getContentNodeParents({ internalId });
+    if (parentsRes.isErr()) {
+      return parentsRes;
+    }
+    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
+    throw new Error("Method pause not implemented.");
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
+    throw new Error("Method unpause not implemented.");
   }
 
-  async getConfigurationKey(): Promise<Result<string, Error>> {
-    // TODO(salesforce): implement this
-
-    throw new Error("Not implemented");
+  async setConfigurationKey(): Promise<Result<void, Error>> {
+    throw new Error("Method setConfigurationKey not implemented.");
   }
 
-  async configure(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
+  async getConfigurationKey(): Promise<Result<string | null, Error>> {
+    throw new Error("Method getConfigurationKey not implemented.");
+  }
 
-    throw new Error("Not implemented");
+  async garbageCollect(): Promise<Result<string, Error>> {
+    throw new Error("Method garbageCollect not implemented.");
+  }
+
+  async configure(): Promise<Result<void, Error>> {
+    throw new Error("Method configure not implemented.");
   }
 }
