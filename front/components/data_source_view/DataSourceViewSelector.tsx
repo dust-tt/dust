@@ -1,7 +1,7 @@
 import {
   Button,
   CloudArrowLeftRightIcon,
-  ContextItem,
+  cn,
   FolderIcon,
   GlobeAltIcon,
   ListCheckIcon,
@@ -119,7 +119,7 @@ export function DataSourceViewsSelector({
 }: DataSourceViewsSelectorProps) {
   // TODO(20250221, search-kb): remove this once the feature flag is enabled by default
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
+  const searchFeatureFlag = !featureFlags.includes("search_knowledge_builder");
 
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
@@ -241,9 +241,12 @@ export function DataSourceViewsSelector({
             }
           }}
           items={searchResultNodes}
-          renderItem={(item) => (
-            <ContextItem
-              title={item.title}
+          renderItem={(item, selected) => (
+            <div
+              className={cn(
+                "flex cursor-pointer items-center gap-2 px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                selected && "bg-structure-50 dark:bg-structure-50-night"
+              )}
               onClick={() => {
                 setSearchResult(item);
                 setSearchSpaceText("");
@@ -251,19 +254,17 @@ export function DataSourceViewsSelector({
                   updateSelection(item, prevState)
                 );
               }}
-              visual={getVisualForContentNode(item)({})}
-              subElement={
-                <ContextItem.Visual
-                  visual={
+            >
+              {getVisualForContentNode(item)({ className: "min-w-4" })}
+              <span className="text-sm">{item.title}</span>
+              {item.dataSourceView.dataSource.connectorProvider && (
+                <div className="ml-auto">
+                  {CONNECTOR_CONFIGURATIONS[
                     item.dataSourceView.dataSource.connectorProvider
-                      ? CONNECTOR_CONFIGURATIONS[
-                          item.dataSourceView.dataSource.connectorProvider
-                        ].getLogoComponent()
-                      : FolderIcon
-                  }
-                />
-              }
-            />
+                  ].getLogoComponent()({})}
+                </div>
+              )}
+            </div>
           )}
           noResults="No results found"
         />
