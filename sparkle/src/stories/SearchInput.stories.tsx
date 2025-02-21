@@ -75,7 +75,7 @@ export function SearchInputWithPopoverScrollableExample() {
 
   const filteredItems = items.filter((item) =>
     item.toLowerCase().includes(value.toLowerCase())
-  )
+  );
 
   return (
     <SearchInputWithPopover
