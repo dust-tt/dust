@@ -44,8 +44,8 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export const CONTENT_NODE_TYPE_ICONS: Record<
   ContentNodeType,
