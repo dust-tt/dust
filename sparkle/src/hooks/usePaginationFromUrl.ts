@@ -44,3 +44,66 @@ export const usePaginationFromUrl = ({
 
   return res;
 };
+
+interface CursorPaginationState {
+  cursor: string | null;
+  pageSize: number;
+}
+
+interface UseCursorPaginationFromUrlProps {
+  urlPrefix?: string;
+  initialPageSize?: number;
+  defaultHistory?: HistoryOptions;
+}
+
+export function useCursorPaginationFromUrl({
+  urlPrefix = "",
+  initialPageSize = 25,
+  defaultHistory = "push",
+}: UseCursorPaginationFromUrlProps = {}) {
+  const [cursorParam, setCursorParam] = useHashParam(
+    urlPrefix ? `${urlPrefix}Cursor` : "cursor"
+  );
+  const [pageSizeParam, setPageSizeParam] = useHashParam(
+    urlPrefix ? `${urlPrefix}PageSize` : "pageSize"
+  );
+
+  const cursor = cursorParam || null;
+  const pageSize = pageSizeParam ? parseInt(pageSizeParam) : initialPageSize;
+
+  return useMemo(() => {
+    const pagination: CursorPaginationState = { cursor, pageSize };
+
+    const setPagination = (
+      newValue: CursorPaginationState,
+      history?: HistoryOptions
+    ) => {
+      if (newValue.cursor !== cursor || newValue.pageSize !== pageSize) {
+        if (newValue.cursor) {
+          setCursorParam(newValue.cursor, {
+            history: history ?? defaultHistory,
+          });
+        } else {
+          setCursorParam(undefined, {
+            history: history ?? defaultHistory,
+          });
+        }
+
+        if (newValue.pageSize !== initialPageSize) {
+          setPageSizeParam(newValue.pageSize.toString());
+        } else {
+          setPageSizeParam(undefined);
+        }
+      }
+    };
+
+    return { pagination, setPagination };
+  }, [
+    cursor,
+    pageSize,
+    initialPageSize,
+    setCursorParam,
+    setPageSizeParam,
+    defaultHistory,
+  ]);
+}
