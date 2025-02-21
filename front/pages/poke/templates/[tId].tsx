@@ -645,7 +645,7 @@ function TemplatesPage({
                           } cursor-pointer px-4 py-2`}
                           onClick={onClick}
                         >
-                          <input
+                          <Input
                             type="checkbox"
                             onChange={() => {}}
                             checked={checked}
