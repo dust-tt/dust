@@ -7,10 +7,28 @@ const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
 );
 
+export const codeBlockVariants = {
+  base: cn(
+    "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
+    "s-border-border-dark dark:s-border-border-dark-night"
+  ),
+  variant: {
+    muted: cn(
+      "s-bg-slate-100 dark:s-bg-muted-night",
+      "s-text-slate-900 dark:s-text-slate-200"
+    ),
+    surface: cn(
+      "s-bg-muted dark:s-bg-muted-night",
+      "s-text-amber-600 dark:s-text-amber-600-night"
+    ),
+  },
+};
+
 type CodeBlockProps = {
   children?: React.ReactNode;
   className?: string;
   inline?: boolean;
+  variant?: keyof typeof codeBlockVariants.variant;
   wrapLongLines?: boolean;
 };
 
@@ -18,6 +36,7 @@ export function CodeBlock({
   children,
   className,
   inline,
+  variant = "surface",
   wrapLongLines = false,
 }: CodeBlockProps): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
@@ -136,12 +155,7 @@ export function CodeBlock({
     </Suspense>
   ) : (
     <code
-      className={cn(
-        "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
-        "s-border-border-dark dark:s-border-border-dark-night",
-        "s-bg-muted dark:s-bg-muted-night",
-        "s-text-amber-600 dark:s-text-amber-600-night"
-      )}
+      className={cn(codeBlockVariants.base, codeBlockVariants.variant[variant])}
     >
       {children}
     </code>
