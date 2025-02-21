@@ -141,7 +141,7 @@ export function DataSourceViewsSelector({
     owner,
     viewType,
     search: searchDsv,
-    disabled: searchFeatureFlag,
+    disabled: !searchFeatureFlag,
   });
 
   const includesConnectorIDs: (string | null)[] = [];
@@ -225,43 +225,45 @@ export function DataSourceViewsSelector({
 
   return (
     <div>
-      <SearchInputWithPopover
-        value={searchDsv}
-        onChange={setSearchDsv}
-        name="search-dsv"
-        open={searchResultNodes.length > 0 && !!searchDsv}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSearchDsv("");
-          }
-        }}
-        items={searchResultNodes}
-        renderItem={(item) => (
-          <ContextItem
-            title={item.title}
-            onClick={() => {
-              setSearchResult(item);
+      {searchFeatureFlag && (
+        <SearchInputWithPopover
+          value={searchDsv}
+          onChange={setSearchDsv}
+          name="search-dsv"
+          open={searchResultNodes.length > 0 && !!searchDsv}
+          onOpenChange={(open) => {
+            if (!open) {
               setSearchDsv("");
-              setSelectionConfigurations((prevState) =>
-                updateSelectionWithNode(item, prevState)
-              );
-            }}
-            visual={CONTENT_NODE_TYPE_ICONS[item.type]}
-            subElement={
-              <ContextItem.Visual
-                visual={
-                  item.dataSourceView.dataSource.connectorProvider
-                    ? CONNECTOR_CONFIGURATIONS[
-                        item.dataSourceView.dataSource.connectorProvider
-                      ].getLogoComponent()
-                    : FolderIcon
-                }
-              />
             }
-          />
-        )}
-        noResults="No results found"
-      />
+          }}
+          items={searchResultNodes}
+          renderItem={(item) => (
+            <ContextItem
+              title={item.title}
+              onClick={() => {
+                setSearchResult(item);
+                setSearchDsv("");
+                setSelectionConfigurations((prevState) =>
+                  updateSelectionWithNode(item, prevState)
+                );
+              }}
+              visual={CONTENT_NODE_TYPE_ICONS[item.type]}
+              subElement={
+                <ContextItem.Visual
+                  visual={
+                    item.dataSourceView.dataSource.connectorProvider
+                      ? CONNECTOR_CONFIGURATIONS[
+                          item.dataSourceView.dataSource.connectorProvider
+                        ].getLogoComponent()
+                      : FolderIcon
+                  }
+                />
+              }
+            />
+          )}
+          noResults="No results found"
+        />
+      )}
       <Tree
         isLoading={false}
         key={`dataSourceViewsSelector-${searchResult ? searchResult.internalId : ""}`}
