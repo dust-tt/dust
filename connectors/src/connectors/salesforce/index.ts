@@ -13,6 +13,7 @@ import type {
 } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
   fetchAvailableChildrenInSalesforce,
   fetchReadNodes,
@@ -66,22 +67,31 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     connectionId?: string | null;
   }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
-    // Get connector and credentials.
-    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
-      this.connectorId
-    );
-    if (getConnectorAndCredentialsRes.isErr()) {
-      return new Err(getConnectorAndCredentialsRes.error);
+    // Get connector.
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      logger.error({ connectorId: this.connectorId }, "Connector not found");
+      throw new Error(`Connector ${this.connectorId} not found`);
     }
-    const { connector, credentials } = getConnectorAndCredentialsRes.value;
 
     // If no connection ID is provided, we return the current connector ID.
     if (!connectionId) {
       return new Ok(connector.id.toString());
     }
 
-    // Test connection.
-    const connectionRes = await testSalesforceConnection(credentials);
+    // Get credentials on the new connection.
+    const credentialsRes = await getSalesforceCredentials(connectionId);
+    if (credentialsRes.isErr()) {
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          credentialsRes.error.message
+        )
+      );
+    }
+
+    // Test connection on the new connection.
+    const connectionRes = await testSalesforceConnection(credentialsRes.value);
     if (connectionRes.isErr()) {
       return new Err(
         new ConnectorManagerError(
