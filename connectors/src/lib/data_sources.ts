@@ -1005,7 +1005,7 @@ export async function upsertDataSourceTableFromCsv({
       dustRequestResult.data.error?.type === "invalid_rows_request_error"
     ) {
       throw new TablesError(
-        "invalid_headers",
+        "invalid_csv",
         dustRequestResult.data.error.message
       );
     } else if (dustRequestResult.status === 413) {

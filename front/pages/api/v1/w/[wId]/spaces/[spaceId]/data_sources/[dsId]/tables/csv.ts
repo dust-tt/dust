@@ -119,11 +119,18 @@ async function handler(
           case "invalid_url":
           case "title_too_long":
           case "missing_csv":
-          case "invalid_csv":
             return apiError(req, res, {
               status_code: 400,
               api_error: {
                 type: "invalid_request_error",
+                message: upsertRes.error.message,
+              },
+            });
+          case "invalid_csv_content":
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_rows_request_error",
                 message: upsertRes.error.message,
               },
             });

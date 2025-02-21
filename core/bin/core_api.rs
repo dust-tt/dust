@@ -2226,7 +2226,7 @@ async fn tables_validate_csv_content(
         ),
         Err(e) => error_response(
             StatusCode::BAD_REQUEST,
-            "internal_csv_content",
+            "invalid_csv_content",
             "Failed to validate the CSV content",
             Some(e),
         ),
