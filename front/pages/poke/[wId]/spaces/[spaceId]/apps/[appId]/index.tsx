@@ -6,6 +6,7 @@ import type { ReactElement } from "react";
 import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -67,6 +68,7 @@ export default function AppPage({
 }
 
 function AppSpecification({ app }: { app: AppType }) {
+  const { isDark } = useTheme();
   return (
     <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100">
       <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
@@ -74,6 +76,7 @@ function AppSpecification({ app }: { app: AppType }) {
       </div>
       <div className="p-4">
         <JsonViewer
+          theme={isDark ? "dark" : "light"}
           value={JSON.parse(app.savedSpecification ?? "{}")}
           rootName={false}
           defaultInspectDepth={2}
