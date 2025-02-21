@@ -52,8 +52,8 @@ interface HeroProps {
 export const pageSettings: pageSettingsProps = {
   uptitle: "IT",
   title: <>Automate Support, Empower Employees</>,
-  from: "from-cyan-200",
-  to: "to-cyan-500",
+  from: "from-amber-200",
+  to: "to-amber-500",
   description: (
     <>
       Scale IT support, automate routine requests, and keep your IT desk clean.
@@ -213,7 +213,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🔧",
     name: "@itHelp",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Answers common IT questions and troubleshooting needs using your
@@ -224,7 +224,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🚨",
     name: "@opsGuide",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Assists system administrators with technical troubleshooting and
@@ -235,7 +235,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💳",
     name: "@procureHelp",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Guides employees through procurement processes and requirements step by
@@ -246,7 +246,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📊",
     name: "@ticketInsights",
-    backgroundColor: "bg-sky-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Analyzes support patterns to identify common issues and improvement

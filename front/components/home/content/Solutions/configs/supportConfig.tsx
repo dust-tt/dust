@@ -153,7 +153,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/support2.png"],
     },
     {
-      title: "Documentation updater",
+      title: "Knowledge base augmentation",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
       images: ["/static/landing/solutions/support3.png"],

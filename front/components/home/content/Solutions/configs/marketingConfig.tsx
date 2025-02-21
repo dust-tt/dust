@@ -52,8 +52,8 @@ interface HeroProps {
 export const pageSettings: pageSettingsProps = {
   uptitle: "Marketing",
   title: <>Create On-Brand Content At Scale</>,
-  from: "from-rose-200",
-  to: "to-rose-500",
+  from: "from-amber-200",
+  to: "to-amber-500",
   description: (
     <>
       Scale content production, maintain brand consistency, and optimize reach
@@ -214,7 +214,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖋️",
     name: "@contentWriter",
-    backgroundColor: "bg-pink-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Creates content based on best-in class &nbsp;examples availble
@@ -225,7 +225,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🖇️",
     name: "@socialPost",
-    backgroundColor: "bg-pink-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Generates versioned&nbsp;content for social media outlets taking into
@@ -236,7 +236,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "♠️",
     name: "@battleCard",
-    backgroundColor: "bg-pink-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Generates arguments for your product in comparison to a specific
@@ -248,7 +248,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🌍",
     name: "@internationalizer",
-    backgroundColor: "bg-pink-300",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
         Transcreate all your content to adapt content for international markets

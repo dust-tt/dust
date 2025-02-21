@@ -164,7 +164,7 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/eng3.png"],
     },
     {
-      title: "FAQueen",
+      title: "External doc parser",
       content:
         "Chat with any technical documentation to quickly find answers and follow step-by-step guidance.",
       images: ["/static/landing/solutions/eng4.png"],
@@ -214,7 +214,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "👨‍💻",
     name: "@engHelp",
-    backgroundColor: "bg-emerald-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Answers questions from&nbsp;the rest of&nbsp;the company
@@ -226,7 +226,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "🚨",
     name: "@incidentsCopilot",
-    backgroundColor: "bg-emerald-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Assists in&nbsp;the event of&nbsp;an incident with data on&nbsp;previous
@@ -237,7 +237,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📡",
     name: "@engWeekly",
-    backgroundColor: "bg-emerald-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>
         Writes a&nbsp;table of&nbsp;shipped and&nbsp;unshipped
@@ -249,7 +249,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "📚",
     name: "@docDigest",
-    backgroundColor: "bg-emerald-300",
+    backgroundColor: "bg-blue-300",
     description: (
       <>Parses external documentation and helps you digest how to use it.</>
     ),
