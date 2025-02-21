@@ -3,15 +3,15 @@ import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-import { MarkdownStyle } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyle";
-import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorage";
-import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPaste";
+import { MarkdownStyle } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
+import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { isMobile } from "@app/lib/utils";
 
 export interface EditorMention {

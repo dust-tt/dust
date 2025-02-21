@@ -14,8 +14,8 @@ export const ParagraphExtension = Paragraph.extend({
         return this.editor.commands.first(({ commands }) => [
           () => commands.newlineInCode(),
           () => commands.splitListItem("listItem"),
-          () => commands.createParagraphNear(),
           () => commands.liftEmptyBlock(),
+          () => commands.createParagraphNear(),
           () => commands.splitBlock(),
         ]);
       },
