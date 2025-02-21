@@ -1,3 +1,4 @@
+import { Input } from "@dust-tt/sparkle";
 import type {
   DataSourceType,
   DocumentType,
@@ -132,7 +133,7 @@ export default function DataSourceView({
       <div className="mt-8 flex flex-col">
         <div className="sm:col-span-6">
           <div className="mt-1 flex rounded-md shadow-sm">
-            <input
+            <Input
               type="text"
               autoComplete="off"
               name="search_query"
