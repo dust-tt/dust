@@ -26,7 +26,16 @@ import {
   testSalesforceConnection,
 } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
-import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
+import {
+  launchSalesforceSyncWorkflow,
+  stopSalesforceSyncWorkflow,
+} from "@connectors/connectors/salesforce/temporal/client";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import {
+  RemoteDatabaseModel,
+  RemoteSchemaModel,
+  RemoteTableModel,
+} from "@connectors/lib/models/remote_databases";
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import {
   getConnector,
@@ -100,7 +109,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
         )
       );
     }
-    // await stopSalesforceSyncWorkflow(c.id);
+    await stopSalesforceSyncWorkflow(connector.id);
     await connector.update({ connectionId });
     // We reset all the remote tables "lastUpsertedAt" to null, to force the tables to be
     // upserted again (to update their remoteDatabaseSecret).
@@ -111,7 +120,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       { where: { connectorId: connector.id } }
     );
     // We launch the workflow again so it syncs immediately.
-    //await launchSalesforceSyncWorkflow(c.id);
+    await launchSalesforceSyncWorkflow(connector.id);
 
     return new Ok(connector.id.toString());
   }
@@ -128,26 +137,79 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       },
     });
 
+    await RemoteTableModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    await RemoteSchemaModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
+    await RemoteDatabaseModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+
     const res = await connector.delete();
     if (res.isErr()) {
       return res;
     }
 
-    // TODO(salesforce): implement this
-
     return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
-
+    const stopRes = await stopSalesforceSyncWorkflow(this.connectorId);
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
     return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    // TODO(salesforce): implement this
+    const connector = await ConnectorResource.fetchById(this.connectorId);
 
-    throw new Error("Not implemented");
+    if (!connector) {
+      logger.error(
+        {
+          connectorId: this.connectorId,
+        },
+        "Salesforce connector not found."
+      );
+      return new Err(new Error("Connector not found"));
+    }
+
+    const dataSourceConfig = dataSourceConfigFromConnector(connector);
+    try {
+      const launchRes = await launchSalesforceSyncWorkflow(connector.id);
+      if (launchRes.isErr()) {
+        logger.error(
+          {
+            workspaceId: dataSourceConfig.workspaceId,
+            dataSourceId: dataSourceConfig.dataSourceId,
+            error: launchRes.error,
+          },
+          "Error launching salesforce sync workflow."
+        );
+        return launchRes;
+      }
+    } catch (e) {
+      logger.error(
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          error: e,
+        },
+        "Error launching salesforce sync workflow."
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   async sync({
@@ -247,11 +309,10 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       permissions,
     });
 
-    // TODO(salesforce): implement this
-    // const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
-    // if (launchRes.isErr()) {
-    //   return launchRes;
-    // }
+    const launchRes = await launchSalesforceSyncWorkflow(this.connectorId);
+    if (launchRes.isErr()) {
+      return launchRes;
+    }
 
     return new Ok(undefined);
   }
