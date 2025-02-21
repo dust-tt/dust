@@ -55,9 +55,10 @@ const PopoverContent = React.forwardRef<
       />
     );
 
-    const dialogElements = document.querySelectorAll(
-      ".s-sheet[role=dialog][data-state=open]"
-    );
+    const dialogElements =
+      typeof document !== "undefined"
+        ? document.querySelectorAll(".s-sheet[role=dialog][data-state=open]")
+        : [];
 
     const defaultContainer = dialogElements[dialogElements.length - 1];
 
