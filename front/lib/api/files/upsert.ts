@@ -296,18 +296,23 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
 
-  if (!isUpsertTableArgs(upsertArgs)) {
+  if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
     return new Err(new Error("Invalid upsert args"));
   }
 
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
+        const title = `${file.fileName} ${worksheetName}`;
         const upsertTableArgs: UpsertTableArgs = {
           ...upsertArgs,
-          title: `${file.fileName} ${worksheetName}`,
-          name: slugify(`${file.fileName} ${worksheetName}`),
+          title,
+          name: slugify(title),
           tableId: `${file.sId}-${worksheetName}`,
+          description: "Table uploaded from excel file",
+          truncate: true,
+          mimeType: "text/csv",
+          sourceUrl: file.getPrivateUrl(auth),
         };
 
         await upsertTableToDatasource(auth, {
@@ -327,11 +332,16 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   if (!worksheetName || !worksheetContent) {
     return new Err(new Error("Invalid Excel file"));
   } else {
+    const title = `${file.fileName} ${worksheetName}`;
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
-      title: `${file.fileName} ${worksheetName}`,
-      name: slugify(`${file.fileName} ${worksheetName}`),
+      title,
+      name: slugify(title),
       tableId: `${file.sId}-${worksheetName}`,
+      description: "Table uploaded from excel file",
+      truncate: true,
+      mimeType: "text/csv",
+      sourceUrl: file.getPrivateUrl(auth),
     };
 
     await upsertTableToDatasource(auth, {
