@@ -79,6 +79,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       warehouse: "",
     });
     _onSuccess(ds);
+    onClose();
   }
 
   const createSnowflakeConnection = async () => {
@@ -323,8 +324,8 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 ? "Update connection"
                 : "Connect and select tables",
             icon: CloudArrowLeftRightIcon,
-            onClick: () => {
-              setIsLoading(true);
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
               dataSourceToUpdate
                 ? void updateSnowflakeConnection()
                 : void createSnowflakeConnection();
