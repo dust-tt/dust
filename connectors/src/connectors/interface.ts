@@ -14,7 +14,8 @@ export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 export type UpdateConnectorErrorCode =
   | "INVALID_CONFIGURATION"
   | "CONNECTOR_OAUTH_TARGET_MISMATCH"
-  | "CONNECTOR_OAUTH_USER_MISSING_RIGHTS";
+  | "CONNECTOR_OAUTH_USER_MISSING_RIGHTS"
+  | "EXTERNAL_OAUTH_TOKEN_ERROR";
 
 export type RetrievePermissionsErrorCode =
   | "INVALID_PARENT_INTERNAL_ID"
