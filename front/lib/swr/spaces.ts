@@ -592,7 +592,7 @@ export function useSystemSpace({
   };
 }
 
-const DEFAULT_SEARCH_LIMIT = 20;
+const DEFAULT_SEARCH_LIMIT = 15;
 
 export function useSpaceSearch({
   dataSourceViews,
