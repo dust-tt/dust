@@ -1,7 +1,4 @@
-import type {
-  GetAppsResponseType,
-  ImportAppsResponseType,
-} from "@dust-tt/client";
+import type { ImportAppsResponseType } from "@dust-tt/client";
 import { PostAppsRequestSchema } from "@dust-tt/client";
 import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
