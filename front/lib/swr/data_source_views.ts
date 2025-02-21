@@ -3,12 +3,11 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
-  appendPaginationParams,
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
@@ -113,7 +112,7 @@ export function useDataSourceViewContentNodes({
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
   parentId?: string;
-  pagination?: PaginationState;
+  pagination?: CursorPaginationParams;
   viewType?: ContentNodesViewType;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
@@ -125,9 +124,15 @@ export function useDataSourceViewContentNodes({
   mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
+  nextPageCursor: string | null;
 } {
   const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
 
   const url = dataSourceView
     ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
@@ -169,6 +174,7 @@ export function useDataSourceViewContentNodes({
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }
 
