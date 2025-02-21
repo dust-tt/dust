@@ -561,18 +561,30 @@ async function handler(
 
       const documentId = req.query.documentId as string;
 
-      const title = r.data.title ?? "Untitled document";
+      let title = r.data.title;
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
         ?.substring(6);
+
+      // Fill title with titleInTags if provided, add a fallback if none is provided.
+      title ??= titleInTags;
+      if (!title) {
+        logger.error(
+          { dataSourceId: dataSource.sId, documentId },
+          "[CoreNodes] No title information provided in both the tags and the title."
+        );
+        title ??= "Untitled Document";
+      }
+
       if (!titleInTags) {
         tags.push(`title:${title}`);
       }
 
-      if (titleInTags && titleInTags !== title) {
+      // Enforce consistency between title and titleWithTags.
+      if (titleInTags && title && titleInTags !== title) {
         logger.error(
           { dataSourceId: dataSource.sId, documentId, titleInTags, title },
           "[CoreNodes] Inconsistency between tags and title."
