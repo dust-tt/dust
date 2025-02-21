@@ -12,7 +12,6 @@ import { ContentNodeType } from "../../core/content_node";
 import { ConnectorProvider, DataSourceType } from "../../front/data_source";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
-import { DataSourceViewType } from "../data_source_view";
 
 export type ConnectorsAPIResponse<T> = Result<T, ConnectorsAPIError>;
 export type ConnectorSyncStatus = "succeeded" | "failed";
@@ -88,7 +87,6 @@ export type ProviderVisibility = "public" | "private";
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
-  dataSourceView: DataSourceViewType;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;
