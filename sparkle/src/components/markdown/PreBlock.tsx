@@ -1,8 +1,6 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { cn } from "@sparkle/lib";
-
 export const preBlockVariants = cva(
   [
     "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
