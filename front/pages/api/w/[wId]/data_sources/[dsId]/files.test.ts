@@ -226,7 +226,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         }
 
         if ((url as string).endsWith("/csv")) {
-          expect(req.upsert_queue_bucket_csv_path).toBe(
+          expect(req.bucket_csv_path).toBe(
             `files/w/${workspace.sId}/${file.sId}/processed`
           );
           expect(req.truncate).toBe(true);
@@ -246,7 +246,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
         }
 
         if ((url as string).endsWith("/validate_csv_content")) {
-          expect(req.upsert_queue_bucket_csv_path).toBe(
+          expect(req.bucket_csv_path).toBe(
             `files/w/${workspace.sId}/${file.sId}/processed`
           );
           return Promise.resolve(
