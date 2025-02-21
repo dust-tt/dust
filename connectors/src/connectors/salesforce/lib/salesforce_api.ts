@@ -15,6 +15,7 @@ import type {
   RemoteDBDatabase,
   RemoteDBSchema,
   RemoteDBTable,
+  RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 
 const SF_API_VERSION = "57.0";
@@ -138,3 +139,42 @@ export async function fetchTables({
     return new Err(new Error("Connection failed"));
   }
 }
+
+export const fetchTree = async ({
+  credentials,
+}: {
+  credentials: SalesforceAPICredentials;
+}): Promise<Result<RemoteDBTree, Error>> => {
+  const databases = await fetchDatabases();
+  const schemas = await fetchSchemas();
+  const tree = {
+    databases: await Promise.all(
+      databases.map(async (db) => {
+        return {
+          ...db,
+          schemas: await Promise.all(
+            schemas
+              .filter((s) => s.database_name === db.name)
+              .map(async (schema) => {
+                const tablesRes = await fetchTables({
+                  credentials,
+                  parentInternalId: `${schema.database_name}.${schema.name}`,
+                });
+                if (tablesRes.isErr()) {
+                  throw tablesRes.error;
+                }
+                const tables = tablesRes.value;
+
+                return {
+                  ...schema,
+                  tables,
+                };
+              })
+          ),
+        };
+      })
+    ),
+  };
+
+  return new Ok(tree);
+};
