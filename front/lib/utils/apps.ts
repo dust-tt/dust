@@ -290,6 +290,17 @@ async function updateAppSpecifications(
   }
 
   if (coreSpecifications) {
+    const existingHashes = await coreAPI.getSpecificationHashes({
+      projectId: app.dustAPIProjectId,
+    });
+    if (existingHashes.isOk()) {
+      // Remove hashes that already exist in core
+      coreSpecifications = _.omit(
+        coreSpecifications,
+        existingHashes.value.hashes
+      );
+    }
+
     for (const specification of Object.values(coreSpecifications)) {
       await coreAPI.saveSpecification({
         projectId: app.dustAPIProjectId,
