@@ -63,7 +63,8 @@ async function generateSnippet(
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
-      upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
     });
 
     if (schemaRes.isErr()) {
@@ -74,7 +75,7 @@ async function generateSnippet(
       });
     }
 
-    let snippet = `CSV file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
+    let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
     if (snippet.length > 256) {
       snippet = snippet.slice(0, 242) + "... (truncated)";
     }
