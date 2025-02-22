@@ -818,7 +818,14 @@ export const ignoreTablesError = async (
   }
 };
 
-export async function upsertDataSourceTableFromCsv({
+export const upsertDataSourceTableFromCsv = withRetries(
+  _upsertDataSourceTableFromCsv,
+  {
+    retries: 3,
+  }
+);
+
+async function _upsertDataSourceTableFromCsv({
   dataSourceConfig,
   tableId,
   tableName,
