@@ -683,6 +683,17 @@ impl Row {
     ) -> Result<Row> {
         let mut value_map = serde_json::Map::new();
 
+        fn try_parse_float(s: &str) -> Result<serde_json::Number> {
+            if let Ok(float) = s.parse::<f64>() {
+                match serde_json::Number::from_f64(float) {
+                    Some(num) => Ok(num),
+                    None => Err(anyhow!("Invalid JSON float value")),
+                }
+            } else {
+                Err(anyhow!("Invalid float value"))
+            }
+        }
+
         for (i, field) in record.iter().enumerate() {
             if i >= headers.len() {
                 break;
@@ -699,9 +710,9 @@ impl Row {
                 Value::Null
             } else if let Ok(int) = trimmed.parse::<i64>() {
                 Value::Number(int.into())
-            } else if let Ok(float) = trimmed.parse::<f64>() {
+            } else if let Ok(float) = try_parse_float(trimmed) {
                 // Numbers
-                Value::Number(serde_json::Number::from_f64(float).unwrap())
+                Value::Number(float)
             } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
                 // Booleans
                 "t" | "true" => Ok(true),
