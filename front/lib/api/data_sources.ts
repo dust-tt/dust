@@ -705,6 +705,15 @@ export async function upsertTable({
             message: schemaRes.error.message,
           });
         } else {
+          logger.error(
+            {
+              bucket: file.getBucketForVersion("processed").name,
+              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+              dataSourceId: dataSource.sId,
+              error: schemaRes.error,
+            },
+            "Error validating CSV content"
+          );
           return new Err({
             name: "dust_error",
             code: "internal_error",
