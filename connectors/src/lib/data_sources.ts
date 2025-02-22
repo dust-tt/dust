@@ -320,12 +320,7 @@ export async function deleteDataSourceDocument(
   }
 }
 
-export const updateDataSourceDocumentParents = withRetries(
-  _updateDataSourceDocumentParents,
-  { retries: 3 }
-);
-
-async function _updateDataSourceDocumentParents({
+export async function updateDataSourceDocumentParents({
   documentId,
   ...params
 }: {
