@@ -156,7 +156,6 @@ async function updateParentsFieldForConnector(
                 documentId,
                 parents,
                 parentId: parents[1] || null,
-                retries: 3,
               });
             }
             if (tableId) {
