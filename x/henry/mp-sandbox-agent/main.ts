@@ -4,6 +4,7 @@ import { fetchWeather } from "./tools/fetch_weather";
 import { Agent } from "./agent";
 import { scrapePages } from "./tools/scrape";
 import { searchWeb } from "./tools/serp";
+import { Workflow } from "./workflow/workflow";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -23,23 +24,25 @@ async function main() {
     process.exit(1);
   }
 
-  // Initialize agent with a goal
-  const agent = await Agent.create(request, process.env.OPENAI_API_KEY!);
+  const workflow = new Workflow<string>("Main Flow").addStep(() => ({
+    id: "agent",
+    name: "Agent",
+    execute: async (input, context) => {
+      const agent = await Agent.create(request);
+      const tools = {
+        fetch_weather: fetchWeather,
+        scrape_pages: scrapePages,
+        search_web: searchWeb,
+      };
+      let answer: string | null = null;
+      while (answer === null) {
+        answer = await agent.step(tools);
+      }
+      return answer;
+    },
+  }));
 
-  // Define available tools
-  const tools = {
-    fetch_weather: fetchWeather,
-    scrape_pages: scrapePages,
-    search_web: searchWeb,
-  };
-
-  // Run a step with the user's request
-  let answer: string | null = null;
-  while (answer === null) {
-    answer = await agent.step(tools);
-  }
-
-  console.log(answer);
+  const result = await workflow.execute(request);
 }
 
 main().catch((error) => {

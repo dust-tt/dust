@@ -50,7 +50,11 @@ export const scrapePages = defineTool(
 
       log(
         input.urls
-          .map((url, i) => `${url}:\n${JSON.stringify(results[i])}`)
+          .map((url, i) =>
+            results[i].success
+              ? `${url}:\n${JSON.stringify(results[i].data.markdown)}`
+              : `${url}: failed to scrape`
+          )
           .join("\n\n")
       );
 

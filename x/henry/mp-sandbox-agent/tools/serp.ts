@@ -63,7 +63,13 @@ export const searchWeb = defineTool(
       log(
         `Retrieved ${data.organic_results?.length || 0} results for query "${
           input.query
-        }" (page ${input.page}):\n${JSON.stringify(data)}`
+        }" (page ${input.page}):\n${JSON.stringify(
+          data.organic_results?.map((r: any) => ({
+            title: r.title,
+            link: r.link,
+            snippet: r.snippet,
+          }))
+        )}`
       );
 
       return {

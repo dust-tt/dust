@@ -43,7 +43,7 @@ export class Agent {
     console.log("--------------------------------");
     console.log(`Creating agent with goal: ${goal}`);
     console.log("--------------------------------");
-    const agent = new Agent(goal);
+    const agent = new Agent(goal, process.env.OPENAI_API_KEY!);
     agent.sandbox = await PythonSandbox.create();
     return agent;
   }
