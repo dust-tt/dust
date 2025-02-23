@@ -237,12 +237,12 @@ export const SpaceDataSourceViewContentList = ({
   // State for cursor pagination (in URL).
   const { cursorPagination, setCursorPagination } = useCursorPaginationFromUrl({
     urlPrefix: "table",
-    initialPageSize: 25,
+    initialLimit: 25,
   });
   // State for DataTable pagination.
   const [tablePagination, setTablePagination] = useState<PaginationState>({
     pageIndex: cursorPagination.cursor ? 1 : 0,
-    pageSize: cursorPagination.pageSize,
+    pageSize: cursorPagination.limit,
   });
   const [viewType, setViewType] = useHashParam(
     "viewType",
@@ -262,13 +262,13 @@ export const SpaceDataSourceViewContentList = ({
     (newViewType: ContentNodesViewType) => {
       if (newViewType !== viewType) {
         setCursorPagination(
-          { cursor: null, pageSize: cursorPagination.pageSize },
+          { cursor: null, limit: cursorPagination.limit },
           "replace"
         );
         setViewType(newViewType);
       }
     },
-    [setCursorPagination, setViewType, viewType, cursorPagination.pageSize]
+    [setCursorPagination, setViewType, viewType, cursorPagination.limit]
   );
 
   const { searchResultNodes, isSearchLoading, isSearchValidating } =
@@ -295,10 +295,7 @@ export const SpaceDataSourceViewContentList = ({
     dataSourceView,
     owner,
     parentId,
-    pagination: {
-      cursor: cursorPagination.cursor,
-      limit: cursorPagination.pageSize,
-    },
+    pagination: cursorPagination,
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
@@ -346,7 +343,7 @@ export const SpaceDataSourceViewContentList = ({
         setTablePagination(newTablePagination);
         setCursorPagination({
           cursor: null,
-          pageSize: newTablePagination.pageSize,
+          limit: newTablePagination.pageSize,
         });
       } else if (
         newTablePagination.pageIndex > tablePagination.pageIndex &&
@@ -356,14 +353,14 @@ export const SpaceDataSourceViewContentList = ({
         setTablePagination(newTablePagination);
         setCursorPagination({
           cursor: nextPageCursor,
-          pageSize: tablePagination.pageSize,
+          limit: tablePagination.pageSize,
         });
       } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
         // Previous page - reset cursor
         setTablePagination(newTablePagination);
         setCursorPagination({
           cursor: null,
-          pageSize: tablePagination.pageSize,
+          limit: tablePagination.pageSize,
         });
       }
     },
@@ -615,7 +612,7 @@ export const SpaceDataSourceViewContentList = ({
                 value={dataSourceSearch}
                 onChange={(s) => {
                   setCursorPagination(
-                    { cursor: null, pageSize: cursorPagination.pageSize },
+                    { cursor: null, limit: cursorPagination.limit },
                     "replace"
                   );
                   setDataSourceSearch(s);
