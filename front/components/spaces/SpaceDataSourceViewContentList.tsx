@@ -726,7 +726,7 @@ export const SpaceDataSourceViewContentList = ({
             )}
             sorting={sorting}
             setSorting={setSorting}
-            totalRowCount={totalNodesCount}
+            totalRowCount={nextPageCursor ? totalNodesCount + 1 : undefined}
             rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
             pagination={tablePagination}
             setPagination={handlePaginationChange}
