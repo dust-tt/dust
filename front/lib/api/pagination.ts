@@ -88,7 +88,7 @@ export function getPaginationParams(
 
 const CursorPaginationParamsCodec = t.type({
   limit: LimitCodec,
-  cursor: t.string,
+  cursor: t.union([t.string, t.null, t.undefined]),
 });
 
 export interface CursorPaginationParams {
