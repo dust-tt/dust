@@ -47,38 +47,38 @@ export const usePaginationFromUrl = ({
 
 interface CursorPaginationState {
   cursor: string | null;
-  pageSize: number;
+  limit: number;
 }
 
 interface UseCursorPaginationFromUrlProps {
   urlPrefix?: string;
-  initialPageSize?: number;
+  initialLimit?: number;
   defaultHistory?: HistoryOptions;
 }
 
 export function useCursorPaginationFromUrl({
   urlPrefix = "",
-  initialPageSize = 25,
+  initialLimit = 25,
   defaultHistory = "push",
 }: UseCursorPaginationFromUrlProps = {}) {
   const [cursorParam, setCursorParam] = useHashParam(
     urlPrefix ? `${urlPrefix}Cursor` : "cursor"
   );
-  const [pageSizeParam, setPageSizeParam] = useHashParam(
+  const [limitParam, setLimitParam] = useHashParam(
     urlPrefix ? `${urlPrefix}PageSize` : "pageSize"
   );
 
   const cursor = cursorParam || null;
-  const pageSize = pageSizeParam ? parseInt(pageSizeParam) : initialPageSize;
+  const limit = limitParam ? parseInt(limitParam, 10) : initialLimit;
 
   return useMemo(() => {
-    const pagination: CursorPaginationState = { cursor, pageSize };
+    const cursorPagination: CursorPaginationState = { cursor, limit };
 
-    const setPagination = (
+    const setCursorPagination = (
       newValue: CursorPaginationState,
       history?: HistoryOptions
     ) => {
-      if (newValue.cursor !== cursor || newValue.pageSize !== pageSize) {
+      if (newValue.cursor !== cursor || newValue.limit !== limit) {
         if (newValue.cursor) {
           setCursorParam(newValue.cursor, {
             history: history ?? defaultHistory,
@@ -89,21 +89,21 @@ export function useCursorPaginationFromUrl({
           });
         }
 
-        if (newValue.pageSize !== initialPageSize) {
-          setPageSizeParam(newValue.pageSize.toString());
+        if (newValue.limit !== initialLimit) {
+          setLimitParam(newValue.limit.toString());
         } else {
-          setPageSizeParam(undefined);
+          setLimitParam(undefined);
         }
       }
     };
 
-    return { pagination, setPagination };
+    return { cursorPagination, setCursorPagination };
   }, [
     cursor,
-    pageSize,
-    initialPageSize,
+    limit,
+    initialLimit,
     setCursorParam,
-    setPageSizeParam,
     defaultHistory,
+    setLimitParam,
   ]);
 }
