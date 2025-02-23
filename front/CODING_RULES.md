@@ -24,9 +24,30 @@ We do not use typescript enums, we use types instead, eg: `type Color = "red" | 
 
 ### [GEN4] Non type-safe use of `as` is prohibited
 
-The use non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
+The non type-safe uses of `as` are prohibited in the codebase. Use typeguards or other type-safe
 methods instead. There are few exceptions where `as` is type-safe to use (eg, `as const`) and
 therefore acceptable.
+
+### [GEN5] No mutation of function parameters
+
+Never mutate arrays or objects passed as parameters to functions. Create and return new instances instead. This includes avoiding methods like `splice` that mutate arrays in place.
+
+Reviewer: If you detect parameter mutation in the code (including array methods like `splice`), request the author to refactor the code to create and return new instances instead.
+
+Example:
+
+```
+// BAD
+function addItem(items: string[], newItem: string) {
+items.push(newItem);
+return items;
+}
+
+// GOOD
+function addItem(items: string[], newItem: string) {
+return [...items, newItem];
+}
+```
 
 ## SECURITY
 
