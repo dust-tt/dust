@@ -3343,7 +3343,7 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, next_cursor) = match state
+    let (nodes, hit_count, hit_count_is_accurate, next_cursor) = match state
         .search_store
         .search_nodes(
             payload.query,
@@ -3353,7 +3353,9 @@ async fn nodes_search(
         )
         .await
     {
-        Ok((nodes, next_cursor)) => (nodes, next_cursor),
+        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor)) => {
+            (nodes, hit_count, hit_count_is_accurate, next_cursor)
+        }
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3370,6 +3372,8 @@ async fn nodes_search(
             error: None,
             response: Some(json!({
                 "nodes": nodes,
+                "hit_count": hit_count,
+                "hit_count_is_accurate": hit_count_is_accurate,
                 "next_page_cursor": next_cursor,
             })),
         }),
