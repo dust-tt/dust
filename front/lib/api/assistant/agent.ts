@@ -380,7 +380,7 @@ async function* runMultiActionsAgent(
     hasAvailableActions: !!availableActions.length,
   });
 
-  const MIN_GENERATION_TOKENS = 2048;
+  const MIN_GENERATION_TOKENS = model.generationTokensCount;
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.
