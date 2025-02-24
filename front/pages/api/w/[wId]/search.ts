@@ -99,32 +99,39 @@ async function handler(
     });
   }
 
-  const dataSourceParentsByDataSourceId = allDatasourceViews.reduce(
+  const dataSources = allDatasourceViews.reduce(
     (acc, dsv) => {
       const dataSourceId = dsv.dataSource.dustAPIDataSourceId;
-      if (acc.get(dataSourceId) !== null) {
-        if (dsv.parentsIn) {
-          if (!acc.has(dataSourceId)) {
-            acc.set(dataSourceId, []);
-          }
 
-          acc.get(dataSourceId)?.push(...dsv.parentsIn);
+      if (!acc.has(dataSourceId)) {
+        acc.set(dataSourceId, { dataSourceViews: [], parentsIn: [] });
+      }
+      const entry = acc.get(dataSourceId);
+
+      if (entry) {
+        entry.dataSourceViews.push(dsv);
+        if (dsv.parentsIn && entry.parentsIn !== null) {
+          entry.parentsIn?.push(...dsv.parentsIn);
         } else {
-          acc.set(dataSourceId, null);
+          entry.parentsIn = null;
         }
       }
 
       return acc;
     },
-    new Map<string, string[] | null>()
+    new Map<
+      string,
+      {
+        dataSourceViews: DataSourceViewResource[];
+        parentsIn: string[] | null;
+      }
+    >()
   );
 
-  const filter = [...dataSourceParentsByDataSourceId.entries()].map(
-    ([data_source_id, view_filter]) => ({
-      data_source_id,
-      view_filter: view_filter ? [...new Set(view_filter)] : [],
-    })
-  );
+  const filter = [...dataSources.entries()].map(([data_source_id, entry]) => ({
+    data_source_id,
+    view_filter: entry.parentsIn ? [...new Set(entry.parentsIn)] : [],
+  }));
 
   if (filter.length === 0) {
     return apiError(req, res, {
@@ -134,6 +141,18 @@ async function handler(
         message: `User does not have access to any datasource.`,
       },
     });
+  }
+
+  if (filter.length > 1024) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        filterLength: filter.length,
+      },
+      "Filter length is greater than 1024, truncating"
+    );
+    filter.splice(1024);
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -158,27 +177,36 @@ async function handler(
     });
   }
 
-  // Can have multiple datasource views with the same data source id - randomly keeps one
-  const dataSourceViewById = new Map(
-    allDatasourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
-  );
-
   const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSourceView = dataSourceViewById.get(node.data_source_id);
+    const dataSource = dataSources.get(node.data_source_id);
 
-    if (!dataSourceView) {
+    const matchingViews = dataSource
+      ? dataSource.dataSourceViews.filter(
+          (dsv) =>
+            dsv.parentsIn &&
+            node.parents?.some(
+              (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
+            )
+        )
+      : [];
+
+    if (matchingViews.length === 0) {
       logger.error(
         {
           nodeId: node.node_id,
           expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
+          availableDataSourceIds: Array.from(dataSources.keys()),
         },
         "DataSourceView lookup failed for node"
       );
       return [];
     }
 
-    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
+    return getContentNodeFromCoreNode(
+      matchingViews.map((dsv) => dsv.toJSON()),
+      node,
+      viewType
+    );
   });
   return res.status(200).json({ nodes });
 }
