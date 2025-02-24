@@ -126,6 +126,10 @@ export const MIME_TYPES = {
     provider: "bigquery",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
+  SALESFORCE: generateMimeTypes({
+    provider: "salesforce",
+    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+  }),
 };
 
 export type BigQueryMimeType =
@@ -161,6 +165,9 @@ export type WebcrawlerMimeType =
 export type ZendeskMimeType =
   (typeof MIME_TYPES.ZENDESK)[keyof typeof MIME_TYPES.ZENDESK];
 
+export type SalesforceMimeType =
+  (typeof MIME_TYPES.SALESFORCE)[keyof typeof MIME_TYPES.SALESFORCE];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -172,4 +179,5 @@ export type DustMimeType =
   | SlackMimeType
   | SnowflakeMimeType
   | WebcrawlerMimeType
-  | ZendeskMimeType;
+  | ZendeskMimeType
+  | SalesforceMimeType;
