@@ -661,6 +661,21 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getSpecificationHashes({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<{ hashes: string[] }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getSpecification({
     projectId,
     specificationHash,
@@ -676,6 +691,29 @@ export class CoreAPI {
       )}/specifications/${encodeURIComponent(specificationHash)}`,
       {
         method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async saveSpecification({
+    projectId,
+    specification,
+  }: {
+    projectId: string;
+    specification: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          specification,
+        }),
       }
     );
 
