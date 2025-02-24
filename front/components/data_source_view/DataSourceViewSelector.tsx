@@ -265,7 +265,7 @@ export function DataSourceViewsSelector({
               {getVisualForContentNode(item)({ className: "min-w-4" })}
               <span className="text-sm">{item.title}</span>
               {item.parentTitle && (
-                <span className="text-sm text-slate-500">{`:/${item.parentTitle}`}</span>
+                <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
               )}
               {item.dataSourceView.dataSource.connectorProvider && (
                 <div className="ml-auto">
