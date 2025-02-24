@@ -199,7 +199,7 @@ export function DataSourceViewsSelector({
     item: DataSourceViewContentNode,
     prevState: DataSourceViewSelectionConfigurations
   ): DataSourceViewSelectionConfigurations {
-    const dsv = item.dataSourceView;
+    const dsv = item.dataSourceViews[0];
     const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
     const exists = prevConfig.selectedResources.some(
@@ -267,10 +267,10 @@ export function DataSourceViewsSelector({
               {item.parentTitle && (
                 <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
               )}
-              {item.dataSourceView.dataSource.connectorProvider && (
+              {item.dataSourceViews[0].dataSource.connectorProvider && (
                 <div className="ml-auto">
                   {CONNECTOR_CONFIGURATIONS[
-                    item.dataSourceView.dataSource.connectorProvider
+                    item.dataSourceViews[0].dataSource.connectorProvider
                   ].getLogoComponent()({})}
                 </div>
               )}
@@ -291,7 +291,7 @@ export function DataSourceViewsSelector({
             type="node"
             defaultCollapsed={
               !searchResult ||
-              !isManaged(searchResult.dataSourceView.dataSource)
+              !isManaged(searchResult.dataSourceViews[0].dataSource)
             }
           >
             {orderDatasourceViews
@@ -329,6 +329,7 @@ export function DataSourceViewsSelector({
               isRootSelectable={false}
               defaultCollapsed={filteredDSVs.length > 1}
               useCase={useCase}
+              searchResult={searchResult}
             />
           ))}
         {folders.length > 0 && (
@@ -338,7 +339,8 @@ export function DataSourceViewsSelector({
             visual={FolderIcon}
             type="node"
             defaultCollapsed={
-              !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
+              !searchResult ||
+              !isFolder(searchResult.dataSourceViews[0].dataSource)
             }
           >
             {folders.map((dataSourceView) => (
@@ -367,7 +369,7 @@ export function DataSourceViewsSelector({
             type="node"
             defaultCollapsed={
               !searchResult ||
-              !isWebsite(searchResult.dataSourceView.dataSource)
+              !isWebsite(searchResult.dataSourceViews[0].dataSource)
             }
           >
             {websites.map((dataSourceView) => (
@@ -525,7 +527,7 @@ export function DataSourceViewSelector({
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
-              dataSourceView,
+              dataSourceViews: [dataSourceView],
               parentInternalIds: v.parents,
             })),
           isSelectAll: false,
@@ -557,7 +559,7 @@ export function DataSourceViewSelector({
   );
 
   const isExpanded = searchResult
-    ? searchResult.dataSourceView.sId === dataSourceView.sId
+    ? searchResult.dataSourceViews[0].sId === dataSourceView.sId
     : false;
   const defaultExpandedIds =
     isExpanded && searchResult
