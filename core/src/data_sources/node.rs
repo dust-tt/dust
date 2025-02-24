@@ -66,21 +66,20 @@ impl<'a> FromSql<'a> for ProviderVisibility {
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
 pub enum NodeType {
+    #[serde(alias = "document")]
     Document,
+    #[serde(alias = "table")]
     Table,
+    #[serde(alias = "folder")]
     Folder,
-    Tables,
-    Documents
 }
 
 impl fmt::Display for NodeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            NodeType::Document => write!(f, "Document"),
-            NodeType::Table => write!(f, "Table"),
-            NodeType::Documents => write!(f, "document"),
-            NodeType::Tables => write!(f, "table"),
-            NodeType::Folder => write!(f, "Folder"),
+            NodeType::Document => write!(f, "document"),
+            NodeType::Table => write!(f, "table"),
+            NodeType::Folder => write!(f, "fgolder"),
         }
     }
 }
