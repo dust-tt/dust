@@ -23,6 +23,9 @@ use crate::{
 };
 
 const MAX_PAGE_SIZE: u64 = 1000;
+// Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
+// Note: this is the default value.
+const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -193,6 +196,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let mut search = Search::new()
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
+            .track_total_hits(MAX_TOTAL_HITS_TRACKED)
             .sort(sort);
 
         if let Some(cursor) = options.cursor {
