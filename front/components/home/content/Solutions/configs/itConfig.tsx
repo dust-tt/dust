@@ -50,18 +50,13 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "IT",
+  title: <>Automate Support, Empower Employees</>,
+  from: "from-amber-200",
+  to: "to-amber-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Scale IT support, automate routine requests, and keep your IT desk clean.
     </>
   ),
 };
@@ -72,23 +67,23 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
-      alt: "Sales Visual 1",
+      src: "/static/landing/it/it1.png",
+      alt: "IT Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
-      alt: "Sales Visual 2",
+      src: "/static/landing/it/it2.png",
+      alt: "IT Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
-      alt: "Sales Visual 3",
+      src: "/static/landing/it/it3.png",
+      alt: "IT Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
-      alt: "Sales Visual 4",
+      src: "/static/landing/it/it4.png",
+      alt: "IT Visual 4",
       depth: 50,
     },
   ],
@@ -106,26 +101,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Create IT agents that knows your systems inside out",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on complex tasks",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize IT team efficiency by automating routine support requests.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Speed up resolution",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Instantly provide accurate solutions using your documented knowledge base.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Empower employees",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Turn IT support into a self-service experience that scales across the organization.",
     },
   ],
 };
@@ -133,12 +127,12 @@ export const Benefits: BenefitsProps = {
 export const Metrics: MetricProps = {
   metrics: [
     {
-      value: "90%",
-      description: <>faster RFP response times</>,
+      value: "30%",
+      description: <>fewer IT tickets</>,
     },
     {
-      value: "8h",
-      description: <> saved weekly per rep for selling</>,
+      value: "4h",
+      description: <> saved weekly filling RFP</>,
     },
   ],
   from: "from-amber-200",
@@ -148,41 +142,41 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "IT helpdesk",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Answer common employee IT questions instantly using your internal documentation and policies.",
+      images: ["/static/landing/it/itHelpdesk.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "IT ops assistant",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Support system administrators with troubleshooting guidance based on your documented procedures.",
+      images: ["/static/landing/it/itOps.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Procurement helper",
       content:
-        "Answer prospect questions and RFPs instantly with fresh, expert insights on products, competitors, and security.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Guide employees through procurement processes and requirements with automated assistance.",
+      images: ["/static/landing/it/procureHelp.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Ticket analytics",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Analyze support patterns to identify improvement opportunities and optimize documentation.",
+      images: ["/static/landing/it/itInsights.png"],
     },
   ],
 };
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "One of the things that impressed me about Dust is that all the use cases around internal and external support for teams who need to maintain processes are impressive. Being able to call an agent that parses all the knowledge is a huge pain reliever.",
+  name: "Raphael Brousse ",
+  title: "VP Operations at Lifen",
+  logo: "/static/landing/logos/lifen.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -192,6 +186,13 @@ export const DemoVideo: DemoVideoProps = {
 };
 
 export const Stories: CustomerStory[] = [
+  {
+    title: "Lifen Saves Two Hours per Week per Employee with Dust", // Soon to be replaced with Clay for RFP?
+    content:
+      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
+    href: "https://blog.dust.tt/customer-story-lifen/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+  },
   {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
@@ -206,57 +207,50 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
 ];
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
+    emoji: "🔧",
+    name: "@itHelp",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Answers common IT questions and troubleshooting needs using your
+        internal documentation.
+      </>
+    ),
+  },
+  {
+    emoji: "🚨",
+    name: "@opsGuide",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Assists system administrators with technical troubleshooting and
+        infrastructure support.
+      </>
+    ),
+  },
+  {
+    emoji: "💳",
+    name: "@procureHelp",
+    backgroundColor: "bg-amber-300",
+    description: (
+      <>
+        Guides employees through procurement processes and requirements step by
+        step.
+      </>
+    ),
+  },
+  {
     emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
+    name: "@ticketInsights",
+    backgroundColor: "bg-amber-300",
     description: (
       <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
-      </>
-    ),
-  },
-  {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
-      </>
-    ),
-  },
-  {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
-      </>
-    ),
-  },
-  {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Analyzes support patterns to identify common issues and improvement
+        opportunities.
       </>
     ),
   },

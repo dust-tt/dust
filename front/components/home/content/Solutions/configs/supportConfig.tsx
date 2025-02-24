@@ -103,7 +103,7 @@ export const Benefits: BenefitsProps = {
       icon: RocketIcon,
       title: "Resolve issues faster",
       description:
-        "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
+        "Deflect Tier 1 tickets, surface relevant information from your knowledge bases and draft messages in 50+ languages.",
     },
     {
       icon: UserGroupIcon,
@@ -138,30 +138,30 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Customize and automate tasks without writing a single line of code.",
+    "Create custom AI agents without writing a single line of code.",
   items: [
+    {
+      title: "Ticket deflection",
+      content:
+        "Integrate AI agents in your product interface to deflect Tier 1 tickets and reduce support workload.",
+      images: ["/static/landing/solutions/support1.png"],
+    },
     {
       title: "Ticket resolution",
       content:
         "Speed up resolution by suggesting tailored responses drawn from your knowledge base and past solutions.",
-      images: ["/static/landing/solutions/support1.png"],
-    },
-    {
-      title: "Agent coaching",
-      content:
-        "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
       images: ["/static/landing/solutions/support2.png"],
     },
     {
-      title: "Documentation builder",
+      title: "Knowledge base augmentation",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
       images: ["/static/landing/solutions/support3.png"],
     },
     {
-      title: "Customer insights",
+      title: "Ticket insights",
       content:
-        "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
+        "Turn support interactions into learning opportunities that enhance your offering and service standards.",
       images: ["/static/landing/solutions/support4.png"],
     },
   ],
@@ -207,24 +207,24 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "🤝",
+    emoji: "📡",
     backgroundColor: "bg-sky-300",
-    name: "@ticketSolver",
+    name: "@ticketDeflection",
     description: (
       <>
-        Speeds up resolution by suggesting tailored responses drawn from your
-        knowledge base and past solutions.
+        Automatically handles common support queries in your product interface,
+        reducing Tier 1 ticket volume.
       </>
     ),
   },
   {
-    emoji: "📡",
+    emoji: "🤝",
     backgroundColor: "bg-sky-300",
-    name: "@supportAnalyst",
+    name: "@supportCopilot",
     description: (
       <>
-        Offers feedback to support agents using real-time best practices and
-        ticket insights for consistent, quality service.
+        Speeds up resolution by suggesting tailored responses drawn from your
+        knowledge base and past solutions.
       </>
     ),
   },
@@ -242,7 +242,7 @@ export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
     emoji: "💡",
     backgroundColor: "bg-sky-300",
-    name: "@CSInsights",
+    name: "@ticketInsights",
     description: (
       <>
         Identifies trends from customer feedback, helping teams proactively

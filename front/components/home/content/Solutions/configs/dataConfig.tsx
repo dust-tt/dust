@@ -50,18 +50,14 @@ interface HeroProps {
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
-  uptitle: "Sales",
-  title: (
-    <>
-      Smart automations, <br></br>more deals
-    </>
-  ),
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  uptitle: "Data & Analytics",
+  title: <>Turn Data Into Business Decisions</>,
+  from: "from-purple-200",
+  to: "to-purple-500",
   description: (
     <>
-      Optimize every touchpoint, automate administrative overhead, and close
-      deals faster.
+      Transform complex data into instant insights, automate queries, and
+      democratize analytics across teams.
     </>
   ),
 };
@@ -72,23 +68,23 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
-      alt: "Sales Visual 1",
+      src: "/static/landing/data-analytics/data1.png",
+      alt: "Data Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
-      alt: "Sales Visual 2",
+      src: "/static/landing/data-analytics/data2.png",
+      alt: "Data Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
-      alt: "Sales Visual 3",
+      src: "/static/landing/data-analytics/data3.png",
+      alt: "Data Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
-      alt: "Sales Visual 4",
+      src: "/static/landing/data-analytics/data4.png",
+      alt: "Data Visual 4",
       depth: 50,
     },
   ],
@@ -106,26 +102,25 @@ export const Hero: HeroProps = {
 };
 
 export const Benefits: BenefitsProps = {
-  sectionTitle: "Elevate your sales reps to new possibilities ",
+  sectionTitle: "Reduce toil, scale data education and deepen exploration",
   items: [
     {
       icon: MagicIcon,
-      title: "Focus on selling",
+      title: "Focus on insights",
       description:
-        "Maximize selling time by automating admin tasks and data entry.",
+        "Maximize analysis time by automating query writing and data exploration.",
     },
     {
       icon: CheckCircleIcon,
-      title: "Raise the odds of closing",
+      title: "Accelerate answers",
       description:
-        "Instantly uncover relevant product or prospect insights to deliver personalized responses",
+        "Instantly transform business questions into accurate queries and visualizations.",
     },
-
     {
       icon: UserGroupIcon,
-      title: "Boost team performance",
+      title: "Democratize data",
       description:
-        "Turn every rep into a top performer by sharing feedback and best practices.",
+        "Turn complex data models into accessible insights for the entire organization.",
     },
   ],
 };
@@ -148,41 +143,41 @@ export const Metrics: MetricProps = {
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Build custom agents without writing a single line of code.",
+    "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Account snapshot",
+      title: "Self-serve analytics",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
-      images: ["/static/landing/solutions/sales1.png"],
+        "Execute complex data queries and generate visualizations automatically to answer business questions instantly.",
+      images: ["/static/landing/data-analytics/analyst.png"],
     },
     {
-      title: "Engage and re-engage",
+      title: "SQL assistant",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+        "Generate, debug and optimize SQL queries that align with your business logic and data models.",
+      images: ["/static/landing/data-analytics/sqlWriter.png"],
     },
     {
-      title: "Prospect questions",
+      title: "Data catalog",
       content:
-        "Answer prospect questions and RFPs instantly with fresh, expert insights on products, competitors, and security.",
-      images: ["/static/landing/solutions/sales3.png"],
+        "Navigate your entire data ecosystem with instant access to schemas and relationships across tables.",
+      images: ["/static/landing/data-analytics/dataCatalog.png"],
     },
     {
-      title: "Sales coaching",
+      title: "Data runbooks",
       content:
-        "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+        "Access and understand data team processes and documentation to streamline operations and troubleshooting.",
+      images: ["/static/landing/data-analytics/dataDoc.png"],
     },
   ],
 };
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
+  name: "Vincent Delagabbe",
+  title: "Software Engineer at Alan",
+  logo: "/static/landing/logos/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -217,46 +212,46 @@ export const Stories: CustomerStory[] = [
 
 export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
   {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🔬",
+    name: "@analyst",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
+        Answers advanced data questions on your behalf by writing and executing
+        queries and providing visualizations.
       </>
     ),
   },
   {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
+    emoji: "💬",
+    name: "@sqlWriter",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
+        Generates simple SQL queries that understand business logic
+        and&nbsp;fixes or&nbsp;improves existing ones
       </>
     ),
   },
   {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
+    emoji: "🔎",
+    name: "@dataCatalog",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
+        Dives into your data model and answers questions about specific changes,
+        relationships, business definitions.
       </>
     ),
   },
   {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
+    emoji: "📈",
+    name: "@dataTeamDoc",
+    backgroundColor: "bg-purple-300",
     description: (
       <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
+        Answers questions about internal processes, business definitions
+        and&nbsp;runbooks on&nbsp;the data team.
       </>
     ),
   },
