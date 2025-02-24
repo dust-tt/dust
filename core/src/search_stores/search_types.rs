@@ -16,8 +16,6 @@ impl SearchItem {
             .get("_source")
             .ok_or_else(|| anyhow::anyhow!("Missing _source"))?;
 
-        println!("source: {:?}", source);
-
         let mime_type = source
             .get("mime_type")
             .and_then(|v| v.as_str())
