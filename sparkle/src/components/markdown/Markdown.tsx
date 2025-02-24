@@ -13,7 +13,10 @@ import { visit } from "unist-util-visit";
 import { Checkbox } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
 import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { LiBlock, OlBlock, UlBlock } from "@sparkle/components/markdown/List";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { ParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
+import { PreBlock } from "@sparkle/components/markdown/PreBlock";
 import {
   TableBlock,
   TableBodyBlock,
@@ -259,129 +262,6 @@ function LinkBlock({
     >
       {children}
     </a>
-  );
-}
-
-function PreBlock({ children }: { children: React.ReactNode }) {
-  const validChildrenContent =
-    Array.isArray(children) && children[0]
-      ? children[0].props.children[0]
-      : null;
-
-  let fallbackData: string | null = null;
-  if (!validChildrenContent) {
-    fallbackData =
-      Array.isArray(children) && children[0]
-        ? children[0].props?.node?.data?.meta
-        : null;
-  }
-
-  return (
-    <pre
-      className={cn(
-        "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
-        "s-border-border-dark dark:s-border-border-dark-night",
-        "s-bg-muted-background dark:s-bg-muted-background-night"
-      )}
-    >
-      {validChildrenContent ? children : fallbackData || children}
-    </pre>
-  );
-}
-
-function UlBlock({
-  children,
-  textColor,
-  textSize,
-}: {
-  children: React.ReactNode;
-  textColor: string;
-  textSize: string;
-}) {
-  return (
-    <ul
-      className={cn(
-        "s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0",
-        textColor,
-        textSize
-      )}
-    >
-      {children}
-    </ul>
-  );
-}
-
-function OlBlock({
-  children,
-  start,
-  textColor,
-  textSize,
-}: {
-  children: React.ReactNode;
-  start?: number;
-  textColor: string;
-  textSize: string;
-}) {
-  return (
-    <ol
-      start={start}
-      className={cn(
-        "s-list-decimal s-py-3 s-pl-8 first:s-pt-0 last:s-pb-0",
-        textColor,
-        textSize
-      )}
-    >
-      {children}
-    </ol>
-  );
-}
-
-function LiBlock({
-  children,
-  textColor,
-  textSize,
-  className = "",
-}: {
-  children: React.ReactNode;
-  textColor: string;
-  className?: string;
-  textSize: string;
-}) {
-  return (
-    <li
-      className={cn(
-        "s-break-words first:s-pt-0 last:s-pb-0",
-        "s-py-1 @md:s-py-2",
-        textColor,
-        textSize,
-        className
-      )}
-    >
-      {children}
-    </li>
-  );
-}
-
-function ParagraphBlock({
-  children,
-  textColor,
-  textSize,
-}: {
-  children: React.ReactNode;
-  textColor: string;
-  textSize: string;
-}) {
-  return (
-    <div
-      className={cn(
-        "s-whitespace-pre-wrap s-break-words s-font-normal first:s-pt-0 last:s-pb-0",
-        "s-py-1 @md:s-py-2 @md:s-leading-7",
-        textSize,
-        textColor
-      )}
-    >
-      {children}
-    </div>
   );
 }
 

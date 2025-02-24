@@ -74,14 +74,15 @@ async function handler(
     });
   }
 
-  // We only allow setting and retrieving `botEnabled` (slack) and `codeSyncEnabled` (github). This
-  // is mainly to prevent users from enabling other configs that are not released (e.g. google_drive
-  // `pdfEnabled`).
+  // We only allow setting and retrieving `botEnabled` (Slack), `codeSyncEnabled` (GitHub),
+  // `intercomConversationsNotesSyncEnabled` (Intercom) and `zendeskSyncUnresolvedTicketsEnabled` (Zendesk).
+  // This is mainly to prevent users from enabling other configs that are not released (e.g., google_drive `pdfEnabled`).
   if (
     ![
       "botEnabled",
       "codeSyncEnabled",
       "intercomConversationsNotesSyncEnabled",
+      "zendeskSyncUnresolvedTicketsEnabled",
     ].includes(configKey)
   ) {
     return apiError(req, res, {

@@ -48,6 +48,7 @@ export class ZendeskConfiguration extends ConnectorBaseModel<ZendeskConfiguratio
 
   declare subdomain: string;
   declare retentionPeriodDays: number;
+  declare syncUnresolvedTickets: boolean;
 }
 
 ZendeskConfiguration.init(
@@ -70,6 +71,11 @@ ZendeskConfiguration.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 180, // approximately 6 months
+    },
+    syncUnresolvedTickets: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

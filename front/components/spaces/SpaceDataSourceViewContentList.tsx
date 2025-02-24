@@ -93,14 +93,21 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
 
   if (showSpaceUsage) {
     columns.push({
-      header: "Available to",
       id: "spaces",
       accessorKey: "spaces",
       meta: {
         className: "w-48",
       },
+      header: () => {
+        return (
+          <div className="flex w-full justify-end">
+            <p>Available to</p>
+          </div>
+        );
+      },
       cell: (info: CellContext<RowData, SpaceType[]>) => (
         <DataTable.BasicCellContent
+          className="justify-end"
           label={
             info.getValue().length > 0
               ? info
@@ -127,13 +134,14 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      className: "w-48",
+      className: "w-20",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent
+        className="justify-end"
         label={
           info.getValue()
-            ? formatTimestampToFriendlyDate(info.getValue(), "short")
+            ? formatTimestampToFriendlyDate(info.getValue(), "compact")
             : "-"
         }
       />
@@ -142,7 +150,6 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
 
   columns.push({
     id: "actions",
-    header: "",
     meta: {
       className: "flex justify-end items-center",
     },

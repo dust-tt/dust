@@ -16,6 +16,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
+import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -23,6 +24,17 @@ const turndownService = new TurndownService();
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2/", "/").replace(".json", "");
+}
+
+export function shouldSyncTicket(
+  ticket: ZendeskFetchedTicket,
+  configuration: ZendeskConfigurationResource
+): boolean {
+  return [
+    "closed",
+    "solved",
+    ...(configuration.syncUnresolvedTickets ? ["open", "pending", "hold"] : []),
+  ].includes(ticket.status);
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

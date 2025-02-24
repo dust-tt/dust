@@ -158,7 +158,7 @@ export function AssistantInputBar({
 
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
-    textAndMentions,
+    markdownAndMentions,
     resetEditorText,
     setLoading
   ) => {
@@ -166,7 +166,7 @@ export function AssistantInputBar({
       return;
     }
 
-    const { mentions: rawMentions, text } = textAndMentions;
+    const { mentions: rawMentions, markdown } = markdownAndMentions;
     const mentions: MentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
@@ -178,7 +178,7 @@ export function AssistantInputBar({
       setDisableSendButton(true);
 
       const r = await onSubmit(
-        text,
+        markdown,
         mentions,
         fileUploaderService.getFileBlobs().map((cf) => {
           return {
@@ -196,7 +196,7 @@ export function AssistantInputBar({
       }
     } else {
       void onSubmit(
-        text,
+        markdown,
         mentions,
         fileUploaderService.getFileBlobs().map((cf) => {
           return {

@@ -1,11 +1,11 @@
 import {
+  Button,
   Chip,
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   CoreAPIDataSource,
@@ -21,6 +21,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
 
@@ -238,6 +239,7 @@ function RawObjectsModal({
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
 }) {
+  const { isDark } = useTheme();
   return (
     <Dialog
       open={show}
@@ -254,18 +256,21 @@ function RawObjectsModal({
         <div className="mx-2 my-4 overflow-y-auto">
           <span className="text-sm font-bold">dataSource</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={dataSource}
             rootName={false}
             defaultInspectDepth={1}
           />
           <span className="text-sm font-bold">coreDataSource</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={coreDataSource}
             rootName={false}
             defaultInspectDepth={1}
           />
           <span className="text-sm font-bold">connector</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={connector}
             rootName={false}
             defaultInspectDepth={1}
