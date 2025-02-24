@@ -235,6 +235,9 @@ export type ModelConfigurationType = {
   // Adjust the token count estimation by a ratio. Only needed for anthropic models, where the token count is higher than our estimate
   tokenCountAdjustment?: number;
 
+  // Controls how many output tokens the model can generate
+  generationTokensCount: number;
+
   supportsVision: boolean;
 
   // Only used for O-series OpenAI models.
@@ -262,6 +265,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -277,6 +281,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's second best model.",
   isLegacy: false,
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+  generationTokensCount: 2048,
   supportsVision: true,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
@@ -290,6 +295,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
 };
 export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
@@ -303,6 +309,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   description: "OpenAI's GPT 4o model (128k context).",
   shortDescription: "OpenAI's most advanced model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
@@ -317,6 +324,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "OpenAI's fast model.",
   isLegacy: false,
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
+  generationTokensCount: 2048,
   supportsVision: true,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
@@ -331,6 +339,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access).",
   shortDescription: "OpenAI's reasoning model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
   featureFlag: "openai_o1_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
@@ -347,6 +356,7 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's reasoning model designed to solve hard problems across domains (Limited preview access). High reasoning effort.",
   shortDescription: "OpenAI's reasoning model (high effort).",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
   reasoningEffort: "high",
   featureFlag: "openai_o1_high_reasoning_feature",
@@ -365,6 +375,7 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   featureFlag: "openai_o1_mini_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
@@ -381,6 +392,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
@@ -395,6 +407,7 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's fast reasoning model particularly good at coding, math, and science. High reasoning effort.",
   shortDescription: "OpenAI's fast reasoning model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   reasoningEffort: "high",
 };
@@ -461,6 +474,7 @@ export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's largest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  generationTokensCount: 4096,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   tokenCountAdjustment: 1.15,
@@ -479,6 +493,7 @@ export const CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG: ModelConfigurat
     shortDescription: "Anthropic's latest model.",
     isLegacy: false,
     delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+    generationTokensCount: 8192,
     supportsVision: true,
     toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
     tokenCountAdjustment: 1.15,
@@ -496,6 +511,7 @@ export const CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's latest model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  generationTokensCount: 8192,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   tokenCountAdjustment: 1.15,
@@ -512,6 +528,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   shortDescription: "Anthropic's best model.",
   isLegacy: false,
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
+  generationTokensCount: 64_000,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
   tokenCountAdjustment: 1.15,
@@ -528,6 +545,7 @@ export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3.5 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   tokenCountAdjustment: 1.15,
 };
@@ -543,6 +561,7 @@ export const CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's Claude 3 Haiku model, cost effective and high throughput (200k context).",
   shortDescription: "Anthropic's cost-effective model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
   tokenCountAdjustment: 1.15,
 };
@@ -557,6 +576,7 @@ export const CLAUDE_2_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   description: "Anthropic's Claude 2 model (200k context).",
   shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -571,6 +591,7 @@ export const CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Anthropic's low-latency and high throughput model (100k context)",
   shortDescription: "Anthropic's legacy model.",
   isLegacy: true,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -585,6 +606,7 @@ export const MISTRAL_LARGE_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `large 2` model (128k context).",
   shortDescription: "Mistral's large model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
@@ -598,6 +620,7 @@ export const MISTRAL_MEDIUM_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `medium` model (32k context).",
   shortDescription: "Mistral's legacy model.",
   isLegacy: true,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
@@ -611,6 +634,7 @@ export const MISTRAL_SMALL_MODEL_CONFIG: ModelConfigurationType = {
   description: "Mistral's `small` model (8x7B Instruct, 32k context).",
   shortDescription: "Mistral's cost-effective model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -626,6 +650,7 @@ export const MISTRAL_CODESTRAL_MODEL_CONFIG: ModelConfigurationType = {
     "Mistral's `codestral` model, specifically designed and optimized for code generation tasks.",
   shortDescription: "Mistral's code model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -641,6 +666,7 @@ export const GEMINI_PRO_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Google's best model for scaling across a wide range of tasks (1m context).",
   shortDescription: "Google's large model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -656,6 +682,7 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's cost-effective model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -671,6 +698,7 @@ export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
     "Google's lightweight, fast and cost-efficient model (1m context).",
   shortDescription: "Google's cost-effective model (preview).",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
@@ -688,6 +716,7 @@ export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
       "Google's lightweight model optimized for reasoning (1m context).",
     shortDescription: "Google's reasoning-focused model (preview).",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: true,
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
@@ -703,6 +732,7 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's fast large context model (1m context).",
   shortDescription: "Google's fast model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
 };
 
@@ -718,6 +748,7 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     description: "Google's lightweight large context model (1m context).",
     shortDescription: "Google's lightweight model (preview).",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: true,
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
@@ -733,6 +764,7 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   description: "Google's powerful large context model (1m context).",
   shortDescription: "Google's powerful model (preview).",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: true,
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
@@ -749,6 +781,7 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     description: "Meta's fast, powerful and open source model (128k context).",
     shortDescription: "Meta's open source model.",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: false,
   };
 
@@ -764,6 +797,7 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     description: "Alibaba's fast model for coding (32k context).",
     shortDescription: "Alibaba's fast coding model.",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: false,
   };
 
@@ -779,6 +813,7 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     description: "Alibaba's fast reasoning model (32k context).",
     shortDescription: "Alibaba's fast reasoning model.",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: false,
   };
 
@@ -794,6 +829,7 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     description: "Alibaba's powerful model (32k context).",
     shortDescription: "Alibaba's powerful model.",
     isLegacy: false,
+    generationTokensCount: 2048,
     supportsVision: false,
   };
 
@@ -808,6 +844,7 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   description: "DeepSeek's best model (v3, 64k context).",
   shortDescription: "DeepSeek's best model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -822,6 +859,7 @@ export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
   description: "DeepSeek R1 (reasoning, 163k context, served via TogetherAI).",
   shortDescription: "DeepSeek R1 (reasoning model).",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
 };
 
@@ -836,6 +874,7 @@ export const DEEPSEEK_CHAT_MODEL_CONFIG: ModelConfigurationType = {
   description: "DeepSeek's best model (v3, 64k context).",
   shortDescription: "DeepSeek's best model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   featureFlag: "deepseek_feature",
 };
@@ -851,6 +890,7 @@ export const DEEPSEEK_REASONER_MODEL_CONFIG: ModelConfigurationType = {
   description: "DeepSeek's reasoning model (R1, 64k context).",
   shortDescription: "DeepSeek's reasoning model.",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   featureFlag: "deepseek_feature",
 };
@@ -867,6 +907,7 @@ export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
     "DeepSeek's reasoning model (164k context, served via Fireworks).",
   shortDescription: "DeepSeek R1 (reasoning model).",
   isLegacy: false,
+  generationTokensCount: 2048,
   supportsVision: false,
   delimitersConfiguration: {
     incompleteDelimiterPatterns: [/<\/?[a-zA-Z_]*$/],
