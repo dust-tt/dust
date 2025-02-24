@@ -81,7 +81,7 @@ pub trait SearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<(Vec<CoreContentNode>, Option<String>)>;
+    ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)>;
 
     async fn index_node(&self, node: Node) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
@@ -148,7 +148,7 @@ impl SearchStore for ElasticsearchSearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<(Vec<CoreContentNode>, Option<String>)> {
+    ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)> {
         let options = options.unwrap_or_default();
 
         // TODO(20250128, nodes-core): remove this & corresponding timing logs
@@ -225,36 +225,46 @@ impl SearchStore for ElasticsearchSearchStore {
         );
 
         // Parse response and return enriched nodes
-        let (nodes, next_cursor): (Vec<Node>, Option<String>) =
-            match response.status_code().is_success() {
-                true => {
-                    let response_body = response.json::<serde_json::Value>().await?;
-                    let hits = response_body["hits"]["hits"].as_array().unwrap();
+        let (nodes, hit_count, hit_count_is_accurate, next_cursor): (
+            Vec<Node>,
+            u64,
+            bool,
+            Option<String>,
+        ) = match response.status_code().is_success() {
+            true => {
+                let response_body = response.json::<serde_json::Value>().await?;
+                let hits = response_body["hits"]["hits"].as_array().unwrap();
+                // Safe to unwrap because it's always set as per the official documentation.
+                let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
+                // hits.total.relation can be "eq" or "gte".
+                // It indicates whether the count above is an exact count or a lower bound.
+                // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
+                let hit_count_is_accurate =
+                    response_body["hits"]["total"]["relation"].as_str() == Some("eq");
 
-                    let next_cursor = if hits.len() == limit as usize {
-                        hits.last()
-                            .and_then(|hit| hit.get("sort"))
-                            .map(|sort_values| {
-                                // Encode the raw JSON sort values.
-                                URL_SAFE
-                                    .encode(serde_json::to_string(sort_values).unwrap().as_bytes())
-                            })
-                    } else {
-                        None
-                    };
+                let next_cursor = if hits.len() == limit as usize {
+                    hits.last()
+                        .and_then(|hit| hit.get("sort"))
+                        .map(|sort_values| {
+                            // Encode the raw JSON sort values.
+                            URL_SAFE.encode(serde_json::to_string(sort_values).unwrap().as_bytes())
+                        })
+                } else {
+                    None
+                };
 
-                    let nodes = hits
-                        .iter()
-                        .map(|h| Node::from(h.get("_source").unwrap().clone()))
-                        .collect();
+                let nodes = hits
+                    .iter()
+                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
+                    .collect();
 
-                    (nodes, next_cursor)
-                }
-                false => {
-                    let error = response.json::<serde_json::Value>().await?;
-                    return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
-                }
-            };
+                (nodes, hit_count, hit_count_is_accurate, next_cursor)
+            }
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
+            }
+        };
 
         let compute_node_start = utils::now();
         let result = self.compute_core_content_nodes(nodes, store).await?;
@@ -266,7 +276,7 @@ impl SearchStore for ElasticsearchSearchStore {
             node_ids = node_ids_log,
             "[ElasticsearchSearchStore] Compute core content nodes duration"
         );
-        Ok((result, next_cursor))
+        Ok((result, hit_count, hit_count_is_accurate, next_cursor))
     }
 
     async fn index_node(&self, node: Node) -> Result<()> {
