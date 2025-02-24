@@ -5,7 +5,7 @@ use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
 use crate::search_stores::search_store::Indexable;
 
-use super::folder::Folder;
+use super::{data_source::DataSourceESDocument, folder::Folder};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -192,6 +192,27 @@ impl CoreContentNode {
             base,
             children_count,
             parent_title,
+        }
+    }
+
+    pub fn from_data_source_document(data_source: DataSourceESDocument) -> Self {
+        Self {
+            base: Node {
+                data_source_id: data_source.data_source_id.clone(),
+                data_source_internal_id: data_source.data_source_internal_id,
+                node_id: data_source.data_source_id,
+                node_type: NodeType::Folder,
+                timestamp: data_source.timestamp,
+                title: data_source.name,
+                mime_type: data_source.mime_type,
+                provider_visibility: None,
+                parent_id: None, // Data sources don't have parents.
+                parents: vec![], // Data sources don't have parents.
+                source_url: None,
+                tags: Some(vec![]), // or any default tags you want for data sources
+            },
+            children_count: 1,
+            parent_title: None,
         }
     }
 }

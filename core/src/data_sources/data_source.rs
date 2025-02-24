@@ -2468,9 +2468,9 @@ mod tests {
 }
 
 pub const DATA_SOURCE_MIME_TYPE: &str = "application/vnd.dust.datasource";
-pub const DATA_SOURCE_NODE_TYPE: &str = "folder";
+pub const DATA_SOURCE_INDEX_NAME: &str = "core.data_sources";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataSourceESDocument {
     pub data_source_id: String,
     pub data_source_internal_id: String,
@@ -2486,10 +2486,17 @@ impl From<&DataSource> for DataSourceESDocument {
             data_source_id: ds.data_source_id().to_string(),
             data_source_internal_id: ds.internal_id().to_string(),
             mime_type: DATA_SOURCE_MIME_TYPE.to_string(),
-            node_type: DATA_SOURCE_NODE_TYPE.to_string(),
+            node_type: NodeType::Folder.to_string(),
             timestamp: ds.created(),
             name: ds.name().to_string(),
         }
+    }
+}
+
+impl From<serde_json::Value> for DataSourceESDocument {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value)
+            .expect("Failed to deserialize DataSourceESDocument from JSON value")
     }
 }
 
@@ -2497,7 +2504,7 @@ impl Indexable for DataSource {
     type Doc = DataSourceESDocument;
 
     fn index_name(&self) -> &'static str {
-        "core.data_sources"
+        DATA_SOURCE_INDEX_NAME
     }
 
     fn unique_id(&self) -> String {

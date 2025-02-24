@@ -264,6 +264,7 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     parent_id: t.string,
     node_types: t.array(t.string),
     query: t.string,
+    include_data_sources: t.boolean,
   }),
 ]);
 

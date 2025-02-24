@@ -19,7 +19,8 @@
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "edge_analyzer"
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
         },
         "keyword": {
           "type": "keyword"

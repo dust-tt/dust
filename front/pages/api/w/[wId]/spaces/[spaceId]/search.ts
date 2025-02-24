@@ -125,6 +125,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
+      include_data_sources: true,
     },
     options: {
       limit,

@@ -19,9 +19,10 @@ use url::Url;
 
 use crate::{
     data_sources::{
-        data_source::DataSource,
+        data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
         node::{CoreContentNode, Node, NodeType},
     },
+    search_stores::search_types::SearchItem,
     stores::store::Store,
     utils,
 };
@@ -60,13 +61,13 @@ pub struct NodesSearchOptions {
     sort: Option<Vec<SortSpec>>,
 }
 
-#[derive(serde::Deserialize, Clone)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct DatasourceViewFilter {
     data_source_id: String,
     view_filter: Vec<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     node_ids: Option<Vec<String>>,
@@ -143,7 +144,6 @@ impl ElasticsearchSearchStore {
 }
 
 const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
-const DATA_SOURCES_INDEX_NAME: &str = "core.data_sources";
 const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
@@ -214,7 +214,10 @@ impl SearchStore for ElasticsearchSearchStore {
         let search_start = utils::now();
         let response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[
+                NODES_INDEX_NAME,
+                DATA_SOURCE_INDEX_NAME,
+            ]))
             .body(search)
             .send()
             .await?;
@@ -229,8 +232,8 @@ impl SearchStore for ElasticsearchSearchStore {
             "[ElasticsearchSearchStore] Search nodes duration"
         );
 
-        // Parse response and return enriched nodes
-        let (nodes, next_cursor): (Vec<Node>, Option<String>) =
+        // Parse response and return enriched nodes.
+        let (items, next_cursor): (Vec<SearchItem>, Option<String>) =
             match response.status_code().is_success() {
                 true => {
                     let response_body = response.json::<serde_json::Value>().await?;
@@ -248,12 +251,12 @@ impl SearchStore for ElasticsearchSearchStore {
                         None
                     };
 
-                    let nodes = hits
+                    let items = hits
                         .iter()
-                        .map(|h| Node::from(h.get("_source").unwrap().clone()))
+                        .filter_map(|h| SearchItem::from_hit(h).ok())
                         .collect();
 
-                    (nodes, next_cursor)
+                    (items, next_cursor)
                 }
                 false => {
                     let error = response.json::<serde_json::Value>().await?;
@@ -262,7 +265,7 @@ impl SearchStore for ElasticsearchSearchStore {
             };
 
         let compute_node_start = utils::now();
-        let result = self.compute_core_content_nodes(nodes, store).await?;
+        let result = self.process_search_results(items, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -468,16 +471,23 @@ impl ElasticsearchSearchStore {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
 
-        let mut should_queries = vec![self.build_nodes_query(&query, &filter)?];
+        // Build nodes query with outer index scope.
+        let nodes_query = Query::bool()
+            .filter(Query::term("_index", NODES_INDEX_NAME))
+            .must(self.build_nodes_content_query(&query, &filter)?);
 
-        // Only include data sources query if explicitly requested.
+        let mut should_queries = vec![nodes_query];
+
+        // Add data sources query if requested.
         if filter.include_data_sources.unwrap_or(false) {
-            should_queries.push(self.build_data_sources_query(&query, &filter)?);
+            let data_sources_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                .must(self.build_data_sources_content_query(&query, &filter)?);
+
+            should_queries.push(data_sources_query);
         }
 
         let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
-
-        println!("bool_query: {:?}", to_string_pretty(&bool_query).unwrap());
 
         Ok(bool_query)
     }
@@ -509,13 +519,12 @@ impl ElasticsearchSearchStore {
             .minimum_should_match(1)
     }
 
-    fn build_data_sources_query(
+    fn build_data_sources_content_query(
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool()
-            .filter(Query::term("_index", DATA_SOURCES_INDEX_NAME))
             // Data sources don't support parents.
             .filter(self.build_shared_permission_filter(filter, false));
 
@@ -527,14 +536,13 @@ impl ElasticsearchSearchStore {
         Ok(bool_query)
     }
 
-    fn build_nodes_query(
+    fn build_nodes_content_query(
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
     ) -> Result<BoolQuery> {
-        let mut bool_query = Query::bool()
-            .filter(Query::term("_index", NODES_INDEX_NAME))
-            .filter(self.build_shared_permission_filter(filter, true));
+        let mut bool_query =
+            Query::bool().filter(self.build_shared_permission_filter(filter, true));
 
         if let Some(node_ids) = &filter.node_ids {
             bool_query = bool_query.filter(Query::terms("node_id", node_ids));
@@ -562,6 +570,61 @@ impl ElasticsearchSearchStore {
         Ok(bool_query)
     }
 
+    // Enrich search results with children counts and parent titles.
+
+    async fn process_search_results(
+        &self,
+        items: Vec<SearchItem>,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<Vec<CoreContentNode>> {
+        if items.len() as u64 > MAX_PAGE_SIZE {
+            return Err(anyhow::anyhow!(
+                "Too many items to process: {} (limit is {})",
+                items.len(),
+                MAX_PAGE_SIZE
+            ));
+        }
+
+        // Split items while preserving order.
+        let mut result = Vec::with_capacity(items.len());
+        let mut nodes_to_process = Vec::new();
+        let mut position_map = HashMap::new();
+
+        // Separate data sources and nodes.
+        for (pos, item) in items.into_iter().enumerate() {
+            match item {
+                SearchItem::DataSource(data_source) => {
+                    result.push((pos, self.create_data_source_node(data_source)));
+                }
+                SearchItem::Node(node) => {
+                    position_map.insert(node.node_id.clone(), pos);
+                    nodes_to_process.push(node);
+                }
+            }
+        }
+
+        // Process regular nodes if any exist.
+        if !nodes_to_process.is_empty() {
+            let processed_nodes = self
+                .compute_core_content_nodes(nodes_to_process, store)
+                .await?;
+
+            // Add processed nodes with their original positions
+            for node in processed_nodes {
+                let pos = position_map[&node.base.node_id];
+                result.push((pos, node));
+            }
+        }
+
+        // Restore original order.
+        result.sort_by_key(|(pos, _)| *pos);
+        Ok(result.into_iter().map(|(_, node)| node).collect())
+    }
+
+    fn create_data_source_node(&self, item: DataSourceESDocument) -> CoreContentNode {
+        CoreContentNode::from_data_source_document(item)
+    }
+
     /// Compute core content nodes from a list of nodes.
     ///
     /// This function performs two queries to Elasticsearch:
@@ -575,15 +638,7 @@ impl ElasticsearchSearchStore {
         nodes: Vec<Node>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<CoreContentNode>> {
-        if nodes.len() as u64 > MAX_PAGE_SIZE {
-            return Err(anyhow::anyhow!(
-                "Too many nodes to compute core content nodes: {} (limit is {})",
-                nodes.len(),
-                MAX_PAGE_SIZE
-            ));
-        }
-
-        // count children using store
+        // Count children using store.
         let count_start = utils::now();
         let children_count_map = store.count_nodes_children(&nodes).await?;
         let count_duration = utils::now() - count_start;
