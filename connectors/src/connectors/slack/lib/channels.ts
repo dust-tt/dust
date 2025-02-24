@@ -75,7 +75,7 @@ export async function updateSlackChannelInConnectorsDb({
 export async function updateSlackChannelInCoreDb(
   connectorId: ModelId,
   channelId: string,
-  timestampMs: number
+  timestampMs: number | undefined
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
