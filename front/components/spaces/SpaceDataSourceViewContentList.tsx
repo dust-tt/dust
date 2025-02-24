@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   cn,
@@ -7,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MenuItem,
   SearchInput,
   Spinner,
   useHashParam,
