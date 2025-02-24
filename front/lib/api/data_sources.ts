@@ -903,6 +903,7 @@ export async function createDataSourceWithoutProvider(
       },
     },
     credentials: dustManagedCredentials(),
+    name,
   });
 
   if (dustDataSource.isErr()) {

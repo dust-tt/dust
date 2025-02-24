@@ -3,7 +3,12 @@ use std::error::Error;
 use std::fmt;
 use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
-use super::folder::Folder;
+use crate::search_stores::search_store::Indexable;
+
+use super::{
+    data_source::{DataSourceESDocument, DATA_SOURCE_MIME_TYPE},
+    folder::Folder,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -191,5 +196,50 @@ impl CoreContentNode {
             children_count,
             parent_title,
         }
+    }
+
+    pub fn from_data_source_document(data_source: DataSourceESDocument) -> Self {
+        let node_id = data_source.data_source_id.clone();
+
+        Self {
+            base: Node {
+                data_source_id: data_source.data_source_id.clone(),
+                data_source_internal_id: data_source.data_source_internal_id,
+                node_id: node_id.clone(),
+                node_type: NodeType::Folder,
+                timestamp: data_source.timestamp,
+                title: data_source.name,
+                mime_type: DATA_SOURCE_MIME_TYPE.to_string(),
+                provider_visibility: None,
+                parent_id: None, // Data sources don't have parents.
+                parents: vec![node_id],
+                source_url: None,
+                tags: Some(vec![]),
+            },
+            children_count: 1, // Assume that data source nodes have at least one child.
+            parent_title: None,
+        }
+    }
+}
+
+pub const DATA_SOURCE_NODE_INDEX_NAME: &str = "core.data_sources_nodes";
+
+impl Indexable for Node {
+    type Doc = Node;
+
+    fn index_name(&self) -> &'static str {
+        DATA_SOURCE_NODE_INDEX_NAME
+    }
+
+    fn unique_id(&self) -> String {
+        self.unique_id()
+    }
+
+    fn document_type(&self) -> &'static str {
+        "data_source_node"
+    }
+
+    fn to_document(&self) -> Self::Doc {
+        self.clone()
     }
 }

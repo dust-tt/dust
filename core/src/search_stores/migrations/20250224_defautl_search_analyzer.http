@@ -1,0 +1,33 @@
+PUT core.data_sources_nodes/_mapping
+{
+  "properties": {
+    "title": {
+      "type": "text",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      },
+      "tags": {
+          "type": "text",
+          "fields": {
+            "edge": {
+              "type": "text",
+              "analyzer": "edge_analyzer",
+              "search_analyzer": "standard"
+            },
+            "keyword": {
+              "type": "keyword"
+            }
+          },
+          "analyzer": "standard"
+        },
+      "analyzer": "standard"
+    }
+  }
+}
