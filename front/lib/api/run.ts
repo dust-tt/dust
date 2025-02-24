@@ -15,6 +15,25 @@ const libDir = path.join(process.cwd(), "lib");
 const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
 const specParser = peg.generate(dustPegJs);
 
+export async function getSpecification(app: AppType, specHash: string) {
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+
+  const s = await coreAPI.getSpecification({
+    projectId: app.dustAPIProjectId,
+    specificationHash: specHash as string,
+  });
+
+  if (s.isErr()) {
+    return null;
+  }
+  // TODO(spolu): check type compatibility at run time.
+  const spec = specParser.parse(
+    s.value.specification.data
+  ) as SpecificationType;
+
+  return spec;
+}
+
 export async function getRun(
   auth: Authenticator,
   app: AppType,
@@ -38,17 +57,11 @@ export async function getRun(
   // Retrieve specification and parse it.
   const specHash = run.app_hash;
 
-  const s = await coreAPI.getSpecification({
-    projectId: app.dustAPIProjectId,
-    specificationHash: specHash as string,
-  });
+  let spec = await getSpecification(app, specHash as string);
 
-  if (s.isErr()) {
+  if (!spec) {
     return null;
   }
-
-  // TODO(spolu): check type compatibility at run time.
-  let spec = specParser.parse(s.value.specification.data) as SpecificationType;
 
   for (let i = 0; i < spec.length; i++) {
     if (spec[i].name in config.blocks) {
