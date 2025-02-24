@@ -22,6 +22,7 @@ import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
+
 export const TrackerDataSourceSelectedTree = ({
   owner,
   dataSourceConfigurations,
@@ -109,7 +110,10 @@ export const TrackerDataSourceSelectedTree = ({
                           size="xs"
                           icon={BracesIcon}
                           onClick={() => {
-                            if (node.type === "Document") {
+                            if (
+                              node.type === "Document" ||
+                              node.type === "document"
+                            ) {
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
@@ -117,11 +121,13 @@ export const TrackerDataSourceSelectedTree = ({
                             }
                           }}
                           className={classNames(
-                            node.type === "Document"
+                            node.type === "Document" || node.type === "document"
                               ? ""
                               : "pointer-events-none opacity-0"
                           )}
-                          disabled={node.type !== "Document"}
+                          disabled={
+                            node.type !== "Document" && node.type !== "document"
+                          }
                           variant="outline"
                         />
                       </div>

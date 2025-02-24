@@ -89,13 +89,13 @@ function filterNodesByViewType(
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document"].includes(node.node_type)
+          ["Folder", "Document", "document", "folder"].includes(node.node_type)
       );
     case "tables":
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Table"].includes(node.node_type)
+          ["Folder", "Table", "table", "folder"].includes(node.node_type)
       );
     case "all":
       return nodes;
