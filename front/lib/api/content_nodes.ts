@@ -99,6 +99,7 @@ export function getContentNodeFromCoreNode(
     preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
       coreNode.mime_type
     ),
+    parentTitle: coreNode.parent_title,
     dataSourceView,
   };
 }
