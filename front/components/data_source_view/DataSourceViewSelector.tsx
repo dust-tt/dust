@@ -265,13 +265,8 @@ export function DataSourceViewsSelector({
               {getVisualForContentNode(item)({ className: "min-w-4" })}
               <span className="text-sm">{item.title}</span>
               {item.parentTitle && (
-                <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
-              )}
-              {item.dataSourceView.dataSource.connectorProvider && (
                 <div className="ml-auto">
-                  {CONNECTOR_CONFIGURATIONS[
-                    item.dataSourceView.dataSource.connectorProvider
-                  ].getLogoComponent()({})}
+                  <span className="text-sm text-slate-500">{`${item.dataSourceView.dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[item.dataSourceView.dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}</span>
                 </div>
               )}
             </div>
