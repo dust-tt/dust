@@ -79,7 +79,7 @@ impl fmt::Display for NodeType {
         match self {
             NodeType::Document => write!(f, "document"),
             NodeType::Table => write!(f, "table"),
-            NodeType::Folder => write!(f, "fgolder"),
+            NodeType::Folder => write!(f, "folder"),
         }
     }
 }
