@@ -68,23 +68,23 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
-      alt: "Sales Visual 1",
+      src: "/static/landing/legal/legal1.png",
+      alt: "Legal Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
-      alt: "Sales Visual 2",
+      src: "/static/landing/legal/legal2.png",
+      alt: "Legal Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
-      alt: "Sales Visual 3",
+      src: "/static/landing/legal/legal3.png",
+      alt: "Legal Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
-      alt: "Sales Visual 4",
+      src: "/static/landing/legal/legal4.png",
+      alt: "Legal Visual 4",
       depth: 50,
     },
   ],
@@ -129,12 +129,12 @@ export const Metrics: MetricProps = {
   metrics: [
     {
       value: "50%",
-      description: <>time saved on legal reviews</>,
+      description: <>time saved on legal tasks</>,
     },
-    // {
-    //   value: "1h",
-    //   description: <> saved per review</>,
-    // },
+    {
+      value: "80%",
+      description: <>first level legal answers deflected</>,
+    },
   ],
   from: "from-amber-200",
   to: "to-amber-500",
@@ -154,7 +154,7 @@ export const UseCases: UseCaseProps = {
     {
       title: "Contract review",
       content:
-        "Analyze contracts automatically for compliance and risk, highlighting key terms and obligations.",
+        "Analyze contracts or RFPs automatically for compliance and risk, highlighting key terms and obligations.",
       images: ["/static/landing/solutions/legal2.png"],
     },
     {

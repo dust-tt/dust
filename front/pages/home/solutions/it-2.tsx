@@ -11,10 +11,8 @@ import {
   Metrics,
   pageSettings,
   Quote,
-  Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/itConfig";
-import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
@@ -84,12 +82,12 @@ export default function IT() {
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
-            <CustomerStoriesSection
+            {/* <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
               fromColor={pageSettings.from}
               toColor={pageSettings.to}
-            />
+            /> */}
           </div>
           <TrustedBy />
           <div className={GRID_SECTION_CLASSES}>
