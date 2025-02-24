@@ -29,12 +29,12 @@ export function isValidContentNodesViewType(
 export function toCoreContentNodeType(viewType: ContentNodesViewType) {
   switch (viewType) {
     case "documents":
-      return ["Document"]
+      return ["Document"];
     case "tables":
-      return ["Table"]
+      return ["Table"];
     case "all":
-      return ["Document", "Table"]
+      return ["Document", "Table"];
     default:
-      assertNever(viewType)
+      assertNever(viewType);
   }
 }
