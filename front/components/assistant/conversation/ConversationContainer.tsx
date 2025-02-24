@@ -29,6 +29,7 @@ import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversati
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import {
+  useConversation,
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
@@ -69,6 +70,13 @@ export function ConversationContainer({
       disabled: true, // We don't need to fetch conversations here.
     },
   });
+
+  const { conversation } = useConversation({
+    conversationId: activeConversationId,
+    workspaceId: owner.sId,
+    threadVersion,
+  });
+
   const { mutateMessages } = useConversationMessages({
     conversationId: activeConversationId,
     threadVersion,
@@ -159,7 +167,7 @@ export function ConversationContainer({
               mentions,
               user,
               lastMessageRank,
-              threadVersion: threadVersion ?? 0,
+              threadVersion: conversation?.threadVersion ?? 0,
             });
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,
