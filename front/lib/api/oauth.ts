@@ -10,7 +10,6 @@ import querystring from "querystring";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 
 export type OAuthError = {
@@ -39,8 +38,7 @@ const PROVIDER_STRATEGIES: Record<
   {
     setupUri: (
       connection: OAuthConnectionType,
-      useCase: OAuthUseCase,
-      forceMeetScope?: boolean
+      useCase: OAuthUseCase
     ) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
@@ -76,9 +74,9 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: (connection, useCase, forceMeetScope = false) => {
+    setupUri: (connection, useCase) => {
       const scopes =
-        useCase === "labs_transcripts" && forceMeetScope
+        useCase === "labs_transcripts"
           ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
           : [
               "https://www.googleapis.com/auth/drive.metadata.readonly",
@@ -397,13 +395,7 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
-  const forceMeetScope = (
-    await getFeatureFlags(auth.getNonNullableWorkspace())
-  ).includes("labs_transcripts_meet_scope");
-
-  return new Ok(
-    PROVIDER_STRATEGIES[provider].setupUri(connection, useCase, forceMeetScope)
-  );
+  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection, useCase));
 }
 
 export async function finalizeConnection(
