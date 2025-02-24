@@ -385,7 +385,7 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (grantOn === "ROLE") {
+    } else if (["ROLE", "DATABASE_ROLE"].includes(grantOn)) {
       // For roles, allow USAGE (role inheritance) but recursively check the parent role
       if (g.privilege !== "USAGE") {
         return new Err(
