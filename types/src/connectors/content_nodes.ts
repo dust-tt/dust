@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+
 import { assertNever } from "../shared/utils/assert_never";
 
 // When viewing ContentNodes, we have 3 view types: "tables", "documents" and "all".
