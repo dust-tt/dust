@@ -73,10 +73,12 @@ export function formatTimestampToFriendlyDate(
 
   switch (version) {
     case "compact":
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      }).replace(" ", ", ");
+      return date
+        .toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        })
+        .replace(" ", ", ");
 
     case "short":
       return date.toLocaleDateString("en-US", {
