@@ -64,6 +64,8 @@ pub enum NodeType {
     Document,
     Table,
     Folder,
+    Tables,
+    Documents
 }
 
 impl fmt::Display for NodeType {
@@ -71,6 +73,8 @@ impl fmt::Display for NodeType {
         match self {
             NodeType::Document => write!(f, "Document"),
             NodeType::Table => write!(f, "Table"),
+            NodeType::Documents => write!(f, "document"),
+            NodeType::Tables => write!(f, "table"),
             NodeType::Folder => write!(f, "Folder"),
         }
     }
