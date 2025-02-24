@@ -225,7 +225,6 @@ export async function createConversationWithMessage({
     visibility,
     message: {
       content: input,
-      threadVersion: 0,
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
         profilePictureUrl: user.image,
