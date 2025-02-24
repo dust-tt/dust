@@ -26,10 +26,11 @@ export type CoreAPIDataSourceConfig = {
 };
 
 export type CoreAPIDataSource = {
+  config: CoreAPIDataSourceConfig;
   created: number;
   data_source_id: string;
   data_source_internal_id: string;
-  config: CoreAPIDataSourceConfig;
+  name: string;
 };
 
 export type CoreAPIDataSourceDocumentSection = {

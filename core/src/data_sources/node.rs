@@ -3,6 +3,8 @@ use std::error::Error;
 use std::fmt;
 use tokio_postgres::types::{private::BytesMut, FromSql, IsNull, ToSql, Type};
 
+use crate::search_stores::search_store::Indexable;
+
 use super::folder::Folder;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -191,5 +193,25 @@ impl CoreContentNode {
             children_count,
             parent_title,
         }
+    }
+}
+
+impl Indexable for Node {
+    type Doc = Node;
+
+    fn index_name(&self) -> &'static str {
+        "core.data_sources_nodes"
+    }
+
+    fn unique_id(&self) -> String {
+        self.unique_id()
+    }
+
+    fn document_type(&self) -> &'static str {
+        "data_source_node"
+    }
+
+    fn to_document(&self) -> Self::Doc {
+        self.clone()
     }
 }

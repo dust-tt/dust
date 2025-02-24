@@ -1150,10 +1150,11 @@ impl Store for PostgresStore {
 
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
         let project_id = project.project_id();
+        let data_source_config = ds.config().clone();
         let data_source_created = ds.created();
         let data_source_id = ds.data_source_id().to_string();
         let data_source_internal_id = ds.internal_id().to_string();
-        let data_source_config = ds.config().clone();
+        let data_source_name = ds.name().to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1163,8 +1164,8 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "INSERT INTO data_sources \
-                   (id, project, created, data_source_id, internal_id, config_json) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+                   (id, project, created, data_source_id, internal_id, config_json, name) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
             )
             .await?;
         c.query_one(
@@ -1175,6 +1176,7 @@ impl Store for PostgresStore {
                 &data_source_id,
                 &data_source_internal_id,
                 &config_data,
+                &data_source_name,
             ],
         )
         .await?;
@@ -1209,21 +1211,27 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, created, internal_id, config_json FROM data_sources
+                "SELECT id, created, internal_id, config_json, name FROM data_sources
                    WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let d: Option<(i64, i64, String, String)> = match r.len() {
+        let d: Option<(i64, i64, String, String, String)> = match r.len() {
             0 => None,
-            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+            )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((_, created, internal_id, config_data)) => {
+            Some((_, created, internal_id, config_data, name)) => {
                 let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
                 Ok(Some(DataSource::new_from_store(
                     &Project::new_from_id(project_id),
@@ -1231,6 +1239,7 @@ impl Store for PostgresStore {
                     &data_source_id,
                     &internal_id,
                     &data_source_config,
+                    &name,
                 )))
             }
         }
@@ -1247,13 +1256,13 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, created, project, data_source_id, config_json FROM data_sources
+                "SELECT id, created, project, data_source_id, config_json, name FROM data_sources
                    WHERE internal_id = $1 LIMIT 1",
                 &[&data_source_internal_id],
             )
             .await?;
 
-        let d: Option<(i64, i64, i64, String, String)> = match r.len() {
+        let d: Option<(i64, i64, i64, String, String, String)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -1261,13 +1270,14 @@ impl Store for PostgresStore {
                 r[0].get(2),
                 r[0].get(3),
                 r[0].get(4),
+                r[0].get(5),
             )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((_, created, project_id, data_source_id, config_data)) => {
+            Some((_, created, project_id, data_source_id, config_data, name)) => {
                 let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
                 Ok(Some(DataSource::new_from_store(
                     &Project::new_from_id(project_id),
@@ -1275,6 +1285,7 @@ impl Store for PostgresStore {
                     &data_source_id,
                     &data_source_internal_id,
                     &data_source_config,
+                    &name,
                 )))
             }
         }
