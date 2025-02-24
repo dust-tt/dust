@@ -69,22 +69,22 @@ export const Hero: HeroProps = {
   visuals: [
     {
       src: "/static/landing/data-analytics/data1.png",
-      alt: "Sales Visual 1",
+      alt: "Data Visual 1",
       depth: -30,
     },
     {
       src: "/static/landing/data-analytics/data2.png",
-      alt: "Sales Visual 2",
+      alt: "Data Visual 2",
       depth: -10,
     },
     {
       src: "/static/landing/data-analytics/data3.png",
-      alt: "Sales Visual 3",
+      alt: "Data Visual 3",
       depth: 20,
     },
     {
       src: "/static/landing/data-analytics/data4.png",
-      alt: "Sales Visual 4",
+      alt: "Data Visual 4",
       depth: 50,
     },
   ],
@@ -149,25 +149,25 @@ export const UseCases: UseCaseProps = {
       title: "Self-serve analytics",
       content:
         "Execute complex data queries and generate visualizations automatically to answer business questions instantly.",
-      images: ["/static/landing/solutions/analytics1.png"],
+      images: ["/static/landing/data-analytics/analyst.png"],
     },
     {
       title: "SQL assistant",
       content:
         "Generate, debug and optimize SQL queries that align with your business logic and data models.",
-      images: ["/static/landing/solutions/analytics2.png"],
+      images: ["/static/landing/data-analytics/sqlWriter.png"],
     },
     {
       title: "Data catalog",
       content:
         "Navigate your entire data ecosystem with instant access to schemas and relationships across tables.",
-      images: ["/static/landing/solutions/analytics3.png"],
+      images: ["/static/landing/data-analytics/dataCatalog.png"],
     },
     {
       title: "Data runbooks",
       content:
         "Access and understand data team processes and documentation to streamline operations and troubleshooting.",
-      images: ["/static/landing/solutions/analytics4.png"],
+      images: ["/static/landing/data-analytics/dataDoc.png"],
     },
   ],
 };
@@ -197,7 +197,7 @@ export const Stories: CustomerStory[] = [
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
-      "42% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
+      "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },

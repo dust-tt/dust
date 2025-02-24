@@ -68,23 +68,23 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
-      alt: "Sales Visual 1",
+      src: "/static/landing/knowledge/knowledge1.png",
+      alt: "Knowledge Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
-      alt: "Sales Visual 2",
+      src: "/static/landing/knowledge/knowledge2.png",
+      alt: "Knowledge Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
-      alt: "Sales Visual 3",
+      src: "/static/landing/knowledge/knowledge3.png",
+      alt: "Knowledge Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
-      alt: "Sales Visual 4",
+      src: "/static/landing/knowledge/knowledge4.png",
+      alt: "Knowledge Visual 4",
       depth: 50,
     },
   ],
