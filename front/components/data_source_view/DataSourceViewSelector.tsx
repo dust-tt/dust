@@ -18,15 +18,8 @@ import type {
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
-import {
-  Dispatch,
-  SetStateAction,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import type { Dispatch, SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
