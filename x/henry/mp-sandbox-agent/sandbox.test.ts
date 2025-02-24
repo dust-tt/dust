@@ -11,15 +11,15 @@ describe("PythonSandbox", () => {
   });
 
   test("should support importing and calling exposed functions", async () => {
-    const sandbox = await PythonSandbox.create("test");
+    const sandbox = await PythonSandbox.create();
     sandbox.expose("fake_function", {
-      fn: () => "Hello, World!",
+      fn: async () => "Hello, World!",
       input: z.object({}),
       output: z.string(),
       description: "A fake function that returns a string",
     });
     const { stdout, stderr } = await sandbox.runCode(
-      "from test import fake_function\nprint(fake_function())"
+      "\nprint(await fake_function())"
     );
     expect(stdout).toBe("Hello, World!\n");
     expect(stderr).toBe("");
@@ -28,13 +28,13 @@ describe("PythonSandbox", () => {
   test("should support importing and calling exposed functions with arguments", async () => {
     const sandbox = await PythonSandbox.create("test");
     sandbox.expose("add", {
-      fn: ({ a, b }: { a: number; b: number }) => a + b,
+      fn: async ({ a, b }: { a: number; b: number }) => a + b,
       input: z.object({ a: z.number(), b: z.number() }),
       output: z.number(),
       description: "Adds two numbers",
     });
     const { stdout, stderr } = await sandbox.runCode(
-      "from test import add\nprint(add(1, 2))"
+      "\nprint(await add(1, 2))"
     );
     expect(stdout).toBe("3\n");
     expect(stderr).toBe("");
@@ -43,13 +43,13 @@ describe("PythonSandbox", () => {
   test("should support importing and calling exposed functions with positional arguments", async () => {
     const sandbox = await PythonSandbox.create("test");
     sandbox.expose("sub", {
-      fn: ({ b, a }: { a: number; b: number }) => b - a,
+      fn: async ({ b, a }: { a: number; b: number }) => b - a,
       input: z.object({ b: z.number(), a: z.number() }),
       output: z.number(),
       description: "Subtracts two numbers",
     });
     const { stdout, stderr } = await sandbox.runCode(
-      "from test import sub\nprint(sub(1, 2))"
+      "\nprint(await sub(1, 2))"
     );
     expect(stdout).toBe("-1\n");
     expect(stderr).toBe("");
@@ -58,13 +58,13 @@ describe("PythonSandbox", () => {
   test("should support importing and calling exposed functions with keyword arguments", async () => {
     const sandbox = await PythonSandbox.create("test");
     sandbox.expose("multiply", {
-      fn: ({ a, b }: { a: number; b: number }) => a * b,
+      fn: async ({ a, b }: { a: number; b: number }) => a * b,
       input: z.object({ a: z.number(), b: z.number() }),
       output: z.number(),
       description: "Multiplies two numbers",
     });
     const { stdout, stderr } = await sandbox.runCode(
-      "from test import multiply\nprint(multiply(a=1, b=2))"
+      "\nprint(await multiply(a=1, b=2))"
     );
     expect(stdout).toBe("2\n");
     expect(stderr).toBe("");
@@ -79,7 +79,7 @@ describe("PythonSandbox", () => {
       description: "Returns a string after a delay",
     });
     const { stdout, stderr } = await sandbox.runCode(
-      "from test import async_function\nprint(await async_function())"
+      "\nprint(await async_function())"
     );
     expect(stdout).toBe("Hello, World!\n");
     expect(stderr).toBe("");
@@ -101,8 +101,34 @@ describe("PythonSandbox", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       expect((error as Error).message).toBe(
-        'Traceback (most recent call last):\n  File "<stdin>", line 2, in <module>\nException: This is a test error\n'
+        'Traceback (most recent call last):\n  File "<stdin>", line 3, in <module>\nException: This is a test error\n'
       );
     }
+  });
+  test("should support list kw parameters", async () => {
+    const sandbox = await PythonSandbox.create("test");
+    sandbox.expose("list_function", {
+      fn: async ({ l }) => l,
+      input: z.object({ l: z.array(z.string()) }),
+      output: z.array(z.string()),
+      description: "Returns a list of strings",
+    });
+    const { stdout, stderr } = await sandbox.runCode(
+      "\nprint(await list_function(l=['a', 'b', 'c']))"
+    );
+    expect(stdout).toBe("['a', 'b', 'c']\n");
+  });
+  test("should support list parameters", async () => {
+    const sandbox = await PythonSandbox.create("test");
+    sandbox.expose("list_function", {
+      fn: async ({ l }) => l,
+      input: z.object({ l: z.array(z.string()) }),
+      output: z.array(z.string()),
+      description: "Returns a list of strings",
+    });
+    const { stdout, stderr } = await sandbox.runCode(
+      "\nprint(await list_function(['a', 'b', 'c']))"
+    );
+    expect(stdout).toBe("['a', 'b', 'c']\n");
   });
 });

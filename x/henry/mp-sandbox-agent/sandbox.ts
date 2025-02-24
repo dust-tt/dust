@@ -3,16 +3,23 @@ import {
   type MicroPythonInstance,
 } from "@micropython/micropython-webassembly-pyscript/micropython.mjs";
 import * as z from "zod";
-import type { Tool } from "./tools/types";
 
 export interface CodeExecutionResult {
   result: unknown;
   stdout: string;
 }
 
+type ExposedFunction = {
+  fn: (input: any) => Promise<any>;
+  input: z.ZodType<any>;
+  output: z.ZodType<any>;
+  description: string;
+};
+
 export class PythonSandbox {
   private mp!: MicroPythonInstance;
-  private exposedFunctions: { [key: string]: Tool } = {};
+  private exposedFunctions: { [key: string]: ExposedFunction } = {};
+  private module: Record<string, any> = {};
   private moduleId: string;
   private stdoutBuffer: string[] = [];
   private stderrBuffer: string[] = [];
@@ -54,41 +61,78 @@ export class PythonSandbox {
     return { stdout, stderr };
   }
 
-  expose(name: string, func: Tool) {
+  expose(name: string, func: ExposedFunction) {
     this.exposedFunctions[name] = func;
 
-    const wrapper = (...args: unknown[]) => {
+    const wrapper = (_args: string, _kwargs: string) => {
       // Parse input according to schema
+      const args = JSON.parse(_args);
+      const kwargs = JSON.parse(_kwargs);
+
+      const toParse: any = {};
       const inputObject = func.input as z.ZodObject<z.ZodRawShape>;
-      const params = func.input.parse(
-        args.length === 1 && typeof args[0] === "object"
-          ? args[0]
-          : {
-              [Object.keys(inputObject.shape)[0]]: args[0],
-              [Object.keys(inputObject.shape)[1]]: args[1],
-            }
-      );
-      return func.fn(params);
+      for (const [i, key] of Object.keys(inputObject.shape).entries()) {
+        if (kwargs[key]) {
+          toParse[key] = kwargs[key];
+        } else {
+          toParse[key] = args[i];
+        }
+      }
+
+      const params = func.input.parse(toParse);
+
+      const r = func.fn(params);
+
+      const maybeParseValue = (value: unknown) =>
+        typeof value === "string" ||
+        typeof value === "number" ||
+        typeof value === "boolean"
+          ? value
+          : JSON.stringify(value);
+
+      if (r instanceof Promise) {
+        return r.then(maybeParseValue);
+      }
+
+      return maybeParseValue(r);
     };
 
     // Create an object to hold our exposed functions
-    const module = { [name]: wrapper };
-    this.mp.registerJsModule(this.moduleId, module);
+    this.module[name] = wrapper;
+    this.mp.registerJsModule(this.moduleId, this.module);
+  }
+
+  private generateWrapperFunction(name: string): string {
+    return `
+async def ${name}(*args, **kwargs):
+    args = json.dumps(args)
+    kwargs = json.dumps(kwargs)
+
+    r = await _${name}(args, kwargs)
+    try:
+      return json.loads(r)
+    except:
+      return r`;
+  }
+
+  private generateImports(): string {
+    const imports = ["import json"];
+
+    for (const name of Object.keys(this.exposedFunctions)) {
+      imports.push(`from ${this.moduleId} import ${name} as _${name}`);
+      imports.push(this.generateWrapperFunction(name));
+    }
+
+    return imports.join("\n");
   }
 
   async runCode(code: string): Promise<{ stdout: string; stderr: string }> {
-    // Clear stdout and stderr buffers before running new code
     this.clearBuffers();
 
-    // Import exposed functions if any
-    const importCode = Object.keys(this.exposedFunctions)
-      .map((name) => `from ${this.moduleId} import ${name}`)
-      .join("\n");
+    const importCode = this.generateImports();
 
     try {
-      // Run the actual code
-      await this.mp.runPythonAsync(`${importCode}\n${code.trim()}`);
-
+      await this.mp.runPythonAsync(`${importCode}\n\n${code.trim()}`);
       return this.getOutput();
     } catch (error) {
       // Get stdout before throwing
