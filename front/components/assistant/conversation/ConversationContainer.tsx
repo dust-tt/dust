@@ -159,6 +159,7 @@ export function ConversationContainer({
               mentions,
               user,
               lastMessageRank,
+              threadVersion: threadVersion ?? 0,
             });
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,

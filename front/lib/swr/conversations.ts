@@ -40,9 +40,8 @@ export function useConversation({
 } {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
-  const threadVersionParam = threadVersion
-    ? `?threadVersion=${threadVersion}`
-    : "";
+  const threadVersionParam =
+    threadVersion != null ? `?threadVersion=${threadVersion}` : "";
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
       ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}${threadVersionParam}`
@@ -131,9 +130,8 @@ export function useConversationMessages({
           return null;
         }
 
-        const threadVersionParam = threadVersion
-          ? `&threadVersion=${threadVersion}`
-          : "";
+        const threadVersionParam =
+          threadVersion != null ? `&threadVersion=${threadVersion}` : "";
         // If we have reached the last page and there are no more
         // messages or the previous page has no messages, return null.
         if (
@@ -154,14 +152,6 @@ export function useConversationMessages({
         revalidateAll: false,
         revalidateOnFocus: false,
         ...options,
-        keyFilter: (key) => {
-          return (
-            typeof key === "string" &&
-            key.startsWith(
-              `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages}`
-            )
-          );
-        },
       }
     );
 
@@ -304,9 +294,10 @@ export const useEditMessage = (owner: LightWorkspaceType) => {
     if (!conversation) {
       return false;
     }
-    const threadVersionParam = conversation.threadVersion
-      ? `?threadVersion=${conversation.threadVersion}`
-      : "";
+    const threadVersionParam =
+      conversation.threadVersion != null
+        ? `?threadVersion=${conversation.threadVersion}`
+        : "";
 
     const body = {
       content: text,

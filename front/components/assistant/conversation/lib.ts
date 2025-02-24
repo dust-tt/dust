@@ -37,11 +37,13 @@ export function createPlaceholderUserMessage({
   mentions,
   user,
   lastMessageRank,
+  threadVersion,
 }: {
   input: string;
   mentions: MentionType[];
   user: UserType;
   lastMessageRank: number;
+  threadVersion: number;
 }): UserMessageWithRankType {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
@@ -57,7 +59,7 @@ export function createPlaceholderUserMessage({
     sId: `placeholder-${createdAt.toString()}`,
     version: 0,
     rank: lastMessageRank + 1,
-    threadVersions: [0],
+    threadVersions: [threadVersion],
     previousThreadVersion: null,
     nextThreadVersion: null,
     context: {
@@ -89,9 +91,8 @@ export async function submitMessage({
   threadVersion?: number;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
-  const threadVersionParam = threadVersion
-    ? `?threadVersion=${threadVersion}`
-    : "";
+  const threadVersionParam =
+    threadVersion != null ? `?threadVersion=${threadVersion}` : "";
   // Create a new content fragment.
   if (contentFragments.length > 0) {
     const contentFragmentsRes = await Promise.all(

@@ -67,7 +67,7 @@ export function UserMessage({
 
   const router = useRouter();
   async function switchThread(threadVersion: number | null) {
-    if (threadVersion) {
+    if (threadVersion != null) {
       await router.push(
         `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`
       );
@@ -127,7 +127,10 @@ export function UserMessage({
       />
     );
   } else {
-    if (message.previousThreadVersion || message.nextThreadVersion) {
+    if (
+      message.previousThreadVersion != null ||
+      message.nextThreadVersion != null
+    ) {
       buttons.push(
         <Button
           key="previous-msg-button"
@@ -137,7 +140,7 @@ export function UserMessage({
           onClick={async () => {
             await switchThread(message.previousThreadVersion);
           }}
-          disabled={!message.previousThreadVersion}
+          disabled={message.previousThreadVersion === null}
           icon={ChevronLeftIcon}
           className="text-muted-foreground"
         />
@@ -152,7 +155,7 @@ export function UserMessage({
           onClick={async () => {
             await switchThread(message.nextThreadVersion);
           }}
-          disabled={!message.nextThreadVersion}
+          disabled={message.nextThreadVersion === null}
           icon={ChevronRightIcon}
           className="text-muted-foreground"
         />
@@ -214,9 +217,10 @@ export function UserMessage({
       )}
       {message.mentions.length === 0 && isLastMessage && (
         <AgentSuggestion
-          conversationId={conversation.sId}
+          conversation={conversation}
           owner={owner}
           userMessage={message}
+          switchThread={switchThread}
         />
       )}
     </ConversationMessage>
