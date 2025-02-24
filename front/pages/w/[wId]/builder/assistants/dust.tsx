@@ -11,6 +11,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   DataSourceType,
+  DataSourceViewType,
   LightAgentConfigurationType,
   SpaceType,
   SubscriptionType,
@@ -54,13 +55,30 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   };
 });
 
+function DustAgentDataSourceVisual({
+  dataSourceView,
+}: {
+  dataSourceView: DataSourceViewType;
+}) {
+  const { isDark } = useTheme();
+
+  return (
+    <ContextItem.Visual
+      visual={getConnectorProviderLogoWithFallback({
+        provider: dataSourceView.dataSource.connectorProvider,
+        fallback: CloudArrowDownIcon,
+        isDark,
+      })}
+    />
+  );
+}
+
 export default function EditDustAssistant({
   owner,
   subscription,
   globalSpace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-  const { isDark } = useTheme();
   const sendNotification = useSendNotification();
 
   const {
@@ -236,13 +254,7 @@ export default function EditDustAssistant({
                         key={dsView.id}
                         title={getDisplayNameForDataSource(dsView.dataSource)}
                         visual={
-                          <ContextItem.Visual
-                            visual={getConnectorProviderLogoWithFallback({
-                              provider: dsView.dataSource.connectorProvider,
-                              fallback: CloudArrowDownIcon,
-                              isDark,
-                            })}
-                          />
+                          <DustAgentDataSourceVisual dataSourceView={dsView} />
                         }
                         action={
                           <SliderToggle
