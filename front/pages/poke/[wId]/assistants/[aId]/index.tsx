@@ -6,6 +6,7 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -35,6 +36,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 const AssistantDetailsPage = ({
   agentConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const { isDark } = useTheme();
   return (
     <div className="mx-auto max-w-4xl pt-8">
       <Page.Vertical align="stretch">
@@ -75,6 +77,7 @@ const AssistantDetailsPage = ({
                       )?.displayName ?? `Unknown Model (${a.model.modelId})`}
                     </div>
                     <JsonViewer
+                      theme={isDark ? "dark" : "light"}
                       value={a.model}
                       rootName={false}
                       defaultInspectDepth={0}
@@ -87,6 +90,7 @@ const AssistantDetailsPage = ({
                           Action {index + 1}: {action.type}
                         </div>
                         <JsonViewer
+                          theme={isDark ? "dark" : "light"}
                           value={action}
                           rootName={false}
                           defaultInspectDepth={0}

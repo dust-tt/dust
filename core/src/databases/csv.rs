@@ -22,13 +22,6 @@ const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl UpsertQueueCSVContent {
-    pub async fn get_upsert_queue_bucket() -> Result<String> {
-        match std::env::var("DUST_UPSERT_QUEUE_BUCKET") {
-            Ok(bucket) => Ok(bucket),
-            Err(_) => Err(anyhow!("DUST_UPSERT_QUEUE_BUCKET is not set")),
-        }
-    }
-
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let now = utils::now();
         let bucket = &self.bucket;

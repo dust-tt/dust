@@ -141,11 +141,28 @@ async function handler(
     });
   }
 
-  return res.status(200).json({
-    nodes: searchRes.value.nodes.map((node) =>
-      getContentNodeFromCoreNode(node, viewType)
-    ),
+  const dataSourceViewById = new Map(
+    datasourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
+  );
+
+  const nodes = searchRes.value.nodes.flatMap((node) => {
+    const dataSourceView = dataSourceViewById.get(node.data_source_id);
+
+    if (!dataSourceView) {
+      logger.error(
+        {
+          nodeId: node.node_id,
+          expectedDataSourceId: node.data_source_id,
+          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
+        },
+        "DataSourceView lookup failed for node"
+      );
+      return [];
+    }
+
+    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
+  return res.status(200).json({ nodes });
 }
 
 export default withSessionAuthenticationForWorkspace(

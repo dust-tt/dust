@@ -27,7 +27,9 @@ export type DataSourceViewsWithDetails = DataSourceViewType & {
 };
 
 export type DataSourceViewContentNode = ContentNode & {
+  dataSourceView: DataSourceViewType;
   parentInternalIds: string[] | null;
+  parentTitle?: string;
 };
 
 export type DataSourceViewSelectionConfiguration = {

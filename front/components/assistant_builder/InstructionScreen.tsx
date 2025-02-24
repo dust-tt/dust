@@ -32,9 +32,9 @@ import React, {
   useState,
 } from "react";
 
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,

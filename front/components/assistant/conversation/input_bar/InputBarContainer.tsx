@@ -181,10 +181,9 @@ const InputBarContainer = ({
           variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
           onClick={async () => {
-            const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(
               editorService.isEmpty(),
-              jsonContent,
+              editorService.getMarkdownAndMentions(),
               () => {
                 editorService.clearEditor();
                 resetEditorContainerSize();

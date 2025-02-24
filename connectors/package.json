@@ -45,6 +45,7 @@
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
+    "jsforce": "^3.6.4",
     "lodash": "^4.17.21",
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0",

@@ -47,6 +47,7 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -800,6 +801,7 @@ function NotionUrlCheckOrFind({
   owner: WorkspaceType;
   dsId: string;
 }) {
+  const { isDark } = useTheme();
   const [notionUrl, setNotionUrl] = useState("");
   const [urlDetails, setUrlDetails] = useState<
     NotionCheckUrlResponseType | NotionFindUrlResponseType | null
@@ -877,7 +879,11 @@ function NotionUrlCheckOrFind({
                 <span>
                   {urlDetails.page ? (
                     <>
-                      <JsonViewer value={urlDetails.page} rootName={false} />
+                      <JsonViewer
+                        theme={isDark ? "dark" : "light"}
+                        value={urlDetails.page}
+                        rootName={false}
+                      />
                       {command === "find-url" && (
                         <div>
                           {urlDetails.page.parentType === "page" && (
@@ -909,7 +915,11 @@ function NotionUrlCheckOrFind({
                     </>
                   ) : (
                     <>
-                      <JsonViewer value={urlDetails.db} rootName={false} />
+                      <JsonViewer
+                        theme={isDark ? "dark" : "light"}
+                        value={urlDetails.db}
+                        rootName={false}
+                      />
                       {command === "find-url" && (
                         <div>
                           {urlDetails.db?.parentType === "page" && (
@@ -957,6 +967,7 @@ function ZendeskTicketCheck({
   owner: WorkspaceType;
   dsId: string;
 }) {
+  const { isDark } = useTheme();
   const [brandId, setBrandId] = useState<number | null>(null);
   const [ticketId, setTicketId] = useState<number | null>(null);
   const [ticketUrl, setTicketUrl] = useState<string | null>(null);
@@ -1079,7 +1090,11 @@ function ZendeskTicketCheck({
             {ticketDetails.ticket && (
               <div className="ml-4 pt-2 text-xs text-element-700">
                 <div className="mb-1 font-bold">Details</div>
-                <JsonViewer value={ticketDetails.ticket} rootName={false} />
+                <JsonViewer
+                  theme={isDark ? "dark" : "light"}
+                  value={ticketDetails.ticket}
+                  rootName={false}
+                />
               </div>
             )}
           </div>

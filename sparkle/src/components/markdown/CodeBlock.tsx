@@ -1,16 +1,40 @@
+import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
 import { amber, emerald, pink, sky, slate, violet } from "tailwindcss/colors";
 
-import { cn } from "@sparkle/lib";
-
 const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
+);
+
+export const codeBlockVariants = cva(
+  [
+    "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
+    "s-border-border-dark dark:s-border-border-dark-night",
+  ],
+  {
+    variants: {
+      variant: {
+        muted: [
+          "s-bg-slate-100 dark:s-bg-muted-night",
+          "s-text-slate-900 dark:s-text-slate-200",
+        ],
+        surface: [
+          "s-bg-muted dark:s-bg-muted-night",
+          "s-text-amber-600 dark:s-text-amber-600-night",
+        ],
+      },
+    },
+    defaultVariants: {
+      variant: "surface",
+    },
+  }
 );
 
 type CodeBlockProps = {
   children?: React.ReactNode;
   className?: string;
   inline?: boolean;
+  variant?: "muted" | "surface";
   wrapLongLines?: boolean;
 };
 
@@ -18,6 +42,7 @@ export function CodeBlock({
   children,
   className,
   inline,
+  variant = "surface",
   wrapLongLines = false,
 }: CodeBlockProps): JSX.Element {
   const match = /language-(\w+)/.exec(className || "");
@@ -135,15 +160,6 @@ export function CodeBlock({
       </div>
     </Suspense>
   ) : (
-    <code
-      className={cn(
-        "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
-        "s-border-border-dark dark:s-border-border-dark-night",
-        "s-bg-muted dark:s-bg-muted-night",
-        "s-text-amber-600 dark:s-text-amber-600-night"
-      )}
-    >
-      {children}
-    </code>
+    <code className={codeBlockVariants({ variant })}>{children}</code>
   );
 }

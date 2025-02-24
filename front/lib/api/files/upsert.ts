@@ -23,25 +23,35 @@ import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
 } from "@app/lib/api/data_sources";
-import { isUpsertTableArgs } from "@app/lib/api/data_sources";
-import { upsertDocument, upsertTable } from "@app/lib/api/data_sources";
+import {
+  isUpsertTableArgs,
+  upsertDocument,
+  upsertTable,
+} from "@app/lib/api/data_sources";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 
 const ENABLE_LLM_SNIPPETS = false;
 
 async function generateSnippet(
   auth: Authenticator,
-  file: FileResource,
-  content: string
+  {
+    file,
+    dataSource,
+  }: {
+    file: FileResource;
+    dataSource: DataSourceResource;
+  }
 ): Promise<Result<string, Error>> {
   const startTime = Date.now();
   const owner = auth.getNonNullableWorkspace();
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   if (isSupportedImageContentType(file.contentType)) {
     return new Err(
@@ -50,10 +60,18 @@ async function generateSnippet(
   }
 
   if (isSupportedDelimitedTextContentType(file.contentType)) {
-    // Parse only the headers from the CSV file
-    const headers = content.split("\n")[0];
+    const schemaRes = await coreAPI.tableValidateCSVContent({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+    });
 
-    let snippet = `${file.contentType} file with headers: ${headers}`;
+    if (schemaRes.isErr()) {
+      return new Err(new Error("Invalid CSV content"));
+    }
+
+    let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
     if (snippet.length > 256) {
       snippet = snippet.slice(0, 242) + "... (truncated)";
     }
@@ -62,6 +80,11 @@ async function generateSnippet(
   }
 
   if (isSupportedPlainTextContentType(file.contentType)) {
+    let content = await getFileContent(auth, file);
+    if (!content) {
+      return new Err(new Error("Failed to get file content"));
+    }
+
     if (!ENABLE_LLM_SNIPPETS) {
       // Take the first 256 characters
       if (content.length > 256) {
@@ -84,7 +107,6 @@ async function generateSnippet(
     appConfig.MODEL.provider_id = model.providerId;
     appConfig.MODEL.model_id = model.modelId;
 
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const resTokenize = await coreAPI.tokenize({
       text: content,
       providerId: model.providerId,
@@ -184,7 +206,7 @@ async function generateSnippet(
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
   auth,
-  { file, content, dataSource, upsertArgs }
+  { file, dataSource, upsertArgs }
 ) => {
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
@@ -193,18 +215,29 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     documentId = upsertArgs.document_id;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
+    });
+  }
+
   const upsertDocumentRes = await upsertDocument({
     // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
     parents: [documentId],
-    tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     dataSource,
     auth,
     mime_type: file.contentType,
-    title: upsertTitle ?? file.fileName,
+    title,
 
     // Used to override defaults.
     ...restArgs,
@@ -224,7 +257,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
 
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
-  { file, content, dataSource, upsertArgs }
+  { file, dataSource, upsertArgs }
 ) => {
   // Use the file sId as the table id to make it easy to track the table back to the file.
   let tableId = file.sId;
@@ -232,6 +265,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     tableId = upsertArgs.tableId ?? tableId;
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
+  const title = upsertTitle ?? file.fileName;
 
   const upsertTableRes = await upsertTable({
     auth,
@@ -242,11 +276,15 @@ const upsertTableToDatasource: ProcessingFunction = async (
       name: slugify(file.fileName),
       description: "Table uploaded from file",
       truncate: true,
-      csv: content.trim(),
-      tags: [`title:${file.fileName}`, `fileId:${file.sId}`],
+      fileId: file.sId,
+      tags: [
+        `title:${title}`,
+        `fileId:${file.sId}`,
+        `fileName:${file.fileName}`,
+      ],
       parents: [tableId],
       async: false,
-      title: upsertTitle ?? file.fileName,
+      title,
       mimeType: file.contentType,
       sourceUrl: file.getPrivateUrl(auth),
 
@@ -279,34 +317,74 @@ const upsertTableToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+// Excel files are processed in a special way, we need to extract the content of each worksheet and
+// upsert it as a separate table. This means we pull the whole content of the file (this is not
+// great if the spreadhsheet is massive but we don't really have a choice here) and then split in
+// memory and reinstiate sub-files to call upsertTableToDatasource.
 const upsertExcelToDatasource: ProcessingFunction = async (
   auth,
-  { file, content, dataSource, upsertArgs }
+  { file, dataSource, upsertArgs }
 ) => {
-  // Excel files are processed in a special way, we need to extract the content of each worksheet and upsert it as a separate table.
   let worksheetName: string | undefined;
   let worksheetContent: string | undefined;
 
-  if (!isUpsertTableArgs(upsertArgs)) {
+  if (upsertArgs && !isUpsertTableArgs(upsertArgs)) {
     return new Err(new Error("Invalid upsert args"));
+  }
+
+  const upsertWorksheet = async (
+    worksheetName: string,
+    worksheetContent: string
+  ) => {
+    const title = `${file.fileName} ${worksheetName}`;
+    const upsertTableArgs: UpsertTableArgs = {
+      ...upsertArgs,
+      title,
+      name: slugify(title),
+      tableId: `${file.sId}-${slugify(worksheetName)}`,
+      description: "Table uploaded from excel file",
+      truncate: true,
+      mimeType: "text/csv",
+      sourceUrl: null,
+    };
+
+    const worksheetFile = await FileResource.makeNew({
+      workspaceId: file.workspaceId,
+      userId: file.userId,
+      contentType: "text/csv",
+      fileName: slugify(`${file.fileName} ${worksheetName}`) + ".csv",
+      fileSize: Buffer.byteLength(worksheetContent),
+      useCase: file.useCase,
+      useCaseMetadata: file.useCaseMetadata,
+    });
+
+    await processAndStoreFile(auth, {
+      file: worksheetFile,
+      reqOrString: worksheetContent,
+    });
+
+    await upsertTableToDatasource(auth, {
+      file: worksheetFile,
+      dataSource,
+      upsertArgs: upsertTableArgs,
+    });
+  };
+
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
+    });
   }
 
   for (const line of content.split("\n")) {
     if (line.startsWith(TABLE_PREFIX)) {
       if (worksheetName && worksheetContent) {
-        const upsertTableArgs: UpsertTableArgs = {
-          ...upsertArgs,
-          title: `${file.fileName} ${worksheetName}`,
-          name: slugify(`${file.fileName} ${worksheetName}`),
-          tableId: `${file.sId}-${worksheetName}`,
-        };
-
-        await upsertTableToDatasource(auth, {
-          file,
-          content: worksheetContent,
-          dataSource,
-          upsertArgs: upsertTableArgs,
-        });
+        // Create a file for each worksheet
+        await upsertWorksheet(worksheetName, worksheetContent);
       }
       worksheetName = line.slice(TABLE_PREFIX.length);
       worksheetContent = "";
@@ -316,21 +394,13 @@ const upsertExcelToDatasource: ProcessingFunction = async (
   }
 
   if (!worksheetName || !worksheetContent) {
-    return new Err(new Error("Invalid Excel file"));
-  } else {
-    const upsertTableArgs: UpsertTableArgs = {
-      ...upsertArgs,
-      title: `${file.fileName} ${worksheetName}`,
-      name: slugify(`${file.fileName} ${worksheetName}`),
-      tableId: `${file.sId}-${worksheetName}`,
-    };
-
-    await upsertTableToDatasource(auth, {
-      file,
-      content: worksheetContent,
-      dataSource,
-      upsertArgs: upsertTableArgs,
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Invalid Excel file",
     });
+  } else {
+    await upsertWorksheet(worksheetName, worksheetContent);
     return new Ok(undefined);
   }
 };
@@ -340,11 +410,9 @@ type ProcessingFunction = (
   auth: Authenticator,
   {
     file,
-    content,
     dataSource,
   }: {
     file: FileResource;
-    content: string;
     dataSource: DataSourceResource;
     upsertArgs?: UpsertDocumentArgs | UpsertTableArgs;
   }
@@ -412,7 +480,7 @@ export const isUpsertSupported = (arg: {
 
 const maybeApplyProcessing: ProcessingFunction = async (
   auth,
-  { content, file, dataSource, upsertArgs }
+  { file, dataSource, upsertArgs }
 ) => {
   const processing = getProcessingFunction(file);
 
@@ -420,7 +488,6 @@ const maybeApplyProcessing: ProcessingFunction = async (
     const startTime = Date.now();
     const res = await processing(auth, {
       file,
-      content,
       dataSource,
       upsertArgs,
     });
@@ -479,33 +546,13 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  // TODO(spolu): [CSV-FILE] move content extraction to the processing function so that we don't
-  // extract content for tables and instead submit with fileId
-  const content = await getFileContent(auth, file);
-
-  if (!content) {
-    logger.error(
-      {
-        fileId: file.sId,
-        workspaceId: auth.workspace()?.sId,
-      },
-      "No content extracted from file."
-    );
-    return new Err({
-      name: "dust_error",
-      code: "internal_server_error",
-      message: "No content extracted from file.",
-    });
-  }
-
   const [processingRes, snippetRes] = await Promise.all([
     maybeApplyProcessing(auth, {
       file,
-      content,
       dataSource,
       upsertArgs,
     }),
-    generateSnippet(auth, file, content),
+    generateSnippet(auth, { file, dataSource }),
   ]);
 
   if (processingRes.isErr()) {

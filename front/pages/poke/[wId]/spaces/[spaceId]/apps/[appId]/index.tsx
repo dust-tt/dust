@@ -22,6 +22,7 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import config from "@app/lib/api/config";
 import { getSpecification } from "@app/lib/api/run";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -140,6 +141,7 @@ function AppSpecification({
   specification: SpecificationType;
   specificationHashes: string[] | null;
 }) {
+  const { isDark } = useTheme();
   const registryApp = Object.values(BaseDustProdActionRegistry).find(
     (a) => a.app.appId === app.sId
   );
@@ -230,7 +232,8 @@ function AppSpecification({
       </div>
       <div className="p-4">
         <JsonViewer
-          value={specification}
+          theme={isDark ? "dark" : "light"}
+          value={JSON.parse(app.savedSpecification ?? "{}")}
           rootName={false}
           defaultInspectDepth={2}
         />
