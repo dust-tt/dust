@@ -33,7 +33,9 @@ export function shouldSyncTicket(
   return [
     "closed",
     "solved",
-    ...(configuration.syncUnresolvedTickets ? ["open", "pending", "hold"] : []),
+    ...(configuration.syncUnresolvedTickets
+      ? ["new", "open", "pending", "hold"]
+      : []),
   ].includes(ticket.status);
 }
 
