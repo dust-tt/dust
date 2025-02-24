@@ -51,10 +51,13 @@ path = "bin/qdrant/create_collection.rs"
 name = "qdrant_delete_orphaned_points"
 path = "bin/qdrant/delete_orphaned_points.rs"
 
-
 # [[bin]]
 # name = "oauth_generate_key"
 # path = "bin/oauth_generate_key.rs"
+
+[[bin]]
+name = "salesforce"
+path = "bin/salesforce.rs"
 
 # MIGRATIONS
 

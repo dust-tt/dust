@@ -33,6 +33,7 @@ pub mod databases {
         pub mod bigquery;
         pub mod get_remote_database;
         pub mod remote_database;
+        pub mod salesforce;
         pub mod snowflake;
     }
     pub mod transient_database;
