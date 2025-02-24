@@ -18,8 +18,15 @@ import type {
 } from "@dust-tt/types";
 import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
-import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -263,10 +270,10 @@ export function DataSourceViewsSelector({
               }}
             >
               {getVisualForContentNode(item)({ className: "min-w-4" })}
-              <span className="text-sm">{item.title}</span>
+              <span className="flex-shrink truncate text-sm">{item.title}</span>
               {item.parentTitle && (
-                <div className="ml-auto">
-                  <span className="text-sm text-slate-500">{`${item.dataSourceView.dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[item.dataSourceView.dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}</span>
+                <div className="ml-auto flex-none text-sm text-slate-500">
+                  {`${item.dataSourceView.dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[item.dataSourceView.dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
                 </div>
               )}
             </div>
@@ -416,6 +423,7 @@ export function DataSourceViewSelector({
   searchResult,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
+  const selectedItemRef = useRef<HTMLDivElement>(null);
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback({
@@ -559,6 +567,17 @@ export function DataSourceViewSelector({
       ? removeNulls([...new Set(searchResult.parentInternalIds)])
       : undefined;
 
+  useEffect(() => {
+    if (searchResult?.internalId && selectedItemRef.current) {
+      // Wait for tree expansion and DOM updates
+      requestAnimationFrame(() => {
+        selectedItemRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      });
+    }
+  }, [searchResult]);
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
