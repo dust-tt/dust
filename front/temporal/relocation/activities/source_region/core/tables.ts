@@ -9,8 +9,10 @@ import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
-import type { CoreTableAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
-import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
+import type {
+  CoreTableAPIRelocationBlob,
+  DataSourceCoreIds,
+} from "@app/temporal/relocation/activities/types";
 import {
   CORE_API_CONCURRENCY_LIMIT,
   CORE_API_LIST_NODES_BATCH_SIZE,
@@ -45,7 +47,7 @@ export async function getDataSourceTables({
         view_filter: [],
       },
     ],
-    node_types: ["Table"],
+    node_types: ["Table", "table"],
   };
 
   const options: CoreAPISearchCursorRequest = {
