@@ -231,6 +231,8 @@ export interface CoreAPISearchCursorRequest {
 export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
+  hit_count: number;
+  hit_count_is_accurate: boolean;
 }
 
 export interface CoreAPISearchTagsResponse {
