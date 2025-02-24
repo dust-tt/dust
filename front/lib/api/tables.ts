@@ -185,6 +185,7 @@ export async function upsertTableFromCsv({
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   let fileSchema: CoreAPITableSchema | null = null;
+  let fileUpsertQueueBucketCSVPath: string | null = null;
 
   // TODO(spolu): [CSV-FILE] add ability to core to take a GCS file path directly
   if (fileId) {
@@ -217,11 +218,16 @@ export async function upsertTableFromCsv({
     const schemaRes = await coreAPI.tableValidateCSVContent({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
-      upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      bucket: file.getBucketForVersion("processed").name,
+      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
     });
 
     if (schemaRes.isOk()) {
       fileSchema = schemaRes.value.schema;
+      fileUpsertQueueBucketCSVPath = file.getCloudStoragePath(
+        auth,
+        "processed"
+      );
     } else {
       logger.warn(
         {
@@ -355,6 +361,7 @@ export async function upsertTableFromCsv({
               tableName,
               row: r,
               schema: fileSchema,
+              fileUpsertQueueBucketCSVPath: fileUpsertQueueBucketCSVPath,
             },
             "[CSV-FILE] mistmatch: row and schema"
           );

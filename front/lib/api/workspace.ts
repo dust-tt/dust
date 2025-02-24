@@ -9,15 +9,24 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ACTIVE_ROLES, Err, Ok, removeNulls } from "@dust-tt/types";
+import {
+  ACTIVE_ROLES,
+  assertNever,
+  Err,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { Subscription } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/models/plan";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
+import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -517,4 +526,72 @@ export async function upgradeWorkspaceToBusinessPlan(
   );
 
   return new Ok(undefined);
+}
+
+export async function checkSeatCountForWorkspace(
+  workspace: LightWorkspaceType
+): Promise<Result<string, Error>> {
+  const subscription = await Subscription.findOne({
+    where: {
+      workspaceId: workspace.id,
+      status: "active",
+    },
+    include: [Plan],
+  });
+  if (!subscription) {
+    return new Err(new Error("Workspace has no active subscription."));
+  }
+  if (!subscription.stripeSubscriptionId) {
+    return new Err(new Error("No Stripe subscription ID found."));
+  }
+
+  const stripeSubscription = await getStripeSubscription(
+    subscription.stripeSubscriptionId
+  );
+  if (!stripeSubscription) {
+    return new Err(
+      new Error(
+        `Cannot check usage in subscription: Stripe subscription ${subscription.stripeSubscriptionId} not found.`
+      )
+    );
+  }
+  const { data: subscriptionItems } = stripeSubscription.items;
+
+  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+
+  for (const item of subscriptionItems) {
+    const usageToReportRes = getUsageToReportForSubscriptionItem(item);
+    if (usageToReportRes.isErr()) {
+      return new Err(usageToReportRes.error);
+    }
+
+    const usageToReport = usageToReportRes.value;
+    if (!usageToReport) {
+      continue;
+    }
+
+    switch (usageToReport) {
+      case "FIXED":
+      case "MAU_1":
+      case "MAU_5":
+      case "MAU_10":
+        return new Err(new Error("Subscription is not PER_SEAT-based."));
+      case "PER_SEAT":
+        const currentQuantity = item.quantity;
+
+        if (currentQuantity !== activeSeats) {
+          return new Err(
+            new Error(
+              `Incorrect quantity on Stripe: ${currentQuantity}, correct value: ${activeSeats}.`
+            )
+          );
+        }
+        break;
+
+      default:
+        assertNever(usageToReport);
+    }
+    return new Ok(`Correctly found ${activeSeats} active seats on Stripe.`);
+  }
+  return new Err(new Error(`${REPORT_USAGE_METADATA_KEY} metadata not found.`));
 }

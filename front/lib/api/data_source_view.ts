@@ -11,9 +11,8 @@ import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import {
-  FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
-  NON_EXPANDABLE_NODES_MIME_TYPES,
+  getContentNodeFromCoreNode,
 } from "@app/lib/api/content_nodes";
 import type {
   CursorPaginationParams,
@@ -21,7 +20,6 @@ import type {
 } from "@app/lib/api/pagination";
 import { isCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DustError } from "@app/lib/error";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
@@ -196,35 +194,10 @@ export async function getContentNodesForDataSourceView(
     nextPageCursor = coreRes.value.next_page_cursor;
   } while (nextPageCursor && resultNodes.length < limit);
 
-  const expandable = (node: CoreAPIContentNode) =>
-    !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
-    node.children_count > 0 &&
-    // if we aren't in tables/all view, spreadsheets are not expandable
-    !(
-      !["tables", "all"].includes(viewType) &&
-      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
-    );
-
   return new Ok({
-    nodes: resultNodes.map((node) => {
-      return {
-        internalId: node.node_id,
-        parentInternalId: node.parent_id ?? null,
-        // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
-        title: node.title === "Untitled document" ? node.node_id : node.title,
-        sourceUrl: node.source_url ?? null,
-        permission: "read",
-        lastUpdatedAt: node.timestamp,
-        providerVisibility: node.provider_visibility,
-        parentInternalIds: node.parents,
-        type: node.node_type,
-        expandable: expandable(node),
-        mimeType: node.mime_type,
-        preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
-          node.mime_type
-        ),
-      };
-    }),
+    nodes: resultNodes.map((node) =>
+      getContentNodeFromCoreNode(node, viewType)
+    ),
     total: resultNodes.length,
     nextPageCursor: nextPageCursor,
   });

@@ -5,6 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   CoreAPIDataSource,
@@ -14,7 +15,6 @@ import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeTable,
   PokeTableBody,
@@ -60,14 +60,13 @@ export function ViewDataSourceTable({
           <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">Overview:</h2>
-              <PokeButton
+              <Button
                 aria-label="View raw objects"
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-              >
-                🤓 Show raw objects
-              </PokeButton>
+                label="🤓 Show raw objects"
+              />
             </div>
             {isPaused && isRunning && (
               <Chip color="warning" size="sm" className="my-4">

@@ -18,7 +18,7 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
   supportsDocumentsData,
   supportsStructuredData,
@@ -107,7 +107,7 @@ export default function AssistantBuilderDataSourceModal({
             id="dataSourceViewsSelector"
             className="overflow-y-auto scrollbar-hide"
           >
-            <DataSourceViewsSelector
+            <DataSourceViewsSpaceSelector
               useCase="assistantBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
               allowedSpaces={allowedSpaces}

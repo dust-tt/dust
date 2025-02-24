@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
+import * as t from "io-ts";
 
-import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
+import { CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -243,17 +244,32 @@ export interface CoreAPISearchTagsResponse {
   };
 }
 
-export type CoreAPIDatasourceViewFilter = {
-  data_source_id: string;
-  view_filter: string[];
-};
+export const CoreAPIDatasourceViewFilterSchema = t.type({
+  data_source_id: t.string,
+  view_filter: t.array(t.string),
+});
 
-export type CoreAPINodesSearchFilter = {
-  data_source_views: CoreAPIDatasourceViewFilter[];
-  node_ids?: string[];
-  parent_id?: string;
-  node_types?: ContentNodeType[];
-};
+export type CoreAPIDatasourceViewFilter = t.TypeOf<
+  typeof CoreAPIDatasourceViewFilterSchema
+>;
+
+export const MIN_SEARCH_QUERY_SIZE = 3;
+
+export const CoreAPINodesSearchFilterSchema = t.intersection([
+  t.type({
+    data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
+  }),
+  t.partial({
+    node_ids: t.array(t.string),
+    parent_id: t.string,
+    node_types: t.array(t.string),
+    query: t.string,
+  }),
+]);
+
+export type CoreAPINodesSearchFilter = t.TypeOf<
+  typeof CoreAPINodesSearchFilterSchema
+>;
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
@@ -1215,11 +1231,13 @@ export class CoreAPI {
   async tableValidateCSVContent({
     projectId,
     dataSourceId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
   }: {
     projectId: string;
     dataSourceId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -1237,7 +1255,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
         }),
       }
     );
@@ -1481,13 +1500,15 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
     truncate,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
     truncate?: boolean;
   }): Promise<
     CoreAPIResponse<{
@@ -1506,7 +1527,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
           truncate: truncate || false,
         }),
       }

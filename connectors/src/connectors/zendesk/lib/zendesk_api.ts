@@ -296,10 +296,12 @@ export async function fetchZendeskCategoriesInBrand(
  * https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/
  */
 export async function fetchRecentlyUpdatedArticles({
+  subdomain,
   brandSubdomain,
   accessToken,
   startTime, // start time in Unix epoch time, in seconds
 }: {
+  subdomain: string;
   brandSubdomain: string;
   accessToken: string;
   startTime: number;
@@ -320,7 +322,7 @@ export async function fetchRecentlyUpdatedArticles({
   } catch (e) {
     if (isZendeskNotFoundError(e)) {
       const user = await fetchZendeskCurrentUser({
-        subdomain: brandSubdomain,
+        subdomain,
         accessToken,
       });
       // only admins and agents can fetch this endpoint: https://developer.zendesk.com/documentation/help_center/help-center-api/understanding-incremental-article-exports/#authenticating-the-requests
@@ -332,6 +334,11 @@ export async function fetchRecentlyUpdatedArticles({
           { ...e.data, role, suspended, active }
         );
       }
+      logger.warn(
+        { subdomain, brandSubdomain },
+        "[Zendesk] Could not fetch article diff."
+      );
+      return { articles: [], hasMore: false, endTime: 0 };
     }
     throw e;
   }
@@ -385,20 +392,27 @@ export async function fetchZendeskTickets(
   hasMore: boolean;
   nextLink: string | null;
 }> {
-  const response = await fetchFromZendeskWithRetries({
-    url:
-      url ?? // using the URL if we got one, reconstructing it otherwise
-      `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
-    accessToken,
-  });
-  return {
-    tickets: response.tickets,
-    hasMore:
-      !response.end_of_stream &&
-      response.after_url !== null &&
-      response.tickets.length !== 0,
-    nextLink: response.after_url,
-  };
+  try {
+    const response = await fetchFromZendeskWithRetries({
+      url:
+        url ?? // using the URL if we got one, reconstructing it otherwise
+        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
+      accessToken,
+    });
+    return {
+      tickets: response.tickets,
+      hasMore:
+        !response.end_of_stream &&
+        response.after_url !== null &&
+        response.tickets.length !== 0,
+      nextLink: response.after_url,
+    };
+  } catch (e) {
+    if (isZendeskNotFoundError(e)) {
+      return { tickets: [], hasMore: false, nextLink: null };
+    }
+    throw e;
+  }
 }
 
 /**

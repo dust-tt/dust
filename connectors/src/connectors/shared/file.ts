@@ -110,9 +110,10 @@ export async function handleTextExtraction(
     return new Err(new Error("unsupported_content_type"));
   }
 
-  const pageRes = await new TextExtraction(
-    apiConfig.getTextExtractionUrl()
-  ).fromBuffer(Buffer.from(data), mimeType);
+  const pageRes = await new TextExtraction(apiConfig.getTextExtractionUrl(), {
+    enableOcr: false,
+    logger: localLogger,
+  }).fromBuffer(Buffer.from(data), mimeType);
 
   if (pageRes.isErr()) {
     localLogger.warn(

@@ -507,12 +507,14 @@ impl LocalTable {
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
-        upsert_queue_bucket_csv_path: &str,
+        bucket: &str,
+        bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
         let now = utils::now();
         let rows = UpsertQueueCSVContent {
-            upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+            bucket: bucket.to_string(),
+            bucket_csv_path: bucket_csv_path.to_string(),
         }
         .parse()
         .await?;
@@ -615,11 +617,12 @@ impl LocalTable {
         Ok(schema)
     }
 
-    pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
+    pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
         let rows = Arc::new(
             UpsertQueueCSVContent {
-                upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+                bucket: bucket.to_string(),
+                bucket_csv_path: bucket_csv_path.to_string(),
             }
             .parse()
             .await?,
@@ -694,11 +697,17 @@ impl Row {
 
             let parsed_value = if trimmed.is_empty() {
                 Value::Null
-            } else if let Ok(num) = trimmed.parse::<f64>() {
+            } else if let Ok(int) = trimmed.parse::<i64>() {
+                Value::Number(int.into())
+            } else if let Ok(float) = trimmed.parse::<f64>() {
                 // Numbers
-                Value::Number(serde_json::Number::from_f64(num).unwrap())
-            } else if let Ok(bool_val) = trimmed.parse::<bool>() {
+                Value::Number(serde_json::Number::from_f64(float).unwrap())
+            } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
                 // Booleans
+                "t" | "true" => Ok(true),
+                "f" | "false" => Ok(false),
+                _ => Err(anyhow!("Invalid boolean value")),
+            } {
                 Value::Bool(bool_val)
             } else {
                 // Various datetime formats
@@ -855,7 +864,7 @@ mod tests {
         assert_eq!(
             row.content(),
             &json!({
-                "test": 1.0,
+                "test": 1,
                 "date": {
                     "type": "datetime",
                     "epoch": 1609459200000_i64,
@@ -932,6 +941,43 @@ mod tests {
             row.content()["date"]["epoch"],
             Value::Number(1739545834000_i64.into())
         );
+
+        let headers = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let record = vec!["2", "2.0", "0.1"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Number(2.into()));
+        assert_eq!(
+            row.content()["b"],
+            Value::Number(serde_json::Number::from_f64(2.0).unwrap())
+        );
+        assert_eq!(
+            row.content()["c"],
+            Value::Number(serde_json::Number::from_f64(0.1).unwrap())
+        );
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["true", "false"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["TRUE", "FALSE"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["t", "f"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["trUe", "fALse"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
 
         Ok(())
     }

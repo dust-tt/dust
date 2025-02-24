@@ -38,14 +38,14 @@ export function Landing() {
   return (
     <>
       <IntroSection />
-      <VerticalSection />
-      <MetricsSection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
         name="Everett Berry"
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/clay.png"
       />
+      <VerticalSection />
+      <MetricsSection />
       <FutureSection />
       {/* <DifferentiationSection /> */}
       {/* <CapabilitySection /> */}

@@ -1,6 +1,12 @@
-import type { DataSourceViewType } from "@dust-tt/types";
+import type {
+  ContentNodesViewType,
+  CoreAPIContentNode,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+} from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
+import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
@@ -52,4 +58,45 @@ export function getContentNodeInternalIdFromTableId(
     default:
       assertNever(dataSource.connectorProvider);
   }
+}
+
+function isExpandable(
+  node: CoreAPIContentNode,
+  viewType: ContentNodesViewType
+) {
+  return (
+    !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
+    node.children_count > 0 &&
+    // if we aren't in tables/all view, spreadsheets are not expandable
+    !(
+      !["tables", "all"].includes(viewType) &&
+      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
+    )
+  );
+}
+
+export function getContentNodeFromCoreNode(
+  coreNode: CoreAPIContentNode,
+  viewType: ContentNodesViewType
+): DataSourceViewContentNode {
+  return {
+    internalId: coreNode.node_id,
+    parentInternalId: coreNode.parent_id ?? null,
+    // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
+    title:
+      coreNode.title === "Untitled document"
+        ? coreNode.node_id
+        : coreNode.title,
+    sourceUrl: coreNode.source_url ?? null,
+    permission: "read",
+    lastUpdatedAt: coreNode.timestamp,
+    providerVisibility: coreNode.provider_visibility,
+    parentInternalIds: coreNode.parents,
+    type: coreNode.node_type,
+    expandable: isExpandable(coreNode, viewType),
+    mimeType: coreNode.mime_type,
+    preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
+      coreNode.mime_type
+    ),
+  };
 }
