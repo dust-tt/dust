@@ -574,7 +574,11 @@ async function handler(
         tags.push(`title:${title}`);
       }
 
-      if (titleInTags && titleInTags !== title) {
+      if (
+        titleInTags &&
+        !titleInTags.startsWith(title) &&
+        !title.startsWith(titleInTags)
+      ) {
         logger.error(
           { dataSourceId: dataSource.sId, documentId, titleInTags, title },
           "[CoreNodes] Inconsistency between tags and title."
