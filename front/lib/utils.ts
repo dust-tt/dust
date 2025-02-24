@@ -65,29 +65,38 @@ export const timeAgoFrom = (
   return seconds + "s";
 };
 
-// E.g: January 25, 2024, 5:17:00 PM.
 export function formatTimestampToFriendlyDate(
   timestamp: number,
-  version: "long" | "short" = "long"
+  version: "long" | "short" | "compact" = "long"
 ): string {
   const date = new Date(timestamp);
 
-  if (version === "short") {
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
+  switch (version) {
+    case "compact":
+      return date
+        .toLocaleDateString("en-US", {
+          month: "short",
+          year: "2-digit",
+        })
+        .replace(" ", ", ");
 
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-  });
+    case "short":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+
+    case "long":
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+      });
+  }
 }
 
 // from http://emailregex.com/
