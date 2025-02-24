@@ -2,6 +2,7 @@ import type { LoggerInterface } from "@dust-tt/client";
 
 import type { parsePageProperties } from "@connectors/connectors/notion/lib/notion_api";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+
 export function getTagsForPage({
   title,
   author,
@@ -26,26 +27,14 @@ export function getTagsForPage({
 
   const customTags = [];
   for (const property of parsedProperties) {
-    // Handle custom __dust prefixed properties
-    if (property.key.startsWith("__dust") && property.value?.length) {
-      if (!Array.isArray(property.value)) {
-        const tag = `${property.key}:${property.value}`;
-        customTags.push(tag);
-      } else {
-        for (const v of property.value) {
-          const tag = `${property.key}:${v}`;
-          customTags.push(tag);
-        }
-      }
-    }
-
-    // Handle Tags property values
-    if (property.key.toLowerCase() === "tags" && property.value?.length) {
-      if (!Array.isArray(property.value)) {
-        customTags.push(property.value);
-      } else {
-        for (const v of property.value) {
-          customTags.push(v);
+    if (property.type === "multi_select") {
+      if (property.value?.length) {
+        if (!Array.isArray(property.value)) {
+          customTags.push(`${property.key}:${property.value}`);
+        } else {
+          for (const v of property.value) {
+            customTags.push(`${property.key}:${v}`);
+          }
         }
       }
     }
