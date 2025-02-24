@@ -1,4 +1,5 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -6,10 +7,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
-
-export type PostStateResponseBody = {
-  app: AppType;
-};
+import type { PostStateResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
+import { PostStateRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
 
 async function handler(
   req: NextApiRequest,
@@ -65,11 +64,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !(typeof req.body.specification == "string") ||
-        !(typeof req.body.config == "string")
-      ) {
+      const body = PostStateRequestBodySchema.decode(req.body);
+      if (isLeft(body)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -85,22 +81,11 @@ async function handler(
         savedConfig: string;
         savedRun?: string;
       } = {
-        savedSpecification: req.body.specification,
-        savedConfig: req.body.config,
+        savedSpecification: body.right.specification,
+        savedConfig: body.right.config,
       };
 
-      if (req.body.run) {
-        if (typeof req.body.run != "string") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The request body is invalid, `run` must be a string if provided.",
-            },
-          });
-        }
-
+      if (body.right.run) {
         updateParams.savedRun = req.body.run;
       }
 

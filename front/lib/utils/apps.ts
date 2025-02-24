@@ -301,12 +301,16 @@ async function updateAppSpecifications(
       );
     }
 
-    for (const specification of Object.values(coreSpecifications)) {
-      await coreAPI.saveSpecification({
-        projectId: app.dustAPIProjectId,
-        specification: specification,
-      });
-    }
+    await concurrentExecutor(
+      Object.values(coreSpecifications),
+      async (specification) => {
+        await coreAPI.saveSpecification({
+          projectId: app.dustAPIProjectId,
+          specification: specification,
+        });
+      },
+      { concurrency: 10 }
+    );
   }
 
   return new Ok(false);

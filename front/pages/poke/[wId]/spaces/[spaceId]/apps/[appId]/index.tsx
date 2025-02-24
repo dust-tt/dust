@@ -1,3 +1,5 @@
+import { spec } from "node:test/reporters";
+
 import {
   Button,
   DropdownMenu,
@@ -13,7 +15,7 @@ import type {
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -22,7 +24,7 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import config from "@app/lib/api/config";
-import { getSpecification } from "@app/lib/api/run";
+import { cleanSpecificationFromCore, getSpecification } from "@app/lib/api/run";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -39,6 +41,13 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
   const { appId, spaceId } = context.params || {};
   if (typeof spaceId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const { hash } = context.query;
+  if (hash && typeof hash !== "string") {
     return {
       notFound: true,
     };
@@ -64,28 +73,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   });
 
   let specification = JSON.parse(app.savedSpecification ?? "{}");
-  const hash = context.query.hash;
   if (hash && hash.length > 0) {
-    const specificationFromCore = await getSpecification(
-      app.toJSON(),
-      context.query.hash as string
-    );
+    const specificationFromCore = await getSpecification(app.toJSON(), hash);
     if (specificationFromCore) {
-      for (const block of specificationFromCore) {
-        // we clear out the config for input blocks because the dataset might
-        // have changed or might not exist anymore
-        if (block.type === "input") {
-          block.config = {};
-        }
-
-        // we have to remove the hash and ID of the dataset in data blocks
-        // to prevent the app from becoming un-runable
-        if (block.type === "data") {
-          delete block.spec.dataset_id;
-          delete block.spec.hash;
-        }
-      }
-
+      cleanSpecificationFromCore(specificationFromCore);
       specification = specificationFromCore;
     }
   }
@@ -147,7 +138,8 @@ function AppSpecification({
   );
   const router = useRouter();
   const pathname = usePathname();
-  const hash = router.query.hash as string | undefined;
+  const params = useSearchParams();
+  const hash = params.get("hash");
 
   const submit = async () => {
     try {
@@ -170,7 +162,7 @@ function AppSpecification({
         }
       );
       if (!r.ok) {
-        throw new Error("Failed to update workspace.");
+        throw new Error("Failed to update app specification.");
       }
       router.reload();
     } catch (e) {
@@ -233,7 +225,7 @@ function AppSpecification({
       <div className="p-4">
         <JsonViewer
           theme={isDark ? "dark" : "light"}
-          value={JSON.parse(app.savedSpecification ?? "{}")}
+          value={specification}
           rootName={false}
           defaultInspectDepth={2}
         />

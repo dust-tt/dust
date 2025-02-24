@@ -15,6 +15,18 @@ import {
 } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
 
+const extractDatasetIdsAndHashes = (specification: string) => {
+  const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
+  const dataBlockMatch = specification.match(
+    /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
+  );
+  if (dataBlockMatch) {
+    const [, datasetId, hash] = dataBlockMatch;
+    dataSetsToFetch.push({ datasetId, hash });
+  }
+  return dataSetsToFetch;
+};
+
 /**
  * @ignoreswagger
  * System API key only endpoint. Undocumented.
@@ -69,13 +81,9 @@ async function handler(
               );
               if (coreSpecification) {
                 // Parse dataset_id and hash from specification if it contains DATA section
-                const dataBlockMatch = coreSpecification.data.match(
-                  /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
+                dataSetsToFetch.push(
+                  ...extractDatasetIdsAndHashes(coreSpecification.data)
                 );
-                if (dataBlockMatch) {
-                  const [, datasetId, hash] = dataBlockMatch;
-                  dataSetsToFetch.push({ datasetId, hash });
-                }
 
                 coreSpecifications[hash] = coreSpecification.data;
               }
@@ -87,7 +95,8 @@ async function handler(
               auth,
               app,
               dataset.datasetId,
-              dataset.hash
+              dataset.hash,
+              true
             );
             if (fromCore) {
               datasets.push(fromCore);

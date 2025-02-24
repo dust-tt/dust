@@ -63,7 +63,8 @@ export async function getDatasetHash(
   auth: Authenticator,
   app: AppResource,
   name: string,
-  hash: string
+  hash: string,
+  includeDeleted: boolean = false
 ): Promise<DatasetType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -77,6 +78,10 @@ export async function getDatasetHash(
       name,
     },
   });
+
+  if (!dataset && !includeDeleted) {
+    return null;
+  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   // Translate latest if needed.

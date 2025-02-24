@@ -478,7 +478,7 @@ impl Store for PostgresStore {
     async fn list_specification_hashes(&self, project: &Project) -> Result<Vec<String>> {
         let project_id = project.project_id();
 
-        let pool = self.pool.clone();
+        let pool = &self.pool;
         let c = pool.get().await?;
         let r = c
             .query(
