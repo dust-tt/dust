@@ -30,10 +30,15 @@ import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearc
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((t) => typeof t === "string");
+}
+
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction
   agentMessageId: ModelId;
-  query: string;
+  query: string; // Keeping for backward compatibility
+  queries?: string[]; // New field for multiple queries
   output: WebsearchActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;
@@ -42,7 +47,8 @@ interface WebsearchActionBlob {
 
 export class WebsearchAction extends BaseAction {
   readonly agentMessageId: ModelId;
-  readonly query: string;
+  readonly query: string; // Keeping for backward compatibility
+  readonly queries?: string[]; // New field for multiple queries
   readonly output: WebsearchActionOutputType | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
@@ -54,6 +60,7 @@ export class WebsearchAction extends BaseAction {
 
     this.agentMessageId = blob.agentMessageId;
     this.query = blob.query;
+    this.queries = blob.queries;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName = blob.functionCallName;
@@ -61,10 +68,15 @@ export class WebsearchAction extends BaseAction {
   }
 
   renderForFunctionCall(): FunctionCallType {
+    // If we have multiple queries, use them; otherwise, fall back to the single query
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
       name: this.functionCallName ?? DEFAULT_WEBSEARCH_ACTION_NAME,
-      arguments: JSON.stringify({ query: this.query }),
+      arguments: JSON.stringify(
+        this.queries && this.queries.length > 0
+          ? { queries: this.queries }
+          : { query: this.query }
+      ),
     };
   }
 
@@ -73,7 +85,82 @@ export class WebsearchAction extends BaseAction {
     if (this.output === null) {
       content += "The web search failed.\n";
     } else {
-      content += `${JSON.stringify(this.output, null, 2)}\n`;
+      // Group results by query if we have multiple queries
+      if (
+        this.queries &&
+        this.queries.length > 1 &&
+        this.output.results.length > 0
+      ) {
+        // Create a map of query -> results
+        const resultsByQuery: Record<string, WebsearchResultType[]> = {};
+
+        // Group results by query
+        this.output.results.forEach((result) => {
+          // Ensure we always have a valid string for the query key
+          const query = result.query || this.query || "Unknown query";
+          if (!resultsByQuery[query]) {
+            resultsByQuery[query] = [];
+          }
+          resultsByQuery[query].push({
+            title: result.title,
+            snippet: result.snippet,
+            link: result.link,
+            reference: result.reference,
+            query: result.query,
+          });
+        });
+
+        // Format the output with results grouped by query
+        content += "Results for multiple queries:\n\n";
+
+        Object.entries(resultsByQuery).forEach(([query, results]) => {
+          content += `Query: "${query}"\n`;
+          content += `${JSON.stringify(
+            results.map((result) => ({
+              title: result.title,
+              snippet: result.snippet,
+              link: result.link,
+              reference: result.reference,
+            })),
+            null,
+            2
+          )}\n\n`;
+        });
+
+        // Add any error messages
+        if ("error" in this.output && this.output.error) {
+          content += `Errors: ${this.output.error}\n`;
+        }
+      } else {
+        // Just output the regular format for a single query
+        type OutputResult = {
+          title: string;
+          snippet: string;
+          link: string;
+          reference: string;
+        };
+
+        type OutputObject = {
+          results: OutputResult[];
+          error?: string;
+        };
+
+        const outputObj: OutputObject = {
+          results: this.output.results.map((result) => ({
+            title: result.title,
+            snippet: result.snippet,
+            link: result.link,
+            reference: result.reference,
+          })),
+        };
+
+        // Add error if it exists
+        if ("error" in this.output && this.output.error) {
+          outputObj.error = this.output.error;
+        }
+
+        content += `${JSON.stringify(outputObj, null, 2)}\n`;
+      }
     }
 
     return {
@@ -104,12 +191,22 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     return new Ok({
       name,
       description:
-        description || "Perform a google search and return the top results.",
+        description ??
+        "Perform multiple google searches and return the top results.",
       inputs: [
+        {
+          name: "queries",
+          description:
+            "List of queries to perform google searches. Each query can use the google syntax `site:` to restrict the search to a particular website or domain.",
+          type: "array",
+          items: {
+            type: "string",
+          },
+        },
         {
           name: "query",
           description:
-            "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain.",
+            "The query used to perform a single google search. If requested by the user, use the google syntax `site:` to restrict the search to a particular website or domain.",
           type: "string",
         },
       ],
@@ -153,9 +250,25 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
 
     const { actionConfiguration } = this;
 
-    const query = rawInputs.query;
+    // Check for queries array first, then fall back to single query
+    let queries: string[] = [];
 
-    if (!query || typeof query !== "string" || query.length === 0) {
+    if (rawInputs.queries) {
+      if (isStringArray(rawInputs.queries) && rawInputs.queries.length > 0) {
+        queries = rawInputs.queries;
+      }
+    }
+
+    // If no valid queries in the array, check for a single query
+    if (queries.length === 0) {
+      const query = rawInputs.query;
+      if (typeof query === "string" && query.length > 0) {
+        queries = [query];
+      }
+    }
+
+    // If we still have no valid queries, return an error
+    if (queries.length === 0) {
       yield {
         type: "websearch_error",
         created: Date.now(),
@@ -164,7 +277,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         error: {
           code: "websearch_parameters_generation_error",
           message:
-            "The query parameter is required and must be a non-empty string.",
+            "Either the 'queries' parameter (array of strings) or the 'query' parameter (string) is required and must not be empty.",
         },
       };
       return;
@@ -183,7 +296,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     // later on, the action won't have outputs but the error will be stored on the parent agent
     // message.
     const action = await AgentWebsearchAction.create({
-      query,
+      query: queries[0], // Store the first query in the legacy field for backward compatibility
+      queries: queries,
       websearchConfigurationId: actionConfiguration.sId,
       functionCallId,
       functionCallName: actionConfiguration.name,
@@ -202,7 +316,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       action: new WebsearchAction({
         id: action.id,
         agentMessageId: action.agentMessageId,
-        query,
+        query: queries[0],
+        queries: queries,
         output: null,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -217,19 +332,21 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
 
     config.SEARCH.num = numResults;
 
-    // Execute the websearch action.
-    const websearchRes = await runActionStreamed(
-      auth,
-      "assistant-v2-websearch",
-      config,
-      [{ query }],
-      {
+    // Execute the websearch action for each query in parallel
+    const websearchPromises = queries.map((query) =>
+      runActionStreamed(auth, "assistant-v2-websearch", config, [{ query }], {
         workspaceId: conversation.owner.sId,
         conversationId: conversation.sId,
         agentMessageId: agentMessage.sId,
-      }
+      })
     );
-    if (websearchRes.isErr()) {
+
+    // Wait for all searches to complete
+    const websearchResults = await Promise.all(websearchPromises);
+
+    // Check if any search failed
+    const failedSearch = websearchResults.find((result) => result.isErr());
+    if (failedSearch && failedSearch.isErr()) {
       yield {
         type: "websearch_error",
         created: Date.now(),
@@ -237,115 +354,123 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         messageId: agentMessage.sId,
         error: {
           code: "websearch_execution_error",
-          message: websearchRes.error.message,
+          message: failedSearch.error.message,
         },
       };
       return;
     }
 
-    const { eventStream, dustRunId } = websearchRes.value;
-    let output: WebsearchActionOutputType | null = null;
+    // Process all successful search results
+    const allFormattedResults: WebsearchResultType[] = [];
+    const errorMessages: string[] = [];
 
-    for await (const event of eventStream) {
-      if (event.type === "error") {
-        logger.error(
-          {
-            workspaceId: owner.id,
-            conversationId: conversation.id,
-            error: event.content.message,
-          },
-          "Error running websearch action"
-        );
-        yield {
-          type: "websearch_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "websearch_execution_error",
-            message: event.content.message,
-          },
-        };
-        return;
+    // Process each search result
+    for (let i = 0; i < websearchResults.length; i++) {
+      const websearchRes = websearchResults[i];
+      if (websearchRes.isErr()) {
+        // This should never happen as we already checked for errors above
+        continue;
       }
 
-      if (event.type === "block_execution") {
-        const e = event.content.execution[0][0];
-        if (e.error) {
+      const { eventStream } = websearchRes.value;
+
+      for await (const event of eventStream) {
+        if (event.type === "error") {
           logger.error(
             {
               workspaceId: owner.id,
               conversationId: conversation.id,
-              error: e.error,
+              error: event.content.message,
             },
-            "Error running websearch action"
+            `Error running websearch action for query: ${queries[i]}`
           );
-          yield {
-            type: "websearch_error",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: "websearch_execution_error",
-              message: e.error,
-            },
-          };
-          return;
+          errorMessages.push(
+            `Error for query "${queries[i]}": ${event.content.message}`
+          );
+          continue;
         }
 
-        if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
-          const outputValidation = WebsearchAppActionOutputSchema.decode(
-            e.value
-          );
-          if (isLeft(outputValidation)) {
+        if (event.type === "block_execution") {
+          const e = event.content.execution[0][0];
+          if (e.error) {
             logger.error(
               {
                 workspaceId: owner.id,
                 conversationId: conversation.id,
-                error: outputValidation.left,
+                error: e.error,
               },
-              "Error running websearch action"
+              `Error running websearch action for query: ${queries[i]}`
             );
-            yield {
-              type: "websearch_error",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              error: {
-                code: "websearch_execution_error",
-                message: `Invalid output from websearch action: ${outputValidation.left}`,
-              },
-            };
-            return;
+            errorMessages.push(`Error for query "${queries[i]}": ${e.error}`);
+            continue;
           }
-          const formattedResults: WebsearchResultType[] = [];
 
-          if ("error" in outputValidation.right) {
-            output = { results: [], error: outputValidation.right.error };
-          } else {
+          if (event.content.block_name === "SEARCH_EXTRACT_FINAL" && e.value) {
+            const outputValidation = WebsearchAppActionOutputSchema.decode(
+              e.value
+            );
+            if (isLeft(outputValidation)) {
+              logger.error(
+                {
+                  workspaceId: owner.id,
+                  conversationId: conversation.id,
+                  error: outputValidation.left,
+                },
+                `Error running websearch action for query: ${queries[i]}`
+              );
+              errorMessages.push(
+                `Error for query "${queries[i]}": Invalid output format`
+              );
+              continue;
+            }
+
+            if ("error" in outputValidation.right) {
+              errorMessages.push(
+                `Error for query "${queries[i]}": ${outputValidation.right.error}`
+              );
+            }
+
             const rawResults = outputValidation.right.results;
+            if (rawResults && rawResults.length > 0) {
+              // Calculate how many references we need for this query's results
+              const refsNeeded = Math.min(rawResults.length, numResults);
+              const queryRefsOffset = refsOffset + allFormattedResults.length;
+              const refs = getRefs().slice(
+                queryRefsOffset,
+                queryRefsOffset + refsNeeded
+              );
 
-            if (rawResults) {
-              const refs = getRefs().slice(refsOffset, refsOffset + numResults);
-
-              rawResults.forEach((result) => {
-                formattedResults.push({
-                  ...result,
-                  reference: refs.shift() as string,
-                });
+              // Add query information to each result
+              rawResults.forEach((result, index) => {
+                if (index < refsNeeded) {
+                  allFormattedResults.push({
+                    ...result,
+                    reference: refs[index],
+                    query: queries[i],
+                  });
+                }
               });
-
-              output = { results: formattedResults };
             }
           }
         }
       }
     }
 
+    // Prepare the final output
+    let output: WebsearchActionOutputType;
+    if (errorMessages.length > 0) {
+      output = {
+        results: allFormattedResults,
+        error: errorMessages.join("; "),
+      };
+    } else {
+      output = { results: allFormattedResults };
+    }
+
     // Update ProcessAction with the output of the last block.
     await action.update({
       output,
-      runId: await dustRunId,
+      runId: "multiple_searches", // We don't have a single runId anymore
     });
 
     logger.info(
@@ -364,8 +489,9 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       messageId: agentMessage.sId,
       action: new WebsearchAction({
         id: action.id,
-        agentMessageId: agentMessage.agentMessageId,
-        query,
+        agentMessageId: action.agentMessageId,
+        query: queries[0],
+        queries: queries,
         output,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -396,6 +522,7 @@ export async function websearchActionTypesFromAgentMessageIds(
       id: action.id,
       agentMessageId: action.agentMessageId,
       query: action.query,
+      queries: action.queries,
       output: action.output,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,

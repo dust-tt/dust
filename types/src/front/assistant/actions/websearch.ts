@@ -34,6 +34,7 @@ const WebsearchResultSchema = t.type({
   snippet: t.string,
   link: t.string,
   reference: t.string,
+  query: t.union([t.string, t.undefined]),
 });
 export const WebsearchActionOutputSchema = t.union([
   t.type({
@@ -54,6 +55,7 @@ export type WebsearchResultType = t.TypeOf<typeof WebsearchResultSchema>;
 export interface WebsearchActionType extends BaseAction {
   agentMessageId: ModelId;
   query: string;
+  queries?: string[];
   output: WebsearchActionOutputType | null;
   functionCallId: string | null;
   functionCallName: string | null;

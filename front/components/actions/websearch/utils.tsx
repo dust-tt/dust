@@ -7,7 +7,9 @@ export function makeWebsearchResultsCitation(
   result: WebsearchResultType
 ): MarkdownCitation {
   return {
-    description: result.snippet,
+    description: result.query
+      ? `Query: "${result.query}" - ${result.snippet}`
+      : result.snippet,
     href: result.link,
     title: result.title,
     icon: <DocumentTextIcon />,

@@ -75,6 +75,7 @@ export class AgentWebsearchAction extends WorkspaceAwareModel<AgentWebsearchActi
   declare websearchConfigurationId: string;
 
   declare query: string;
+  declare queries: string[];
 
   declare output: WebsearchActionOutputType | null;
   declare functionCallId: string | null;
@@ -108,6 +109,12 @@ AgentWebsearchAction.init(
     query: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+
+    queries: {
+      type: DataTypes.ARRAY(DataTypes.TEXT),
+      allowNull: true,
+      defaultValue: [],
     },
 
     output: {

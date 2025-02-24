@@ -33,10 +33,20 @@ export function WebsearchActionDetails({
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm font-bold text-foreground dark:text-foreground-night">
-            Query
+            {action.queries && action.queries.length > 1 ? "Queries" : "Query"}
           </span>
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {action.query}
+            {action.queries && action.queries.length > 1 ? (
+              <div className="flex flex-col gap-1">
+                {action.queries.map((q, i) => (
+                  <div key={i}>• {q}</div>
+                ))}
+              </div>
+            ) : (
+              action.query ||
+              (action.queries && action.queries[0]) ||
+              "No query specified"
+            )}
           </div>
         </div>
         <div>
