@@ -1,5 +1,7 @@
 import * as t from "io-ts";
 
+import { assertNever } from "../shared/utils/assert_never";
+
 // When viewing ContentNodes, we have 3 view types: "tables", "documents" and "all".
 // - The "tables" view allows picking tables in the Extract and TableQuery tools,
 // which applies to Notion, Google Drive, Microsoft, Snowflake and BigQuery connectors.
@@ -23,4 +25,17 @@ export function isValidContentNodesViewType(
   value: unknown
 ): value is ContentNodesViewType {
   return value === "documents" || value === "tables" || value === "all";
+}
+
+export function toCoreContentNodeType(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "documents":
+      return ["Document"];
+    case "tables":
+      return ["Table"];
+    case "all":
+      return ["Document", "Table"];
+    default:
+      assertNever(viewType);
+  }
 }
