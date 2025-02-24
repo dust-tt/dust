@@ -65,10 +65,13 @@ export function getVisualForContentNode(node: ContentNode) {
   }
   switch (node.type) {
     case "Table":
+    case "table":
       return Square3Stack3DIcon;
     case "Folder":
+    case "folder":
       return FolderIcon;
     case "Document":
+    case "document":
       return getVisualForFileContentNode(
         node as ContentNode & { type: "Document" }
       );
