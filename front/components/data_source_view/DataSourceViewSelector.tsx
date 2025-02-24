@@ -127,6 +127,7 @@ export function DataSourceViewsSelector({
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
+  console.log(viewType);
   const { searchResultNodes } = useSpaceSearch({
     dataSourceViews,
     owner,
@@ -134,6 +135,7 @@ export function DataSourceViewsSelector({
     search: debouncedSearch,
     disabled: !searchFeatureFlag,
   });
+  console.log(searchResultNodes);
 
   useEffect(() => {
     if (searchFeatureFlag) {

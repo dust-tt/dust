@@ -2,7 +2,11 @@ import type {
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import {
+  CoreAPI,
+  MIN_SEARCH_QUERY_SIZE,
+  toCoreContentNodeType,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -125,6 +129,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
+      node_types: toCoreContentNodeType(viewType),
     },
     options: {
       limit,
