@@ -73,6 +73,8 @@ interface GetContentNodesForDataSourceViewParams {
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
 }
 
 function filterNodesByViewType(
@@ -189,7 +191,9 @@ export async function getContentNodesForDataSourceView(
         viewType
       )
     ),
-    total: resultNodes.length,
+    // Note: this hit count is inaccurate since we are filtering the nodes by view type, which will be fixed soon.
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
     nextPageCursor: coreRes.value.next_page_cursor,
   });
 }
