@@ -20,6 +20,7 @@ import { Op, Sequelize } from "sequelize";
 import {
   joinChannel,
   updateSlackChannelInConnectorsDb,
+  updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -378,6 +379,14 @@ export async function syncChannel(
     nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
     weeksSynced: weeksSynced,
   };
+}
+
+export async function syncChannelMetadata(
+  connectorId: ModelId,
+  channelId: string,
+  timestampsMs: number
+) {
+  await updateSlackChannelInCoreDb(connectorId, channelId, timestampsMs);
 }
 
 export async function getMessagesForChannel(
