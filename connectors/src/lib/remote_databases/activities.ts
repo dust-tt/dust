@@ -44,7 +44,10 @@ const createDatabase = async ({
 
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   usedInternalIds: Set<string>;
@@ -119,7 +122,10 @@ const createSchemaAndHierarchy = async ({
   allDatabases: RemoteDatabaseModel[];
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -212,7 +218,10 @@ const createTableAndHierarchy = async ({
   allSchemas: RemoteSchemaModel[];
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -304,7 +313,10 @@ export async function sync({
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
