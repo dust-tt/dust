@@ -25,8 +25,8 @@ impl SalesforceConnectionProvider {
     pub fn new() -> Self {
         SalesforceConnectionProvider {}
     }
-    fn get_instance_url(connection: &Connection) -> Result<String> {
-        match connection.metadata()["instance_url"].as_str() {
+    pub fn get_instance_url(metadata: &serde_json::Value) -> Result<String> {
+        match metadata["instance_url"].as_str() {
             Some(url) => Ok(url.to_string()),
             None => Err(anyhow!("Salesforce instance URL is missing")),
         }
@@ -45,7 +45,7 @@ impl Provider for SalesforceConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let instance_url = Self::get_instance_url(connection)?;
+        let instance_url = Self::get_instance_url(&connection.metadata())?;
 
         let code_verifier = connection.metadata()["code_verifier"]
             .as_str()
@@ -89,7 +89,7 @@ impl Provider for SalesforceConnectionProvider {
     }
 
     async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
-        let instance_url = Self::get_instance_url(connection)?;
+        let instance_url = Self::get_instance_url(&connection.metadata())?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Salesforce connection"))?;

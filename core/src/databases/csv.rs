@@ -315,22 +315,20 @@ BAR,acme";
 
         // Test first row
         assert_eq!(rows[0].row_id, "0");
-        let value = rows[0].value.as_object().unwrap();
-        assert_eq!(value["hellworld"], 1.0);
-        assert_eq!(value["super_fast"], 2.23);
-        assert_eq!(value["c_foo"], 3.0);
-        let date = value["date"].as_object().unwrap();
+        assert_eq!(rows[0].value["hellworld"], 1.0);
+        assert_eq!(rows[0].value["super_fast"], 2.23);
+        assert_eq!(rows[0].value["c_foo"], 3.0);
+        let date = rows[0].value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545612380i64);
         assert_eq!(date["string_value"], "2025-02-14T15:06:52.380Z");
 
         // Test second row
         assert_eq!(rows[1].row_id, "1");
-        let value = rows[1].value.as_object().unwrap();
-        assert_eq!(value["hellworld"], 4.0);
-        assert_eq!(value["super_fast"], "hello world");
-        assert_eq!(value["c_foo"], 6.0);
-        let date = value["date"].as_object().unwrap();
+        assert_eq!(rows[1].value["hellworld"], 4.0);
+        assert_eq!(rows[1].value["super_fast"], "hello world");
+        assert_eq!(rows[1].value["c_foo"], 6.0);
+        let date = rows[1].value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
@@ -367,8 +365,6 @@ BAR,acme";
         // Test that __dust_id is not inserted.
         let row_0_concatenated_keys = rows[0]
             .value
-            .as_object()
-            .unwrap()
             .keys()
             .into_iter()
             .map(|k| k.to_string())

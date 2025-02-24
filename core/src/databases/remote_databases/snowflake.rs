@@ -119,9 +119,7 @@ impl TryFrom<SnowflakeRow> for QueryResult {
             map.insert(name.to_string(), value);
         }
 
-        Ok(QueryResult {
-            value: serde_json::Value::Object(map),
-        })
+        Ok(QueryResult { value: map })
     }
 }
 
@@ -129,7 +127,8 @@ impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
     type Error = anyhow::Error;
 
     fn try_from(result: QueryResult) -> Result<Self> {
-        serde_json::from_value(result.value).map_err(|e| anyhow!("Error deserializing row: {}", e))
+        serde_json::from_value(serde_json::Value::Object(result.value))
+            .map_err(|e| anyhow!("Error deserializing row: {}", e))
     }
 }
 
@@ -392,9 +391,11 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 let columns = raw_columns
                     .into_iter()
                     .map(|row| {
-                        serde_json::from_value::<SnowflakeSchemaColumn>(row.value)
-                            .map_err(|e| anyhow!("Error deserializing row: {}", e))?
-                            .try_into()
+                        serde_json::from_value::<SnowflakeSchemaColumn>(serde_json::Value::Object(
+                            row.value,
+                        ))
+                        .map_err(|e| anyhow!("Error deserializing row: {}", e))?
+                        .try_into()
                     })
                     .collect::<Result<Vec<TableSchemaColumn>>>()
                     .map_err(|e| {

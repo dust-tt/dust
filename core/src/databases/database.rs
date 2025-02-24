@@ -34,19 +34,20 @@ pub enum SqlDialect {
     DustSqlite,
     Snowflake,
     Bigquery,
+    SalesforceSoql,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct QueryResult {
-    pub value: serde_json::Value,
+    pub value: serde_json::Map<String, serde_json::Value>,
 }
 
 pub trait HasValue {
-    fn value(&self) -> &serde_json::Value;
+    fn value(&self) -> &serde_json::Map<String, serde_json::Value>;
 }
 
 impl HasValue for QueryResult {
-    fn value(&self) -> &serde_json::Value {
+    fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
     }
 }
@@ -61,13 +62,15 @@ pub async fn execute_query(
             "Failed to get table type for tables: {}",
             e
         ))),
-        Ok(TableType::Remote(credential_id)) => match get_remote_database(&credential_id).await {
-            Ok(remote_db) => remote_db.authorize_and_execute_query(&tables, query).await,
-            Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
-                "Failed to get remote database: {}",
-                e
-            ))),
-        },
+        Ok(TableType::Remote(credential_or_connection_id)) => {
+            match get_remote_database(&credential_or_connection_id).await {
+                Ok(remote_db) => remote_db.authorize_and_execute_query(&tables, query).await,
+                Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
+                    "Failed to get remote database: {}",
+                    e
+                ))),
+            }
+        }
         Ok(TableType::Local) => {
             execute_query_on_transient_database(
                 &tables
@@ -109,7 +112,9 @@ pub async fn get_tables_schema(
             let dbmls = tables
                 .iter()
                 .zip(schemas.iter())
-                .map(|(table, schema)| schema.render_dbml(table.name(), table.description()))
+                .map(|(table, schema)| {
+                    schema.render_dbml(table.table_id_for_dbml(), table.description())
+                })
                 .collect::<Vec<_>>();
 
             Ok((
