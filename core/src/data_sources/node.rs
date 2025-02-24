@@ -209,19 +209,21 @@ impl CoreContentNode {
                 parent_id: None, // Data sources don't have parents.
                 parents: vec![], // Data sources don't have parents.
                 source_url: None,
-                tags: Some(vec![]), // or any default tags you want for data sources
+                tags: Some(vec![]),
             },
-            children_count: 1,
+            children_count: 1, // Assume that data source nodes have at least one child.
             parent_title: None,
         }
     }
 }
 
+pub const DATA_SOURCE_NODE_INDEX_NAME: &str = "core.data_sources_nodes";
+
 impl Indexable for Node {
     type Doc = Node;
 
     fn index_name(&self) -> &'static str {
-        "core.data_sources_nodes"
+        DATA_SOURCE_NODE_INDEX_NAME
     }
 
     fn unique_id(&self) -> String {

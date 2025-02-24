@@ -13,14 +13,14 @@ use elasticsearch_dsl::{
     SortOrder,
 };
 use serde::Serialize;
-use serde_json::{json, to_string_pretty};
+use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
 use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
-        node::{CoreContentNode, Node, NodeType},
+        node::{CoreContentNode, Node, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
     },
     search_stores::search_types::SearchItem,
     stores::store::Store,
@@ -143,7 +143,6 @@ impl ElasticsearchSearchStore {
     }
 }
 
-const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
@@ -215,7 +214,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let response = self
             .client
             .search(SearchParts::Index(&[
-                NODES_INDEX_NAME,
+                DATA_SOURCE_NODE_INDEX_NAME,
                 DATA_SOURCE_INDEX_NAME,
             ]))
             .body(search)
@@ -297,7 +296,7 @@ impl SearchStore for ElasticsearchSearchStore {
         // First, delete the data source nodes.
         let response = self
             .client
-            .delete_by_query(DeleteByQueryParts::Index(&[NODES_INDEX_NAME]))
+            .delete_by_query(DeleteByQueryParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(json!({
                 "query": {
                     "term": { "data_source_id": data_source.data_source_id() }
@@ -389,7 +388,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(search)
             .send()
             .await?;
@@ -473,7 +472,7 @@ impl ElasticsearchSearchStore {
 
         // Build nodes query with outer index scope.
         let nodes_query = Query::bool()
-            .filter(Query::term("_index", NODES_INDEX_NAME))
+            .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
             .must(self.build_nodes_content_query(&query, &filter)?);
 
         let mut should_queries = vec![nodes_query];
@@ -656,7 +655,7 @@ impl ElasticsearchSearchStore {
 
         let parent_titles_response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(parent_titles_search)
             .send()
             .await?;
