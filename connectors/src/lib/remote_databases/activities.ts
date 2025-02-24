@@ -212,6 +212,7 @@ const createTableAndHierarchy = async ({
   allDatabases,
   connector,
   mimeTypes,
+  internalTableIdToRemoteTableId,
 }: {
   tableInternalId: string;
   allTables: RemoteTableModel[];
@@ -222,6 +223,7 @@ const createTableAndHierarchy = async ({
     | typeof MIME_TYPES.BIGQUERY
     | typeof MIME_TYPES.SNOWFLAKE
     | typeof MIME_TYPES.SALESFORCE;
+  internalTableIdToRemoteTableId: (internalTableId: string) => string;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -293,7 +295,7 @@ const createTableAndHierarchy = async ({
       dataSourceConfig,
       tableId: tableInternalId,
       tableName: tableInternalId,
-      remoteDatabaseTableId: tableInternalId,
+      remoteDatabaseTableId: internalTableIdToRemoteTableId(tableInternalId),
       remoteDatabaseSecretId: connector.connectionId,
       tableDescription: "",
       parents: [tableInternalId, schemaInternalId, dbName],
@@ -310,6 +312,7 @@ export async function sync({
   remoteDBTree,
   connector,
   mimeTypes,
+  internalTableIdToRemoteTableId = (internalTableId: string) => internalTableId,
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
@@ -317,6 +320,7 @@ export async function sync({
     | typeof MIME_TYPES.BIGQUERY
     | typeof MIME_TYPES.SNOWFLAKE
     | typeof MIME_TYPES.SALESFORCE;
+  internalTableIdToRemoteTableId?: (internalTableId: string) => string;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -464,6 +468,7 @@ export async function sync({
             allDatabases,
             connector,
             mimeTypes,
+            internalTableIdToRemoteTableId,
           });
           for (const usedInternalId of newTableUsedInternalIds) {
             usedInternalIds.add(usedInternalId);

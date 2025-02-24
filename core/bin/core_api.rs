@@ -39,7 +39,6 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        csv::UpsertQueueCSVContent,
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },

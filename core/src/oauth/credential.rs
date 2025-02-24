@@ -9,6 +9,8 @@ use anyhow::Result;
 
 use super::encryption::{seal_str, unseal_str};
 
+pub static CREDENTIAL_ID_PREFIX: &str = "cred";
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
@@ -72,7 +74,7 @@ impl Credential {
     pub fn credential_id_from_row_id_and_secret(row_id: i64, secret: &str) -> Result<String> {
         Ok(format!(
             "{}-{}",
-            utils::make_id("cred", row_id as u64)?,
+            utils::make_id(CREDENTIAL_ID_PREFIX, row_id as u64)?,
             secret
         ))
     }
@@ -88,7 +90,7 @@ impl Credential {
         let (prefix, row_id) = utils::parse_id(parts[0])?;
         let secret = parts[1].to_string();
 
-        if prefix != "cred" {
+        if prefix != CREDENTIAL_ID_PREFIX {
             return Err(anyhow::anyhow!(
                 "Invalid credential_id prefix: {}",
                 credential_id

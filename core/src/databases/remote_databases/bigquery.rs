@@ -222,9 +222,7 @@ impl BigQueryRemoteDatabase {
                     );
                 }
 
-                Ok(QueryResult {
-                    value: serde_json::Value::Object(map),
-                })
+                Ok(QueryResult { value: map })
             })
             .collect::<Result<Vec<QueryResult>>>()?;
 

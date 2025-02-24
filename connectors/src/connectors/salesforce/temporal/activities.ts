@@ -27,6 +27,9 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
     remoteDBTree: tree,
     mimeTypes: MIME_TYPES.SALESFORCE,
     connector,
+    // Only keep the table name in the remote table id.
+    internalTableIdToRemoteTableId: (internalTableId: string) =>
+      internalTableId.split(".").pop() ?? internalTableId,
   });
 
   await syncSucceeded(connectorId);

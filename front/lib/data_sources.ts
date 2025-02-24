@@ -72,12 +72,14 @@ export function isManaged(ds: DataSource): ds is DataSource & WithConnector {
   );
 }
 
-export function isRemoteDatabase(
-  ds: DataSource
-): ds is DataSource &
-  WithConnector & { connectorProvider: "snowflake" | "bigquery" } {
+export function isRemoteDatabase(ds: DataSource): ds is DataSource &
+  WithConnector & {
+    connectorProvider: "snowflake" | "bigquery" | "salesforce";
+  } {
   return (
-    ds.connectorProvider === "snowflake" || ds.connectorProvider === "bigquery"
+    ds.connectorProvider === "snowflake" ||
+    ds.connectorProvider === "bigquery" ||
+    ds.connectorProvider === "salesforce"
   );
 }
 
