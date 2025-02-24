@@ -29,6 +29,7 @@ import type { ComponentType } from "react";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -295,6 +296,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
+    optionsComponent: ZendeskConfigView,
     isNested: true,
     isSearchEnabled: false,
     permissions: {

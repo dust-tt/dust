@@ -5,7 +5,7 @@ import { escapeRegExp } from "lodash";
 
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 
-export const MentionWithPaste = Mention.extend({
+export const MentionWithPasteExtension = Mention.extend({
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {

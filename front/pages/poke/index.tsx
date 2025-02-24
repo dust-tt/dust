@@ -1,4 +1,4 @@
-import { BookOpenIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { BookOpenIcon, Icon, Input, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
@@ -133,8 +133,7 @@ const Dashboard = () => {
   return (
     <>
       <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
-      <input
-        className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+      <Input
         type="text"
         placeholder="Search"
         value={searchTerm}

@@ -1,4 +1,3 @@
-import Bold from "@tiptap/extension-bold";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
@@ -6,11 +5,13 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/MentionStorage";
-import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/MentionWithPaste";
+import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
+import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import { isMobile } from "@app/lib/utils";
 
 export interface EditorMention {
@@ -59,10 +60,18 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
 }
 
 const useEditorService = (editor: Editor | null) => {
+  const markdownSerializer = useMemo(() => {
+    if (!editor?.schema) {
+      return null;
+    }
+
+    return createMarkdownSerializer(editor.schema);
+  }, [editor]);
+
   const editorService = useMemo(() => {
-    // Return the service object with utility functions
+    // Return the service object with utility functions.
     return {
-      // Insert mention helper function
+      // Insert mention helper function.
       insertMention: ({ id, label }: { id: string; label: string }) => {
         const shouldAddSpaceBeforeMention =
           !editor?.isEmpty &&
@@ -127,6 +136,20 @@ const useEditorService = (editor: Editor | null) => {
         };
       },
 
+      getMarkdownAndMentions() {
+        if (!editor?.state.doc) {
+          return {
+            markdown: "",
+            mentions: [],
+          };
+        }
+
+        return {
+          markdown: markdownSerializer?.serialize(editor.state.doc) ?? "",
+          mentions: this.getTextAndMentions().mentions,
+        };
+      },
+
       hasMention(mention: EditorMention) {
         const { mentions } = this.getTextAndMentions();
         return mentions.some((m) => m.id === mention.id);
@@ -149,7 +172,7 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.setEditable(!loading);
       },
     };
-  }, [editor]);
+  }, [editor, markdownSerializer]);
 
   return editorService;
 };
@@ -159,7 +182,9 @@ export type EditorService = ReturnType<typeof useEditorService>;
 export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
-    textAndMentions: ReturnType<typeof getTextAndMentionsFromNode>,
+    markdownAndMentions: ReturnType<
+      ReturnType<typeof useEditorService>["getMarkdownAndMentions"]
+    >,
     clearEditor: () => void,
     setLoading: (loading: boolean) => void
   ) => void;
@@ -167,14 +192,6 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
 }
-
-const CustomBold = Bold.extend({
-  addKeyboardShortcuts() {
-    return {
-      "Mod-b": () => false,
-    };
-  },
-});
 
 const useCustomEditor = ({
   onEnterKeyDown,
@@ -184,20 +201,14 @@ const useCustomEditor = ({
 }: CustomEditorProps) => {
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
-    enableInputRules: false, // Disable Markdown when typing.
-    enablePasteRules: [MentionWithPaste.name], // We don't want Markdown when pasting but we allow CustomMention extension as it will handle parsing @agent-name from plain text back into a mention.
     extensions: [
       StarterKit.configure({
-        heading: false,
-        // Disable the paragraph extension to handle Enter key press manually.
+        hardBreak: false, // Disable the built-in Shift+Enter.
         paragraph: false,
-        // Disable the default Bold extension from StarterKit
-        bold: false,
+        strike: false,
       }),
-      CustomBold,
-      ParagraphExtension,
-      MentionStorage,
-      MentionWithPaste.configure({
+      MentionStorageExtension,
+      MentionWithPasteExtension.configure({
         HTMLAttributes: {
           class:
             "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
@@ -209,6 +220,8 @@ const useCustomEditor = ({
         emptyNodeClass:
           "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
       }),
+      MarkdownStyleExtension,
+      ParagraphExtension,
     ],
   });
 
@@ -262,7 +275,7 @@ const useCustomEditor = ({
 
           onEnterKeyDown(
             editor.isEmpty,
-            getTextAndMentionsFromNode(editor.getJSON()),
+            editorService.getMarkdownAndMentions(),
             clearEditor,
             setLoading
           );
