@@ -343,15 +343,10 @@ export async function upsertDocument({
   }
 
   if (titleInTags && titleInTags !== title) {
-    logger.error(
+    logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // new DustError(
-    //   "invalid_title_in_tags",
-    //   "Invalid tags: title passed in tags does not match the table title."
-    // )
   }
 
   // Add selection of tags as prefix to the section if they are present.
@@ -642,23 +637,15 @@ export async function upsertTable({
   }
 
   if (titleInTags && titleInTags !== params.title) {
-    logger.error(
+    logger.warn(
       {
         dataSourceId: dataSource.sId,
         tableId,
         titleInTags,
         title: params.title,
       },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // return apiError(req, res, {
-    //   status_code: 400,
-    //   api_error: {
-    //     type: "invalid_request_error",
-    //     message: `Invalid tags: title passed in tags does not match the table title.`,
-    //   },
-    // });
   }
 
   let standardizedSourceUrl: string | null = null;
