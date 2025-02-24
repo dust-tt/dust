@@ -65,13 +65,9 @@ impl<'a> FromSql<'a> for ProviderVisibility {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
-#[serde(rename_all = "lowercase")]
 pub enum NodeType {
-    #[serde(alias = "Document")]
     Document,
-    #[serde(alias = "Table")]
     Table,
-    #[serde(alias = "Folder")]
     Folder,
 }
 
