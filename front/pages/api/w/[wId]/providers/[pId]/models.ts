@@ -197,6 +197,7 @@ async function handler(
                 { id: "claude-3-sonnet-20240229" },
                 { id: "claude-3-5-sonnet-20240620" },
                 { id: "claude-3-5-sonnet-20241022" },
+                { id: "claude-3-7-sonnet-20250219" },
                 { id: "claude-3-5-haiku-20241022" },
                 { id: "claude-3-opus-20240229" },
               ];
