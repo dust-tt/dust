@@ -1,7 +1,7 @@
 import { markdownStyles } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/react";
 
-export const MarkdownStyle = Extension.create({
+export const MarkdownStyleExtension = Extension.create({
   name: "markdownStyle",
 
   addGlobalAttributes() {

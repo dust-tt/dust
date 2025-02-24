@@ -5,9 +5,9 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import { MarkdownStyle } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
-import { MentionStorage } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
-import { MentionWithPaste } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
+import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
@@ -207,8 +207,8 @@ const useCustomEditor = ({
         paragraph: false,
         strike: false,
       }),
-      MentionStorage,
-      MentionWithPaste.configure({
+      MentionStorageExtension,
+      MentionWithPasteExtension.configure({
         HTMLAttributes: {
           class:
             "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
@@ -220,7 +220,7 @@ const useCustomEditor = ({
         emptyNodeClass:
           "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
       }),
-      MarkdownStyle,
+      MarkdownStyleExtension,
       ParagraphExtension,
     ],
   });
