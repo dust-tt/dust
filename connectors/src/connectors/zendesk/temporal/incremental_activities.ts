@@ -4,6 +4,7 @@ import { MIME_TYPES } from "@dust-tt/types";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
+  shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -25,6 +26,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 
 /**
@@ -211,6 +213,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -248,7 +255,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (["solved", "closed"].includes(ticket.status)) {
+      } else if (shouldSyncTicket(ticket, configuration)) {
         const comments = await fetchZendeskTicketComments({
           accessToken,
           brandSubdomain,
