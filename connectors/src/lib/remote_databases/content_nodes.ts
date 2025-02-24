@@ -32,7 +32,10 @@ export const getContentNodeTypeFromInternalId = (
 export const getContentNodeFromInternalId = (
   internalId: string,
   permission: ConnectorPermission = "none",
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
   const [databaseName, schemaName, tableName] = internalId.split(".");
