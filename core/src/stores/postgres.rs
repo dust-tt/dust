@@ -475,6 +475,21 @@ impl Store for PostgresStore {
         }
     }
 
+    async fn list_specification_hashes(&self, project: &Project) -> Result<Vec<String>> {
+        let project_id = project.project_id();
+
+        let pool = &self.pool;
+        let c = pool.get().await?;
+        let r = c
+            .query(
+                "SELECT hash FROM specifications WHERE project = $1 ORDER BY created",
+                &[&project_id],
+            )
+            .await?;
+
+        Ok(r.into_iter().map(|r| r.get(0)).collect())
+    }
+
     async fn register_specification(
         &self,
         project: &Project,
