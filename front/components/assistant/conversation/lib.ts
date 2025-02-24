@@ -37,11 +37,13 @@ export function createPlaceholderUserMessage({
   mentions,
   user,
   lastMessageRank,
+  threadVersion,
 }: {
   input: string;
   mentions: MentionType[];
   user: UserType;
   lastMessageRank: number;
+  threadVersion: number;
 }): UserMessageWithRankType {
   const createdAt = new Date().getTime();
   const { email, fullName, image, username } = user;
@@ -57,6 +59,9 @@ export function createPlaceholderUserMessage({
     sId: `placeholder-${createdAt.toString()}`,
     version: 0,
     rank: lastMessageRank + 1,
+    threadVersions: [threadVersion],
+    previousThreadVersion: null,
+    nextThreadVersion: null,
     context: {
       email,
       fullName,
@@ -73,6 +78,7 @@ export async function submitMessage({
   user,
   conversationId,
   messageData,
+  threadVersion,
 }: {
   owner: WorkspaceType;
   user: UserType;
@@ -82,14 +88,17 @@ export async function submitMessage({
     mentions: MentionType[];
     contentFragments: UploadedContentFragment[];
   };
+  threadVersion?: number;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
+  const threadVersionParam =
+    threadVersion != null ? `?threadVersion=${threadVersion}` : "";
   // Create a new content fragment.
   if (contentFragments.length > 0) {
     const contentFragmentsRes = await Promise.all(
       contentFragments.map((contentFragment) => {
         return fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment${threadVersionParam}`,
           {
             method: "POST",
             headers: {
@@ -124,7 +133,7 @@ export async function submitMessage({
 
   // Create a new user message.
   const mRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages`,
+    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${threadVersionParam}`,
     {
       method: "POST",
       headers: {

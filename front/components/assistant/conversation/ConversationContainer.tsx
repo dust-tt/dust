@@ -29,6 +29,7 @@ import { updateMessagePagesWithOptimisticData } from "@app/lib/client/conversati
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import {
+  useConversation,
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
@@ -48,7 +49,7 @@ export function ConversationContainer({
   isBuilder,
   agentIdToMention,
 }: ConversationContainerProps) {
-  const { activeConversationId } = useConversationsNavigation();
+  const { activeConversationId, threadVersion } = useConversationsNavigation();
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
@@ -70,10 +71,17 @@ export function ConversationContainer({
     },
   });
 
-  const { mutateMessages } = useConversationMessages({
+  const { conversation } = useConversation({
     conversationId: activeConversationId,
     workspaceId: owner.sId,
-    limit: 50,
+    threadVersion,
+  });
+
+  const { mutateMessages } = useConversationMessages({
+    conversationId: activeConversationId,
+    threadVersion,
+    workspaceId: owner.sId,
+    options: { disabled: true },
   });
 
   const setInputbarMention = useCallback(
@@ -122,6 +130,7 @@ export function ConversationContainer({
             owner,
             user,
             conversationId: activeConversationId,
+            threadVersion,
             messageData,
           });
 
@@ -158,6 +167,7 @@ export function ConversationContainer({
               mentions,
               user,
               lastMessageRank,
+              threadVersion: conversation?.threadVersion ?? 0,
             });
             return updateMessagePagesWithOptimisticData(
               currentMessagePages,
@@ -304,6 +314,7 @@ export function ConversationContainer({
           owner={owner}
           user={user}
           conversationId={activeConversationId}
+          threadVersion={threadVersion}
           // TODO(2024-06-20 flav): Fix extra-rendering loop with sticky mentions.
           onStickyMentionsChange={onStickyMentionsChange}
         />
