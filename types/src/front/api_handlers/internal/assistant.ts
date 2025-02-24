@@ -4,6 +4,7 @@ import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
+  threadVersion: t.union([t.number, t.null]),
   mentions: t.array(t.type({ configurationId: t.string })),
   context: t.type({
     timezone: t.string,
