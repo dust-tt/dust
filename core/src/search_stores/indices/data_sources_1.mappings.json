@@ -10,9 +10,6 @@
     "timestamp": {
       "type": "date"
     },
-    "node_type": {
-      "type": "keyword"
-    },
     "name": {
       "type": "text",
       "analyzer": "standard",
@@ -26,9 +23,6 @@
           "type": "keyword"
         }
       }
-    },
-    "mime_type": {
-      "type": "keyword"
     }
   }
 }

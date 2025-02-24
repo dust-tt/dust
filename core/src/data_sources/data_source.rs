@@ -2474,8 +2474,6 @@ pub const DATA_SOURCE_INDEX_NAME: &str = "core.data_sources";
 pub struct DataSourceESDocument {
     pub data_source_id: String,
     pub data_source_internal_id: String,
-    pub mime_type: String,
-    pub node_type: String, // Always "folder".
     pub timestamp: u64,
     pub name: String,
 }
@@ -2485,8 +2483,6 @@ impl From<&DataSource> for DataSourceESDocument {
         Self {
             data_source_id: ds.data_source_id().to_string(),
             data_source_internal_id: ds.internal_id().to_string(),
-            mime_type: DATA_SOURCE_MIME_TYPE.to_string(),
-            node_type: NodeType::Folder.to_string(),
             timestamp: ds.created(),
             name: ds.name().to_string(),
         }

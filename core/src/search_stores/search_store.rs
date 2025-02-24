@@ -264,10 +264,10 @@ impl SearchStore for ElasticsearchSearchStore {
                     None
                 };
 
-                let items = hits
+                let items: Vec<SearchItem> = hits
                     .iter()
-                    .filter_map(|h| SearchItem::from_hit(h).ok())
-                    .collect();
+                    .map(|h| SearchItem::from_hit(h))
+                    .collect::<Result<Vec<_>>>()?;
 
                 (items, hit_count, hit_count_is_accurate, next_cursor)
             }
@@ -480,6 +480,9 @@ impl ElasticsearchSearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
     ) -> Result<BoolQuery> {
+        // Check there is at least one data source view filter
+        // !! do not remove; without data source view filter this endpoint is
+        // dangerous as any data from any workspace can be retrieved.
         if filter.data_source_views.is_empty() {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
