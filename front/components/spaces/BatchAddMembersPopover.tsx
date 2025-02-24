@@ -9,11 +9,11 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, UserType } from "@dust-tt/types";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { useMembersByEmails } from "@app/lib/swr/memberships";
 import { isEmailValid } from "@app/lib/utils";
+import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 
 interface BatchAddMembersPopoverProps {
   owner: LightWorkspaceType;
@@ -29,57 +29,56 @@ export function BatchAddMembersPopover({
   const sendNotification = useSendNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [content, setContent] = useState("");
-  const [error, setError] = useState<string>();
-  const [emails, setEmails] = useState<string[]>([]);
-  const [doSave, setDoSave] = useState(false);
-  const { members, isMembersLoading } = useMembersByEmails({
-    workspaceId: owner.sId,
-    emails,
-    disabled: !isOpen || !doSave,
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const isListValid = emails?.length && !error;
-  const buttonLabel = isListValid ? `Add ${emails.length} members` : "...";
+  const processEmails = useCallback((content: string) => {
+    const emails = removeNulls(
+      content
+        .split("\n")
+        .map((email) => email.trim())
+        .filter((email) => isEmailValid(email))
+    );
+    const error =
+      emails.length > MAX_SEARCH_EMAILS
+        ? `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`
+        : undefined;
+
+    return { emails, error };
+  }, []);
+
+  const { emails, error } = processEmails(content);
+
+  const buttonLabel =
+    emails.length > 0 ? `Add ${emails.length} members` : "...";
 
   const onTextAreaChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setContent(e.target.value);
-      const emails = removeNulls(
-        e.target.value
-          .split("\n")
-          .map((email) => email.trim())
-          .filter((email) => isEmailValid(email))
-      );
-      setEmails(emails);
-      setError(
-        emails.length > MAX_SEARCH_EMAILS
-          ? `Too many emails provided. Maximum is ${MAX_SEARCH_EMAILS}.`
-          : undefined
-      );
     },
     []
   );
 
-  const buttonOnClick = useCallback(() => {
-    if (isListValid) {
-      setDoSave(true);
-    }
-  }, [isListValid]);
-
-  useEffect(() => {
-    if (doSave && members.length > 0) {
+  async function onSave() {
+    if (error) {
       sendNotification({
-        type: "success",
-        title: "Batch add members",
-        description:
-          members.length > 1
-            ? `${members.length} members were successfully added to this space.`
-            : `${members.length} member was successfully added to this space.`,
+        type: "error",
+        title: "Error adding members",
+        description: error,
       });
+      return;
+    }
 
-      // Check the diff between emails and members
+    setIsLoading(true);
+
+    try {
+      const emailsRes = await fetch(
+        `/api/w/${owner.sId}/members/search?searchEmails=${emails.join(",")}`
+      );
+      const membersData: GetMembersResponseBody = await emailsRes.json();
+
+      const members = membersData.members;
       const missingEmails = emails.filter(
-        (email) => !members.some((m) => m.email === email)
+        (email) => !membersData.members.some((m) => m.email === email)
       );
 
       if (missingEmails.length > 0) {
@@ -92,19 +91,11 @@ export function BatchAddMembersPopover({
 
       onMembersUpdated(selectedMembers.concat(members));
       setIsOpen(false);
-      setDoSave(false);
       setContent("");
-      setEmails([]);
-      setError(undefined);
+    } finally {
+      setIsLoading(false);
     }
-  }, [
-    doSave,
-    emails,
-    members,
-    onMembersUpdated,
-    selectedMembers,
-    sendNotification,
-  ]);
+  }
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
@@ -119,15 +110,15 @@ export function BatchAddMembersPopover({
         <TextArea
           onChange={onTextAreaChange}
           value={content}
-          disabled={isMembersLoading}
-        ></TextArea>
+          disabled={isLoading}
+        />
         {error && <div className="text-xs text-warning-500">{error}</div>}
         <div className="mt-3 flex flex-row justify-end gap-2">
           <Button
             label={buttonLabel}
-            onClick={buttonOnClick}
-            disabled={!isListValid || isMembersLoading}
-            isLoading={isMembersLoading}
+            onClick={onSave}
+            disabled={!emails.length || isLoading}
+            isLoading={isLoading}
           />
         </div>
       </PopoverContent>
