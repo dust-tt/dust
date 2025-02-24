@@ -68,22 +68,22 @@ export const Hero: HeroProps = {
   visuals: [
     {
       src: "/static/landing/it/it1.png",
-      alt: "Sales Visual 1",
+      alt: "IT Visual 1",
       depth: -30,
     },
     {
       src: "/static/landing/it/it2.png",
-      alt: "Sales Visual 2",
+      alt: "IT Visual 2",
       depth: -10,
     },
     {
       src: "/static/landing/it/it3.png",
-      alt: "Sales Visual 3",
+      alt: "IT Visual 3",
       depth: 20,
     },
     {
       src: "/static/landing/it/it4.png",
-      alt: "Sales Visual 4",
+      alt: "IT Visual 4",
       depth: 50,
     },
   ],
@@ -148,25 +148,25 @@ export const UseCases: UseCaseProps = {
       title: "IT helpdesk",
       content:
         "Answer common employee IT questions instantly using your internal documentation and policies.",
-      images: ["/static/landing/solutions/it1.png"],
+      images: ["/static/landing/it/itHelpdesk.png"],
     },
     {
       title: "IT ops assistant",
       content:
         "Support system administrators with troubleshooting guidance based on your documented procedures.",
-      images: ["/static/landing/solutions/it2.png"],
+      images: ["/static/landing/it/itOps.png"],
     },
     {
       title: "Procurement helper",
       content:
         "Guide employees through procurement processes and requirements with automated assistance.",
-      images: ["/static/landing/solutions/it3.png"],
+      images: ["/static/landing/it/procureHelp.png"],
     },
     {
       title: "Ticket analytics",
       content:
         "Analyze support patterns to identify improvement opportunities and optimize documentation.",
-      images: ["/static/landing/solutions/it4.png"],
+      images: ["/static/landing/it/itInsights.png"],
     },
   ],
 };

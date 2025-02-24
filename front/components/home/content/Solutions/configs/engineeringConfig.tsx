@@ -69,22 +69,22 @@ export const Hero: HeroProps = {
   visuals: [
     {
       src: "/static/landing/engineering/eng1.png",
-      alt: "Sales Visual 1",
+      alt: "Engineering Visual 1",
       depth: -30,
     },
     {
       src: "/static/landing/engineering/eng2.png",
-      alt: "Sales Visual 2",
+      alt: "Engineering Visual 2",
       depth: -10,
     },
     {
       src: "/static/landing/engineering/eng3.png",
-      alt: "Sales Visual 3",
+      alt: "Engineering Visual 3",
       depth: 20,
     },
     {
       src: "/static/landing/engineering/eng4.png",
-      alt: "Sales Visual 4",
+      alt: "Engineering Visual 4",
       depth: 50,
     },
   ],
