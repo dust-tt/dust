@@ -1,5 +1,3 @@
-import { spec } from "node:test/reporters";
-
 import {
   Button,
   DropdownMenu,
