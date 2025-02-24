@@ -69,7 +69,9 @@ export function UserMessage({
   async function switchThread(threadVersion: number | null) {
     if (threadVersion != null) {
       await router.push(
-        `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`
+        `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`,
+        undefined,
+        { shallow: true }
       );
     }
   }
@@ -93,8 +95,8 @@ export function UserMessage({
     ].map((id) => ({ configurationId: id }));
 
     const result = await doEditMessage(conversation, message, text, mentions);
-    setIsEditing(false);
     await switchThread(result.message.threadVersions[0]);
+    setIsEditing(false);
   };
 
   const buttons = [];
