@@ -21,16 +21,10 @@ import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type {
-  ContentNodeTreeItemStatus,
-  TreeSelectionModelUpdater,
-} from "@app/components/ContentNodeTree";
+import type { ContentNodeTreeItemStatus, TreeSelectionModelUpdater } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { CONNECTOR_CONFIGURATIONS, getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import {
@@ -265,7 +259,7 @@ export function DataSourceViewsSelector({
               {getVisualForContentNode(item)({ className: "min-w-4" })}
               <span className="text-sm">{item.title}</span>
               {item.parentTitle && (
-                <span className="text-sm text-slate-500">{`:/${item.parentTitle}`}</span>
+                <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
               )}
               {item.dataSourceView.dataSource.connectorProvider && (
                 <div className="ml-auto">
