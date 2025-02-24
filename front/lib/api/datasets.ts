@@ -64,7 +64,7 @@ export async function getDatasetHash(
   app: AppResource,
   name: string,
   hash: string,
-  includeDeleted: boolean = false
+  { includeDeleted = false }: { includeDeleted?: boolean }
 ): Promise<DatasetType | null> {
   const owner = auth.workspace();
   if (!owner) {

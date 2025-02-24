@@ -96,7 +96,7 @@ async function handler(
               app,
               dataset.datasetId,
               dataset.hash,
-              true
+              { includeDeleted: true }
             );
             if (fromCore) {
               datasets.push(fromCore);
