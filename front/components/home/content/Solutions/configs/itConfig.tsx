@@ -67,22 +67,22 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
+      src: "/static/landing/it/it1.png",
       alt: "Sales Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
+      src: "/static/landing/it/it2.png",
       alt: "Sales Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
+      src: "/static/landing/it/it3.png",
       alt: "Sales Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
+      src: "/static/landing/it/it4.png",
       alt: "Sales Visual 4",
       depth: 50,
     },
@@ -127,12 +127,12 @@ export const Benefits: BenefitsProps = {
 export const Metrics: MetricProps = {
   metrics: [
     {
-      value: "90%",
-      description: <>faster RFP response times</>,
+      value: "30%",
+      description: <>fewer IT tickets</>,
     },
     {
-      value: "8h",
-      description: <> saved weekly per rep for selling</>,
+      value: "4h",
+      description: <> saved weekly filling RFP</>,
     },
   ],
   from: "from-amber-200",
@@ -173,10 +173,10 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "One of the things that impressed me about Dust is that all the use cases around internal and external support for teams who need to maintain processes are impressive. Being able to call an agent that parses all the knowledge is a huge pain reliever.",
+  name: "Raphael Brousse ",
+  title: "VP Operations at Lifen",
+  logo: "/static/landing/logos/lifen.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -187,6 +187,13 @@ export const DemoVideo: DemoVideoProps = {
 
 export const Stories: CustomerStory[] = [
   {
+    title: "Lifen Saves Two Hours per Week per Employee with Dust", // Soon to be replaced with Clay for RFP?
+    content:
+      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
+    href: "https://blog.dust.tt/customer-story-lifen/",
+    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
+  },
+  {
     title: "20%+ productivity gains in Sales: Insights from Alan and Payfit",
     content:
       "Dust agents significantly lowered their acquisition costs, allowing them to hire more salespeople.",
@@ -196,16 +203,9 @@ export const Stories: CustomerStory[] = [
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
-      "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
+      "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  },
-  {
-    title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
-    content:
-      "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
-    href: "https://blog.dust.tt/customer-story-lifen/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   },
 ];
 

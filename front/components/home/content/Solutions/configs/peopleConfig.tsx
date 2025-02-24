@@ -125,12 +125,12 @@ export const Benefits: BenefitsProps = {
 export const Metrics: MetricProps = {
   metrics: [
     {
-      value: "90%",
-      description: <>faster RFP response times</>,
+      value: "100%",
+      description: <>daily active users in HR at Alan</>,
     },
     {
-      value: "8h",
-      description: <> saved weekly per rep for selling</>,
+      value: "30%",
+      description: <>time savings on employee questions</>,
     },
   ],
   from: "from-amber-200",

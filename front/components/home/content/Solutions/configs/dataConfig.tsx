@@ -68,22 +68,22 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
+      src: "/static/landing/data-analytics/data1.png",
       alt: "Sales Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
+      src: "/static/landing/data-analytics/data2.png",
       alt: "Sales Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
+      src: "/static/landing/data-analytics/data3.png",
       alt: "Sales Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
+      src: "/static/landing/data-analytics/data4.png",
       alt: "Sales Visual 4",
       depth: 50,
     },
@@ -174,10 +174,10 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
-  name: "Everett Berry ",
-  title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+    "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
+  name: "Vincent Delagabbe",
+  title: "Software Engineer at Alan",
+  logo: "/static/landing/logos/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
@@ -197,7 +197,7 @@ export const Stories: CustomerStory[] = [
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
-      "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
+      "42% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },

@@ -202,7 +202,7 @@ export const Stories: CustomerStory[] = [
   {
     title: "Kyriba's RFP Agent for improving pre-sales efficiency",
     content:
-      "42% of Kyriba employees save 1 to 3 hours weekly leveraging Dust for RFPs.",
+      "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
   },

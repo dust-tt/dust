@@ -68,22 +68,22 @@ export const Hero: HeroProps = {
   description: pageSettings.description,
   visuals: [
     {
-      src: "/static/landing/sales/sales1.png",
+      src: "/static/landing/engineering/eng1.png",
       alt: "Sales Visual 1",
       depth: -30,
     },
     {
-      src: "/static/landing/sales/sales2.png",
+      src: "/static/landing/engineering/eng2.png",
       alt: "Sales Visual 2",
       depth: -10,
     },
     {
-      src: "/static/landing/sales/sales3.png",
+      src: "/static/landing/engineering/eng3.png",
       alt: "Sales Visual 3",
       depth: 20,
     },
     {
-      src: "/static/landing/sales/sales4.png",
+      src: "/static/landing/engineering/eng4.png",
       alt: "Sales Visual 4",
       depth: 50,
     },
@@ -194,13 +194,13 @@ export const Stories: CustomerStory[] = [
     href: "https://blog.dust.tt/integrating-ai-workflows-alan/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_alan-1.png",
   },
-  {
-    title: "November Five's journey to minimizing routine tasks with Dust",
-    content:
-      "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
-    href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
-    src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
-  },
+  // {
+  //   title: "November Five's journey to minimizing routine tasks with Dust",
+  //   content:
+  //     "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
+  //   href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
+  //   src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
+  // },
   // {
   //   title: "Lifen uses Dust AI agents to boost team productivity", // Soon to be replaced with Clay for RFP?
   //   content:
