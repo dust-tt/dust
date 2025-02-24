@@ -45,3 +45,7 @@ export const DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION =
 export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME = "github_create_issue";
 export const DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION =
   "Create a new issue in a GitHub repository";
+export const DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME =
+  "github_create_pull_request_review";
+export const DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_DESCRIPTION =
+  "Create a new review in a GitHub pull request";

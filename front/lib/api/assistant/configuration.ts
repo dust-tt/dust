@@ -35,6 +35,7 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_NAME,
@@ -999,6 +1000,9 @@ export async function createAgentActionConfiguration(
         type: "github_create_issue_configuration";
       }
     | {
+        type: "github_create_pull_request_review_configuration";
+      }
+    | {
         type: "reasoning_configuration";
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
@@ -1216,6 +1220,25 @@ export async function createAgentActionConfiguration(
         sId: githubConfig.sId,
         type: "github_create_issue_configuration",
         name: action.name || DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+        description: action.description,
+      });
+    }
+    case "github_create_pull_request_review_configuration": {
+      const githubConfig = await AgentGithubConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        actionType: "github_create_pull_request_review_action",
+        name: action.name,
+        description: action.description,
+        workspaceId: owner.id,
+      });
+
+      return new Ok({
+        id: githubConfig.id,
+        sId: githubConfig.sId,
+        type: "github_create_pull_request_review_configuration",
+        name:
+          action.name || DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
         description: action.description,
       });
     }

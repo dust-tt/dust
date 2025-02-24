@@ -149,3 +149,61 @@ export type GithubCreateIssueErrorEvent = {
     message: string;
   };
 };
+
+/**
+ * GithubCreatePullRequestReviewConfigurationType
+ */
+export type GithubCreatePullRequestReviewConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "github_create_pull_request_review_configuration";
+
+  name: string;
+  description: string | null;
+};
+
+export interface GithubCreatePullRequestReviewActionType extends BaseAction {
+  agentMessageId: ModelId;
+  params: {
+    owner: string;
+    repo: string;
+    pullNumber: number;
+    path: string;
+    body: string;
+  };
+  pullBody: string | null;
+  pullCommits: GithubGetPullRequestCommitType[] | null;
+  pullDiff: string | null;
+  pullComments: GithubGetPullRequestCommentType[] | null;
+  pullReviews: GithubGetPullRequestReviewType[] | null;
+  functionCallId: string | null;
+  functionCallName: string | null;
+  step: number;
+  type: "github_create_pull_request_review_action";
+}
+
+export type GithubCreatePullRequestParamsEvent = {
+  type: "github_create_pull_request_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: GithubCreatePullRequestReviewActionType;
+};
+export type GithubCreatePullRequestReviewSuccessEvent = {
+  type: "github_create_pull_request_review_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: GithubCreatePullRequestReviewActionType;
+};
+export type GithubCreatePullRequestReviewErrorEvent = {
+  type: "github_create_pull_request_review_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};

@@ -91,6 +91,13 @@ export const ACTION_SPECIFICATIONS: Record<
     dropDownIcon: GithubIcon,
     flag: null,
   },
+  GITHUB_CREATE_PULL_REQUEST_REVIEW: {
+    label: "Create a pull request review",
+    description: "Create a new review in a Github pull request",
+    cardIcon: GithubIcon,
+    dropDownIcon: GithubIcon,
+    flag: null,
+  },
   REASONING: {
     label: "Reasoning",
     description: "Complex step by step reasoning",
@@ -208,6 +215,7 @@ export function getCitationsCount({
     case "conversation_include_file_configuration":
     case "github_get_pull_request_configuration":
     case "github_create_issue_configuration":
+    case "github_create_pull_request_review_configuration":
     case "reasoning_configuration":
       return 0;
     default:
