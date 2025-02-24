@@ -25,15 +25,8 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isValidContentNodesViewType,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@dust-tt/types";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
+import { isValidContentNodesViewType, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import type { CellContext, ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -42,23 +35,14 @@ import { FileDropProvider } from "@app/components/assistant/conversation/FileUpl
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
-import type {
-  ContentActionKey,
-  ContentActionsRef,
-} from "@app/components/spaces/ContentActions";
-import {
-  ContentActions,
-  getMenuItems,
-} from "@app/components/spaces/ContentActions";
+import type { ContentActionKey, ContentActionsRef } from "@app/components/spaces/ContentActions";
+import { ContentActions, getMenuItems } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
-import {
-  useDataSourceViewContentNodes,
-  useDataSourceViews,
-} from "@app/lib/swr/data_source_views";
+import { useDataSourceViewContentNodes, useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -127,13 +111,14 @@ const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
     id: "lastUpdatedAt",
     accessorKey: "lastUpdatedAt",
     meta: {
-      className: "w-48",
+      className: "w-20",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent
+        className="justify-end"
         label={
           info.getValue()
-            ? formatTimestampToFriendlyDate(info.getValue(), "short")
+            ? formatTimestampToFriendlyDate(info.getValue(), "compact")
             : "-"
         }
       />
