@@ -72,6 +72,18 @@ export async function autoReadChannel(
       return joinChannelRes;
     }
 
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: slackChannelInternalIdFromSlackChannelId(slackChannelId),
+      title: `#${remoteChannelName}`,
+      parentId: null,
+      parents: [slackChannelInternalIdFromSlackChannelId(slackChannelId)],
+      mimeType: MIME_TYPES.SLACK.CHANNEL,
+      sourceUrl: getSlackChannelSourceUrl(slackChannelId, slackConfiguration),
+      providerVisibility: remoteChannel.channel?.is_private
+        ? "private"
+        : "public",
+    });
     let channel: SlackChannel | null = null;
     channel = await SlackChannel.findOne({
       where: {
