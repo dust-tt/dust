@@ -68,7 +68,7 @@ export function ActionRetrievalSearch({
           actionConfiguration.dataSourceConfigurations
         }
         allowedSpaces={allowedSpaces}
-        viewType="documents"
+        viewType="document"
       />
 
       <DataSourceSelectionSection
@@ -84,7 +84,7 @@ export function ActionRetrievalSearch({
             dataSourceConfigurations: dsConfigs,
           }));
         }}
-        viewType={"documents"}
+        viewType="document"
       />
     </>
   );
@@ -172,7 +172,7 @@ export function ActionRetrievalExhaustive({
           actionConfiguration.dataSourceConfigurations
         }
         allowedSpaces={allowedSpaces}
-        viewType="documents"
+        viewType="document"
       />
 
       <DataSourceSelectionSection
@@ -188,7 +188,7 @@ export function ActionRetrievalExhaustive({
             dataSourceConfigurations: dsConfigs,
           }));
         }}
-        viewType={"documents"}
+        viewType="document"
       />
       <div className={"flex flex-row items-center gap-4 pb-4"}>
         <Checkbox

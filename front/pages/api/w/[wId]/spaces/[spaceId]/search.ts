@@ -1,5 +1,12 @@
-import type { DataSourceViewContentNode, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE, toCoreContentNodeType } from "@dust-tt/types";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
+import {
+  CoreAPI,
+  MIN_SEARCH_QUERY_SIZE,
+  nodeViewToCoreContentNode,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -21,6 +28,8 @@ const SearchRequestBody = t.type({
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
   viewType: t.union([
+    t.literal("table"),
+    t.literal("document"),
     t.literal("tables"),
     t.literal("documents"),
     t.literal("all"),
@@ -122,7 +131,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
-      node_types: toCoreContentNodeType(viewType),
+      node_types: nodeViewToCoreContentNode(viewType),
     },
     options: {
       limit,

@@ -64,7 +64,8 @@ impl<'a> FromSql<'a> for ProviderVisibility {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
+#[serde(Lowercase)]
 pub enum NodeType {
     Document,
     Table,

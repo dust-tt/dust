@@ -565,10 +565,6 @@ impl ElasticsearchSearchStore {
         }
 
         if let Some(node_types) = &filter.node_types {
-            let terms: Vec<String> = node_types
-                .iter()
-                .flat_map(|nt| vec![nt.to_string(), nt.to_string().to_lowercase()])
-                .collect();
             bool_query = bool_query.filter(Query::terms("node_type", terms));
         }
 

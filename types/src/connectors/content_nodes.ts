@@ -3,9 +3,9 @@ import * as t from "io-ts";
 import { assertNever } from "../shared/utils/assert_never";
 
 // When viewing ContentNodes, we have 3 view types: "tables", "documents" and "all".
-// - The "tables" view allows picking tables in the Extract and TableQuery tools,
+// - The "table" view allows picking tables in the Extract and TableQuery tools,
 // which applies to Notion, Google Drive, Microsoft, Snowflake and BigQuery connectors.
-// - The "documents" view allows picking documents in the Search tool,
+// - The "document" view allows picking documents in the Search tool,
 // which is useful for all connectors except Snowflake and BigQuery.
 // - The "all" view shows all nodes, which is used in the Knowledge tab for displaying content node trees.
 // More precisely, the "tables" (resp. "documents") view hides leaves that are documents (resp. tables).
@@ -16,6 +16,8 @@ import { assertNever } from "../shared/utils/assert_never";
 export const ContentNodesViewTypeCodec = t.union([
   t.literal("tables"),
   t.literal("documents"),
+  t.literal("table"),
+  t.literal("document"),
   t.literal("all"),
 ]);
 
@@ -27,14 +29,18 @@ export function isValidContentNodesViewType(
   return value === "documents" || value === "tables" || value === "all";
 }
 
-export function toCoreContentNodeType(viewType: ContentNodesViewType) {
+export function nodeViewToCoreContentNode(
+  viewType: ContentNodesViewType
+) {
   switch (viewType) {
     case "documents":
-      return ["Document"];
+    case "document":
+      return ["folder", "document"]
     case "tables":
-      return ["Table"];
+    case "table":
+      return ["folder", "table"]
     case "all":
-      return ["Document", "Table"];
+      return ["folder", "document", "table"]
     default:
       assertNever(viewType);
   }
