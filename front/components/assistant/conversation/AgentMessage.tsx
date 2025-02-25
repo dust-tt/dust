@@ -1,4 +1,4 @@
-import { CitationIndex } from "@dust-tt/sparkle";
+import { CitationIndex, Separator } from "@dust-tt/sparkle";
 import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
@@ -444,9 +444,7 @@ export function AgentMessage({
           agentMessageToRender.configuration.status === "draft"
             ? []
             : [
-                <div key="separator" className="flex items-center">
-                  <div className="h-5 w-px bg-border" />
-                </div>,
+                <Separator key="separator" orientation="vertical" />,
                 <FeedbackSelector
                   key="feedback-selector"
                   {...messageFeedback}
