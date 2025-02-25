@@ -17,7 +17,10 @@ use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
+use crate::data_sources::data_source::Document;
+use crate::data_sources::folder::Folder;
 use crate::data_sources::node::NodeESDocument;
+use crate::databases::table::Table;
 use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
@@ -92,6 +95,9 @@ pub trait SearchStore {
 
     // Data source nodes
     async fn index_node(&self, node: Node) -> Result<()>;
+    async fn index_document(&self, document: Document) -> Result<()>;
+    async fn index_table(&self, table: Table) -> Result<()>;
+    async fn index_folder(&self, folder: Folder) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
 
     // Data sources.
@@ -295,6 +301,18 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn index_node(&self, node: Node) -> Result<()> {
         self.index_document(&node).await
+    }
+
+    async fn index_document(&self, document: Document) -> Result<()> {
+        self.index_document(&document).await
+    }
+
+    async fn index_table(&self, table: Table) -> Result<()> {
+        self.index_document(&table).await
+    }
+
+    async fn index_folder(&self, folder: Folder) -> Result<()> {
+        self.index_document(&folder).await
     }
 
     async fn delete_node(&self, node: Node) -> Result<()> {
