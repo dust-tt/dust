@@ -92,6 +92,7 @@ interface TreeItemProps {
   isNavigatable?: boolean;
   isSelected?: boolean;
   onItemClick?: () => void;
+  id?: string;
 }
 
 export interface TreeItemPropsWithChildren extends TreeItemProps {
@@ -127,6 +128,7 @@ Tree.Item = React.forwardRef<
       isNavigatable = false,
       isSelected = false,
       onItemClick,
+      id,
     },
     ref
   ) => {
@@ -161,6 +163,7 @@ Tree.Item = React.forwardRef<
       <>
         <div
           ref={ref}
+          id={id}
           className={cn(
             treeItemStyleClasses.base,
             onItemClick ? "s-cursor-pointer" : "",
