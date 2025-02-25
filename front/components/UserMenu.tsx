@@ -15,8 +15,8 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
   Icon,
-  ImageIcon,
   LightbulbIcon,
+  LightModeIcon,
   LogoutIcon,
   StarIcon,
   UserIcon,
@@ -160,7 +160,7 @@ export function UserMenu({
             )}
             <DropdownMenuLabel label="Preferences (Dust only)" />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Theme" icon={ImageIcon} />
+              <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
               <DropdownMenuSubContent>
                 <DropdownMenuRadioGroup value={theme}>
                   <DropdownMenuRadioItem

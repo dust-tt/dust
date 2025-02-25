@@ -18,7 +18,7 @@ const gridStyle = {
 };
 
 export const AvatarExample = () => (
-  <div className="s-flex s-flex-col s-gap-4">
+  <div className="s-flex s-flex-col s-gap-4 s-text-foreground dark:s-text-foreground-night">
     <div>With nothing</div>
     <div className="s-flex s-gap-4">
       <Avatar size="xs" />

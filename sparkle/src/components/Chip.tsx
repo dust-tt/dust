@@ -50,8 +50,8 @@ const backgroundVariants: Record<ChipColorType, string> = {
     "dark:s-bg-amber-100-night dark:s-border-amber-200-night"
   ),
   slate: cn(
-    "s-bg-slate-100 s-border-slate-200",
-    "dark:s-bg-slate-100-night dark:s-border-slate-200-night"
+    "s-bg-muted-background s-border-border-dark",
+    "dark:s-bg-muted-background-night dark:s-border-border-dark-night"
   ),
   purple: cn(
     "s-bg-purple-100 s-border-purple-200",
@@ -91,16 +91,11 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
     size: sizeVariants,
     text: textVariants,
     background: backgroundVariants,
-    isBusy: {
-      true: "s-animate-breathing-scale s-cursor-default",
-      false: "",
-    },
   },
   defaultVariants: {
     size: "xs",
     text: "slate",
     background: "slate",
-    isBusy: false,
   },
 });
 

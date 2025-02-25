@@ -37,8 +37,15 @@ export const IconSet = () => (
         ) as React.ComponentType<{ className?: string }>;
         return (
           <div key={iconName}>
-            <Icon visual={CurrentIcon} size="md" />
-            <div style={itemStyle as React.CSSProperties} className="s-text-sm">
+            <Icon
+              visual={CurrentIcon}
+              size="md"
+              className="s-text-foreground dark:s-text-foreground-night"
+            />
+            <div
+              style={itemStyle as React.CSSProperties}
+              className="s-text-sm s-text-foreground dark:s-text-foreground-night"
+            >
               {iconName}
             </div>
           </div>

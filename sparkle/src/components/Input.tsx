@@ -36,8 +36,8 @@ const stateVariantStyles: Record<InputStateType, string> = {
     "s-border-border-dark dark:s-border-border-dark-night",
     "s-ring-highlight/0 dark:s-ring-highlight-night/0",
     "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-    "focus-visible:s-outline-none",
-    "focus-visible:s-ring-highlight/10 dark:focus-visible:s-ring-highlight-night/10"
+    "focus-visible:s-outline-none focus-visible:s-ring-2",
+    "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
   ),
   disabled: cn(
     "disabled:s-cursor-not-allowed",
@@ -45,11 +45,11 @@ const stateVariantStyles: Record<InputStateType, string> = {
     "disabled:s-border-border-dark dark:disabled:s-border-border-dark-night"
   ),
   error: cn(
-    "s-border-border-warning/30 dark:s-border-border-warning-night/30",
+    "s-border-border-warning/30 dark:s-border-border-warning-night/60",
     "s-ring-warning/0 dark:s-ring-warning-night/0",
     "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
-    "focus-visible:s-outline-none",
-    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning-night/10"
+    "focus-visible:s-outline-none focus-visible:s-ring-2",
+    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/30"
   ),
 };
 
