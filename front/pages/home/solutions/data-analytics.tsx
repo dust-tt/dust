@@ -3,6 +3,10 @@ import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
+  pageSettings as carouselSettings,
+  Quote,
+} from "@app/components/home/content/Solutions/configs/dataConfig";
+import {
   CarousselContentBlock,
   HeaderContentBlock,
 } from "@app/components/home/ContentBlocks";
@@ -212,14 +216,14 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
 export function DataCaroussel() {
   return (
     <CarousselContentBlock
-      title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={assistantExamples}
-      from={pageSettings.from}
-      to={pageSettings.to}
+      title={carouselSettings.uptitle}
+      from={carouselSettings.from}
+      to={carouselSettings.to}
       border="border-pink-100/60"
       href="/home/solutions/data-analytics"
+      bulletPoints={carouselSettings.bulletPoints}
+      image={carouselSettings.image}
+      quote={Quote}
     />
   );
 }

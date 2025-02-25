@@ -13,7 +13,6 @@ import {
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
@@ -261,9 +260,6 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
 
 interface CarousselContentBlockProps {
   title: ReactNode;
-  subtitle?: ReactNode;
-  description?: ReactNode;
-  assistants: SolutionSectionAssistantBlockProps[];
   from: string;
   to: string;
   border: string;
@@ -275,9 +271,6 @@ interface CarousselContentBlockProps {
 
 export const CarousselContentBlock = ({
   title,
-  subtitle,
-  description,
-  assistants,
   from,
   to,
   border,

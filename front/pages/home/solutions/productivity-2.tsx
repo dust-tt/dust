@@ -4,7 +4,6 @@ import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
-  AssistantExamples,
   Benefits,
   DemoVideo,
   Hero,
@@ -133,13 +132,13 @@ export function ProductivityCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
       href="/home/solutions/productivity"
+      bulletPoints={pageSettings.bulletPoints}
+      image={pageSettings.image}
+      quote={Quote}
     />
   );
 }

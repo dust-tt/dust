@@ -10,43 +10,16 @@ import type {
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  HeroProps,
+  pageSettingsProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-
-// Interface definitions
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-interface HeroProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  visuals: {
-    src: string;
-    alt: string;
-    depth: number;
-  }[];
-  ctaButtons: {
-    primary: {
-      label: string;
-      href: string;
-      icon: typeof RocketIcon;
-    };
-    secondary: {
-      label: string;
-      href: string;
-    };
-  };
-}
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -60,6 +33,13 @@ export const pageSettings: pageSettingsProps = {
       democratize analytics across teams.
     </>
   ),
+  bulletPoints: [
+    "Write and optimize SQL queries from natural language",
+    "Create instant data visualizations and analysis",
+    "Answer complex data questions with documentation context",
+    "Enable non-technical teams to analyze data independently",
+  ],
+  image: "/static/landing/carouselImages/data.png",
 };
 
 export const Hero: HeroProps = {
