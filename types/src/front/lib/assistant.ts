@@ -462,6 +462,18 @@ const ANTHROPIC_TOOL_USE_META_PROMPT =
   `The response to the user must be in \`<response>\` tags. ` +
   `There must be a single \`<response>\` after the tools use (if any).`;
 
+const ANTHROPIC_TOOL_USE_META_PROMPT_V2 =
+  ANTHROPIC_TOOL_USE_META_PROMPT +
+  `\n\n` +
+  `- Always use <thinking> before using tools.` +
+  `- <thinking> must be extremely concise, no need for full sentences.` +
+  `- You must never include in <thinking> an information that will be included in the <response>` +
+  `- Use as many tools as needed to answer a user's question. You may use tools simultaneously or in sequence, performing as many steps as needed.` +
+  `- Never ask the user for confirmation before using more tools. You should autonomously find the information you need.` +
+  `\n\n` +
+  `If there are no tools presented to you as available, it means you have exhausted the number of tool steps` +
+  ` allowed. In this case, you must immediately provide the <response> tags.`;
+
 export const CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -521,7 +533,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   displayName: "Claude 3.7 Sonnet",
   contextSize: 180_000,
-  recommendedTopK: 16,
+  recommendedTopK: 32,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
   description: "Anthropic's latest Claude 3.7 Sonnet model (200k context).",
@@ -530,7 +542,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   delimitersConfiguration: ANTHROPIC_DELIMITERS_CONFIGURATION,
   generationTokensCount: 64_000,
   supportsVision: true,
-  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
+  toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT_V2,
   tokenCountAdjustment: 1,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
