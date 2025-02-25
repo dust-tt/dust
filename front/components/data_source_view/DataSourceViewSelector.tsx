@@ -248,7 +248,7 @@ export function DataSourceViewsSelector({
           value={searchSpaceText}
           onChange={setSearchSpaceText}
           name="search-dsv"
-          open={searchResultNodes.length > 0 && !!searchSpaceText}
+          open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
           onOpenChange={(open) => {
             if (!open) {
               setSearchSpaceText("");
