@@ -5,6 +5,7 @@ import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
   pageSettings as carouselSettings,
   Quote,
+  ROI,
 } from "@app/components/home/content/Solutions/configs/engineeringConfig";
 import {
   CarousselContentBlock,
@@ -257,7 +258,7 @@ export function EngineeringCaroussel() {
       href="/home/solutions/engineering"
       bulletPoints={carouselSettings.bulletPoints}
       image={carouselSettings.image}
-      quote={Quote}
+      roi={ROI}
     />
   );
 }

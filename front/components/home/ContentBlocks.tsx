@@ -14,6 +14,7 @@ import {
   Strong,
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
+import { ROIProps } from "./content/Solutions/configs/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -264,9 +265,10 @@ interface CarousselContentBlockProps {
   to: string;
   border: string;
   href: string;
-  quote?: QuoteProps;
   bulletPoints: string[];
   image: string;
+  quote?: QuoteProps;
+  roi?: ROIProps;
 }
 
 export const CarousselContentBlock = ({
@@ -275,9 +277,10 @@ export const CarousselContentBlock = ({
   to,
   border,
   href,
-  quote,
   bulletPoints,
   image,
+  quote,
+  roi,
 }: CarousselContentBlockProps) => {
   return (
     <div
@@ -310,37 +313,63 @@ export const CarousselContentBlock = ({
           <div className="mt-6 flex w-full flex-col gap-4">
             {quote && (
               <>
-                <P size="sm" className="w-full italic text-slate-800">
-                  "{quote?.quote}"
-                </P>
-                <div className="flex items-center gap-3">
-                  {quote.logo ? (
-                    <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950">
-                      <Image
-                        src={quote.logo}
-                        height={40}
-                        width={120}
-                        alt={`${quote.name} logo`}
-                        className="h-10 w-auto rounded-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500">
-                      <div className="flex h-full w-full items-center justify-center text-white">
-                        {quote.name.charAt(0)}
+                <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                  <P size="sm" className="w-full italic text-slate-800">
+                    "{quote?.quote}"
+                  </P>
+                  <div className="flex items-center gap-3">
+                    {quote.logo ? (
+                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                        <Image
+                          src={quote.logo}
+                          height={40}
+                          width={120}
+                          alt={`${quote.name} logo`}
+                          className="h-10 w-auto rounded-full object-cover"
+                        />
                       </div>
+                    ) : (
+                      <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500 shadow-md">
+                        <div className="flex h-full w-full items-center justify-center text-white">
+                          {quote.name.charAt(0)}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <P size="sm" className="font-bold text-slate-800">
+                        {quote.name}
+                      </P>
+                      <P size="xs" className="text-slate-700">
+                        {quote.title}
+                      </P>
                     </div>
-                  )}
-                  <div>
-                    <P size="sm" className="font-bold text-slate-800">
-                      {quote.name}
-                    </P>
-                    <P size="xs" className="text-slate-700">
-                      {quote.title}
-                    </P>
                   </div>
                 </div>
               </>
+            )}
+
+            {roi && (
+              <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                    <Image
+                      src={roi.logo}
+                      height={48}
+                      width={120}
+                      alt={`${roi.subtitle} logo`}
+                      className="h-12 w-auto object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
+                      {roi.number}
+                    </H2>
+                    <P size="md" className="font-medium text-slate-800">
+                      {roi.subtitle}
+                    </P>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 

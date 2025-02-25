@@ -2,10 +2,8 @@ import type { ReactElement } from "react";
 import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-import {
-  pageSettings as pageSettingsNew,
-  Quote,
-} from "@app/components/home/content/Solutions/configs/marketingConfig";
+import { pageSettings as pageSettingsNew } from "@app/components/home/content/Solutions/configs/marketingConfig";
+import { ROI } from "@app/components/home/content/Solutions/configs/marketingConfig";
 import {
   CarousselContentBlock,
   HeaderContentBlock,
@@ -253,7 +251,7 @@ export function MarketingCaroussel() {
       to={pageSettingsNew.to}
       border="border-pink-100/60"
       href="/home/solutions/marketing"
-      quote={Quote}
+      roi={ROI}
       bulletPoints={pageSettingsNew.bulletPoints}
     />
   );
