@@ -14,6 +14,10 @@ export const codeBlockVariants = cva(
   {
     variants: {
       variant: {
+        muted: [
+          "s-bg-slate-100 dark:s-bg-muted-night",
+          "s-text-slate-900 dark:s-text-slate-200",
+        ],
         surface: [
           "s-bg-muted dark:s-bg-muted-night",
           "s-text-amber-600 dark:s-text-amber-600-night",
@@ -30,7 +34,7 @@ type CodeBlockProps = {
   children?: React.ReactNode;
   className?: string;
   inline?: boolean;
-  variant?: "surface";
+  variant?: "muted" | "surface";
   wrapLongLines?: boolean;
 };
 

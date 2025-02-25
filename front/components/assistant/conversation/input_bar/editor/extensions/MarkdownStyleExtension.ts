@@ -10,7 +10,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["textContent"],
         attributes: {
           class: {
-            default: markdownStyles.paragraph(),
+            default: markdownStyles.paragraph({ variant: "muted" }),
           },
         },
       },
@@ -18,7 +18,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["listItem"],
         attributes: {
           class: {
-            default: markdownStyles.list(),
+            default: markdownStyles.list({ variant: "muted" }),
           },
         },
       },
@@ -26,7 +26,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["bulletList"],
         attributes: {
           class: {
-            default: markdownStyles.unorderedList(),
+            default: markdownStyles.unorderedList({ variant: "muted" }),
           },
         },
       },
@@ -34,7 +34,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["pre"],
         attributes: {
           class: {
-            default: markdownStyles.pre(),
+            default: markdownStyles.pre({ variant: "muted" }),
           },
         },
       },
@@ -42,7 +42,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["orderedList"],
         attributes: {
           class: {
-            default: markdownStyles.orderedList(),
+            default: markdownStyles.orderedList({ variant: "muted" }),
           },
         },
       },
@@ -50,7 +50,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["codeBlock"],
         attributes: {
           class: {
-            default: markdownStyles.code(),
+            default: markdownStyles.code({ variant: "muted" }),
           },
         },
       },
@@ -58,7 +58,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["blockquote"],
         attributes: {
           class: {
-            default: markdownStyles.blockquote(),
+            default: markdownStyles.blockquote({ variant: "muted" }),
           },
         },
       },

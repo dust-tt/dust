@@ -1,12 +1,10 @@
-import React from "react";
-
 // import { MetricSection } from "@app/components/home/ContentBlocks";
 import { MetricSection } from "../../ContentBlocks";
 
 const METRICS = {
   metrics: [
     {
-      value: "80%",
+      value: "90%",
       description: <>weekly active users</>,
       logo: "/static/landing/logos/alan.png",
     },
