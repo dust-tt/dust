@@ -106,6 +106,7 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
   noResults?: string;
+  isLoading?: boolean;
 };
 
 function BaseSearchInputWithPopover<T>(
@@ -122,6 +123,7 @@ function BaseSearchInputWithPopover<T>(
     mountPortal,
     mountPortalContainer,
     noResults,
+    isLoading,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -215,6 +217,10 @@ function BaseSearchInputWithPopover<T>(
                 {renderItem(item, selectedIndex === index)}
               </div>
             ))
+          ) : isLoading ? (
+            <div className="s-flex s-justify-center s-py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
           ) : (
             <div className="s-p-2 s-text-sm s-text-gray-500">
               {noResults ?? ""}
