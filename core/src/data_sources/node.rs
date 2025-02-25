@@ -2,7 +2,7 @@ use super::{
     data_source::{DataSourceESDocument, DATA_SOURCE_MIME_TYPE},
     folder::Folder,
 };
-use crate::data_sources::data_source::{DataSource, Document};
+use crate::data_sources::data_source::Document;
 use crate::databases::table::Table;
 use crate::search_stores::search_store::Indexable;
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,7 @@ impl ToSql for ProviderVisibility {
         ty: &Type,
         out: &mut BytesMut,
     ) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
-        // note: serde serialization cannot be used here as it would cause a double serialization
+        // note: serde serialization cannot be used here as it would cause double serialization
         let s = match self {
             ProviderVisibility::Private => "private",
             ProviderVisibility::Public => "public",
@@ -35,7 +35,7 @@ impl ToSql for ProviderVisibility {
         <&str as ToSql>::accepts(ty)
     }
 
-    // note: serde serialization cannot be used here as it would cause a double serialization
+    // note: serde serialization cannot be used here as it would cause double serialization
     fn to_sql_checked(
         &self,
         ty: &Type,
