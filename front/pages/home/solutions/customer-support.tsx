@@ -132,12 +132,15 @@ CustomerSupport.getLayout = (
 export function CustomerCaroussel() {
   return (
     <CarousselContentBlock
+      image={pageSettings.image}
       title={pageSettings.uptitle}
       subtitle={pageSettings.title}
       description={pageSettings.description}
       assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
+      quote={Quote}
+      bulletPoints={pageSettings.bulletPoints}
       border="border-pink-100/60"
       href="/home/solutions/customer-support"
     />

@@ -3,6 +3,10 @@ import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import {
+  pageSettings as pageSettingsNew,
+  Quote,
+} from "@app/components/home/content/Solutions/configs/marketingConfig";
+import {
   CarousselContentBlock,
   HeaderContentBlock,
 } from "@app/components/home/ContentBlocks";
@@ -243,14 +247,17 @@ const assistantExamples: SolutionSectionAssistantBlockProps[] = [
 export function MarketingCaroussel() {
   return (
     <CarousselContentBlock
-      title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
+      image={pageSettingsNew.image}
+      title={pageSettingsNew.uptitle}
+      subtitle={pageSettingsNew.title}
+      description={pageSettingsNew.description}
       assistants={assistantExamples.slice(0, 4)}
-      from={pageSettings.from}
-      to={pageSettings.to}
+      from={pageSettingsNew.from}
+      to={pageSettingsNew.to}
       border="border-pink-100/60"
       href="/home/solutions/marketing"
+      quote={Quote}
+      bulletPoints={pageSettingsNew.bulletPoints}
     />
   );
 }
