@@ -27,8 +27,8 @@ export function VerticalSection() {
     { title: "IT", component: ITCaroussel },
     { title: "Knowledge", component: KnowledgeCaroussel },
     { title: "Legal", component: LegalCaroussel },
-    { title: "Marketing", component: MarketingCaroussel },
     { title: "People", component: PeopleCaroussel },
+    { title: "Marketing", component: MarketingCaroussel },
     { title: "Productivity", component: ProductivityCaroussel },
   ];
 

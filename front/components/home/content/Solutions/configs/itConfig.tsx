@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -186,52 +185,5 @@ export const Stories: CustomerStory[] = [
       "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
     href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🔧",
-    name: "@itHelp",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Answers common IT questions and troubleshooting needs using your
-        internal documentation.
-      </>
-    ),
-  },
-  {
-    emoji: "🚨",
-    name: "@opsGuide",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Assists system administrators with technical troubleshooting and
-        infrastructure support.
-      </>
-    ),
-  },
-  {
-    emoji: "💳",
-    name: "@procureHelp",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Guides employees through procurement processes and requirements step by
-        step.
-      </>
-    ),
-  },
-  {
-    emoji: "📊",
-    name: "@ticketInsights",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Analyzes support patterns to identify common issues and improvement
-        opportunities.
-      </>
-    ),
   },
 ];

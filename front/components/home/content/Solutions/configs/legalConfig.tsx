@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -191,51 +190,4 @@ export const Stories: CustomerStory[] = [
   //   href: "https://blog.dust.tt/customer-story-lifen/",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "⚖️",
-    name: "@legalHelp",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Provides instant answers to legal questions using your approved policies
-        and internal documentation.
-      </>
-    ),
-  },
-  {
-    emoji: "📝",
-    name: "@contractReview",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Reviews contracts automatically, highlighting key terms and potential
-        compliance risks.
-      </>
-    ),
-  },
-  {
-    emoji: "🔍",
-    name: "@legalResearch",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Searches through case law and tracks regulatory changes to keep you
-        compliant and informed.
-      </>
-    ),
-  },
-  {
-    emoji: "📄",
-    name: "@legalDocBuilder",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Creates legal documents and agreements using your pre-approved templates
-        and clauses.
-      </>
-    ),
-  },
 ];

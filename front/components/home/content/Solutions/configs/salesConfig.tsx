@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -192,52 +191,5 @@ export const Stories: CustomerStory[] = [
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "📊",
-    name: "@accountSnapshot",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates comprehensive account summaries by aggregating key historical
-        interactions from multiple data sources
-      </>
-    ),
-  },
-  {
-    emoji: "📨",
-    name: "@prospectEngage",
-    backgroundColor: "bg-sky-300",
-    description: (
-      <>
-        Creates personalized outreach and re-engagement messages using your CRM
-        data and market insights.
-      </>
-    ),
-  },
-  {
-    emoji: "📋",
-    name: "@prospectObjections",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Streamlines response process for security questionnaires and RFPs by
-        auto-populating with current company data
-      </>
-    ),
-  },
-  {
-    emoji: "🎯",
-    name: "@salesCoach",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Analyzes call transcripts to provide pitch optimization feedback and
-        identify patterns in deal outcomes
-      </>
-    ),
   },
 ];

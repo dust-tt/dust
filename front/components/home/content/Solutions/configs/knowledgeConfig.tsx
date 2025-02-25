@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -188,52 +187,5 @@ export const Stories: CustomerStory[] = [
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
     href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "📚",
-    name: "@companyGuide",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Answers questions about company policies, processes, and documentation
-        across all departments.
-      </>
-    ),
-  },
-  {
-    emoji: "📱",
-    name: "@productExpert",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Provides instant answers about product features, documentation, and
-        technical specifications.
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    name: "@activityRadar",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Creates daily and weekly digests of key company activities, project
-        updates, and team discussions.
-      </>
-    ),
-  },
-  {
-    emoji: "🔍",
-    name: "@marketResearch",
-    backgroundColor: "bg-emerald-300",
-    description: (
-      <>
-        Tracks competitor activities and market trends, delivering structured
-        insights and regular reports.
-      </>
-    ),
   },
 ];

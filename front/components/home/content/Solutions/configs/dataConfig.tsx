@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -187,52 +186,5 @@ export const Stories: CustomerStory[] = [
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🔬",
-    name: "@analyst",
-    backgroundColor: "bg-purple-300",
-    description: (
-      <>
-        Answers advanced data questions on your behalf by writing and executing
-        queries and providing visualizations.
-      </>
-    ),
-  },
-  {
-    emoji: "💬",
-    name: "@sqlWriter",
-    backgroundColor: "bg-purple-300",
-    description: (
-      <>
-        Generates simple SQL queries that understand business logic
-        and&nbsp;fixes or&nbsp;improves existing ones
-      </>
-    ),
-  },
-  {
-    emoji: "🔎",
-    name: "@dataCatalog",
-    backgroundColor: "bg-purple-300",
-    description: (
-      <>
-        Dives into your data model and answers questions about specific changes,
-        relationships, business definitions.
-      </>
-    ),
-  },
-  {
-    emoji: "📈",
-    name: "@dataTeamDoc",
-    backgroundColor: "bg-purple-300",
-    description: (
-      <>
-        Answers questions about internal processes, business definitions
-        and&nbsp;runbooks on&nbsp;the data team.
-      </>
-    ),
   },
 ];
