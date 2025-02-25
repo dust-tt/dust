@@ -13,7 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::{Node, NodeType, ProviderVisibility};
+use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
@@ -3639,7 +3639,10 @@ impl Store for PostgresStore {
         Ok(nodes)
     }
 
-    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>> {
+    async fn count_nodes_children(
+        &self,
+        nodes: &Vec<NodeESDocument>,
+    ) -> Result<HashMap<String, u64>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 

@@ -5,6 +5,7 @@ use bb8_postgres::PostgresConnectionManager;
 use std::collections::HashMap;
 use tokio_postgres::NoTls;
 
+use crate::data_sources::node::NodeESDocument;
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -361,7 +362,10 @@ pub trait Store {
         parents: &Vec<String>,
     ) -> Result<()>;
 
-    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>>;
+    async fn count_nodes_children(
+        &self,
+        nodes: &Vec<NodeESDocument>,
+    ) -> Result<HashMap<String, u64>>;
 
     // LLM Cache
     async fn llm_cache_get(

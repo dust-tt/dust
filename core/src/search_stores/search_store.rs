@@ -17,6 +17,7 @@ use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
+use crate::data_sources::node::NodeESDocument;
 use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
@@ -655,7 +656,7 @@ impl ElasticsearchSearchStore {
     /// to populate the `has_children` and `parent_title` fields
     async fn compute_core_content_nodes(
         &self,
-        nodes: Vec<Node>,
+        nodes: Vec<NodeESDocument>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<CoreContentNode>> {
         // Count children using store.
