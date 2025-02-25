@@ -7,8 +7,10 @@ import { CoreAPI } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
-import type { CoreFolderAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
-import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
+import type {
+  CoreFolderAPIRelocationBlob,
+  DataSourceCoreIds,
+} from "@app/temporal/relocation/activities/types";
 import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 
@@ -40,7 +42,7 @@ export async function getDataSourceFolders({
         view_filter: [],
       },
     ],
-    node_types: ["Folder"],
+    node_types: ["Folder", "folder"],
   };
 
   const options: CoreAPISearchCursorRequest = {

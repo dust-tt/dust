@@ -66,7 +66,8 @@ const getUseResourceHook =
       resources: nodes.map((n) => ({
         ...n,
         preventSelection:
-          n.preventSelection || (viewType === "tables" && n.type !== "Table"),
+          n.preventSelection ||
+          (viewType === "tables" && n.type !== "Table" && n.type !== "table"),
       })),
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
