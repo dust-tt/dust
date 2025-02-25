@@ -3,6 +3,7 @@ import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
+import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
@@ -143,7 +144,15 @@ async function destroyConversationDataSource(
   );
 
   if (dataSource) {
-    await dataSource.delete(auth, { hardDelete: true });
+    // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
+    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
+      auth,
+      dataSource
+    );
+
+    if (r.isErr()) {
+      throw new Error(`Failed to delete data source: ${r.error.message}`);
+    }
   }
 }
 
