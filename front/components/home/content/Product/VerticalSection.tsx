@@ -22,13 +22,13 @@ export function VerticalSection() {
   const carouselSections = [
     { title: "Sales", component: SalesCaroussel },
     { title: "Customer Support", component: CustomerCaroussel },
+    { title: "Marketing", component: MarketingCaroussel },
     { title: "Engineering", component: EngineeringCaroussel },
     { title: "Data Analytics", component: DataCaroussel },
-    { title: "IT", component: ITCaroussel },
     { title: "Knowledge", component: KnowledgeCaroussel },
+    { title: "IT", component: ITCaroussel },
     { title: "Legal", component: LegalCaroussel },
     { title: "People", component: PeopleCaroussel },
-    { title: "Marketing", component: MarketingCaroussel },
     { title: "Productivity", component: ProductivityCaroussel },
   ];
 

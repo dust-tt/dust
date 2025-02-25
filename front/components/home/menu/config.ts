@@ -96,12 +96,16 @@ const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
     {
+      title: "Sales",
+      href: "/home/solutions/sales",
+    },
+    {
       title: "Customer Support",
       href: "/home/solutions/customer-support",
     },
     {
-      title: "Sales",
-      href: "/home/solutions/sales",
+      title: "Marketing & Content",
+      href: "/home/solutions/marketing",
     },
     {
       title: "Engineering",
@@ -112,6 +116,10 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/data-analytics",
     },
     {
+      title: "Knowledge",
+      href: "/home/solutions/knowledge",
+    },
+    {
       title: "IT",
       href: "/home/solutions/it",
     },
@@ -119,18 +127,12 @@ const SolutionsMenuConfig: MenuConfig = {
       title: "Legal",
       href: "/home/solutions/legal",
     },
+
     {
-      title: "Marketing & Content",
-      href: "/home/solutions/marketing",
-    },
-    {
-      title: "Recruiting & People",
+      title: "People",
       href: "/home/solutions/recruiting-people",
     },
-    {
-      title: "Knowledge Management",
-      href: "/home/solutions/knowledge",
-    },
+
     {
       title: "Productivity",
       href: "/home/solutions/productivity",
