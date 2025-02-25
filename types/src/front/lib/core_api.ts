@@ -231,6 +231,8 @@ export interface CoreAPISearchCursorRequest {
 export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
+  hit_count: number;
+  hit_count_is_accurate: boolean;
 }
 
 export interface CoreAPISearchTagsResponse {
@@ -264,6 +266,7 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     parent_id: t.string,
     node_types: t.array(t.string),
     query: t.string,
+    include_data_sources: t.boolean,
   }),
 ]);
 
@@ -659,6 +662,21 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getSpecificationHashes({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<{ hashes: string[] }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getSpecification({
     projectId,
     specificationHash,
@@ -674,6 +692,29 @@ export class CoreAPI {
       )}/specifications/${encodeURIComponent(specificationHash)}`,
       {
         method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async saveSpecification({
+    projectId,
+    specification,
+  }: {
+    projectId: string;
+    specification: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          specification,
+        }),
       }
     );
 
@@ -709,10 +750,12 @@ export class CoreAPI {
     projectId,
     config,
     credentials,
+    name,
   }: {
     projectId: string;
     config: CoreAPIDataSourceConfig;
     credentials: CredentialsType;
+    name: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/data_sources`,
@@ -724,6 +767,7 @@ export class CoreAPI {
         body: JSON.stringify({
           config: config,
           credentials: credentials,
+          name,
         }),
       }
     );

@@ -1,31 +1,45 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import type { Authenticator } from "@app/lib/auth";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
+import { Authenticator } from "@app/lib/auth";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-
-export const PostStateRequestBodySchema = t.type({
-  specification: t.string,
-  config: t.string,
-  run: t.union([t.string, t.undefined]),
-});
-
-export type PostStateResponseBody = {
-  app: AppType;
-};
+import type { PostStateResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
+import { PostStateRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostStateResponseBody>>,
-  auth: Authenticator,
-  { space }: { space: SpaceResource }
+  session: SessionWithUser
 ): Promise<void> {
+  const { wId } = req.query;
+  if (typeof wId !== "string") {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "workspace_not_found",
+        message: "The workspace you're trying to modify was not found.",
+      },
+    });
+  }
+
+  const auth = await Authenticator.fromSuperUserSession(session, wId);
+
+  const owner = auth.workspace();
+
+  if (!owner || !auth.isDustSuperUser()) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "Could not find the data source.",
+      },
+    });
+  }
+
   const { aId } = req.query;
   if (typeof aId !== "string") {
     return apiError(req, res, {
@@ -38,22 +52,12 @@ async function handler(
   }
 
   const app = await AppResource.fetchById(auth, aId);
-  if (!app || app.space.sId !== space.sId) {
+  if (!app) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "app_not_found",
         message: "The app was not found.",
-      },
-    });
-  }
-
-  if (!app.canWrite(auth)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Modifying an app requires write access to the app's space.",
       },
     });
   }
@@ -82,7 +86,7 @@ async function handler(
       };
 
       if (body.right.run) {
-        updateParams.savedRun = body.right.run;
+        updateParams.savedRun = req.body.run;
       }
 
       await app.updateState(auth, updateParams);
@@ -102,6 +106,4 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, { space: { requireCanWrite: true } })
-);
+export default withSessionAuthentication(handler);

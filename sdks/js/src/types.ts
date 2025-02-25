@@ -35,6 +35,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
+  | "claude-3-7-sonnet-20250219"
   | "claude-3-5-haiku-20241022"
   | "claude-3-haiku-20240307"
   | "claude-2.1"
@@ -1674,6 +1675,7 @@ const AppTypeSchema = z.object({
   dustAPIProjectId: z.string(),
   space: SpaceTypeSchema,
   datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
 });
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
@@ -1992,6 +1994,18 @@ export const PostAppsRequestSchema = z.object({
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
+
+export const ImportAppsResponseSchema = z.object({
+  apps: z
+    .object({
+      sId: z.string(),
+      name: z.string(),
+      error: z.string().optional(),
+    })
+    .array(),
+});
+
+export type ImportAppsResponseType = z.infer<typeof ImportAppsResponseSchema>;
 
 export const DataSourceViewResponseSchema = z.object({
   dataSourceView: DataSourceViewSchema,
