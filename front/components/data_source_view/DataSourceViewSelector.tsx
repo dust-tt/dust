@@ -127,7 +127,7 @@ export function DataSourceViewsSelector({
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-  const { searchResultNodes } = useSpaceSearch({
+  const { searchResultNodes, isSearchLoading } = useSpaceSearch({
     dataSourceViews,
     owner,
     viewType,
@@ -254,6 +254,7 @@ export function DataSourceViewsSelector({
               setSearchSpaceText("");
             }
           }}
+          isLoading={isSearchLoading}
           items={searchResultNodes}
           onItemSelect={(item) => {
             setSearchResult(item);
