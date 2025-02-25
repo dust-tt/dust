@@ -9,12 +9,12 @@ import {
   Hero,
   Metrics,
   pageSettings,
+  pageSettings as pageSettingsNew,
   Quote,
+  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/marketingConfig";
-import { pageSettings as pageSettingsNew } from "@app/components/home/content/Solutions/configs/marketingConfig";
-import { ROI } from "@app/components/home/content/Solutions/configs/marketingConfig";
 import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
@@ -135,8 +135,9 @@ export function MarketingCaroussel() {
       to={pageSettings.to}
       border="border-pink-100/60"
       href="/home/solutions/marketing"
-      roi={ROI}
       bulletPoints={pageSettingsNew.bulletPoints}
+      image={pageSettings.image}
+      roi={ROI}
     />
   );
 }

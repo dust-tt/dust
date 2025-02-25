@@ -7,6 +7,7 @@ import type {
 import type {
   HeroProps,
   pageSettingsProps,
+  ROIProps,
 } from "@app/components/home/content/Solutions/configs/utils";
 import type {
   CustomerStory,
