@@ -3524,7 +3524,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, tags_array \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, tags_array, text_size \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3552,12 +3552,14 @@ impl Store for PostgresStore {
                 };
                 let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
                 let tags: Option<Vec<String>> = row[0].get::<_, Option<Vec<String>>>(10);
+                let text_size: Option<i64> = row[0].get::<_, Option<i64>>(11);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
                         &data_source_internal_id,
                         &node_id,
                         node_type,
+                        text_size,
                         timestamp as u64,
                         &title,
                         &mime_type,
@@ -3584,7 +3586,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.tags_array, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.tags_array, dsn.id, dsn.text_size \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3616,12 +3618,14 @@ impl Store for PostgresStore {
                 let source_url: Option<String> = row.get::<_, Option<String>>(11);
                 let tags: Option<Vec<String>> = row.get::<_, Option<Vec<String>>>(12);
                 let row_id = row.get::<_, i64>(13);
+                let text_size: Option<i64> = row.get::<_, Option<i64>>(14);
                 (
                     Node::new(
                         &data_source_id,
                         &data_source_internal_id,
                         &node_id,
                         node_type,
+                        text_size,
                         timestamp as u64,
                         &title,
                         &mime_type,
