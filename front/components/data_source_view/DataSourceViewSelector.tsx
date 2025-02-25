@@ -19,7 +19,7 @@ import type {
 import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type {
   ContentNodeTreeItemStatus,
@@ -147,6 +147,20 @@ export function DataSourceViewsSelector({
       };
     }
   }, [searchSpaceText, searchFeatureFlag]);
+
+  useEffect(() => {
+    if (searchResult) {
+      setTimeout(() => {
+        const node = document.getElementById(
+          `tree-node-${searchResult.internalId}`
+        );
+        node?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 100);
+    }
+  }, [searchResult]);
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
@@ -416,7 +430,6 @@ export function DataSourceViewSelector({
   searchResult,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
-  const selectedItemRef = useRef<HTMLDivElement>(null);
   const dataSourceView = selectionConfiguration.dataSourceView;
 
   const LogoComponent = getConnectorProviderLogoWithFallback({
@@ -560,17 +573,6 @@ export function DataSourceViewSelector({
       ? removeNulls([...new Set(searchResult.parentInternalIds)])
       : undefined;
 
-  useEffect(() => {
-    if (searchResult?.internalId && selectedItemRef.current) {
-      // Wait for tree expansion and DOM updates
-      requestAnimationFrame(() => {
-        selectedItemRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      });
-    }
-  }, [searchResult]);
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
