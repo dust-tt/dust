@@ -221,6 +221,17 @@ export function DataSourceViewsSelector({
       (r) => r.internalId === item.internalId
     );
 
+    if (item.mimeType === "application/vnd.dust.datasource") {
+      return {
+        ...prevState,
+        [dsv.sId]: {
+          ...prevConfig,
+          selectedResources: [],
+          isSelectAll: true,
+        },
+      };
+    }
+
     const newResources = exists
       ? prevConfig.selectedResources
       : [
