@@ -11,15 +11,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const SearchRequestBody = t.type({
-  datasourceViewIds: t.array(t.string),
   query: t.string,
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
@@ -38,19 +36,8 @@ export type PostSpaceSearchResponseBody = {
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceSearchResponseBody>>,
-  auth: Authenticator,
-  { space }: { space: SpaceResource }
+  auth: Authenticator
 ): Promise<void> {
-  if (!space.canReadOrAdministrate(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   if (req.method !== "POST") {
     return apiError(req, res, {
       status_code: 405,
@@ -74,22 +61,33 @@ async function handler(
     });
   }
 
-  const {
-    datasourceViewIds: datasourceViewSids,
-    query,
-    viewType,
-    limit,
-  } = bodyValidation.right;
-
-  if (datasourceViewSids.length === 0) {
+  const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  if (!spaces.length) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "No datasource view filters provided.",
+        message: "No accessible spaces found.",
       },
     });
   }
+
+  const allDatasourceViews = await DataSourceViewResource.listBySpaces(
+    auth,
+    spaces
+  );
+
+  if (!allDatasourceViews.length) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "No datasource views found in accessible spaces.",
+      },
+    });
+  }
+
+  const { query, viewType, limit } = bodyValidation.right;
 
   if (query.length < MIN_SEARCH_QUERY_SIZE) {
     return apiError(req, res, {
@@ -101,19 +99,60 @@ async function handler(
     });
   }
 
-  const datasourceViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    datasourceViewSids
+  const dataSources = allDatasourceViews.reduce(
+    (acc, dsv) => {
+      const dataSourceId = dsv.dataSource.dustAPIDataSourceId;
+
+      if (!acc.has(dataSourceId)) {
+        acc.set(dataSourceId, { dataSourceViews: [], parentsIn: [] });
+      }
+      const entry = acc.get(dataSourceId);
+
+      if (entry) {
+        entry.dataSourceViews.push(dsv);
+        if (dsv.parentsIn && entry.parentsIn !== null) {
+          entry.parentsIn?.push(...dsv.parentsIn);
+        } else {
+          entry.parentsIn = null;
+        }
+      }
+
+      return acc;
+    },
+    new Map<
+      string,
+      {
+        dataSourceViews: DataSourceViewResource[];
+        parentsIn: string[] | null;
+      }
+    >()
   );
 
-  if (datasourceViews.some((dsv) => dsv.space.id !== space.id)) {
+  const filter = [...dataSources.entries()].map(([data_source_id, entry]) => ({
+    data_source_id,
+    view_filter: entry.parentsIn ? [...new Set(entry.parentsIn)] : [],
+  }));
+
+  if (filter.length === 0) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "All datasource views must belong to the space.",
+        message: `User does not have access to any datasource.`,
       },
     });
+  }
+
+  if (filter.length > 1024) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        filterLength: filter.length,
+      },
+      "Filter length is greater than 1024, truncating"
+    );
+    filter.splice(1024);
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -121,12 +160,7 @@ async function handler(
   const searchRes = await coreAPI.searchNodes({
     query,
     filter: {
-      data_source_views: datasourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-      })),
-      // TODO(keyword-search): Include data sources based on the use case.
-      // include_data_sources: true,
+      data_source_views: filter,
     },
     options: {
       limit,
@@ -143,19 +177,25 @@ async function handler(
     });
   }
 
-  const dataSourceViewById = new Map(
-    datasourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
-  );
-
   const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSourceView = dataSourceViewById.get(node.data_source_id);
+    const dataSource = dataSources.get(node.data_source_id);
 
-    if (!dataSourceView) {
+    const matchingViews = dataSource
+      ? dataSource.dataSourceViews.filter(
+          (dsv) =>
+            dsv.parentsIn &&
+            node.parents?.some(
+              (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
+            )
+        )
+      : [];
+
+    if (matchingViews.length === 0) {
       logger.error(
         {
           nodeId: node.node_id,
           expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
+          availableDataSourceIds: Array.from(dataSources.keys()),
         },
         "DataSourceView lookup failed for node"
       );
@@ -163,7 +203,7 @@ async function handler(
     }
 
     return getContentNodeFromCoreNode(
-      [dataSourceView.toJSON()],
+      matchingViews.map((dsv) => dsv.toJSON()),
       node,
       viewType
     );
@@ -171,8 +211,4 @@ async function handler(
   return res.status(200).json({ nodes });
 }
 
-export default withSessionAuthenticationForWorkspace(
-  withResourceFetchingFromRoute(handler, {
-    space: { requireCanReadOrAdministrate: true },
-  })
-);
+export default withSessionAuthenticationForWorkspace(handler);
