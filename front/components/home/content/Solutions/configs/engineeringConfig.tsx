@@ -12,6 +12,7 @@ import type {
 import type {
   HeroProps,
   pageSettingsProps,
+  ROIProps,
 } from "@app/components/home/content/Solutions/configs/utils";
 import type {
   CustomerStory,
@@ -149,6 +150,12 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/engineering/docParser.png"],
     },
   ],
+};
+
+export const ROI: ROIProps = {
+  number: "20%",
+  subtitle: "faster project completion",
+  logo: "/static/landing/logos/alan.png",
 };
 
 export const Quote: QuoteProps = {

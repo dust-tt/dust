@@ -31,3 +31,9 @@ export interface HeroProps {
     };
   };
 }
+
+export interface ROIProps {
+  number: string;
+  subtitle: string;
+  logo: string;
+}

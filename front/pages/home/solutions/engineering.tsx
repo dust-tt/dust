@@ -10,6 +10,7 @@ import {
   Metrics,
   pageSettings,
   Quote,
+  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/engineeringConfig";
@@ -135,7 +136,7 @@ export function EngineeringCaroussel() {
       href="/home/solutions/engineering"
       bulletPoints={pageSettings.bulletPoints}
       image={pageSettings.image}
-      quote={Quote}
+      roi={ROI}
     />
   );
 }

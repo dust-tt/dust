@@ -10,6 +10,7 @@ import {
   Metrics,
   pageSettings,
   Quote,
+  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/supportConfig";
@@ -135,7 +136,7 @@ export function CustomerCaroussel() {
       title={pageSettings.uptitle}
       from={pageSettings.from}
       to={pageSettings.to}
-      quote={Quote}
+      roi={ROI}
       bulletPoints={pageSettings.bulletPoints}
       border="border-pink-100/60"
       href="/home/solutions/customer-support"

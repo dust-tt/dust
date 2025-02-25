@@ -12,6 +12,7 @@ import type {
 import type {
   HeroProps,
   pageSettingsProps,
+  ROIProps,
 } from "@app/components/home/content/Solutions/configs/utils";
 import type {
   CustomerStory,
@@ -149,6 +150,12 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/content4.png"],
     },
   ],
+};
+
+export const ROI: ROIProps = {
+  number: "70%",
+  subtitle: "time reduction in localization",
+  logo: "/static/landing/logos/qonto.png",
 };
 
 export const Quote: QuoteProps = {
