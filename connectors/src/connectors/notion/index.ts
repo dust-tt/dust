@@ -469,7 +469,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !page.parentId || page.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(page.parentId),
-        type: "Document",
+        type: "document",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable,
@@ -492,7 +492,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !db.parentId || db.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(db.parentId),
-        type: "Table",
+        type: "table",
         title: db.title || "",
         sourceUrl: db.notionUrl || null,
         expandable: true,
@@ -514,7 +514,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
-          type: "Folder",
+          type: "folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
@@ -564,7 +564,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           !page.parentId || page.parentId === "workspace"
             ? null
             : nodeIdFromNotionId(page.parentId),
-        type: "Document",
+        type: "document",
         title: page.title || "",
         sourceUrl: page.notionUrl || null,
         expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
@@ -580,7 +580,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         !db.parentId || db.parentId === "workspace"
           ? null
           : nodeIdFromNotionId(db.parentId),
-      type: "Table",
+      type: "table",
       title: db.title || "",
       sourceUrl: db.notionUrl || null,
       expandable: true,
@@ -598,7 +598,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           // Orphaned resources in the database will have "unknown" as their parentId.
           internalId: nodeIdFromNotionId("unknown"),
           parentInternalId: null,
-          type: "Folder",
+          type: "folder",
           title: "Orphaned Resources",
           sourceUrl: null,
           expandable: true,
