@@ -15,7 +15,13 @@ async function backfillCoreDataSourceName(
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const dataSources = await DataSourceResource.listByWorkspace(auth);
+  const dataSources = await DataSourceResource.listByWorkspace(
+    auth,
+    {
+      includeDeleted: true,
+    },
+    true /* includeConversationDataSources*/
+  );
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
