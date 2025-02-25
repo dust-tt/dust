@@ -269,8 +269,9 @@ export const SpaceDataSourceViewContentList = ({
     useSpaceSearch({
       dataSourceViews: [dataSourceView],
       owner,
-      viewType,
       search: debouncedSearch,
+      useCase: "knowledge",
+      viewType,
     });
 
   // TODO(20250127, nodes-core): turn to true and remove when implementing pagination

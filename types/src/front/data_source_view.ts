@@ -27,7 +27,7 @@ export type DataSourceViewsWithDetails = DataSourceViewType & {
 };
 
 export type DataSourceViewContentNode = ContentNode & {
-  dataSourceViews: DataSourceViewType[];
+  dataSourceView: DataSourceViewType;
   parentInternalIds: string[] | null;
   parentTitle?: string;
 };
@@ -49,7 +49,7 @@ export function defaultSelectionConfiguration(
   dataSourceView: DataSourceViewType
 ): DataSourceViewSelectionConfiguration {
   return {
-    dataSourceView: dataSourceView,
+    dataSourceView,
     isSelectAll: false,
     selectedResources: [],
     tagsFilter: null,

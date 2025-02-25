@@ -29,6 +29,10 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  PostSpaceSearchResponseBody,
+  SpaceSearchUseCase,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 export function useSpaces({
   workspaceId,
@@ -601,6 +605,7 @@ export function useSpaceSearch({
   search,
   disabled = false,
   limit = DEFAULT_SEARCH_LIMIT,
+  useCase,
 }: {
   dataSourceViews: DataSourceViewType[];
   owner: LightWorkspaceType;
@@ -608,6 +613,7 @@ export function useSpaceSearch({
   search: string;
   disabled?: boolean;
   limit?: number;
+  useCase: SpaceSearchUseCase;
 }) {
   const body = {
     datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
@@ -621,7 +627,10 @@ export function useSpaceSearch({
   // Only create a key if we have a valid search
   const key =
     search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
-      ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
+      ? [
+          `/api/w/${owner.sId}/spaces/${spaceId}/search?useCase=${useCase}`,
+          body,
+        ]
       : null;
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(

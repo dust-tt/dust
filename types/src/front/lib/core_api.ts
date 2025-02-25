@@ -294,7 +294,8 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
 // sanitize the search name.
 function formatDataSourceDisplayName(name: string) {
   return name
-    .split("-")
+    .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
+    .split(" ")
     .filter((part) => part !== "managed")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");

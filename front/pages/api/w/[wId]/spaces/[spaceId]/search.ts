@@ -35,6 +35,8 @@ export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
 };
 
+export type SpaceSearchUseCase = "builder" | "knowledge";
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PostSpaceSearchResponseBody>>,
@@ -57,6 +59,20 @@ async function handler(
       api_error: {
         type: "method_not_supported_error",
         message: "The method passed is not supported, POST is expected.",
+      },
+    });
+  }
+
+  const { useCase } = req.query;
+  if (
+    typeof useCase !== "string" ||
+    !["builder", "knowledge"].includes(useCase)
+  ) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The use case must be either 'builder' or 'knowledge'.",
       },
     });
   }
@@ -126,7 +142,7 @@ async function handler(
         view_filter: dsv.parentsIn ?? [],
       })),
       // TODO(keyword-search): Include data sources based on the use case.
-      // include_data_sources: true,
+      include_data_sources: useCase === "builder" ? true : false,
     },
     options: {
       limit,
@@ -162,11 +178,7 @@ async function handler(
       return [];
     }
 
-    return getContentNodeFromCoreNode(
-      [dataSourceView.toJSON()],
-      node,
-      viewType
-    );
+    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
   return res.status(200).json({ nodes });
 }

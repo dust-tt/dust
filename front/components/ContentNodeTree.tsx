@@ -10,7 +10,11 @@ import {
   Tree,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, ContentNode } from "@dust-tt/types";
+import type {
+  APIError,
+  ContentNode,
+  DataSourceViewContentNode,
+} from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
@@ -47,7 +51,7 @@ const unselectedChildren = (
 };
 
 export type UseResourcesHook = (parentId: string | null) => {
-  resources: ContentNode[];
+  resources: DataSourceViewContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError?: APIError | null;
@@ -55,7 +59,7 @@ export type UseResourcesHook = (parentId: string | null) => {
 
 export type ContentNodeTreeItemStatus = {
   isSelected: boolean;
-  node: ContentNode;
+  node: DataSourceViewContentNode;
   // when setting permissions on a connector, nodes that are to be selected /
   // unselected may not be synced yet so we cannot easily access their parents
   // In that case parents is null
@@ -143,7 +147,7 @@ function ContentNodeTreeChildren({
   );
 
   const getCheckedState = useCallback(
-    (node: ContentNode) => {
+    (node: DataSourceViewContentNode) => {
       if (!selectedNodes) {
         return false;
       }
