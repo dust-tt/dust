@@ -139,6 +139,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
+      // TODO(keyword-search): Include data sources based on the use case.
       node_types: getCoreViewTypeFilter(viewType),
     },
     options: {
