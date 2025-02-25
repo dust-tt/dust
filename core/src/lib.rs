@@ -11,6 +11,7 @@ pub mod stores {
 }
 pub mod search_stores {
     pub mod search_store;
+    pub mod search_types;
 }
 
 pub mod app;

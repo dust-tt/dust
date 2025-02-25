@@ -12,12 +12,17 @@ use elasticsearch_dsl::{
     Aggregation, BoolQuery, FieldSort, Query, Script, ScriptSort, ScriptSortType, Search, Sort,
     SortOrder,
 };
+use serde::Serialize;
 use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
 use crate::{
-    data_sources::node::{CoreContentNode, Node, NodeType},
+    data_sources::{
+        data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
+        node::{CoreContentNode, Node, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
+    },
+    search_stores::search_types::SearchItem,
     stores::store::Store,
     utils,
 };
@@ -59,18 +64,19 @@ pub struct NodesSearchOptions {
     sort: Option<Vec<SortSpec>>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Clone, Debug)]
 pub struct DatasourceViewFilter {
     data_source_id: String,
     view_filter: Vec<String>,
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     node_ids: Option<Vec<String>>,
     parent_id: Option<String>,
     node_types: Option<Vec<NodeType>>,
+    include_data_sources: Option<bool>,
 }
 
 #[async_trait]
@@ -83,9 +89,13 @@ pub trait SearchStore {
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)>;
 
+    // Data source nodes
     async fn index_node(&self, node: Node) -> Result<()>;
     async fn delete_node(&self, node: Node) -> Result<()>;
-    async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()>;
+
+    // Data sources.
+    async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
+    async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
     async fn search_tags(
         &self,
@@ -136,12 +146,10 @@ impl ElasticsearchSearchStore {
     }
 }
 
-const NODES_INDEX_NAME: &str = "core.data_sources_nodes";
 const ROOT_PARENT_ID: &str = "root";
 
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
-    // TODO(2025-01-30 nodes-core) Use the search_nodes_with_cursor method.
     async fn search_nodes(
         &self,
         query: Option<String>,
@@ -209,7 +217,10 @@ impl SearchStore for ElasticsearchSearchStore {
         let search_start = utils::now();
         let response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[
+                DATA_SOURCE_NODE_INDEX_NAME,
+                DATA_SOURCE_INDEX_NAME,
+            ]))
             .body(search)
             .send()
             .await?;
@@ -225,8 +236,8 @@ impl SearchStore for ElasticsearchSearchStore {
         );
 
         // Parse response and return enriched nodes
-        let (nodes, hit_count, hit_count_is_accurate, next_cursor): (
-            Vec<Node>,
+        let (items, hit_count, hit_count_is_accurate, next_cursor): (
+            Vec<SearchItem>,
             u64,
             bool,
             Option<String>,
@@ -253,12 +264,12 @@ impl SearchStore for ElasticsearchSearchStore {
                     None
                 };
 
-                let nodes = hits
+                let items: Vec<SearchItem> = hits
                     .iter()
-                    .map(|h| Node::from(h.get("_source").unwrap().clone()))
-                    .collect();
+                    .map(|h| SearchItem::from_hit(h))
+                    .collect::<Result<Vec<_>>>()?;
 
-                (nodes, hit_count, hit_count_is_accurate, next_cursor)
+                (items, hit_count, hit_count_is_accurate, next_cursor)
             }
             false => {
                 let error = response.json::<serde_json::Value>().await?;
@@ -267,7 +278,7 @@ impl SearchStore for ElasticsearchSearchStore {
         };
 
         let compute_node_start = utils::now();
-        let result = self.compute_core_content_nodes(nodes, store).await?;
+        let result = self.process_search_results(items, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -279,86 +290,45 @@ impl SearchStore for ElasticsearchSearchStore {
         Ok((result, hit_count, hit_count_is_accurate, next_cursor))
     }
 
-    async fn index_node(&self, node: Node) -> Result<()> {
-        let now = utils::now();
-        // Note: in elasticsearch, the index API updates the document if it
-        // already exists.
-        let response = self
-            .client
-            .index(IndexParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
-            .timeout("200ms")
-            .body(node.clone())
-            .send()
-            .await?;
+    // Data source nodes.
 
-        match response.status_code().is_success() {
-            true => {
-                info!(
-                    duration = utils::now() - now,
-                    globally_unique_id = node.unique_id(),
-                    "[ElasticsearchSearchStore] Indexed {}",
-                    node.node_type.to_string()
-                );
-                Ok(())
-            }
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                error!(
-                    error = %error,
-                    duration = utils::now() - now,
-                    globally_unique_id = node.unique_id(),
-                    "[ElasticsearchSearchStore] Failed to index {}",
-                    node.node_type.to_string()
-                );
-                Err(anyhow::anyhow!("Failed to index node {}", error))
-            }
-        }
+    async fn index_node(&self, node: Node) -> Result<()> {
+        self.index_document(&node).await
     }
 
     async fn delete_node(&self, node: Node) -> Result<()> {
-        let response = self
-            .client
-            .delete(DeleteParts::IndexId(NODES_INDEX_NAME, &node.unique_id()))
-            .send()
-            .await?;
-        match response.status_code().is_success() {
-            true => Ok(()),
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                if error["result"] == "not_found" {
-                    info!(
-                        globally_unique_id = node.unique_id(),
-                        "[ElasticsearchSearchStore] Delete node on non-existent document"
-                    );
-                    Ok(())
-                } else {
-                    Err(anyhow::anyhow!("Failed to delete node {}", error))
-                }
-            }
-        }
+        self.delete_document(&node).await
     }
 
-    async fn delete_data_source_nodes(&self, data_source_id: &str) -> Result<()> {
+    // Data sources.
+
+    async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
+        self.index_document(data_source).await
+    }
+
+    async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
+        // First, delete the data source nodes.
         let response = self
             .client
-            .delete_by_query(DeleteByQueryParts::Index(&[NODES_INDEX_NAME]))
+            .delete_by_query(DeleteByQueryParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(json!({
                 "query": {
-                    "term": { "data_source_id": data_source_id }
+                    "term": { "data_source_id": data_source.data_source_id() }
                 }
             }))
             .send()
             .await?;
-        match response.status_code().is_success() {
-            true => Ok(()),
-            false => {
-                let error = response.json::<serde_json::Value>().await?;
-                Err(anyhow::anyhow!(
-                    "Failed to delete data source nodes {}",
-                    error
-                ))
-            }
+
+        if !response.status_code().is_success() {
+            let error = response.json::<serde_json::Value>().await?;
+            return Err(anyhow::anyhow!(
+                "Failed to delete data source nodes {}",
+                error
+            ));
         }
+
+        // Then, delete the data source document.
+        self.delete_document(data_source).await
     }
 
     async fn search_tags(
@@ -432,7 +402,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(search)
             .send()
             .await?;
@@ -510,23 +480,49 @@ impl ElasticsearchSearchStore {
         query: Option<String>,
         filter: NodesSearchFilter,
     ) -> Result<BoolQuery> {
-        // check there is at least one data source view filter
+        // Check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
-        // dangerous as any data from any workspace can be retrieved
+        // dangerous as any data from any workspace can be retrieved.
         if filter.data_source_views.is_empty() {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
 
-        // Build filter conditions using elasticsearch-dsl
+        // Build nodes query with outer index scope.
+        let nodes_query = Query::bool()
+            .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
+            .must(self.build_nodes_content_query(&query, &filter)?);
+
+        let mut should_queries = vec![nodes_query];
+
+        // Add data sources query if requested.
+        if filter.include_data_sources.unwrap_or(false) {
+            let data_sources_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                .must(self.build_data_sources_content_query(&query, &filter)?);
+
+            should_queries.push(data_sources_query);
+        }
+
+        let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
+
+        Ok(bool_query)
+    }
+
+    fn build_shared_permission_filter(
+        &self,
+        filter: &NodesSearchFilter,
+        index_supports_parents: bool,
+    ) -> BoolQuery {
         let filter_conditions: Vec<Query> = filter
             .data_source_views
+            .clone()
             .into_iter()
             .map(|f| {
-                let mut bool_query = Query::bool();
+                let mut bool_query =
+                    Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
-                bool_query = bool_query.filter(Query::term("data_source_id", f.data_source_id));
-
-                if !f.view_filter.is_empty() {
+                // Only add parents filter if the index supports it.
+                if index_supports_parents && !f.view_filter.is_empty() {
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
                 }
 
@@ -534,21 +530,47 @@ impl ElasticsearchSearchStore {
             })
             .collect();
 
-        let mut bool_query = Query::bool()
+        Query::bool()
             .should(filter_conditions)
-            .minimum_should_match(1);
+            .minimum_should_match(1)
+    }
 
-        if let Some(node_ids) = filter.node_ids {
+    fn build_data_sources_content_query(
+        &self,
+        query: &Option<String>,
+        filter: &NodesSearchFilter,
+    ) -> Result<BoolQuery> {
+        let mut bool_query = Query::bool()
+            // Data sources don't support parents.
+            .filter(self.build_shared_permission_filter(filter, false));
+
+        // Add search term if present.
+        if let Some(query_string) = query {
+            bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
+        }
+
+        Ok(bool_query)
+    }
+
+    fn build_nodes_content_query(
+        &self,
+        query: &Option<String>,
+        filter: &NodesSearchFilter,
+    ) -> Result<BoolQuery> {
+        let mut bool_query =
+            Query::bool().filter(self.build_shared_permission_filter(filter, true));
+
+        if let Some(node_ids) = &filter.node_ids {
             bool_query = bool_query.filter(Query::terms("node_id", node_ids));
         }
 
-        if let Some(node_types) = filter.node_types {
+        if let Some(node_types) = &filter.node_types {
             bool_query = bool_query.filter(Query::terms("node_type", node_types));
         }
 
-        if let Some(parent_id) = filter.parent_id {
+        if let Some(parent_id) = &filter.parent_id {
             // if parent_id is root, we filter on all nodes whose parent_id is null
-            // otherwise, we filter on all nodes whose parent_id is the given parent_id
+            // otherwise, we filter on all nodes whose parent_id is the given parent_id.
             if parent_id == ROOT_PARENT_ID {
                 bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
             } else {
@@ -556,11 +578,67 @@ impl ElasticsearchSearchStore {
             }
         }
 
+        // Add search term if present.
         if let Some(query_string) = query.clone() {
-            bool_query = bool_query.must(Query::r#match("title.edge", query_string));
+            bool_query = bool_query.must(Query::r#match("title.edge", query_string.clone()));
         }
 
         Ok(bool_query)
+    }
+
+    // Enrich search results with children counts and parent titles.
+
+    async fn process_search_results(
+        &self,
+        items: Vec<SearchItem>,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<Vec<CoreContentNode>> {
+        if items.len() as u64 > MAX_PAGE_SIZE {
+            return Err(anyhow::anyhow!(
+                "Too many items to process: {} (limit is {})",
+                items.len(),
+                MAX_PAGE_SIZE
+            ));
+        }
+
+        // Split items while preserving order.
+        let mut result = Vec::with_capacity(items.len());
+        let mut nodes_to_process = Vec::new();
+        let mut position_map = HashMap::new();
+
+        // Separate data sources and nodes.
+        for (pos, item) in items.into_iter().enumerate() {
+            match item {
+                SearchItem::DataSource(data_source) => {
+                    result.push((pos, self.create_data_source_node(data_source)));
+                }
+                SearchItem::Node(node) => {
+                    position_map.insert(node.node_id.clone(), pos);
+                    nodes_to_process.push(node);
+                }
+            }
+        }
+
+        // Process regular nodes if any exist.
+        if !nodes_to_process.is_empty() {
+            let processed_nodes = self
+                .compute_core_content_nodes(nodes_to_process, store)
+                .await?;
+
+            // Add processed nodes with their original positions
+            for node in processed_nodes {
+                let pos = position_map[&node.base.node_id];
+                result.push((pos, node));
+            }
+        }
+
+        // Restore original order.
+        result.sort_by_key(|(pos, _)| *pos);
+        Ok(result.into_iter().map(|(_, node)| node).collect())
+    }
+
+    fn create_data_source_node(&self, item: DataSourceESDocument) -> CoreContentNode {
+        CoreContentNode::from_data_source_document(item)
     }
 
     /// Compute core content nodes from a list of nodes.
@@ -576,15 +654,7 @@ impl ElasticsearchSearchStore {
         nodes: Vec<Node>,
         store: Box<dyn Store + Sync + Send>,
     ) -> Result<Vec<CoreContentNode>> {
-        if nodes.len() as u64 > MAX_PAGE_SIZE {
-            return Err(anyhow::anyhow!(
-                "Too many nodes to compute core content nodes: {} (limit is {})",
-                nodes.len(),
-                MAX_PAGE_SIZE
-            ));
-        }
-
-        // count children using store
+        // Count children using store.
         let count_start = utils::now();
         let children_count_map = store.count_nodes_children(&nodes).await?;
         let count_duration = utils::now() - count_start;
@@ -602,7 +672,7 @@ impl ElasticsearchSearchStore {
 
         let parent_titles_response = self
             .client
-            .search(SearchParts::Index(&[NODES_INDEX_NAME]))
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
             .body(parent_titles_search)
             .send()
             .await?;
@@ -684,4 +754,98 @@ impl ElasticsearchSearchStore {
 
         Ok(base_sort)
     }
+
+    // Generic document methods.
+
+    pub async fn index_document<T>(&self, doc: &T) -> Result<()>
+    where
+        T: Indexable,
+    {
+        let now = utils::now();
+        let r = doc.to_document();
+
+        let response = self
+            .client
+            .index(IndexParts::IndexId(doc.index_name(), &doc.unique_id()))
+            .timeout("200ms")
+            .body(r)
+            .send()
+            .await?;
+
+        match response.status_code().is_success() {
+            true => {
+                info!(
+                    duration = utils::now() - now,
+                    document_id = doc.unique_id(),
+                    "[ElasticsearchSearchStore] Indexed {}",
+                    doc.document_type()
+                );
+                Ok(())
+            }
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                error!(
+                    error = %error,
+                    duration = utils::now() - now,
+                    document_id = doc.unique_id(),
+                    "[ElasticsearchSearchStore] Failed to index {}",
+                    doc.document_type()
+                );
+                Err(anyhow::anyhow!(
+                    "Failed to index {} {}",
+                    doc.document_type(),
+                    error
+                ))
+            }
+        }
+    }
+
+    pub async fn delete_document<T>(&self, doc: &T) -> Result<()>
+    where
+        T: Indexable,
+    {
+        let response = self
+            .client
+            .delete(DeleteParts::IndexId(doc.index_name(), &doc.unique_id()))
+            .send()
+            .await?;
+
+        match response.status_code().is_success() {
+            true => Ok(()),
+            false => {
+                let error = response.json::<serde_json::Value>().await?;
+                if error["result"] == "not_found" {
+                    info!(
+                        globally_unique_id = doc.unique_id(),
+                        "[ElasticsearchSearchStore] Delete {} on non-existent document",
+                        doc.document_type()
+                    );
+                    Ok(())
+                } else {
+                    Err(anyhow::anyhow!(
+                        "Failed to delete {} {}",
+                        doc.document_type(),
+                        error
+                    ))
+                }
+            }
+        }
+    }
+}
+
+pub trait Indexable {
+    // Associated type that the Indexable will serialize into for ES.
+    type Doc: Serialize;
+
+    // The index name to use in ES for this type.
+    fn index_name(&self) -> &'static str;
+
+    // The unique doc ID in ES.
+    fn unique_id(&self) -> String;
+
+    // How to log the type in error messages, logs, etc.
+    fn document_type(&self) -> &'static str;
+
+    // Produce the actual document that will be serialized to ES.
+    fn to_document(&self) -> Self::Doc;
 }

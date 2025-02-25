@@ -266,6 +266,7 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     parent_id: t.string,
     node_types: t.array(t.string),
     query: t.string,
+    include_data_sources: t.boolean,
   }),
 ]);
 
@@ -749,10 +750,12 @@ export class CoreAPI {
     projectId,
     config,
     credentials,
+    name,
   }: {
     projectId: string;
     config: CoreAPIDataSourceConfig;
     credentials: CredentialsType;
+    name: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/data_sources`,
@@ -764,6 +767,7 @@ export class CoreAPI {
         body: JSON.stringify({
           config: config,
           credentials: credentials,
+          name,
         }),
       }
     );

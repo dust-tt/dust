@@ -22,7 +22,8 @@
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "edge_analyzer"
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
         },
         "keyword": {
           "type": "keyword"
@@ -52,7 +53,8 @@
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "tag_edge_analyzer"
+          "analyzer": "tag_edge_analyzer",
+          "search_analyzer": "standard"
         },
         "keyword": {
           "type": "keyword",

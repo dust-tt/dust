@@ -39,7 +39,6 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        csv::UpsertQueueCSVContent,
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
@@ -1281,6 +1280,7 @@ struct DataSourcesRegisterPayload {
     config: data_source::DataSourceConfig,
     #[allow(dead_code)]
     credentials: run::Credentials,
+    name: String,
 }
 
 async fn data_sources_register(
@@ -1289,8 +1289,12 @@ async fn data_sources_register(
     Json(payload): Json<DataSourcesRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let ds = data_source::DataSource::new(&project, &payload.config);
-    match state.store.register_data_source(&project, &ds).await {
+    let ds = data_source::DataSource::new(&project, &payload.config, &payload.name);
+
+    match ds
+        .register(state.store.clone(), state.search_store.clone())
+        .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -1305,6 +1309,7 @@ async fn data_sources_register(
                     "data_source": {
                         "created": ds.created(),
                         "data_source_id": ds.data_source_id(),
+                        "name": ds.name(),
                         "config": ds.config(),
                     },
                 })),

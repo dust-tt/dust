@@ -370,6 +370,7 @@ const handleDataSourceWithProvider = async ({
       },
     },
     credentials: dustManagedCredentials(),
+    name: dataSourceName,
   });
 
   if (dustDataSource.isErr()) {

@@ -533,6 +533,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        data_source_id       TEXT NOT NULL,
        internal_id          TEXT NOT NULL,
        config_json          TEXT NOT NULL,
+       name                 TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources documents
