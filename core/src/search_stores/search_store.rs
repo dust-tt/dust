@@ -642,7 +642,7 @@ impl ElasticsearchSearchStore {
     }
 
     fn create_data_source_node(&self, item: DataSourceESDocument) -> CoreContentNode {
-        CoreContentNode::from_data_source_document(item)
+        CoreContentNode::from_es_data_source_document(item)
     }
 
     /// Compute core content nodes from a list of nodes.

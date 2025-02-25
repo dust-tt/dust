@@ -225,7 +225,7 @@ impl CoreContentNode {
         }
     }
 
-    pub fn from_data_source_document(data_source: DataSourceESDocument) -> Self {
+    pub fn from_es_data_source_document(data_source: DataSourceESDocument) -> Self {
         Self {
             base: Node {
                 data_source_id: data_source.data_source_id.clone(),
