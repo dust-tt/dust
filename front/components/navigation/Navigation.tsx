@@ -70,7 +70,12 @@ export function Navigation({
   }
 
   return (
-    <div className="flex shrink-0 overflow-x-hidden border-r border-border-dark/60 dark:border-border-dark-night/60">
+    <div
+      className={cn(
+        "flex shrink-0 overflow-x-hidden border-r",
+        "border-border-dark dark:border-border-dark-night"
+      )}
+    >
       {/* Mobile sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <div className="fixed left-0 top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 px-4 lg:hidden lg:px-6">
