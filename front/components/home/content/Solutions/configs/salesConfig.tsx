@@ -43,7 +43,7 @@ export const pageSettings: pageSettingsProps = {
     "Create personalized outreach",
     "Coach sales reps with call insights",
   ],
-  image: "/static/landing/carouselImages/sales.png",
+  image: "/static/landing/sales/accountSnapshot.png",
 };
 
 export const Hero: HeroProps = {
@@ -134,25 +134,25 @@ export const UseCases: UseCaseProps = {
       title: "Account snapshot",
       content:
         "Create account summaries with key historical interactions, data or news wherever they are hosted.",
-      images: ["/static/landing/solutions/sales1.png"],
+      images: ["/static/landing/sales/accountSnapshot.png"],
     },
     {
       title: "Engage and re-engage",
       content:
         "Create targeted cold emails and re-engagement messages using call transcripts, CRM data and industry insights",
-      images: ["/static/landing/solutions/sales2.png"],
+      images: ["/static/landing/sales/meetingSummary.png"],
     },
     {
       title: "Prospect questions",
       content:
         "Answer prospect questions and RFPs instantly with fresh, expert insights on products, competitors, and security.",
-      images: ["/static/landing/solutions/sales3.png"],
+      images: ["/static/landing/sales/prospectQuestions.png"],
     },
     {
       title: "Sales coaching",
       content:
         "Parse call transcripts to coach salespeople on their pitch and understand where deals fail.",
-      images: ["/static/landing/solutions/sales4.png"],
+      images: ["/static/landing/sales/salesCoach.png"],
     },
   ],
 };
