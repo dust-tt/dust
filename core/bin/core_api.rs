@@ -29,6 +29,7 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
+use dust::search_stores::search_store::NodeItem;
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -2473,7 +2474,11 @@ async fn tables_upsert(
         )
         .await
     {
-        Ok(table) => match state.search_store.index_table(table.clone()).await {
+        Ok(table) => match state
+            .search_store
+            .index_node(NodeItem::Table(table.clone()))
+            .await
+        {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -3308,7 +3313,11 @@ async fn folders_upsert(
             "Failed to upsert folder",
             Some(e),
         ),
-        Ok(folder) => match state.search_store.index_folder(folder.clone()).await {
+        Ok(folder) => match state
+            .search_store
+            .index_node(NodeItem::Folder(folder.clone()))
+            .await
+        {
             Ok(_) => (
                 StatusCode::OK,
                 Json(APIResponse {
@@ -3459,7 +3468,10 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(Node::from(folder)).await?;
+        state
+            .search_store
+            .delete_node(NodeItem::Folder(folder))
+            .await?;
         Ok(())
     }
     .await;

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::search_stores::search_store::NodeItem;
 use crate::{
     data_sources::node::{Node, NodeType, ProviderVisibility},
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
@@ -253,7 +254,9 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store.delete_node(Node::from(self.clone())).await?;
+            search_store
+                .delete_node(NodeItem::Table(self.clone()))
+                .await?;
         }
 
         Ok(())
@@ -274,7 +277,9 @@ impl Table {
             )
             .await?;
 
-        search_store.index_table(self.clone()).await?;
+        search_store
+            .index_node(NodeItem::Table(self.clone()))
+            .await?;
         Ok(())
     }
 

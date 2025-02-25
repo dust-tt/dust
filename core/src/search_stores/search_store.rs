@@ -24,7 +24,7 @@ use crate::databases::table::Table;
 use crate::{
     data_sources::{
         data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
-        node::{CoreContentNode, Node, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
+        node::{CoreContentNode, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
     },
     search_stores::search_types::SearchItem,
     stores::store::Store,
@@ -83,6 +83,13 @@ pub struct NodesSearchFilter {
     include_data_sources: Option<bool>,
 }
 
+#[derive(Debug, Clone)]
+pub enum NodeItem {
+    Document(Document),
+    Table(Table),
+    Folder(Folder),
+}
+
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
@@ -94,10 +101,8 @@ pub trait SearchStore {
     ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)>;
 
     // Data source nodes
-    async fn index_document(&self, document: Document) -> Result<()>;
-    async fn index_table(&self, table: Table) -> Result<()>;
-    async fn index_folder(&self, folder: Folder) -> Result<()>;
-    async fn delete_node(&self, node: Node) -> Result<()>;
+    async fn index_node(&self, node: NodeItem) -> Result<()>;
+    async fn delete_node(&self, node: NodeItem) -> Result<()>;
 
     // Data sources.
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
@@ -297,20 +302,20 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     // Data source nodes.
-    async fn index_document(&self, document: Document) -> Result<()> {
-        self.index_document(&document).await
+    async fn index_node(&self, node: NodeItem) -> Result<()> {
+        match node {
+            NodeItem::Document(node) => self.index_document(&node).await,
+            NodeItem::Folder(node) => self.index_document(&node).await,
+            NodeItem::Table(node) => self.index_document(&node).await,
+        }
     }
 
-    async fn index_table(&self, table: Table) -> Result<()> {
-        self.index_document(&table).await
-    }
-
-    async fn index_folder(&self, folder: Folder) -> Result<()> {
-        self.index_document(&folder).await
-    }
-
-    async fn delete_node(&self, node: Node) -> Result<()> {
-        self.delete_document(&node).await
+    async fn delete_node(&self, node: NodeItem) -> Result<()> {
+        match node {
+            NodeItem::Document(node) => self.delete_document(&node).await,
+            NodeItem::Folder(node) => self.delete_document(&node).await,
+            NodeItem::Table(node) => self.delete_document(&node).await,
+        }
     }
 
     // Data sources.
