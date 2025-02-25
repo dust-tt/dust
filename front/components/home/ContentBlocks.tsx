@@ -1,4 +1,4 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -293,10 +293,12 @@ export const CarousselContentBlock = ({
           <H2 className="text-slate-900">{title}</H2>
 
           {bulletPoints && (
-            <ul className="flex list-none flex-col gap-4">
+            <ul className="flex list-none flex-col gap-3">
               {bulletPoints.map((feature, index) => (
-                <li key={index} className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-slate-900"></div>
+                <li key={index} className="flex items-start gap-3">
+                  <div className="flex-shrink-0 pt-1">
+                    <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                  </div>
                   <P size="md" className="text-slate-800">
                     {feature}
                   </P>
@@ -305,18 +307,30 @@ export const CarousselContentBlock = ({
             </ul>
           )}
 
-          <div className="mt-6 flex flex-col gap-4">
+          <div className="mt-6 flex w-full flex-col gap-4">
             {quote && (
               <>
-                <P size="sm" className="italic text-slate-800">
+                <P size="sm" className="w-full italic text-slate-800">
                   "{quote?.quote}"
                 </P>
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500">
-                    <div className="flex h-full w-full items-center justify-center text-white">
-                      {quote.name.charAt(0)}
+                  {quote.logo ? (
+                    <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950">
+                      <Image
+                        src={quote.logo}
+                        height={40}
+                        width={120}
+                        alt={`${quote.name} logo`}
+                        className="h-10 w-auto rounded-full object-cover"
+                      />
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500">
+                      <div className="flex h-full w-full items-center justify-center text-white">
+                        {quote.name.charAt(0)}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <P size="sm" className="font-bold text-slate-800">
                       {quote.name}
