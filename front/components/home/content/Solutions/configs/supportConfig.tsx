@@ -14,7 +14,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -187,52 +186,5 @@ export const Stories: CustomerStory[] = [
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "📡",
-    backgroundColor: "bg-sky-300",
-    name: "@ticketDeflection",
-    description: (
-      <>
-        Automatically handles common support queries in your product interface,
-        reducing Tier 1 ticket volume.
-      </>
-    ),
-  },
-  {
-    emoji: "🤝",
-    backgroundColor: "bg-sky-300",
-    name: "@supportCopilot",
-    description: (
-      <>
-        Speeds up resolution by suggesting tailored responses drawn from your
-        knowledge base and past solutions.
-      </>
-    ),
-  },
-  {
-    emoji: "🔮",
-    backgroundColor: "bg-sky-300",
-    name: "@docExpert",
-    description: (
-      <>
-        Converts resolved tickets into searchable articles and FAQs, capturing
-        best practices for future use.
-      </>
-    ),
-  },
-  {
-    emoji: "💡",
-    backgroundColor: "bg-sky-300",
-    name: "@ticketInsights",
-    description: (
-      <>
-        Identifies trends from customer feedback, helping teams proactively
-        improve service and satisfaction.
-      </>
-    ),
   },
 ];

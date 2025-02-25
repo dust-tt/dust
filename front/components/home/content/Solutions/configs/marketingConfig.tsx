@@ -20,7 +20,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -195,51 +194,4 @@ export const Stories: CustomerStory[] = [
   //   href: "https://blog.dust.tt/customer-story-lifen/",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🖋️",
-    name: "@contentWriter",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Creates content based on best-in class &nbsp;examples availble
-        internally
-      </>
-    ),
-  },
-  {
-    emoji: "🖇️",
-    name: "@socialPost",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Generates versioned&nbsp;content for social media outlets taking into
-        account company guidelines
-      </>
-    ),
-  },
-  {
-    emoji: "♠️",
-    name: "@battleCard",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Generates arguments for your product in comparison to a specific
-        competitor, in line with internal product guidelines and category
-        positioning
-      </>
-    ),
-  },
-  {
-    emoji: "🌍",
-    name: "@internationalizer",
-    backgroundColor: "bg-amber-300",
-    description: (
-      <>
-        Transcreate all your content to adapt content for international markets
-      </>
-    ),
-  },
 ];
