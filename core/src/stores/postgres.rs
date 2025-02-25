@@ -1334,6 +1334,31 @@ impl Store for PostgresStore {
         Ok(())
     }
 
+    async fn update_data_source_name(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        name: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let name = name.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "UPDATE data_sources SET name = $1 \
+                   WHERE project = $2 AND data_source_id = $3",
+            )
+            .await?;
+        c.execute(&stmt, &[&name, &project_id, &data_source_id])
+            .await?;
+
+        Ok(())
+    }
+
     async fn load_data_source_document(
         &self,
         project: &Project,

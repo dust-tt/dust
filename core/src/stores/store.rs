@@ -177,6 +177,12 @@ pub trait Store {
         data_source_id: &str,
         config: &DataSourceConfig,
     ) -> Result<()>;
+    async fn update_data_source_name(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        name: &str,
+    ) -> Result<()>;
     async fn load_data_source_document(
         &self,
         project: &Project,
