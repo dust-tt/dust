@@ -195,6 +195,7 @@ function BaseSearchInputWithPopover<T>(
           contentClassName
         )}
         sideOffset={0}
+        fullWidth={true}
         align="start"
         id="search-popover-content"
         onOpenAutoFocus={(e) => e.preventDefault()}
