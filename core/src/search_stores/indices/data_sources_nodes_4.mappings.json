@@ -47,6 +47,10 @@
       "type": "keyword",
       "index": false
     },
+    "text_size": {
+      "type": "long",
+      "index": false
+    },
     "tags": {
       "type": "text",
       "analyzer": "standard",
