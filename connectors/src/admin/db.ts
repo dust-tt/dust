@@ -47,6 +47,7 @@ import {
   RemoteDatabaseModel,
   RemoteSchemaModel,
   RemoteTableModel,
+  RemoteTableRecordModel,
 } from "@connectors/lib/models/remote_databases";
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import {
@@ -124,6 +125,7 @@ async function main(): Promise<void> {
   await RemoteDatabaseModel.sync({ alter: true });
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });
+  await RemoteTableRecordModel.sync({ alter: true });
   await ZendeskTimestampCursor.sync({ alter: true });
   await ZendeskConfiguration.sync({ alter: true });
   await ZendeskBrand.sync({ alter: true });

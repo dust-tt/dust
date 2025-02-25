@@ -128,7 +128,7 @@ export const MIME_TYPES = {
   }),
   SALESFORCE: generateMimeTypes({
     provider: "salesforce",
-    resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
+    resourceTypes: ["DATABASE", "SCHEMA", "TABLE", "RECORD"],
   }),
 };
 

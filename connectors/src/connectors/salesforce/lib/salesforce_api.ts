@@ -1,6 +1,6 @@
 import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-import type { Connection } from "jsforce";
+import { concurrentExecutor, Err, Ok, removeNulls } from "@dust-tt/types";
+import type { Connection, SavedRecord } from "jsforce";
 import jsforce from "jsforce";
 
 import {
@@ -11,6 +11,7 @@ import {
   isValidSchemaInternalId,
 } from "@connectors/connectors/salesforce/lib/internal_ids";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import { isStandardObjectIncluded } from "@connectors/connectors/salesforce/lib/utils";
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
@@ -128,6 +129,9 @@ export async function fetchTables({
     return new Ok(
       tables.sobjects
         .filter((obj) => (isCustomSchema ? obj.custom : !obj.custom))
+        .filter((obj) => {
+          return isCustomSchema ? true : isStandardObjectIncluded(obj.name);
+        })
         .map((obj) => ({
           name: obj.name,
           database_name: INTERNAL_ID_DATABASE,
@@ -140,6 +144,9 @@ export async function fetchTables({
   }
 }
 
+/**
+ * Fetch the tree of the Salesforce account.
+ */
 export const fetchTree = async ({
   credentials,
 }: {
@@ -178,3 +185,138 @@ export const fetchTree = async ({
 
   return new Ok(tree);
 };
+
+/**
+ * Find the tables that have a text area field.
+ * Those are the tables that we need to sync for rich text fields,
+ * as they can contain a lot of text and we want to do semantic search on them.
+ */
+/**
+ * Find the tables that have a text area field and return the textarea fields for each table.
+ * Those are the tables that we need to sync for rich text fields,
+ * as they can contain a lot of text and we want to do semantic search on them.
+ */
+export const findTablesWithTextAreaFields = async (
+  credentials: SalesforceAPICredentials,
+  tables: { name: string; internalId: string }[]
+): Promise<
+  Result<
+    Array<{ name: string; internalId: string; textAreaFields: string[] }>,
+    Error
+  >
+> => {
+  // Get a Salesforce connection.
+  const connRes = await getSalesforceConnection(credentials);
+  if (connRes.isErr()) {
+    return new Err(new Error("Can't connect to Salesforce."));
+  }
+
+  const results = await concurrentExecutor(
+    tables,
+    async (table) => {
+      try {
+        const objectDescribe = await connRes.value.describe(table.name);
+
+        // Skip system/internal objects.
+        if (
+          !objectDescribe.createable ||
+          !objectDescribe.queryable ||
+          objectDescribe.recordTypeInfos.length === 0
+        ) {
+          return null;
+        }
+
+        // objectDescribe.fields.forEach((field) => {
+        //   console.log(field.name, field.type, field.length);
+        // });
+
+        // Get all textarea fields that have more than 255 characters.
+        const textAreaFields = objectDescribe.fields
+          .filter(
+            (field) =>
+              (field.type === "textarea" ||
+                field.type === "longtextarea" ||
+                field.type === "richtextarea") &&
+              field.length > 255
+          )
+          .map((field) => field.name);
+
+        // Only return tables that have at least one textarea field
+        return textAreaFields.length > 0
+          ? { name: table.name, internalId: table.internalId, textAreaFields }
+          : null;
+      } catch (error) {
+        console.error(`Error describing ${table}: ${error}`);
+        return null;
+      }
+    },
+    { concurrency: 8 }
+  );
+
+  const tablesWithTextAreaFields = removeNulls(results);
+
+  return new Ok(tablesWithTextAreaFields);
+};
+
+/**
+ * Get records for a given object from Salesforce with cursor support.
+ * Returns a batch of records and the next cursor for pagination.
+ */
+export async function getSalesforceObjectRecords({
+  credentials,
+  objectName,
+  connection,
+  nextRecordsUrl = null,
+  batchSize = 200,
+}: {
+  credentials: SalesforceAPICredentials;
+  objectName: string;
+  connection?: Connection;
+  nextRecordsUrl?: string | null;
+  batchSize?: number;
+}): Promise<
+  Result<
+    {
+      records: SavedRecord[];
+      totalSize: number;
+      done: boolean;
+      nextRecordsUrl: string | undefined;
+    },
+    Error
+  >
+> {
+  let conn = connection;
+  if (!conn) {
+    const connRes = await getSalesforceConnection(credentials);
+    if (connRes.isErr()) {
+      return new Err(connRes.error);
+    }
+    conn = connRes.value;
+  }
+
+  try {
+    let result;
+
+    if (nextRecordsUrl) {
+      // If we have a cursor, use queryMore to get the next batch
+      result = await conn.queryMore(nextRecordsUrl);
+    } else {
+      // Initial query with the specified batch size
+      result = await conn.query(
+        `SELECT FIELDS(ALL) FROM ${objectName} LIMIT ${Math.min(
+          batchSize,
+          200
+        )}`
+      );
+    }
+
+    return new Ok({
+      records: result.records as SavedRecord[],
+      totalSize: result.totalSize,
+      done: result.done,
+      nextRecordsUrl: result.done ? undefined : result.nextRecordsUrl,
+    });
+  } catch (error) {
+    return new Err(error instanceof Error ? error : new Error(String(error)));
+  }
+}

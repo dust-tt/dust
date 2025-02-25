@@ -35,3 +35,40 @@ export const getConnectorAndCredentials = async (
     credentials,
   });
 };
+
+export const isStandardObjectIncluded = (objectName: string) => {
+  const whitelist = [
+    // Core sales objects.
+    "Account",
+    "Contact",
+    "Lead",
+    "Opportunity",
+    // Activity tracking.
+    "Task",
+    "Event",
+    "ActivityHistory",
+
+    // Communication.
+    "EmailMessage",
+    "Case",
+    "LiveChatTranscript", // chat conversations with prospects/customers.
+
+    // Products & pricing
+    "Product2", // note: correct API name is Product2, not Product.
+    "Quote",
+    "QuoteLineItem",
+    "Contract",
+
+    // Forecasting.
+    "Forecast",
+    "ForecastingQuota",
+
+    // Other useful sales objects.
+    "User", // sales rep info.
+    "OpportunityLineItem", // products on opportunities.
+    "ContentDocument", // files attached to records.
+    "ContentVersion", // versions of files.
+    "Note", // notes on records.
+  ];
+  return whitelist.includes(objectName);
+};

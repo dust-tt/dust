@@ -157,3 +157,48 @@ RemoteTableModel.init(
     indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
   }
 );
+
+export class RemoteTableRecordModel extends ConnectorBaseModel<RemoteTableRecordModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare lastUpsertedAt: CreationOptional<Date> | null;
+
+  declare internalId: string;
+  declare tableInternalId: string;
+  declare recordId: string;
+}
+RemoteTableRecordModel.init(
+  {
+    internalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    tableInternalId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    recordId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    lastUpsertedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "remote_table_records",
+    indexes: [{ fields: ["connectorId", "internalId"], unique: true }],
+  }
+);
