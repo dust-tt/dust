@@ -1,12 +1,9 @@
 import type {
+  ContentNodesViewType,
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import {
-  CoreAPI,
-  getCoreViewTypeFilter,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@dust-tt/types";
+import { assertNever, CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -21,6 +18,19 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+
+function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "document":
+      return ["folder", "document"];
+    case "table":
+      return ["folder", "table"];
+    case "all":
+      return ["folder", "table", "document"];
+    default:
+      assertNever(viewType);
+  }
+}
 
 const SearchRequestBody = t.type({
   datasourceViewIds: t.array(t.string),
