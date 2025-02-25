@@ -127,7 +127,7 @@ export function DataSourceViewsSelector({
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-  const { searchResultNodes } = useSpaceSearch({
+  const { searchResultNodes, isSearchLoading } = useSpaceSearch({
     dataSourceViews,
     owner,
     viewType,
@@ -147,6 +147,20 @@ export function DataSourceViewsSelector({
       };
     }
   }, [searchSpaceText, searchFeatureFlag]);
+
+  useEffect(() => {
+    if (searchResult) {
+      setTimeout(() => {
+        const node = document.getElementById(
+          `tree-node-${searchResult.internalId}`
+        );
+        node?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 100);
+    }
+  }, [searchResult]);
 
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
@@ -234,12 +248,13 @@ export function DataSourceViewsSelector({
           value={searchSpaceText}
           onChange={setSearchSpaceText}
           name="search-dsv"
-          open={searchResultNodes.length > 0 && !!searchSpaceText}
+          open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
           onOpenChange={(open) => {
             if (!open) {
               setSearchSpaceText("");
             }
           }}
+          isLoading={isSearchLoading}
           items={searchResultNodes}
           onItemSelect={(item) => {
             setSearchResult(item);
@@ -251,7 +266,7 @@ export function DataSourceViewsSelector({
           renderItem={(item, selected) => (
             <div
               className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
                 selected && "bg-structure-50 dark:bg-structure-50-night"
               )}
               onClick={() => {
@@ -263,15 +278,10 @@ export function DataSourceViewsSelector({
               }}
             >
               {getVisualForContentNode(item)({ className: "min-w-4" })}
-              <span className="text-sm">{item.title}</span>
+              <span className="flex-shrink truncate text-sm">{item.title}</span>
               {item.parentTitle && (
-                <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
-              )}
-              {item.dataSourceView.dataSource.connectorProvider && (
-                <div className="ml-auto">
-                  {CONNECTOR_CONFIGURATIONS[
-                    item.dataSourceView.dataSource.connectorProvider
-                  ].getLogoComponent()({})}
+                <div className="ml-auto flex-none text-sm text-slate-500">
+                  {`${item.dataSourceView.dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[item.dataSourceView.dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
                 </div>
               )}
             </div>
