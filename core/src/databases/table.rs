@@ -748,12 +748,19 @@ impl Row {
 
                 // We fallback on dateparser for all other formats
                 if dt.is_none() {
-                    dt = dateparser::parse_with(
-                        trimmed,
-                        &Utc,
-                        NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
-                    )
-                    .ok();
+                    dt = match std::panic::catch_unwind(|| {
+                        dateparser::parse_with(
+                            trimmed,
+                            &Utc,
+                            NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+                        )
+                    }) {
+                        Ok(result) => result.ok(),
+                        Err(e) => {
+                            tracing::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            None
+                        }
+                    };
                 }
 
                 if let Some(datetime) = dt {
