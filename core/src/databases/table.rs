@@ -319,25 +319,6 @@ impl Table {
     }
 }
 
-impl From<Table> for Node {
-    fn from(table: Table) -> Node {
-        Node::new(
-            &table.data_source_id,
-            &table.data_source_internal_id,
-            &table.table_id,
-            NodeType::Table,
-            table.timestamp,
-            &table.title,
-            &table.mime_type,
-            table.provider_visibility,
-            table.parents.get(1).cloned(),
-            table.parents,
-            table.source_url,
-            Some(table.tags),
-        )
-    }
-}
-
 pub struct LocalTable {
     pub table: Table,
 }

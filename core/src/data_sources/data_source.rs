@@ -222,25 +222,6 @@ impl Filterable for Document {
     }
 }
 
-impl From<Document> for Node {
-    fn from(document: Document) -> Node {
-        Node::new(
-            &document.data_source_id,
-            &document.data_source_internal_id,
-            &document.document_id,
-            NodeType::Document,
-            document.timestamp,
-            &document.title,
-            &document.mime_type,
-            document.provider_visibility,
-            document.parent_id,
-            document.parents.clone(),
-            document.source_url,
-            Some(document.tags),
-        )
-    }
-}
-
 pub fn make_document_id_hash(document_id: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(document_id.as_bytes());

@@ -74,22 +74,3 @@ impl Folder {
         &self.provider_visibility
     }
 }
-
-impl From<Folder> for Node {
-    fn from(folder: Folder) -> Node {
-        Node::new(
-            &folder.data_source_id,
-            &folder.data_source_internal_id,
-            &folder.folder_id,
-            NodeType::Folder,
-            folder.timestamp,
-            &folder.title,
-            &folder.mime_type,
-            folder.provider_visibility,
-            folder.parent_id,
-            folder.parents,
-            folder.source_url,
-            None,
-        )
-    }
-}
