@@ -4,8 +4,8 @@ import type {
 } from "@dust-tt/types";
 import {
   CoreAPI,
+  getCoreViewTypeFilter,
   MIN_SEARCH_QUERY_SIZE,
-  nodeViewToCoreContentNode,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -129,7 +129,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
-      node_types: nodeViewToCoreContentNode(viewType),
+      node_types: getCoreViewTypeFilter(viewType),
     },
     options: {
       limit,

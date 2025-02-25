@@ -60,6 +60,19 @@ function filterNodesByViewType(
   }
 }
 
+function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "document":
+      return ["folder", "document"];
+    case "table":
+      return ["folder", "table"];
+    case "all":
+      return ["folder", "table", "document"];
+    default:
+      assertNever(viewType);
+  }
+}
+
 function removeCatchAllFoldersIfEmpty(
   nodes: CoreAPIContentNode[]
 ): CoreAPIContentNode[] {
