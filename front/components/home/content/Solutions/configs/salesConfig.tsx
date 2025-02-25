@@ -133,13 +133,13 @@ export const UseCases: UseCaseProps = {
     {
       title: "Account snapshot",
       content:
-        "Create account summaries with key historical interactions, wherever they live.",
+        "Create account summaries with key historical interactions, data or news wherever they are hosted.",
       images: ["/static/landing/solutions/sales1.png"],
     },
     {
       title: "Engage and re-engage",
       content:
-        "Create targeted cold emails and re-engagement messages using CRM data and industry insights",
+        "Create targeted cold emails and re-engagement messages using call transcripts, CRM data and industry insights",
       images: ["/static/landing/solutions/sales2.png"],
     },
     {

@@ -128,21 +128,22 @@ export const UseCases: UseCaseProps = {
     {
       title: "Legal helpdesk",
       content:
-        "Provide instant legal guidance and answers using your approved policies and documentation.",
+        "Provide team members instant legal guidance using your approved policies, documentation and external sources.",
       images: ["/static/landing/solutions/legal1.png"],
     },
     {
-      title: "Contract review",
+      title: "Legal review",
       content:
         "Analyze contracts or RFPs automatically for compliance and risk, highlighting key terms and obligations.",
       images: ["/static/landing/solutions/legal2.png"],
     },
     {
-      title: "Regulatory Change Management",
+      title: "Legal research and monitoring",
       content:
-        "Search through case law and monitor regulatory updates to ensure ongoing compliance.",
+        "Navigate legal databases and documentation to surface relevant precedents. Monitor regulation updates for compliance check.",
       images: ["/static/landing/solutions/legal3.png"],
     },
+
     {
       title: "Document creation",
       content:
