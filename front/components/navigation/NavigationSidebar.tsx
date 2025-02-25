@@ -159,7 +159,7 @@ export const NavigationSidebar = React.forwardRef<
         <div
           className={classNames(
             "flex items-center gap-2 border-t p-2",
-            "border-border-dark/60 dark:border-border-dark-night/60",
+            "border-border-dark dark:border-border-dark-night",
             "text-foreground dark:text-foreground-night"
           )}
         >

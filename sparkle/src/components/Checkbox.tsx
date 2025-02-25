@@ -21,7 +21,7 @@ const checkboxStyles = cva(
   cn(
     "s-shrink-0 s-peer s-border",
     "s-border-border-darker dark:s-border-border-darker-night",
-    "dark:s-text-foreground-night s-text-foreground",
+    "s-text-foreground dark:s-text-foreground-night",
     "data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50"
@@ -72,6 +72,7 @@ const Checkbox = React.forwardRef<
           <Icon
             size="xs"
             visual={checked === "partial" ? DashIcon : CheckIcon}
+            className="s-text-background dark:s-text-background-night"
           />
         </span>
       </CheckboxPrimitive.Indicator>

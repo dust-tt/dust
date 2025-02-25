@@ -29,16 +29,16 @@ const cusrsorTranslateSizeClasses = {
 
 const stateClasses = {
   idle: cn(
-    "s-bg-structure-200 dark:s-bg-structure-200-night",
-    "hover:s-bg-action-400 dark:hover:s-bg-action-400-night"
+    "s-bg-primary-200 dark:s-bg-primary-500",
+    "hover:s-bg-highlight-300 dark:hover:s-bg-highlight-600"
   ),
   selected: cn(
-    "s-bg-success-300 dark:s-bg-success-300-night",
-    "hover:s-bg-success-200 dark:hover:s-bg-success-200-night"
+    "s-bg-success-300 dark:s-bg-success-500-night",
+    "hover:s-bg-success-200"
   ),
   disabled: cn(
-    "s-bg-structure-200 dark:s-bg-structure-200-night",
-    "hover:s-bg-structure-200 dark:hover:s-bg-structure-200-night",
+    "s-bg-primary-200 dark:s-bg-primary-200-night",
+    "hover:s-bg-primary-200 dark:hover:s-bg-primary-200-night",
     "s-cursor-not-allowed hover:s-cursor-not-allowed"
   ),
 };
@@ -67,12 +67,10 @@ export function SliderToggle({
     >
       <div
         id="cursor"
-        className={classNames(
-          "s-transform s-rounded-full s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
-          disabled
-            ? "s-bg-structure-100 dark:s-bg-structure-100-night"
-            : "s-bg-white dark:s-bg-slate-950",
-          size ? cusrsorSizeClasses[size] : "",
+        className={cn(
+          "s-transform s-rounded-full s-bg-background s-drop-shadow s-transition-transform s-duration-300 s-ease-out",
+          disabled && "s-opacity-50",
+          size && cusrsorSizeClasses[size],
           selected ? cusrsorTranslateSizeClasses[size] : "s-translate-x-[2px]"
         )}
       />
