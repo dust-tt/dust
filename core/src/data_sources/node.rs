@@ -72,33 +72,6 @@ pub enum NodeType {
     Folder,
 }
 
-impl Serialize for NodeType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        serializer.serialize_str(&self.to_string().to_lowercase())
-    }
-}
-
-impl<'de> Deserialize<'de> for NodeType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        match s.as_str() {
-            "Document" | "document" => Ok(NodeType::Document),
-            "Table" | "table" => Ok(NodeType::Table),
-            "Folder" | "folder" => Ok(NodeType::Folder),
-            _ => Err(serde::de::Error::unknown_variant(
-                &s,
-                &["Document", "document", "Table", "table", "Folder", "folder"],
-            )),
-        }
-    }
-}
-
 impl fmt::Display for NodeType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
