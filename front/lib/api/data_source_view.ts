@@ -31,6 +31,7 @@ interface GetContentNodesForDataSourceViewParams {
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
   nextPageCursor: string | null;
 }
 
@@ -158,7 +159,8 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: sortedNodes,
-    total: resultNodes.length,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
     nextPageCursor: nextPageCursor,
   });
 }

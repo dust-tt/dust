@@ -1,4 +1,4 @@
-import type { HistoryOptions, MenuItem } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   cn,
@@ -64,7 +64,6 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
-const ROWS_COUNT_CAPPED = 1000;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -291,6 +290,7 @@ export const SpaceDataSourceViewContentList = ({
     nodes: childrenNodes,
     nextPageCursor,
     totalNodesCount,
+    totalNodesCountIsAccurate,
   } = useDataSourceViewContentNodes({
     dataSourceView,
     owner,
@@ -726,8 +726,8 @@ export const SpaceDataSourceViewContentList = ({
             )}
             sorting={sorting}
             setSorting={setSorting}
-            totalRowCount={nextPageCursor ? totalNodesCount + 1 : undefined}
-            rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
+            totalRowCount={totalNodesCount}
+            rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}
             setPagination={handlePaginationChange}
             columnsBreakpoints={columnsBreakpoints}

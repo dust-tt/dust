@@ -124,6 +124,7 @@ export function useDataSourceViewContentNodes({
   mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
+  totalNodesCountIsAccurate: boolean;
   nextPageCursor: string | null;
 } {
   const params = new URLSearchParams();
@@ -174,6 +175,7 @@ export function useDataSourceViewContentNodes({
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+    totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
     nextPageCursor: data?.nextPageCursor || null,
   };
 }
