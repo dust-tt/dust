@@ -126,7 +126,7 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "Debugging agent",
+      title: "Debugging",
       content:
         "Fix code errors by retrieving internal documentation, updates, and Slack discussions. Stay focused on your core work.",
       images: ["/static/landing/engineering/debuggingAgent.png"],
