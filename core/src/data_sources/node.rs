@@ -65,7 +65,7 @@ impl<'a> FromSql<'a> for ProviderVisibility {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Deserialize, Copy)]
-#[serde(Lowercase)]
+#[serde(rename_all = "lowercase")]
 pub enum NodeType {
     Document,
     Table,
