@@ -274,7 +274,7 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
+        search_store.index_table(self.clone()).await?;
         Ok(())
     }
 

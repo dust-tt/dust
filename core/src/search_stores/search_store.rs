@@ -94,7 +94,6 @@ pub trait SearchStore {
     ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)>;
 
     // Data source nodes
-    async fn index_node(&self, node: Node) -> Result<()>;
     async fn index_document(&self, document: Document) -> Result<()>;
     async fn index_table(&self, table: Table) -> Result<()>;
     async fn index_folder(&self, folder: Folder) -> Result<()>;
@@ -298,11 +297,6 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     // Data source nodes.
-
-    async fn index_node(&self, node: Node) -> Result<()> {
-        self.index_document(&node).await
-    }
-
     async fn index_document(&self, document: Document) -> Result<()> {
         self.index_document(&document).await
     }

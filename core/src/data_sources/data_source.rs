@@ -557,7 +557,7 @@ impl DataSource {
 
         match document {
             Some(document) => {
-                search_store.index_node(Node::from(document)).await?;
+                search_store.index_document(document).await?;
             }
             None => (),
         }
@@ -850,7 +850,7 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_node(Node::from(document)).await?;
+        search_store.index_document(document).await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
