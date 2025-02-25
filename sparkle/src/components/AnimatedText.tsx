@@ -20,16 +20,46 @@ const ANIMATED_TEXT_VARIANTS = [
 type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
 
 const animatedVariants: Record<AnimatedTextVariantType, string> = {
-  muted: "s-from-transparent s-via-primary-950/80 s-via-50%  s-to-transparent",
-  highlight: "s-from-highlight s-via-highlight-800 s-via-50% s-to-highlight",
-  emerald: "s-from-emerald-800 s-via-emerald-950 s-via-50% s-to-emerald-800",
-  amber: "s-from-amber-800 s-via-amber-950 s-via-50% s-to-amber-800",
-  slate: "s-from-slate-600 s-via-slate-950 s-via-50%  s-to-slate-600",
-  purple: "s-from-purple-800 s-via-purple-950 s-via-50% s-to-purple-800",
-  warning: "s-from-warning-800 s-via-warning-950 s-via-50% s-to-warning-800",
-  sky: "s-from-sky-800 s-via-sky-950 s-via-50% s-to-sky-800",
-  pink: "s-from-pink-800 s-via-pink-950 s-via-50% s-to-pink-800",
-  red: "s-from-red-800 s-via-red-950 s-via-50% s-to-red-800",
+  muted: cn(
+    "s-from-transparent s-via-primary-950/80 s-via-50% s-to-transparent",
+    "dark:s-from-transparent dark:s-via-primary-50/80 dark:s-via-50% dark:s-to-transparent"
+  ),
+  highlight: cn(
+    "s-from-highlight s-via-highlight-800 s-via-50% s-to-highlight",
+    "dark:s-from-highlight-night dark:s-via-highlight-800-night dark:s-via-50% dark:s-to-highlight-night"
+  ),
+  emerald: cn(
+    "s-from-emerald-800 s-via-emerald-950 s-via-50% s-to-emerald-800",
+    "dark:s-from-emerald-800-night dark:s-via-emerald-950-night dark:s-via-50% dark:s-to-emerald-800-night"
+  ),
+  amber: cn(
+    "s-from-amber-800 s-via-amber-950 s-via-50% s-to-amber-800",
+    "dark:s-from-amber-800-night dark:s-via-amber-950-night dark:s-via-50% dark:s-to-amber-800-night"
+  ),
+  slate: cn(
+    "s-from-slate-600 s-via-slate-950 s-via-50% s-to-slate-600",
+    "dark:s-from-slate-600-night dark:s-via-slate-950-night dark:s-via-50% dark:s-to-slate-600-night"
+  ),
+  purple: cn(
+    "s-from-purple-800 s-via-purple-950 s-via-50% s-to-purple-800",
+    "dark:s-from-purple-800-night dark:s-via-purple-950-night dark:s-via-50% dark:s-to-purple-800-night"
+  ),
+  warning: cn(
+    "s-from-warning-800 s-via-warning-950 s-via-50% s-to-warning-800",
+    "dark:s-from-warning-800-night dark:s-via-warning-950-night dark:s-via-50% dark:s-to-warning-800-night"
+  ),
+  sky: cn(
+    "s-from-sky-800 s-via-sky-950 s-via-50% s-to-sky-800",
+    "dark:s-from-sky-800-night dark:s-via-sky-950-night dark:s-via-50% dark:s-to-sky-800-night"
+  ),
+  pink: cn(
+    "s-from-pink-800 s-via-pink-950 s-via-50% s-to-pink-800",
+    "dark:s-from-pink-800-night dark:s-via-pink-950-night dark:s-via-50% dark:s-to-pink-800-night"
+  ),
+  red: cn(
+    "s-from-red-800 s-via-red-950 s-via-50% s-to-red-800",
+    "dark:s-from-red-800-night dark:s-via-red-950-night dark:s-via-50% dark:s-to-red-800-night"
+  ),
 };
 
 const animVariants = cva(

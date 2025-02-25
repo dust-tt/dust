@@ -227,7 +227,7 @@ module.exports = {
           night: colors.slate[900],
           dark: {
             DEFAULT: colors.slate[200],
-            night: colors.slate[800],
+            night: colors.slate[700],
           },
           darker: {
             DEFAULT: colors.slate[400],
@@ -235,14 +235,14 @@ module.exports = {
           },
           focus: {
             DEFAULT: colors.blue[400],
-            night: colors.slate[600],
+            night: colors.slate[500],
           },
           warning: {
             DEFAULT: colors.red[300],
-            night: colors.slate[800],
+            night: colors.red[800],
           },
         },
-        separator: { DEFAULT: "#E9EFF5", night: colors.slate[800] },
+        separator: { DEFAULT: "#E9EFF5", night: colors.slate[700] },
         ring: {
           DEFAULT: colors.blue[200],
           night: colors.slate[700],
@@ -251,10 +251,10 @@ module.exports = {
             night: colors.red[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.slate[950] },
+        background: { DEFAULT: colors.white, night: colors.slate[900] },
         foreground: {
           DEFAULT: colors.slate[950],
-          night: colors.slate[50],
+          night: colors.white,
           dark: { DEFAULT: colors.white, night: colors.black },
           warning: {
             DEFAULT: colors.red[500],
@@ -292,6 +292,7 @@ module.exports = {
         },
         primary: {
           DEFAULT: colors.slate[800],
+          night: colors.slate[200],
           light: { DEFAULT: colors.slate[600], night: colors.slate[300] },
           dark: { DEFAULT: colors.slate[950], night: "#F6F8FB" },
           muted: { DEFAULT: colors.slate[400], night: colors.slate[600] },
