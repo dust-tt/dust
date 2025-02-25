@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -188,49 +187,5 @@ export const Stories: CustomerStory[] = [
       "Discover how November Five accelerates work with Dust, turning 3-hour tasks into 30 minutes.",
     href: "https://blog.dust.tt/november-five-ai-transformation-dust/",
     src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_november_five.png",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🎯",
-    name: "@meetingNotes",
-    backgroundColor: "bg-violet-300",
-    description: (
-      <>
-        Transforms your meeting recordings into structured summaries with clear
-        action items and key points.
-      </>
-    ),
-  },
-  {
-    emoji: "📚",
-    name: "@docSummary",
-    backgroundColor: "bg-violet-300",
-    description: (
-      <>
-        Converts long documents into concise summaries and bullet points for
-        faster understanding.
-      </>
-    ),
-  },
-  {
-    emoji: "✍️",
-    name: "@writeWell",
-    backgroundColor: "bg-violet-300",
-    description: (
-      <>
-        Polishes your writing with improved clarity, professional tone, and
-        perfect grammar.
-      </>
-    ),
-  },
-  {
-    emoji: "🎓",
-    name: "@personalCoach",
-    backgroundColor: "bg-violet-300",
-    description: (
-      <>Provides expert guidance and detailed insights on your work.</>
-    ),
   },
 ];

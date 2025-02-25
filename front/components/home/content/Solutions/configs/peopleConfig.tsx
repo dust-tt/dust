@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -184,53 +183,4 @@ export const Stories: CustomerStory[] = [
   //   href: "https://blog.dust.tt/customer-story-lifen/",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "👋",
-    name: "@askHR",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Answers questions the&nbsp;People team gets most regularly about company
-        processes and&nbsp;policies based on&nbsp;internal documentation
-        directly on&nbsp;Slack
-      </>
-    ),
-  },
-  {
-    emoji: "🖋️",
-    name: "@hiringOps",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Drafts job descriptions and&nbsp;matching social media communications
-        based on&nbsp;company templates
-      </>
-    ),
-  },
-  {
-    emoji: "🏅",
-    name: "@reviewPrep",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Collects achievements, drafts actionable reviews, helps formulate
-        feedback
-      </>
-    ),
-  },
-  {
-    emoji: "🌱",
-    name: "@onboardingBuddy",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Acts as&nbsp;a friendly guide to&nbsp;help new team members feel welcome
-        and&nbsp;properly informed from&nbsp;day one and&nbsp;as they learn
-        about the&nbsp;company
-      </>
-    ),
-  },
 ];

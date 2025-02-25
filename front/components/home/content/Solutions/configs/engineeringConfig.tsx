@@ -19,7 +19,6 @@ import type {
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -188,50 +187,4 @@ export const Stories: CustomerStory[] = [
   //   href: "https://blog.dust.tt/customer-story-lifen/",
   //   src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
   // },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "👨‍💻",
-    name: "@engHelp",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Answers questions from&nbsp;the rest of&nbsp;the company
-        on&nbsp;engineering definitions, ongoing projects, and&nbsp;who's
-        on&nbsp;run
-      </>
-    ),
-  },
-  {
-    emoji: "🚨",
-    name: "@incidentsCopilot",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Assists in&nbsp;the event of&nbsp;an incident with data on&nbsp;previous
-        similar situation and&nbsp;their remediation
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    name: "@engWeekly",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>
-        Writes a&nbsp;table of&nbsp;shipped and&nbsp;unshipped
-        features—Summarizes incidents with impact, current status,
-        and&nbsp;remediation plans
-      </>
-    ),
-  },
-  {
-    emoji: "📚",
-    name: "@docDigest",
-    backgroundColor: "bg-blue-300",
-    description: (
-      <>Parses external documentation and helps you digest how to use it.</>
-    ),
-  },
 ];
