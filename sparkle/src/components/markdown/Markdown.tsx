@@ -281,7 +281,7 @@ function PreBlock({ children }: { children: React.ReactNode }) {
       className={cn(
         "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
         "s-border-border-dark dark:s-border-border-dark-night",
-        "s-bg-muted-background dark:s-bg-muted-background-night"
+        "s-bg-slate-100 dark:s-bg-slate-800"
       )}
     >
       {validChildrenContent ? children : fallbackData || children}
