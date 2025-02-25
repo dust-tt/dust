@@ -138,13 +138,13 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/solutions/content2.png"],
     },
     {
-      title: "Brand copywriting",
+      title: "Social media cross-posting",
       content:
         "Create engaging UX and social media content that consistently reflects your brand identity.",
       images: ["/static/landing/solutions/content3.png"],
     },
     {
-      title: "Market Intelligence",
+      title: "Market intelligence",
       content:
         "Monitor market movements and competitor activities to inform your content strategy.",
       images: ["/static/landing/solutions/content4.png"],
