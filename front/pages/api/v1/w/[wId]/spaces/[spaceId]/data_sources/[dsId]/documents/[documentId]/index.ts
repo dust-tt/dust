@@ -575,19 +575,10 @@ async function handler(
       }
 
       if (titleInTags && titleInTags !== title) {
-        logger.error(
+        logger.warn(
           { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-          "[CoreNodes] Inconsistency between tags and title."
+          "Inconsistency between tags and title."
         );
-        // TODO(2025-02-18 aubin): uncomment what follows (move the comment up).
-        // // Enforce consistency between title and titleWithTags.
-        // return apiError(req, res, {
-        //   status_code: 400,
-        //   api_error: {
-        //     type: "invalid_request_error",
-        //     message: `Invalid tags: title passed in tags does not match the document title.`,
-        //   },
-        // });
       }
 
       if (r.data.async === true) {
