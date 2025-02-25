@@ -90,7 +90,10 @@ impl<'de> Deserialize<'de> for NodeType {
             "Document" | "document" => Ok(NodeType::Document),
             "Table" | "table" => Ok(NodeType::Table),
             "Folder" | "folder" => Ok(NodeType::Folder),
-            _ => Err(serde::de::Error::unknown_variant(&s, &["Document", "document", "Table", "table", "Folder", "folder"])),
+            _ => Err(serde::de::Error::unknown_variant(
+                &s,
+                &["Document", "document", "Table", "table", "Folder", "folder"],
+            )),
         }
     }
 }
