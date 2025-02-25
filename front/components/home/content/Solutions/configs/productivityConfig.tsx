@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Polish communications professionally",
     "Get expert coaching on any topic",
   ],
-  image: "/static/landing/carouselImages/productivity.png",
+  image: "/static/landing/solutions/productivity1.png",
 };
 
 export const Hero: HeroProps = {
@@ -163,7 +163,7 @@ export const Quote: QuoteProps = {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/0hizroojjb?seo=true&videoFoam=true&captions=on",
+    "https://fast.wistia.net/embed/iframe/rnyvpdxfrk?web_component=true&seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [

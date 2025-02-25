@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Get instant answers through Slack with relevant context and sources",
     "Surface key patterns and blockers from project discussions",
   ],
-  image: "/static/landing/carouselImages/knowledge.png",
+  image: "/static/landing/solutions/knowledge1.png",
 };
 
 export const Hero: HeroProps = {
@@ -163,7 +163,7 @@ export const Quote: QuoteProps = {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/0hizroojjb?seo=true&videoFoam=true&captions=on",
+    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?web_component=true&seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [

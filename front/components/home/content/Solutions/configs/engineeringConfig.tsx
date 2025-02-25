@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Create instant team updates",
     "Surface relevant context and solutions from past incidents",
   ],
-  image: "/static/landing/carouselImages/engineering.png",
+  image: "/static/landing/engineering/incidentHandling.png",
 };
 
 export const Hero: HeroProps = {
@@ -126,28 +126,28 @@ export const UseCases: UseCaseProps = {
     "Customize and automate tasks without writing a single line of code.",
   items: [
     {
-      title: "First responder",
+      title: "Debugging assistant",
       content:
         "Fix code errors by retrieving internal documentation, updates, and Slack discussions. Stay focused on your core work.",
-      images: ["/static/landing/solutions/eng1.png"],
+      images: ["/static/landing/engineering/debuggingAssistant.png"],
     },
     {
       title: "Incident handling",
       content:
         "Search runbooks and past incidents to speed up resolution, while automatically generating reports and communications.",
-      images: ["/static/landing/solutions/eng2.png"],
+      images: ["/static/landing/engineering/incidentHandling.png"],
     },
     {
       title: "Team updates",
       content:
         "Generate concise summaries of code changes, incidents, and technical discussions to keep everyone aligned.",
-      images: ["/static/landing/solutions/eng3.png"],
+      images: ["/static/landing/engineering/teamUpdates.png"],
     },
     {
       title: "External doc parser",
       content:
         "Chat with any technical documentation to quickly find answers and follow step-by-step guidance.",
-      images: ["/static/landing/solutions/eng4.png"],
+      images: ["/static/landing/engineering/docParser.png"],
     },
   ],
 };
