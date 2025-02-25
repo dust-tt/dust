@@ -1,5 +1,10 @@
 import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, MIME_TYPES, Ok } from "@dust-tt/types";
+import {
+  Err,
+  getOAuthConnectionAccessToken,
+  MIME_TYPES,
+  Ok,
+} from "@dust-tt/types";
 import _ from "lodash";
 import { v4 as uuidv4 } from "uuid";
 
@@ -8,13 +13,23 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { BaseConnectorManager, ConnectorManagerError } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
-import { launchNotionSyncWorkflow, stopNotionSyncWorkflow } from "@connectors/connectors/notion/temporal/client";
+import {
+  launchNotionSyncWorkflow,
+  stopNotionSyncWorkflow,
+} from "@connectors/connectors/notion/temporal/client";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { NotionConnectorState, NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionConnectorState,
+  NotionDatabase,
+  NotionPage,
+} from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";

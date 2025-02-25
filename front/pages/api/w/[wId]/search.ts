@@ -1,4 +1,7 @@
-import type { DataSourceViewContentNode, WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";

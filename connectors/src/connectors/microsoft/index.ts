@@ -1,4 +1,9 @@
-import type { ConnectorPermission, ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  Result,
+} from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 import { Client } from "@microsoft/microsoft-graph-client";
 
@@ -7,7 +12,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { BaseConnectorManager, ConnectorManagerError } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
@@ -27,8 +35,14 @@ import {
   getTeams,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
-import { internalIdFromTypeAndPath, typeAndPathFromInternalId } from "@connectors/connectors/microsoft/lib/utils";
-import { getRootNodesToSyncFromResources, populateDeltas } from "@connectors/connectors/microsoft/temporal/activities";
+import {
+  internalIdFromTypeAndPath,
+  typeAndPathFromInternalId,
+} from "@connectors/connectors/microsoft/lib/utils";
+import {
+  getRootNodesToSyncFromResources,
+  populateDeltas,
+} from "@connectors/connectors/microsoft/temporal/activities";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
