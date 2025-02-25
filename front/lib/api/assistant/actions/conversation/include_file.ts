@@ -346,7 +346,10 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
     // action for the model (token count) and the rendering of the action details (file title).
     await action.update({
       tokensCount: tokensRes.value.tokens.length,
-      fileTitle: fileRes.value.title,
+      fileTitle:
+        fileRes.value.title?.length > 255
+          ? `...${fileRes.value.title?.slice(-252)}`
+          : fileRes.value.title,
     });
 
     yield {
