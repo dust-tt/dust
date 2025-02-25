@@ -21,14 +21,14 @@ import { SalesCaroussel } from "@app/pages/home/solutions/sales";
 export function VerticalSection() {
   const carouselSections = [
     { title: "Sales", component: SalesCaroussel },
+    { title: "Marketing", component: MarketingCaroussel },
     { title: "Customer Support", component: CustomerCaroussel },
     { title: "Engineering", component: EngineeringCaroussel },
     { title: "Data Analytics", component: DataCaroussel },
-    { title: "IT", component: ITCaroussel },
     { title: "Knowledge", component: KnowledgeCaroussel },
+    { title: "IT", component: ITCaroussel },
     { title: "Legal", component: LegalCaroussel },
     { title: "People", component: PeopleCaroussel },
-    { title: "Marketing", component: MarketingCaroussel },
     { title: "Productivity", component: ProductivityCaroussel },
   ];
 
