@@ -27,7 +27,11 @@ export function getTagsForPage({
 
   const customTags = [];
   for (const property of parsedProperties) {
-    if (property.type === "multi_select") {
+    if (
+      property.type === "multi_select" ||
+      property.type === "select" ||
+      property.type === "status"
+    ) {
       if (property.value?.length) {
         if (!Array.isArray(property.value)) {
           customTags.push(`${property.key}:${property.value}`);
