@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Navigate legal research efficiently",
     "Generate compliant legal documents",
   ],
-  image: "/static/landing/carouselImages/legal.png",
+  image: "/static/landing/solutions/legal1.png",
 };
 
 export const Hero: HeroProps = {

@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Get instant answers through Slack with relevant context and sources",
     "Surface key patterns and blockers from project discussions",
   ],
-  image: "/static/landing/carouselImages/knowledge.png",
+  image: "/static/landing/solutions/knowledge1.png",
 };
 
 export const Hero: HeroProps = {

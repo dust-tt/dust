@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Answer complex data questions with documentation context",
     "Enable non-technical teams to analyze data independently",
   ],
-  image: "/static/landing/carouselImages/data.png",
+  image: "/static/landing/data-analytics/analyst.png",
 };
 
 export const Hero: HeroProps = {

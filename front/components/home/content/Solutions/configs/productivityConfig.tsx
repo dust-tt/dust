@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Polish communications professionally",
     "Get expert coaching on any topic",
   ],
-  image: "/static/landing/carouselImages/productivity.png",
+  image: "/static/landing/solutions/productivity1.png",
 };
 
 export const Hero: HeroProps = {

@@ -33,7 +33,7 @@ export const pageSettings: pageSettingsProps = {
     "Identify and anticipate customer needs",
     "Convert tickets into searchable knowledge base",
   ],
-  image: "/static/landing/carouselImages/support.png",
+  image: "/static/landing/support/ticketResolution.png",
 };
 
 export const Hero: HeroProps = {
@@ -123,25 +123,25 @@ export const UseCases: UseCaseProps = {
       title: "Ticket deflection",
       content:
         "Integrate AI agents in your product interface to deflect Tier 1 tickets and reduce support workload.",
-      images: ["/static/landing/solutions/support1.png"],
+      images: ["/static/landing/support/ticketDeflection.png"],
     },
     {
       title: "Ticket resolution",
       content:
         "Speed up resolution by suggesting tailored responses drawn from your knowledge base and past solutions.",
-      images: ["/static/landing/solutions/support2.png"],
+      images: ["/static/landing/support/ticketResolution.png"],
     },
     {
       title: "Knowledge base augmentation",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
-      images: ["/static/landing/solutions/support3.png"],
+      images: ["/static/landing/support/docExpert.png"],
     },
     {
       title: "Ticket insights",
       content:
         "Turn support interactions into learning opportunities that enhance your offering and service standards.",
-      images: ["/static/landing/solutions/support4.png"],
+      images: ["/static/landing/support/ticketInsights.png"],
     },
   ],
 };

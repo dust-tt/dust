@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Streamline procurement processes",
     "Surface IT trends for proactive improvements",
   ],
-  image: "/static/landing/carouselImages/it.png",
+  image: "/static/landing/it/itHelpdesk.png",
 };
 
 export const Hero: HeroProps = {
