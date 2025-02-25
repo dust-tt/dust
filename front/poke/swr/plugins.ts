@@ -15,9 +15,11 @@ import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[plu
 export function usePokeListPluginForResourceType({
   disabled,
   resourceType,
+  workspaceResource,
 }: {
   disabled?: boolean;
   resourceType: string;
+  workspaceResource?: PluginWorkspaceResource;
 }) {
   const workspacesFetcher: Fetcher<PokeListPluginsForScopeResponseBody> =
     fetcher;
@@ -25,6 +27,13 @@ export function usePokeListPluginForResourceType({
   const urlSearchParams = new URLSearchParams({
     resourceType,
   });
+
+  if (workspaceResource) {
+    urlSearchParams.append(
+      "workspaceResource",
+      JSON.stringify(workspaceResource)
+    );
+  }
 
   const { data, error } = useSWRWithDefaults(
     `/api/poke/plugins?${urlSearchParams.toString()}`,

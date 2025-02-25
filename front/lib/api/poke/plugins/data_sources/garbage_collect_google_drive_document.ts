@@ -1,8 +1,9 @@
-import type { Result } from "@dust-tt/types";
+import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
@@ -36,8 +37,8 @@ export async function garbageCollectGoogleDriveDocument(
   return new Ok(undefined);
 }
 
-export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
-  {
+export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
+  manifest: {
     id: "garbage-collect-google-drive-document",
     name: "GC Google Drive Document",
     description: "Garbage collect Google Drive document.",
@@ -50,7 +51,21 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
+  isVisible: async (
+    auth: Authenticator,
+    workspaceResource: PluginWorkspaceResource
+  ): Promise<boolean> => {
+    const dataSource = await DataSourceResource.fetchById(
+      auth,
+      workspaceResource.resourceId
+    );
+    if (!dataSource) {
+      return false;
+    }
+
+    return dataSource.connectorProvider === "google_drive";
+  },
+  execute: async (auth, dataSourceId, args) => {
     if (!dataSourceId) {
       return new Err(new Error("Data source not found."));
     }
@@ -84,5 +99,5 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
       display: "text",
       value: `Document ${documentId} garbage collected successfully.`,
     });
-  }
-);
+  },
+});

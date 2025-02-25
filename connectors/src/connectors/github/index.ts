@@ -271,7 +271,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(connectionId, pageNumber);
+        const pageRes = await getReposPage(c.id, connectionId, pageNumber);
 
         if (pageRes.isErr()) {
           return new Err(
@@ -337,7 +337,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
                 },
                 order: [["updatedAt", "DESC"]],
               }),
-              getRepo(connectionId, repoId),
+              getRepo(c.id, connectionId, repoId),
               GithubCodeRepository.findOne({
                 where: {
                   connectorId: c.id,
@@ -551,7 +551,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     await concurrentExecutor(
       uniqueRepoIdsArray,
       async (repoId) => {
-        const repoRes = await getRepo(connectionId, repoId);
+        const repoRes = await getRepo(c.id, connectionId, repoId);
         if (repoRes.isErr()) {
           // We need to throw the error to stop the execution of the concurrentExecutor.
           throw repoRes.error;
@@ -844,6 +844,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Ok(void 0);
       }
 
+      case "useProxy": {
+        await connector.update({
+          useProxy: configValue === "true",
+        });
+        return new Ok(void 0);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -878,6 +885,9 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         }
 
         return new Ok(connectorState.codeSyncEnabled.toString());
+      }
+      case "useProxy": {
+        return new Ok(connector.useProxy?.toString() ?? "false");
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));

@@ -3,8 +3,8 @@ import { Err, Ok } from "@dust-tt/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
 
-export const createSpacePlugin = createPlugin(
-  {
+export const createSpacePlugin = createPlugin({
+  manifest: {
     id: "create-space",
     name: "Create a Space",
     description: "Create a new space",
@@ -27,7 +27,7 @@ export const createSpacePlugin = createPlugin(
       },
     },
   },
-  async (auth, _, args) => {
+  execute: async (auth, _, args) => {
     const { name, isRestricted } = args;
 
     const formattedName = name.trim();
@@ -53,5 +53,5 @@ export const createSpacePlugin = createPlugin(
       display: "text",
       value: `Space ${space.name} created successfully`,
     });
-  }
-);
+  },
+});

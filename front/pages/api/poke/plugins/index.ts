@@ -1,4 +1,7 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  PluginWorkspaceResource,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -43,13 +46,26 @@ async function handler(
         });
       }
 
+      const workspaceResource: PluginWorkspaceResource | undefined = req.query
+        .workspaceResource
+        ? JSON.parse(req.query.workspaceResource as string)
+        : undefined;
+
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
-      const pluginList = plugins.map((p) => ({
-        id: p.manifest.id,
-        name: p.manifest.name,
-        description: p.manifest.description,
-      }));
+      const visiblePluginResults = await Promise.all(
+        plugins.map(
+          (p) => !workspaceResource || p.isVisible(auth, workspaceResource)
+        )
+      );
+
+      const pluginList = plugins
+        .filter((_, i) => visiblePluginResults[i])
+        .map((p) => ({
+          id: p.manifest.id,
+          name: p.manifest.name,
+          description: p.manifest.description,
+        }));
 
       res.status(200).json({ plugins: pluginList });
       return;
