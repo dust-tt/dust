@@ -19,11 +19,7 @@ import {
   isGoogleDriveSpreadSheetFile,
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { deleteSpreadsheet } from "@connectors/connectors/google_drive/temporal/spreadsheets";
-import {
-  getAuthObject,
-  getDriveFileId,
-  getInternalId,
-} from "@connectors/connectors/google_drive/temporal/utils";
+import { getAuthObject, getDriveFileId, getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
   deleteDataSourceDocument,
@@ -32,11 +28,7 @@ import {
   updateDataSourceTableParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import {
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
-} from "@connectors/lib/models/google_drive";
+import { GoogleDriveFiles, GoogleDriveFolders, GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -52,7 +44,7 @@ export async function isDriveObjectExpandable({
   connectorId: ModelId;
   viewType: ContentNodesViewType;
 }): Promise<boolean> {
-  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "tables") {
+  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "table") {
     // In tables view, Spreadsheets can be expanded to show their sheets.
     return !!(await GoogleDriveSheet.findOne({
       attributes: ["id"],

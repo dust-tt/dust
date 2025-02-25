@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
 
 import type {
@@ -11,37 +6,22 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import {
-  BaseConnectorManager,
-  ConnectorManagerError,
-} from "@connectors/connectors/interface";
-import {
-  allowSyncZendeskBrand,
-  forbidSyncZendeskBrand,
-} from "@connectors/connectors/zendesk/lib/brand_permissions";
+import { BaseConnectorManager, ConnectorManagerError } from "@connectors/connectors/interface";
+import { allowSyncZendeskBrand, forbidSyncZendeskBrand } from "@connectors/connectors/zendesk/lib/brand_permissions";
 import {
   allowSyncZendeskCategory,
   allowSyncZendeskHelpCenter,
   forbidSyncZendeskCategory,
   forbidSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import {
-  getBrandInternalId,
-  getIdsFromInternalId,
-} from "@connectors/connectors/zendesk/lib/id_conversions";
-import {
-  retrieveAllSelectedNodes,
-  retrieveChildrenNodes,
-} from "@connectors/connectors/zendesk/lib/permissions";
+import { getBrandInternalId, getIdsFromInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
+import { retrieveAllSelectedNodes, retrieveChildrenNodes } from "@connectors/connectors/zendesk/lib/permissions";
 import {
   allowSyncZendeskTickets,
   forbidSyncZendeskTickets,
 } from "@connectors/connectors/zendesk/lib/ticket_permissions";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskCurrentUser,
-  isUserAdmin,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { fetchZendeskCurrentUser, isUserAdmin } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskFullSyncWorkflow,
   launchZendeskGarbageCollectionWorkflow,
@@ -332,7 +312,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         connector,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);

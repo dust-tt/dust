@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import {
   Err,
   getGoogleIdsFromSheetContentNodeInternalId,
@@ -19,20 +14,14 @@ import type { InferAttributes, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
-import {
-  getLocalParents,
-  isDriveObjectExpandable,
-} from "@connectors/connectors/google_drive/lib";
+import { getLocalParents, isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
-import {
-  folderHasChildren,
-  getDrives,
-} from "@connectors/connectors/google_drive/temporal/activities";
+import { folderHasChildren, getDrives } from "@connectors/connectors/google_drive/temporal/activities";
 import {
   launchGoogleDriveFullSyncWorkflow,
   launchGoogleDriveIncrementalSyncWorkflow,
@@ -55,10 +44,7 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import {
-  BaseConnectorManager,
-  ConnectorManagerError,
-} from "@connectors/connectors/interface";
+import { BaseConnectorManager, ConnectorManagerError } from "@connectors/connectors/interface";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -248,7 +234,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     const c = await ConnectorResource.fetchById(this.connectorId);
-    const isTablesView = viewType === "tables";
+    const isTablesView = viewType === "table";
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(

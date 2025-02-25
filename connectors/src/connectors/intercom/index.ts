@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
 import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
@@ -34,19 +29,13 @@ import {
   getTeamsInternalId,
   isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
-import {
-  launchIntercomSyncWorkflow,
-  stopIntercomSyncWorkflow,
-} from "@connectors/connectors/intercom/temporal/client";
+import { launchIntercomSyncWorkflow, stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import {
-  BaseConnectorManager,
-  ConnectorManagerError,
-} from "@connectors/connectors/interface";
+import { BaseConnectorManager, ConnectorManagerError } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
@@ -344,13 +333,13 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       const convosNodes = await retrieveIntercomConversationsPermissions({
         connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       const nodes = [...helpCenterNodes, ...convosNodes];
       return new Ok(nodes);
