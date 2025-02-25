@@ -25,8 +25,8 @@ import type { SolutionSectionAssistantBlockProps } from "@app/components/home/So
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-orange-200",
-  to: "to-orange-500",
+  from: "from-blue-200",
+  to: "to-blue-500",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
