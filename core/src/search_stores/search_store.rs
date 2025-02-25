@@ -565,7 +565,7 @@ impl ElasticsearchSearchStore {
         }
 
         if let Some(node_types) = &filter.node_types {
-            bool_query = bool_query.filter(Query::terms("node_type", terms));
+            bool_query = bool_query.filter(Query::terms("node_type", node_types));
         }
 
         if let Some(parent_id) = &filter.parent_id {
