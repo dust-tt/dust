@@ -1232,7 +1232,7 @@ impl Store for PostgresStore {
             )
             .await?;
 
-        let d: Option<(i64, i64, String, String, String)> = match r.len() {
+        let d: Option<(i64, i64, String, String, Option<String>)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -1254,7 +1254,8 @@ impl Store for PostgresStore {
                     &data_source_id,
                     &internal_id,
                     &data_source_config,
-                    &name,
+                    // TODO(keyword-search) Remove this once name has been backfilled.
+                    &name.unwrap_or("".to_string()),
                 )))
             }
         }
