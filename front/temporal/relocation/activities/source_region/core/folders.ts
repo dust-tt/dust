@@ -42,7 +42,7 @@ export async function getDataSourceFolders({
         view_filter: [],
       },
     ],
-    node_types: ["Folder", "folder"],
+    node_types: ["folder"],
   };
 
   const options: CoreAPISearchCursorRequest = {

@@ -47,7 +47,7 @@ export async function getDataSourceTables({
         view_filter: [],
       },
     ],
-    node_types: ["Table", "table"],
+    node_types: ["table"],
   };
 
   const options: CoreAPISearchCursorRequest = {

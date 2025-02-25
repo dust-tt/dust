@@ -51,13 +51,13 @@ makeScript({}, async ({ execute }, logger) => {
       const contentNodesDocumentsRes = await getContentNodesForDataSourceView(
         dataSourceViewResource,
         {
-          viewType: "documents",
+          viewType: "document",
         }
       );
       const contentNodesTablesRes = await getContentNodesForDataSourceView(
         dataSourceViewResource,
         {
-          viewType: "tables",
+          viewType: "table",
         }
       );
 

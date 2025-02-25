@@ -35,7 +35,7 @@ export const DocumentOrTableDeleteDialog = ({
   const [isLoading, setIsLoading] = useState(false);
   const sendNotification = useSendNotification();
 
-  const isTable = contentNode.type === "Table" || contentNode.type === "table";
+  const isTable = contentNode.type === "table";
   const itemType = isTable ? "table" : "document";
 
   const handleDelete = async () => {

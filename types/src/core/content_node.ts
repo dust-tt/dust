@@ -1,16 +1,6 @@
 import { ProviderVisibility } from "../front/lib/connectors_api";
 
-<<<<<<< HEAD
-export type ContentNodeType =
-  | "Document"
-  | "Table"
-  | "Folder"
-  | "document"
-  | "table"
-  | "folder";
-=======
-export type ContentNodeType = "document" | "table" | "Document" | "Table" | "folder";
->>>>>>> e7c9a5929 (WIP)
+export type ContentNodeType = "document" | "table" | "folder";
 
 export type CoreAPIContentNode = {
   data_source_id: string;

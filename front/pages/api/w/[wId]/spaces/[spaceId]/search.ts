@@ -30,8 +30,6 @@ const SearchRequestBody = t.type({
   viewType: t.union([
     t.literal("table"),
     t.literal("document"),
-    t.literal("tables"),
-    t.literal("documents"),
     t.literal("all"),
   ]),
   limit: t.number,

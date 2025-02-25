@@ -10,8 +10,14 @@ import type {
 import { assertNever, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
-import { FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES, getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
-import type { CursorPaginationParams, OffsetPaginationParams } from "@app/lib/api/pagination";
+import {
+  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
+  getContentNodeFromCoreNode,
+} from "@app/lib/api/content_nodes";
+import type {
+  CursorPaginationParams,
+  OffsetPaginationParams,
+} from "@app/lib/api/pagination";
 import { isCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";

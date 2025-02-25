@@ -45,7 +45,7 @@ export async function getDataSourceDocuments({
         view_filter: [],
       },
     ],
-    node_types: ["Document", "document"],
+    node_types: ["document"],
   };
 
   const options: CoreAPISearchCursorRequest = {

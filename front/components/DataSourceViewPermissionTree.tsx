@@ -27,8 +27,7 @@ const getUseResourceHook =
       resources: res.nodes.map((n) => ({
         ...n,
         preventSelection:
-          n.preventSelection ||
-          (viewType === "tables" && n.type !== "Table" && n.type !== "table"),
+          n.preventSelection || (viewType === "table" && n.type !== "table"),
       })),
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,
@@ -84,9 +83,9 @@ export function DataSourceViewPermissionTree({
       selectedNodes={selectedNodes}
       setSelectedNodes={setSelectedNodes}
       emptyComponent={
-        viewType === "tables" ? (
+        viewType === "table" ? (
           <Tree.Empty label="No tables" />
-        ) : viewType === "documents" ? (
+        ) : viewType === "document" ? (
           <Tree.Empty label="No documents" />
         ) : (
           <Tree.Empty label="No data" />

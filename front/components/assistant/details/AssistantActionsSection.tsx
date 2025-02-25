@@ -187,7 +187,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="documents"
+                viewType="document"
               />
             </div>
           ))}
@@ -202,7 +202,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="tables"
+                viewType="table"
               />
             </div>
           ))}
@@ -273,7 +273,7 @@ function renderOtherAction(
           owner={owner}
           dataSourceViews={dataSourceViews}
           dataSourceConfigurations={action.dataSources}
-          viewType="documents"
+          viewType="document"
         />
       </ActionSection>
     );
@@ -561,7 +561,7 @@ function DataSourceViewSelectedNodes({
         <Tree.Item
           key={node.internalId}
           label={node.title}
-          type={node.expandable && viewType !== "tables" ? "node" : "leaf"}
+          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
           visual={getVisualForContentNode(node)}
           className="whitespace-nowrap"
           actions={
@@ -584,17 +584,17 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.type === "Document" || node.type === "document") {
+                  if (node.type === "document") {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.type === "Document" || node.type === "document"
+                  node.type === "document"
                     ? ""
                     : "pointer-events-none opacity-0"
                 )}
-                disabled={node.type !== "Document" && node.type !== "document"}
+                disabled={node.type !== "document"}
                 variant="outline"
               />
             </div>
