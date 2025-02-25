@@ -10,43 +10,16 @@ import type {
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  HeroProps,
+  pageSettingsProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-
-// Interface definitions
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-interface HeroProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  visuals: {
-    src: string;
-    alt: string;
-    depth: number;
-  }[];
-  ctaButtons: {
-    primary: {
-      label: string;
-      href: string;
-      icon: typeof RocketIcon;
-    };
-    secondary: {
-      label: string;
-      href: string;
-    };
-  };
-}
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -59,6 +32,13 @@ export const pageSettings: pageSettingsProps = {
       Scale IT support, automate routine requests, and keep your IT desk clean.
     </>
   ),
+  bulletPoints: [
+    "Answer employee IT questions instantly",
+    "Guide system administrators through troubleshooting",
+    "Streamline procurement processes",
+    "Surface IT trends for proactive improvements",
+  ],
+  image: "/static/landing/carouselImages/it.png",
 };
 
 export const Hero: HeroProps = {

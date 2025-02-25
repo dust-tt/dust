@@ -1,3 +1,5 @@
+import type { RocketIcon } from "@dust-tt/sparkle";
+
 export interface pageSettingsProps {
   uptitle: string;
   title: React.ReactNode;

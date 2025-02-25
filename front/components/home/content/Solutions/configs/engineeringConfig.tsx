@@ -10,43 +10,16 @@ import type {
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  HeroProps,
+  pageSettingsProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-
-// Interface definitions
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-interface HeroProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  visuals: {
-    src: string;
-    alt: string;
-    depth: number;
-  }[];
-  ctaButtons: {
-    primary: {
-      label: string;
-      href: string;
-      icon: typeof RocketIcon;
-    };
-    secondary: {
-      label: string;
-      href: string;
-    };
-  };
-}
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -60,6 +33,13 @@ export const pageSettings: pageSettingsProps = {
       focused on building.
     </>
   ),
+  bulletPoints: [
+    "Get real-time coding support and troubleshooting",
+    "Speed up incident resolution and communication",
+    "Create instant team updates",
+    "Surface relevant context and solutions from past incidents",
+  ],
+  image: "/static/landing/carouselImages/engineering.png",
 };
 
 export const Hero: HeroProps = {

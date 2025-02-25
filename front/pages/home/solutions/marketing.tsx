@@ -249,9 +249,6 @@ export function MarketingCaroussel() {
     <CarousselContentBlock
       image={pageSettingsNew.image}
       title={pageSettingsNew.uptitle}
-      subtitle={pageSettingsNew.title}
-      description={pageSettingsNew.description}
-      assistants={assistantExamples.slice(0, 4)}
       from={pageSettingsNew.from}
       to={pageSettingsNew.to}
       border="border-pink-100/60"

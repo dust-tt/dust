@@ -4,7 +4,6 @@ import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
-  AssistantExamples,
   Benefits,
   DemoVideo,
   Hero,
@@ -134,9 +133,6 @@ export function CustomerCaroussel() {
     <CarousselContentBlock
       image={pageSettings.image}
       title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
       quote={Quote}

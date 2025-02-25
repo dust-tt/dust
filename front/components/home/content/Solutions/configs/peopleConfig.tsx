@@ -10,6 +10,10 @@ import type {
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  HeroProps,
+  pageSettingsProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
@@ -17,46 +21,21 @@ import type { DemoVideoProps } from "@app/components/home/content/Solutions/Demo
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
 
-// Interface definitions
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-interface HeroProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  visuals: {
-    src: string;
-    alt: string;
-    depth: number;
-  }[];
-  ctaButtons: {
-    primary: {
-      label: string;
-      href: string;
-      icon: typeof RocketIcon;
-    };
-    secondary: {
-      label: string;
-      href: string;
-    };
-  };
-}
-
 // Config exports
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-blue-200",
-  to: "to-blue-500",
+  from: "from-orange-200",
+  to: "to-orange-500",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
+  bulletPoints: [
+    "Answer recurring HR questions with information from your policies",
+    "Onboard new hires through company processes and documentation",
+    "Guide managers to deliver quality feedback based on your company guidelines",
+  ],
+  image: "/static/landing/carouselImages/people.png",
 };
 
 export const Hero: HeroProps = {
