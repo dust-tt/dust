@@ -100,16 +100,18 @@ async function handler(
         });
       }
 
-      const { urls } = bodyValidation.right;
+      const { urls, method } = bodyValidation.right;
 
       const syncResults = (
         await syncNotionUrls({
           urlsArray: urls,
           dataSourceId: dsId,
           workspaceId: owner.sId,
+          method,
         })
       ).map((urlResult) => ({
         url: urlResult.url,
+        method,
         timestamp: urlResult.timestamp,
         success: urlResult.success,
         ...(urlResult.error && { error_message: urlResult.error.message }),
@@ -122,6 +124,7 @@ async function handler(
         await redis.zAdd(
           redisKey,
           syncResults.map((urlResult) => ({
+            method,
             score: urlResult.timestamp,
             value: JSON.stringify(urlResult),
           }))
