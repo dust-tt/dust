@@ -440,6 +440,23 @@ impl DataSource {
         Ok(())
     }
 
+    pub async fn update_name(
+        &mut self,
+        store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
+        name: &str,
+    ) -> Result<()> {
+        self.name = name.to_string();
+
+        store
+            .update_data_source_name(&self.project, &self.data_source_id, &self.name)
+            .await?;
+
+        search_store.index_data_source(self).await?;
+
+        Ok(())
+    }
+
     pub fn created(&self) -> u64 {
         self.created
     }
