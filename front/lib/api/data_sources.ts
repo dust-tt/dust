@@ -41,7 +41,7 @@ import type { Transaction } from "sequelize";
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -337,23 +337,16 @@ export async function upsertDocument({
   const nonNullTags = tags || [];
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
+    ?.substring(6);
   if (!titleInTags) {
     nonNullTags.push(`title:${title}`);
   }
 
   if (titleInTags && titleInTags !== title) {
-    logger.error(
+    logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // new DustError(
-    //   "invalid_title_in_tags",
-    //   "Invalid tags: title passed in tags does not match the table title."
-    // )
   }
 
   // Add selection of tags as prefix to the section if they are present.
@@ -542,7 +535,6 @@ export interface UpsertTableArgs {
   async?: boolean;
   title: string;
   mimeType: string;
-  csv?: string;
   fileId?: string;
   sourceUrl?: string | null;
   timestamp?: number | null;
@@ -580,7 +572,7 @@ export async function upsertTable({
         | "invalid_csv_and_file"
         | "missing_csv"
         | "data_source_error"
-        | "invalid_csv"
+        | "invalid_csv_content"
         | "invalid_url"
         | "table_not_found"
         | "file_not_found"
@@ -593,20 +585,12 @@ export async function upsertTable({
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const { name, description, csv, fileId, truncate, async } = params;
-  if (!csv && !fileId && truncate) {
+  const { name, description, fileId, truncate, async } = params;
+  if (!fileId && truncate) {
     return new Err({
       name: "dust_error",
       code: "missing_csv",
       message: "Cannot truncate a table without providing a CSV.",
-    });
-  }
-
-  if (csv && fileId) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_csv_and_file",
-      message: "Cannot provide both a `csv` and a `fileId`.",
     });
   }
 
@@ -647,31 +631,21 @@ export async function upsertTable({
   const tableTags = params.tags ?? [];
   const titleInTags = tableTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
+    ?.substring(6);
   if (!titleInTags) {
     tableTags.push(`title:${params.title}`);
   }
 
   if (titleInTags && titleInTags !== params.title) {
-    logger.error(
+    logger.warn(
       {
         dataSourceId: dataSource.sId,
         tableId,
         titleInTags,
         title: params.title,
       },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // return apiError(req, res, {
-    //   status_code: 400,
-    //   api_error: {
-    //     type: "invalid_request_error",
-    //     message: `Invalid tags: title passed in tags does not match the table title.`,
-    //   },
-    // });
   }
 
   let standardizedSourceUrl: string | null = null;
@@ -692,42 +666,44 @@ export async function upsertTable({
   }
 
   if (async) {
-    if (csv) {
-      // Ensure the CSV is valid before enqueuing the upsert.
-      const csvRowsRes = await rowsFromCsv({ auth, csv });
-      if (csvRowsRes.isErr()) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_csv",
-          message: "Failed to parse CSV: " + csvRowsRes.error.message,
-        });
-      }
-      logger.info(
-        {
-          workspaceId: owner.sId,
-          tableId,
-          method: "upsertTable",
-        },
-        "[CSV-FILE] Received direct CSV not file"
-      );
-    }
-
     if (fileId) {
       const file = await FileResource.fetchById(auth, fileId);
-      if (file) {
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-        const schemaRes = await coreAPI.tableValidateCSVContent({
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          upsertQueueBucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      if (!file) {
+        return new Err({
+          name: "dust_error",
+          code: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
         });
+      }
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-        if (schemaRes.isErr()) {
-          // If we have a schema error, we return early.
+      const schemaRes = await coreAPI.tableValidateCSVContent({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        bucket: file.getBucketForVersion("processed").name,
+        bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      });
+      if (schemaRes.isErr()) {
+        if (schemaRes.error.code === "invalid_csv_content") {
           return new Err({
             name: "dust_error",
-            code: "invalid_csv",
+            code: "invalid_csv_content",
+            message: schemaRes.error.message,
+          });
+        } else {
+          logger.error(
+            {
+              bucket: file.getBucketForVersion("processed").name,
+              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+              dataSourceId: dataSource.sId,
+              error: schemaRes.error,
+            },
+            "Error validating CSV content"
+          );
+          return new Err({
+            name: "dust_error",
+            code: "internal_error",
             message: schemaRes.error.message,
           });
         }
@@ -745,7 +721,7 @@ export async function upsertTable({
         tableTags,
         tableParentId,
         tableParents,
-        csv: csv ?? null,
+        csv: null,
         fileId: fileId ?? null,
         truncate,
         title: params.title,
@@ -778,7 +754,6 @@ export async function upsertTable({
     tableTags,
     tableParentId,
     tableParents,
-    csv: csv ?? null,
     fileId: fileId ?? null,
     truncate,
     title: params.title,
@@ -796,29 +771,11 @@ export async function upsertTable({
     }
 
     if (tableRes.error.type === "invalid_request_error") {
-      if ("csvParsingError" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_csv",
-          message:
-            "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
-        });
-      } else if ("inputValidationError" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "internal_error",
-          message:
-            "Invalid request body: " + tableRes.error.inputValidationError,
-        });
-      } else if ("message" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_parent_id",
-          message: "Invalid request body: " + tableRes.error.message,
-        });
-      } else {
-        assertNever(tableRes.error);
-      }
+      return new Err({
+        name: "dust_error",
+        code: "invalid_parent_id",
+        message: "Invalid request body: " + tableRes.error.message,
+      });
     }
 
     if (tableRes.error.type === "not_found_error") {
@@ -933,6 +890,7 @@ export async function createDataSourceWithoutProvider(
       },
     },
     credentials: dustManagedCredentials(),
+    name,
   });
 
   if (dustDataSource.isErr()) {

@@ -1,4 +1,4 @@
-import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -38,11 +38,7 @@ const VideoPlayer = () => {
 };
 
 export function IntroSection() {
-  const MainVisual = () => (
-    <Hover3D depth={-40} perspective={1000} className="relative w-full">
-      <VideoPlayer />
-    </Hover3D>
-  );
+  const MainVisual = () => <VideoPlayer />;
 
   return (
     <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">

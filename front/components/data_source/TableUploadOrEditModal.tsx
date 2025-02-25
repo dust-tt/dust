@@ -117,7 +117,7 @@ export const TableUploadOrEditModal = ({
             parentId: undefined,
             parents: undefined,
             async: undefined,
-            csv: undefined,
+            fileId: undefined,
           });
         } else {
           // Replacing the content of an existing table with a new file.
@@ -445,7 +445,8 @@ export const TableUploadOrEditModal = ({
           }}
           rightButtonProps={{
             label: isUpserting ? "Saving..." : "Save",
-            onClick: async () => {
+            onClick: async (event: MouseEvent) => {
+              event.preventDefault();
               await onSave();
             },
             disabled:

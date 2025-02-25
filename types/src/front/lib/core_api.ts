@@ -1,6 +1,7 @@
 import { createParser } from "eventsource-parser";
+import * as t from "io-ts";
 
-import { ContentNodeType, CoreAPIContentNode } from "../../core/content_node";
+import { CoreAPIContentNode } from "../../core/content_node";
 import {
   CoreAPIDataSource,
   CoreAPIDataSourceConfig,
@@ -230,6 +231,8 @@ export interface CoreAPISearchCursorRequest {
 export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
+  hit_count: number;
+  hit_count_is_accurate: boolean;
 }
 
 export interface CoreAPISearchTagsResponse {
@@ -243,17 +246,33 @@ export interface CoreAPISearchTagsResponse {
   };
 }
 
-export type CoreAPIDatasourceViewFilter = {
-  data_source_id: string;
-  view_filter: string[];
-};
+export const CoreAPIDatasourceViewFilterSchema = t.type({
+  data_source_id: t.string,
+  view_filter: t.array(t.string),
+});
 
-export type CoreAPINodesSearchFilter = {
-  data_source_views: CoreAPIDatasourceViewFilter[];
-  node_ids?: string[];
-  parent_id?: string;
-  node_types?: ContentNodeType[];
-};
+export type CoreAPIDatasourceViewFilter = t.TypeOf<
+  typeof CoreAPIDatasourceViewFilterSchema
+>;
+
+export const MIN_SEARCH_QUERY_SIZE = 3;
+
+export const CoreAPINodesSearchFilterSchema = t.intersection([
+  t.type({
+    data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
+  }),
+  t.partial({
+    node_ids: t.array(t.string),
+    parent_id: t.string,
+    node_types: t.array(t.string),
+    query: t.string,
+    include_data_sources: t.boolean,
+  }),
+]);
+
+export type CoreAPINodesSearchFilter = t.TypeOf<
+  typeof CoreAPINodesSearchFilterSchema
+>;
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
@@ -643,6 +662,21 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async getSpecificationHashes({
+    projectId,
+  }: {
+    projectId: string;
+  }): Promise<CoreAPIResponse<{ hashes: string[] }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getSpecification({
     projectId,
     specificationHash,
@@ -658,6 +692,29 @@ export class CoreAPI {
       )}/specifications/${encodeURIComponent(specificationHash)}`,
       {
         method: "GET",
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
+  async saveSpecification({
+    projectId,
+    specification,
+  }: {
+    projectId: string;
+    specification: string;
+  }): Promise<CoreAPIResponse<{ success: true }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(projectId)}/specifications`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          specification,
+        }),
       }
     );
 
@@ -693,10 +750,12 @@ export class CoreAPI {
     projectId,
     config,
     credentials,
+    name,
   }: {
     projectId: string;
     config: CoreAPIDataSourceConfig;
     credentials: CredentialsType;
+    name: string;
   }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(projectId)}/data_sources`,
@@ -708,6 +767,7 @@ export class CoreAPI {
         body: JSON.stringify({
           config: config,
           credentials: credentials,
+          name,
         }),
       }
     );
@@ -1215,11 +1275,13 @@ export class CoreAPI {
   async tableValidateCSVContent({
     projectId,
     dataSourceId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
   }: {
     projectId: string;
     dataSourceId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -1237,7 +1299,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
         }),
       }
     );
@@ -1481,13 +1544,15 @@ export class CoreAPI {
     projectId,
     dataSourceId,
     tableId,
-    upsertQueueBucketCSVPath,
+    bucket,
+    bucketCSVPath,
     truncate,
   }: {
     projectId: string;
     dataSourceId: string;
     tableId: string;
-    upsertQueueBucketCSVPath: string;
+    bucket: string;
+    bucketCSVPath: string;
     truncate?: boolean;
   }): Promise<
     CoreAPIResponse<{
@@ -1506,7 +1571,8 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          upsert_queue_bucket_csv_path: upsertQueueBucketCSVPath,
+          bucket,
+          bucket_csv_path: bucketCSVPath,
           truncate: truncate || false,
         }),
       }

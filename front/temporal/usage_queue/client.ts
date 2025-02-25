@@ -9,14 +9,14 @@ import { updateWorkspaceUsageWorkflow } from "@app/temporal/usage_queue/workflow
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
-  const hasRunInPastHour = await rateLimiter({
+  const remainingRunsThisHour = await rateLimiter({
     key: workflowId,
     maxPerTimeframe: 1,
     timeframeSeconds: 60 * 60, // 1 hour.
     logger: logger,
   });
 
-  return hasRunInPastHour === 0;
+  return remainingRunsThisHour > 0;
 }
 
 /**

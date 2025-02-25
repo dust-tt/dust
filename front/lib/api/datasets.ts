@@ -63,7 +63,8 @@ export async function getDatasetHash(
   auth: Authenticator,
   app: AppResource,
   name: string,
-  hash: string
+  hash: string,
+  { includeDeleted = false }: { includeDeleted?: boolean } = {}
 ): Promise<DatasetType | null> {
   const owner = auth.workspace();
   if (!owner) {
@@ -78,7 +79,7 @@ export async function getDatasetHash(
     },
   });
 
-  if (!dataset) {
+  if (!dataset && !includeDeleted) {
     return null;
   }
 
@@ -92,19 +93,19 @@ export async function getDatasetHash(
     if (apiDatasets.isErr()) {
       return null;
     }
-    if (!(dataset.name in apiDatasets.value.datasets)) {
+    if (!(name in apiDatasets.value.datasets)) {
       return null;
     }
-    if (apiDatasets.value.datasets[dataset.name].length == 0) {
+    if (apiDatasets.value.datasets[name].length == 0) {
       return null;
     }
 
-    hash = apiDatasets.value.datasets[dataset.name][0].hash;
+    hash = apiDatasets.value.datasets[name][0].hash;
   }
 
   const apiDataset = await coreAPI.getDataset({
     projectId: app.dustAPIProjectId,
-    datasetName: dataset.name,
+    datasetName: name,
     datasetHash: hash,
   });
 
@@ -113,9 +114,9 @@ export async function getDatasetHash(
   }
 
   return {
-    name: dataset.name,
-    description: dataset.description,
+    name,
+    description: dataset?.description ?? null,
     data: apiDataset.value.dataset.data,
-    schema: dataset.schema,
+    schema: dataset?.schema ?? null,
   };
 }

@@ -3,7 +3,6 @@ export const WHITELISTABLE_FEATURES = [
   "okta_enterprise_connection",
   "labs_transcripts",
   "labs_transcripts_full_storage",
-  "labs_transcripts_meet_scope",
   "document_tracker",
   "openai_o1_feature",
   "openai_o1_mini_feature",
@@ -20,6 +19,7 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "salesforce_feature",
   "advanced_notion_management",
+  "search_knowledge_builder",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

@@ -13,6 +13,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { showDebugTools } from "@app/lib/development";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type PostMemberResponseBody = {
@@ -74,6 +75,10 @@ async function handler(
         if (revokeResult.isErr()) {
           switch (revokeResult.error.type) {
             case "not_found":
+              logger.error(
+                { panic: true, revokeResult },
+                "Failed to revoke membership and track usage."
+              );
               return apiError(req, res, {
                 status_code: 404,
                 api_error: {
@@ -82,7 +87,11 @@ async function handler(
                 },
               });
             case "already_revoked":
-              // Should not happen, but we ignore.
+            case "invalid_end_at":
+              logger.error(
+                { panic: true, revokeResult },
+                "Failed to revoke membership and track usage."
+              );
               break;
             default:
               assertNever(revokeResult.error.type);

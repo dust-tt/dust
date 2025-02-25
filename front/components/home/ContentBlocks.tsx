@@ -1,16 +1,9 @@
-import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@app/components/home/Carousel";
 import {
   Grid,
   H1,
@@ -21,7 +14,6 @@ import {
   Strong,
 } from "@app/components/home/ContentComponents";
 import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
 import { classNames } from "@app/lib/utils";
 
 interface ImgBlockProps {
@@ -276,6 +268,9 @@ interface CarousselContentBlockProps {
   to: string;
   border: string;
   href: string;
+  quote?: QuoteProps;
+  bulletPoints: string[];
+  image: string;
 }
 
 export const CarousselContentBlock = ({
@@ -287,54 +282,85 @@ export const CarousselContentBlock = ({
   to,
   border,
   href,
-}: CarousselContentBlockProps) => (
-  <div
-    className={classNames(
-      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
-      from,
-      to,
-      border
-    )}
-  >
-    <div className="flex flex-col gap-4 px-8 md:flex-1">
-      <H3 className="text-slate-800">{"Dust for " + title}</H3>
-      <div className="flex flex-col gap-2">
-        <H2 className="w-full text-white">{subtitle}</H2>
-        <P size="md" className="w-full text-slate-700">
-          {description}
-        </P>
-      </div>
-      <div className="w-full text-left">
-        <Link href={href} shallow={true} className="inline-block max-w-full">
-          <Button
-            label={"Discover Dust"}
-            variant="outline"
-            size="md"
-            icon={ArrowRightIcon}
-            className="flex max-w-full md:hidden"
-          />
-          <Button
-            label={"Discover Dust for " + title}
-            variant="outline"
-            size="md"
-            icon={ArrowRightIcon}
-            className="hidden max-w-full md:flex"
-          />
-        </Link>
+  quote,
+  bulletPoints,
+  image,
+}: CarousselContentBlockProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
+        from,
+        to,
+        border
+      )}
+    >
+      <div className="flex flex-col gap-12 px-8 md:flex-row">
+        <div className="flex flex-col gap-6 md:w-1/2">
+          <H2 className="text-slate-900">{title}</H2>
+
+          {bulletPoints && (
+            <ul className="flex list-none flex-col gap-4">
+              {bulletPoints.map((feature, index) => (
+                <li key={index} className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-slate-900"></div>
+                  <P size="md" className="text-slate-800">
+                    {feature}
+                  </P>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-6 flex flex-col gap-4">
+            {quote && (
+              <>
+                <P size="sm" className="italic text-slate-800">
+                  "{quote?.quote}"
+                </P>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500">
+                    <div className="flex h-full w-full items-center justify-center text-white">
+                      {quote.name.charAt(0)}
+                    </div>
+                  </div>
+                  <div>
+                    <P size="sm" className="font-bold text-slate-800">
+                      {quote.name}
+                    </P>
+                    <P size="xs" className="text-slate-700">
+                      {quote.title}
+                    </P>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <Link href={href} shallow={true}>
+              <Button
+                label={`Learn more →`}
+                variant="outline"
+                size="md"
+                className="bg-white/80 hover:bg-white"
+              />
+            </Link>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center md:w-1/2">
+          <div className="w-full max-w-md lg:max-w-2xl">
+            <Image
+              src={image}
+              alt={title as string}
+              width={500}
+              height={500}
+              className="h-auto w-full"
+            />
+          </div>
+        </div>
       </div>
     </div>
-    <Carousel className="w-full" isLooping={true}>
-      <CarouselContent>
-        {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-6 md:basis-1/4">
-            <SolutionSectionAssistantBlock {...block} />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <div className="flex w-full flex-row items-center justify-end gap-3 px-8 md:hidden">
-        <CarouselPrevious />
-        <CarouselNext />
-      </div>
-    </Carousel>
-  </div>
-);
+  );
+};

@@ -22,7 +22,6 @@ import { format } from "date-fns/format";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import {
   PokeTable,
@@ -358,13 +357,12 @@ function UpgradeDowngradeModal({
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
             />
             <div>
-              <PokeButton
-                variant="destructive"
+              <Button
+                variant="warning"
                 onClick={onDowngrade}
                 disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
-              >
-                Downgrade to NO PLAN
-              </PokeButton>
+                label="Downgrade to NO PLAN"
+              />
             </div>
             <Separator />
             <Page.SectionHeader
@@ -377,13 +375,12 @@ function UpgradeDowngradeModal({
                 .map((p) => {
                   return (
                     <div key={p.code} className="pt-2">
-                      <PokeButton
+                      <Button
                         variant="outline"
                         disabled={subscription.plan.code === p.code}
                         onClick={() => onUpgradeToPlan(p)}
-                      >
-                        Upgrade to {p.code}
-                      </PokeButton>
+                        label={`Upgrade to ${p.code}`}
+                      />
                     </div>
                   );
                 })}
@@ -408,13 +405,12 @@ function UpgradeDowngradeModal({
                     .map((p) => {
                       return (
                         <div key={p.code} className="pt-2">
-                          <PokeButton
+                          <Button
                             variant="outline"
                             disabled={subscription.plan.code === p.code}
                             onClick={() => onUpgradeToPlan(p)}
-                          >
-                            Upgrade to {p.code}
-                          </PokeButton>
+                            label={`Upgrade to ${p.code}`}
+                          />
                         </div>
                       );
                     })}

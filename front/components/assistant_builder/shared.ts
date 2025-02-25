@@ -1,9 +1,9 @@
 import type {
+  ConnectorProvider,
   DataSourceType,
   LightContentNode,
   TimeframeUnit,
 } from "@dust-tt/types";
-import type { ConnectorProvider } from "@dust-tt/types";
 import {
   assertNever,
   isGoogleSheetContentNodeInternalId,
@@ -281,7 +281,7 @@ export function getTableIdForContentNode(
   dataSource: DataSourceType,
   contentNode: LightContentNode
 ): string {
-  if (contentNode.type !== "Table") {
+  if (contentNode.type !== "Table" && contentNode.type !== "table") {
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 

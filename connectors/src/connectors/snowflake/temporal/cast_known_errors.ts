@@ -85,13 +85,13 @@ function isSnowflakeRoleNotFoundError(
 ): err is SnowflakeRoleNotFoundError {
   const maybeRoleError = err as {
     name: "OperationFailedError";
-    code: "390189";
+    code: "390189" | "390186";
   };
   return (
     "name" in maybeRoleError &&
     maybeRoleError.name === "OperationFailedError" &&
     "code" in maybeRoleError &&
-    `${maybeRoleError.code}` === "390189"
+    ["390189", "390186"].includes(`${maybeRoleError.code}`)
   );
 }
 

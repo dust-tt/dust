@@ -35,19 +35,24 @@ const isDatabaseReadGranted = ({
 const createDatabase = async ({
   dataSourceConfig,
   databaseInternalId,
-  usedInternalIds,
   allDatabases,
   connector,
   mimeTypes,
 }: {
   dataSourceConfig: DataSourceConfig;
   databaseInternalId: string;
-  usedInternalIds: Set<string>;
+
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
-}) => {
-  // Mark as used
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
+}): Promise<{
+  newDatabase: RemoteDatabaseModel | null;
+  usedInternalIds: Set<string>;
+}> => {
+  const usedInternalIds = new Set<string>();
   usedInternalIds.add(databaseInternalId);
 
   // Check if the database exists
@@ -55,18 +60,18 @@ const createDatabase = async ({
     (d) => d.internalId === databaseInternalId
   );
 
+  let newDatabase: RemoteDatabaseModel | null = null;
+
   if (!existingDb || !existingDb.lastUpsertedAt) {
     if (!existingDb) {
       // Create and add the database to the list of all databases.
-      allDatabases.push(
-        await RemoteDatabaseModel.create({
-          connectorId: connector.id,
-          internalId: databaseInternalId,
-          name: databaseInternalId,
-          permission: "inherited",
-          lastUpsertedAt: new Date(),
-        })
-      );
+      newDatabase = await RemoteDatabaseModel.create({
+        connectorId: connector.id,
+        internalId: databaseInternalId,
+        name: databaseInternalId,
+        permission: "inherited",
+        lastUpsertedAt: new Date(),
+      });
     } else if (!existingDb.lastUpsertedAt) {
       await existingDb.update({
         permission:
@@ -85,6 +90,8 @@ const createDatabase = async ({
       mimeType: mimeTypes.DATABASE,
     });
   }
+
+  return { newDatabase, usedInternalIds };
 };
 
 const isSchemaReadGranted = ({
@@ -105,7 +112,6 @@ const isSchemaReadGranted = ({
 const createSchemaAndHierarchy = async ({
   dataSourceConfig,
   schemaInternalId,
-  usedInternalIds,
   allDatabases,
   allSchemas,
   connector,
@@ -113,22 +119,34 @@ const createSchemaAndHierarchy = async ({
 }: {
   dataSourceConfig: DataSourceConfig;
   schemaInternalId: string;
-  usedInternalIds: Set<string>;
   allDatabases: RemoteDatabaseModel[];
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
-}) => {
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
+}): Promise<{
+  newDatabase: RemoteDatabaseModel | null;
+  newSchema: RemoteSchemaModel | null;
+  usedInternalIds: Set<string>;
+}> => {
+  const usedInternalIds = new Set<string>();
+  let newSchema: RemoteSchemaModel | null = null;
+
   const { database_name, name } = parseSchemaInternalId(schemaInternalId);
 
-  await createDatabase({
-    dataSourceConfig,
-    databaseInternalId: database_name,
-    usedInternalIds,
-    allDatabases,
-    connector,
-    mimeTypes,
-  });
+  const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
+    await createDatabase({
+      dataSourceConfig,
+      databaseInternalId: database_name,
+      allDatabases,
+      connector,
+      mimeTypes,
+    });
+  for (const usedInternalId of newDatabaseUsedInternalIds) {
+    usedInternalIds.add(usedInternalId);
+  }
 
   // Mark as used
   usedInternalIds.add(schemaInternalId);
@@ -140,16 +158,14 @@ const createSchemaAndHierarchy = async ({
   if (!existingSchema || !existingSchema.lastUpsertedAt) {
     if (!existingSchema) {
       // Create and add the schema to the list of all schemas.
-      allSchemas.push(
-        await RemoteSchemaModel.create({
-          connectorId: connector.id,
-          internalId: schemaInternalId,
-          name: name,
-          databaseName: database_name,
-          permission: "inherited",
-          lastUpsertedAt: new Date(),
-        })
-      );
+      newSchema = await RemoteSchemaModel.create({
+        connectorId: connector.id,
+        internalId: schemaInternalId,
+        name: name,
+        databaseName: database_name,
+        permission: "inherited",
+        lastUpsertedAt: new Date(),
+      });
     } else if (!existingSchema.lastUpsertedAt) {
       await existingSchema.update({
         permission:
@@ -169,7 +185,7 @@ const createSchemaAndHierarchy = async ({
     });
   }
 
-  // As we cannot know what is already in core, we'll create all schemas in core after traversing the whole tree
+  return { newDatabase, newSchema, usedInternalIds };
 };
 
 const isTableReadGranted = ({
@@ -191,7 +207,6 @@ const isTableReadGranted = ({
 
 const createTableAndHierarchy = async ({
   tableInternalId,
-  usedInternalIds,
   allTables,
   allSchemas,
   allDatabases,
@@ -199,13 +214,23 @@ const createTableAndHierarchy = async ({
   mimeTypes,
 }: {
   tableInternalId: string;
-  usedInternalIds: Set<string>;
   allTables: RemoteTableModel[];
   allSchemas: RemoteSchemaModel[];
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
-}) => {
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
+}): Promise<{
+  newDatabase: RemoteDatabaseModel | null;
+  newSchema: RemoteSchemaModel | null;
+  newTable: RemoteTableModel | null;
+  usedInternalIds: Set<string>;
+}> => {
+  const usedInternalIds = new Set<string>();
+  let newTable: RemoteTableModel | null = null;
+
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const {
@@ -216,17 +241,29 @@ const createTableAndHierarchy = async ({
 
   const schemaInternalId = [dbName, schemaName].join(".");
 
-  await createSchemaAndHierarchy({
+  const {
+    newDatabase,
+    newSchema,
+    usedInternalIds: newSchemaUsedInternalIds,
+  } = await createSchemaAndHierarchy({
     dataSourceConfig,
     schemaInternalId,
-    usedInternalIds,
     allDatabases,
     allSchemas,
     connector,
     mimeTypes,
   });
 
-  // Mark as used
+  for (const usedInternalId of newSchemaUsedInternalIds) {
+    usedInternalIds.add(usedInternalId);
+  }
+  if (newDatabase) {
+    allDatabases.push(newDatabase);
+  }
+  if (newSchema) {
+    allSchemas.push(newSchema);
+  }
+
   usedInternalIds.add(tableInternalId);
 
   // Check it table already exists
@@ -235,17 +272,15 @@ const createTableAndHierarchy = async ({
   if (!existingTable || !existingTable.lastUpsertedAt) {
     if (!existingTable) {
       // Create and add the table to the list of all tables.
-      allTables.push(
-        await RemoteTableModel.create({
-          connectorId: connector.id,
-          internalId: tableInternalId,
-          name: tableName,
-          schemaName,
-          databaseName: dbName,
-          permission: "inherited",
-          lastUpsertedAt: new Date(),
-        })
-      );
+      newTable = await RemoteTableModel.create({
+        connectorId: connector.id,
+        internalId: tableInternalId,
+        name: tableName,
+        schemaName,
+        databaseName: dbName,
+        permission: "inherited",
+        lastUpsertedAt: new Date(),
+      });
     } else if (!existingTable.lastUpsertedAt) {
       await existingTable.update({
         permission:
@@ -267,6 +302,8 @@ const createTableAndHierarchy = async ({
       mimeType: mimeTypes.TABLE,
     });
   }
+
+  return { newDatabase, newSchema, newTable, usedInternalIds };
 };
 
 export async function sync({
@@ -276,7 +313,10 @@ export async function sync({
 }: {
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE;
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -298,6 +338,23 @@ export async function sync({
     }),
   ]);
 
+  let createdDatabases = 0;
+  let createdSchemas = 0;
+  let createdTables = 0;
+
+  const localLogger = logger.child({
+    connectorId: connector.id,
+  });
+
+  localLogger.info(
+    {
+      existingDatabasesCount: allDatabases.length,
+      existingSchemasCount: allSchemas.length,
+      existingTablesCount: allTables.length,
+    },
+    "Found existing databases, schemas and tables in connector DB"
+  );
+
   const readGrantedInternalIds = new Set([
     ...allDatabases
       .filter((db) => db.permission === "selected")
@@ -310,12 +367,22 @@ export async function sync({
       .map((t) => t.internalId),
   ]);
 
+  localLogger.info(
+    {
+      readGrantedInternalIdsCount: readGrantedInternalIds.size,
+    },
+    "Found read granted internal ids"
+  );
+
   const usedInternalIds = new Set<string>();
 
-  logger.info(
-    { connectorId: connector.id, databases: remoteDBTree?.databases },
-    "Creating databases"
+  localLogger.info(
+    {
+      databasesCount: remoteDBTree?.databases.length ?? 0,
+    },
+    "Creating databases, schemas and tables..."
   );
+
   // Loop through the databases and create them if they are read granted
   for (const db of remoteDBTree?.databases ?? []) {
     if (
@@ -324,14 +391,21 @@ export async function sync({
         internalId: db.name,
       })
     ) {
-      await createDatabase({
-        dataSourceConfig,
-        databaseInternalId: db.name,
-        usedInternalIds,
-        allDatabases,
-        connector,
-        mimeTypes,
-      });
+      const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
+        await createDatabase({
+          dataSourceConfig,
+          databaseInternalId: db.name,
+          allDatabases,
+          connector,
+          mimeTypes,
+        });
+      for (const usedInternalId of newDatabaseUsedInternalIds) {
+        usedInternalIds.add(usedInternalId);
+      }
+      if (newDatabase) {
+        allDatabases.push(newDatabase);
+        createdDatabases++;
+      }
     }
 
     // Loop through the schemas and create them if they are read granted
@@ -343,15 +417,29 @@ export async function sync({
           internalId: schemaInternalId,
         })
       ) {
-        await createSchemaAndHierarchy({
+        const {
+          newDatabase,
+          newSchema,
+          usedInternalIds: newSchemaUsedInternalIds,
+        } = await createSchemaAndHierarchy({
           dataSourceConfig,
           schemaInternalId,
-          usedInternalIds,
           allDatabases,
           allSchemas,
           connector,
           mimeTypes,
         });
+        for (const usedInternalId of newSchemaUsedInternalIds) {
+          usedInternalIds.add(usedInternalId);
+        }
+        if (newDatabase) {
+          allDatabases.push(newDatabase);
+          createdDatabases++;
+        }
+        if (newSchema) {
+          allSchemas.push(newSchema);
+          createdSchemas++;
+        }
       }
 
       let i = 0;
@@ -364,15 +452,34 @@ export async function sync({
             internalId: tableInternalId,
           })
         ) {
-          await createTableAndHierarchy({
+          const {
+            newDatabase,
+            newSchema,
+            newTable,
+            usedInternalIds: newTableUsedInternalIds,
+          } = await createTableAndHierarchy({
             tableInternalId,
-            usedInternalIds,
             allTables,
             allSchemas,
             allDatabases,
             connector,
             mimeTypes,
           });
+          for (const usedInternalId of newTableUsedInternalIds) {
+            usedInternalIds.add(usedInternalId);
+          }
+          if (newDatabase) {
+            allDatabases.push(newDatabase);
+            createdDatabases++;
+          }
+          if (newSchema) {
+            allSchemas.push(newSchema);
+            createdSchemas++;
+          }
+          if (newTable) {
+            allTables.push(newTable);
+            createdTables++;
+          }
         }
 
         i++;
@@ -383,9 +490,17 @@ export async function sync({
     }
   }
 
-  logger.info(
+  localLogger.info(
     {
-      connectorId: connector.id,
+      createdDatabases,
+      createdSchemas,
+      createdTables,
+    },
+    "Created databases, schemas and tables"
+  );
+
+  localLogger.info(
+    {
       databasesToKeep: allDatabases.filter((db) =>
         usedInternalIds.has(db.internalId)
       ).length,
@@ -416,9 +531,8 @@ export async function sync({
     await unusedDb.destroy();
 
     if (unusedDb.permission === "selected") {
-      logger.error(
+      localLogger.error(
         {
-          connectorId: connector.id,
           databaseInternalId: unusedDb.internalId,
         },
         "Database is selected but not used, it should never happen and surface a flaw in the logic above."
@@ -436,9 +550,8 @@ export async function sync({
     await unusedSchema.destroy();
 
     if (unusedSchema.permission === "selected") {
-      logger.error(
+      localLogger.error(
         {
-          connectorId: connector.id,
           schemaInternalId: unusedSchema.internalId,
         },
         "Schema is selected but not used, it should never happen and surface a flaw in the logic above."
@@ -456,9 +569,8 @@ export async function sync({
     await unusedTable.destroy();
 
     if (unusedTable.permission === "selected") {
-      logger.error(
+      localLogger.error(
         {
-          connectorId: connector.id,
           tableInternalId: unusedTable.internalId,
         },
         "Table is selected but not used, it should never happen and surface a flaw in the logic above."

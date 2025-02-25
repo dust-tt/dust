@@ -1,5 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
@@ -55,16 +56,22 @@ const PopoverContent = React.forwardRef<
       />
     );
 
-    const dialogElements = document.querySelectorAll(
-      ".s-sheet[role=dialog][data-state=open]"
+    const [container, setContainer] = useState<Element | undefined>(
+      mountPortalContainer
     );
 
-    const defaultContainer = dialogElements[dialogElements.length - 1];
+    useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, []);
 
     return mountPortal ? (
-      <PopoverPrimitive.Portal
-        container={mountPortalContainer || defaultContainer}
-      >
+      <PopoverPrimitive.Portal container={container}>
         {content}
       </PopoverPrimitive.Portal>
     ) : (

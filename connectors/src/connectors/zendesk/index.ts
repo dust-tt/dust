@@ -46,6 +46,7 @@ import {
   launchZendeskFullSyncWorkflow,
   launchZendeskGarbageCollectionWorkflow,
   launchZendeskSyncWorkflow,
+  launchZendeskTicketReSyncWorkflow,
   stopZendeskWorkflows,
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -91,7 +92,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      { subdomain, retentionPeriodDays: 180 }
+      { subdomain, retentionPeriodDays: 180, syncUnresolvedTickets: false }
     );
     const loggerArgs = {
       workspaceId: dataSourceConfig.workspaceId,
@@ -134,14 +135,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      throw new Error(`Connector ${connectorId} not found`);
+      throw new Error("[Zendesk] Connector not found.");
     }
 
     const configuration =
       await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
     if (!configuration) {
+      logger.error({ connectorId }, "[Zendesk] Configuration not found.");
       throw new Error(
-        "Error retrieving Zendesk configuration to update connector"
+        "Error retrieving Zendesk configuration to update connector."
       );
     }
 
@@ -191,7 +193,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      throw new Error("[Zendesk] Connector not found.");
     }
 
     const result = await connector.delete();
@@ -211,9 +213,8 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      throw new Error(
-        `[Zendesk] Connector not found. ConnectorId: ${connectorId}`
-      );
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      throw new Error("[Zendesk] Connector not found.");
     }
     return stopZendeskWorkflows(connector);
   }
@@ -226,7 +227,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      throw new Error("[Zendesk] Connector not found.");
     }
     if (connector.isPaused()) {
       logger.warn(
@@ -276,7 +277,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      throw new Error("[Zendesk] Connector not found.");
     }
 
     // launching an incremental workflow taking the diff starting from the given timestamp
@@ -726,8 +727,40 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     configKey: string;
     configValue: string;
   }): Promise<Result<void, Error>> {
-    logger.info({ configKey, configValue }, "Setting configuration key");
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Zendesk] Connector not found.");
+      throw new Error("[Zendesk] Connector not found.");
+    }
+
+    switch (configKey) {
+      case "zendeskSyncUnresolvedTicketsEnabled": {
+        const zendeskConfiguration =
+          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+        if (!zendeskConfiguration) {
+          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+          throw new Error(
+            "Error retrieving Zendesk configuration to update connector configuration."
+          );
+        }
+
+        await zendeskConfiguration.update({
+          syncUnresolvedTickets: configValue === "true",
+        });
+
+        const result = await launchZendeskTicketReSyncWorkflow(connector);
+        if (result.isErr()) {
+          return result;
+        }
+
+        return new Ok(undefined);
+      }
+
+      default: {
+        return new Err(new Error(`Invalid config key ${configKey}`));
+      }
+    }
   }
 
   async getConfigurationKey({
@@ -735,8 +768,30 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   }: {
     configKey: string;
   }): Promise<Result<string | null, Error>> {
-    logger.info({ configKey }, "Getting configuration key");
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      throw new Error(`Connector not found (connectorId: ${connectorId})`);
+    }
+
+    switch (configKey) {
+      case "zendeskSyncUnresolvedTicketsEnabled": {
+        const zendeskConfiguration =
+          await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+        if (!zendeskConfiguration) {
+          logger.error({ connectorId }, "[Zendesk] Configuration not found.");
+          return new Err(
+            new Error(
+              "Error retrieving Zendesk configuration to get connector configuration."
+            )
+          );
+        }
+
+        return new Ok(zendeskConfiguration.syncUnresolvedTickets.toString());
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
   /**
@@ -747,7 +802,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      throw new Error("[Zendesk] Connector not found.");
     }
     await connector.markAsPaused();
     return this.stop();
@@ -762,7 +817,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      throw new Error("[Zendesk] Connector not found.");
     }
     await connector.markAsUnpaused();
     // launch a gc and an incremental workflow (sync workflow without signals).

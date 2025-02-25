@@ -8,7 +8,6 @@ import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 // import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
 import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
-import { MetricsSection } from "@app/components/home/content/Product/MetricsSection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
 // import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
 // import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
@@ -38,14 +37,13 @@ export function Landing() {
   return (
     <>
       <IntroSection />
-      <VerticalSection />
-      <MetricsSection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"
         name="Everett Berry"
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/clay.png"
       />
+      <VerticalSection />
       <FutureSection />
       {/* <DifferentiationSection /> */}
       {/* <CapabilitySection /> */}

@@ -560,33 +560,25 @@ async function handler(
       }
 
       const documentId = req.query.documentId as string;
-
-      const title = r.data.title ?? "Untitled document";
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":");
+        ?.substring(6);
+
+      // Use titleInTags if no title is provided.
+      const title = r.data.title || titleInTags || "Untitled Document";
+
       if (!titleInTags) {
         tags.push(`title:${title}`);
       }
 
       if (titleInTags && titleInTags !== title) {
-        logger.error(
+        logger.warn(
           { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-          "[CoreNodes] Inconsistency between tags and title."
+          "Inconsistency between tags and title."
         );
-        // TODO(2025-02-18 aubin): uncomment what follows.
-        // return apiError(req, res, {
-        //   status_code: 400,
-        //   api_error: {
-        //     type: "invalid_request_error",
-        //     message: `Invalid tags: title passed in tags does not match the document title.`,
-        //   },
-        // });
       }
 
       if (r.data.async === true) {

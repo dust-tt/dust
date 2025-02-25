@@ -74,6 +74,7 @@ type ContextType = {
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
   emptyComponent: ReactNode;
+  defaultExpandedIds?: string[];
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -131,7 +132,8 @@ function ContentNodeTreeChildren({
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
 
-  const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
+  const { useResourcesHook, emptyComponent, defaultExpandedIds } =
+    useContentNodeTreeContext();
 
   const { resources, isResourcesLoading, isResourcesError, resourcesError } =
     useResourcesHook(parentId);
@@ -196,6 +198,7 @@ function ContentNodeTreeChildren({
         return (
           <Tree.Item
             key={n.internalId}
+            id={`tree-node-${n.internalId}`}
             type={
               showExpand === false ? "item" : n.expandable ? "node" : "leaf"
             }
@@ -207,6 +210,9 @@ function ContentNodeTreeChildren({
             }
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
+            defaultCollapsed={
+              !defaultExpandedIds || !defaultExpandedIds.includes(n.internalId)
+            }
             checkbox={
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
@@ -269,16 +275,16 @@ function ContentNodeTreeChildren({
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (n.type === "Document") {
+                      if (n.type === "Document" || n.type === "document") {
                         onDocumentViewClick(n.internalId);
                       }
                     }}
                     className={classNames(
-                      n.type === "Document"
+                      n.type === "Document" || n.type === "document"
                         ? ""
                         : "pointer-events-none opacity-0"
                     )}
-                    disabled={n.type !== "Document"}
+                    disabled={n.type !== "Document" && n.type !== "document"}
                     variant="outline"
                   />
                 )}
@@ -397,6 +403,10 @@ interface ContentNodeTreeProps {
    * The component to display when an item is expanded and it has no children.
    */
   emptyComponent?: ReactNode;
+  /**
+   * The ids of the nodes to be expanded by default.
+   */
+  defaultExpandedIds?: string[];
 }
 
 export function ContentNodeTree({
@@ -409,6 +419,7 @@ export function ContentNodeTree({
   showExpand,
   useResourcesHook,
   emptyComponent,
+  defaultExpandedIds,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -419,6 +430,7 @@ export function ContentNodeTree({
         showExpand,
         useResourcesHook,
         emptyComponent,
+        defaultExpandedIds,
       }}
     >
       <ContentNodeTreeChildren

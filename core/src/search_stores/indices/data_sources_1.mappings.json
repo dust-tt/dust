@@ -1,0 +1,28 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "data_source_id": {
+      "type": "keyword"
+    },
+    "data_source_internal_id": {
+      "type": "keyword"
+    },
+    "timestamp": {
+      "type": "date"
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "standard",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

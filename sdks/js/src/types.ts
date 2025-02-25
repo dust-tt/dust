@@ -35,6 +35,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
+  | "claude-3-7-sonnet-20250219"
   | "claude-3-5-haiku-20241022"
   | "claude-3-haiku-20240307"
   | "claude-2.1"
@@ -774,7 +775,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "okta_enterprise_connection"
   | "labs_transcripts"
   | "labs_transcripts_full_storage"
-  | "labs_transcripts_meet_scope"
   | "labs_trackers"
   | "document_tracker"
   | "openai_o1_feature"
@@ -792,6 +792,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "salesforce_feature"
   | "advanced_notion_management"
+  | "search_knowledge_builder"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1674,6 +1675,7 @@ const AppTypeSchema = z.object({
   dustAPIProjectId: z.string(),
   space: SpaceTypeSchema,
   datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
 });
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
@@ -1993,6 +1995,18 @@ export const PostAppsRequestSchema = z.object({
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
 
+export const ImportAppsResponseSchema = z.object({
+  apps: z
+    .object({
+      sId: z.string(),
+      name: z.string(),
+      error: z.string().optional(),
+    })
+    .array(),
+});
+
+export type ImportAppsResponseType = z.infer<typeof ImportAppsResponseSchema>;
+
 export const DataSourceViewResponseSchema = z.object({
   dataSourceView: DataSourceViewSchema,
 });
@@ -2217,8 +2231,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   mimeType: z.string(),
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
-  csv: z.string().optional(),
-  fileId: z.string().optional(),
+  fileId: z.string(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
