@@ -1318,6 +1318,76 @@ async fn data_sources_register(
     }
 }
 
+/// Update a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesUpdatePayload {
+    name: String,
+}
+
+async fn data_sources_update(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesUpdatePayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    let mut ds = match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve data source",
+                Some(e),
+            );
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            );
+        }
+        Ok(Some(ds)) => ds,
+    };
+
+    if let Err(e) = ds
+        .update_name(
+            state.store.clone(),
+            state.search_store.clone(),
+            &payload.name,
+        )
+        .await
+    {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to update data source name",
+            Some(e),
+        );
+    }
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "data_source": {
+                    "created": ds.created(),
+                    "data_source_id": ds.data_source_id(),
+                    "name": ds.name(),
+                    "config": ds.config(),
+                },
+            })),
+        }),
+    )
+}
+
 #[derive(serde::Deserialize)]
 struct DataSourcesTokenizePayload {
     text: String,
@@ -3896,6 +3966,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources",
             post(data_sources_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id",
+            patch(data_sources_update),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id",

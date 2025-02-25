@@ -775,6 +775,33 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
+  async updateDataSource({
+    projectId,
+    dataSourceId,
+    name,
+  }: {
+    projectId: string;
+    dataSourceId: string;
+    name: string;
+  }): Promise<CoreAPIResponse<{ data_source: CoreAPIDataSource }>> {
+    const response = await this._fetchWithError(
+      `${this._url}/projects/${encodeURIComponent(
+        projectId
+      )}/data_sources/${encodeURIComponent(dataSourceId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(response);
+  }
+
   async getDataSource({
     projectId,
     dataSourceId,
