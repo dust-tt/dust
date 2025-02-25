@@ -80,6 +80,7 @@ export const notionUrlSyncPlugin = createPlugin(
         urlsArray,
         dataSourceId,
         workspaceId: auth.getNonNullableWorkspace().sId,
+        method: "sync",
       });
       if (res.some((r) => !r.success)) {
         return new Err(
@@ -126,10 +127,12 @@ export async function syncNotionUrls({
   urlsArray,
   dataSourceId,
   workspaceId,
+  method,
 }: {
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
+  method: "sync" | "delete";
 }): Promise<URLOperationResult[]> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -169,7 +172,28 @@ export async function syncNotionUrls({
       }
 
       const { page, db } = decoded.right;
-      if (page) {
+      if (method === "delete") {
+        const deleteRes = await connectorsAPI.admin({
+          majorCommand: "notion",
+          command: "delete-url",
+          args: {
+            wId: workspaceId,
+            dsId: dataSourceId,
+            url,
+          },
+        });
+
+        if (deleteRes.isErr()) {
+          return {
+            url,
+            timestamp: Date.now(),
+            success: false,
+            error: new Error(deleteRes.error.message),
+          };
+        }
+
+        return { url, timestamp: Date.now(), success: true };
+      } else if (page) {
         const upsertPageRes = await connectorsAPI.admin({
           majorCommand: "notion",
           command: "upsert-page",
