@@ -41,6 +41,7 @@ export async function createDataSourceProject({
     projectId: dustProject.value.project.project_id.toString(),
     config: sourceRegionCoreDataSource.config,
     credentials: dustManagedCredentials(),
+    name: sourceRegionCoreDataSource.name,
   });
 
   if (dustDataSource.isErr()) {

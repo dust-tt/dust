@@ -68,6 +68,7 @@ async function main() {
             qdrant_config: null,
           },
           credentials,
+          name: dataSourceName,
         });
 
         if (dustDataSource.isErr()) {

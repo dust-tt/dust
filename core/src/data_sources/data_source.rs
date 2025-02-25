@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::search_stores::search_store::SearchStore;
+use crate::search_stores::search_store::{Indexable, SearchStore};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -337,11 +337,12 @@ pub struct DocumnentBlobPayload {
 /// as well as vector search db. It is a generated unique ID.
 #[derive(Debug, Serialize, Clone)]
 pub struct DataSource {
-    project: Project,
+    config: DataSourceConfig,
     created: u64,
     data_source_id: String,
     internal_id: String,
-    config: DataSourceConfig,
+    name: String,
+    project: Project,
 }
 
 fn target_document_tokens_offsets(
@@ -397,13 +398,14 @@ fn target_document_tokens_offsets(
 }
 
 impl DataSource {
-    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
+    pub fn new(project: &Project, config: &DataSourceConfig, name: &str) -> Self {
         DataSource {
-            project: project.clone(),
+            config: config.clone(),
             created: utils::now(),
             data_source_id: utils::new_id(),
             internal_id: utils::new_id(),
-            config: config.clone(),
+            project: project.clone(),
+            name: name.to_string(),
         }
     }
 
@@ -413,6 +415,7 @@ impl DataSource {
         data_source_id: &str,
         internal_id: &str,
         config: &DataSourceConfig,
+        name: &str,
     ) -> Self {
         DataSource {
             project: project.clone(),
@@ -420,11 +423,29 @@ impl DataSource {
             data_source_id: data_source_id.to_string(),
             internal_id: internal_id.to_string(),
             config: config.clone(),
+            name: name.to_string(),
         }
+    }
+
+    pub async fn register(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
+    ) -> Result<()> {
+        // Store in postgres.
+        store.register_data_source(&self.project, self).await?;
+
+        search_store.index_data_source(self).await?;
+
+        Ok(())
     }
 
     pub fn created(&self) -> u64 {
         self.created
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn project(&self) -> &Project {
@@ -2095,10 +2116,8 @@ impl DataSource {
             "Deleted folders"
         );
 
-        // Delete all nodes from the search index
-        search_store
-            .delete_data_source_nodes(&self.data_source_id)
-            .await?;
+        // Delete all nodes and the data source documents from the search indices.
+        search_store.delete_data_source(self).await?;
 
         // Delete data source and documents (SQL).
         let deleted_rows = store
@@ -2445,5 +2464,54 @@ mod tests {
             "# title\nThis is an introduction.\n## paragraph 2\nThis \
              is a paragraph1.\n## paragraph 2\nThis is a paragraph2.\n"
         );
+    }
+}
+
+pub const DATA_SOURCE_MIME_TYPE: &str = "application/vnd.dust.datasource";
+pub const DATA_SOURCE_INDEX_NAME: &str = "core.data_sources";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataSourceESDocument {
+    pub data_source_id: String,
+    pub data_source_internal_id: String,
+    pub timestamp: u64,
+    pub name: String,
+}
+
+impl From<&DataSource> for DataSourceESDocument {
+    fn from(ds: &DataSource) -> Self {
+        Self {
+            data_source_id: ds.data_source_id().to_string(),
+            data_source_internal_id: ds.internal_id().to_string(),
+            timestamp: ds.created(),
+            name: ds.name().to_string(),
+        }
+    }
+}
+
+impl From<serde_json::Value> for DataSourceESDocument {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value)
+            .expect("Failed to deserialize DataSourceESDocument from JSON value")
+    }
+}
+
+impl Indexable for DataSource {
+    type Doc = DataSourceESDocument;
+
+    fn index_name(&self) -> &'static str {
+        DATA_SOURCE_INDEX_NAME
+    }
+
+    fn unique_id(&self) -> String {
+        self.internal_id().to_string()
+    }
+
+    fn document_type(&self) -> &'static str {
+        "data_source"
+    }
+
+    fn to_document(&self) -> Self::Doc {
+        self.into()
     }
 }

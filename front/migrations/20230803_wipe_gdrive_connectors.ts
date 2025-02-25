@@ -56,6 +56,7 @@ async function main() {
         qdrant_config: null,
       },
       credentials: dustManagedCredentials(),
+      name: d.name,
     });
   }
 }
