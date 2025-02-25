@@ -103,7 +103,7 @@ const palette = {
 const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
-    background: ${palette.slate[50]};
+    background: ${palette.slate[100]};
     cursor: default;
   }
     
@@ -118,7 +118,7 @@ const mermaidStyles = `
     rx: 8px;
     ry: 8px;
     stroke-width: 1px;
-    fill: ${palette.slate["50"]};
+    fill: ${palette.slate["100"]};
     stroke: ${palette.slate["200"]};
   }
 

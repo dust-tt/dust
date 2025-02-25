@@ -10,7 +10,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["textContent"],
         attributes: {
           class: {
-            default: markdownStyles.paragraph({ variant: "muted" }),
+            default: markdownStyles.paragraph(),
           },
         },
       },
@@ -18,7 +18,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["listItem"],
         attributes: {
           class: {
-            default: markdownStyles.list({ variant: "muted" }),
+            default: markdownStyles.list(),
           },
         },
       },
@@ -26,7 +26,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["bulletList"],
         attributes: {
           class: {
-            default: markdownStyles.unorderedList({ variant: "muted" }),
+            default: markdownStyles.unorderedList(),
           },
         },
       },
@@ -34,7 +34,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["pre"],
         attributes: {
           class: {
-            default: markdownStyles.pre({ variant: "muted" }),
+            default: markdownStyles.pre(),
           },
         },
       },
@@ -42,7 +42,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["orderedList"],
         attributes: {
           class: {
-            default: markdownStyles.orderedList({ variant: "muted" }),
+            default: markdownStyles.orderedList(),
           },
         },
       },
@@ -50,7 +50,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["codeBlock"],
         attributes: {
           class: {
-            default: markdownStyles.code({ variant: "muted" }),
+            default: markdownStyles.code(),
           },
         },
       },
@@ -58,7 +58,7 @@ export const MarkdownStyleExtension = Extension.create({
         types: ["blockquote"],
         attributes: {
           class: {
-            default: markdownStyles.blockquote({ variant: "muted" }),
+            default: markdownStyles.blockquote(),
           },
         },
       },

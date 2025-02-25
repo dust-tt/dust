@@ -8,10 +8,6 @@ export const blockquoteVariants = cva(
   {
     variants: {
       variant: {
-        muted: [
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-slate-100 dark:s-bg-muted-night",
-        ],
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
           "s-bg-muted-background dark:s-bg-muted-background-night",
@@ -23,7 +19,7 @@ export const blockquoteVariants = cva(
 
 interface BlockquoteBlockProps {
   children: React.ReactNode;
-  variant?: "muted" | "surface";
+  variant?: "surface";
 }
 
 export function BlockquoteBlock({
