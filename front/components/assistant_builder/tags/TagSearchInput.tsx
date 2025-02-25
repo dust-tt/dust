@@ -52,7 +52,7 @@ export const TagSearchInput = ({
         renderItem={(item, selected) => (
           <div
             className={cn(
-              "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+              "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
               selected && "bg-structure-50 dark:bg-structure-50-night"
             )}
             onClick={() => {

@@ -11,10 +11,6 @@ import logger from "@app/logger/logger";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
-const libDir = path.join(process.cwd(), "lib");
-const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
-const specParser = peg.generate(dustPegJs);
-
 export const cleanSpecificationFromCore = (
   specification: SpecificationType
 ) => {
@@ -49,6 +45,10 @@ export async function getSpecification(
     return null;
   }
   // TODO(spolu): check type compatibility at run time.
+  const libDir = path.join(process.cwd(), "lib");
+  const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
+  const specParser = peg.generate(dustPegJs);
+
   const spec = specParser.parse(
     s.value.specification.data
   ) as SpecificationType;

@@ -198,6 +198,7 @@ function ContentNodeTreeChildren({
         return (
           <Tree.Item
             key={n.internalId}
+            id={`tree-node-${n.internalId}`}
             type={
               showExpand === false ? "item" : n.expandable ? "node" : "leaf"
             }
