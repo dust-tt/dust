@@ -45,7 +45,6 @@ export function Landing() {
         logo="/static/landing/logos/clay.png"
       />
       <VerticalSection />
-      <MetricsSection />
       <FutureSection />
       {/* <DifferentiationSection /> */}
       {/* <CapabilitySection /> */}
