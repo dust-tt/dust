@@ -605,6 +605,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        timestamp                    BIGINT NOT NULL,
        node_id                      TEXT NOT NULL,
        title                        TEXT NOT NULL,
+       text_size                    BIGINT,
        mime_type                    TEXT NOT NULL,
        provider_visibility          TEXT,
        parents                      TEXT[] NOT NULL,
