@@ -385,6 +385,7 @@ DataTable.Row = function Row({
 interface BaseMenuItem {
   kind: "item" | "submenu";
   label: string;
+  disabled?: boolean;
 }
 
 interface RegularMenuItem
@@ -426,7 +427,7 @@ DataTable.MoreButton = function MoreButton({
 
   const renderSubmenuItem = (item: SubmenuMenuItem, index: number) => (
     <DropdownMenuSub key={`${item.label}-${index}`}>
-      <DropdownMenuSubTrigger label={item.label} />
+      <DropdownMenuSubTrigger label={item.label} disabled={item.disabled} />
       <DropdownMenuPortal>
         <DropdownMenuSubContent>
           <ScrollArea
