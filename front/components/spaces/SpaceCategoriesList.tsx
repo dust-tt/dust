@@ -14,7 +14,6 @@ import {
   Icon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -30,7 +29,6 @@ import { useContext, useEffect, useState } from "react";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
 
 type RowData = {
   category: string;

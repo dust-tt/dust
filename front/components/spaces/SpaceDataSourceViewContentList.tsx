@@ -265,11 +265,19 @@ export const SpaceDataSourceViewContentList = ({
     [setPagination, setViewType, viewType, pagination.pageSize]
   );
 
-  const { setIsSearchDisabled } = useContext(SpaceSearchContext);
-
   // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
   const isServerPagination = false;
   // isFolder(dataSourceView.dataSource) && !dataSourceSearch;
+
+  const {
+    searchTerm: dataSourceSearch,
+    setIsSearchDisabled,
+    setTargetDataSourceViews,
+  } = useContext(SpaceSearchContext);
+
+  useEffect(() => {
+    setTargetDataSourceViews([dataSourceView]);
+  }, [dataSourceView, setTargetDataSourceViews]);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -619,7 +627,7 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={undefined}
+            filter={dataSourceSearch}
             filterColumn={
               "title" // see todo above
             }

@@ -148,5 +148,9 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+  return (
+    <SpaceLayout pageProps={pageProps} useBackendSearch>
+      {page}
+    </SpaceLayout>
+  );
 };
