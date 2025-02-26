@@ -122,7 +122,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getCursorPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(req, { defaultLimit: 50 });
   if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,

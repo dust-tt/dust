@@ -98,7 +98,7 @@ export interface CursorPaginationParams {
 
 export function getCursorPaginationParams(
   req: NextApiRequest,
-  defaultLimit: number
+  { defaultLimit }: { defaultLimit: number }
 ): Result<CursorPaginationParams | undefined, InvalidPaginationParamsError> {
   const rawParams = {
     cursor: req.query.cursor ?? null,

@@ -34,7 +34,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const paginationRes = getCursorPaginationParams(req);
+      const paginationRes = getCursorPaginationParams(req, {
+        defaultLimit: 50,
+      });
       if (paginationRes.isErr()) {
         return apiError(req, res, {
           status_code: 400,
