@@ -25,6 +25,8 @@ const GetContentNodesOrChildrenRequestBody = t.type({
 export type PokeGetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
 };
 
 // This endpoints serves two purposes:
