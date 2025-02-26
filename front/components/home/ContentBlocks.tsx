@@ -424,8 +424,8 @@ export const CarousselContentBlock = ({
             <Image
               src={image}
               alt={title as string}
-              width={300}
-              height={200}
+              width={600}
+              height={500}
               className="h-auto w-full"
             />
           </div>

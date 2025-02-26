@@ -35,7 +35,7 @@ export const pageSettings: pageSettingsProps = {
   ),
   bulletPoints: [
     "Localize content in multiple languages while maintaining brand consistency and accuracy",
-    "Produce high-quality customer stories following your company templates",
+    "Draft high-quality customer stories following company templates",
     "Create compelling social media copy",
     "Monitor industry and competitor news",
   ],
