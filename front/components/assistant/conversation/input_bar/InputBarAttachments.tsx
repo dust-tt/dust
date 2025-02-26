@@ -15,18 +15,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 
-interface FileAttachDropdownProps {
+interface InputBarAttachmentsProps {
   fileUploaderService: FileUploaderService;
   onConnectedFileSelect: (fileId: string) => void;
   isLoading?: boolean;
 }
 
 // TODO(attach from input bar): use component with spaces wide search
-export const FileAttachDropdown = ({
+export const InputBarAttachments = ({
   fileUploaderService,
   onConnectedFileSelect,
   isLoading = false,
-}: FileAttachDropdownProps) => {
+}: InputBarAttachmentsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
