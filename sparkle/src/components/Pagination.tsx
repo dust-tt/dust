@@ -18,6 +18,7 @@ interface PaginationProps {
   rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
+  disablePaginationNumbers?: boolean;
 }
 
 export function Pagination({
@@ -28,6 +29,7 @@ export function Pagination({
   rowCountIsCapped = false,
   pagination,
   setPagination,
+  disablePaginationNumbers = false,
 }: PaginationProps) {
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
@@ -58,8 +60,8 @@ export function Pagination({
     pageIndex,
     numPages,
     pagesShownInControls,
-    onPaginationButtonClick,
-    size
+    size,
+    !disablePaginationNumbers ? onPaginationButtonClick : undefined
   );
 
   return (
@@ -123,8 +125,8 @@ export function Pagination({
 function renderPageNumber(
   pageNumber: number,
   currentPage: number,
-  onPageClick: (currentPage: number) => void,
-  size: Size
+  size: Size,
+  onPageClick?: (currentPage: number) => void
 ) {
   return (
     <button
@@ -136,7 +138,8 @@ function renderPageNumber(
           : "s-text-primary-400 dark:s-text-primary-400-night",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
-      onClick={() => onPageClick(pageNumber)}
+      onClick={() => onPageClick && onPageClick(pageNumber)}
+      disabled={!onPageClick}
     >
       {pageNumber + 1}
     </button>
@@ -161,15 +164,15 @@ function getPageButtons(
   currentPage: number,
   totalPages: number,
   slots: number,
-  onPageClick: (currentPage: number) => void,
-  size: Size
+  size: Size,
+  onPageClick?: (currentPage: number) => void
 ) {
   const pagination: React.ReactNode[] = [];
 
   // If total pages are less than or equal to slots, show all pages
   if (totalPages <= slots) {
     for (let i = 0; i < totalPages; i++) {
-      pagination.push(renderPageNumber(i, currentPage, onPageClick, size));
+      pagination.push(renderPageNumber(i, currentPage, size, onPageClick));
     }
     return pagination;
   }
@@ -180,7 +183,7 @@ function getPageButtons(
   // Ensure current page is within bounds
   currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
 
-  pagination.push(renderPageNumber(0, currentPage, onPageClick, size)); // Always show the first page
+  pagination.push(renderPageNumber(0, currentPage, size, onPageClick)); // Always show the first page
   // Determine the range of pages to display
   let start, end;
   if (currentPage <= halfSlots + 1) {
@@ -200,7 +203,7 @@ function getPageButtons(
 
   // Add the range of pages
   for (let i = start; i <= end; i++) {
-    pagination.push(renderPageNumber(i, currentPage, onPageClick, size));
+    pagination.push(renderPageNumber(i, currentPage, size, onPageClick));
   }
 
   // Add ellipsis if there is a gap between the end of the range and the last page
@@ -209,7 +212,7 @@ function getPageButtons(
   }
 
   pagination.push(
-    renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
+    renderPageNumber(totalPages - 1, currentPage, size, onPageClick)
   ); // Always show the last page
 
   return pagination;

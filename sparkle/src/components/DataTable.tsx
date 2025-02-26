@@ -81,6 +81,7 @@ interface DataTableProps<TData extends TBaseData> {
   sorting?: SortingState;
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
+  disablePaginationNumbers?: boolean;
 }
 
 function shouldRenderColumn(
@@ -108,6 +109,7 @@ export function DataTable<TData extends TBaseData>({
   sorting,
   setSorting,
   isServerSideSorting = false,
+  disablePaginationNumbers = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -257,6 +259,7 @@ export function DataTable<TData extends TBaseData>({
             setPagination={table.setPagination}
             rowCount={table.getRowCount()}
             rowCountIsCapped={rowCountIsCapped}
+            disablePaginationNumbers={disablePaginationNumbers}
           />
         </div>
       )}

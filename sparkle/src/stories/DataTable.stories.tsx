@@ -380,6 +380,36 @@ export const DataTablePaginatedExample = () => {
   );
 };
 
+export const DataTablePaginatedPageButtonsDisabledExample = () => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 2,
+  });
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={data}
+        filter={filter}
+        filterColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        disablePaginationNumbers
+      />
+    </div>
+  );
+};
+
 export const DataTablePaginatedServerSideExample = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
