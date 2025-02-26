@@ -24,6 +24,7 @@ import React from "react";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
@@ -34,23 +35,35 @@ export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
 
 const DEFAULT_VIEW_TYPE = "all";
 
-interface SpaceSearchInputProps {
+interface BaseSpaceSearchInputProps {
   canReadInSpace: boolean;
   canWriteInSpace: boolean;
-  category: DataSourceViewCategory | undefined;
   children: React.ReactNode;
   owner: LightWorkspaceType;
-  useBackendSearch?: boolean;
 }
 
-export function SpaceSearchInput({
-  canReadInSpace,
-  canWriteInSpace,
-  category,
-  children,
-  owner,
-  useBackendSearch = false,
-}: SpaceSearchInputProps) {
+interface BackendSearchProps extends BaseSpaceSearchInputProps {
+  useBackendSearch: true;
+  category: DataSourceViewCategoryWithoutApps;
+}
+
+interface FrontendSearchProps extends BaseSpaceSearchInputProps {
+  useBackendSearch?: false;
+  category: DataSourceViewCategory | undefined;
+}
+
+// Use discriminated union to ensure proper type narrowing
+type SpaceSearchInputProps = BackendSearchProps | FrontendSearchProps;
+
+// Add this function to check if we're in backend search mode
+function isBackendSearch(
+  props: SpaceSearchInputProps
+): props is BackendSearchProps {
+  return props.useBackendSearch === true;
+}
+
+export function SpaceSearchInput(props: SpaceSearchInputProps) {
+  // Common code for both backend and frontend search.
   const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [isSearchDisabled, setIsSearchDisabled] =
     React.useState<boolean>(false);
@@ -60,27 +73,13 @@ export function SpaceSearchInput({
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
+  const { owner } = props;
+
   // Get feature flags.
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
-
-  // For backend search, we need to debounce the search term.
-  const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
-
-  // Debounce search term for backend search based on feature flag.
-  React.useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (useBackendSearch && searchFeatureFlag) {
-        setDebouncedSearch(
-          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
-        );
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [searchTerm, searchFeatureFlag, useBackendSearch]);
+  const hasSearchKnowledgeBuilderFF = featureFlags.includes(
+    "search_knowledge_builder"
+  );
 
   const router = useRouter();
 
@@ -109,6 +108,80 @@ export function SpaceSearchInput({
     [searchTerm, isSearchDisabled, targetDataSourceViews, actionButtons]
   );
 
+  // Use the type guard to narrow the type.
+  const isBackend = isBackendSearch(props);
+
+  // Render based on props type.
+  if (isBackend) {
+    // This branch handles BackendSearchProps
+    return (
+      <BackendSearch
+        {...props}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        isSearchDisabled={isSearchDisabled}
+        targetDataSourceViews={targetDataSourceViews}
+        searchContextValue={searchContextValue}
+        viewType={viewType}
+        hasSearchKnowledgeBuilderFF={hasSearchKnowledgeBuilderFF}
+      />
+    );
+  } else {
+    // This branch handles FrontendSearchProps
+    return (
+      <FrontendSearch
+        {...props}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        isSearchDisabled={isSearchDisabled}
+        searchContextValue={searchContextValue}
+      />
+    );
+  }
+}
+
+interface FullBackendSearchProps extends BackendSearchProps {
+  hasSearchKnowledgeBuilderFF: boolean;
+  isSearchDisabled: boolean;
+  searchContextValue: SpaceSearchContextType;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  targetDataSourceViews: DataSourceViewType[];
+  viewType: ContentNodesViewType;
+}
+
+function BackendSearch({
+  canReadInSpace,
+  canWriteInSpace,
+  category,
+  children,
+  hasSearchKnowledgeBuilderFF,
+  isSearchDisabled,
+  owner,
+  searchContextValue,
+  searchTerm,
+  setSearchTerm,
+  targetDataSourceViews,
+  viewType,
+}: FullBackendSearchProps) {
+  // For backend search, we need to debounce the search term.
+  const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
+
+  // Debounce search term for backend search.
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (hasSearchKnowledgeBuilderFF) {
+        setDebouncedSearch(
+          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
+        );
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [searchTerm, hasSearchKnowledgeBuilderFF]);
+
   // Use the space search hook for backend search.
   const {
     searchResultNodes,
@@ -121,21 +194,12 @@ export function SpaceSearchInput({
     owner,
     search: debouncedSearch,
     viewType,
-    disabled: !useBackendSearch || !searchFeatureFlag || !debouncedSearch,
+    disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
   });
-
-  //   TODO:
-  //   const isTyping = React.useMemo(() => {
-  //     return (
-  //       searchTerm.length >= MIN_SEARCH_QUERY_SIZE &&
-  //       debouncedSearch !== searchTerm &&
-  //       searchFeatureFlag
-  //     );
-  //   }, [searchTerm, debouncedSearch, searchFeatureFlag]);
 
   // Determine whether to show search results or children.
   const shouldShowSearchResults =
-    useBackendSearch && searchFeatureFlag && debouncedSearch.length > 0;
+    hasSearchKnowledgeBuilderFF && debouncedSearch.length > 0;
 
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
@@ -152,7 +216,6 @@ export function SpaceSearchInput({
         </div>
       </div>
 
-      {/* Scenario 1: Show search results table if using backend search */}
       {shouldShowSearchResults ? (
         <div className="mt-4">
           <h2 className="mb-2 text-lg font-medium">
@@ -179,9 +242,42 @@ export function SpaceSearchInput({
           )}
         </div>
       ) : (
-        /* Scenario 2: Show children (which will use context) */
         children
       )}
+    </SpaceSearchContext.Provider>
+  );
+}
+
+interface FullFrontendSearchProps extends FrontendSearchProps {
+  isSearchDisabled: boolean;
+  searchContextValue: SpaceSearchContextType;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+}
+
+function FrontendSearch({
+  children,
+  isSearchDisabled,
+  searchContextValue,
+  searchTerm,
+  setSearchTerm,
+}: FullFrontendSearchProps) {
+  return (
+    <SpaceSearchContext.Provider value={searchContextValue}>
+      <div className="mb-4">
+        <div className="flex w-full gap-2">
+          <SearchInput
+            name="search"
+            placeholder="Search (Name)"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            disabled={isSearchDisabled}
+          />
+          <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
+        </div>
+      </div>
+
+      {children}
     </SpaceSearchContext.Provider>
   );
 }
