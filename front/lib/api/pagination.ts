@@ -88,7 +88,7 @@ export function getPaginationParams(
 
 const CursorPaginationParamsCodec = t.type({
   limit: LimitCodec,
-  cursor: t.union([t.string, t.null, t.undefined]),
+  cursor: t.union([t.string, t.null]),
 });
 
 export interface CursorPaginationParams {
@@ -97,25 +97,14 @@ export interface CursorPaginationParams {
 }
 
 export function getCursorPaginationParams(
-  req: NextApiRequest
+  req: NextApiRequest,
+  defaultLimit: number
 ): Result<CursorPaginationParams | undefined, InvalidPaginationParamsError> {
-  const { limit, cursor } = req.query;
-  if (!req.query.limit) {
-    return new Ok(undefined);
-  }
-
-  if (typeof limit !== "string" || (cursor && typeof cursor !== "string")) {
-    return new Err(
-      new InvalidPaginationParamsError(
-        "Invalid pagination parameters",
-        "limit and cursor must be strings"
-      )
-    );
-  }
-
   const rawParams = {
-    limit: parseInt(limit, 10),
-    cursor,
+    cursor: req.query.cursor ?? null,
+    limit: req.query.limit
+      ? parseInt(req.query.limit as string, 10)
+      : defaultLimit,
   };
 
   const queryValidation = CursorPaginationParamsCodec.decode(rawParams);
