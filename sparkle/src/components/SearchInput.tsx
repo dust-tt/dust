@@ -12,9 +12,9 @@ import {
   ScrollBar,
   Spinner,
 } from "@sparkle/components";
+import { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
-import { ContentMessageProps } from "@sparkle/components/ContentMessage";
 
 export interface SearchInputProps {
   placeholder?: string;
