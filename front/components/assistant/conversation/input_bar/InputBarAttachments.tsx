@@ -55,7 +55,7 @@ export const InputBarAttachments = ({
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
-          icon={AttachmentIcon}
+          icon={PlusIcon}
           size="xs"
           disabled={isLoading}
         />
@@ -83,7 +83,7 @@ export const InputBarAttachments = ({
                 disabled={isLoading}
               >
                 <Icon
-                  visual={PlusIcon}
+                  visual={AttachmentIcon}
                   size="xs"
                   className="text-element-600"
                 />
