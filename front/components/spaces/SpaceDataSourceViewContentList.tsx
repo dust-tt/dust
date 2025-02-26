@@ -53,6 +53,7 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -233,11 +234,12 @@ export const SpaceDataSourceViewContentList = ({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  // State for cursor pagination (in URL).
-  const { cursorPagination, setCursorPagination } = useCursorPaginationFromUrl({
-    urlPrefix: "table",
-    initialLimit: 25,
-  });
+  // State for cursor pagination.
+  const [cursorPagination, setCursorPagination] =
+    React.useState<CursorPaginationParams>({
+      limit: 25,
+      cursor: null,
+    });
   // State for DataTable pagination.
   const [tablePagination, setTablePagination] = useState<PaginationState>({
     pageIndex: cursorPagination.cursor ? 1 : 0,
@@ -260,10 +262,7 @@ export const SpaceDataSourceViewContentList = ({
   const handleViewTypeChange = useCallback(
     (newViewType: ContentNodesViewType) => {
       if (newViewType !== viewType) {
-        setCursorPagination(
-          { cursor: null, limit: cursorPagination.limit },
-          "replace"
-        );
+        setCursorPagination({ cursor: null, limit: cursorPagination.limit });
         setViewType(newViewType);
       }
     },
@@ -611,10 +610,10 @@ export const SpaceDataSourceViewContentList = ({
                 placeholder="Search (Name)"
                 value={dataSourceSearch}
                 onChange={(s) => {
-                  setCursorPagination(
-                    { cursor: null, limit: cursorPagination.limit },
-                    "replace"
-                  );
+                  setCursorPagination({
+                    cursor: null,
+                    limit: cursorPagination.limit,
+                  });
                   setDataSourceSearch(s);
                 }}
               />
