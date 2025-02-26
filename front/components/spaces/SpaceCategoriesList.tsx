@@ -25,8 +25,10 @@ import type {
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 
@@ -119,19 +121,20 @@ type SpaceCategoriesListProps = {
 };
 
 export const SpaceCategoriesList = ({
-  isAdmin,
-  onButtonClick,
-  canWriteInSpace,
   onSelect,
   owner,
   space,
 }: SpaceCategoriesListProps) => {
-  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
+
+  // Use the search term from context instead of local state.
+  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
+  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
+    useContext(SpaceSearchContext);
+
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
@@ -148,6 +151,14 @@ export const SpaceCategoriesList = ({
       )
     : [];
 
+  useEffect(() => {
+    if (rows.length > 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [rows.length, setIsSearchDisabled]);
+
   if (isSpaceInfoLoading) {
     return (
       <div className="mt-8 flex justify-center">
@@ -158,69 +169,6 @@ export const SpaceCategoriesList = ({
 
   return (
     <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          rows.length === 0
-            ? classNames(
-                "h-36 w-full items-center justify-center rounded-xl",
-                "bg-muted-background dark:bg-muted-background-night"
-              )
-            : ""
-        )}
-      >
-        {rows.length > 0 && (
-          <div className="flex w-full gap-2">
-            <SearchInput
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setDataSourceSearch(s);
-              }}
-            />
-            {isAdmin && onButtonClick && space.kind === "regular" && (
-              <Button
-                label="Space settings"
-                icon={Cog6ToothIcon}
-                onClick={onButtonClick}
-                variant="outline"
-              />
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Add data" icon={PlusIcon} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  disabled={!isAdmin && !canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
-                  icon={CloudArrowLeftRightIcon}
-                  label="Connected Data"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
-                  icon={ArrowUpOnSquareIcon}
-                  label="Upload Data"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
-                  icon={GlobeAltIcon}
-                  label="Scrape a website"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
-                  icon={CommandLineIcon}
-                  label="Create a Dust App"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
       {rows.length > 0 && (
         <DataTable
           data={rows}
@@ -236,3 +184,72 @@ export const SpaceCategoriesList = ({
     </>
   );
 };
+
+interface SpaceCategoriesListActionButtonsProps {
+  canWriteInSpace: boolean;
+  isAdmin: boolean;
+  owner: WorkspaceType;
+  space: SpaceType;
+}
+
+export function SpaceCategoriesListActionButtons({
+  canWriteInSpace,
+  isAdmin,
+  owner,
+  space,
+}: SpaceCategoriesListActionButtonsProps) {
+  const [showSpaceEditionModal, setShowSpaceEditionModal] = useState(false);
+
+  return (
+    <>
+      {/* TODO(20250226, search-kb): Refactor to only use one modal from the SpaceLayout. */}
+      <CreateOrEditSpaceModal
+        owner={owner}
+        isOpen={showSpaceEditionModal}
+        onClose={() => setShowSpaceEditionModal(false)}
+        space={space}
+        isAdmin={isAdmin}
+      />
+
+      {isAdmin && space.kind === "regular" && (
+        <Button
+          label="Space settings"
+          icon={Cog6ToothIcon}
+          onClick={() => setShowSpaceEditionModal(true)}
+          variant="outline"
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label="Add data" icon={PlusIcon} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            disabled={!isAdmin && !canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
+            icon={CloudArrowLeftRightIcon}
+            label="Connected Data"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
+            icon={ArrowUpOnSquareIcon}
+            label="Upload Data"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
+            icon={GlobeAltIcon}
+            label="Scrape a website"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
+            icon={CommandLineIcon}
+            label="Create a Dust App"
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}

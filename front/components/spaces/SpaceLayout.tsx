@@ -6,6 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Page,
+  SearchInput,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
@@ -17,16 +19,21 @@ import type {
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { CATEGORY_DETAILS } from "@app/components/spaces/SpaceCategoriesList";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
-import { getSpaceIcon, isPrivateSpacesLimitReached } from "@app/lib/spaces";
+import {
+  getSpaceIcon,
+  getSpaceName,
+  isPrivateSpacesLimitReached,
+} from "@app/lib/spaces";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
@@ -42,26 +49,31 @@ export interface SpaceLayoutProps {
 }
 
 export function SpaceLayout({
+  actionButtons,
   children,
   pageProps,
 }: {
   children: React.ReactNode;
   pageProps: SpaceLayoutProps;
+  actionButtons?: React.ReactNode;
 }) {
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
 
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [isSearchDisabled, setIsSearchDisabled] = useState<boolean>(false);
+
   const {
-    owner,
-    plan,
-    isAdmin,
-    subscription,
-    space,
     category,
     dataSourceView,
+    isAdmin,
+    owner,
     parentId,
+    plan,
+    space,
+    subscription,
   } = pageProps;
   const router = useRouter();
 
@@ -84,68 +96,107 @@ export function SpaceLayout({
     []
   );
 
+  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
+  const searchContextValue = useMemo(
+    () => ({
+      searchTerm,
+      setSearchTerm,
+      isSearchDisabled,
+      setIsSearchDisabled,
+    }),
+    [searchTerm, isSearchDisabled]
+  );
+
+  // Reset the search term when the URL changes.
+  useEffect(() => {
+    setSearchTerm("");
+  }, [router.asPath]);
+
   return (
     <RootLayout>
-      <AppLayout
-        subscription={subscription}
-        owner={owner}
-        navChildren={
-          <SpaceSideBarMenu
-            owner={owner}
-            isAdmin={isAdmin}
-            openSpaceCreationModal={openSpaceCreationModal}
-          />
-        }
-      >
-        <SpaceBreadCrumbs
-          space={space}
-          category={category}
+      <SpaceSearchContext.Provider value={searchContextValue}>
+        <AppLayout
+          subscription={subscription}
           owner={owner}
-          dataSourceView={dataSourceView}
-          parentId={parentId ?? undefined}
-        />
-        {children}
-        {isAdmin && !isLimitReached && (
-          <CreateOrEditSpaceModal
-            isAdmin={isAdmin}
+          navChildren={
+            <SpaceSideBarMenu
+              owner={owner}
+              isAdmin={isAdmin}
+              openSpaceCreationModal={openSpaceCreationModal}
+            />
+          }
+        >
+          <SpaceBreadCrumbs
+            space={space}
+            category={category}
             owner={owner}
-            isOpen={!isLimitReached && spaceCreationModalState.isOpen}
-            onClose={closeSpaceCreationModal}
-            onCreated={(space) => {
-              void router.push(`/w/${owner.sId}/spaces/${space.sId}`);
-            }}
-            defaultRestricted={spaceCreationModalState.defaultRestricted}
+            dataSourceView={dataSourceView}
+            parentId={parentId ?? undefined}
           />
-        )}
-        {isAdmin && isLimitReached && (
-          <Dialog
-            open={isLimitReached && spaceCreationModalState.isOpen}
-            onOpenChange={(open) => {
-              if (!open) {
-                closeSpaceCreationModal();
-              }
-            }}
-          >
-            <DialogContent size="md" isAlertDialog>
-              <DialogHeader hideButton>
-                <DialogTitle>You can't create more spaces.</DialogTitle>
-              </DialogHeader>
-              <DialogContainer>
-                {isEnterprise
-                  ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
-                  : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
-              </DialogContainer>
-              <DialogFooter
-                rightButtonProps={{
-                  label: "Ok",
-                  variant: "outline",
-                  onClick: closeSpaceCreationModal,
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-      </AppLayout>
+
+          <Page.Vertical gap="xl" align="stretch">
+            <Page.Header
+              title={getSpaceName(space)}
+              icon={getSpaceIcon(space)}
+            />
+
+            <div className="mb-4">
+              <div className="flex w-full gap-2">
+                <SearchInput
+                  name="search"
+                  placeholder="Search (Name)"
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                />
+                {actionButtons}
+              </div>
+            </div>
+
+            {children}
+          </Page.Vertical>
+
+          {isAdmin && !isLimitReached && (
+            <CreateOrEditSpaceModal
+              isAdmin={isAdmin}
+              owner={owner}
+              isOpen={!isLimitReached && spaceCreationModalState.isOpen}
+              onClose={closeSpaceCreationModal}
+              onCreated={(space) => {
+                void router.push(`/w/${owner.sId}/spaces/${space.sId}`);
+              }}
+              defaultRestricted={spaceCreationModalState.defaultRestricted}
+            />
+          )}
+          {isAdmin && isLimitReached && (
+            <Dialog
+              open={isLimitReached && spaceCreationModalState.isOpen}
+              onOpenChange={(open) => {
+                if (!open) {
+                  closeSpaceCreationModal();
+                }
+              }}
+            >
+              <DialogContent size="md" isAlertDialog>
+                <DialogHeader hideButton>
+                  <DialogTitle>You can't create more spaces.</DialogTitle>
+                </DialogHeader>
+                <DialogContainer>
+                  {isEnterprise
+                    ? "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
+                    : "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."}
+                </DialogContainer>
+                <DialogFooter
+                  rightButtonProps={{
+                    label: "Ok",
+                    variant: "outline",
+                    onClick: closeSpaceCreationModal,
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
+        </AppLayout>
+      </SpaceSearchContext.Provider>
     </RootLayout>
   );
 }
