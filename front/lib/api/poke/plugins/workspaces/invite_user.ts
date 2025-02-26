@@ -4,8 +4,8 @@ import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
 
-export const inviteUser = createPlugin(
-  {
+export const inviteUser = createPlugin({
+  manifest: {
     id: "invite-user",
     name: "Invite a user",
     description: "Invite a user to the workspace",
@@ -24,7 +24,7 @@ export const inviteUser = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, resourceId, args) => {
     const subscription = auth.subscription();
     const plan = auth.plan();
     if (!subscription || !plan) {
@@ -70,5 +70,5 @@ export const inviteUser = createPlugin(
       display: "text",
       value: `Invitation sent to ${result.email}.`,
     });
-  }
-);
+  },
+});

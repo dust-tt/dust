@@ -14,6 +14,7 @@ export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
   declare connectionId: string;
+  declare useProxy: boolean | null;
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -50,6 +51,11 @@ ConnectorModel.init(
     connectionId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    useProxy: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,

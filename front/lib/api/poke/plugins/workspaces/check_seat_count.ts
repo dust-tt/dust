@@ -4,8 +4,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 
-export const checkSeatCountPlugin = createPlugin(
-  {
+export const checkSeatCountPlugin = createPlugin({
+  manifest: {
     id: "check-seat-count",
     name: "Check the seat count",
     description: "Check the seat count on Stripe.",
@@ -18,7 +18,7 @@ export const checkSeatCountPlugin = createPlugin(
       },
     },
   },
-  async (auth, resourceId, { updateQuantity }) => {
+  execute: async (auth, resourceId, { updateQuantity }) => {
     const workspace = auth.getNonNullableWorkspace();
 
     if (updateQuantity) {
@@ -43,5 +43,5 @@ export const checkSeatCountPlugin = createPlugin(
         value: res.value,
       });
     }
-  }
-);
+  },
+});

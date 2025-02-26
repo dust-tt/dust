@@ -7,8 +7,8 @@ import { isManaged, isWebsite } from "@app/lib/data_sources";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
-export const markConnectorAsErrorPlugin = createPlugin(
-  {
+export const markConnectorAsErrorPlugin = createPlugin({
+  manifest: {
     id: "mark-connector-as-error",
     name: "Mark connector as error",
     description: "Mark a connector as errored with a specific error type",
@@ -22,7 +22,7 @@ export const markConnectorAsErrorPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
+  execute: async (auth, dataSourceId, args) => {
     if (!dataSourceId) {
       return new Err(new Error("Data source not found."));
     }
@@ -74,5 +74,5 @@ export const markConnectorAsErrorPlugin = createPlugin(
       display: "text",
       value: `Connector ${connectorId} marked as ${errorType} and paused.`,
     });
-  }
-);
+  },
+});

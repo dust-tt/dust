@@ -6,8 +6,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
-export const batchDowngradePlugin = createPlugin(
-  {
+export const batchDowngradePlugin = createPlugin({
+  manifest: {
     id: "batch-downgrade",
     name: "Batch Downgrade Workspaces",
     warning:
@@ -23,7 +23,7 @@ export const batchDowngradePlugin = createPlugin(
       },
     },
   },
-  async (_1, _2, args) => {
+  execute: async (_1, _2, args) => {
     const { sIds } = args;
 
     const sIdsArray = sIds
@@ -64,5 +64,5 @@ export const batchDowngradePlugin = createPlugin(
       display: "text",
       value: `Workspaces downgraded.`,
     });
-  }
-);
+  },
+});

@@ -4,15 +4,15 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { synchronizeDustApps } from "@app/lib/utils/apps";
 
-export const syncAppsPlugin = createPlugin(
-  {
+export const syncAppsPlugin = createPlugin({
+  manifest: {
     id: "sync-apps",
     name: "Sync dust-apps",
     description: "Synchronize dust-apps from production",
     resourceTypes: ["spaces"],
     args: {},
   },
-  async (auth, spaceId) => {
+  execute: async (auth, spaceId) => {
     if (!spaceId) {
       return new Err(new Error("No space specified"));
     }
@@ -36,5 +36,5 @@ export const syncAppsPlugin = createPlugin(
       display: "json",
       value: { importedApp: result.value },
     });
-  }
-);
+  },
+});
