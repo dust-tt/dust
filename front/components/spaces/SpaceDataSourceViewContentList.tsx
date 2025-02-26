@@ -65,6 +65,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
+const PAGE_SIZE = 25;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -234,17 +235,22 @@ export const SpaceDataSourceViewContentList = ({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  // State for cursor pagination.
-  const [cursorPagination, setCursorPagination] =
-    React.useState<CursorPaginationParams>({
-      limit: 25,
-      cursor: null,
-    });
-  // State for DataTable pagination.
+  // Pagination state for the content nodes.
+  const [currentCursor, setCurrentCursor] =
+    useState<CursorPaginationParams["cursor"]>(null);
+  const [cursorHistory, setCursorHistory] = useState<
+    CursorPaginationParams["cursor"][]
+  >([null]);
   const [tablePagination, setTablePagination] = useState<PaginationState>({
-    pageIndex: cursorPagination.cursor ? 1 : 0,
-    pageSize: cursorPagination.limit,
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
   });
+  const resetPagination = useCallback(() => {
+    setTablePagination({ pageIndex: 0, pageSize: PAGE_SIZE });
+    setCursorHistory([null]);
+    setCurrentCursor(null);
+  }, []);
+
   const [viewType, setViewType] = useHashParam(
     "viewType",
     DEFAULT_VIEW_TYPE
@@ -262,11 +268,11 @@ export const SpaceDataSourceViewContentList = ({
   const handleViewTypeChange = useCallback(
     (newViewType: ContentNodesViewType) => {
       if (newViewType !== viewType) {
-        setCursorPagination({ cursor: null, limit: cursorPagination.limit });
+        resetPagination();
         setViewType(newViewType);
       }
     },
-    [setCursorPagination, setViewType, viewType, cursorPagination.limit]
+    [resetPagination, setViewType, viewType]
   );
 
   const { searchResultNodes, isSearchLoading, isSearchValidating } =
@@ -294,7 +300,7 @@ export const SpaceDataSourceViewContentList = ({
     dataSourceView,
     owner,
     parentId,
-    pagination: cursorPagination,
+    pagination: { cursor: currentCursor, limit: PAGE_SIZE },
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
@@ -341,22 +347,19 @@ export const SpaceDataSourceViewContentList = ({
         newTablePagination.pageIndex > tablePagination.pageIndex &&
         nextPageCursor
       ) {
-        // Next page - use cursor
+        // Next page - update the history and the cursor.
         setTablePagination(newTablePagination);
-        setCursorPagination({
-          cursor: nextPageCursor,
-          limit: tablePagination.pageSize,
-        });
+        if (newTablePagination.pageIndex === cursorHistory.length + 1) {
+          setCursorHistory((prev) => [...prev, nextPageCursor]);
+        }
+        setCurrentCursor(nextPageCursor);
       } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
-        // Previous page - reset cursor
+        // Older page - use the appropriate cursor.
         setTablePagination(newTablePagination);
-        setCursorPagination({
-          cursor: null,
-          limit: tablePagination.pageSize,
-        });
+        setCurrentCursor(cursorHistory[newTablePagination.pageIndex]);
       }
     },
-    [tablePagination, nextPageCursor, setCursorPagination]
+    [tablePagination.pageIndex, nextPageCursor, cursorHistory]
   );
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
@@ -603,10 +606,7 @@ export const SpaceDataSourceViewContentList = ({
                 placeholder="Search (Name)"
                 value={dataSourceSearch}
                 onChange={(s) => {
-                  setCursorPagination({
-                    cursor: null,
-                    limit: cursorPagination.limit,
-                  });
+                  resetPagination();
                   setDataSourceSearch(s);
                 }}
               />
