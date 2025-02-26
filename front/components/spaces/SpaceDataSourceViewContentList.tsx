@@ -215,7 +215,7 @@ function useCursorPaginationForDataTable(pageSize: number) {
   const [cursorPagination, setCursorPagination] =
     useState<CursorPaginationParams>({ cursor: null, limit: pageSize });
 
-  // We keep a history of the cursors to allow going back in pages (leverage SWR's cache).
+  // We keep a history of the cursors to allow going back in pages.
   const [cursorHistory, setCursorHistory] = useState<
     CursorPaginationParams["cursor"][]
   >([null]);
@@ -234,7 +234,8 @@ function useCursorPaginationForDataTable(pageSize: number) {
   const handlePaginationChange = useCallback(
     (newTablePagination: PaginationState, nextPageCursor: string | null) => {
       if (
-        newTablePagination.pageIndex > tablePagination.pageIndex &&
+        // This pagination only supports going forward one page at a time.
+        newTablePagination.pageIndex === tablePagination.pageIndex + 1 &&
         nextPageCursor
       ) {
         // Next page - update the history and the cursor.
@@ -254,11 +255,12 @@ function useCursorPaginationForDataTable(pageSize: number) {
     },
     [tablePagination.pageIndex, cursorHistory, pageSize]
   );
+
   return {
     cursorPagination,
+    tablePagination,
     resetPagination,
     handlePaginationChange,
-    tablePagination,
   };
 }
 
