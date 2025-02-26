@@ -376,7 +376,7 @@ export const SpaceResourcesList = ({
   ]);
 
   useEffect(() => {
-    if (rows.length > 0) {
+    if (rows.length === 0) {
       setIsSearchDisabled(true);
     } else {
       setIsSearchDisabled(false);

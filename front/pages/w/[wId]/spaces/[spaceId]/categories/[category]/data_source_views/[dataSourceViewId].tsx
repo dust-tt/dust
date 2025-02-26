@@ -25,8 +25,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
-    canWriteInSpace: boolean;
-    canReadInSpace: boolean;
     parentId?: string;
     systemSpace: SpaceType;
     connector: ConnectorType | null;
@@ -127,26 +125,25 @@ export default function Space({
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <SpaceDataSourceViewContentList
-        owner={owner}
-        space={space}
-        plan={plan}
-        canWriteInSpace={canWriteInSpace}
-        canReadInSpace={canReadInSpace}
-        parentId={parentId}
-        dataSourceView={dataSourceView}
-        onSelect={(parentId) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
-          );
-        }}
-        isAdmin={isAdmin}
-        systemSpace={systemSpace}
-        connector={connector}
-      />
-    </Page.Vertical>
+    <SpaceDataSourceViewContentList
+      owner={owner}
+      space={space}
+      plan={plan}
+      canWriteInSpace={canWriteInSpace}
+      canReadInSpace={canReadInSpace}
+      parentId={parentId}
+      dataSourceView={dataSourceView}
+      onSelect={(parentId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
+        );
+      }}
+      isAdmin={isAdmin}
+      systemSpace={systemSpace}
+      connector={connector}
+    />
   );
 }
 

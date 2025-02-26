@@ -48,6 +48,7 @@ const SearchRequestBody = t.type({
 
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
+  total: number;
 };
 
 async function handler(
@@ -180,7 +181,7 @@ async function handler(
 
     return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
-  return res.status(200).json({ nodes });
+  return res.status(200).json({ nodes, total: searchRes.value.hit_count });
 }
 
 export default withSessionAuthenticationForWorkspace(

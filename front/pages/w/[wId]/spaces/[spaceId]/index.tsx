@@ -50,8 +50,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      isAdmin,
+      canReadInSpace: space.canRead(auth),
       canWriteInSpace,
+      isAdmin,
       owner,
       plan,
       space: space.toJSON(),

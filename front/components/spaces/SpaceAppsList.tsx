@@ -155,8 +155,7 @@ export const SpaceAppsList = ({
 
   // Use the search term from context instead of local state.
   // TODO(20250226, search-kb): remove this once the keyword search is implemented.
-  const { searchTerm: appSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+  const { searchTerm: appSearch } = useContext(SpaceSearchContext);
 
   const { apps, isAppsLoading } = useApps({ owner, space });
 
@@ -177,14 +176,6 @@ export const SpaceAppsList = ({
       })) || [],
     [apps, onSelect, owner]
   );
-
-  React.useEffect(() => {
-    if (rows.length > 0) {
-      setIsSearchDisabled(true);
-    } else {
-      setIsSearchDisabled(false);
-    }
-  }, [rows.length, setIsSearchDisabled]);
 
   if (isAppsLoading) {
     return (

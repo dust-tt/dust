@@ -17,7 +17,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
-    canWriteInSpace: boolean;
     category: DataSourceViewCategory;
     isAdmin: boolean;
     registryApps: ActionApp[] | null;
@@ -58,6 +57,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
+      canReadInSpace: space.canRead(auth),
       canWriteInSpace,
       category: "apps",
       isAdmin,

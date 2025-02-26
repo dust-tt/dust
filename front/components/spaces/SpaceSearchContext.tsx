@@ -1,3 +1,4 @@
+import type { DataSourceViewType } from "@dust-tt/types";
 import { createContext } from "react";
 
 // Temporary context to share the search term between the SpaceLayout and the
@@ -11,11 +12,19 @@ export interface SpaceSearchContextType {
 
   isSearchDisabled: boolean;
   setIsSearchDisabled: (value: boolean) => void;
+
+  // Data source view targeting for search
+  targetDataSourceViews?: DataSourceViewType[];
+  setTargetDataSourceViews: (value: DataSourceViewType[]) => void;
 }
 
 export const SpaceSearchContext = createContext<SpaceSearchContextType>({
   searchTerm: "",
   setSearchTerm: () => {},
+
   isSearchDisabled: false,
   setIsSearchDisabled: () => {},
+
+  targetDataSourceViews: [],
+  setTargetDataSourceViews: () => {},
 });

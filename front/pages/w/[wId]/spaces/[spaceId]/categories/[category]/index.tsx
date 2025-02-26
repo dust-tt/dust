@@ -146,17 +146,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
+      canReadInSpace: space.canRead(auth),
+      canWriteInSpace,
       category,
+      integrations,
       isAdmin,
       isBuilder,
-      canWriteInSpace,
       owner,
       plan,
-      subscription,
-      space: space.toJSON(),
-      systemSpace: systemSpace.toJSON(),
-      integrations,
       registryApps,
+      space: space.toJSON(),
+      subscription,
+      systemSpace: systemSpace.toJSON(),
     },
   };
 });
