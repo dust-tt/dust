@@ -7,8 +7,8 @@ import { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
-export const cloneAppPlugin = createPlugin(
-  {
+export const cloneAppPlugin = createPlugin({
+  manifest: {
     id: "clone-app",
     name: "Clone App",
     description: "Clone an app to a target workspace and space",
@@ -26,7 +26,7 @@ export const cloneAppPlugin = createPlugin(
       },
     },
   },
-  async (auth, appId, args) => {
+  execute: async (auth, appId, args) => {
     assert(appId, "appId is required");
 
     const { targetSpaceId, targetWorkspaceId } = args;
@@ -67,5 +67,5 @@ export const cloneAppPlugin = createPlugin(
       display: "text",
       value: `App ${app.name} cloned successfully in workspace ${targetWorkspace.name}`,
     });
-  }
-);
+  },
+});

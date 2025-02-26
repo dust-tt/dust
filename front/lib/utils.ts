@@ -62,7 +62,8 @@ export const timeAgoFrom = (
       useLongFormat ? maybePlural(minutes, " minute") : "min"
     }`;
   }
-  return seconds + "s";
+
+  return "<1m";
 };
 
 export function formatTimestampToFriendlyDate(

@@ -3,8 +3,8 @@ import { Err, Ok } from "@dust-tt/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { mergeUserIdentities } from "@app/lib/iam/users";
 
-export const userIdentityMergePlugin = createPlugin(
-  {
+export const userIdentityMergePlugin = createPlugin({
+  manifest: {
     id: "merge-user-identities",
     name: "Merge user identities",
     description:
@@ -25,7 +25,7 @@ export const userIdentityMergePlugin = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, resourceId, args) => {
     const primaryUserId = args.primaryUserId.trim();
     const secondaryUserId = args.secondaryUserId.trim();
 
@@ -47,5 +47,5 @@ export const userIdentityMergePlugin = createPlugin(
       display: "text",
       value: `User identities successfully merged into primary identity with email: ${mergeResult.value.primaryUser.email}`,
     });
-  }
-);
+  },
+});

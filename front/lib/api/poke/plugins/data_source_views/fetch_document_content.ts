@@ -5,8 +5,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
-export const fetchDocumentContentPlugin = createPlugin(
-  {
+export const fetchDocumentContentPlugin = createPlugin({
+  manifest: {
     id: "fetch-document-content",
     name: "Fetch Document Content",
     description:
@@ -21,7 +21,7 @@ export const fetchDocumentContentPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceViewId, args) => {
+  execute: async (auth, dataSourceViewId, args) => {
     if (!dataSourceViewId) {
       return new Err(new Error("Data source view not found."));
     }
@@ -61,5 +61,5 @@ export const fetchDocumentContentPlugin = createPlugin(
         tags: document.value.document.tags,
       },
     });
-  }
-);
+  },
+});

@@ -8,8 +8,8 @@ import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
 
-export const createWorkspacePlugin = createPlugin(
-  {
+export const createWorkspacePlugin = createPlugin({
+  manifest: {
     id: "create-workspace",
     name: "Create Workspace",
     description: `Create a new workspace in ${getRegionDisplay(config.getCurrentRegion())}.`,
@@ -37,7 +37,7 @@ export const createWorkspacePlugin = createPlugin(
       },
     },
   },
-  async (auth, _, args) => {
+  execute: async (auth, _, args) => {
     const { enableAutoJoin = false } = args;
 
     const email = args.email.trim();
@@ -92,5 +92,5 @@ export const createWorkspacePlugin = createPlugin(
       display: "text",
       value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
     });
-  }
-);
+  },
+});

@@ -32,7 +32,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { resourceType } = req.query;
+      const { resourceType, resourceId } = req.query;
       if (typeof resourceType !== "string") {
         return apiError(req, res, {
           status_code: 400,
@@ -43,13 +43,29 @@ async function handler(
         });
       }
 
+      if (resourceId && typeof resourceId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid resource id type.",
+          },
+        });
+      }
+
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
-      const pluginList = plugins.map((p) => ({
-        id: p.manifest.id,
-        name: p.manifest.name,
-        description: p.manifest.description,
-      }));
+      const visiblePluginResults = await Promise.all(
+        plugins.map((p) => !resourceId || p.isVisible(auth, resourceId))
+      );
+
+      const pluginList = plugins
+        .filter((_, i) => visiblePluginResults[i])
+        .map((p) => ({
+          id: p.manifest.id,
+          name: p.manifest.name,
+          description: p.manifest.description,
+        }));
 
       res.status(200).json({ plugins: pluginList });
       return;

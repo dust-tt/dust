@@ -229,6 +229,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       connectionId: this.connectionId,
       workspaceId: this.workspaceId,
       dataSourceId: this.dataSourceId,
+      useProxy: this.useProxy ?? false,
       lastSyncStatus: this.lastSyncStatus,
       lastSyncStartTime: this.lastSyncStartTime?.getTime(),
       lastSyncFinishTime: this.lastSyncFinishTime?.getTime(),

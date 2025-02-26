@@ -5,8 +5,8 @@ import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 
-export const revokeUsersPlugin = createPlugin(
-  {
+export const revokeUsersPlugin = createPlugin({
+  manifest: {
     id: "revoke-users",
     name: "Revoke Users",
     description: "Revoke users from the workspace.",
@@ -20,7 +20,7 @@ export const revokeUsersPlugin = createPlugin(
       },
     },
   },
-  async (auth, workspaceId, args) => {
+  execute: async (auth, workspaceId, args) => {
     assert(workspaceId, "workspaceId is required");
 
     const userIds = args.userIds.trim();
@@ -74,5 +74,5 @@ export const revokeUsersPlugin = createPlugin(
       display: "text",
       value: `Revoked ${userIdsArray.length} users from workspace ${workspaceId}.`,
     });
-  }
-);
+  },
+});

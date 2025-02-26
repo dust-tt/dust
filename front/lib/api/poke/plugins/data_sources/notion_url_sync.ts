@@ -9,13 +9,14 @@ import { isLeft } from "fp-ts/lib/Either";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 
-export const notionUrlSyncPlugin = createPlugin(
-  {
+export const notionUrlSyncPlugin = createPlugin({
+  manifest: {
     id: "notion-url-sync",
     name: "Notion URLs sync/delete",
     description: "Sync or delete a Notion URL to Dust",
@@ -38,7 +39,21 @@ export const notionUrlSyncPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
+  isVisible: async (
+    auth: Authenticator,
+    resourceId: string | undefined
+  ): Promise<boolean> => {
+    if (!resourceId) {
+      return false;
+    }
+    const dataSource = await DataSourceResource.fetchById(auth, resourceId);
+    if (!dataSource) {
+      return false;
+    }
+
+    return dataSource.connectorProvider === "notion";
+  },
+  execute: async (auth, dataSourceId, args) => {
     if (!dataSourceId) {
       return new Err(new Error("Data source not found."));
     }
@@ -114,8 +129,8 @@ export const notionUrlSyncPlugin = createPlugin(
     } else {
       return new Err(new Error("Invalid operation"));
     }
-  }
-);
+  },
+});
 type URLOperationResult = {
   url: string;
   timestamp: number;

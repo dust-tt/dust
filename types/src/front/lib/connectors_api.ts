@@ -38,7 +38,7 @@ export type ConnectorType = {
   workspaceId: string;
   dataSourceId: string;
   connectionId: string;
-
+  useProxy: boolean;
   lastSyncStatus?: ConnectorSyncStatus;
   lastSyncStartTime?: number;
   lastSyncFinishTime?: number;

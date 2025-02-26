@@ -71,6 +71,7 @@ type FeaturesType = {
   googleDriveCsvEnabled: boolean;
   microsoftCsvEnabled: boolean;
   githubCodeSyncEnabled: boolean;
+  githubUseProxyEnabled: boolean;
   autoReadChannelPatterns: SlackAutoReadPattern[];
 };
 
@@ -156,6 +157,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     googleDriveCsvEnabled: false,
     microsoftCsvEnabled: false,
     githubCodeSyncEnabled: false,
+    githubUseProxyEnabled: false,
     autoReadChannelPatterns: [],
   };
 
@@ -280,6 +282,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
         }
         features.githubCodeSyncEnabled =
           githubConnectorEnabledRes.value.configValue === "true";
+
+        const githubUseProxyRes = await connectorsAPI.getConnectorConfig(
+          dataSource.connectorId,
+          "useProxy"
+        );
+        if (githubUseProxyRes.isErr()) {
+          throw githubUseProxyRes.error;
+        }
+        features.githubUseProxyEnabled =
+          githubUseProxyRes.value.configValue === "true";
         break;
     }
   }
@@ -398,24 +410,24 @@ const DataSourcePage = ({
             resourceId: dataSource.sId,
           }}
         />
-        <Button
-          variant="outline"
-          onClick={() => {
-            if (
-              window.confirm(
-                "Are you sure you want to access this sensible user data? (Access will be logged)"
-              )
-            ) {
-              void router.push(
-                `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
-              );
-            }
-          }}
-          label="Search Data"
-          icon={LockIcon}
-        />
-        {dataSource.connectorProvider === "slack" && (
-          <>
+        <div className="flex w-full items-center gap-3 p-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Are you sure you want to access this sensible user data? (Access will be logged)"
+                )
+              ) {
+                void router.push(
+                  `/poke/${owner.sId}/data_sources/${dataSource.sId}/search`
+                );
+              }
+            }}
+            label="Search Data"
+            icon={LockIcon}
+          />
+          {dataSource.connectorProvider === "slack" && (
             <ConfigToggle
               title="Slackbot enabled?"
               owner={owner}
@@ -424,6 +436,93 @@ const DataSourcePage = ({
               configKey="botEnabled"
               featureKey="slackBotEnabled"
             />
+          )}
+          {dataSource.connectorProvider === "notion" && (
+            <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
+          )}
+          {dataSource.connectorProvider === "zendesk" && (
+            <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
+          )}
+          {dataSource.connectorProvider === "google_drive" && (
+            <>
+              <ConfigToggle
+                title="PDF syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="pdfEnabled"
+                featureKey="googleDrivePdfEnabled"
+              />
+              <ConfigToggle
+                title="CSV syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="csvEnabled"
+                featureKey="googleDriveCsvEnabled"
+              />
+
+              <ConfigToggle
+                title="Large Files enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="largeFilesEnabled"
+                featureKey="googleDriveLargeFilesEnabled"
+              />
+            </>
+          )}
+          {dataSource.connectorProvider === "microsoft" && (
+            <>
+              <ConfigToggle
+                title="Pdf syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="pdfEnabled"
+                featureKey="microsoftPdfEnabled"
+              />
+              <ConfigToggle
+                title="CSV syncing enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="csvEnabled"
+                featureKey="microsoftCsvEnabled"
+              />
+              <ConfigToggle
+                title="Large Files enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="largeFilesEnabled"
+                featureKey="microsoftLargeFilesEnabled"
+              />
+            </>
+          )}
+          {dataSource.connectorProvider === "github" && (
+            <>
+              <ConfigToggle
+                title="Code sync enabled?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="codeSyncEnabled"
+                featureKey="githubCodeSyncEnabled"
+              />
+              <ConfigToggle
+                title="Use proxy?"
+                owner={owner}
+                features={features}
+                dataSource={dataSource}
+                configKey="useProxy"
+                featureKey="githubUseProxyEnabled"
+              />
+            </>
+          )}
+        </div>
+        {dataSource.connectorProvider === "slack" && (
+          <>
             <SlackWhitelistBot
               owner={owner}
               connectorId={connector?.id}
@@ -437,79 +536,6 @@ const DataSourcePage = ({
               />
             </div>
           </>
-        )}
-        {dataSource.connectorProvider === "notion" && (
-          <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
-        )}
-        {dataSource.connectorProvider === "zendesk" && (
-          <ZendeskTicketCheck owner={owner} dsId={dataSource.sId} />
-        )}
-        {dataSource.connectorProvider === "google_drive" && (
-          <>
-            <ConfigToggle
-              title="PDF syncing enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="pdfEnabled"
-              featureKey="googleDrivePdfEnabled"
-            />
-            <ConfigToggle
-              title="CSV syncing enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="csvEnabled"
-              featureKey="googleDriveCsvEnabled"
-            />
-
-            <ConfigToggle
-              title="Large Files enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="largeFilesEnabled"
-              featureKey="googleDriveLargeFilesEnabled"
-            />
-          </>
-        )}
-        {dataSource.connectorProvider === "microsoft" && (
-          <>
-            <ConfigToggle
-              title="Pdf syncing enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="pdfEnabled"
-              featureKey="microsoftPdfEnabled"
-            />
-            <ConfigToggle
-              title="CSV syncing enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="csvEnabled"
-              featureKey="microsoftCsvEnabled"
-            />
-            <ConfigToggle
-              title="Large Files enabled?"
-              owner={owner}
-              features={features}
-              dataSource={dataSource}
-              configKey="largeFilesEnabled"
-              featureKey="microsoftLargeFilesEnabled"
-            />
-          </>
-        )}
-        {dataSource.connectorProvider === "github" && (
-          <ConfigToggle
-            title="Code sync enabled?"
-            owner={owner}
-            features={features}
-            dataSource={dataSource}
-            configKey="codeSyncEnabled"
-            featureKey="githubCodeSyncEnabled"
-          />
         )}
         {!dataSource.connectorId ? (
           <>
@@ -1137,19 +1163,19 @@ const ConfigToggle = ({
         }
       );
       if (!r.ok) {
-        throw new Error("Failed to toggle slackbot.");
+        throw new Error(`Failed to toggle ${configKey}.`);
       }
       router.reload();
     } catch (e) {
       console.error(e);
-      window.alert("An error occurred while toggling slackbot.");
+      window.alert(`An error occurred while toggling ${configKey}.`);
     }
   });
 
   const value = features[featureKey] as boolean;
 
   return (
-    <div className="mb-2 flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
+    <div className="flex w-64 items-center justify-between rounded-md border px-2 py-2 text-sm text-gray-600">
       <div>{title}</div>
       <SliderToggle
         selected={value}

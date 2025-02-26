@@ -67,6 +67,7 @@
     "tar": "^6.2.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "turndown": "^7.1.2",
+    "undici": "^6.21.1",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2"
   },

@@ -41,13 +41,25 @@ export interface Plugin<T extends PluginArgs> {
     resourceId: string | undefined,
     args: InferPluginArgs<T>
   ) => Promise<Result<PluginResponse, Error>>;
+  isVisible: (
+    auth: Authenticator,
+    resourceId: string | undefined
+  ) => Promise<boolean>;
 }
 
-export function createPlugin<T extends PluginArgs>(
-  manifest: PluginManifest<T>,
-  execute: Plugin<T>["execute"]
-): Plugin<T> {
-  return { manifest, execute };
+export function createPlugin<T extends PluginArgs>({
+  manifest,
+  execute,
+  isVisible = () => Promise.resolve(true),
+}: {
+  manifest: PluginManifest<T>;
+  execute: Plugin<T>["execute"];
+  isVisible?: (
+    auth: Authenticator,
+    resourceId: string | undefined
+  ) => Promise<boolean>;
+}): Plugin<T> {
+  return { manifest, execute, isVisible };
 }
 
 export type PluginListItem = Pick<

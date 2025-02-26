@@ -31,8 +31,8 @@ const doOperation = (op: OperationType, connectorId: string) => {
   }
 };
 
-export const connectorOperationsPlugin = createPlugin(
-  {
+export const connectorOperationsPlugin = createPlugin({
+  manifest: {
     id: "maintenance-operation",
     name: "Maintenance operation",
     description: "Execute a maintenance operation on connector",
@@ -46,7 +46,7 @@ export const connectorOperationsPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
+  execute: async (auth, dataSourceId, args) => {
     if (!dataSourceId) {
       return new Err(new Error("Data source not found."));
     }
@@ -80,5 +80,5 @@ export const connectorOperationsPlugin = createPlugin(
       display: "text",
       value: `Operation ${op} executed successfully on connector ${connectorId}.`,
     });
-  }
-);
+  },
+});
