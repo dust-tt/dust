@@ -1,5 +1,10 @@
 import type { Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import {
+  EnvironmentConfig,
+  Err,
+  getOAuthConnectionAccessToken,
+  Ok,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -613,7 +618,13 @@ export async function getOctokit(
       undiciFetch(url, {
         ...options,
         dispatcher: new ProxyAgent(
-          `http://${process.env.PROXY_USER_NAME}:${process.env.PROXY_PASSWORD}@${process.env.PROXY_HOST}:${process.env.PROXY_PORT}`
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
         ),
       });
 
