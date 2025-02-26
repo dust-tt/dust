@@ -404,7 +404,7 @@ export const DataTablePaginatedPageButtonsDisabledExample = () => {
         setPagination={setPagination}
         columns={columns}
         columnsBreakpoints={{ lastUpdated: "sm" }}
-        disablePageButtons
+        disablePaginationNumbers
       />
     </div>
   );

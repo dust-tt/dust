@@ -68,7 +68,7 @@ export const PaginationButtonsDisabled = () => {
       rowCount={960}
       pagination={pagination}
       setPagination={setPagination}
-      disablePageButtons
+      disablePaginationNumbers
     />
   );
 };

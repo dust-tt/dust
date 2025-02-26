@@ -18,7 +18,7 @@ interface PaginationProps {
   rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
-  disablePageButtons?: boolean;
+  disablePaginationNumbers?: boolean;
 }
 
 export function Pagination({
@@ -29,7 +29,7 @@ export function Pagination({
   rowCountIsCapped = false,
   pagination,
   setPagination,
-  disablePageButtons = false,
+  disablePaginationNumbers = false,
 }: PaginationProps) {
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
@@ -60,7 +60,7 @@ export function Pagination({
     pageIndex,
     numPages,
     pagesShownInControls,
-    !disablePageButtons ? onPaginationButtonClick : null,
+    !disablePaginationNumbers ? onPaginationButtonClick : null,
     size
   );
 
