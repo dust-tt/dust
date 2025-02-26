@@ -332,7 +332,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         connector,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       nodes.sort((a, b) => a.title.localeCompare(b.title));
       return new Ok(nodes);
