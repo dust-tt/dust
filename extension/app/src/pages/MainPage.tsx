@@ -12,7 +12,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ImageIcon,
+  LightModeIcon,
   LogoutIcon,
 } from "@dust-tt/sparkle";
 import { AssistantFavorites } from "@extension/components/assistants/AssistantFavorites";
@@ -104,14 +104,9 @@ export const MainPage = ({
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  icon={LogoutIcon}
-                  label="Sign out"
-                  onClick={handleLogout}
-                />
                 <DropdownMenuLabel label="Preferences" />
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger label="Theme" icon={ImageIcon} />
+                  <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
                   <DropdownMenuSubContent>
                     <DropdownMenuRadioGroup value={theme}>
                       <DropdownMenuRadioItem
@@ -138,6 +133,12 @@ export const MainPage = ({
                     </DropdownMenuRadioGroup>
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
+                <DropdownMenuLabel label="Account" />
+                <DropdownMenuItem
+                  icon={LogoutIcon}
+                  label="Sign out"
+                  onClick={handleLogout}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
