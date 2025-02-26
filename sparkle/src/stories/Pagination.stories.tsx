@@ -75,3 +75,19 @@ export const PaginationWithUrl = () => {
     </>
   );
 };
+
+export const PaginationWithSingleStepForward = () => {
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 50,
+  });
+  return (
+    <Pagination
+      rowCount={960}
+      size="xs"
+      pagination={pagination}
+      setPagination={setPagination}
+      singleStepForward
+    />
+  );
+};

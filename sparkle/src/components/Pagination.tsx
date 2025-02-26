@@ -18,6 +18,7 @@ interface PaginationProps {
   rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
+  singleStepForward?: boolean;
 }
 
 export function Pagination({
@@ -28,6 +29,7 @@ export function Pagination({
   rowCountIsCapped = false,
   pagination,
   setPagination,
+  singleStepForward = false,
 }: PaginationProps) {
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
@@ -59,7 +61,8 @@ export function Pagination({
     numPages,
     pagesShownInControls,
     onPaginationButtonClick,
-    size
+    size,
+    { singleStepForward }
   );
 
   return (
@@ -162,7 +165,8 @@ function getPageButtons(
   totalPages: number,
   slots: number,
   onPageClick: (currentPage: number) => void,
-  size: Size
+  size: Size,
+  { singleStepForward = false }: { singleStepForward?: boolean }
 ) {
   const pagination: React.ReactNode[] = [];
 
@@ -185,10 +189,10 @@ function getPageButtons(
   let start, end;
   if (currentPage <= halfSlots + 1) {
     start = 1;
-    end = remainingSlots - 1;
+    end = singleStepForward ? currentPage + 1 : remainingSlots - 1;
   } else if (currentPage >= totalPages - halfSlots - 2) {
     start = totalPages - remainingSlots;
-    end = totalPages - 2;
+    end = singleStepForward ? totalPages - 1 : totalPages - 2;
   } else {
     start = currentPage - halfSlots + 1;
     end = currentPage + halfSlots - 1;
@@ -208,9 +212,11 @@ function getPageButtons(
     pagination.push(renderEllipses(size));
   }
 
-  pagination.push(
-    renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
-  ); // Always show the last page
+  if (!singleStepForward) {
+    pagination.push(
+      renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
+    );
+  }
 
   return pagination;
 }
