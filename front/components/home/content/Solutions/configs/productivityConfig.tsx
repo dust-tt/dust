@@ -127,11 +127,11 @@ export const UseCases: UseCaseProps = {
     {
       title: "Meeting summaries",
       content:
-        "Automatically convert transcripts into a summary of key decisions, owner assignments, and deadlines.",
+        "Automatically transform transcripts into a personalized and contextualized summary, decision log, etc.",
       images: ["/static/landing/solutions/productivity1.png"],
     },
     {
-      title: "Content digest",
+      title: "Content summarization",
       content:
         "Transform lengthy documents into clear summaries and key takeaways for quick comprehension.",
       images: ["/static/landing/solutions/productivity2.png"],
