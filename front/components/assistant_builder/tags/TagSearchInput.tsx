@@ -32,10 +32,7 @@ export const TagSearchInput = ({
         placeholder="Search labels..."
         value={searchInputValue}
         onChange={(value) => setSearchInputValue(value)}
-        open={
-          availableTags.length > 0 ||
-          (searchInputValue.length > 0 && !isLoading)
-        }
+        open={availableTags.length > 0 || searchInputValue.length > 0}
         onOpenChange={(open) => {
           if (!open) {
             setSearchInputValue("");
