@@ -15,7 +15,7 @@ const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
       full: "s-w-full",
     },
     border: {
-      true: "s-border-b s-border-primary-200/60 dark:s-border-primary-200-night/60",
+      true: "s-border-b s-border-border-dark dark:s-border-border-dark-night",
     },
   },
   defaultVariants: {

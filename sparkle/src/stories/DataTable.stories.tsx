@@ -119,6 +119,18 @@ const data: TransformedData[] = [
         onSelect: (itemId) => console.log("Add to Space", itemId),
       },
       {
+        disabled: true,
+        kind: "submenu",
+        label: "Add to Space (disabled)",
+        items: [
+          { id: "space1", name: "Space 1" },
+          { id: "space2", name: "Space 2" },
+          { id: "space3", name: "Space 3" },
+          { id: "space4", name: "Space 4" },
+        ],
+        onSelect: (itemId) => console.log("Add to Space", itemId),
+      },
+      {
         kind: "item",
         label: "Test",
       },
@@ -363,6 +375,36 @@ export const DataTablePaginatedExample = () => {
         setPagination={setPagination}
         columns={columns}
         columnsBreakpoints={{ lastUpdated: "sm" }}
+      />
+    </div>
+  );
+};
+
+export const DataTablePaginatedPageButtonsDisabledExample = () => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 2,
+  });
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={data}
+        filter={filter}
+        filterColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        disablePaginationNumbers
       />
     </div>
   );

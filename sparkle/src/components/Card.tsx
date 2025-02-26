@@ -16,12 +16,24 @@ export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 const variantClasses: Record<CardVariantType, string> = {
-  primary:
-    "s-bg-primary-50 s-border-border-dark/0 dark:s-bg-primary-50-night dark:s-border-border-dark-night/0",
-  secondary:
-    "s-bg-background s-border-border-dark dark:s-bg-background-night dark:s-border-border-dark-night",
-  tertiary:
-    "s-bg-background s-border-border-dark/0 dark:s-bg-background-night dark:s-border-border-dark-night/0",
+  primary: cn(
+    "s-bg-muted-background",
+    "s-border-border-dark/0",
+    "dark:s-bg-muted-background-night",
+    "dark:s-border-border-dark-night/0"
+  ),
+  secondary: cn(
+    "s-bg-background",
+    "s-border-border-dark",
+    "dark:s-bg-background-night",
+    "dark:s-border-border-dark-night"
+  ),
+  tertiary: cn(
+    "s-bg-white",
+    "s-border-border-dark/0",
+    "dark:s-bg-black",
+    "dark:s-border-border-dark-night/0"
+  ),
 };
 
 export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
@@ -34,8 +46,22 @@ const sizeVariants: Record<CardSizeType, string> = {
   lg: "s-p-5 s-rounded-3xl",
 };
 
+const interactiveClasses = cn(
+  "s-cursor-pointer",
+  "s-transition s-duration-200",
+  "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
+  "active:s-bg-primary-200 dark:active:s-bg-primary-200-night",
+  "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
+  "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night",
+  "disabled:s-pointer-events-none"
+);
+
 const cardVariants = cva(
-  "s-flex s-text-left s-group s-border s-overflow-hidden s-text-foreground dark:s-text-foreground-night",
+  cn(
+    "s-flex s-text-left s-group",
+    "s-border s-overflow-hidden",
+    "s-text-foreground dark:s-text-foreground-night"
+  ),
   {
     variants: {
       variant: variantClasses,
@@ -92,16 +118,6 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
 
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
-
-    const interactiveClasses = cn(
-      "s-cursor-pointer",
-      "s-transition s-duration-200",
-      "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-      "active:s-bg-primary-200 dark:active:s-bg-primary-200-night",
-      "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-      "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night",
-      "disabled:s-pointer-events-none"
-    );
 
     const cardButtonClassNames = cn(
       cardVariants({ variant, size }),

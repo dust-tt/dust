@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { cn, SearchInput, SearchInputWithPopover } from "../index_with_tw_base";
+import {
+  cn,
+  InformationCircleIcon,
+  SearchInput,
+  SearchInputWithPopover,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/SearchInput",
@@ -87,6 +92,13 @@ export function SearchInputWithPopoverScrollableExample() {
       onOpenChange={setOpen}
       items={filteredItems}
       onItemSelect={(item) => console.log(item)}
+      contentMessage={{
+        title: "Yo",
+        variant: "amber",
+        icon: InformationCircleIcon,
+        className: "s-w-full",
+        size: "lg",
+      }}
       renderItem={(item, selected) => (
         <div
           key={item}

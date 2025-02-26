@@ -1,5 +1,4 @@
 import { makeScript } from "scripts/helpers";
-import { Op } from "sequelize";
 
 import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -20,9 +19,6 @@ makeScript({}, async ({ execute }, logger) => {
     const channels = await SlackChannel.findAll({
       where: {
         connectorId: connectorId,
-        permission: {
-          [Op.or]: ["read", "read_write"],
-        },
       },
     });
 
@@ -33,14 +29,20 @@ makeScript({}, async ({ execute }, logger) => {
           const internalId = slackChannelInternalIdFromSlackChannelId(
             channel.slackChannelId
           );
-          await upsertDataSourceFolder({
-            dataSourceConfig,
-            folderId: internalId,
-            title: `#${channel.slackChannelName}`,
-            parentId: null,
-            parents: [internalId],
-            mimeType: "application/vnd.dust.slack.channel",
-          });
+          try {
+            await upsertDataSourceFolder({
+              dataSourceConfig,
+              folderId: internalId,
+              title: `#${channel.slackChannelName}`,
+              parentId: null,
+              parents: [internalId],
+              mimeType: "application/vnd.dust.slack.channel",
+            });
+          } catch (error) {
+            logger.error(
+              `Error upserting folder for channel ${channel.slackChannelId}: ${error}`
+            );
+          }
         },
         { concurrency: FOLDER_CONCURRENCY }
       );

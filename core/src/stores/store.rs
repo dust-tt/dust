@@ -110,6 +110,7 @@ pub trait Store {
 
     // Specifications
     async fn latest_specification_hash(&self, project: &Project) -> Result<Option<String>>;
+    async fn list_specification_hashes(&self, project: &Project) -> Result<Vec<String>>;
     async fn register_specification(&self, project: &Project, hash: &str, spec: &str)
         -> Result<()>;
     async fn load_specification(
@@ -175,6 +176,12 @@ pub trait Store {
         project: &Project,
         data_source_id: &str,
         config: &DataSourceConfig,
+    ) -> Result<()>;
+    async fn update_data_source_name(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        name: &str,
     ) -> Result<()>;
     async fn load_data_source_document(
         &self,
@@ -532,6 +539,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        data_source_id       TEXT NOT NULL,
        internal_id          TEXT NOT NULL,
        config_json          TEXT NOT NULL,
+       name                 TEXT NOT NULL,
        FOREIGN KEY(project) REFERENCES projects(id)
     );",
     "-- data sources documents

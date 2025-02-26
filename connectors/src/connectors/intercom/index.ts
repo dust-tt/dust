@@ -344,13 +344,13 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       const convosNodes = await retrieveIntercomConversationsPermissions({
         connectorId: this.connectorId,
         parentInternalId,
         filterPermission,
-        viewType: "documents",
+        viewType: "document",
       });
       const nodes = [...helpCenterNodes, ...convosNodes];
       return new Ok(nodes);
@@ -624,7 +624,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           helpCenter.helpCenterId
         ),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: helpCenter.name,
         sourceUrl: null,
         expandable: true,
@@ -645,7 +645,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
               collection.parentId
             )
           : null,
-        type: "Folder",
+        type: "folder",
         title: collection.name,
         sourceUrl: collection.url,
         expandable: true,
@@ -666,7 +666,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
               article.parentId
             )
           : null,
-        type: "Document",
+        type: "document",
         title: article.title,
         sourceUrl: article.url,
         expandable: false,
@@ -679,7 +679,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamsInternalId(this.connectorId),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: "Conversations",
         sourceUrl: null,
         expandable: true,
@@ -695,7 +695,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getTeamInternalId(this.connectorId, team.teamId),
         parentInternalId: getTeamsInternalId(this.connectorId),
-        type: "Folder",
+        type: "folder",
         title: team.name,
         sourceUrl: null,
         expandable: false,

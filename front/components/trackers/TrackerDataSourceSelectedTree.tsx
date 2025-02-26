@@ -17,11 +17,12 @@ import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPerm
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
+
 export const TrackerDataSourceSelectedTree = ({
   owner,
   dataSourceConfigurations,
@@ -85,7 +86,7 @@ export const TrackerDataSourceSelectedTree = ({
                     key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
                     label={node.title}
                     type={node.expandable ? "node" : "leaf"}
-                    visual={getVisualForContentNode(node)}
+                    visual={getVisualForDataSourceViewContentNode(node)}
                     className="whitespace-nowrap"
                     actions={
                       <div className="mr-8 flex flex-row gap-2">
@@ -109,7 +110,7 @@ export const TrackerDataSourceSelectedTree = ({
                           size="xs"
                           icon={BracesIcon}
                           onClick={() => {
-                            if (node.type === "Document") {
+                            if (node.type === "document") {
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
@@ -117,11 +118,11 @@ export const TrackerDataSourceSelectedTree = ({
                             }
                           }}
                           className={classNames(
-                            node.type === "Document"
+                            node.type === "document"
                               ? ""
                               : "pointer-events-none opacity-0"
                           )}
-                          disabled={node.type !== "Document"}
+                          disabled={node.type !== "document"}
                           variant="outline"
                         />
                       </div>

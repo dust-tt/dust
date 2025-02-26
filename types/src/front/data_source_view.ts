@@ -49,7 +49,7 @@ export function defaultSelectionConfiguration(
   dataSourceView: DataSourceViewType
 ): DataSourceViewSelectionConfiguration {
   return {
-    dataSourceView: dataSourceView,
+    dataSourceView,
     isSelectAll: false,
     selectedResources: [],
     tagsFilter: null,

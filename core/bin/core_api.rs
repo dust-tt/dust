@@ -39,7 +39,6 @@ use dust::{
         qdrant::QdrantClients,
     },
     databases::{
-        csv::UpsertQueueCSVContent,
         database::{execute_query, QueryDatabaseError},
         table::{LocalTable, Row, Table},
     },
@@ -435,6 +434,89 @@ async fn specifications_retrieve(
             ),
         },
     }
+}
+
+async fn specifications_get(
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    match state.store.list_specification_hashes(&project).await {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to list specifications",
+            Some(e),
+        ),
+        Ok(hashes) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({ "hashes": hashes })),
+            }),
+        ),
+    }
+}
+
+/// Push a specification
+
+#[derive(serde::Deserialize)]
+struct SpecificationsPushPayload {
+    specification: String,
+}
+
+async fn specifications_post(
+    Path(project_id): Path<i64>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<SpecificationsPushPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    match save_specification(project_id, &state.store, payload.specification).await {
+        Err(err) => err,
+        Ok(app) => (
+            StatusCode::OK,
+            Json(APIResponse {
+                error: None,
+                response: Some(json!({
+                    "app":{
+                        "hash": app.hash()
+                     },
+                })),
+            }),
+        ),
+    }
+}
+
+async fn save_specification(
+    project_id: i64,
+    store: &Box<dyn store::Store + Sync + Send>,
+    specification: String,
+) -> Result<app::App, (StatusCode, Json<APIResponse>)> {
+    let project = project::Project::new_from_id(project_id);
+
+    let app = match app::App::new(&specification).await {
+        Err(e) => Err(error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_specification_error",
+            "Invalid specification",
+            Some(e),
+        ))?,
+        Ok(app) => app,
+    };
+
+    match store
+        .register_specification(&project, &app.hash(), &specification)
+        .await
+    {
+        Err(e) => Err(error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to register specification",
+            Some(e),
+        ))?,
+        Ok(_) => (),
+    }
+    Ok(app)
 }
 
 /// Register a new dataset
@@ -1198,6 +1280,7 @@ struct DataSourcesRegisterPayload {
     config: data_source::DataSourceConfig,
     #[allow(dead_code)]
     credentials: run::Credentials,
+    name: String,
 }
 
 async fn data_sources_register(
@@ -1206,8 +1289,12 @@ async fn data_sources_register(
     Json(payload): Json<DataSourcesRegisterPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let ds = data_source::DataSource::new(&project, &payload.config);
-    match state.store.register_data_source(&project, &ds).await {
+    let ds = data_source::DataSource::new(&project, &payload.config, &payload.name);
+
+    match ds
+        .register(state.store.clone(), state.search_store.clone())
+        .await
+    {
         Err(e) => error_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             "internal_server_error",
@@ -1222,12 +1309,83 @@ async fn data_sources_register(
                     "data_source": {
                         "created": ds.created(),
                         "data_source_id": ds.data_source_id(),
+                        "name": ds.name(),
                         "config": ds.config(),
                     },
                 })),
             }),
         ),
     }
+}
+
+/// Update a data source.
+
+#[derive(serde::Deserialize)]
+struct DataSourcesUpdatePayload {
+    name: String,
+}
+
+async fn data_sources_update(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesUpdatePayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+
+    let mut ds = match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to retrieve data source",
+                Some(e),
+            );
+        }
+        Ok(None) => {
+            return error_response(
+                StatusCode::NOT_FOUND,
+                "data_source_not_found",
+                &format!("No data source found for id `{}`", data_source_id),
+                None,
+            );
+        }
+        Ok(Some(ds)) => ds,
+    };
+
+    if let Err(e) = ds
+        .update_name(
+            state.store.clone(),
+            state.search_store.clone(),
+            &payload.name,
+        )
+        .await
+    {
+        return error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to update data source name",
+            Some(e),
+        );
+    }
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "data_source": {
+                    "created": ds.created(),
+                    "data_source_id": ds.data_source_id(),
+                    "name": ds.name(),
+                    "config": ds.config(),
+                },
+            })),
+        }),
+    )
 }
 
 #[derive(serde::Deserialize)]
@@ -3343,7 +3501,7 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, next_cursor) = match state
+    let (nodes, hit_count, hit_count_is_accurate, next_cursor) = match state
         .search_store
         .search_nodes(
             payload.query,
@@ -3353,7 +3511,9 @@ async fn nodes_search(
         )
         .await
     {
-        Ok((nodes, next_cursor)) => (nodes, next_cursor),
+        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor)) => {
+            (nodes, hit_count, hit_count_is_accurate, next_cursor)
+        }
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3370,6 +3530,8 @@ async fn nodes_search(
             error: None,
             response: Some(json!({
                 "nodes": nodes,
+                "hit_count": hit_count,
+                "hit_count_is_accurate": hit_count_is_accurate,
                 "next_page_cursor": next_cursor,
             })),
         }),
@@ -3760,6 +3922,15 @@ fn main() {
             "/projects/:project_id/specifications/:hash",
             get(specifications_retrieve),
         )
+        .route(
+            "/projects/:project_id/specifications",
+            get(specifications_get),
+        )
+        .route(
+            "/projects/:project_id/specifications",
+            post(specifications_post),
+        )
+
         // Datasets
         .route("/projects/:project_id/datasets", post(datasets_register))
         .route("/projects/:project_id/datasets", get(datasets_list))
@@ -3795,6 +3966,10 @@ fn main() {
         .route(
             "/projects/:project_id/data_sources",
             post(data_sources_register),
+        )
+        .route(
+            "/projects/:project_id/data_sources/:data_source_id",
+            patch(data_sources_update),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id",

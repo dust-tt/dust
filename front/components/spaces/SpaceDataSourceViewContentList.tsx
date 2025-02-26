@@ -53,7 +53,7 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
@@ -268,9 +268,10 @@ export const SpaceDataSourceViewContentList = ({
   const { searchResultNodes, isSearchLoading, isSearchValidating } =
     useSpaceSearch({
       dataSourceViews: [dataSourceView],
+      includeDataSources: false,
       owner,
-      viewType,
       search: debouncedSearch,
+      viewType,
     });
 
   // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
@@ -322,14 +323,14 @@ export const SpaceDataSourceViewContentList = ({
       owner,
       dataSourceView,
       parentId,
-      viewType: "documents",
+      viewType: "document",
     });
   const { hasContent: hasTables, isNodesValidating: isTablesValidating } =
     useStaticDataSourceViewHasContent({
       owner,
       dataSourceView,
       parentId,
-      viewType: "tables",
+      viewType: "table",
     });
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
@@ -409,9 +410,9 @@ export const SpaceDataSourceViewContentList = ({
       // If the view only has content in one of the two views, we switch to that view.
       // if both view have content, or neither views have content, we default to documents.
       if (hasTables && !hasDocuments) {
-        handleViewTypeChange("tables");
+        handleViewTypeChange("table");
       } else if (!hasTables && hasDocuments) {
-        handleViewTypeChange("documents");
+        handleViewTypeChange("document");
       } else if (!viewType) {
         handleViewTypeChange(DEFAULT_VIEW_TYPE);
       }
@@ -451,7 +452,7 @@ export const SpaceDataSourceViewContentList = ({
     () =>
       nodes?.map((contentNode) => ({
         ...contentNode,
-        icon: getVisualForContentNode(contentNode),
+        icon: getVisualForDataSourceViewContentNode(contentNode),
         spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(
@@ -511,9 +512,9 @@ export const SpaceDataSourceViewContentList = ({
         action === "DocumentUploadOrEdit" ||
         action === "MultipleDocumentsUpload"
       ) {
-        handleViewTypeChange("documents");
+        handleViewTypeChange("document");
       } else if (action === "TableUploadOrEdit") {
-        handleViewTypeChange("tables");
+        handleViewTypeChange("table");
       }
     },
     [handleViewTypeChange, mutateContentNodes]
@@ -588,13 +589,13 @@ export const SpaceDataSourceViewContentList = ({
           {isEmpty && emptyContent}
           {isFolder(dataSourceView.dataSource) && (
             <>
-              {((viewType === "tables" && hasDocuments) ||
-                (viewType === "documents" && hasTables)) && (
+              {((viewType === "table" && hasDocuments) ||
+                (viewType === "document" && hasTables)) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       size="sm"
-                      label={viewType === "documents" ? "Documents" : "Tables"}
+                      label={viewType === "document" ? "document" : "table"}
                       variant="outline"
                       isSelect
                     />
@@ -602,11 +603,11 @@ export const SpaceDataSourceViewContentList = ({
                   <DropdownMenuContent>
                     <DropdownMenuItem
                       label="Documents"
-                      onClick={() => handleViewTypeChange("documents")}
+                      onClick={() => handleViewTypeChange("document")}
                     />
                     <DropdownMenuItem
                       label="Tables"
-                      onClick={() => handleViewTypeChange("tables")}
+                      onClick={() => handleViewTypeChange("table")}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -445,7 +445,8 @@ export const TableUploadOrEditModal = ({
           }}
           rightButtonProps={{
             label: isUpserting ? "Saving..." : "Save",
-            onClick: async () => {
+            onClick: async (event: MouseEvent) => {
+              event.preventDefault();
               await onSave();
             },
             disabled:

@@ -32,7 +32,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -66,7 +66,7 @@ const getUseResourceHook =
       resources: nodes.map((n) => ({
         ...n,
         preventSelection:
-          n.preventSelection || (viewType === "tables" && n.type !== "Table"),
+          n.preventSelection || (viewType === "table" && n.type !== "table"),
       })),
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
@@ -127,12 +127,13 @@ export function DataSourceViewsSelector({
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-  const { searchResultNodes } = useSpaceSearch({
+  const { searchResultNodes, isSearchLoading } = useSpaceSearch({
     dataSourceViews,
-    owner,
-    viewType,
-    search: debouncedSearch,
     disabled: !searchFeatureFlag,
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType,
   });
 
   useEffect(() => {
@@ -148,13 +149,27 @@ export function DataSourceViewsSelector({
     }
   }, [searchSpaceText, searchFeatureFlag]);
 
+  useEffect(() => {
+    if (searchResult) {
+      setTimeout(() => {
+        const node = document.getElementById(
+          `tree-node-${searchResult.internalId}`
+        );
+        node?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 100);
+    }
+  }, [searchResult]);
+
   const includesConnectorIDs: (string | null)[] = [];
   const excludesConnectorIDs: (string | null)[] = [];
 
   // If view type is tables
   // You can either select tables from the same remote database (as the query will be executed live on the database)
   // Or select tables from different non-remote databases (as we load all data in the same sqlite database)
-  if (viewType === "tables" && useCase === "assistantBuilder") {
+  if (viewType === "table" && useCase === "assistantBuilder") {
     // Find the first data source in the selection configurations
     const selection = Object.values(selectionConfigurations);
     const firstDs =
@@ -199,12 +214,23 @@ export function DataSourceViewsSelector({
     item: DataSourceViewContentNode,
     prevState: DataSourceViewSelectionConfigurations
   ): DataSourceViewSelectionConfigurations {
-    const dsv = item.dataSourceView;
+    const { dataSourceView: dsv } = item;
     const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
     const exists = prevConfig.selectedResources.some(
       (r) => r.internalId === item.internalId
     );
+
+    if (item.mimeType === "application/vnd.dust.datasource") {
+      return {
+        ...prevState,
+        [dsv.sId]: {
+          ...prevConfig,
+          selectedResources: [],
+          isSelectAll: true,
+        },
+      };
+    }
 
     const newResources = exists
       ? prevConfig.selectedResources
@@ -234,12 +260,13 @@ export function DataSourceViewsSelector({
           value={searchSpaceText}
           onChange={setSearchSpaceText}
           name="search-dsv"
-          open={searchResultNodes.length > 0 && !!searchSpaceText}
+          open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
           onOpenChange={(open) => {
             if (!open) {
               setSearchSpaceText("");
             }
           }}
+          isLoading={isSearchLoading}
           items={searchResultNodes}
           onItemSelect={(item) => {
             setSearchResult(item);
@@ -248,34 +275,38 @@ export function DataSourceViewsSelector({
               updateSelection(item, prevState)
             );
           }}
-          renderItem={(item, selected) => (
-            <div
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                selected && "bg-structure-50 dark:bg-structure-50-night"
-              )}
-              onClick={() => {
-                setSearchResult(item);
-                setSearchSpaceText("");
-                setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState)
-                );
-              }}
-            >
-              {getVisualForContentNode(item)({ className: "min-w-4" })}
-              <span className="text-sm">{item.title}</span>
-              {item.parentTitle && (
-                <span className="text-sm text-slate-500">{`../${item.parentTitle}`}</span>
-              )}
-              {item.dataSourceView.dataSource.connectorProvider && (
-                <div className="ml-auto">
-                  {CONNECTOR_CONFIGURATIONS[
-                    item.dataSourceView.dataSource.connectorProvider
-                  ].getLogoComponent()({})}
-                </div>
-              )}
-            </div>
-          )}
+          renderItem={(item, selected) => {
+            const { dataSourceView } = item;
+            const { dataSource } = dataSourceView;
+
+            return (
+              <div
+                className={cn(
+                  "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                  selected && "bg-structure-50 dark:bg-structure-50-night"
+                )}
+                onClick={() => {
+                  setSearchResult(item);
+                  setSearchSpaceText("");
+                  setSelectionConfigurations((prevState) =>
+                    updateSelection(item, prevState)
+                  );
+                }}
+              >
+                {getVisualForDataSourceViewContentNode(item)({
+                  className: "min-w-4",
+                })}
+                <span className="flex-shrink truncate text-sm">
+                  {item.title}
+                </span>
+                {item.parentTitle && (
+                  <div className="ml-auto flex-none text-sm text-slate-500">
+                    {`${dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
+                  </div>
+                )}
+              </div>
+            );
+          }}
           noResults="No results found"
         />
       )}
@@ -329,6 +360,7 @@ export function DataSourceViewsSelector({
               isRootSelectable={false}
               defaultCollapsed={filteredDSVs.length > 1}
               useCase={useCase}
+              searchResult={searchResult}
             />
           ))}
         {folders.length > 0 && (
@@ -500,7 +532,7 @@ export function DataSourceViewSelector({
       ? "partial"
       : false;
 
-  const isTableView = viewType === "tables";
+  const isTableView = viewType === "table";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
@@ -525,7 +557,7 @@ export function DataSourceViewSelector({
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
-              dataSourceView,
+              dataSourceView: dataSourceView,
               parentInternalIds: v.parents,
             })),
           isSelectAll: false,
@@ -602,7 +634,7 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "tables" ? (
+              viewType === "table" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />

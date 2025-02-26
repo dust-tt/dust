@@ -44,7 +44,10 @@ export function PluginList({
   resourceType,
   workspaceResource,
 }: PluginListProps) {
-  const { plugins } = usePokeListPluginForResourceType({ resourceType });
+  const { plugins } = usePokeListPluginForResourceType({
+    resourceType,
+    workspaceResource,
+  });
   const [selectedPlugin, setSelectedPlugin] = useState<PluginListItem | null>(
     null
   );

@@ -206,14 +206,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             parentInternalId: folder.parentUrl
               ? stableIdForUrl({
                   url: folder.parentUrl,
-                  ressourceType: "Folder",
+                  ressourceType: "folder",
                 })
               : null,
             title: getDisplayNameForFolder(folder),
             sourceUrl: folder.url,
             expandable: true,
             permission: "read",
-            type: "Folder",
+            type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
             mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
           };
@@ -227,20 +227,20 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               internalId: isFileAndFolder
                 ? stableIdForUrl({
                     url: normalizeFolderUrl(page.url),
-                    ressourceType: "Folder",
+                    ressourceType: "folder",
                   })
                 : page.documentId,
               parentInternalId: page.parentUrl
                 ? stableIdForUrl({
                     url: page.parentUrl,
-                    ressourceType: "Folder",
+                    ressourceType: "folder",
                   })
                 : null,
               title: getDisplayNameForPage(page),
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
-              type: "Document",
+              type: "document",
               lastUpdatedAt: page.updatedAt.getTime(),
               mimeType: "text/html",
             };
@@ -281,7 +281,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         sourceUrl: folder.url,
         expandable: true,
         permission: "read",
-        type: "Folder",
+        type: "folder",
         lastUpdatedAt: folder.updatedAt.getTime(),
         mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
       });
@@ -294,7 +294,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         sourceUrl: page.url,
         expandable: false,
         permission: "read",
-        type: "Document",
+        type: "document",
         lastUpdatedAt: page.updatedAt.getTime(),
         mimeType: "text/html",
       });

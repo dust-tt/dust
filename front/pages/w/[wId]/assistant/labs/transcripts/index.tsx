@@ -897,7 +897,7 @@ export default function LabsTranscriptsIndex({
                                 setSelectionConfigurations={
                                   handleSetSelectionConfigurations
                                 }
-                                viewType="documents"
+                                viewType="document"
                                 isRootSelectable={true}
                               />
                             )}

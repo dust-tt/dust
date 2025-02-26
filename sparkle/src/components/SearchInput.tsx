@@ -2,6 +2,7 @@ import React, { forwardRef, Ref, useEffect, useRef, useState } from "react";
 
 import {
   Button,
+  ContentMessage,
   Icon,
   Input,
   PopoverContent,
@@ -11,6 +12,7 @@ import {
   ScrollBar,
   Spinner,
 } from "@sparkle/components";
+import { ContentMessageProps } from "@sparkle/components/ContentMessage";
 import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -50,6 +52,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         <Input
           type="text"
           name={name}
+          autoComplete="off"
           placeholder={placeholder}
           value={value}
           onChange={(e) => {
@@ -106,6 +109,8 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
   noResults?: string;
+  isLoading?: boolean;
+  contentMessage?: ContentMessageProps;
 };
 
 function BaseSearchInputWithPopover<T>(
@@ -122,6 +127,8 @@ function BaseSearchInputWithPopover<T>(
     mountPortal,
     mountPortalContainer,
     noResults,
+    isLoading,
+    contentMessage,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -195,6 +202,7 @@ function BaseSearchInputWithPopover<T>(
           contentClassName
         )}
         sideOffset={0}
+        fullWidth={true}
         align="start"
         id="search-popover-content"
         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -203,24 +211,35 @@ function BaseSearchInputWithPopover<T>(
         mountPortal={mountPortal}
         mountPortalContainer={mountPortalContainer}
       >
-        <ScrollArea
-          role="listbox"
-          className="s-flex s-max-h-72 s-flex-col"
-          hideScrollBar
-        >
-          {items.length > 0 ? (
-            items.map((item, index) => (
-              <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
-                {renderItem(item, selectedIndex === index)}
+        <div className="s-flex s-flex-col">
+          <ScrollArea
+            role="listbox"
+            className="s-flex s-max-h-72 s-flex-col"
+            hideScrollBar
+          >
+            {items.length > 0 ? (
+              items.map((item, index) => (
+                <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
+                  {renderItem(item, selectedIndex === index)}
+                </div>
+              ))
+            ) : isLoading ? (
+              <div className="s-flex s-justify-center s-py-8">
+                <Spinner variant="dark" size="md" />
               </div>
-            ))
-          ) : (
-            <div className="s-p-2 s-text-sm s-text-gray-500">
-              {noResults ?? ""}
+            ) : (
+              <div className="s-p-2 s-text-sm s-text-gray-500">
+                {noResults ?? ""}
+              </div>
+            )}
+            <ScrollBar className="s-py-0" />
+          </ScrollArea>
+          {contentMessage && (
+            <div className="s-p-1">
+              <ContentMessage {...contentMessage} />
             </div>
           )}
-          <ScrollBar className="s-py-0" />
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </PopoverRoot>
   );

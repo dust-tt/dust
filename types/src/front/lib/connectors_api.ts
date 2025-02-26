@@ -38,7 +38,7 @@ export type ConnectorType = {
   workspaceId: string;
   dataSourceId: string;
   connectionId: string;
-
+  useProxy: boolean;
   lastSyncStatus?: ConnectorSyncStatus;
   lastSyncStartTime?: number;
   lastSyncFinishTime?: number;
@@ -298,7 +298,7 @@ export class ConnectorsAPI {
     connectorId,
     filterPermission,
     parentId,
-    viewType = "documents",
+    viewType = "document",
   }: {
     connectorId: string;
     filterPermission?: ConnectorPermission;

@@ -209,7 +209,7 @@ export function Avatar({
           ? backgroundColorToUse
           : name
             ? getColor(name)
-            : "s-bg-slate-200",
+            : "s-bg-primary-200 dark:s-bg-primary-200-night",
         className
       )}
     >

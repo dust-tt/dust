@@ -195,7 +195,7 @@ export const getMenuItems = (
     });
   }
 
-  if (canReadInSpace && contentNode.type === "Document") {
+  if (canReadInSpace && contentNode.type === "document") {
     actions.push({
       ...makeViewRawContentAction(contentNode, contentActionsRef),
     });
@@ -209,7 +209,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
-          contentNode.type === "Table"
+          contentNode.type === "table"
             ? "TableUploadOrEdit"
             : "DocumentUploadOrEdit",
           contentNode
@@ -234,7 +234,7 @@ export const getMenuItems = (
   if (
     dataSourceView.kind === "default" &&
     isManaged(dataSourceView.dataSource) &&
-    contentNode.type === "Folder"
+    contentNode.type === "folder"
   ) {
     const allViews = dataSourceViews.filter(
       (dsv) =>
@@ -256,17 +256,16 @@ export const getMenuItems = (
       (s) => !alreadyInSpace.includes(s.sId)
     );
 
-    if (availableSpaces.length > 0) {
-      actions.push({
-        kind: "submenu",
-        label: "Add to space",
-        items: availableSpaces.map((s) => ({
-          id: s.sId,
-          name: s.name,
-        })),
-        onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
-      });
-    }
+    actions.push({
+      disabled: availableSpaces.length === 0,
+      kind: "submenu",
+      label: "Add to space",
+      items: availableSpaces.map((s) => ({
+        id: s.sId,
+        name: s.name,
+      })),
+      onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
+    });
   }
 
   if (

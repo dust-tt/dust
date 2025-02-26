@@ -35,6 +35,7 @@ export const PostDataSourceViewSchema = ContentSchema;
 
 export const PostNotionSyncPayloadSchema = t.type({
   urls: t.array(t.string),
+  method: t.union([t.literal("sync"), t.literal("delete")]),
 });
 
 export const GetPostNotionSyncResponseBodySchema = t.type({
@@ -42,6 +43,7 @@ export const GetPostNotionSyncResponseBodySchema = t.type({
     t.intersection([
       t.type({
         url: t.string,
+        method: t.union([t.literal("sync"), t.literal("delete")]),
         timestamp: t.number,
         success: t.boolean,
       }),

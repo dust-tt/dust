@@ -52,7 +52,7 @@ const meta = {
 export default meta;
 
 export const DropdownExamples = () => (
-  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4">
+  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
     <div>{SimpleDropdownDemo()}</div>
     <div>{ComplexDropdownDemo()}</div>
     <div>{DropdownMenuCheckboxes()}</div>

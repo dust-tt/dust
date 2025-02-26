@@ -26,11 +26,44 @@ const preview: Preview = {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "s-bg-slate-800" },
+        { name: "dark", class: "s-dark", color: "#000000" },
+      ],
+    },
+    backgrounds: {
+      default: "white",
+      values: [
+        {
+          name: "white",
+          value: "#ffffff",
+        },
+        {
+          name: "light",
+          value: "#F5F7FB",
+        },
+        {
+          name: "dark",
+          value: "#111729",
+        },
+        {
+          name: "black",
+          value: "#000000",
+        },
       ],
     },
   },
   decorators: [
+    (Story, context) => {
+      const isDark = context.globals.theme === "dark";
+      const background = isDark ? "#000000" : "#ffffff";
+
+      // Update both document and storybook-docs background
+      document.documentElement.style.backgroundColor = background;
+      document
+        .querySelector(".docs-story")
+        ?.setAttribute("style", `background-color: ${background}`);
+
+      return Story();
+    },
     withThemeByClassName({
       themes: {
         light: "",

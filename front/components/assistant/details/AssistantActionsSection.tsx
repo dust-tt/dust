@@ -52,7 +52,7 @@ import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPerm
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -187,7 +187,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="documents"
+                viewType="document"
               />
             </div>
           ))}
@@ -202,7 +202,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="tables"
+                viewType="table"
               />
             </div>
           ))}
@@ -273,7 +273,7 @@ function renderOtherAction(
           owner={owner}
           dataSourceViews={dataSourceViews}
           dataSourceConfigurations={action.dataSources}
-          viewType="documents"
+          viewType="document"
         />
       </ActionSection>
     );
@@ -561,8 +561,8 @@ function DataSourceViewSelectedNodes({
         <Tree.Item
           key={node.internalId}
           label={node.title}
-          type={node.expandable && viewType !== "tables" ? "node" : "leaf"}
-          visual={getVisualForContentNode(node)}
+          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+          visual={getVisualForDataSourceViewContentNode(node)}
           className="whitespace-nowrap"
           actions={
             <div className="mr-8 flex flex-row gap-2">
@@ -584,17 +584,17 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.type === "Document") {
+                  if (node.type === "document") {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.type === "Document"
+                  node.type === "document"
                     ? ""
                     : "pointer-events-none opacity-0"
                 )}
-                disabled={node.type !== "Document"}
+                disabled={node.type !== "document"}
                 variant="outline"
               />
             </div>

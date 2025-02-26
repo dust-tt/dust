@@ -31,7 +31,7 @@ export const Demo = () => {
   const sizes = CARD_VARIANTS_SIZES;
 
   return (
-    <div className="s-flex s-flex-col s-gap-8">
+    <div className="s-flex s-flex-col s-gap-8 s-text-foreground dark:s-text-foreground-night">
       {variants.map((variant) => (
         <div key={variant} className="s-flex s-flex-col s-gap-4">
           <h3 className="s-text-lg s-font-semibold">

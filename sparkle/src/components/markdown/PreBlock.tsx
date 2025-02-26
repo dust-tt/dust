@@ -9,8 +9,7 @@ export const preBlockVariants = cva(
   {
     variants: {
       variant: {
-        muted: "s-bg-gray-700 s-text-gray-500 dark:s-bg-muted-background-night",
-        surface: "s-bg-muted-background dark:s-bg-muted-background-night",
+        surface: "s-bg-slate-100 dark:s-bg-muted-background-night",
       },
     },
   }
@@ -18,7 +17,7 @@ export const preBlockVariants = cva(
 
 interface PreBlockProps {
   children: React.ReactNode;
-  variant?: "muted" | "surface";
+  variant?: "surface";
 }
 
 export function PreBlock({ children, variant = "surface" }: PreBlockProps) {

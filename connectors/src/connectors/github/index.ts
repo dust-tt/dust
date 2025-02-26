@@ -263,15 +263,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const connectionId = c.connectionId;
-
     if (!parentInternalId) {
       // No parentInternalId: we return the repositories.
 
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(connectionId, pageNumber);
+        const pageRes = await getReposPage(c, pageNumber);
 
         if (pageRes.isErr()) {
           return new Err(
@@ -292,7 +290,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           page.map((repo) => ({
             internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
-            type: "Folder",
+            type: "folder",
             title: repo.name,
             sourceUrl: repo.url,
             expandable: true,
@@ -337,7 +335,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
                 },
                 order: [["updatedAt", "DESC"]],
               }),
-              getRepo(connectionId, repoId),
+              getRepo(c, repoId),
               GithubCodeRepository.findOne({
                 where: {
                   connectorId: c.id,
@@ -363,7 +361,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getIssuesInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Issues",
               sourceUrl: getIssuesUrl(repo.url),
               expandable: false,
@@ -377,7 +375,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Discussions",
               sourceUrl: getDiscussionsUrl(repo.url),
               expandable: false,
@@ -391,7 +389,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getCodeRootInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Code",
               sourceUrl: repo.url,
               expandable: true,
@@ -433,7 +431,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: directory.internalId,
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: directory.dirName,
               sourceUrl: directory.sourceUrl,
               expandable: true,
@@ -447,7 +445,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: file.documentId,
               parentInternalId,
-              type: "Document",
+              type: "document",
               title: file.fileName,
               sourceUrl: file.sourceUrl,
               expandable: false,
@@ -489,7 +487,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const connectionId = c.connectionId;
     const allReposIdsToFetch: Set<number> = new Set();
     const nodes: ContentNode[] = [];
 
@@ -551,7 +548,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     await concurrentExecutor(
       uniqueRepoIdsArray,
       async (repoId) => {
-        const repoRes = await getRepo(connectionId, repoId);
+        const repoRes = await getRepo(c, repoId);
         if (repoRes.isErr()) {
           // We need to throw the error to stop the execution of the concurrentExecutor.
           throw repoRes.error;
@@ -609,7 +606,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: repo.name,
         sourceUrl: repo.url,
         expandable: true,
@@ -628,7 +625,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getIssuesInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "Folder",
+        type: "folder",
         title: "Issues",
         sourceUrl: getIssuesUrl(repo.url),
         expandable: false,
@@ -645,7 +642,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getDiscussionsInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "Folder",
+        type: "folder",
         title: "Discussions",
         sourceUrl: getDiscussionsUrl(repo.url),
         expandable: false,
@@ -664,7 +661,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getIssueInternalId(repoId, issueNumber),
         parentInternalId: getIssuesInternalId(repoId),
-        type: "Document",
+        type: "document",
         title: `Issue #${issueNumber}`,
         sourceUrl: getIssueUrl(repo.url, issueNumber),
         expandable: false,
@@ -683,7 +680,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getDiscussionInternalId(repoId, discussionNumber),
         parentInternalId: getDiscussionsInternalId(repoId),
-        type: "Document",
+        type: "document",
         title: `Discussion #${discussionNumber}`,
         sourceUrl: getDiscussionUrl(repo.url, discussionNumber),
         expandable: false,
@@ -698,7 +695,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getCodeRootInternalId(codeRepo.repoId),
         parentInternalId: getRepositoryInternalId(codeRepo.repoId),
-        type: "Folder",
+        type: "folder",
         title: "Code",
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
@@ -713,7 +710,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
-        type: "Folder",
+        type: "folder",
         title: directory.dirName,
         sourceUrl: directory.sourceUrl,
         expandable: true,
@@ -728,7 +725,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
-        type: "Document",
+        type: "document",
         title: file.fileName,
         sourceUrl: file.sourceUrl,
         expandable: false,
@@ -844,6 +841,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Ok(void 0);
       }
 
+      case "useProxy": {
+        await connector.update({
+          useProxy: configValue === "true",
+        });
+        return new Ok(void 0);
+      }
+
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
@@ -878,6 +882,9 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         }
 
         return new Ok(connectorState.codeSyncEnabled.toString());
+      }
+      case "useProxy": {
+        return new Ok(connector.useProxy?.toString() ?? "false");
       }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
