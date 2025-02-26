@@ -3,10 +3,10 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
   appendPaginationParams,
   fetcher,
@@ -42,7 +42,7 @@ export interface DataSourceViewContentNodesProps {
   disabled?: boolean;
   internalIds?: string[];
   owner: LightWorkspaceType;
-  pagination?: PaginationState;
+  pagination?: CursorPaginationParams;
   parentId?: string;
   viewType?: ContentNodesViewType;
 }
@@ -63,9 +63,16 @@ export function usePokeDataSourceViewContentNodes({
   mutateRegardlessOfQueryParams: KeyedMutator<PokeGetDataSourceViewContentNodes>;
   nodes: PokeGetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
+  totalNodesCountIsAccurate: boolean;
+  nextPageCursor: string | null;
 } {
   const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
+  if (pagination && pagination.cursor) {
+    params.set("cursor", pagination.cursor.toString());
+  }
+  if (pagination && pagination.limit) {
+    params.set("limit", pagination.limit.toString());
+  }
 
   const url =
     dataSourceView && viewType
@@ -112,6 +119,8 @@ export function usePokeDataSourceViewContentNodes({
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+    totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }
 
