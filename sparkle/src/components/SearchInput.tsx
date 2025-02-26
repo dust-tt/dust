@@ -50,6 +50,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         <Input
           type="text"
           name={name}
+          autoComplete="off"
           placeholder={placeholder}
           value={value}
           onChange={(e) => {
