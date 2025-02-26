@@ -55,7 +55,7 @@ async function migrateDataSource(
                 LIMIT :batchSize
             )
              UPDATE data_sources_nodes
-             SET source_url = tu.text_size
+             SET text_size = tu.text_size
              FROM to_update tu
              WHERE document = tu.id
              RETURNING tu.timestamp, tu.id;`,
@@ -74,7 +74,7 @@ async function migrateDataSource(
           `WITH to_update AS (
                 SELECT id, timestamp, text_size
                 FROM data_sources_documents dsd
-                WHERE data_source = :coreDataSourceId
+                WHERE data_source = :dataSourceId
                   AND status = :status
                   AND timestamp >= :nextTimestamp
                   AND id > :nextId -- does not leverage an index but only used to unlock possible infinite loops on batches of equal timestamps
@@ -82,7 +82,7 @@ async function migrateDataSource(
                 LIMIT :batchSize
             )
              UPDATE data_sources_nodes
-             SET source_url = tu.text_size
+             SET text_size = tu.text_size
              FROM to_update tu
              WHERE document = tu.id
              RETURNING tu.timestamp, tu.id;`,

@@ -51,9 +51,9 @@ async fn list_data_source_nodes(
 
     let stmt = c
         .prepare(
-            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dns.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.text_size \
+            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dsn.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.text_size \
                FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
-               WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
+               WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
         )
         .await?;
     let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
@@ -80,9 +80,9 @@ async fn list_data_source_nodes(
                 (None, None, Some(id)) => (NodeType::Folder, id),
                 _ => unreachable!(),
             };
-            let source_url: Option<String> = row.get::<_, Option<String>>(11);
-            let row_id = row.get::<_, i64>(12);
-            let text_size = row.get::<_, Option<i64>>(13);
+            let source_url: Option<String> = row.get::<_, Option<String>>(12);
+            let row_id = row.get::<_, i64>(13);
+            let text_size = row.get::<_, Option<i64>>(14);
             (
                 Node::new(
                     &data_source_id,
@@ -189,6 +189,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
         let bulk_operations = nodes
             .into_iter()
+            .filter(|node| node.text_size.is_some())
             .map(|node| {
                 BulkOperation::update(
                     node.unique_id(),
