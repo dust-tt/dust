@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "salesforce_feature",
   "advanced_notion_management",
   "search_knowledge_builder",
+  "attach_from_datasources",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
