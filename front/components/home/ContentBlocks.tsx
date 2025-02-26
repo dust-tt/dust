@@ -288,7 +288,7 @@ export const CarousselContentBlock = ({
   return (
     <div
       className={classNames(
-        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 lg:h-full lg:py-7", // h-full only on lg screens
+        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 md:h-full lg:py-7",
         from,
         to,
         border
@@ -324,8 +324,8 @@ export const CarousselContentBlock = ({
                 <Image
                   src={image}
                   alt={title as string}
-                  width={500}
-                  height={500}
+                  width={1200}
+                  height={630}
                   className="h-auto w-full"
                 />
               </div>
@@ -405,7 +405,7 @@ export const CarousselContentBlock = ({
             )}
           </div>
           {/* Button */}
-          <div className="mt-4 lg:mt-auto">
+          <div className="mt-4">
             {" "}
             {/* mt-auto only on lg */}
             <Link href={href} shallow={true}>
@@ -424,8 +424,8 @@ export const CarousselContentBlock = ({
             <Image
               src={image}
               alt={title as string}
-              width={600}
-              height={500}
+              width={1200}
+              height={630}
               className="h-auto w-full"
             />
           </div>
