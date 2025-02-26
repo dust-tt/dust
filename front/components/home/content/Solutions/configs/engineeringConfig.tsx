@@ -34,7 +34,7 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Get real-time coding support and troubleshooting",
+    "Get real-time coding support and troubleshooting with all relevant context",
     "Speed up incident resolution and communication",
     "Create instant team updates",
     "Surface relevant context and solutions from past incidents",

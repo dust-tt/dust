@@ -288,16 +288,14 @@ export const CarousselContentBlock = ({
   return (
     <div
       className={classNames(
-        "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 lg:h-full",
+        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 lg:h-full lg:py-7", // h-full only on lg screens
         from,
         to,
         border
       )}
     >
-      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:flex-row lg:gap-12">
-        {/* Left column for desktop - contains title, bullet points, quote/ROI, and button */}
-        <div className="flex flex-col lg:w-1/2">
-          {/* Title and bullet points */}
+      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
+        <div className="flex flex-col lg:h-full lg:w-1/2">
           <div className="mb-2 lg:mb-4">
             <H2 className="mb-4 text-slate-900">{title}</H2>
 
@@ -319,7 +317,6 @@ export const CarousselContentBlock = ({
               </ul>
             )}
           </div>
-
           {/* Mobile-only image - between bullet points and quote */}
           <div className="my-6 lg:hidden">
             <div className="flex items-center justify-center">
@@ -334,9 +331,10 @@ export const CarousselContentBlock = ({
               </div>
             </div>
           </div>
-
           {/* Quote and ROI section */}
-          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6">
+          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6 lg:flex-grow">
+            {" "}
+            {/* flex-grow only on lg */}
             {quote && (
               <>
                 <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
@@ -379,7 +377,6 @@ export const CarousselContentBlock = ({
                 </div>
               </>
             )}
-
             {roi && (
               <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
                 <div className="flex items-center gap-3">
@@ -407,9 +404,10 @@ export const CarousselContentBlock = ({
               </div>
             )}
           </div>
-
           {/* Button */}
-          <div className="mt-6">
+          <div className="mt-4 lg:mt-auto">
+            {" "}
+            {/* mt-auto only on lg */}
             <Link href={href} shallow={true}>
               <Button
                 label={`Learn more →`}
@@ -420,15 +418,14 @@ export const CarousselContentBlock = ({
             </Link>
           </div>
         </div>
-
         {/* Desktop-only image - right column */}
         <div className="hidden items-center justify-center lg:flex lg:w-1/2">
           <div className="w-full max-w-md lg:max-w-2xl">
             <Image
               src={image}
               alt={title as string}
-              width={500}
-              height={500}
+              width={300}
+              height={200}
               className="h-auto w-full"
             />
           </div>

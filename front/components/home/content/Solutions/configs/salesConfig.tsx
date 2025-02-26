@@ -37,9 +37,9 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Generate instant account snapshots",
+    "Generate instant account snapshots to prepare for meetings",
     "Auto-complete RFPs and forms",
-    "Create personalized outreach",
+    "Create personalized outreach and follow-ups",
     "Coach sales reps with call insights",
   ],
   image: "/static/landing/sales/accountSnapshot.png",

@@ -34,7 +34,7 @@ export const pageSettings: pageSettingsProps = {
     "Onboard new hires through company processes and documentation",
     "Guide managers to deliver quality feedback based on your company guidelines",
   ],
-  image: "/static/landing/solutions/people1.png",
+  image: "/static/landing/sales/accountSnapshot.png",
 };
 
 export const Hero: HeroProps = {

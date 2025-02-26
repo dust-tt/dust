@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Navigate legal research efficiently",
     "Generate compliant legal documents",
   ],
-  image: "/static/landing/solutions/legal1.png",
+  image: "/static/landing/sales/accountSnapshot.png",
 };
 
 export const Hero: HeroProps = {
@@ -154,7 +154,7 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. While I maintain final oversight, it both cuts our review time and helps pressure-test our legal interpretations.",
+    "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. It both cuts our review time and helps pressure-test our legal interpretations.",
   name: "Thomas Adhumeau",
   title: "Chief Privacy Officer at Didomi",
   logo: "/static/landing/logos/didomi.png",

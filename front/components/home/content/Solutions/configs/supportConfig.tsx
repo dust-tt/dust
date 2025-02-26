@@ -29,7 +29,8 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Deflect and resolve tickets faster",
+    "Deflect tickets by integrating AI agents directly in your product",
+    "Speed up resolution by your staff with tailored responses from your knowledge base",
     "Identify and anticipate customer needs",
     "Convert tickets into searchable knowledge base",
   ],

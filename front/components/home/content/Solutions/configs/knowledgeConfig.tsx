@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Get answers in Slack with relevant context and citations",
     "Surface blockers from project discussions",
   ],
-  image: "/static/landing/solutions/knowledge1.png",
+  image: "/static/landing/sales/accountSnapshot.png",
 };
 
 export const Hero: HeroProps = {
@@ -153,7 +153,7 @@ export const UseCases: UseCaseProps = {
 
 export const Quote: QuoteProps = {
   quote:
-    "It became evident that Dust could serve as a powerful co-pilot for both onboarding new employees and supporting long-term staff across all functions. Everyone leverages Dust as a knowledgeable buddy to enhance their productivity and efficiency.",
+    "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
   name: "Boris Lipiainen ",
   title: "Chief Product and Technology Officer at Kyriba",
   logo: "/static/landing/logos/kyriba.png",
