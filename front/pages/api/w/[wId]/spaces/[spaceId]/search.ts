@@ -42,6 +42,7 @@ const SearchRequestBody = t.type({
     t.literal("document"),
     t.literal("all"),
   ]),
+  includeDataSources: t.boolean,
   limit: t.number,
 });
 
@@ -90,9 +91,10 @@ async function handler(
 
   const {
     datasourceViewIds: datasourceViewSids,
+    includeDataSources,
+    limit,
     query,
     viewType,
-    limit,
   } = bodyValidation.right;
 
   if (datasourceViewSids.length === 0) {
@@ -139,7 +141,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
-      // TODO(keyword-search): Include data sources based on the use case.
+      include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },
     options: {
@@ -176,11 +178,7 @@ async function handler(
       return [];
     }
 
-    return getContentNodeFromCoreNode(
-      [dataSourceView.toJSON()],
-      node,
-      viewType
-    );
+    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
   return res.status(200).json({ nodes });
 }

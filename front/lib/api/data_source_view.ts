@@ -156,8 +156,8 @@ export async function getContentNodesForDataSourceView(
     nodes: resultNodes.map((node) =>
       getContentNodeFromCoreNode(
         dataSourceView instanceof DataSourceViewResource
-          ? [dataSourceView.toJSON()]
-          : [dataSourceView],
+          ? dataSourceView.toJSON()
+          : dataSourceView,
         node,
         viewType
       )

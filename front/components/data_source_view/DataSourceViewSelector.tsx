@@ -32,7 +32,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -129,10 +129,11 @@ export function DataSourceViewsSelector({
 
   const { searchResultNodes, isSearchLoading } = useSpaceSearch({
     dataSourceViews,
-    owner,
-    viewType,
-    search: debouncedSearch,
     disabled: !searchFeatureFlag,
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType,
   });
 
   useEffect(() => {
@@ -213,7 +214,7 @@ export function DataSourceViewsSelector({
     item: DataSourceViewContentNode,
     prevState: DataSourceViewSelectionConfigurations
   ): DataSourceViewSelectionConfigurations {
-    const dsv = item.dataSourceViews[0];
+    const { dataSourceView: dsv } = item;
     const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
     const exists = prevConfig.selectedResources.some(
@@ -274,29 +275,38 @@ export function DataSourceViewsSelector({
               updateSelection(item, prevState)
             );
           }}
-          renderItem={(item, selected) => (
-            <div
-              className={cn(
-                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                selected && "bg-structure-50 dark:bg-structure-50-night"
-              )}
-              onClick={() => {
-                setSearchResult(item);
-                setSearchSpaceText("");
-                setSelectionConfigurations((prevState) =>
-                  updateSelection(item, prevState)
-                );
-              }}
-            >
-              {getVisualForContentNode(item)({ className: "min-w-4" })}
-              <span className="flex-shrink truncate text-sm">{item.title}</span>
-              {item.parentTitle && (
-                <div className="ml-auto flex-none text-sm text-slate-500">
-                  {`${item.dataSourceViews[0].dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[item.dataSourceViews[0].dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
-                </div>
-              )}
-            </div>
-          )}
+          renderItem={(item, selected) => {
+            const { dataSourceView } = item;
+            const { dataSource } = dataSourceView;
+
+            return (
+              <div
+                className={cn(
+                  "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                  selected && "bg-structure-50 dark:bg-structure-50-night"
+                )}
+                onClick={() => {
+                  setSearchResult(item);
+                  setSearchSpaceText("");
+                  setSelectionConfigurations((prevState) =>
+                    updateSelection(item, prevState)
+                  );
+                }}
+              >
+                {getVisualForDataSourceViewContentNode(item)({
+                  className: "min-w-4",
+                })}
+                <span className="flex-shrink truncate text-sm">
+                  {item.title}
+                </span>
+                {item.parentTitle && (
+                  <div className="ml-auto flex-none text-sm text-slate-500">
+                    {`${dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
+                  </div>
+                )}
+              </div>
+            );
+          }}
           noResults="No results found"
         />
       )}
@@ -312,7 +322,7 @@ export function DataSourceViewsSelector({
             type="node"
             defaultCollapsed={
               !searchResult ||
-              !isManaged(searchResult.dataSourceViews[0].dataSource)
+              !isManaged(searchResult.dataSourceView.dataSource)
             }
           >
             {orderDatasourceViews
@@ -360,8 +370,7 @@ export function DataSourceViewsSelector({
             visual={FolderIcon}
             type="node"
             defaultCollapsed={
-              !searchResult ||
-              !isFolder(searchResult.dataSourceViews[0].dataSource)
+              !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
             }
           >
             {folders.map((dataSourceView) => (
@@ -390,7 +399,7 @@ export function DataSourceViewsSelector({
             type="node"
             defaultCollapsed={
               !searchResult ||
-              !isWebsite(searchResult.dataSourceViews[0].dataSource)
+              !isWebsite(searchResult.dataSourceView.dataSource)
             }
           >
             {websites.map((dataSourceView) => (
@@ -548,7 +557,7 @@ export function DataSourceViewSelector({
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
-              dataSourceViews: [dataSourceView],
+              dataSourceView: dataSourceView,
               parentInternalIds: v.parents,
             })),
           isSelectAll: false,
@@ -580,7 +589,7 @@ export function DataSourceViewSelector({
   );
 
   const isExpanded = searchResult
-    ? searchResult.dataSourceViews[0].sId === dataSourceView.sId
+    ? searchResult.dataSourceView.sId === dataSourceView.sId
     : false;
   const defaultExpandedIds =
     isExpanded && searchResult

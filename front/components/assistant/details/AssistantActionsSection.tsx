@@ -52,7 +52,7 @@ import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPerm
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -562,7 +562,7 @@ function DataSourceViewSelectedNodes({
           key={node.internalId}
           label={node.title}
           type={node.expandable && viewType !== "table" ? "node" : "leaf"}
-          visual={getVisualForContentNode(node)}
+          visual={getVisualForDataSourceViewContentNode(node)}
           className="whitespace-nowrap"
           actions={
             <div className="mr-8 flex flex-row gap-2">

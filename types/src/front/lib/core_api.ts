@@ -290,6 +290,17 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   mimeType: string;
 }
 
+// TODO(keyword-search): Until we remove the `managed-` prefix, we need to
+// sanitize the search name.
+function formatDataSourceDisplayName(name: string) {
+  return name
+    .replace(/[-_]/g, " ") // Replace both hyphens and underscores with spaces.
+    .split(" ")
+    .filter((part) => part !== "managed")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
@@ -765,9 +776,9 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          config: config,
+          config,
           credentials: credentials,
-          name,
+          name: formatDataSourceDisplayName(name),
         }),
       }
     );
@@ -794,7 +805,7 @@ export class CoreAPI {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name,
+          name: formatDataSourceDisplayName(name),
         }),
       }
     );

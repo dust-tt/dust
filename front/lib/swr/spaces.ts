@@ -601,6 +601,7 @@ export function useSpaceSearch({
   search,
   disabled = false,
   limit = DEFAULT_SEARCH_LIMIT,
+  includeDataSources = false,
 }: {
   dataSourceViews: DataSourceViewType[];
   owner: LightWorkspaceType;
@@ -608,17 +609,19 @@ export function useSpaceSearch({
   search: string;
   disabled?: boolean;
   limit?: number;
+  includeDataSources: boolean;
 }) {
   const body = {
     datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
+    includeDataSources,
+    limit,
     query: search,
     viewType,
-    limit,
   };
 
   const spaceId = dataSourceViews[0]?.spaceId;
 
-  // Only create a key if we have a valid search
+  // Only create a key if we have a valid search.
   const key =
     search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
       ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
