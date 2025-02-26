@@ -24,10 +24,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isValidContentNodesViewType,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@dust-tt/types";
+import { isValidContentNodesViewType } from "@dust-tt/types";
 import type {
   CellContext,
   ColumnDef,
@@ -59,7 +56,9 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpaceSearchLayout";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -201,7 +200,7 @@ function useStaticDataSourceViewHasContent({
   };
 }
 
-type SpaceDataSourceViewContentListProps = {
+interface SpaceDataSourceViewContentListProps {
   canReadInSpace: boolean;
   canWriteInSpace: boolean;
   connector: ConnectorType | null;
@@ -213,7 +212,7 @@ type SpaceDataSourceViewContentListProps = {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
-};
+}
 
 export const SpaceDataSourceViewContentList = ({
   canReadInSpace,
@@ -512,8 +511,97 @@ export const SpaceDataSourceViewContentList = ({
       <></>
     );
 
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
+
   const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
   const isEmpty = rows.length === 0 && !isNodesLoading;
+
+  const actionButtons = (
+    <>
+      {isFolder(dataSourceView.dataSource) && (
+        <>
+          {((viewType === "table" && hasDocuments) ||
+            (viewType === "document" && hasTables)) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  label={viewType === "document" ? "document" : "table"}
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Documents"
+                  onClick={() => handleViewTypeChange("document")}
+                />
+                <DropdownMenuItem
+                  label="Tables"
+                  onClick={() => handleViewTypeChange("table")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <FoldersHeaderMenu
+            owner={owner}
+            space={space}
+            canWriteInSpace={canWriteInSpace}
+            folder={dataSourceView}
+            contentActionsRef={contentActionsRef}
+          />
+        </>
+      )}
+      {isWebsite(dataSourceView.dataSource) && (
+        <WebsitesHeaderMenu
+          owner={owner}
+          space={space}
+          canWriteInSpace={canWriteInSpace}
+          dataSourceView={dataSourceView}
+        />
+      )}
+      {isManaged(dataSourceView.dataSource) &&
+        space.kind !== "system" &&
+        !isEmpty && (
+          <EditSpaceManagedDataSourcesViews
+            owner={owner}
+            space={space}
+            systemSpace={systemSpace}
+            isAdmin={isAdmin}
+            dataSourceView={dataSourceView}
+            onSelectedDataUpdated={onSelectedDataUpdated}
+          />
+        )}
+      {isManaged(dataSourceView.dataSource) &&
+        connector &&
+        !parentId &&
+        space.kind === "system" && (
+          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+            {isEmpty && <div>Connection ready. Select the data to sync.</div>}
+
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={connector}
+              dataSourceView={dataSourceView}
+              isOpen={showConnectorPermissionsModal}
+              onClose={(save) => {
+                setShowConnectorPermissionsModal(false);
+                if (save) {
+                  void mutateContentNodes();
+                }
+              }}
+              readOnly={false}
+              isAdmin={isAdmin}
+              onManageButtonClick={() => {
+                setShowConnectorPermissionsModal(true);
+              }}
+            />
+          </div>
+        )}
+    </>
+  );
 
   return (
     // MultipleDocumentsUpload listens to the file drop context and uploads the files.
@@ -523,101 +611,21 @@ export const SpaceDataSourceViewContentList = ({
         title="Add Files"
         disabled={!canWriteInSpace}
       >
-        <div
-          className={classNames(
-            "flex w-full gap-2",
-            isEmpty
-              ? classNames(
-                  "h-36 items-center justify-center rounded-xl",
-                  "bg-muted-background dark:bg-muted-background-night"
-                )
-              : "pb-2"
-          )}
-        >
-          {isEmpty && emptyContent}
-          {isFolder(dataSourceView.dataSource) && (
-            <>
-              {((viewType === "table" && hasDocuments) ||
-                (viewType === "document" && hasTables)) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      label={viewType === "document" ? "document" : "table"}
-                      variant="outline"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem
-                      label="Documents"
-                      onClick={() => handleViewTypeChange("document")}
-                    />
-                    <DropdownMenuItem
-                      label="Tables"
-                      onClick={() => handleViewTypeChange("table")}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <FoldersHeaderMenu
-                owner={owner}
-                space={space}
-                canWriteInSpace={canWriteInSpace}
-                folder={dataSourceView}
-                contentActionsRef={contentActionsRef}
-              />
-            </>
-          )}
-          {isWebsite(dataSourceView.dataSource) && (
-            <WebsitesHeaderMenu
-              owner={owner}
-              space={space}
-              canWriteInSpace={canWriteInSpace}
-              dataSourceView={dataSourceView}
-            />
-          )}
-          {isManaged(dataSourceView.dataSource) &&
-            space.kind !== "system" &&
-            !isEmpty && (
-              <EditSpaceManagedDataSourcesViews
-                owner={owner}
-                space={space}
-                systemSpace={systemSpace}
-                isAdmin={isAdmin}
-                dataSourceView={dataSourceView}
-                onSelectedDataUpdated={onSelectedDataUpdated}
-              />
+        {isEmpty && (
+          <div
+            className={cn(
+              "flex w-full gap-2",
+              "h-36 items-center justify-center rounded-xl",
+              "bg-muted-background dark:bg-muted-background-night"
             )}
-          {isManaged(dataSourceView.dataSource) &&
-            connector &&
-            !parentId &&
-            space.kind === "system" && (
-              <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-                {isEmpty && (
-                  <div>Connection ready. Select the data to sync.</div>
-                )}
+          >
+            {emptyContent}
+            {actionButtons}
+          </div>
+        )}
+        {/* Portal buttons next to the search bar if not empty. */}
+        {!isEmpty && portalToHeader(actionButtons)}
 
-                <ConnectorPermissionsModal
-                  owner={owner}
-                  connector={connector}
-                  dataSourceView={dataSourceView}
-                  isOpen={showConnectorPermissionsModal}
-                  onClose={(save) => {
-                    setShowConnectorPermissionsModal(false);
-                    if (save) {
-                      void mutateContentNodes();
-                    }
-                  }}
-                  readOnly={false}
-                  isAdmin={isAdmin}
-                  onManageButtonClick={() => {
-                    setShowConnectorPermissionsModal(true);
-                  }}
-                />
-              </div>
-            )}
-        </div>
         {isNodesLoading && (
           <div className="absolute mt-16 flex justify-center">
             <Spinner />
@@ -653,15 +661,3 @@ export const SpaceDataSourceViewContentList = ({
     </FileDropProvider>
   );
 };
-
-interface SpaceDataSourceViewContentListActionButtonsProps {
-  canWriteInSpace: boolean;
-  owner: LightWorkspaceType;
-  space: SpaceType;
-}
-
-export function SpaceDataSourceViewContentListActionButtons({
-  canWriteInSpace,
-  owner,
-  space,
-}: SpaceDataSourceViewContentListActionButtonsProps) {}
