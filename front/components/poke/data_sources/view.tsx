@@ -111,7 +111,7 @@ export function ViewDataSourceTable({
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
                     <Link
-                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
+                      href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
                       target="_blank"
                       className="text-sm text-action-400"
                     >
