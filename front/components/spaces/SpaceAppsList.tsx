@@ -4,7 +4,6 @@ import {
   CommandLineIcon,
   DataTable,
   PlusIcon,
-  SearchInput,
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
@@ -21,9 +20,10 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useRef, useState } from "react";
+import { useContext, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
@@ -151,14 +151,14 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
-  const [appSearch, setAppSearch] = useState<string>("");
+  // Use the search term from context instead of local state.
+  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
+  const { searchTerm: appSearch, setIsSearchDisabled } =
+    useContext(SpaceSearchContext);
 
   const { apps, isAppsLoading } = useApps({ owner, space });
-
-  const searchBarRef = useRef<HTMLInputElement>(null);
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -177,6 +177,14 @@ export const SpaceAppsList = ({
       })) || [],
     [apps, onSelect, owner]
   );
+
+  React.useEffect(() => {
+    if (rows.length > 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [rows.length, setIsSearchDisabled]);
 
   if (isAppsLoading) {
     return (
@@ -205,39 +213,6 @@ export const SpaceAppsList = ({
         </div>
       ) : (
         <>
-          <div className="flex gap-2">
-            <SearchInput
-              name="search"
-              ref={searchBarRef}
-              placeholder="Search (Name)"
-              value={appSearch}
-              onChange={(s) => {
-                setAppSearch(s);
-              }}
-            />
-            {canWriteInSpace && (
-              <>
-                <Button
-                  label="New App"
-                  variant="primary"
-                  icon={PlusIcon}
-                  size="sm"
-                  onClick={() => {
-                    setIsCreateAppModalOpened(true);
-                  }}
-                />
-                <Button
-                  label="Dev secrets"
-                  variant="primary"
-                  icon={BracesIcon}
-                  size="sm"
-                  onClick={() => {
-                    void router.push(`/w/${owner.sId}/developers/dev-secrets`);
-                  }}
-                />
-              </>
-            )}
-          </div>
           <DataTable
             data={rows}
             columns={columns}
@@ -258,3 +233,54 @@ export const SpaceAppsList = ({
     </>
   );
 };
+
+interface SpaceAppsListActionButtonsProps {
+  canWriteInSpace: boolean;
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}
+
+export function SpaceAppsListActionButtons({
+  canWriteInSpace,
+  owner,
+  space,
+}: SpaceAppsListActionButtonsProps) {
+  const router = useRouter();
+
+  const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
+
+  return (
+    <>
+      {/* TODO(20250226, search-kb): Refactor to only use one modal between the menu and the page. */}
+      <SpaceCreateAppModal
+        owner={owner}
+        space={space}
+        isOpen={isCreateAppModalOpened}
+        setIsOpen={setIsCreateAppModalOpened}
+      />
+
+      {canWriteInSpace && (
+        <>
+          <Button
+            label="New App"
+            variant="primary"
+            icon={PlusIcon}
+            size="sm"
+            onClick={() => {
+              setIsCreateAppModalOpened(true);
+            }}
+          />
+          <Button
+            label="Dev secrets"
+            variant="primary"
+            icon={BracesIcon}
+            size="sm"
+            onClick={() => {
+              void router.push(`/w/${owner.sId}/developers/dev-secrets`);
+            }}
+          />
+        </>
+      )}
+    </>
+  );
+}

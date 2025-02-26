@@ -17,7 +17,7 @@ import type { ReactElement } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
-import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import config from "@app/lib/api/config";
@@ -32,7 +32,7 @@ import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutProps & {
+  SpaceLayoutPageProps & {
     category: DataSourceViewCategory;
     isAdmin: boolean;
     canWriteInSpace: boolean;

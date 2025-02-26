@@ -12,7 +12,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
-import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -21,7 +21,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutProps & {
+  SpaceLayoutPageProps & {
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;

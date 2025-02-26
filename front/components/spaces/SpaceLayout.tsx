@@ -37,7 +37,7 @@ import {
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
-export interface SpaceLayoutProps {
+export interface SpaceLayoutPageProps {
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
@@ -48,15 +48,19 @@ export interface SpaceLayoutProps {
   subscription: SubscriptionType;
 }
 
+interface SpaceLayoutProps {
+  actionButtons?: React.ReactNode;
+  children: React.ReactNode;
+  hideHeader?: boolean;
+  pageProps: SpaceLayoutPageProps;
+}
+
 export function SpaceLayout({
   actionButtons,
   children,
+  hideHeader,
   pageProps,
-}: {
-  children: React.ReactNode;
-  pageProps: SpaceLayoutProps;
-  actionButtons?: React.ReactNode;
-}) {
+}: SpaceLayoutProps) {
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
@@ -135,10 +139,12 @@ export function SpaceLayout({
           />
 
           <Page.Vertical gap="xl" align="stretch">
-            <Page.Header
-              title={getSpaceName(space)}
-              icon={getSpaceIcon(space)}
-            />
+            {!hideHeader && (
+              <Page.Header
+                title={getSpaceName(space)}
+                icon={getSpaceIcon(space)}
+              />
+            )}
 
             <div className="mb-4">
               <div className="flex w-full gap-2">
