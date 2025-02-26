@@ -15,7 +15,9 @@ use crate::{
     },
 };
 
-use super::{bigquery::get_bigquery_remote_database, salesforce::SalesforceRemoteDatabase};
+use super::{
+    bigquery::get_bigquery_remote_database, salesforce::salesforce::SalesforceRemoteDatabase,
+};
 
 #[async_trait]
 pub trait RemoteDatabase {
