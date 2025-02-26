@@ -42,14 +42,13 @@ const SearchRequestBody = t.type({
     t.literal("document"),
     t.literal("all"),
   ]),
+  includeDataSources: t.boolean,
   limit: t.number,
 });
 
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
 };
-
-export type SpaceSearchUseCase = "builder" | "knowledge";
 
 async function handler(
   req: NextApiRequest,
@@ -77,20 +76,6 @@ async function handler(
     });
   }
 
-  const { useCase } = req.query;
-  if (
-    typeof useCase !== "string" ||
-    !["builder", "knowledge"].includes(useCase)
-  ) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "The use case must be either 'builder' or 'knowledge'.",
-      },
-    });
-  }
-
   const bodyValidation = SearchRequestBody.decode(req.body);
   if (isLeft(bodyValidation)) {
     const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -106,9 +91,10 @@ async function handler(
 
   const {
     datasourceViewIds: datasourceViewSids,
+    includeDataSources,
+    limit,
     query,
     viewType,
-    limit,
   } = bodyValidation.right;
 
   if (datasourceViewSids.length === 0) {
@@ -155,7 +141,7 @@ async function handler(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
-      include_data_sources: useCase === "builder" ? true : false,
+      include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },
     options: {

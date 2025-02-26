@@ -268,9 +268,9 @@ export const SpaceDataSourceViewContentList = ({
   const { searchResultNodes, isSearchLoading, isSearchValidating } =
     useSpaceSearch({
       dataSourceViews: [dataSourceView],
+      includeDataSources: false,
       owner,
       search: debouncedSearch,
-      useCase: "knowledge",
       viewType,
     });
 

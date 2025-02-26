@@ -129,11 +129,11 @@ export function DataSourceViewsSelector({
 
   const { searchResultNodes, isSearchLoading } = useSpaceSearch({
     dataSourceViews,
-    owner,
-    viewType,
-    search: debouncedSearch,
     disabled: !searchFeatureFlag,
-    useCase: "builder",
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType,
   });
 
   useEffect(() => {
