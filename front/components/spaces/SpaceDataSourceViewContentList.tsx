@@ -349,7 +349,7 @@ export const SpaceDataSourceViewContentList = ({
       ) {
         // Next page - update the history and the cursor.
         setTablePagination(newTablePagination);
-        if (newTablePagination.pageIndex === cursorHistory.length + 1) {
+        if (newTablePagination.pageIndex === cursorHistory.length) {
           setCursorHistory((prev) => [...prev, nextPageCursor]);
         }
         setCurrentCursor(nextPageCursor);
