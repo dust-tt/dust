@@ -32,6 +32,7 @@ import {
 } from "@app/components/markdown/MentionBlock";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useEditMessage } from "@app/lib/swr/conversations";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -63,6 +64,9 @@ export function UserMessage({
     workspaceId: owner.sId,
   });
 
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const editMessagesFeatureFlag = featureFlags.includes("edit_messages");
+
   const doEditMessage = useEditMessage(owner);
 
   const router = useRouter();
@@ -78,7 +82,7 @@ export function UserMessage({
 
   const submitEdit = async () => {
     const editorService = editorServiceRef.current;
-    if (!editorService) {
+    if (!editorService || !editMessagesFeatureFlag) {
       return;
     }
 
@@ -100,83 +104,85 @@ export function UserMessage({
   };
 
   const buttons = [];
-  if (isEditing) {
-    buttons.push(
-      <Button
-        key="edit-msg-button"
-        tooltip="Cancel"
-        variant="outline"
-        size="xs"
-        onClick={() => {
-          setIsEditing(false);
-        }}
-        icon={XMarkIcon}
-        className="text-muted-foreground"
-      />
-    );
-
-    buttons.push(
-      <Button
-        key="send-msg-button"
-        tooltip="Send"
-        variant="outline"
-        size="xs"
-        onClick={() => {
-          void submitEdit();
-        }}
-        icon={ArrowUpIcon}
-        className="text-muted-foreground"
-      />
-    );
-  } else {
-    if (
-      message.previousThreadVersion != null ||
-      message.nextThreadVersion != null
-    ) {
+  if (editMessagesFeatureFlag) {
+    if (isEditing) {
       buttons.push(
         <Button
-          key="previous-msg-button"
-          tooltip="Previous"
+          key="edit-msg-button"
+          tooltip="Cancel"
           variant="outline"
           size="xs"
-          onClick={async () => {
-            await switchThread(message.previousThreadVersion);
+          onClick={() => {
+            setIsEditing(false);
           }}
-          disabled={message.previousThreadVersion === null}
-          icon={ChevronLeftIcon}
+          icon={XMarkIcon}
           className="text-muted-foreground"
         />
       );
 
       buttons.push(
         <Button
-          key="next-msg-button"
-          tooltip="Next"
+          key="send-msg-button"
+          tooltip="Send"
           variant="outline"
           size="xs"
-          onClick={async () => {
-            await switchThread(message.nextThreadVersion);
+          onClick={() => {
+            void submitEdit();
           }}
-          disabled={message.nextThreadVersion === null}
-          icon={ChevronRightIcon}
+          icon={ArrowUpIcon}
+          className="text-muted-foreground"
+        />
+      );
+    } else {
+      if (
+        message.previousThreadVersion != null ||
+        message.nextThreadVersion != null
+      ) {
+        buttons.push(
+          <Button
+            key="previous-msg-button"
+            tooltip="Previous"
+            variant="outline"
+            size="xs"
+            onClick={async () => {
+              await switchThread(message.previousThreadVersion);
+            }}
+            disabled={message.previousThreadVersion === null}
+            icon={ChevronLeftIcon}
+            className="text-muted-foreground"
+          />
+        );
+
+        buttons.push(
+          <Button
+            key="next-msg-button"
+            tooltip="Next"
+            variant="outline"
+            size="xs"
+            onClick={async () => {
+              await switchThread(message.nextThreadVersion);
+            }}
+            disabled={message.nextThreadVersion === null}
+            icon={ChevronRightIcon}
+            className="text-muted-foreground"
+          />
+        );
+      }
+
+      buttons.push(
+        <Button
+          key="edit-msg-button"
+          tooltip="Edit"
+          variant="outline"
+          size="xs"
+          onClick={() => {
+            setIsEditing(true);
+          }}
+          icon={PencilSquareIcon}
           className="text-muted-foreground"
         />
       );
     }
-
-    buttons.push(
-      <Button
-        key="edit-msg-button"
-        tooltip="Edit"
-        variant="outline"
-        size="xs"
-        onClick={() => {
-          setIsEditing(true);
-        }}
-        icon={PencilSquareIcon}
-        className="text-muted-foreground"
-      />
-    );
   }
 
   const additionalMarkdownPlugins: PluggableList = useMemo(

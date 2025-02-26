@@ -1169,7 +1169,40 @@ export async function* editUserMessage(
     };
     return;
   }
+  const flags = await getFeatureFlags(owner);
+  const editMessagesFeatureFlag = flags.includes("edit_messages");
+  if (!editMessagesFeatureFlag) {
+    if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "not_allowed",
+          message:
+            "Editing a message that already has agent mentions is not yet supported",
+        },
+      };
+      return;
+    }
 
+    if (
+      !conversation.content[conversation.content.length - 1].some(
+        (m) => m.sId === message.sId
+      ) &&
+      mentions.filter((m) => isAgentMention(m)).length > 0
+    ) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "edition_unsupported",
+          message:
+            "Adding agent mentions when editing is only supported for the last message of the conversation",
+        },
+      };
+      return;
+    }
+  }
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
 

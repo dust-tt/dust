@@ -792,6 +792,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_feature"
   | "advanced_notion_management"
   | "search_knowledge_builder"
+  | "edit_messages"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

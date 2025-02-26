@@ -60,6 +60,7 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   return { text: textContent, mentions: mentions };
 }
 
+// TODO: Replace with MarkdownParser
 export function getJSONFromText(
   text: string,
   agentConfigurations: LightAgentConfigurationType[]
