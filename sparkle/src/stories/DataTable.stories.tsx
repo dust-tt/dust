@@ -119,6 +119,18 @@ const data: TransformedData[] = [
         onSelect: (itemId) => console.log("Add to Space", itemId),
       },
       {
+        disabled: true,
+        kind: "submenu",
+        label: "Add to Space (disabled)",
+        items: [
+          { id: "space1", name: "Space 1" },
+          { id: "space2", name: "Space 2" },
+          { id: "space3", name: "Space 3" },
+          { id: "space4", name: "Space 4" },
+        ],
+        onSelect: (itemId) => console.log("Add to Space", itemId),
+      },
+      {
         kind: "item",
         label: "Test",
       },
