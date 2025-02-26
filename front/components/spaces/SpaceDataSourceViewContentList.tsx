@@ -211,23 +211,25 @@ type SpaceDataSourceViewContentListProps = {
 };
 
 // TODO(20250226 aubin): move this hook to sparkle.
-function useCursorPaginationForDataTable() {
-  // Pagination state for the content nodes.
-  const [currentCursor, setCurrentCursor] =
-    useState<CursorPaginationParams["cursor"]>(null);
+function useCursorPaginationForDataTable(pageSize: number) {
+  const [cursorPagination, setCursorPagination] =
+    useState<CursorPaginationParams>({ cursor: null, limit: pageSize });
+
   // We keep a history of the cursors to allow going back in pages (leverage SWR's cache).
   const [cursorHistory, setCursorHistory] = useState<
     CursorPaginationParams["cursor"][]
   >([null]);
+
   const [tablePagination, setTablePagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: PAGE_SIZE,
+    pageSize,
   });
+
   const resetPagination = useCallback(() => {
     setTablePagination({ pageIndex: 0, pageSize: PAGE_SIZE });
     setCursorHistory([null]);
-    setCurrentCursor(null);
-  }, []);
+    setCursorPagination({ cursor: null, limit: pageSize });
+  }, [pageSize]);
 
   const handlePaginationChange = useCallback(
     (newTablePagination: PaginationState, nextPageCursor: string | null) => {
@@ -240,17 +242,20 @@ function useCursorPaginationForDataTable() {
         if (newTablePagination.pageIndex === cursorHistory.length) {
           setCursorHistory((prev) => [...prev, nextPageCursor]);
         }
-        setCurrentCursor(nextPageCursor);
+        setCursorPagination({ cursor: nextPageCursor, limit: pageSize });
       } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
         // Older page - use the appropriate cursor.
         setTablePagination(newTablePagination);
-        setCurrentCursor(cursorHistory[newTablePagination.pageIndex]);
+        setCursorPagination({
+          cursor: cursorHistory[newTablePagination.pageIndex],
+          limit: pageSize,
+        });
       }
     },
-    [tablePagination.pageIndex, cursorHistory]
+    [tablePagination.pageIndex, cursorHistory, pageSize]
   );
   return {
-    currentCursor,
+    cursorPagination,
     resetPagination,
     handlePaginationChange,
     tablePagination,
@@ -283,11 +288,11 @@ export const SpaceDataSourceViewContentList = ({
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const {
-    currentCursor,
+    cursorPagination,
     resetPagination,
     handlePaginationChange,
     tablePagination,
-  } = useCursorPaginationForDataTable();
+  } = useCursorPaginationForDataTable(PAGE_SIZE);
 
   const [viewType, setViewType] = useHashParam(
     "viewType",
@@ -338,7 +343,7 @@ export const SpaceDataSourceViewContentList = ({
     dataSourceView,
     owner,
     parentId,
-    pagination: { cursor: currentCursor, limit: PAGE_SIZE },
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
