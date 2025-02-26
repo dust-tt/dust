@@ -261,7 +261,7 @@ async function renderDataSourcesConfigurations(
         dataSourceView,
         {
           internalIds: sr.resources,
-          viewType: "documents",
+          viewType: "document",
         }
       );
 
@@ -338,7 +338,7 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView,
           {
             internalIds: sr.resources,
-            viewType: "tables",
+            viewType: "table",
           }
         );
 

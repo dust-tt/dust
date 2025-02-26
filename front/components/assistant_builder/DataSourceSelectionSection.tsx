@@ -163,10 +163,7 @@ export default function DataSourceSelectionSection({
                               size="xs"
                               icon={BracesIcon}
                               onClick={() => {
-                                if (
-                                  node.type === "Document" ||
-                                  node.type === "document"
-                                ) {
+                                if (node.type === "document") {
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
@@ -174,15 +171,11 @@ export default function DataSourceSelectionSection({
                                 }
                               }}
                               className={classNames(
-                                node.type === "Document" ||
-                                  node.type === "document"
+                                node.type === "document"
                                   ? ""
                                   : "pointer-events-none opacity-0"
                               )}
-                              disabled={
-                                node.type !== "Document" &&
-                                node.type !== "document"
-                              }
+                              disabled={node.type !== "document"}
                               variant="outline"
                             />
                           </div>

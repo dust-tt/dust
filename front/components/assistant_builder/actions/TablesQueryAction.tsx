@@ -64,7 +64,7 @@ export function ActionTablesQuery({
         }}
         initialDataSourceConfigurations={actionConfiguration}
         allowedSpaces={allowedSpaces}
-        viewType="tables"
+        viewType="table"
       />
 
       <div className="text-sm text-element-700">
@@ -88,7 +88,7 @@ export function ActionTablesQuery({
         openDataSourceModal={() => {
           setShowTableModal(true);
         }}
-        viewType="tables"
+        viewType="table"
       />
     </>
   );

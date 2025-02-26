@@ -195,10 +195,7 @@ export const getMenuItems = (
     });
   }
 
-  if (
-    canReadInSpace &&
-    (contentNode.type === "Document" || contentNode.type === "document")
-  ) {
+  if (canReadInSpace && contentNode.type === "document") {
     actions.push({
       ...makeViewRawContentAction(contentNode, contentActionsRef),
     });
@@ -212,7 +209,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
-          contentNode.type === "Table" || contentNode.type === "table"
+          contentNode.type === "table"
             ? "TableUploadOrEdit"
             : "DocumentUploadOrEdit",
           contentNode
@@ -237,7 +234,7 @@ export const getMenuItems = (
   if (
     dataSourceView.kind === "default" &&
     isManaged(dataSourceView.dataSource) &&
-    (contentNode.type === "Folder" || contentNode.type === "folder")
+    contentNode.type === "folder"
   ) {
     const allViews = dataSourceViews.filter(
       (dsv) =>

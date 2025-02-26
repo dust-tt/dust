@@ -1,8 +1,9 @@
 import type {
+  ContentNodesViewType,
   DataSourceViewContentNode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import { assertNever, CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,14 +19,27 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
+function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "document":
+      return ["folder", "document"];
+    case "table":
+      return ["folder", "table"];
+    case "all":
+      return ["folder", "table", "document"];
+    default:
+      assertNever(viewType);
+  }
+}
+
 const SearchRequestBody = t.type({
   datasourceViewIds: t.array(t.string),
   query: t.string,
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
   viewType: t.union([
-    t.literal("tables"),
-    t.literal("documents"),
+    t.literal("table"),
+    t.literal("document"),
     t.literal("all"),
   ]),
   limit: t.number,
@@ -126,7 +140,7 @@ async function handler(
         view_filter: dsv.parentsIn ?? [],
       })),
       // TODO(keyword-search): Include data sources based on the use case.
-      // include_data_sources: true,
+      node_types: getCoreViewTypeFilter(viewType),
     },
     options: {
       limit,

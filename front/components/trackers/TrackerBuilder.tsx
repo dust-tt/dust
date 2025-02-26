@@ -578,7 +578,7 @@ export const TrackerBuilder = ({
                     tracker.maintainedDataSources
                   }
                   allowedSpaces={[globalSpace]}
-                  viewType="documents"
+                  viewType="document"
                   disabled={tracker.status === "inactive"}
                 />
               </div>
@@ -618,7 +618,7 @@ export const TrackerBuilder = ({
                   dataSourceViews={dataSourceViews}
                   initialDataSourceConfigurations={tracker.watchedDataSources}
                   allowedSpaces={[globalSpace]}
-                  viewType="documents"
+                  viewType="document"
                   disabled={tracker.status === "inactive"}
                 />
               </div>

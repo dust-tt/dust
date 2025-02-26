@@ -292,7 +292,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
           page.map((repo) => ({
             internalId: getRepositoryInternalId(repo.id),
             parentInternalId: null,
-            type: "Folder",
+            type: "folder",
             title: repo.name,
             sourceUrl: repo.url,
             expandable: true,
@@ -363,7 +363,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getIssuesInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Issues",
               sourceUrl: getIssuesUrl(repo.url),
               expandable: false,
@@ -377,7 +377,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getDiscussionsInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Discussions",
               sourceUrl: getDiscussionsUrl(repo.url),
               expandable: false,
@@ -391,7 +391,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: getCodeRootInternalId(repoId),
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: "Code",
               sourceUrl: repo.url,
               expandable: true,
@@ -433,7 +433,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: directory.internalId,
               parentInternalId,
-              type: "Folder",
+              type: "folder",
               title: directory.dirName,
               sourceUrl: directory.sourceUrl,
               expandable: true,
@@ -447,7 +447,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
             nodes.push({
               internalId: file.documentId,
               parentInternalId,
-              type: "Document",
+              type: "document",
               title: file.fileName,
               sourceUrl: file.sourceUrl,
               expandable: false,
@@ -609,7 +609,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getRepositoryInternalId(repoId),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: repo.name,
         sourceUrl: repo.url,
         expandable: true,
@@ -628,7 +628,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getIssuesInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "Folder",
+        type: "folder",
         title: "Issues",
         sourceUrl: getIssuesUrl(repo.url),
         expandable: false,
@@ -645,7 +645,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getDiscussionsInternalId(repoId),
         parentInternalId: getRepositoryInternalId(repoId),
-        type: "Folder",
+        type: "folder",
         title: "Discussions",
         sourceUrl: getDiscussionsUrl(repo.url),
         expandable: false,
@@ -664,7 +664,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getIssueInternalId(repoId, issueNumber),
         parentInternalId: getIssuesInternalId(repoId),
-        type: "Document",
+        type: "document",
         title: `Issue #${issueNumber}`,
         sourceUrl: getIssueUrl(repo.url, issueNumber),
         expandable: false,
@@ -683,7 +683,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getDiscussionInternalId(repoId, discussionNumber),
         parentInternalId: getDiscussionsInternalId(repoId),
-        type: "Document",
+        type: "document",
         title: `Discussion #${discussionNumber}`,
         sourceUrl: getDiscussionUrl(repo.url, discussionNumber),
         expandable: false,
@@ -698,7 +698,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: getCodeRootInternalId(codeRepo.repoId),
         parentInternalId: getRepositoryInternalId(codeRepo.repoId),
-        type: "Folder",
+        type: "folder",
         title: "Code",
         sourceUrl: codeRepo.sourceUrl,
         expandable: true,
@@ -713,7 +713,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: directory.internalId,
         parentInternalId: directory.parentInternalId,
-        type: "Folder",
+        type: "folder",
         title: directory.dirName,
         sourceUrl: directory.sourceUrl,
         expandable: true,
@@ -728,7 +728,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       nodes.push({
         internalId: file.documentId,
         parentInternalId: file.parentInternalId,
-        type: "Document",
+        type: "document",
         title: file.fileName,
         sourceUrl: file.sourceUrl,
         expandable: false,

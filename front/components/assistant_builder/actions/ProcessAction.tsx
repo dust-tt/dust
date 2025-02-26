@@ -384,7 +384,7 @@ export function ActionProcess({
           actionConfiguration.dataSourceConfigurations
         }
         allowedSpaces={allowedSpaces}
-        viewType="documents"
+        viewType="document"
       />
       <div className="text-sm text-element-700">
         This tool scans selected data sources within the specified time frame,
@@ -414,7 +414,7 @@ export function ActionProcess({
             dataSourceConfigurations: dsConfigs,
           }));
         }}
-        viewType="documents"
+        viewType="document"
       />
 
       {onDescriptionChange && (

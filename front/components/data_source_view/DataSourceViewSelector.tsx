@@ -66,8 +66,7 @@ const getUseResourceHook =
       resources: nodes.map((n) => ({
         ...n,
         preventSelection:
-          n.preventSelection ||
-          (viewType === "tables" && n.type !== "Table" && n.type !== "table"),
+          n.preventSelection || (viewType === "table" && n.type !== "table"),
       })),
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
@@ -169,7 +168,7 @@ export function DataSourceViewsSelector({
   // If view type is tables
   // You can either select tables from the same remote database (as the query will be executed live on the database)
   // Or select tables from different non-remote databases (as we load all data in the same sqlite database)
-  if (viewType === "tables" && useCase === "assistantBuilder") {
+  if (viewType === "table" && useCase === "assistantBuilder") {
     // Find the first data source in the selection configurations
     const selection = Object.values(selectionConfigurations);
     const firstDs =
@@ -524,7 +523,7 @@ export function DataSourceViewSelector({
       ? "partial"
       : false;
 
-  const isTableView = viewType === "tables";
+  const isTableView = viewType === "table";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
@@ -626,7 +625,7 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "tables" ? (
+              viewType === "table" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />

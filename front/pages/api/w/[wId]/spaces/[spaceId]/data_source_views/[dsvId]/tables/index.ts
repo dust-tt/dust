@@ -50,7 +50,7 @@ async function handler(
       const contentNodes = await getContentNodesForDataSourceView(
         dataSourceView,
         {
-          viewType: "tables",
+          viewType: "table",
           pagination,
         }
       );

@@ -7,7 +7,7 @@ import type {
   PatchDataSourceViewType,
   Result,
 } from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+import { assertNever, CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import {
@@ -23,48 +23,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
-
-export function filterAndCropContentNodesByView(
-  dataSourceView: DataSourceViewResource,
-  contentNodes: DataSourceViewContentNode[]
-): DataSourceViewContentNode[] {
-  const viewHasParents = dataSourceView.parentsIn !== null;
-
-  // Filter out content nodes that are not in the view.
-  // Update the parentInternalIds of the content nodes to only include the parentInternalIds that are in the view.
-  const contentNodesInView = contentNodes.map((node) => {
-    const { parentInternalIds } = node;
-
-    if (!parentInternalIds) {
-      return null;
-    }
-
-    // Ensure that the node, or at least one of its ancestors, is within the
-    // view. For parentInternalIds, include all of them  up to the highest one
-    // in the hierarchy that is in the view, (which is last index, since parents
-    // are ordered from leaf to root), or all of them  if the view is "full",
-    // that is,  parentsIn is null.
-    const indexToSplit = parentInternalIds.findLastIndex((p) =>
-      dataSourceView.parentsIn?.includes(p)
-    );
-    const isInView = !viewHasParents || indexToSplit !== -1;
-
-    if (isInView) {
-      const parentIdsInView = !viewHasParents
-        ? parentInternalIds
-        : parentInternalIds.slice(0, indexToSplit + 1);
-
-      return {
-        ...node,
-        parentInternalIds: parentIdsInView,
-      };
-    } else {
-      return null;
-    }
-  });
-
-  return removeNulls(contentNodesInView);
-}
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
@@ -85,17 +43,17 @@ function filterNodesByViewType(
   viewType: ContentNodesViewType
 ) {
   switch (viewType) {
-    case "documents":
+    case "document":
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document", "document", "folder"].includes(node.node_type)
+          ["folder", "document"].includes(node.node_type)
       );
-    case "tables":
+    case "table":
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Table", "table", "folder"].includes(node.node_type)
+          ["folder", "table"].includes(node.node_type)
       );
     case "all":
       return nodes;

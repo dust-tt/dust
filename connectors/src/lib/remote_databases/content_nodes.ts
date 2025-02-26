@@ -44,7 +44,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: databaseName as string,
       parentInternalId: null,
-      type: "Folder",
+      type: "folder",
       title: databaseName as string,
       sourceUrl: null,
       expandable: true,
@@ -58,7 +58,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: `${databaseName}.${schemaName}`,
       parentInternalId: databaseName as string,
-      type: "Folder",
+      type: "folder",
       title: schemaName as string,
       sourceUrl: null,
       expandable: true,
@@ -72,7 +72,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: `${databaseName}.${schemaName}.${tableName}`,
       parentInternalId: `${databaseName}.${schemaName}`,
-      type: "Table",
+      type: "table",
       title: tableName as string,
       sourceUrl: null,
       expandable: false,

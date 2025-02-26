@@ -368,7 +368,7 @@ export async function retrieveIntercomHelpCentersPermissions({
           helpCenter.helpCenterId
         ),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: helpCenter.name,
         sourceUrl: null,
         expandable: true,
@@ -381,7 +381,7 @@ export async function retrieveIntercomHelpCentersPermissions({
       nodes = helpCenters.map((helpCenter) => ({
         internalId: getHelpCenterInternalId(connectorId, helpCenter.id),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: helpCenter.display_name || "Help Center",
         sourceUrl: null,
         expandable: true,
@@ -429,7 +429,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         parentInternalId: collection.parentId
           ? getHelpCenterCollectionInternalId(connectorId, collection.parentId)
           : null,
-        type: "Folder",
+        type: "folder",
         title: collection.name,
         sourceUrl: collection.url,
         expandable: true,
@@ -458,7 +458,7 @@ export async function retrieveIntercomHelpCentersPermissions({
                 collection.parent_id
               )
             : null,
-          type: "Folder",
+          type: "folder",
           title: collection.name,
           sourceUrl: collection.url,
           expandable: false, // WE DO NOT LET EXPAND BELOW LEVEL 1 WHEN SELECTING NODES
@@ -498,7 +498,7 @@ export async function retrieveIntercomHelpCentersPermissions({
                 collection.parentId
               )
             : null,
-          type: "Folder",
+          type: "folder",
           title: collection.name,
           sourceUrl: collection.url,
           expandable: true,
@@ -523,7 +523,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         parentInternalId: article.parentId
           ? getHelpCenterArticleInternalId(connectorId, article.parentId)
           : null,
-        type: "Document",
+        type: "document",
         title: article.title,
         sourceUrl: article.url,
         expandable: false,

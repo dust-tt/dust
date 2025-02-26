@@ -22,8 +22,8 @@ const SearchRequestBody = t.type({
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
   viewType: t.union([
-    t.literal("tables"),
-    t.literal("documents"),
+    t.literal("table"),
+    t.literal("document"),
     t.literal("all"),
   ]),
   limit: t.number,

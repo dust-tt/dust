@@ -184,7 +184,7 @@ const renderDataSourcesConfigurations = async (
         dataSourceView,
         {
           internalIds: sr.resources,
-          viewType: "documents",
+          viewType: "document",
         }
       );
 

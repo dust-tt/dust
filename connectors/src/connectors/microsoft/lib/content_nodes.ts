@@ -30,7 +30,7 @@ export function getSitesRootAsContentNode(): ContentNode {
       nodeType: "sites-root",
     }),
     parentInternalId: null,
-    type: "Folder",
+    type: "folder",
     title: "Sites",
     sourceUrl: null,
     lastUpdatedAt: null,
@@ -48,7 +48,7 @@ export function getTeamsRootAsContentNode(): ContentNode {
       nodeType: "teams-root",
     }),
     parentInternalId: null,
-    type: "Folder",
+    type: "folder",
     title: "Teams",
     sourceUrl: null,
     lastUpdatedAt: null,
@@ -65,7 +65,7 @@ export function getTeamAsContentNode(team: Team): ContentNode {
       nodeType: "team",
     }),
     parentInternalId: null,
-    type: "Folder",
+    type: "folder",
     title: team.displayName || "unnamed",
     sourceUrl: team.webUrl ?? null,
     lastUpdatedAt: null,
@@ -90,7 +90,7 @@ export function getSiteAsContentNode(
       nodeType: "site",
     }),
     parentInternalId: parentInternalId || null,
-    type: "Folder",
+    type: "folder",
     title: site.displayName || site.name || "unnamed",
     sourceUrl: site.webUrl ?? null,
     lastUpdatedAt: null,
@@ -120,7 +120,7 @@ export function getChannelAsContentNode(
       nodeType: "channel",
     }),
     parentInternalId,
-    type: "Folder",
+    type: "folder",
     title: channel.displayName || "unnamed",
     sourceUrl: channel.webUrl ?? null,
     lastUpdatedAt: null,
@@ -141,7 +141,7 @@ export function getDriveAsContentNode(
   return {
     internalId: getDriveInternalId(drive),
     parentInternalId,
-    type: "Folder",
+    type: "folder",
     title: drive.name || "unnamed",
     sourceUrl: drive.webUrl ?? null,
     lastUpdatedAt: null,
@@ -157,7 +157,7 @@ export function getFolderAsContentNode(
   return {
     internalId: getDriveItemInternalId(folder),
     parentInternalId,
-    type: "Folder",
+    type: "folder",
     title: folder.name || "unnamed",
     sourceUrl: folder.webUrl ?? null,
     lastUpdatedAt: null,
@@ -180,11 +180,11 @@ export function getMicrosoftNodeAsContentNode(
       expandWorksheet);
   let type: ContentNodeType;
   if (["drive", "folder"].includes(node.nodeType)) {
-    type = "Folder";
+    type = "folder";
   } else if (node.nodeType === "worksheet") {
-    type = expandWorksheet ? "Table" : "Document";
+    type = expandWorksheet ? "table" : "document";
   } else if (node.nodeType === "file") {
-    type = "Document";
+    type = "document";
   } else {
     throw new Error(`Unsupported nodeType ${node.nodeType}.`);
   }
@@ -199,9 +199,9 @@ export function getMicrosoftNodeAsContentNode(
     expandable: isExpandable,
     permission: "none",
     mimeType:
-      type === "Table"
+      type === "table"
         ? MIME_TYPES.MICROSOFT.SPREADSHEET
-        : type === "Folder"
+        : type === "folder"
           ? MIME_TYPES.MICROSOFT.FOLDER
           : node.mimeType || MIME_TYPES.MICROSOFT.FOLDER,
   };

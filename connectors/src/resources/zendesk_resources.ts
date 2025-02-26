@@ -311,7 +311,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getBrandInternalId({ connectorId, brandId }),
       parentInternalId: null,
-      type: "Folder",
+      type: "folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: true,
@@ -333,7 +333,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getHelpCenterInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "Folder",
+      type: "folder",
       title: richTitle ? `${this.name} - Help Center` : "Help Center",
       sourceUrl: null,
       expandable: true,
@@ -354,7 +354,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     return {
       internalId: getTicketsInternalId({ connectorId, brandId }),
       parentInternalId: getBrandInternalId({ connectorId, brandId }),
-      type: "Folder",
+      type: "folder",
       title: richTitle ? `${this.name} - Tickets` : "Tickets",
       sourceUrl: null,
       expandable: expandable,
@@ -606,7 +606,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     return {
       internalId: getCategoryInternalId({ connectorId, brandId, categoryId }),
       parentInternalId: getHelpCenterInternalId({ connectorId, brandId }),
-      type: "Folder",
+      type: "folder",
       title: this.name,
       sourceUrl: this.url,
       expandable: expandable,
@@ -690,7 +690,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     return {
       internalId: getTicketInternalId({ connectorId, brandId, ticketId }),
       parentInternalId: getTicketsInternalId({ connectorId, brandId }),
-      type: "Document",
+      type: "document",
       title: this.subject,
       sourceUrl: this.url,
       expandable: false,
@@ -892,7 +892,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
         brandId,
         categoryId,
       }),
-      type: "Document",
+      type: "document",
       title: this.name,
       sourceUrl: this.url,
       expandable: false,
