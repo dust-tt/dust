@@ -1,7 +1,4 @@
-import type {
-  PluginWorkspaceResource,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
+import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -35,7 +32,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { resourceType } = req.query;
+      const { resourceType, resourceId } = req.query;
       if (typeof resourceType !== "string") {
         return apiError(req, res, {
           status_code: 400,
@@ -46,17 +43,20 @@ async function handler(
         });
       }
 
-      const workspaceResource: PluginWorkspaceResource | undefined = req.query
-        .workspaceResource
-        ? JSON.parse(req.query.workspaceResource as string)
-        : undefined;
+      if (resourceId && typeof resourceId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid resource id type.",
+          },
+        });
+      }
 
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
       const visiblePluginResults = await Promise.all(
-        plugins.map(
-          (p) => !workspaceResource || p.isVisible(auth, workspaceResource)
-        )
+        plugins.map((p) => !resourceId || p.isVisible(auth, resourceId))
       );
 
       const pluginList = plugins

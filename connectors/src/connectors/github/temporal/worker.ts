@@ -1,3 +1,4 @@
+import { isDevelopment } from "@dust-tt/types";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 
@@ -12,6 +13,16 @@ import { ActivityInboundLogInterceptor } from "@connectors/lib/temporal_monitori
 import logger from "@connectors/logger/logger";
 
 export async function runGithubWorker() {
+  if (
+    !isDevelopment() &&
+    (!process.env.PROXY_HOST ||
+      !process.env.PROXY_PORT ||
+      !process.env.PROXY_USER_NAME ||
+      !process.env.PROXY_PASSWORD)
+  ) {
+    throw new Error("Proxy environment variables are not set");
+  }
+
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
     workflowsPath: require.resolve("./workflows"),

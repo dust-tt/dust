@@ -2,7 +2,6 @@ import type {
   PluginArgDefinition,
   PluginArgs,
   PluginManifest,
-  PluginWorkspaceResource,
   Result,
 } from "@dust-tt/types";
 
@@ -44,7 +43,7 @@ export interface Plugin<T extends PluginArgs> {
   ) => Promise<Result<PluginResponse, Error>>;
   isVisible: (
     auth: Authenticator,
-    workspaceResource: PluginWorkspaceResource
+    resourceId: string | undefined
   ) => Promise<boolean>;
 }
 
@@ -57,7 +56,7 @@ export function createPlugin<T extends PluginArgs>({
   execute: Plugin<T>["execute"];
   isVisible?: (
     auth: Authenticator,
-    workspaceResource: PluginWorkspaceResource
+    resourceId: string | undefined
   ) => Promise<boolean>;
 }): Plugin<T> {
   return { manifest, execute, isVisible };

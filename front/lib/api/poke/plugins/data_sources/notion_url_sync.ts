@@ -1,4 +1,3 @@
-import type { PluginWorkspaceResource } from "@dust-tt/types";
 import {
   concurrentExecutor,
   ConnectorsAPI,
@@ -42,12 +41,12 @@ export const notionUrlSyncPlugin = createPlugin({
   },
   isVisible: async (
     auth: Authenticator,
-    workspaceResource: PluginWorkspaceResource
+    resourceId: string | undefined
   ): Promise<boolean> => {
-    const dataSource = await DataSourceResource.fetchById(
-      auth,
-      workspaceResource.resourceId
-    );
+    if (!resourceId) {
+      return false;
+    }
+    const dataSource = await DataSourceResource.fetchById(auth, resourceId);
     if (!dataSource) {
       return false;
     }

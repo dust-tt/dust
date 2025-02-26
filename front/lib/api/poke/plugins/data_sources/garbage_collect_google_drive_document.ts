@@ -1,4 +1,4 @@
-import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
@@ -53,12 +53,13 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
   },
   isVisible: async (
     auth: Authenticator,
-    workspaceResource: PluginWorkspaceResource
+    resourceId: string | undefined
   ): Promise<boolean> => {
-    const dataSource = await DataSourceResource.fetchById(
-      auth,
-      workspaceResource.resourceId
-    );
+    if (!resourceId) {
+      return false;
+    }
+
+    const dataSource = await DataSourceResource.fetchById(auth, resourceId);
     if (!dataSource) {
       return false;
     }

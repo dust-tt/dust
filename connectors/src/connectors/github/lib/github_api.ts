@@ -49,7 +49,7 @@ import {
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const API_PAGE_SIZE = 100;
 
@@ -119,12 +119,11 @@ export async function installationIdFromConnectionId(
 }
 
 export async function getReposPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   page: number
 ): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
-    const octokit = await getOctokit(connectorId, connectionId);
+    const octokit = await getOctokit(connector);
 
     return new Ok(
       (
@@ -155,11 +154,10 @@ export async function getReposPage(
 }
 
 export async function getRepo(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoId: number
 ): Promise<Result<GithubRepo, ExternalOAuthTokenError>> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
 
   try {
     const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
@@ -189,14 +187,13 @@ export async function getRepo(
 }
 
 export async function getRepoIssuesPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
   try {
-    const octokit = await getOctokit(connectorId, connectionId);
+    const octokit = await getOctokit(connector);
 
     const issues = (
       await octokit.rest.issues.listForRepo({
@@ -246,15 +243,14 @@ export async function getRepoIssuesPage(
 }
 
 export async function getIssue(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   issueNumber: number,
   logger: Logger
 ): Promise<GithubIssue | null> {
   try {
-    const octokit = await getOctokit(connectorId, connectionId);
+    const octokit = await getOctokit(connector);
 
     const issue = (
       await octokit.rest.issues.get({
@@ -306,14 +302,13 @@ export async function getIssue(
 }
 
 export async function getIssueCommentsPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   issueNumber: number,
   page: number
 ): Promise<GithubIssueComment[]> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
 
   const comments = (
     await octokit.rest.issues.listComments({
@@ -341,13 +336,12 @@ export async function getIssueCommentsPage(
 }
 
 export async function getRepoDiscussionsPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; discussions: DiscussionNode[] }> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
   const d = await octokit.graphql(
     `
       query getDiscussions($owner: String!, $repo: String!, $cursor: String) {
@@ -408,14 +402,13 @@ export async function getRepoDiscussionsPage(
 }
 
 export async function getDiscussionCommentsPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   discussionNumber: number,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
   const d = await octokit.graphql(
     `
     query getDiscussionComments(
@@ -482,12 +475,11 @@ export async function getDiscussionCommentsPage(
 }
 
 export async function getDiscussionCommentRepliesPage(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   nodeID: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
 
   const d = await octokit.graphql(
     `
@@ -551,13 +543,12 @@ export async function getDiscussionCommentRepliesPage(
 }
 
 export async function getDiscussion(
-  connectorId: number,
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   discussionNumber: number
 ): Promise<DiscussionNode> {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
 
   const d = await octokit.graphql(
     `
@@ -609,33 +600,15 @@ export async function getDiscussion(
 }
 
 export async function getOctokit(
-  connectorId: number,
-  connectionId: string
+  connector: ConnectorResource
 ): Promise<Octokit> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-
-  if (!connector) {
-    throw new Error("Connector not found");
-  }
-
   const token = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "github",
-    connectionId,
+    connectionId: connector.connectionId,
   });
 
   if (connector.useProxy) {
-    if (
-      !process.env.PROXY_HOST ||
-      !process.env.PROXY_PORT ||
-      !process.env.PROXY_USER_NAME ||
-      !process.env.PROXY_PASSWORD
-    ) {
-      throw new Error(
-        "PROXY_HOST, PROXY_PORT, PROXY_USER_NAME, and PROXY_PASSWORD must be set when useProxy is true"
-      );
-    }
-
     const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
       undiciFetch(url, {
         ...options,
@@ -796,23 +769,21 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
 export async function processRepository({
-  connectorId,
-  connectionId,
+  connector,
   repoLogin,
   repoName,
   repoId,
   onEntry,
   logger,
 }: {
-  connectorId: number;
-  connectionId: string;
+  connector: ConnectorResource;
   repoLogin: string;
   repoName: string;
   repoId: number;
   onEntry: (entry: ReadEntry) => void;
   logger: Logger;
 }) {
-  const octokit = await getOctokit(connectorId, connectionId);
+  const octokit = await getOctokit(connector);
 
   const { data } = await octokit.rest.repos.get({
     owner: repoLogin,

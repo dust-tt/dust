@@ -263,15 +263,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const connectionId = c.connectionId;
-
     if (!parentInternalId) {
       // No parentInternalId: we return the repositories.
 
       let nodes: ContentNode[] = [];
       let pageNumber = 1; // 1-indexed
       for (;;) {
-        const pageRes = await getReposPage(c.id, connectionId, pageNumber);
+        const pageRes = await getReposPage(c, pageNumber);
 
         if (pageRes.isErr()) {
           return new Err(
@@ -337,7 +335,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
                 },
                 order: [["updatedAt", "DESC"]],
               }),
-              getRepo(c.id, connectionId, repoId),
+              getRepo(c, repoId),
               GithubCodeRepository.findOne({
                 where: {
                   connectorId: c.id,
@@ -489,7 +487,6 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const connectionId = c.connectionId;
     const allReposIdsToFetch: Set<number> = new Set();
     const nodes: ContentNode[] = [];
 
@@ -551,7 +548,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     await concurrentExecutor(
       uniqueRepoIdsArray,
       async (repoId) => {
-        const repoRes = await getRepo(c.id, connectionId, repoId);
+        const repoRes = await getRepo(c, repoId);
         if (repoRes.isErr()) {
           // We need to throw the error to stop the execution of the concurrentExecutor.
           throw repoRes.error;

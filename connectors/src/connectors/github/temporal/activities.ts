@@ -80,11 +80,7 @@ export async function githubGetReposResultPageActivity(
   });
 
   logger.info("Fetching GitHub repos result page.");
-  const pageRes = await getReposPage(
-    connector.id,
-    connector.connectionId,
-    pageNumber
-  );
+  const pageRes = await getReposPage(connector, pageNumber);
   if (pageRes.isErr()) {
     throw pageRes.error;
   }
@@ -119,8 +115,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 
   logger.info("Fetching GitHub repo issues result page.");
   const page = await getRepoIssuesPage(
-    connector.id,
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     pageNumber
@@ -142,8 +137,7 @@ async function renderIssue(
   content: CoreAPIDataSourceDocumentSection;
 } | null> {
   const issue = await getIssue(
-    connector.id,
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     issueNumber,
@@ -180,8 +174,7 @@ async function renderIssue(
     let comments = undefined;
     try {
       comments = await getIssueCommentsPage(
-        connector.id,
-        connector.connectionId,
+        connector,
         repoName,
         repoLogin,
         issueNumber,
@@ -343,8 +336,7 @@ async function renderDiscussion(
   logger: Logger
 ) {
   const discussion = await getDiscussion(
-    connector.id,
-    connector.connectionId,
+    connector,
     repoName,
     login,
     discussionNumber
@@ -370,8 +362,7 @@ async function renderDiscussion(
     logger.info({ nextCursor }, "Fetching GitHub discussion comments page.");
 
     const { cursor, comments } = await getDiscussionCommentsPage(
-      connector.id,
-      connector.connectionId,
+      connector,
       repoName,
       login,
       discussionNumber,
@@ -411,8 +402,7 @@ async function renderDiscussion(
 
         const { cursor: childCursor, comments: childComments } =
           await getDiscussionCommentRepliesPage(
-            connector.id,
-            connector.connectionId,
+            connector,
             comment.id,
             nextChildCursor
           );
@@ -542,8 +532,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   });
   logger.info("Fetching GitHub discussions result page.");
   const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    connector.id,
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     cursor
@@ -1023,8 +1012,7 @@ export async function githubCodeSyncActivity({
   Context.current().heartbeat();
   let nbEntries = 0;
   const repoRes = await processRepository({
-    connectorId: connector.id,
-    connectionId: connector.connectionId,
+    connector,
     repoLogin,
     repoName,
     repoId,

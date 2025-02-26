@@ -28,11 +28,8 @@ export function usePokeListPluginForResourceType({
     resourceType,
   });
 
-  if (workspaceResource) {
-    urlSearchParams.append(
-      "workspaceResource",
-      JSON.stringify(workspaceResource)
-    );
+  if (workspaceResource?.resourceId) {
+    urlSearchParams.append("resourceId", workspaceResource.resourceId);
   }
 
   const { data, error } = useSWRWithDefaults(
