@@ -3238,7 +3238,7 @@ impl Store for PostgresStore {
                        VALUES (DEFAULT, $1, $2, $3) \
                        ON CONFLICT (folder_id, data_source)  DO UPDATE \
                        SET folder_id = data_sources_folders.folder_id \
-                       RETURNING id, created",
+                       RETURNING id",
             )
             .await?;
 
@@ -3254,13 +3254,12 @@ impl Store for PostgresStore {
             .await?;
 
         let folder_row_id: i64 = r.get(0);
-        let created: i64 = r.get(1);
 
         let folder = Folder::new(
             data_source_id,
             data_source_internal_id,
             upsert_params.folder_id,
-            created as u64,
+            upsert_params.timestamp,
             upsert_params.title,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
