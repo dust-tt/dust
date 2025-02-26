@@ -8,6 +8,7 @@ use regex::Regex;
 use reqwest::Proxy;
 use serde::Deserialize;
 use serde_json::{Map, Value};
+use thiserror::Error;
 
 use crate::{
     databases::{
@@ -74,35 +75,17 @@ struct SalesforceQueryResponse {
     total_size: i32,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error, PartialEq)]
 pub enum SoqlValidationError {
+    #[error("Query must start with SELECT")]
     NotSelectQuery,
+    #[error("Query contains subselects which is not supported")]
     ContainsSubselect,
+    #[error("Query contains multiple tables in FROM clause which is not supported")]
     MultipleFromTables,
+    #[error("Query contains nested fields which is not supported")]
     NestedFields,
 }
-
-impl std::fmt::Display for SoqlValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SoqlValidationError::NotSelectQuery => write!(f, "Query must start with SELECT"),
-            SoqlValidationError::ContainsSubselect => {
-                write!(f, "Query contains subselects which is not supported")
-            }
-            SoqlValidationError::MultipleFromTables => {
-                write!(
-                    f,
-                    "Query contains multiple tables in FROM clause which is not supported"
-                )
-            }
-            SoqlValidationError::NestedFields => {
-                write!(f, "Query contains nested fields which is not supported")
-            }
-        }
-    }
-}
-
-impl std::error::Error for SoqlValidationError {}
 
 impl SalesforceRemoteDatabase {
     pub fn new(response: &ConnectionAccessTokenResponse) -> Result<Self, QueryDatabaseError> {
@@ -129,12 +112,18 @@ impl SalesforceRemoteDatabase {
             _ => reqwest::Client::new(),
         };
 
+        let instance_url =
+            match SalesforceConnectionProvider::get_instance_url(&response.connection.metadata) {
+                Ok(instance_url) => instance_url,
+                Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
+                    "Error getting instance url: {}",
+                    e
+                )))?,
+            };
+
         Ok(Self {
             client,
-            instance_url: SalesforceConnectionProvider::get_instance_url(
-                &response.connection.metadata,
-            )
-            .unwrap(),
+            instance_url,
             access_token: response.access_token.clone(),
         })
     }
@@ -332,11 +321,14 @@ impl SalesforceRemoteDatabase {
                 break;
             }
 
-            next_url = Some(format!(
-                "{}{}",
-                self.instance_url,
-                query_response.next_records_url.unwrap()
-            ));
+            next_url = Some(
+                query_response
+                    .next_records_url
+                    .ok_or_else(|| {
+                        QueryDatabaseError::GenericError(anyhow!("No next records url found"))
+                    })
+                    .map(|url| format!("{}{}", self.instance_url, url))?,
+            );
         }
 
         // For now, return an empty schema since Salesforce's schema is dynamic
@@ -400,14 +392,20 @@ impl SalesforceRemoteDatabase {
         let compound_fields_names = fields
             .iter()
             .filter(|field| is_compound_field(field, sobject))
-            .map(|field| field["compoundFieldName"].as_str().unwrap().to_string())
-            .collect::<HashSet<String>>();
+            .map(|field| {
+                let compound_field_name = field["compoundFieldName"]
+                    .as_str()
+                    .ok_or_else(|| anyhow!("`compoundFieldName` not found"))?;
+
+                Ok(compound_field_name.to_string())
+            })
+            .collect::<Result<HashSet<String>>>()?;
 
         let columns = fields
             .iter()
-            .filter(|field| {
-                field["name"].is_string()
-                    && !compound_fields_names.contains(field["name"].as_str().unwrap())
+            .filter(|field| match field["name"].as_str() {
+                Some(name) => !compound_fields_names.contains(name),
+                None => false,
             })
             .map(|field| {
                 let name = field["name"]
@@ -426,29 +424,29 @@ impl SalesforceRemoteDatabase {
                     "xsd:integer" | "xsd:int" => TableSchemaFieldType::Int,
                     "xsd:double" | "xsd:float" => TableSchemaFieldType::Float,
                     "xsd:date" | "xsd:datetime" | "xsd:time" => TableSchemaFieldType::DateTime,
-                    _ => {
-                        println!("{} {}", name, field);
-                        println!(
-                            "Unknown field type {} {}, falling back to text",
-                            name, soap_type
-                        );
-                        TableSchemaFieldType::Text
-                    }
+                    _ => TableSchemaFieldType::Text,
                 };
 
-                let possible_values = field["picklistValues"].as_array().map(|values| {
-                    values
-                        .iter()
-                        .map(|v| {
-                            v.as_object().unwrap()["value"]
-                                .as_str()
-                                .unwrap()
-                                .to_string()
-                        })
-                        .collect()
-                });
-
-                //println!("{} {} {:?}", name, value_type, possible_values);
+                let possible_values = field["picklistValues"]
+                    .as_array()
+                    .map(|values| {
+                        values
+                            .iter()
+                            .map(|v| {
+                                let obj = v.as_object().ok_or_else(|| {
+                                    anyhow!("Expected picklist value to be an object")
+                                })?;
+                                let value = obj.get("value").ok_or_else(|| {
+                                    anyhow!("Missing 'value' field in picklist value")
+                                })?;
+                                let str_value = value.as_str().ok_or_else(|| {
+                                    anyhow!("Expected picklist value to be a string")
+                                })?;
+                                Ok(str_value.to_string())
+                            })
+                            .collect::<Result<Vec<String>>>()
+                    })
+                    .transpose()?;
 
                 Ok(TableSchemaColumn {
                     name,
@@ -482,8 +480,15 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
 
         let allowed_tables: HashSet<String> = tables
             .iter()
-            .map(|table| table.remote_database_table_id().unwrap().to_lowercase())
-            .collect();
+            .map(|table| {
+                let table_id = table.remote_database_table_id().ok_or_else(|| {
+                    QueryDatabaseError::GenericError(anyhow!(
+                        "Table has no remote database table id"
+                    ))
+                })?;
+                Ok(table_id.to_lowercase())
+            })
+            .collect::<Result<HashSet<_>>>()?;
 
         let used_forbidden_tables = used_tables
             .into_iter()
