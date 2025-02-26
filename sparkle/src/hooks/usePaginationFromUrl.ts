@@ -45,65 +45,33 @@ export const usePaginationFromUrl = ({
   return res;
 };
 
-interface CursorPaginationState {
-  cursor: string | null;
-  limit: number;
-}
-
 interface UseCursorPaginationFromUrlProps {
   urlPrefix?: string;
-  initialLimit?: number;
   defaultHistory?: HistoryOptions;
 }
 
 export function useCursorPaginationFromUrl({
   urlPrefix = "",
-  initialLimit = 25,
   defaultHistory = "push",
 }: UseCursorPaginationFromUrlProps = {}) {
   const [cursorParam, setCursorParam] = useHashParam(
     urlPrefix ? `${urlPrefix}Cursor` : "cursor"
   );
-  const [limitParam, setLimitParam] = useHashParam(
-    urlPrefix ? `${urlPrefix}PageSize` : "pageSize"
-  );
 
   const cursor = cursorParam || null;
-  const limit = limitParam ? parseInt(limitParam, 10) : initialLimit;
 
   return useMemo(() => {
-    const cursorPagination: CursorPaginationState = { cursor, limit };
-
     const setCursorPagination = (
-      newValue: CursorPaginationState,
+      newCursor: string | null,
       history?: HistoryOptions
     ) => {
-      if (newValue.cursor !== cursor || newValue.limit !== limit) {
-        if (newValue.cursor) {
-          setCursorParam(newValue.cursor, {
-            history: history ?? defaultHistory,
-          });
-        } else {
-          setCursorParam(undefined, {
-            history: history ?? defaultHistory,
-          });
-        }
-
-        if (newValue.limit !== initialLimit) {
-          setLimitParam(newValue.limit.toString());
-        } else {
-          setLimitParam(undefined);
-        }
+      if (newCursor !== cursor) {
+        setCursorParam(newCursor ?? undefined, {
+          history: history ?? defaultHistory,
+        });
       }
     };
 
-    return { cursorPagination, setCursorPagination };
-  }, [
-    cursor,
-    limit,
-    initialLimit,
-    setCursorParam,
-    defaultHistory,
-    setLimitParam,
-  ]);
+    return { cursor, setCursorPagination };
+  }, [cursor, setCursorParam, defaultHistory]);
 }
