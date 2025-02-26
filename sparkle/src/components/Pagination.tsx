@@ -128,7 +128,7 @@ function renderPageNumber(
   size: Size,
   onPageClick?: (currentPage: number) => void
 ) {
-  return onPageClick ? (
+  return (
     <button
       key={pageNumber}
       className={classNames(
@@ -138,23 +138,11 @@ function renderPageNumber(
           : "s-text-primary-400 dark:s-text-primary-400-night",
         size === "xs" ? "s-text-xs" : "s-text-sm"
       )}
-      onClick={() => onPageClick(pageNumber)}
+      onClick={() => onPageClick && onPageClick(pageNumber)}
+      disabled={!onPageClick}
     >
       {pageNumber + 1}
     </button>
-  ) : (
-    <div
-      key={pageNumber}
-      className={classNames(
-        "s-font-medium s-transition-colors s-duration-200",
-        currentPage === pageNumber
-          ? "s-text-foreground dark:s-text-foreground-night"
-          : "s-text-primary-400 dark:s-text-primary-400-night",
-        size === "xs" ? "s-text-xs" : "s-text-sm"
-      )}
-    >
-      {pageNumber + 1}
-    </div>
   );
 }
 
