@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType, ProviderVisibility};
+use super::node::ProviderVisibility;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};

@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::search_stores::search_store::NodeItem;
 use crate::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
+    data_sources::node::ProviderVisibility,
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,

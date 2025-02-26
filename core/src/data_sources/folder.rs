@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::node::{Node, NodeType, ProviderVisibility};
+use super::node::ProviderVisibility;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
