@@ -52,7 +52,7 @@ export async function isDriveObjectExpandable({
   connectorId: ModelId;
   viewType: ContentNodesViewType;
 }): Promise<boolean> {
-  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "tables") {
+  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "table") {
     // In tables view, Spreadsheets can be expanded to show their sheets.
     return !!(await GoogleDriveSheet.findOne({
       attributes: ["id"],

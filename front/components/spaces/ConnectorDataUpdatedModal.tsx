@@ -47,7 +47,7 @@ export const ConnectorDataUpdatedModal = ({
           <ContentMessage variant="amber">
             <div className="flex flex-col gap-2">
               <p>
-                Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
+                Once synchronized, {isRemoteDbProvider ? "table" : "data"} will
                 appear under <em>"Connection Admin"</em> and can be added to:
               </p>
               <ul className="ml-6 list-disc">

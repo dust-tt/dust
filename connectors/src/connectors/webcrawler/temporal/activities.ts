@@ -279,7 +279,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             webcrawlerConfigurationId: webCrawlerConfig.id,
             internalId: stableIdForUrl({
               url: folder,
-              ressourceType: "Folder",
+              ressourceType: "folder",
             }),
             lastSeenAt: new Date(),
           });
@@ -303,7 +303,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
         }
         const documentId = stableIdForUrl({
           url: request.url,
-          ressourceType: "Document",
+          ressourceType: "document",
         });
 
         await WebCrawlerPage.upsert({

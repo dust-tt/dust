@@ -19,7 +19,14 @@ const meta = {
 export default meta;
 
 export const TooltipExample = () => (
-  <Tooltip trigger={<div>Hover</div>} label={<p>Add to library</p>} />
+  <Tooltip
+    trigger={
+      <div className="s-text-foreground dark:s-text-foreground-night">
+        Hover
+      </div>
+    }
+    label={<p>Add to library</p>}
+  />
 );
 
 export const TooltipWithManual = () => (

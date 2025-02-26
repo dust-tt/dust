@@ -248,7 +248,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     const c = await ConnectorResource.fetchById(this.connectorId);
-    const isTablesView = viewType === "tables";
+    const isTablesView = viewType === "table";
     if (!c) {
       logger.error({ connectorId: this.connectorId }, "Connector not found");
       return new Err(
@@ -338,7 +338,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }),
                 permission: "read",
                 mimeType:
-                  type === "Folder"
+                  type === "folder"
                     ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
                     : f.mimeType,
               };
@@ -355,7 +355,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                     s.driveSheetId
                   ),
                   parentInternalId: getInternalId(s.driveFileId),
-                  type: "Table" as const,
+                  type: "table" as const,
                   title: s.name || "",
                   lastUpdatedAt: s.updatedAt.getTime() || null,
                   sourceUrl: null,
@@ -370,7 +370,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           // Sorting nodes, folders first then alphabetically.
           nodes.sort((a, b) => {
             if (a.type !== b.type) {
-              return a.type === "Folder" ? -1 : 1;
+              return a.type === "folder" ? -1 : 1;
             }
             return a.title.localeCompare(b.title);
           });
@@ -398,7 +398,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 parentInternalId:
                   // note: if the parent is null, the drive object falls at top-level
                   driveObject.parent && getInternalId(driveObject.parent),
-                type: "Folder" as const,
+                type: "folder" as const,
                 title: driveObject.name,
                 sourceUrl: driveObject.webViewLink || null,
                 lastUpdatedAt: driveObject.updatedAtMs || null,
@@ -423,7 +423,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           nodes.push({
             internalId: getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID),
             parentInternalId: null,
-            type: "Folder" as const,
+            type: "folder" as const,
             preventSelection: true,
             title: "Shared with me",
             sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -492,7 +492,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 internalId: getInternalId(driveObject.id),
                 parentInternalId:
                   driveObject.parent && getInternalId(driveObject.parent),
-                type: "Folder" as const,
+                type: "folder" as const,
                 title: driveObject.name,
                 sourceUrl: driveObject.webViewLink || null,
                 expandable: await folderHasChildren(
@@ -619,7 +619,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       .filter((id) => isGoogleSheetContentNodeInternalId(id))
       .map(getGoogleIdsFromSheetContentNodeInternalId);
 
-    if (!!sheetIds.length && viewType !== "tables") {
+    if (!!sheetIds.length && viewType !== "table") {
       return new Err(
         new Error(
           `Cannot retrieve Google Sheets Content Nodes in view type "${viewType}".`
@@ -689,7 +689,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           }),
           permission: "read",
           mimeType:
-            type === "Folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
+            type === "folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
         };
       },
       { concurrency: 4 }
@@ -720,7 +720,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         s.driveSheetId
       ),
       parentInternalId: getInternalId(s.driveFileId),
-      type: "Table",
+      type: "table",
       title: s.name || "",
       lastUpdatedAt: s.updatedAt.getTime() || null,
       sourceUrl: getSourceUrlForGoogleDriveSheet(s),
@@ -980,7 +980,7 @@ async function getFoldersAsContentNodes({
       return {
         internalId: getInternalId(f.folderId),
         parentInternalId: null,
-        type: "Folder",
+        type: "folder",
         title: fd.name || "",
         sourceUrl,
         lastUpdatedAt: fd.updatedAtMs || null,

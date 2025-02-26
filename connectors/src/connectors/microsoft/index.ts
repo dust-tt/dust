@@ -12,8 +12,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
@@ -215,7 +217,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const isTablesView = viewType === "tables";
+    const isTablesView = viewType === "table";
     if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
         const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents(
@@ -479,7 +481,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
 
       const contentNodes = nodes.map((node) =>
-        getMicrosoftNodeAsContentNode(node, viewType === "tables")
+        getMicrosoftNodeAsContentNode(node, viewType === "table")
       );
 
       const selectedResources = (

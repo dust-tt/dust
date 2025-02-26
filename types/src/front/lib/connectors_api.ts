@@ -298,7 +298,7 @@ export class ConnectorsAPI {
     connectorId,
     filterPermission,
     parentId,
-    viewType = "documents",
+    viewType = "document",
   }: {
     connectorId: string;
     filterPermission?: ConnectorPermission;

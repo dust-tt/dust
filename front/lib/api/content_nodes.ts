@@ -69,7 +69,7 @@ function isExpandable(
     node.children_count > 0 &&
     // if we aren't in tables/all view, spreadsheets are not expandable
     !(
-      !["tables", "all"].includes(viewType) &&
+      !["table", "all"].includes(viewType) &&
       SPREADSHEET_MIME_TYPES.includes(node.mime_type)
     )
   );

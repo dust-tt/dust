@@ -60,11 +60,11 @@ export default function TrackerBuilderDataSourceModal({
     switch (viewType) {
       case "all":
         return dataSourceViews;
-      case "tables":
+      case "table":
         return dataSourceViews.filter((dsv) =>
           supportsStructuredData(dsv.dataSource)
         );
-      case "documents":
+      case "document":
         return dataSourceViews.filter((dsv) =>
           supportsDocumentsData(dsv.dataSource)
         );

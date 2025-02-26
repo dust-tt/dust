@@ -44,7 +44,7 @@ export const DATA_SOURCE_MIME_TYPES = [
   "application/vnd.dust.datasource",
 ] as readonly string[];
 
-function getVisualForFileContentNode(node: ContentNode & { type: "Document" }) {
+function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -89,7 +89,7 @@ export function getVisualForContentNode(node: ContentNode) {
     // Handle file-like content that isn't a document type.
     if (FILE_MIME_TYPES.includes(node.mimeType)) {
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "Document" }
+        node as ContentNode & { type: "document" }
       );
     }
 
@@ -101,18 +101,15 @@ export function getVisualForContentNode(node: ContentNode) {
 
   // Fall back to node type if mime type doesn't determine the icon.
   switch (node.type) {
-    case "Table":
     case "table":
       return Square3Stack3DIcon;
 
-    case "Folder":
     case "folder":
       return FolderIcon;
 
-    case "Document":
     case "document":
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "Document" }
+        node as ContentNode & { type: "document" }
       );
 
     default:
