@@ -53,7 +53,7 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
   useDataSourceViewContentNodes,
@@ -452,7 +452,7 @@ export const SpaceDataSourceViewContentList = ({
     () =>
       nodes?.map((contentNode) => ({
         ...contentNode,
-        icon: getVisualForContentNode(contentNode),
+        icon: getVisualForDataSourceViewContentNode(contentNode),
         spaces: spaces.filter((space) =>
           dataSourceViews
             .filter(

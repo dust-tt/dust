@@ -32,7 +32,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -283,7 +283,9 @@ export function DataSourceViewsSelector({
                   );
                 }}
               >
-                {getVisualForContentNode(item)({ className: "min-w-4" })}
+                {getVisualForDataSourceViewContentNode(item)({
+                  className: "min-w-4",
+                })}
                 <span className="flex-shrink truncate text-sm">
                   {item.title}
                 </span>

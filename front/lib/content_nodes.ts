@@ -51,7 +51,27 @@ function getVisualForFileContentNode(node: ContentNode & { type: "Document" }) {
 
   return DocumentIcon;
 }
-export function getVisualForContentNode(node: DataSourceViewContentNode) {
+
+export function getVisualForDataSourceViewContentNode(
+  node: DataSourceViewContentNode
+) {
+  // Handle data sources with connector providers
+  if (
+    node.mimeType &&
+    DATA_SOURCE_MIME_TYPES.includes(node.mimeType) &&
+    node.dataSourceView?.dataSource?.connectorProvider &&
+    CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
+  ) {
+    return CONNECTOR_CONFIGURATIONS[
+      node.dataSourceView.dataSource.connectorProvider
+    ].getLogoComponent();
+  }
+
+  // Fall back to regular content node icon handling.
+  return getVisualForContentNode(node);
+}
+
+export function getVisualForContentNode(node: ContentNode) {
   // Check mime type first for special icon handling.
   if (node.mimeType) {
     // Handle private channels with lock icon.
@@ -76,17 +96,6 @@ export function getVisualForContentNode(node: DataSourceViewContentNode) {
     // Handle spreadsheets.
     if (SPREADSHEET_MIME_TYPES.includes(node.mimeType)) {
       return FolderTableIcon;
-    }
-
-    // Handle data sources with connector providers
-    if (
-      DATA_SOURCE_MIME_TYPES.includes(node.mimeType) &&
-      node.dataSourceView?.dataSource?.connectorProvider &&
-      CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
-    ) {
-      return CONNECTOR_CONFIGURATIONS[
-        node.dataSourceView.dataSource.connectorProvider
-      ].getLogoComponent();
     }
   }
 
