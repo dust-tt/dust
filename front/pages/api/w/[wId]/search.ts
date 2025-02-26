@@ -203,7 +203,9 @@ async function handler(
     }
 
     return getContentNodeFromCoreNode(
-      matchingViews.map((dsv) => dsv.toJSON()),
+      // TODO(keyword-search): Create proper type for content nodes with multiple views.
+      // matchingViews.map((dsv) => dsv.toJSON()),
+      matchingViews[0].toJSON(),
       node,
       viewType
     );

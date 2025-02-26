@@ -26,7 +26,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
@@ -492,7 +492,7 @@ const SpaceDataSourceViewItem = ({
   }, [isAncestorToCurrentPage]);
 
   const LogoComponent = node
-    ? getVisualForContentNode(node)
+    ? getVisualForDataSourceViewContentNode(node)
     : getConnectorProviderLogoWithFallback({
         provider: item.dataSource.connectorProvider,
         isDark,

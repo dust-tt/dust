@@ -76,7 +76,7 @@ function isExpandable(
 }
 
 export function getContentNodeFromCoreNode(
-  dataSourceViews: DataSourceViewType[],
+  dataSourceView: DataSourceViewType,
   coreNode: CoreAPIContentNode,
   viewType: ContentNodesViewType
 ): DataSourceViewContentNode {
@@ -100,6 +100,6 @@ export function getContentNodeFromCoreNode(
       coreNode.mime_type
     ),
     parentTitle: coreNode.parent_title,
-    dataSourceViews,
+    dataSourceView,
   };
 }
