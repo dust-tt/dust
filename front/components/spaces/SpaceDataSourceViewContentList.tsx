@@ -434,7 +434,7 @@ export const SpaceDataSourceViewContentList = ({
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
       // If the view only has content in one of the two views, we switch to that view.
-      // if both view have content, or neither views have content, we default to documents.
+      // if both views have content, or neither view has content, we default to documents.
       if (hasTables && !hasDocuments) {
         handleViewTypeChange("table");
       } else if (!hasTables && hasDocuments) {
