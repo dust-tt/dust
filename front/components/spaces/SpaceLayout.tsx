@@ -50,7 +50,6 @@ export interface SpaceLayoutPageProps {
 }
 
 interface SpaceLayoutProps {
-  actionButtons?: React.ReactNode;
   children: React.ReactNode;
   hideHeader?: boolean;
   pageDescription?: React.ReactNode;
@@ -60,7 +59,6 @@ interface SpaceLayoutProps {
 }
 
 export function SpaceLayout({
-  actionButtons,
   children,
   hideHeader,
   pageDescription,
@@ -137,7 +135,6 @@ export function SpaceLayout({
           )}
 
           <SpaceSearchInput
-            actionButtons={actionButtons}
             category={category}
             canReadInSpace={canReadInSpace}
             canWriteInSpace={canWriteInSpace}

@@ -4,10 +4,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
-import {
-  SpaceCategoriesList,
-  SpaceCategoriesListActionButtons,
-} from "@app/components/spaces/SpaceCategoriesList";
+import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -109,21 +106,5 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  const { canWriteInSpace, isAdmin, owner, space } = pageProps;
-
-  return (
-    <SpaceLayout
-      pageProps={pageProps}
-      actionButtons={
-        <SpaceCategoriesListActionButtons
-          canWriteInSpace={canWriteInSpace}
-          isAdmin={isAdmin}
-          owner={owner}
-          space={space}
-        />
-      }
-    >
-      {page}
-    </SpaceLayout>
-  );
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
 };

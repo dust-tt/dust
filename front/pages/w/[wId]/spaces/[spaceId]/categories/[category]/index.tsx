@@ -18,10 +18,7 @@ import type { ReactElement } from "react";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import {
-  SpaceResourcesList,
-  SpaceResourcesListActionButtons,
-} from "@app/components/spaces/SpaceResourcesList";
+import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import config from "@app/lib/api/config";
 import {
   augmentDataSourceWithConnectorDetails,
@@ -218,7 +215,6 @@ Space.getLayout = (page: ReactElement, pageProps: any) => {
       pageProps={pageProps}
       pageDescription={pageDescription}
       pageTitle={pageTitle}
-      actionButtons={<SpaceResourcesListActionButtons {...pageProps} />}
     >
       {page}
     </SpaceLayout>

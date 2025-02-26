@@ -3,10 +3,7 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import {
-  SpaceAppsList,
-  SpaceAppsListActionButtons,
-} from "@app/components/spaces/SpaceAppsList";
+import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import config from "@app/lib/api/config";
@@ -93,20 +90,8 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  const { canWriteInSpace, owner, space } = pageProps;
-
   return (
-    <SpaceLayout
-      pageProps={pageProps}
-      actionButtons={
-        <SpaceAppsListActionButtons
-          canWriteInSpace={canWriteInSpace}
-          owner={owner}
-          space={space}
-        />
-      }
-      hideHeader
-    >
+    <SpaceLayout pageProps={pageProps} hideHeader>
       {page}
     </SpaceLayout>
   );

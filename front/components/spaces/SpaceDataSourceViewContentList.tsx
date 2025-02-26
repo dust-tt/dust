@@ -66,7 +66,7 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
 const ROWS_COUNT_CAPPED = 1000;

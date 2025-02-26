@@ -4,6 +4,7 @@ import {
   CommandLineIcon,
   DataTable,
   PlusIcon,
+  SearchInput,
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
@@ -20,10 +21,12 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpaceSearchLayout";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
 
@@ -151,10 +154,9 @@ export const SpaceAppsList = ({
   onSelect,
   registryApps,
 }: SpaceAppsListProps) => {
+  const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
-  // Use the search term from context instead of local state.
-  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
   const { searchTerm: appSearch } = useContext(SpaceSearchContext);
 
   const { apps, isAppsLoading } = useApps({ owner, space });
@@ -177,6 +179,10 @@ export const SpaceAppsList = ({
     [apps, onSelect, owner]
   );
 
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
+
   if (isAppsLoading) {
     return (
       <div className="mt-8 flex justify-center">
@@ -190,66 +196,10 @@ export const SpaceAppsList = ({
     columns.push(getDustAppsColumns(owner, registryApps));
   }
 
-  return (
+  const isEmpty = rows.length === 0;
+
+  const actionButtons = (
     <>
-      {rows.length === 0 ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
-          <Button
-            label="Create App"
-            disabled={!canWriteInSpace}
-            onClick={() => {
-              setIsCreateAppModalOpened(true);
-            }}
-          />
-        </div>
-      ) : (
-        <>
-          <DataTable
-            data={rows}
-            columns={columns}
-            className="pb-4"
-            filter={appSearch}
-            filterColumn="name"
-            pagination={pagination}
-            setPagination={setPagination}
-          />
-        </>
-      )}
-      <SpaceCreateAppModal
-        owner={owner}
-        space={space}
-        isOpen={isCreateAppModalOpened}
-        setIsOpen={setIsCreateAppModalOpened}
-      />
-    </>
-  );
-};
-
-interface SpaceAppsListActionButtonsProps {
-  canWriteInSpace: boolean;
-  owner: LightWorkspaceType;
-  space: SpaceType;
-}
-
-export function SpaceAppsListActionButtons({
-  canWriteInSpace,
-  owner,
-  space,
-}: SpaceAppsListActionButtonsProps) {
-  const router = useRouter();
-
-  const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
-
-  return (
-    <>
-      {/* TODO(20250226, search-kb): Refactor to only use one modal between the menu and the page. */}
-      <SpaceCreateAppModal
-        owner={owner}
-        space={space}
-        isOpen={isCreateAppModalOpened}
-        setIsOpen={setIsCreateAppModalOpened}
-      />
-
       {canWriteInSpace && (
         <>
           <Button
@@ -274,4 +224,37 @@ export function SpaceAppsListActionButtons({
       )}
     </>
   );
-}
+
+  return (
+    <>
+      {!isEmpty && portalToHeader(actionButtons)}
+      {isEmpty ? (
+        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-structure-50 dark:bg-structure-50-night">
+          <Button
+            label="Create App"
+            disabled={!canWriteInSpace}
+            onClick={() => {
+              setIsCreateAppModalOpened(true);
+            }}
+          />
+        </div>
+      ) : (
+        <DataTable
+          data={rows}
+          columns={columns}
+          className="pb-4"
+          filter={appSearch}
+          filterColumn="name"
+          pagination={pagination}
+          setPagination={setPagination}
+        />
+      )}
+      <SpaceCreateAppModal
+        owner={owner}
+        space={space}
+        isOpen={isCreateAppModalOpened}
+        setIsOpen={setIsCreateAppModalOpened}
+      />
+    </>
+  );
+};

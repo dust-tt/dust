@@ -2,6 +2,7 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   CloudArrowLeftRightIcon,
+  cn,
   Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
@@ -24,10 +25,11 @@ import type {
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
-import { useContext, useEffect, useState } from "react";
+import React from "react";
 
-import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpaceSearchLayout";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 type RowData = {
@@ -119,6 +121,9 @@ type SpaceCategoriesListProps = {
 };
 
 export const SpaceCategoriesList = ({
+  isAdmin,
+  onButtonClick,
+  canWriteInSpace,
   onSelect,
   owner,
   space,
@@ -128,10 +133,8 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
-  // Use the search term from context instead of local state.
-  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
   const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+    React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -149,13 +152,17 @@ export const SpaceCategoriesList = ({
       )
     : [];
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (rows.length === 0) {
       setIsSearchDisabled(true);
     } else {
       setIsSearchDisabled(false);
     }
   }, [rows.length, setIsSearchDisabled]);
+
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
 
   if (isSpaceInfoLoading) {
     return (
@@ -165,55 +172,13 @@ export const SpaceCategoriesList = ({
     );
   }
 
-  return (
+  const actionButtons = (
     <>
-      {rows.length > 0 && (
-        <DataTable
-          data={rows}
-          columns={getTableColumns()}
-          className="pb-4"
-          filter={dataSourceSearch}
-          filterColumn="name"
-          columnsBreakpoints={{
-            usage: "md",
-          }}
-        />
-      )}
-    </>
-  );
-};
-
-interface SpaceCategoriesListActionButtonsProps {
-  canWriteInSpace: boolean;
-  isAdmin: boolean;
-  owner: WorkspaceType;
-  space: SpaceType;
-}
-
-export function SpaceCategoriesListActionButtons({
-  canWriteInSpace,
-  isAdmin,
-  owner,
-  space,
-}: SpaceCategoriesListActionButtonsProps) {
-  const [showSpaceEditionModal, setShowSpaceEditionModal] = useState(false);
-
-  return (
-    <>
-      {/* TODO(20250226, search-kb): Refactor to only use one modal from the SpaceLayout. */}
-      <CreateOrEditSpaceModal
-        owner={owner}
-        isOpen={showSpaceEditionModal}
-        onClose={() => setShowSpaceEditionModal(false)}
-        space={space}
-        isAdmin={isAdmin}
-      />
-
-      {isAdmin && space.kind === "regular" && (
+      {isAdmin && onButtonClick && space.kind === "regular" && (
         <Button
           label="Space settings"
           icon={Cog6ToothIcon}
-          onClick={() => setShowSpaceEditionModal(true)}
+          onClick={onButtonClick}
           variant="outline"
         />
       )}
@@ -250,4 +215,35 @@ export function SpaceCategoriesListActionButtons({
       </DropdownMenu>
     </>
   );
-}
+
+  const isEmpty = rows.length === 0;
+
+  return (
+    <>
+      {isEmpty && (
+        <div
+          className={cn(
+            "flex gap-2",
+            "h-36 w-full items-center justify-center rounded-xl",
+            "bg-muted-background dark:bg-muted-background-night"
+          )}
+        >
+          {actionButtons}
+        </div>
+      )}
+      {!isEmpty && portalToHeader(actionButtons)}
+      {rows.length > 0 && (
+        <DataTable
+          data={rows}
+          columns={getTableColumns()}
+          className="pb-4"
+          filter={dataSourceSearch}
+          filterColumn="name"
+          columnsBreakpoints={{
+            usage: "md",
+          }}
+        />
+      )}
+    </>
+  );
+};
