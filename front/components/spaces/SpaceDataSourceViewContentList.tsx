@@ -337,14 +337,7 @@ export const SpaceDataSourceViewContentList = ({
 
   const handlePaginationChange = useCallback(
     (newTablePagination: PaginationState) => {
-      if (newTablePagination.pageSize !== tablePagination.pageSize) {
-        // Handle page size change
-        setTablePagination(newTablePagination);
-        setCursorPagination({
-          cursor: null,
-          limit: newTablePagination.pageSize,
-        });
-      } else if (
+      if (
         newTablePagination.pageIndex > tablePagination.pageIndex &&
         nextPageCursor
       ) {
