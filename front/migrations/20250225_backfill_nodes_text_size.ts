@@ -23,6 +23,11 @@ async function migrateDataSource(
   });
   logger.info("MIGRATE");
 
+  // We don't really have a dry run for this script besides logging the data source IDs.
+  if (!execute) {
+    return;
+  }
+
   // We scroll on the timestamps to leverage the index (data_source, status, timestamp).
   // If we get a whole batch of documents with the same timestamp, we scroll on the ids to avoid infinite loops.
   let nextTimestamp = 0;
@@ -39,9 +44,8 @@ async function migrateDataSource(
     const [updatedRows] = (await (async () => {
       // If nextId is null, we only filter by timestamp.
       if (nextId === null) {
-        if (execute) {
-          return coreSequelize.query(
-            `WITH to_update AS (
+        return coreSequelize.query(
+          `WITH to_update AS (
                 SELECT id, timestamp, text_size
                 FROM data_sources_documents
                 WHERE data_source = :dataSourceId
@@ -55,21 +59,19 @@ async function migrateDataSource(
              FROM to_update tu
              WHERE document = tu.id
              RETURNING tu.timestamp, tu.id;`,
-            {
-              replacements: {
-                dataSourceId,
-                status: "latest",
-                nextTimestamp,
-                batchSize: BATCH_SIZE,
-              },
-            }
-          );
-        }
+          {
+            replacements: {
+              dataSourceId,
+              status: "latest",
+              nextTimestamp,
+              batchSize: BATCH_SIZE,
+            },
+          }
+        );
       } else {
         // Otherwise, we filter by timestamp and id
-        if (execute) {
-          return coreSequelize.query(
-            `WITH to_update AS (
+        return coreSequelize.query(
+          `WITH to_update AS (
                 SELECT id, timestamp, text_size
                 FROM data_sources_documents dsd
                 WHERE data_source = :coreDataSourceId
@@ -84,17 +86,16 @@ async function migrateDataSource(
              FROM to_update tu
              WHERE document = tu.id
              RETURNING tu.timestamp, tu.id;`,
-            {
-              replacements: {
-                dataSourceId,
-                status: "latest",
-                nextTimestamp,
-                batchSize: BATCH_SIZE,
-                nextId,
-              },
-            }
-          );
-        }
+          {
+            replacements: {
+              dataSourceId,
+              status: "latest",
+              nextTimestamp,
+              batchSize: BATCH_SIZE,
+              nextId,
+            },
+          }
+        );
       }
     })()) as { id: number; timestamp: number }[][];
 
