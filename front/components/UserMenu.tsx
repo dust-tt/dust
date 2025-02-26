@@ -158,40 +158,41 @@ export function UserMenu({
                 icon={UserIcon}
               />
             )}
-            <DropdownMenuLabel label="Preferences (Dust only)" />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={theme}>
-                  <DropdownMenuRadioItem
-                    value="light"
-                    label="Light"
-                    onClick={() => {
-                      localStorage.setItem("theme", "light");
-                      window.location.reload();
-                    }}
-                  />
-                  <DropdownMenuRadioItem
-                    value="dark"
-                    label="Dark"
-                    onClick={() => {
-                      localStorage.setItem("theme", "dark");
-                      window.location.reload();
-                    }}
-                  />
-                  <DropdownMenuRadioItem
-                    value="system"
-                    label="System"
-                    onClick={() => {
-                      localStorage.setItem("theme", "system");
-                      window.location.reload();
-                    }}
-                  />
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
           </>
         )}
+
+        <DropdownMenuLabel label="Preferences" />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup value={theme}>
+              <DropdownMenuRadioItem
+                value="light"
+                label="Light"
+                onClick={() => {
+                  localStorage.setItem("theme", "light");
+                  window.location.reload();
+                }}
+              />
+              <DropdownMenuRadioItem
+                value="dark"
+                label="Dark"
+                onClick={() => {
+                  localStorage.setItem("theme", "dark");
+                  window.location.reload();
+                }}
+              />
+              <DropdownMenuRadioItem
+                value="system"
+                label="System"
+                onClick={() => {
+                  localStorage.setItem("theme", "system");
+                  window.location.reload();
+                }}
+              />
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem
