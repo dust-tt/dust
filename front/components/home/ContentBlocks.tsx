@@ -1,8 +1,8 @@
 import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
-import React from "react";
 import type { ReactNode } from "react";
+import React from "react";
 
 import {
   Grid,
@@ -14,7 +14,8 @@ import {
   Strong,
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
-import { ROIProps } from "./content/Solutions/configs/utils";
+
+import type { ROIProps } from "./content/Solutions/configs/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -43,7 +44,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
 
   return (
     <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
+      <div className="ml-[10%] pr-[20%] lg:m-0 lg:pr-[28%]">
         {children ? children : null}
       </div>
       <div className="flex flex-col px-0 py-6">
@@ -141,7 +142,7 @@ export const HeaderContentBlock = ({
       className={classNames(
         "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
         "col-span-12",
-        "sm:col-span-12",
+        "sm:col-span-12 md:col-span-12",
         "lg:col-span-8 lg:col-start-2",
         "xl:col-span-8 xl:col-start-2",
         "2xl:col-start-3"
@@ -164,19 +165,21 @@ export const HeaderContentBlock = ({
         </P>
       )}
       {hasCTA && (
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
           <Button
             variant="highlight"
             size="md"
             label="Get started"
             href="/pricing"
             icon={RocketIcon}
+            className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
           <Button
             href="/home/contact"
             variant="outline"
             size="md"
             label="Talk to sales"
+            className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
         </div>
       )}
@@ -197,7 +200,7 @@ interface MetricComponentProps {
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
   <div
     className={classNames(
-      "grid w-full grid-cols-2 gap-8 sm:grid-cols-2",
+      "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
       metrics.length === 2
         ? "lg:grid-cols-2"
         : metrics.length === 3
@@ -232,7 +235,7 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 lg:col-span-10 lg:col-start-2">
     <div className="flex justify-center">
       <div className="flex items-center justify-center">
         <Image
@@ -244,7 +247,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
         />
         <P
           size="sm"
-          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg"
+          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
         >
           <Strong>
             <span className="text-pink-300">{name}</span>
@@ -253,7 +256,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
         </P>
       </div>
     </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl lg:text-2xl">
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
   </div>
@@ -285,14 +288,14 @@ export const CarousselContentBlock = ({
   return (
     <div
       className={classNames(
-        "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
+        "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 lg:h-full",
         from,
         to,
         border
       )}
     >
-      <div className="flex flex-col gap-12 px-8 md:flex-row">
-        <div className="flex flex-col gap-6 md:w-1/2">
+      <div className="flex flex-col gap-12 px-4 sm:px-6 md:px-8 lg:flex-row">
+        <div className="flex flex-col gap-6 lg:w-1/2">
           <H2 className="text-slate-900">{title}</H2>
 
           {bulletPoints && (
@@ -385,7 +388,7 @@ export const CarousselContentBlock = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-center md:w-1/2">
+        <div className="flex items-center justify-center lg:w-1/2">
           <div className="w-full max-w-md lg:max-w-2xl">
             <Image
               src={image}
