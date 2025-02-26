@@ -621,7 +621,7 @@ export async function getOctokit(
           `http://${EnvironmentConfig.getEnvVariable(
             "PROXY_USER_NAME"
           )}:${EnvironmentConfig.getEnvVariable(
-            "PROXY_PASSWORD"
+            "PROXY_USER_PASSWORD"
           )}@${EnvironmentConfig.getEnvVariable(
             "PROXY_HOST"
           )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
