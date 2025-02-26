@@ -723,6 +723,7 @@ export const SpaceDataSourceViewContentList = ({
             pagination={tablePagination}
             setPagination={handlePaginationChange}
             columnsBreakpoints={columnsBreakpoints}
+            disablePaginationNumbers
           />
         )}
         {searchFeatureFlag &&
