@@ -58,6 +58,21 @@ export const PaginationNoPageButtons = () => {
   );
 };
 
+export const PaginationButtonsDisabled = () => {
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 50,
+  });
+  return (
+    <Pagination
+      rowCount={960}
+      pagination={pagination}
+      setPagination={setPagination}
+      disablePaginationNumbers
+    />
+  );
+};
+
 export const PaginationWithUrl = () => {
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "example",
