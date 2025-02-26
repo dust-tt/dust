@@ -294,30 +294,56 @@ export const CarousselContentBlock = ({
         border
       )}
     >
-      <div className="flex flex-col gap-12 px-4 sm:px-6 md:px-8 lg:flex-row">
-        <div className="flex flex-col gap-6 lg:w-1/2">
-          <H2 className="text-slate-900">{title}</H2>
+      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:flex-row lg:gap-12">
+        {/* Left column for desktop - contains title, bullet points, quote/ROI, and button */}
+        <div className="flex flex-col lg:w-1/2">
+          {/* Title and bullet points */}
+          <div className="mb-2 lg:mb-4">
+            <H2 className="mb-4 text-slate-900">{title}</H2>
 
-          {bulletPoints && (
-            <ul className="flex list-none flex-col gap-3">
-              {bulletPoints.map((feature, index) => (
-                <li key={index} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 pt-1">
-                    <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
-                  </div>
-                  <P size="md" className="text-slate-800">
-                    {feature}
-                  </P>
-                </li>
-              ))}
-            </ul>
-          )}
+            {bulletPoints && (
+              <ul className="flex list-none flex-col gap-3">
+                {bulletPoints.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 pt-1">
+                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                    </div>
+                    <P
+                      size="md"
+                      className="text-sm text-slate-800 md:text-base"
+                    >
+                      {feature}
+                    </P>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
-          <div className="mt-6 flex w-full flex-col gap-4">
+          {/* Mobile-only image - between bullet points and quote */}
+          <div className="my-6 lg:hidden">
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-md">
+                <Image
+                  src={image}
+                  alt={title as string}
+                  width={500}
+                  height={500}
+                  className="h-auto w-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Quote and ROI section */}
+          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6">
             {quote && (
               <>
                 <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
-                  <P size="sm" className="w-full italic text-slate-800">
+                  <P
+                    size="sm"
+                    className="w-full text-xs italic text-slate-800 md:text-sm"
+                  >
                     "{quote?.quote}"
                   </P>
                   <div className="flex items-center gap-3">
@@ -339,10 +365,13 @@ export const CarousselContentBlock = ({
                       </div>
                     )}
                     <div>
-                      <P size="sm" className="font-bold text-slate-800">
+                      <P
+                        size="sm"
+                        className="text-xs font-bold text-slate-800 md:text-sm"
+                      >
                         {quote.name}
                       </P>
-                      <P size="xs" className="text-slate-700">
+                      <P size="xs" className="text-xs text-slate-700">
                         {quote.title}
                       </P>
                     </div>
@@ -367,7 +396,10 @@ export const CarousselContentBlock = ({
                     <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
                       {roi.number}
                     </H2>
-                    <P size="md" className="font-medium text-slate-800">
+                    <P
+                      size="md"
+                      className="text-sm font-medium text-slate-800 md:text-base"
+                    >
                       {roi.subtitle}
                     </P>
                   </div>
@@ -376,7 +408,8 @@ export const CarousselContentBlock = ({
             )}
           </div>
 
-          <div className="mt-4">
+          {/* Button */}
+          <div className="mt-6">
             <Link href={href} shallow={true}>
               <Button
                 label={`Learn more →`}
@@ -388,7 +421,8 @@ export const CarousselContentBlock = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-center lg:w-1/2">
+        {/* Desktop-only image - right column */}
+        <div className="hidden items-center justify-center lg:flex lg:w-1/2">
           <div className="w-full max-w-md lg:max-w-2xl">
             <Image
               src={image}

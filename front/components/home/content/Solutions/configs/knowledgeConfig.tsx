@@ -34,9 +34,9 @@ export const pageSettings: pageSettingsProps = {
   ),
   bulletPoints: [
     "Access company-wide knowledge instantly",
-    "Find and summarize product information across all knowledge bases",
-    "Get instant answers through Slack with relevant context and sources",
-    "Surface key patterns and blockers from project discussions",
+    "Find product information across knowledge bases",
+    "Get answers in Slack with relevant context and citations",
+    "Surface blockers from project discussions",
   ],
   image: "/static/landing/solutions/knowledge1.png",
 };

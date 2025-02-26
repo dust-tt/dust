@@ -33,10 +33,10 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Write and optimize SQL queries from natural language",
+    "Enable teams to analyze data independently",
+    "Write SQL queries from natural language",
     "Create instant data visualizations and analysis",
-    "Answer complex data questions with documentation context",
-    "Enable non-technical teams to analyze data independently",
+    "Answer data questions with documentation context",
   ],
   image: "/static/landing/data-analytics/analyst.png",
 };
