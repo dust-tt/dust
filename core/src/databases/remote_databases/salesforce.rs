@@ -226,10 +226,9 @@ impl SalesforceRemoteDatabase {
                 QueryDatabaseError::GenericError(anyhow!("Error getting query plan: {}", e))
             })?;
 
-        let response_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
+        let response_text = response.text().await.map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
+        })?;
 
         let query_plans: SalesforceQueryPlansResponse = serde_json::from_str(&response_text)
             .map_err(|e| {
@@ -275,20 +274,19 @@ impl SalesforceRemoteDatabase {
             })?;
 
             if !response.status().is_success() {
-                let error_text = response
-                    .text()
-                    .await
-                    .unwrap_or_else(|_| "Unknown error".to_string());
+                let error_text = response.text().await.map_err(|e| {
+                    QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
+                })?;
+
                 return Err(QueryDatabaseError::ExecutionError(format!(
                     "Query failed: {}",
                     error_text
                 )));
             }
 
-            let response_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+            let response_text = response.text().await.map_err(|e| {
+                QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
+            })?;
 
             let query_response: SalesforceQueryResponse = serde_json::from_str(&response_text)
                 .map_err(|e| {
@@ -355,20 +353,19 @@ impl SalesforceRemoteDatabase {
             })?;
 
         if !response.status().is_success() {
-            let error_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "Unknown error".to_string());
+            let error_text = response.text().await.map_err(|e| {
+                QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
+            })?;
+
             return Err(QueryDatabaseError::ExecutionError(format!(
                 "Failed to describe object {}: {}",
                 sobject, error_text
             )));
         }
 
-        let response_text = response
-            .text()
-            .await
-            .unwrap_or_else(|_| "Unknown error".to_string());
+        let response_text = response.text().await.map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
+        })?;
 
         let describe_result: Value = serde_json::from_str(&response_text).map_err(|e| {
             QueryDatabaseError::GenericError(anyhow!("Error parsing response: {}", e))
@@ -393,9 +390,9 @@ impl SalesforceRemoteDatabase {
             .iter()
             .filter(|field| is_compound_field(field, sobject))
             .map(|field| {
-                let compound_field_name = field["compoundFieldName"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("`compoundFieldName` not found"))?;
+                let compound_field_name = field["compoundFieldName"].as_str().ok_or_else(|| {
+                    QueryDatabaseError::GenericError(anyhow!("`compoundFieldName` not found"))
+                })?;
 
                 Ok(compound_field_name.to_string())
             })
@@ -410,12 +407,14 @@ impl SalesforceRemoteDatabase {
             .map(|field| {
                 let name = field["name"]
                     .as_str()
-                    .ok_or_else(|| anyhow!("Field name not found"))?
+                    .ok_or_else(|| {
+                        QueryDatabaseError::GenericError(anyhow!("Field `name` not found"))
+                    })?
                     .to_string();
 
-                let soap_type = field["soapType"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("Field soapType not found"))?;
+                let soap_type = field["soapType"].as_str().ok_or_else(|| {
+                    QueryDatabaseError::GenericError(anyhow!("Field `soapType` not found"))
+                })?;
 
                 let value_type = match soap_type.to_lowercase().as_str() {
                     "tns:id" => TableSchemaFieldType::Text,
@@ -434,13 +433,19 @@ impl SalesforceRemoteDatabase {
                             .iter()
                             .map(|v| {
                                 let obj = v.as_object().ok_or_else(|| {
-                                    anyhow!("Expected picklist value to be an object")
+                                    QueryDatabaseError::GenericError(anyhow!(
+                                        "Expected picklist value to be an object"
+                                    ))
                                 })?;
                                 let value = obj.get("value").ok_or_else(|| {
-                                    anyhow!("Missing 'value' field in picklist value")
+                                    QueryDatabaseError::GenericError(anyhow!(
+                                        "Missing 'value' field in picklist value"
+                                    ))
                                 })?;
                                 let str_value = value.as_str().ok_or_else(|| {
-                                    anyhow!("Expected picklist value to be a string")
+                                    QueryDatabaseError::GenericError(anyhow!(
+                                        "Expected picklist value to be a string"
+                                    ))
                                 })?;
                                 Ok(str_value.to_string())
                             })

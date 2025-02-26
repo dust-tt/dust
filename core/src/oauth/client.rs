@@ -71,8 +71,16 @@ impl OauthClient {
         match res.status().as_u16() {
             200 => {
                 let r = res.json::<APIResponse>().await?;
-                let connection =
-                    serde_json::from_value::<ConnectionAccessTokenResponse>(r.response.unwrap())?;
+                let connection = match r.response {
+                    Some(response) => {
+                        serde_json::from_value::<ConnectionAccessTokenResponse>(response)?
+                    }
+                    None => {
+                        return Err(anyhow!(
+                            "Failed to get access token. Missing response from `oauth`"
+                        ))
+                    }
+                };
                 Ok(connection)
             }
             s => Err(anyhow!("Failed to get access token. Status: {}", s)),
