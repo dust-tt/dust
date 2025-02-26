@@ -256,17 +256,16 @@ export const getMenuItems = (
       (s) => !alreadyInSpace.includes(s.sId)
     );
 
-    if (availableSpaces.length > 0) {
-      actions.push({
-        kind: "submenu",
-        label: "Add to space",
-        items: availableSpaces.map((s) => ({
-          id: s.sId,
-          name: s.name,
-        })),
-        onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
-      });
-    }
+    actions.push({
+      disabled: availableSpaces.length === 0,
+      kind: "submenu",
+      label: "Add to space",
+      items: availableSpaces.map((s) => ({
+        id: s.sId,
+        name: s.name,
+      })),
+      onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
+    });
   }
 
   if (

@@ -250,7 +250,7 @@ export async function getManagedDataSourcePermissionsHandler(
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents | all",
+        message: "Invalid viewType. Required: table | document | all",
       },
     });
   }
