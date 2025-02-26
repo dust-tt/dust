@@ -18,7 +18,7 @@ interface PaginationProps {
   rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
-  singleStepForward?: boolean;
+  preventMultiPageForward?: boolean;
 }
 
 export function Pagination({
@@ -29,7 +29,7 @@ export function Pagination({
   rowCountIsCapped = false,
   pagination,
   setPagination,
-  singleStepForward = false,
+  preventMultiPageForward = false,
 }: PaginationProps) {
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
@@ -62,7 +62,7 @@ export function Pagination({
     pagesShownInControls,
     onPaginationButtonClick,
     size,
-    { singleStepForward }
+    { preventMultiPageForward }
   );
 
   return (
@@ -166,7 +166,7 @@ function getPageButtons(
   slots: number,
   onPageClick: (currentPage: number) => void,
   size: Size,
-  { singleStepForward = false }: { singleStepForward?: boolean }
+  { preventMultiPageForward = false }: { preventMultiPageForward?: boolean }
 ) {
   const pagination: React.ReactNode[] = [];
 
@@ -189,10 +189,12 @@ function getPageButtons(
   let start, end;
   if (currentPage <= halfSlots + 1) {
     start = 1;
-    end = singleStepForward ? currentPage + 1 : remainingSlots - 1;
+    // If we prevent multi-page forward, we only want to show the next page index, not the ones up to the remaining slots.
+    end = preventMultiPageForward ? currentPage + 1 : remainingSlots - 1;
   } else if (currentPage >= totalPages - halfSlots - 2) {
     start = totalPages - remainingSlots;
-    end = singleStepForward ? totalPages - 1 : totalPages - 2;
+    // If we prevent multi-page forward, we don't skip the last page because it won't be included in the last push below.
+    end = preventMultiPageForward ? totalPages - 1 : totalPages - 2;
   } else {
     start = currentPage - halfSlots + 1;
     end = currentPage + halfSlots - 1;
@@ -212,7 +214,7 @@ function getPageButtons(
     pagination.push(renderEllipses(size));
   }
 
-  if (!singleStepForward) {
+  if (!preventMultiPageForward) {
     pagination.push(
       renderPageNumber(totalPages - 1, currentPage, onPageClick, size)
     );
