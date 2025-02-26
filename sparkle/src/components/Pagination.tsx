@@ -18,6 +18,7 @@ interface PaginationProps {
   rowCountIsCapped?: boolean;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
+  disablePageButtons?: boolean;
 }
 
 export function Pagination({
@@ -28,6 +29,7 @@ export function Pagination({
   rowCountIsCapped = false,
   pagination,
   setPagination,
+  disablePageButtons = false,
 }: PaginationProps) {
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
@@ -58,7 +60,7 @@ export function Pagination({
     pageIndex,
     numPages,
     pagesShownInControls,
-    onPaginationButtonClick,
+    !disablePageButtons ? onPaginationButtonClick : null,
     size
   );
 
@@ -123,10 +125,10 @@ export function Pagination({
 function renderPageNumber(
   pageNumber: number,
   currentPage: number,
-  onPageClick: (currentPage: number) => void,
+  onPageClick: ((currentPage: number) => void) | null,
   size: Size
 ) {
-  return (
+  return onPageClick ? (
     <button
       key={pageNumber}
       className={classNames(
@@ -140,6 +142,19 @@ function renderPageNumber(
     >
       {pageNumber + 1}
     </button>
+  ) : (
+    <div
+      key={pageNumber}
+      className={classNames(
+        "s-font-medium s-transition-colors s-duration-200",
+        currentPage === pageNumber
+          ? "s-text-foreground dark:s-text-foreground-night"
+          : "s-text-primary-400 dark:s-text-primary-400-night",
+        size === "xs" ? "s-text-xs" : "s-text-sm"
+      )}
+    >
+      {pageNumber + 1}
+    </div>
   );
 }
 
@@ -161,7 +176,7 @@ function getPageButtons(
   currentPage: number,
   totalPages: number,
   slots: number,
-  onPageClick: (currentPage: number) => void,
+  onPageClick: ((currentPage: number) => void) | null,
   size: Size
 ) {
   const pagination: React.ReactNode[] = [];
