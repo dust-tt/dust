@@ -6,7 +6,7 @@ use dust::{
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
 };
-use elasticsearch::{indices::IndicesExistsParts, BulkOperation, BulkParts, BulkUpdateOperation};
+use elasticsearch::{indices::IndicesExistsParts, BulkOperation, BulkParts};
 use http::StatusCode;
 use serde_json::{json, Value};
 use tokio_postgres::NoTls;
@@ -155,8 +155,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let db_uri = std::env::var("CORE_DATABASE_READ_REPLICA_URI")
         .expect("CORE_DATABASE_READ_REPLICA_URI must be set");
     let store = PostgresStore::new(&db_uri).await?;
-    // loop on all nodes in postgres using id as cursor, stopping when id is
-    // greated than the last id in data_sources_nodes at start of backfill
+
+    // Loop on all nodes in postgres using id as cursor, stopping when id is
+    // greater than the last id in data_sources_nodes at the start of the backfill
     let mut next_cursor = start_cursor;
 
     // grab last id in data_sources_nodes
@@ -212,7 +213,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         match response.status_code() {
             StatusCode::OK => println!("Succeeded."),
             _ => {
-                let body = response.json::<serde_json::Value>().await?;
+                let body = response.json::<Value>().await?;
                 eprintln!("\n{:?}", body);
                 return Err(anyhow::anyhow!("Failed to update nodes").into());
             }
