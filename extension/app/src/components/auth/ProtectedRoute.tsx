@@ -83,7 +83,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div
         className={classNames(
           "flex h-screen flex-col gap-2 p-4",
-          "dark:bg-black dark:text-white"
+          "dark:bg-slate-950 dark:text-slate-50"
         )}
       >
         <div className="flex h-full w-full items-center justify-center">
@@ -98,7 +98,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div
         className={classNames(
           "flex h-screen flex-col gap-2 p-4",
-          "dark:bg-black dark:text-white"
+          "dark:bg-slate-950 dark:text-slate-50"
         )}
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
@@ -122,7 +122,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     <div
       className={classNames(
         "flex h-screen flex-col gap-2 px-4 overflow-y-auto",
-        "dark:bg-black dark:text-white"
+        "dark:bg-slate-950 dark:text-slate-50"
       )}
     >
       {typeof children === "function"

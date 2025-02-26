@@ -277,12 +277,13 @@ export function AssistantInputBar({
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch p-3",
               "border-struture-200 dark:border-struture-200-night",
               "border-t  backdrop-blur",
-              "bg-white/90 dark:bg-black/90",
               "transition-all",
               "rounded-2xl border-b border-l border-r",
-              "border-element-500 dark:border-element-500-night",
-              "focus-within:border-action-300 dark:focus-within:border-action-300-night",
-              "focus-within:shadow-md focus-within:ring-1",
+              "bg-muted-background dark:bg-muted-background-night",
+              "border",
+              "border-border-dark dark:border-border-dark-night",
+              "sm:border-border-dark/50 sm:focus-within:border-border-dark",
+              "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >
