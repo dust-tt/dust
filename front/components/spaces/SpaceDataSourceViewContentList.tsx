@@ -210,6 +210,53 @@ type SpaceDataSourceViewContentListProps = {
   systemSpace: SpaceType;
 };
 
+// TODO(20250226 aubin): move this hook to sparkle.
+function useCursorPaginationForDataTable() {
+  // Pagination state for the content nodes.
+  const [currentCursor, setCurrentCursor] =
+    useState<CursorPaginationParams["cursor"]>(null);
+  // We keep a history of the cursors to allow going back in pages (leverage SWR's cache).
+  const [cursorHistory, setCursorHistory] = useState<
+    CursorPaginationParams["cursor"][]
+  >([null]);
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: PAGE_SIZE,
+  });
+  const resetPagination = useCallback(() => {
+    setTablePagination({ pageIndex: 0, pageSize: PAGE_SIZE });
+    setCursorHistory([null]);
+    setCurrentCursor(null);
+  }, []);
+
+  const handlePaginationChange = useCallback(
+    (newTablePagination: PaginationState, nextPageCursor: string | null) => {
+      if (
+        newTablePagination.pageIndex > tablePagination.pageIndex &&
+        nextPageCursor
+      ) {
+        // Next page - update the history and the cursor.
+        setTablePagination(newTablePagination);
+        if (newTablePagination.pageIndex === cursorHistory.length) {
+          setCursorHistory((prev) => [...prev, nextPageCursor]);
+        }
+        setCurrentCursor(nextPageCursor);
+      } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
+        // Older page - use the appropriate cursor.
+        setTablePagination(newTablePagination);
+        setCurrentCursor(cursorHistory[newTablePagination.pageIndex]);
+      }
+    },
+    [tablePagination.pageIndex, cursorHistory]
+  );
+  return {
+    currentCursor,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  };
+}
+
 export const SpaceDataSourceViewContentList = ({
   canReadInSpace,
   canWriteInSpace,
@@ -235,21 +282,12 @@ export const SpaceDataSourceViewContentList = ({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  // Pagination state for the content nodes.
-  const [currentCursor, setCurrentCursor] =
-    useState<CursorPaginationParams["cursor"]>(null);
-  const [cursorHistory, setCursorHistory] = useState<
-    CursorPaginationParams["cursor"][]
-  >([null]);
-  const [tablePagination, setTablePagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: PAGE_SIZE,
-  });
-  const resetPagination = useCallback(() => {
-    setTablePagination({ pageIndex: 0, pageSize: PAGE_SIZE });
-    setCursorHistory([null]);
-    setCurrentCursor(null);
-  }, []);
+  const {
+    currentCursor,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  } = useCursorPaginationForDataTable();
 
   const [viewType, setViewType] = useHashParam(
     "viewType",
@@ -340,27 +378,6 @@ export const SpaceDataSourceViewContentList = ({
       parentId,
       viewType: "table",
     });
-
-  const handlePaginationChange = useCallback(
-    (newTablePagination: PaginationState) => {
-      if (
-        newTablePagination.pageIndex > tablePagination.pageIndex &&
-        nextPageCursor
-      ) {
-        // Next page - update the history and the cursor.
-        setTablePagination(newTablePagination);
-        if (newTablePagination.pageIndex === cursorHistory.length) {
-          setCursorHistory((prev) => [...prev, nextPageCursor]);
-        }
-        setCurrentCursor(nextPageCursor);
-      } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
-        // Older page - use the appropriate cursor.
-        setTablePagination(newTablePagination);
-        setCurrentCursor(cursorHistory[newTablePagination.pageIndex]);
-      }
-    },
-    [tablePagination.pageIndex, nextPageCursor, cursorHistory]
-  );
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
@@ -721,7 +738,9 @@ export const SpaceDataSourceViewContentList = ({
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}
-            setPagination={handlePaginationChange}
+            setPagination={(newTablePagination) =>
+              handlePaginationChange(newTablePagination, nextPageCursor)
+            }
             columnsBreakpoints={columnsBreakpoints}
             disablePaginationNumbers
           />
