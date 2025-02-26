@@ -721,3 +721,15 @@ export const SpaceDataSourceViewContentList = ({
     </FileDropProvider>
   );
 };
+
+interface SpaceDataSourceViewContentListActionButtonsProps {
+  canWriteInSpace: boolean;
+  owner: LightWorkspaceType;
+  space: SpaceType;
+}
+
+export function SpaceDataSourceViewContentListActionButtons({
+  canWriteInSpace,
+  owner,
+  space,
+}: SpaceDataSourceViewContentListActionButtonsProps) {}

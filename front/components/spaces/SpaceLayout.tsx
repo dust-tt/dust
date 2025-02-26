@@ -52,14 +52,18 @@ interface SpaceLayoutProps {
   actionButtons?: React.ReactNode;
   children: React.ReactNode;
   hideHeader?: boolean;
+  pageDescription?: React.ReactNode;
   pageProps: SpaceLayoutPageProps;
+  pageTitle?: string;
 }
 
 export function SpaceLayout({
   actionButtons,
   children,
   hideHeader,
+  pageDescription,
   pageProps,
+  pageTitle,
 }: SpaceLayoutProps) {
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
@@ -141,8 +145,9 @@ export function SpaceLayout({
           <Page.Vertical gap="xl" align="stretch">
             {!hideHeader && (
               <Page.Header
-                title={getSpaceName(space)}
+                title={pageTitle ?? getSpaceName(space)}
                 icon={getSpaceIcon(space)}
+                description={pageDescription}
               />
             )}
 

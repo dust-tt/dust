@@ -7,7 +7,6 @@ import {
   CubeIcon,
   DataTable,
   PencilSquareIcon,
-  SearchInput,
   Spinner,
   TrashIcon,
   usePaginationFromUrl,
@@ -17,7 +16,6 @@ import type {
   DataSourceViewCategory,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  DataSourceWithConnectorDetailsType,
   PlanType,
   SpaceType,
   WorkspaceType,
@@ -25,7 +23,13 @@ import type {
 import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
@@ -35,6 +39,7 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
@@ -42,7 +47,7 @@ import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
   useDeleteFolderOrWebsite,
@@ -252,7 +257,6 @@ export const SpaceResourcesList = ({
     workspaceId: owner.sId,
     agentConfigurationName: assistantName,
   });
-  const [dataSourceSearch, setDataSourceSearch] = useState("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -269,7 +273,6 @@ export const SpaceResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
@@ -294,6 +297,11 @@ export const SpaceResourcesList = ({
     spaceId: space.sId,
     category,
   });
+
+  // Use the search term from context instead of local state.
+  // TODO(20250226, search-kb): remove this once the keyword search is implemented.
+  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
+    useContext(SpaceSearchContext);
 
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
@@ -367,6 +375,14 @@ export const SpaceResourcesList = ({
     isDark,
   ]);
 
+  useEffect(() => {
+    if (rows.length > 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [rows.length, setIsSearchDisabled]);
+
   const onSelectedDataUpdated = useCallback(async () => {
     await mutateSpaceDataSourceViews();
   }, [mutateSpaceDataSourceViews]);
@@ -392,123 +408,105 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          rows.length === 0
-            ? classNames(
-                "h-36 w-full items-center justify-center rounded-xl",
-                "bg-muted-background dark:bg-muted-background-night"
-              )
-            : ""
-        )}
-      >
-        {rows.length > 0 && (
-          <SearchInput
-            name="search"
-            ref={searchBarRef}
-            placeholder="Search (Name)"
-            value={dataSourceSearch}
-            onChange={(s) => setDataSourceSearch(s)}
-          />
-        )}
-        {isSystemSpace && category === "managed" && (
-          <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
-            <AddConnectionMenu
-              owner={owner}
-              plan={plan}
-              existingDataSources={
-                spaceDataSourceViews
-                  .filter((dsView) => isManaged(dsView.dataSource))
-                  .map(
-                    (v) => v.dataSource
-                  ) as DataSourceWithConnectorDetailsType[]
-                // We need to filter and then cast because useSpaceDataSourceViewsWithDetails can
-                // return dataSources with connectorProvider as null
-              }
-              setIsProviderLoading={(provider, isLoading) => {
-                setIsNewConnectorLoading(isLoading);
-                setIsLoadingByProvider((prev) => ({
-                  ...prev,
-                  [provider]: isLoading,
-                }));
-              }}
-              onCreated={async (dataSource) => {
-                const updateDataSourceViews =
-                  await mutateSpaceDataSourceViews();
+      {/* Empty state. */}
+      {rows.length === 0 && (
+        <div
+          className={classNames(
+            "flex h-36 w-full items-center justify-center rounded-xl",
+            "bg-muted-background dark:bg-muted-background-night"
+          )}
+        >
+          {isSystemSpace && category === "managed" && (
+            <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
+              <AddConnectionMenu
+                owner={owner}
+                plan={plan}
+                setIsProviderLoading={(provider, isLoading) => {
+                  setIsNewConnectorLoading(isLoading);
+                  setIsLoadingByProvider((prev) => ({
+                    ...prev,
+                    [provider]: isLoading,
+                  }));
+                }}
+                onCreated={async (dataSource) => {
+                  const updateDataSourceViews =
+                    await mutateSpaceDataSourceViews();
 
-                if (updateDataSourceViews) {
-                  const view = updateDataSourceViews.dataSourceViews.find(
-                    (v: DataSourceViewType) =>
-                      v.dataSource.sId === dataSource.sId
-                  );
-                  if (view) {
-                    setSelectedDataSourceView(view);
-                    if (
-                      isConnectorPermissionsEditable(
-                        dataSource.connectorProvider
-                      )
-                    ) {
-                      setShowConnectorPermissionsModal(true);
+                  if (updateDataSourceViews) {
+                    const view = updateDataSourceViews.dataSourceViews.find(
+                      (v: DataSourceViewType) =>
+                        v.dataSource.sId === dataSource.sId
+                    );
+                    if (view) {
+                      setSelectedDataSourceView(view);
+                      if (
+                        isConnectorPermissionsEditable(
+                          dataSource.connectorProvider
+                        )
+                      ) {
+                        setShowConnectorPermissionsModal(true);
+                      }
                     }
                   }
-                }
-                setIsNewConnectorLoading(false);
-              }}
-              integrations={integrations}
+                  setIsNewConnectorLoading(false);
+                }}
+                integrations={integrations}
+              />
+            </div>
+          )}
+          {!isSystemSpace && isManagedCategory && (
+            <EditSpaceManagedDataSourcesViews
+              isAdmin={isAdmin}
+              onSelectedDataUpdated={onSelectedDataUpdated}
+              owner={owner}
+              systemSpace={systemSpace}
+              space={space}
             />
-          </div>
-        )}
-        {!isSystemSpace && isManagedCategory && (
-          <EditSpaceManagedDataSourcesViews
-            isAdmin={isAdmin}
-            onSelectedDataUpdated={onSelectedDataUpdated}
-            owner={owner}
-            systemSpace={systemSpace}
-            space={space}
-          />
-        )}
-        {isFolder && selectedDataSourceView && (
-          <ViewFolderAPIModal
-            isOpen={showViewFolderAPIModal}
-            owner={owner}
-            space={space}
-            dataSource={selectedDataSourceView.dataSource}
-            onClose={() => setShowViewFolderAPIModal(false)}
-          />
-        )}
-        {isWebsiteOrFolder && (
-          <>
-            <EditSpaceStaticDatasourcesViews
-              isOpen={showFolderOrWebsiteModal}
-              onOpen={() => {
-                setSelectedDataSourceView(null);
-                setShowFolderOrWebsiteModal(true);
-              }}
+          )}
+          {isFolder && selectedDataSourceView && (
+            <ViewFolderAPIModal
+              isOpen={showViewFolderAPIModal}
               owner={owner}
               space={space}
-              canWriteInSpace={canWriteInSpace}
-              dataSourceView={selectedDataSourceView}
-              category={category}
-              onClose={() => setShowFolderOrWebsiteModal(false)}
+              dataSource={selectedDataSourceView.dataSource}
+              onClose={() => setShowViewFolderAPIModal(false)}
             />
-            {selectedDataSourceView && (
-              <DeleteStaticDataSourceDialog
+          )}
+          {isWebsiteOrFolder && (
+            <>
+              <EditSpaceStaticDatasourcesViews
+                isOpen={showFolderOrWebsiteModal}
+                onOpen={() => {
+                  setSelectedDataSourceView(null);
+                  setShowFolderOrWebsiteModal(true);
+                }}
                 owner={owner}
-                dataSource={selectedDataSourceView.dataSource}
-                handleDelete={onDeleteFolderOrWebsite}
-                isOpen={showDeleteConfirmDialog}
-                onClose={() => setShowDeleteConfirmDialog(false)}
+                space={space}
+                canWriteInSpace={canWriteInSpace}
+                dataSourceView={selectedDataSourceView}
+                category={category}
+                onClose={() => setShowFolderOrWebsiteModal(false)}
               />
-            )}
-          </>
-        )}
-        <AssistantDetails
-          owner={owner}
-          assistantId={assistantSId}
-          onClose={() => setAssistantName(null)}
-        />
-      </div>
+              {selectedDataSourceView && (
+                <DeleteStaticDataSourceDialog
+                  owner={owner}
+                  dataSource={selectedDataSourceView.dataSource}
+                  handleDelete={onDeleteFolderOrWebsite}
+                  isOpen={showDeleteConfirmDialog}
+                  onClose={() => setShowDeleteConfirmDialog(false)}
+                />
+              )}
+            </>
+          )}
+          <AssistantDetails
+            owner={owner}
+            assistantId={assistantSId}
+            onClose={() => setAssistantName(null)}
+          />
+        </div>
+      )}
+
+      {/* Non-empty state. */}
       {rows.length > 0 && (
         <DataTable<RowData>
           data={rows}
@@ -545,3 +543,389 @@ export const SpaceResourcesList = ({
     </>
   );
 };
+
+// export const SpaceResourcesList = ({
+//   canWriteInSpace,
+//   category,
+//   isAdmin,
+//   onSelect,
+//   owner,
+//   plan,
+//   space,
+// }: SpaceResourcesListProps) => {
+//   const { isDark } = useTheme();
+
+//   const isSystemSpace = space.kind === "system";
+//   const [assistantName, setAssistantName] = useState<string | null>(null);
+//   const { sId: assistantSId } = useAgentConfigurationSIdLookup({
+//     workspaceId: owner.sId,
+//     agentConfigurationName: assistantName,
+//   });
+//   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+//     useState(false);
+//   const [selectedDataSourceView, setSelectedDataSourceView] =
+//     useState<DataSourceViewsWithDetails | null>(null);
+//   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
+//   const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+//     useState(false);
+//   const [showViewFolderAPIModal, setShowViewFolderAPIModal] = useState(false);
+//   const [sorting, setSorting] = useState<SortingState>([
+//     { id: "name", desc: false },
+//   ]);
+
+//   // Use the search term from context instead of local state.
+//   // TODO(20250226, search-kb): remove this once the keyword search is implemented.
+//   const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
+//     useContext(SpaceSearchContext);
+
+//   const router = useRouter();
+//   const isManagedCategory = category === "managed";
+//   const isWebsite = category === "website";
+//   const isFolder = category === "folder";
+//   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+//   const { pagination, setPagination } = usePaginationFromUrl({
+//     urlPrefix: "table",
+//   });
+//   const doDelete = useDeleteFolderOrWebsite({
+//     owner,
+//     spaceId: space.sId,
+//     category,
+//   });
+//   const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
+//     useSpaceDataSourceViewsWithDetails({
+//       workspaceId: owner.sId,
+//       spaceId: space.sId,
+//       category,
+//     });
+
+//   const rows: RowData[] = useMemo(() => {
+//     if (!spaceDataSourceViews) {
+//       return [];
+//     }
+//     return spaceDataSourceViews.map((dataSourceView) => {
+//       const provider = dataSourceView.dataSource.connectorProvider;
+
+//       const menuItems: MenuItem[] = [];
+//       if (isWebsiteOrFolder && canWriteInSpace) {
+//         menuItems.push({
+//           label: "Edit",
+//           kind: "item",
+//           icon: PencilSquareIcon,
+//           onClick: (e) => {
+//             e.stopPropagation();
+//             setSelectedDataSourceView(dataSourceView);
+//             setShowFolderOrWebsiteModal(true);
+//           },
+//         });
+//         if (isFolder) {
+//           menuItems.push({
+//             label: "Use from API",
+//             kind: "item",
+//             icon: CubeIcon,
+//             onClick: (e) => {
+//               e.stopPropagation();
+//               setSelectedDataSourceView(dataSourceView);
+//               setShowViewFolderAPIModal(true);
+//             },
+//           });
+//         }
+//         menuItems.push({
+//           label: "Delete",
+//           icon: TrashIcon,
+//           kind: "item",
+//           variant: "warning",
+//           onClick: (e) => {
+//             e.stopPropagation();
+//             setSelectedDataSourceView(dataSourceView);
+//             setShowDeleteConfirmDialog(true);
+//           },
+//         });
+//       }
+
+//       return {
+//         dataSourceView,
+//         label: getDataSourceNameFromView(dataSourceView),
+//         icon: getConnectorProviderLogoWithFallback({ provider, isDark }),
+//         workspaceId: owner.sId,
+//         isAdmin,
+//         menuItems,
+//         buttonOnClick: (e) => {
+//           e.stopPropagation();
+//           setSelectedDataSourceView(dataSourceView);
+//           setShowConnectorPermissionsModal(true);
+//         },
+//         onClick: () => onSelect(dataSourceView.sId),
+//       };
+//     });
+//   }, [
+//     spaceDataSourceViews,
+//     owner.sId,
+//     isAdmin,
+//     isWebsiteOrFolder,
+//     canWriteInSpace,
+//     isFolder,
+//     onSelect,
+//     isDark,
+//   ]);
+
+//   useEffect(() => {
+//     if (rows.length > 0) {
+//       setIsSearchDisabled(true);
+//     } else {
+//       setIsSearchDisabled(false);
+//     }
+//   }, [rows.length, setIsSearchDisabled]);
+
+//   const onDeleteFolderOrWebsite = useCallback(async () => {
+//     if (selectedDataSourceView?.dataSource) {
+//       const res = await doDelete(selectedDataSourceView);
+//       if (res) {
+//         await router.push(
+//           `/w/${owner.sId}/spaces/${space.sId}/categories/${selectedDataSourceView.category}`
+//         );
+//       }
+//     }
+//   }, [selectedDataSourceView, doDelete, router, owner.sId, space.sId]);
+
+//   if (isSpaceDataSourceViewsLoading) {
+//     return (
+//       <div className="mt-8 flex justify-center">
+//         <Spinner size="lg" />
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <>
+//       {rows.length === 0 && (
+//         <div
+//           className={classNames(
+//             rows.length === 0
+//               ? classNames(
+//                   "h-36 w-full items-center justify-center rounded-xl",
+//                   "bg-muted-background dark:bg-muted-background-night"
+//                 )
+//               : ""
+//           )}
+//         >
+//           {isSystemSpace && category === "managed" && (
+//             <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
+//               <AddConnectionMenu
+//                 owner={owner}
+//                 plan={plan}
+//                 setIsProviderLoading={(provider, isLoading) => {
+//                   setIsNewConnectorLoading(isLoading);
+//                   setIsLoadingByProvider((prev) => ({
+//                     ...prev,
+//                     [provider]: isLoading,
+//                   }));
+//                 }}
+//                 onCreated={async (dataSource) => {
+//                   const updateDataSourceViews =
+//                     await mutateSpaceDataSourceViews();
+
+//                   if (updateDataSourceViews) {
+//                     const view = updateDataSourceViews.dataSourceViews.find(
+//                       (v: DataSourceViewType) =>
+//                         v.dataSource.sId === dataSource.sId
+//                     );
+//                     if (view) {
+//                       setSelectedDataSourceView(view);
+//                       if (
+//                         isConnectorPermissionsEditable(
+//                           dataSource.connectorProvider
+//                         )
+//                       ) {
+//                         setShowConnectorPermissionsModal(true);
+//                       }
+//                     }
+//                   }
+//                   setIsNewConnectorLoading(false);
+//                 }}
+//                 integrations={integrations}
+//               />
+//             </div>
+//           )}
+//         </div>
+//       )}
+//       {isFolder && selectedDataSourceView && (
+//         <ViewFolderAPIModal
+//           isOpen={showViewFolderAPIModal}
+//           owner={owner}
+//           space={space}
+//           dataSource={selectedDataSourceView.dataSource}
+//           onClose={() => setShowViewFolderAPIModal(false)}
+//         />
+//       )}
+//       {isWebsiteOrFolder && (
+//         <>
+//           <EditSpaceStaticDatasourcesViews
+//             isOpen={showFolderOrWebsiteModal}
+//             onOpen={() => {
+//               setSelectedDataSourceView(null);
+//               setShowFolderOrWebsiteModal(true);
+//             }}
+//             owner={owner}
+//             space={space}
+//             canWriteInSpace={canWriteInSpace}
+//             dataSourceView={selectedDataSourceView}
+//             category={category}
+//             onClose={() => setShowFolderOrWebsiteModal(false)}
+//           />
+//           {selectedDataSourceView && (
+//             <DeleteStaticDataSourceDialog
+//               owner={owner}
+//               dataSource={selectedDataSourceView.dataSource}
+//               handleDelete={onDeleteFolderOrWebsite}
+//               isOpen={showDeleteConfirmDialog}
+//               onClose={() => setShowDeleteConfirmDialog(false)}
+//             />
+//           )}
+//         </>
+//       )}
+//       <AssistantDetails
+//         owner={owner}
+//         assistantId={assistantSId}
+//         onClose={() => setAssistantName(null)}
+//       />
+//       {rows.length > 0 && (
+//         <DataTable<RowData>
+//           data={rows}
+//           columns={getTableColumns(
+//             setAssistantName,
+//             isManagedCategory,
+//             isWebsite,
+//             space
+//           )}
+//           filter={dataSourceSearch}
+//           filterColumn="name"
+//           sorting={sorting}
+//           setSorting={setSorting}
+//           pagination={pagination}
+//           setPagination={setPagination}
+//           columnsBreakpoints={{
+//             lastSync: "md",
+//             managedBy: "sm",
+//           }}
+//         />
+//       )}
+
+//       {selectedDataSourceView?.dataSource?.connector && (
+//         <ConnectorPermissionsModal
+//           owner={owner}
+//           connector={selectedDataSourceView.dataSource.connector}
+//           dataSourceView={selectedDataSourceView}
+//           isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+//           onClose={() => setShowConnectorPermissionsModal(false)}
+//           readOnly={false}
+//           isAdmin={isAdmin}
+//         />
+//       )}
+//     </>
+//   );
+// };
+
+type SpaceResourcesListActionButtonsProps = SpaceResourcesListProps;
+
+export function SpaceResourcesListActionButtons({
+  category,
+  isAdmin,
+  owner,
+  plan,
+  canWriteInSpace,
+  integrations,
+  space,
+  systemSpace,
+}: SpaceResourcesListActionButtonsProps) {
+  const isManagedCategory = category === "managed";
+  const isSystemSpace = systemSpace.sId === space.sId;
+  const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
+
+  const [showFolderOrWebsiteModal, setShowFolderOrWebsiteModal] =
+    useState(false);
+
+  const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
+    useSpaceDataSourceViewsWithDetails({
+      workspaceId: owner.sId,
+      spaceId: space.sId,
+      category,
+      disabled: true,
+    });
+
+  const onSelectedDataUpdated = useCallback(async () => {
+    await mutateSpaceDataSourceViews();
+  }, [mutateSpaceDataSourceViews]);
+
+  // TODO(2025-02-26): Move this to the router.
+  const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
+    useState(false);
+  const [selectedDataSourceView, setSelectedDataSourceView] =
+    useState<DataSourceViewsWithDetails | null>(null);
+
+  return (
+    <>
+      {selectedDataSourceView?.dataSource?.connector && (
+        <ConnectorPermissionsModal
+          owner={owner}
+          connector={selectedDataSourceView.dataSource.connector}
+          dataSourceView={selectedDataSourceView}
+          isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
+          onClose={() => setShowConnectorPermissionsModal(false)}
+          readOnly={false}
+          isAdmin={isAdmin}
+        />
+      )}
+      {isSystemSpace && category === "managed" && (
+        <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
+          <AddConnectionMenu
+            owner={owner}
+            plan={plan}
+            setIsProviderLoading={() => {}}
+            onCreated={async (dataSource) => {
+              const updateDataSourceViews = await mutateSpaceDataSourceViews();
+
+              if (updateDataSourceViews) {
+                const view = updateDataSourceViews.dataSourceViews.find(
+                  (v: DataSourceViewType) => v.dataSource.sId === dataSource.sId
+                );
+                if (view) {
+                  setSelectedDataSourceView(view);
+                  if (
+                    isConnectorPermissionsEditable(dataSource.connectorProvider)
+                  ) {
+                    setShowConnectorPermissionsModal(true);
+                  }
+                }
+              }
+            }}
+            integrations={integrations}
+          />
+        </div>
+      )}
+      {!isSystemSpace && isManagedCategory && (
+        <EditSpaceManagedDataSourcesViews
+          isAdmin={isAdmin}
+          onSelectedDataUpdated={onSelectedDataUpdated}
+          owner={owner}
+          systemSpace={systemSpace}
+          space={space}
+        />
+      )}
+      {isWebsiteOrFolder && (
+        <EditSpaceStaticDatasourcesViews
+          isOpen={showFolderOrWebsiteModal}
+          onOpen={() => {
+            setShowFolderOrWebsiteModal(true);
+          }}
+          owner={owner}
+          space={space}
+          dataSourceView={null}
+          canWriteInSpace={canWriteInSpace}
+          category={category}
+          onClose={() => setShowFolderOrWebsiteModal(false)}
+        />
+      )}
+    </>
+  );
+}
