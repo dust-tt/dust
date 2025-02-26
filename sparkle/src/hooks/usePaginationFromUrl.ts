@@ -44,34 +44,3 @@ export const usePaginationFromUrl = ({
 
   return res;
 };
-
-interface UseCursorPaginationFromUrlProps {
-  urlPrefix?: string;
-  defaultHistory?: HistoryOptions;
-}
-
-export function useCursorPaginationFromUrl({
-  urlPrefix = "",
-  defaultHistory = "push",
-}: UseCursorPaginationFromUrlProps = {}) {
-  const [cursorParam, setCursorParam] = useHashParam(
-    urlPrefix ? `${urlPrefix}Cursor` : "cursor"
-  );
-
-  const cursor = cursorParam || null;
-
-  return useMemo(() => {
-    const setCursorPagination = (
-      newCursor: string | null,
-      history?: HistoryOptions
-    ) => {
-      if (newCursor !== cursor) {
-        setCursorParam(newCursor ?? undefined, {
-          history: history ?? defaultHistory,
-        });
-      }
-    };
-
-    return { cursor, setCursorPagination };
-  }, [cursor, setCursorParam, defaultHistory]);
-}
