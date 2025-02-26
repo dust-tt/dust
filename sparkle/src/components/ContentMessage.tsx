@@ -101,7 +101,7 @@ const textVariants = cva("s-text-sm", {
 
 export interface ContentMessageProps {
   title?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
   size?: ContentMessageSizeType;
   variant?: ContentMessageVariantType;
@@ -130,7 +130,7 @@ export function ContentMessage({
           {title && <div className={titleVariants({ variant })}>{title}</div>}
         </div>
       )}
-      <div className={textVariants({ variant })}>{children}</div>
+      {children && <div className={textVariants({ variant })}>{children}</div>}
     </div>
   );
 }
