@@ -29,10 +29,7 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type {
-  PostSpaceSearchResponseBody,
-  SpaceSearchUseCase,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type { SpaceSearchUseCase } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 export function useSpaces({
   workspaceId,
