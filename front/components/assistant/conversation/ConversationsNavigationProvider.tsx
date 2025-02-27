@@ -2,6 +2,8 @@ import { useRouter } from "next/router";
 import type { RefObject } from "react";
 import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 
+import { parseThreadVersionParam } from "@app/components/assistant/conversation/lib";
+
 interface ConversationsNavigationContextType {
   conversationsNavigationRef: RefObject<HTMLDivElement>;
   scrollConversationsToTop: () => void;
@@ -47,9 +49,7 @@ export function ConversationsNavigationProvider({
     return initialConversationId ?? null;
   }, [initialConversationId, router.query.cId]);
 
-  const threadVersion = router.query.threadVersion
-    ? Number(router.query.threadVersion)
-    : undefined;
+  const threadVersion = parseThreadVersionParam(router.query.threadVersion);
 
   return (
     <ConversationsNavigationContext.Provider

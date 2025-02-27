@@ -10,7 +10,10 @@ import type {
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import {
+  createThreadVersionParam,
+  deleteConversation,
+} from "@app/components/assistant/conversation/lib";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
@@ -40,11 +43,10 @@ export function useConversation({
 } {
   const conversationFetcher: Fetcher<{ conversation: ConversationType }> =
     fetcher;
-  const threadVersionParam =
-    threadVersion != null ? `?threadVersion=${threadVersion}` : "";
+
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
-      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}${threadVersionParam}`
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}${createThreadVersionParam(threadVersion)}`
       : null,
     conversationFetcher,
     options
@@ -112,14 +114,12 @@ export function useConversationMessages({
   threadVersion,
   workspaceId,
   limit = DEFAULT_PAGE_LIMIT,
-  options,
 }: {
   conversationId: string | null;
   threadVersion?: number;
   workspaceId: string;
   limit?: number;
   startAtRank?: number;
-  options?: { disabled: boolean };
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
@@ -151,7 +151,6 @@ export function useConversationMessages({
       {
         revalidateAll: false,
         revalidateOnFocus: false,
-        ...options,
       }
     );
 

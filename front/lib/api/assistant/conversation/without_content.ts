@@ -55,6 +55,7 @@ export async function getConversationWithoutContent(
     ),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
+    lastThreadVersion: conversation.lastThreadVersion,
     threadVersion: options?.threadVersion ?? conversation.lastThreadVersion,
   });
 }

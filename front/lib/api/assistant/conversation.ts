@@ -132,6 +132,7 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     threadVersion: 0,
+    lastThreadVersion: 0,
     content: [],
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -280,6 +281,7 @@ export async function getUserConversations(
         title: c.title,
         visibility: c.visibility,
         threadVersion: c.lastThreadVersion,
+        lastThreadVersion: c.lastThreadVersion,
         requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
@@ -438,6 +440,7 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     threadVersion: threadVersion ?? conversation.lastThreadVersion,
+    lastThreadVersion: conversation.lastThreadVersion,
     content,
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -1276,13 +1279,7 @@ export async function* editUserMessage(
         transaction: t,
       });
       const lastVersion = lastMessageVersion?.version ?? 0;
-      const maxThreadVersions = await Message.max("threadVersions", {
-        where: {
-          conversationId: conversation.id,
-        },
-        transaction: t,
-      });
-      const newThreadVersion = Number(maxThreadVersions) + 1;
+      const newThreadVersion = conversation.lastThreadVersion + 1;
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(

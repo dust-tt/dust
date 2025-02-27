@@ -461,6 +461,15 @@ Message.init(
         fields: ["conversationId", "rank", "version", "parentId"],
       },
       {
+        unique: true,
+        fields: ["conversationId", "rank", "parentId"],
+      },
+      {
+        fields: ["conversationId", "threadVersions"],
+        using: "GIN",
+        concurrently: true,
+      },
+      {
         fields: ["agentMessageId"],
         concurrently: true,
       },

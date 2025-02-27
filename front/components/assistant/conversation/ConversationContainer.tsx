@@ -81,7 +81,6 @@ export function ConversationContainer({
     conversationId: activeConversationId,
     threadVersion,
     workspaceId: owner.sId,
-    options: { disabled: true },
   });
 
   const setInputbarMention = useCallback(

@@ -70,7 +70,7 @@ export function UserMessage({
   const doEditMessage = useEditMessage(owner);
 
   const router = useRouter();
-  async function switchThread(threadVersion: number | null) {
+  const switchThread = async (threadVersion: number | null) => {
     if (threadVersion !== null) {
       await router.push(
         `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`,
@@ -78,7 +78,7 @@ export function UserMessage({
         { shallow: true }
       );
     }
-  }
+  };
 
   const submitEdit = async () => {
     const editorService = editorServiceRef.current;

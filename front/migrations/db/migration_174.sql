@@ -4,4 +4,5 @@ ALTER TABLE "public"."messages" ADD COLUMN "nextThreadVersion" INTEGER;
 ALTER TABLE "public"."messages" ADD COLUMN "previousThreadVersion" INTEGER;
 ALTER TABLE "public"."messages" ADD COLUMN "threadVersions" INTEGER[] DEFAULT ARRAY[0]::INTEGER[];
 CREATE UNIQUE INDEX CONCURRENTLY "messages_conversation_id_rank_version_parent_id" ON "messages" ("conversationId", "rank", "version", "parentId");
-DROP INDEX IF EXISTS "messages_conversation_id_rank_version";
+CREATE UNIQUE INDEX CONCURRENTLY "messages_conversation_id_rank_parent_id" ON "messages" ("conversationId", "rank", "parentId");
+CREATE INDEX CONCURRENTLY "messages_conversation_id_thread_versions" ON "messages" USING GIN ("conversationId", "threadVersions");

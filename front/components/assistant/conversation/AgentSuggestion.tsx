@@ -17,6 +17,7 @@ import { useRouter } from "next/router";
 import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { createThreadVersionParam } from "@app/components/assistant/conversation/lib";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
@@ -48,13 +49,8 @@ export function AgentSuggestion({
   const { submit: handleSelectSuggestion } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
       const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-      const threadVersionParam =
-        conversation.threadVersion !== null
-          ? `?threadVersion=${conversation.threadVersion}`
-          : "";
-
       const mRes = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit${threadVersionParam}`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit${createThreadVersionParam(conversation.threadVersion)}`,
         {
           method: "POST",
           headers: {

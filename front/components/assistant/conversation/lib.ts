@@ -32,6 +32,27 @@ export type ContentFragmentInput = {
   file: File;
 };
 
+export const createThreadVersionParam = (threadVersion?: number) => {
+  const urlParams = new URLSearchParams();
+
+  if (threadVersion !== undefined) {
+    urlParams.set("threadVersion", threadVersion.toString());
+  }
+  const threadVersionParam =
+    urlParams.size > 0 ? `?${urlParams.toString()}` : "";
+
+  return threadVersionParam;
+};
+
+export const parseThreadVersionParam = (
+  threadVersion: string | string[] | undefined
+) => {
+  return typeof threadVersion === "string" &&
+    Number.isFinite(Number(threadVersion))
+    ? Number(threadVersion)
+    : undefined;
+};
+
 export function createPlaceholderUserMessage({
   input,
   mentions,
@@ -91,14 +112,12 @@ export async function submitMessage({
   threadVersion?: number;
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
-  const threadVersionParam =
-    threadVersion !== null ? `?threadVersion=${threadVersion}` : "";
   // Create a new content fragment.
   if (contentFragments.length > 0) {
     const contentFragmentsRes = await Promise.all(
       contentFragments.map((contentFragment) => {
         return fetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment${threadVersionParam}`,
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment${createThreadVersionParam(threadVersion)}`,
           {
             method: "POST",
             headers: {
@@ -133,7 +152,7 @@ export async function submitMessage({
 
   // Create a new user message.
   const mRes = await fetch(
-    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${threadVersionParam}`,
+    `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages${createThreadVersionParam(threadVersion)}`,
     {
       method: "POST",
       headers: {
