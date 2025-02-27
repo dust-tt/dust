@@ -83,9 +83,9 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
-            ) : (
+            ) : item.href ? (
               <Link
-                href={item.href || "#"}
+                href={item.href}
                 className={
                   index === itemsShown.length - 1
                     ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
@@ -99,6 +99,21 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
                       LABEL_TRUNCATE_LENGTH_MIDDLE
                     )}
               </Link>
+            ) : (
+              <div
+                className={
+                  index === itemsShown.length - 1
+                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    : "s-text-element-700 dark:s-text-element-700-night"
+                }
+              >
+                {index === itemsShown.length - 1
+                  ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
+                  : truncateWithTooltip(
+                      item.label,
+                      LABEL_TRUNCATE_LENGTH_MIDDLE
+                    )}
+              </div>
             )}
             {index === itemsShown.length - 1 ? null : (
               <ChevronRightIcon className="s-text-element-500 dark:s-text-element-500-night" />
