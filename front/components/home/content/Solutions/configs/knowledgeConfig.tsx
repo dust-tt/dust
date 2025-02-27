@@ -143,9 +143,9 @@ export const UseCases: UseCaseProps = {
       images: ["/static/landing/knowledge/activityDigest.png"],
     },
     {
-      title: "Market intelligence",
+      title: "Industry radar",
       content:
-        "Track and structure relevant market information into actionable insights and custom reports.",
+        "Track and structure relevant news and market information into actionable insights and custom reports.",
       images: ["/static/landing/knowledge/aiNewsletter.png"],
     },
   ],
