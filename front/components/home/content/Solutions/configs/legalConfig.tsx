@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Navigate legal research efficiently",
     "Generate compliant legal documents",
   ],
-  image: "/static/landing/sales/accountSnapshot.png",
+  image: "/static/landing/legal/legalReview.png",
 };
 
 export const Hero: HeroProps = {
@@ -134,7 +134,7 @@ export const UseCases: UseCaseProps = {
       title: "Legal review",
       content:
         "Analyze contracts or RFPs automatically for compliance and risk, highlighting key terms and obligations.",
-      images: ["/static/landing/solutions/legal2.png"],
+      images: ["/static/landing/legal/legalReview.png"],
     },
     {
       title: "Legal research and monitoring",

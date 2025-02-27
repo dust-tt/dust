@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Get answers in Slack with relevant context and citations",
     "Surface blockers from project discussions",
   ],
-  image: "/static/landing/sales/accountSnapshot.png",
+  image: "/static/landing/knowledge/procureHelp.png",
 };
 
 export const Hero: HeroProps = {
@@ -128,25 +128,25 @@ export const UseCases: UseCaseProps = {
       title: "Team knowledge",
       content:
         "Answer employee questions instantly across departments using internal documentation and policies.",
-      images: ["/static/landing/solutions/knowledge1.png"],
+      images: ["/static/landing/knowledge/procureHelp.png"],
     },
     {
       title: "Product expert",
       content:
         "Provide comprehensive product information and documentation support to all employees.",
-      images: ["/static/landing/solutions/knowledge2.png"],
+      images: ["/static/landing/knowledge/productGuru.png"],
     },
     {
       title: "Activity digests",
       content:
         "Generate automated summaries of company activities, discussions, and project status updates.",
-      images: ["/static/landing/solutions/knowledge3.png"],
+      images: ["/static/landing/knowledge/activityDigest.png"],
     },
     {
       title: "Market intelligence",
       content:
         "Track and structure relevant market information into actionable insights and custom reports.",
-      images: ["/static/landing/solutions/knowledge4.png"],
+      images: ["/static/landing/knowledge/aiNewsletter.png"],
     },
   ],
 };
