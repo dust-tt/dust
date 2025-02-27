@@ -12,7 +12,6 @@ use serde_json::{json, Value};
 use tokio_postgres::NoTls;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(long, help = "The version of the index")]
     index_version: u32,
