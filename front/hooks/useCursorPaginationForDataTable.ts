@@ -9,7 +9,7 @@ import type { CursorPaginationParams } from "@app/lib/api/pagination";
  * - Assumes that only a next cursor is retrieved when fetching new data,
  * and therefore stores an entire history of previous cursors.
  * - Does not support hash parameters and therefore link sharing, since going back requires the previous cursor
- * and going back several times required the full history.
+ * and going back several times requires the full history.
  * - Ties the cursor pagination with the table pagination, and exposes a `tablePagination` that can directly be used in
  * a `DataTable`.
  * - Does not support moving forward more than one page at a time (will ignore the action).
