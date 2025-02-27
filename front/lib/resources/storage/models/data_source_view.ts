@@ -7,6 +7,7 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { Conversation } from "@app/lib/models/assistant/conversation";
 
 export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
@@ -92,4 +93,10 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
 DataSourceViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
+});
+
+Conversation.hasMany(DataSourceViewModel, {
+  as: "conversation",
+  foreignKey: { name: "conversationId", allowNull: true },
+  onDelete: "RESTRICT",
 });
