@@ -276,7 +276,6 @@ export const SpaceResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
