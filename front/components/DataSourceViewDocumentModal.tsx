@@ -94,7 +94,7 @@ export default function DataSourceViewDocumentModal({
                   <div className="mb-4 mt-8 text-sm text-foreground dark:text-foreground-night">
                     Content of the document:
                   </div>
-                  <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800 dark:bg-structure-100-night dark:text-element-800">
+                  <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800 dark:bg-structure-100-night dark:text-element-800-night">
                     {text}
                   </pre>
                 </>
