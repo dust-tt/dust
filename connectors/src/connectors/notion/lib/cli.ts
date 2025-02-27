@@ -12,10 +12,12 @@ import type {
 import { Client, isFullDatabase, isFullPage } from "@notionhq/client";
 import { Op } from "sequelize";
 
+import { updateAllParentsFields } from "@connectors/connectors/notion/lib/parents";
 import {
   deleteDatabase,
   deletePage,
   getNotionAccessToken,
+  updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
@@ -26,7 +28,6 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { getConnectorOrThrow } from "@connectors/lib/cli";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -36,6 +37,32 @@ import { ConnectorModel } from "@connectors/resources/storage/models/connector_m
 import { getParsedDatabase, retrievePage } from "./notion_api";
 
 const logger = mainLogger.child({ provider: "notion" });
+
+const getConnector = async (args: NotionCommandType["args"]) => {
+  if (!args.wId) {
+    throw new Error("Missing --wId argument");
+  }
+  if (!args.dsId && !args.connectorId) {
+    throw new Error("Missing --dsId or --connectorId argument");
+  }
+
+  // We retrieve by data source name as we can have multiple data source with the same provider for
+  // a given workspace.
+  const connector = await ConnectorModel.findOne({
+    where: {
+      workspaceId: `${args.wId}`,
+      type: "notion",
+      ...(args.dsId ? { dataSourceId: args.dsId } : {}),
+      ...(args.connectorId ? { id: args.connectorId } : {}),
+    },
+  });
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  return connector;
+};
 
 async function listSkippedDatabaseIdsForConnectorId(connectorId: ModelId) {
   const skippedDatabases = await NotionDatabase.findAll({
@@ -278,29 +305,12 @@ export const notion = async ({
   const logger = topLogger.child({ majorCommand: "notion", command, args });
   switch (command) {
     case "skip-page": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
+      const connector = await getConnector(args);
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
       const pageId = parseNotionResourceId(args.pageId);
 
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "notion",
-          workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
-        },
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
-        );
-      }
       const connectorId = connector.id;
       const existingPage = await NotionPage.findOne({
         where: {
@@ -341,30 +351,12 @@ export const notion = async ({
     }
 
     case "skip-database": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
+      const connector = await getConnector(args);
+
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
       const databaseId = parseNotionResourceId(args.databaseId);
-
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "notion",
-          workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
-        },
-      });
-
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId}, and type notion`
-        );
-      }
 
       const connectorId = connector.id;
 
@@ -423,28 +415,13 @@ export const notion = async ({
       return { success: true };
     }
     case "upsert-page": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
+      const connector = await getConnector(args);
+
       if (!args.pageId) {
         throw new Error("Missing --pageId argument");
       }
       const pageId = parseNotionResourceId(args.pageId);
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "notion",
-          workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
-        },
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
-        );
-      }
+
       logger.info({ pageId }, "[Admin] Upserting page");
       const connectorId = connector.id;
       const client = await getTemporalClient();
@@ -482,30 +459,12 @@ export const notion = async ({
           : undefined,
       };
     }
-
     case "upsert-database": {
-      if (!args.wId) {
-        throw new Error("Missing --wId argument");
-      }
-      if (!args.dsId) {
-        throw new Error("Missing --dsId argument");
-      }
+      const connector = await getConnector(args);
       if (!args.databaseId) {
         throw new Error("Missing --databaseId argument");
       }
       const databaseId = parseNotionResourceId(args.databaseId);
-      const connector = await ConnectorModel.findOne({
-        where: {
-          type: "notion",
-          workspaceId: `${args.wId}`,
-          dataSourceId: args.dsId,
-        },
-      });
-      if (!connector) {
-        throw new Error(
-          `Could not find connector for workspace ${args.wId}, data source ${args.dsId} and type notion`
-        );
-      }
       logger.info({ databaseId }, "[Admin] Upserting database");
       const connectorId = connector.id;
       const client = await getTemporalClient();
@@ -545,17 +504,53 @@ export const notion = async ({
       };
     }
 
+    case "update-core-parents": {
+      const connector = await getConnector(args);
+
+      // if no pageId or databaseId is provided, we update all parents fields for
+      // all pages and databases for the connector
+      if (args.all) {
+        const runTimestamp = 1;
+        let cursors:
+          | {
+              pageCursor: string | null;
+              databaseCursor: string | null;
+            }
+          | undefined;
+        do {
+          cursors = await updateParentsFields({
+            connectorId: connector.id,
+            cursors,
+            runTimestamp,
+          });
+        } while (cursors?.pageCursor || cursors?.databaseCursor);
+      } else {
+        const pageId = args.pageId && parseNotionResourceId(args.pageId);
+        const databaseId =
+          args.databaseId && parseNotionResourceId(args.databaseId);
+
+        if (!pageId && !databaseId && !args.all) {
+          throw new Error("Missing --pageId or --databaseId or --all argument");
+        }
+
+        await updateAllParentsFields(
+          connector.id,
+          pageId ? [pageId] : [],
+          databaseId ? [databaseId] : [],
+          undefined,
+          async () => {}
+        );
+      }
+      return { success: true };
+    }
+
     case "search-pages": {
-      const { query, wId, dsId } = args;
+      const connector = await getConnector(args);
+      const { query } = args;
 
       if (!query) {
         throw new Error("Missing --query argument");
       }
-
-      const connector = await getConnectorOrThrow({
-        dataSourceId: dsId,
-        workspaceId: wId,
-      });
 
       const pages = await searchNotionPagesForQuery({
         connectorId: connector.id,
@@ -567,16 +562,12 @@ export const notion = async ({
     }
 
     case "check-url": {
-      const { url, wId, dsId } = args;
+      const connector = await getConnector(args);
+      const { url } = args;
 
       if (!url) {
         throw new Error("Missing --url argument");
       }
-
-      const connector = await getConnectorOrThrow({
-        dataSourceId: dsId,
-        workspaceId: wId,
-      });
 
       const r = await checkNotionUrl({
         connectorId: connector.id,
@@ -588,16 +579,12 @@ export const notion = async ({
     }
 
     case "find-url": {
-      const { url, wId, dsId } = args;
+      const connector = await getConnector(args);
+      const { url } = args;
 
       if (!url) {
         throw new Error("Missing --url argument");
       }
-
-      const connector = await getConnectorOrThrow({
-        dataSourceId: dsId,
-        workspaceId: wId,
-      });
 
       const r = await findNotionUrl({
         connectorId: connector.id,
@@ -612,16 +599,12 @@ export const notion = async ({
     // deleting pages from Dust before it finishes It is not meant to be used on
     // pages that are still synced in Notion
     case "delete-url": {
-      const { url, wId, dsId } = args;
+      const connector = await getConnector(args);
+      const { url } = args;
 
       if (!url) {
         throw new Error("Missing --url argument");
       }
-
-      const connector = await getConnectorOrThrow({
-        dataSourceId: dsId,
-        workspaceId: wId,
-      });
 
       const r = await deleteNotionUrl({
         connector,
@@ -632,12 +615,7 @@ export const notion = async ({
     }
 
     case "me": {
-      const { wId, dsId } = args;
-
-      const connector = await getConnectorOrThrow({
-        dataSourceId: dsId,
-        workspaceId: wId,
-      });
+      const connector = await getConnector(args);
 
       const notionAccessToken = await getNotionAccessToken(
         connector.connectionId
