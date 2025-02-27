@@ -34,6 +34,8 @@ pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
 // refresh it.
 pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
 
+pub static CONNECTION_ID_PREFIX: &str = "con";
+
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
 }
@@ -94,6 +96,16 @@ pub enum ConnectionProvider {
     Mock,
     Zendesk,
     Salesforce,
+}
+
+impl FromStr for ConnectionProvider {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match serde_json::from_str(&format!("\"{}\"", s)) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::new()),
+        }
+    }
 }
 
 impl fmt::Display for ConnectionProvider {
@@ -335,7 +347,7 @@ impl Connection {
     pub fn connection_id_from_row_id_and_secret(row_id: i64, secret: &str) -> Result<String> {
         Ok(format!(
             "{}-{}",
-            utils::make_id("con", row_id as u64)?,
+            utils::make_id(CONNECTION_ID_PREFIX, row_id as u64)?,
             secret
         ))
     }
@@ -351,7 +363,7 @@ impl Connection {
         let (prefix, row_id) = utils::parse_id(parts[0])?;
         let secret = parts[1].to_string();
 
-        if prefix != "con" {
+        if prefix != CONNECTION_ID_PREFIX {
             return Err(anyhow::anyhow!(
                 "Invalid connection_id prefix: {}",
                 connection_id
@@ -435,7 +447,7 @@ impl Connection {
 
     async fn reload(&mut self, store: Box<dyn OAuthStore + Sync + Send>) -> Result<()> {
         let connection = store
-            .retrieve_connection(self.provider, &self.connection_id)
+            .retrieve_connection_by_provider(self.provider, &self.connection_id)
             .await?;
 
         self.created = connection.created;

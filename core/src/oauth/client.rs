@@ -2,7 +2,10 @@ use anyhow::{anyhow, Result};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 
-use crate::{oauth::credential::CredentialProvider, utils::APIResponse};
+use crate::{
+    oauth::app::ConnectionAccessTokenResponse, oauth::credential::CredentialProvider,
+    utils::APIResponse,
+};
 
 lazy_static! {
     static ref OAUTH_API: String = std::env::var("OAUTH_API").unwrap();
@@ -49,6 +52,38 @@ impl OauthClient {
                 Ok((credential.provider, credential.content))
             }
             s => Err(anyhow!("Failed to get credential. Status: {}", s)),
+        }
+    }
+
+    pub async fn get_connection_access_token(
+        secret_id: &str,
+    ) -> Result<ConnectionAccessTokenResponse> {
+        let res = reqwest::Client::new()
+            .get(format!(
+                "{}/connections/{}/access_token",
+                *OAUTH_API, secret_id
+            ))
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", *OAUTH_API_KEY))
+            .send()
+            .await?;
+
+        match res.status().as_u16() {
+            200 => {
+                let r = res.json::<APIResponse>().await?;
+                let connection = match r.response {
+                    Some(response) => {
+                        serde_json::from_value::<ConnectionAccessTokenResponse>(response)?
+                    }
+                    None => {
+                        return Err(anyhow!(
+                            "Failed to get access token. Missing response from `oauth`"
+                        ))
+                    }
+                };
+                Ok(connection)
+            }
+            s => Err(anyhow!("Failed to get access token. Status: {}", s)),
         }
     }
 }
