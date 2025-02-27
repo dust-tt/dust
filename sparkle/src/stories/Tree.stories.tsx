@@ -157,7 +157,7 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: true,
+                  checked: "partial",
                   onChange: () => {
                     return;
                   },
