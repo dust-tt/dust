@@ -510,7 +510,6 @@ export const notion = async ({
       // if no pageId or databaseId is provided, we update all parents fields for
       // all pages and databases for the connector
       if (args.all) {
-        const runTimestamp = 1;
         let cursors:
           | {
               pageCursor: string | null;
@@ -521,7 +520,7 @@ export const notion = async ({
           cursors = await updateParentsFields({
             connectorId: connector.id,
             cursors,
-            runTimestamp,
+            runTimestamp: Date.now(),
           });
         } while (cursors?.pageCursor || cursors?.databaseCursor);
       } else {
@@ -537,7 +536,7 @@ export const notion = async ({
           connector.id,
           pageId ? [pageId] : [],
           databaseId ? [databaseId] : [],
-          undefined,
+          `${Date.now()}`,
           async () => {}
         );
       }
