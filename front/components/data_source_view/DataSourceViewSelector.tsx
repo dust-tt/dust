@@ -448,7 +448,7 @@ function LimitedSearchContentMessage({
         title: "Search results are partial due to the large amount of data.",
         variant: "amber",
         icon: InformationCircleIcon,
-        className: "s-w-full",
+        className: "w-full",
         size: "lg",
       };
 
