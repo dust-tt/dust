@@ -3,6 +3,20 @@ import { useCallback, useState } from "react";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 
+/**
+ * Hook to manage pagination for a table where the data is fetched using cursor pagination.
+ *
+ * - Assumes that only a next cursor is retrieved when fetching new data,
+ * and therefore stores an entire history of previous cursors.
+ * - Does not support hash parameters and therefore link sharing, since going back requires the previous cursor
+ * and going back several times required the full history.
+ * - Ties the cursor pagination with the table pagination, and exposes a `tablePagination` that can directly be used in
+ * a `DataTable`.
+ * - Does not support moving forward more than one page at a time (will ignore the action).
+ *
+ * Users of this hook should eventually be updated to a less stateful pagination mechanism,
+ *  where, for instance, both a next and a previous cursor would be exposed when fetching a page.
+ */
 export function useCursorPaginationForDataTable(pageSize: number) {
   const [cursorPagination, setCursorPagination] =
     useState<CursorPaginationParams>({ cursor: null, limit: pageSize });
