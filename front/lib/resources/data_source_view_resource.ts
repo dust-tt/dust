@@ -1,6 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
+import { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import type {
   ConversationType,
   DataSourceViewCategory,
@@ -49,7 +50,6 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
-import { ConversationWithoutContentPublicType } from "@dust-tt/client";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
