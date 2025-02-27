@@ -143,7 +143,7 @@ impl SqliteDatabase {
                                 }?,
                             ))
                         })
-                        .collect::<Result<serde_json::Value>>()
+                        .collect::<Result<serde_json::Map<String, serde_json::Value>>>()
                 })?
                 .take(MAX_ROWS + 1)
                 .collect::<Result<Vec<_>, _>>()?

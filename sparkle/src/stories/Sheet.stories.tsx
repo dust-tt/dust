@@ -437,3 +437,31 @@ export function SheetWithThreeButtons() {
     </div>
   );
 }
+
+export function SheetWithIconInTitle() {
+  return (
+    <div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" label="Edit demo" />
+        </SheetTrigger>
+        <SheetContent side="left">
+          <SheetHeader hideButton>
+            <SheetTitle icon={RocketIcon}>About me</SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-gap-6">
+              <Input label="Firstname" placeholder="John" />
+              <Input label="Lastname" placeholder="Doe" />
+            </div>
+          </SheetContainer>
+          <SheetFooter
+            sheetCloseClassName="s-flex s-gap-2"
+            leftButtonProps={{ label: "Cancel", variant: "warning" }}
+            rightButtonProps={{ label: "Save", disabled: true }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}

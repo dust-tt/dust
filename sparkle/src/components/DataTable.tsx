@@ -369,7 +369,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-justify-center s-border-y s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"

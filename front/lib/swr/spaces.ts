@@ -5,6 +5,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
+  SearchWarningCode,
   SpaceType,
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
@@ -610,6 +611,7 @@ export function useSpaceSearch({
   disabled?: boolean;
   limit?: number;
   includeDataSources: boolean;
+  warningCode?: SearchWarningCode;
 }) {
   const body = {
     datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
@@ -660,5 +662,6 @@ export function useSpaceSearch({
     isSearchError: error,
     mutate,
     isSearchValidating: isValidating,
+    warningCode: data?.warningCode,
   };
 }
