@@ -219,21 +219,17 @@ function BackendSearch({
         disabled={isSearchDisabled}
       />
 
-      <div className="flex w-full justify-between gap-2">
-        {shouldShowSearchResults ? (
-          <>
-            <SearchingInSpace space={space} dataSourceView={dataSourceView} />
-          </>
-        ) : (
-          <SpacePageTools
-            owner={owner}
-            space={space}
-            category={category}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          />
-        )}
-      </div>
+      {shouldShowSearchResults ? (
+        <SearchingInSpace space={space} dataSourceView={dataSourceView} />
+      ) : (
+        <SpacePageTools
+          owner={owner}
+          space={space}
+          category={category}
+          dataSourceView={dataSourceView}
+          parentId={parentId}
+        />
+      )}
       {shouldShowSearchResults ? (
         <div className="">
           {isSearchLoading ? (
@@ -272,15 +268,15 @@ function SearchingInSpace({
 }) {
   const searchingIn = useMemo(() => {
     if (dataSourceView) {
-      return `"${space.name} / ${getDataSourceNameFromView(dataSourceView)}"`;
+      return `${space.name} / ${getDataSourceNameFromView(dataSourceView)}`;
     }
 
-    return `"${space.name}"`;
+    return `${space.name}`;
   }, [space.name, dataSourceView]);
 
   return (
-    <p className="my-0.5 flex h-8 items-center justify-center">
-      Searching in <strong>{searchingIn}</strong>
+    <p className="my-0.5 flex h-8 items-center gap-1">
+      Searching in <span className="font-bold">"{searchingIn}"</span>
     </p>
   );
 }
@@ -456,6 +452,7 @@ function SearchResultsTable({
         dropdownMenuProps: {
           modal: false,
         },
+        location: node.parentTitle ?? "-",
         menuItems: getMenuItems(
           canReadInSpace,
           canWriteInSpace,
@@ -480,8 +477,6 @@ function SearchResultsTable({
     searchResultNodes,
     spaces,
   ]);
-
-  // TODO: Handle no results found.
 
   return (
     <DataTable

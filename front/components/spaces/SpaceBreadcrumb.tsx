@@ -114,39 +114,9 @@ export function SpaceBreadCrumbs({
     return items;
   }, [owner, space, category, dataSourceView, folders]);
 
-  const description = React.useMemo(() => {
-    if (category === "managed") {
-      return (
-        <>
-          Here you can authorize Connections and control what data Dust can
-          access. Once connected, data can be distributed to Open Spaces
-          (accessible to all workspace members) or Restricted Spaces (limited
-          access). <br />
-          Need help? Check out our{" "}
-          <Link
-            href="https://docs.dust.tt/docs/data"
-            className="text-highlight"
-            target="_blank"
-          >
-            guide
-          </Link>
-        </>
-      );
-    }
-
-    return null;
-  }, [category]);
-
   if (items.length === 0) {
     return null;
   }
 
-  return (
-    <div className="flex flex-col gap-2 py-4">
-      <Breadcrumbs items={items} />
-      {description && (
-        <div className="text-sm text-muted-foreground">{description}</div>
-      )}
-    </div>
-  );
+  return <Breadcrumbs items={items} />;
 }

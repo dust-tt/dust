@@ -4,7 +4,6 @@ import {
   CommandLineIcon,
   DataTable,
   PlusIcon,
-  SearchInput,
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
@@ -21,11 +20,11 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useContext, useRef, useState } from "react";
+import { useContext, useState } from "react";
 
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageTools";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpaceSearchLayout";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";

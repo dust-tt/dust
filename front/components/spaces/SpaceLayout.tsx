@@ -102,20 +102,22 @@ export function SpaceLayout({
           />
         }
       >
-        <Page.Vertical gap="md" align="stretch">
-          <SpaceSearchInput
-            category={category}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            owner={owner}
-            useBackendSearch={useBackendSearch}
-            space={space}
-            dataSourceView={dataSourceView}
-            parentId={parentId}
-          >
-            {children}
-          </SpaceSearchInput>
-        </Page.Vertical>
+        <div className="flex flex-col pt-4">
+          <Page.Vertical gap="lg" align="stretch">
+            <SpaceSearchInput
+              category={category}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              owner={owner}
+              useBackendSearch={useBackendSearch}
+              space={space}
+              dataSourceView={dataSourceView}
+              parentId={parentId}
+            >
+              {children}
+            </SpaceSearchInput>
+          </Page.Vertical>
+        </div>
 
         {isAdmin && !isLimitReached && (
           <CreateOrEditSpaceModal
