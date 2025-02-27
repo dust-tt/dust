@@ -396,7 +396,7 @@ export async function fetchZendeskTickets(
     const response = await fetchFromZendeskWithRetries({
       url:
         url ?? // using the URL if we got one, reconstructing it otherwise
-        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
+        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=250&start_time=${startTime}`,
       accessToken,
     });
     return {
