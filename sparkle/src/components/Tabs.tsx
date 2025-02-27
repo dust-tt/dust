@@ -69,7 +69,6 @@ const TabsTrigger = React.forwardRef<
     },
     ref
   ) => {
-    // data-[state=active]:s-shadow-inner-border dark:data-[state=active]:s-shadow-inner-border-night
     return (
       <TabsPrimitive.Trigger
         ref={ref}
