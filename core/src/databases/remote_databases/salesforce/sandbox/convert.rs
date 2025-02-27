@@ -1,7 +1,7 @@
 use super::error::SoqlError;
 use super::structured_query::{
-    AggregateFunction, Filter, GroupBy, GroupType, LogicalOperator, NullsPosition, OrderBy,
-    OrderDirection, StructuredQuery, Validator, WhereClause,
+    Filter, GroupBy, LogicalOperator, NullsPosition, OrderBy, OrderDirection, StructuredQuery,
+    Validator, WhereClause,
 };
 
 /// Convert a JSON query to a SOQL string with detailed error handling and suggestions

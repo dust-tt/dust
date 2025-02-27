@@ -22,10 +22,7 @@ pub enum SoqlError {
     ValidationError(String),
 
     #[error("Field validation error: {field} - {reason}")]
-    FieldValidationError {
-        field: String,
-        reason: String,
-    },
+    FieldValidationError { field: String, reason: String },
 
     #[error("Relationship error: {relationship} - {reason}")]
     RelationshipError {
@@ -44,10 +41,7 @@ pub enum SoqlError {
     },
 
     #[error("Value error: {field} - {reason}")]
-    ValueError {
-        field: String,
-        reason: String,
-    },
+    ValueError { field: String, reason: String },
 
     #[error("Limit error: {0}")]
     LimitError(String),
@@ -110,7 +104,7 @@ impl SoqlError {
     pub fn limit_error(msg: impl fmt::Display) -> Self {
         Self::LimitError(msg.to_string())
     }
-    
+
     /// Returns user-friendly suggestions for fixing the error
     pub fn suggestions(&self) -> Vec<String> {
         match self {
@@ -118,22 +112,23 @@ impl SoqlError {
                 let mut suggestions = vec![
                     "Check your JSON syntax for missing commas, brackets, or quotes".to_string(),
                 ];
-                
+
                 let line = err.line();
                 suggestions.push(format!("Error occurs around line {}", line));
-                
+
                 suggestions
-            },
+            }
             Self::MissingRequiredField(field) => {
                 vec![
                     format!("Add the required '{}' field to your query", field),
                     "Required fields depend on context - refer to the documentation".to_string(),
                 ]
-            },
+            }
             Self::InvalidQueryStructure(msg) => {
                 if msg.contains("Group by") && msg.contains("aggregates") {
                     vec![
-                        "When using multiple aggregate functions, you need a GROUP BY clause".to_string(),
+                        "When using multiple aggregate functions, you need a GROUP BY clause"
+                            .to_string(),
                         "Example: Add \"groupBy\": [\"AccountId\"] to your query".to_string(),
                     ]
                 } else if msg.contains("fields") && msg.contains("aggregates") {
@@ -144,13 +139,15 @@ impl SoqlError {
                 } else {
                     vec![format!("Fix the structure issue: {}", msg)]
                 }
-            },
+            }
             Self::UnsupportedFeature(feature) => {
                 if feature.contains("dot-notation") {
                     vec![
                         "Dot notation for field traversal is limited to 1 level deep".to_string(),
-                        "Example: 'Owner.Name' is allowed, but 'Owner.Manager.Name' is not".to_string(),
-                        "Consider using separate queries or parent/child relationships instead".to_string(),
+                        "Example: 'Owner.Name' is allowed, but 'Owner.Manager.Name' is not"
+                            .to_string(),
+                        "Consider using separate queries or parent/child relationships instead"
+                            .to_string(),
                     ]
                 } else if feature.contains("subqueries") {
                     vec![
@@ -160,56 +157,71 @@ impl SoqlError {
                 } else {
                     vec![format!("This feature is not supported: {}", feature)]
                 }
-            },
+            }
             Self::FieldValidationError { field, reason } => {
                 vec![
                     format!("Field '{}' validation failed: {}", field, reason),
-                    "Check field spelling and ensure it exists in the Salesforce object".to_string(),
+                    "Check field spelling and ensure it exists in the Salesforce object"
+                        .to_string(),
                 ]
-            },
-            Self::RelationshipError { relationship, reason } => {
+            }
+            Self::RelationshipError {
+                relationship,
+                reason,
+            } => {
                 vec![
                     format!("Relationship '{}' error: {}", relationship, reason),
-                    "Verify the relationship name is correct and available on the object".to_string(),
-                    "Check for proper parent-child or child-parent relationship definition".to_string(),
+                    "Verify the relationship name is correct and available on the object"
+                        .to_string(),
+                    "Check for proper parent-child or child-parent relationship definition"
+                        .to_string(),
                 ]
-            },
+            }
             Self::AggregationError(msg) => {
                 vec![
                     format!("Aggregation error: {}", msg),
-                    "Ensure your aggregate functions (COUNT, SUM, etc.) are properly defined".to_string(),
+                    "Ensure your aggregate functions (COUNT, SUM, etc.) are properly defined"
+                        .to_string(),
                     "When using aggregates, you may need to include a GROUP BY clause".to_string(),
                 ]
-            },
-            Self::OperatorError { field, operator, reason } => {
+            }
+            Self::OperatorError {
+                field,
+                operator,
+                reason,
+            } => {
                 vec![
-                    format!("Operator '{}' is invalid for field '{}': {}", operator, field, reason),
+                    format!(
+                        "Operator '{}' is invalid for field '{}': {}",
+                        operator, field, reason
+                    ),
                     "Check that the operator is appropriate for the field type".to_string(),
-                    "For example, LIKE is only valid for text fields, IN requires an array value".to_string(),
+                    "For example, LIKE is only valid for text fields, IN requires an array value"
+                        .to_string(),
                 ]
-            },
+            }
             Self::ValueError { field, reason } => {
                 vec![
                     format!("Value for field '{}' is invalid: {}", field, reason),
                     "Ensure the value type matches what is expected for this field".to_string(),
                 ]
-            },
+            }
             Self::LimitError(msg) => {
                 vec![
                     format!("Limit error: {}", msg),
                     "Adjust your query limits to be within allowed values".to_string(),
                 ]
-            },
+            }
             Self::ValidationError(msg) => {
                 vec![format!("Validation error: {}", msg)]
             }
         }
     }
-    
+
     /// Get a user-friendly error message with suggestions
     pub fn user_friendly_message(&self) -> String {
         let mut message = format!("Error in SOQL query: {}", self);
-        
+
         let suggestions = self.suggestions();
         if !suggestions.is_empty() {
             message.push_str("\n\nSuggestions:\n");
@@ -217,7 +229,7 @@ impl SoqlError {
                 message.push_str(&format!("{}. {}\n", i + 1, suggestion));
             }
         }
-        
+
         message
     }
 }

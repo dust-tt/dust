@@ -637,7 +637,7 @@ impl GroupType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_validate_basic_query_success() {
         let query = StructuredQuery {
@@ -653,10 +653,10 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         assert!(query.validate().is_ok());
     }
-    
+
     #[test]
     fn test_validate_empty_object_fails() {
         let query = StructuredQuery {
@@ -672,7 +672,7 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -683,7 +683,7 @@ mod tests {
             _ => panic!("Expected MissingRequiredField error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_validate_empty_fields_and_aggregates_fails() {
         let query = StructuredQuery {
@@ -699,7 +699,7 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -710,7 +710,7 @@ mod tests {
             _ => panic!("Expected InvalidQueryStructure error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_validate_excessive_dot_notation_depth_fails() {
         let query = StructuredQuery {
@@ -726,7 +726,7 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -738,7 +738,7 @@ mod tests {
             _ => panic!("Expected FieldValidationError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_validate_multiple_aggregates_without_group_by_fails() {
         let query = StructuredQuery {
@@ -765,7 +765,7 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -776,7 +776,7 @@ mod tests {
             _ => panic!("Expected AggregationError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_validate_having_without_aggregates_fails() {
         let query = StructuredQuery {
@@ -792,17 +792,15 @@ mod tests {
             group_by: None,
             having: Some(HavingClause {
                 condition: LogicalOperator::And,
-                filters: vec![
-                    AggregateFilter {
-                        function: AggregateFunction::Count,
-                        field: "Id".to_string(),
-                        operator: ">".to_string(),
-                        value: serde_json::json!(10),
-                    }
-                ],
+                filters: vec![AggregateFilter {
+                    function: AggregateFunction::Count,
+                    field: "Id".to_string(),
+                    operator: ">".to_string(),
+                    value: serde_json::json!(10),
+                }],
             }),
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -813,7 +811,7 @@ mod tests {
             _ => panic!("Expected AggregationError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_validate_excessive_limit_fails() {
         let query = StructuredQuery {
@@ -829,7 +827,7 @@ mod tests {
             group_by: None,
             having: None,
         };
-        
+
         let result = query.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -840,14 +838,14 @@ mod tests {
             _ => panic!("Expected LimitError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_where_clause_validation_empty_filters_fails() {
         let where_clause = WhereClause {
             condition: LogicalOperator::And,
             filters: vec![],
         };
-        
+
         let result = where_clause.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -858,25 +856,27 @@ mod tests {
             _ => panic!("Expected InvalidQueryStructure error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_where_clause_validation_unsupported_operator_fails() {
         let where_clause = WhereClause {
             condition: LogicalOperator::And,
-            filters: vec![
-                Filter::Condition {
-                    field: "Name".to_string(),
-                    operator: "CONTAINS".to_string(),
-                    value: serde_json::json!("Test"),
-                }
-            ],
+            filters: vec![Filter::Condition {
+                field: "Name".to_string(),
+                operator: "CONTAINS".to_string(),
+                value: serde_json::json!("Test"),
+            }],
         };
-        
+
         let result = where_clause.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            SoqlError::OperatorError { field, operator, reason } => {
+            SoqlError::OperatorError {
+                field,
+                operator,
+                reason,
+            } => {
                 assert_eq!(field, "Name");
                 assert_eq!(operator, "CONTAINS");
                 assert!(reason.contains("Unsupported operator"));
@@ -884,25 +884,27 @@ mod tests {
             _ => panic!("Expected OperatorError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_where_clause_validation_invalid_value_type_fails() {
         let where_clause = WhereClause {
             condition: LogicalOperator::And,
-            filters: vec![
-                Filter::Condition {
-                    field: "Email".to_string(),
-                    operator: "LIKE".to_string(),
-                    value: serde_json::json!(123),
-                }
-            ],
+            filters: vec![Filter::Condition {
+                field: "Email".to_string(),
+                operator: "LIKE".to_string(),
+                value: serde_json::json!(123),
+            }],
         };
-        
+
         let result = where_clause.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            SoqlError::OperatorError { field, operator, reason } => {
+            SoqlError::OperatorError {
+                field,
+                operator,
+                reason,
+            } => {
                 assert_eq!(field, "Email");
                 assert_eq!(operator, "LIKE");
                 assert!(reason.contains("require a string value"));
@@ -910,7 +912,7 @@ mod tests {
             _ => panic!("Expected OperatorError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_relationship_validation_empty_name_fails() {
         let relationship = Relationship {
@@ -920,42 +922,48 @@ mod tests {
             order_by: vec![],
             limit: None,
         };
-        
+
         let result = relationship.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            SoqlError::RelationshipError { relationship, reason } => {
+            SoqlError::RelationshipError {
+                relationship,
+                reason,
+            } => {
                 assert_eq!(relationship, "<empty>");
                 assert!(reason.contains("cannot be empty"));
             }
             _ => panic!("Expected RelationshipError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_parent_field_validation_dotted_relationship_fails() {
         let parent_field = ParentField {
             relationship: "Account.Owner".to_string(),
             fields: vec!["Id".to_string(), "Name".to_string()],
         };
-        
+
         let result = parent_field.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
         match error {
-            SoqlError::RelationshipError { relationship, reason } => {
+            SoqlError::RelationshipError {
+                relationship,
+                reason,
+            } => {
                 assert_eq!(relationship, "Account.Owner");
                 assert!(reason.contains("cannot contain dot notation"));
             }
             _ => panic!("Expected RelationshipError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_group_by_validation_empty_fields_fails() {
         let group_by = GroupBy::Simple(vec![]);
-        
+
         let result = group_by.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -966,14 +974,14 @@ mod tests {
             _ => panic!("Expected AggregationError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_having_validation_empty_filters_fails() {
         let having = HavingClause {
             condition: LogicalOperator::And,
             filters: vec![],
         };
-        
+
         let result = having.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
@@ -984,7 +992,7 @@ mod tests {
             _ => panic!("Expected AggregationError error, got {:?}", error),
         }
     }
-    
+
     #[test]
     fn test_aggregate_validation_empty_alias_fails() {
         let aggregate = Aggregate {
@@ -992,7 +1000,7 @@ mod tests {
             field: "Id".to_string(),
             alias: "".to_string(),
         };
-        
+
         let result = aggregate.validate();
         assert!(result.is_err());
         let error = result.unwrap_err();
