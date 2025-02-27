@@ -228,11 +228,14 @@ export interface CoreAPISearchCursorRequest {
   cursor?: string;
 }
 
+export type SearchWarningCode = "truncated-query-clauses";
+
 export interface CoreAPISearchNodesResponse {
   nodes: CoreAPIContentNode[];
   next_page_cursor: string | null;
   hit_count: number;
   hit_count_is_accurate: boolean;
+  warning_code: SearchWarningCode | null;
 }
 
 export interface CoreAPISearchTagsResponse {
@@ -1845,6 +1848,7 @@ export class CoreAPI {
         options,
       }),
     });
+
     return this._resultFromResponse(response);
   }
 

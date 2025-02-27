@@ -35,6 +35,7 @@ const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.
 const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
+const MAX_ES_QUERY_CLAUSES: usize = 5; // Default Elasticsearch limit.
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
@@ -90,6 +91,12 @@ pub enum NodeItem {
     Folder(Folder),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SearchWarningCode {
+    TruncatedQueryClauses,
+}
+
 #[async_trait]
 pub trait SearchStore {
     async fn search_nodes(
@@ -98,7 +105,13 @@ pub trait SearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)>;
+    ) -> Result<(
+        Vec<CoreContentNode>,
+        u64,
+        bool,
+        Option<String>,
+        Option<SearchWarningCode>,
+    )>;
 
     // Data source nodes
     async fn index_node(&self, node: NodeItem) -> Result<()>;
@@ -159,6 +172,42 @@ impl ElasticsearchSearchStore {
 
 const ROOT_PARENT_ID: &str = "root";
 
+// Add a helper struct to track clause counts.
+// This is a best-effort counter to avoid exceeding the max number of clauses.
+struct QueryClauseCounter {
+    max_clauses: usize,
+    used_clauses: usize,
+}
+
+impl QueryClauseCounter {
+    fn new(max_clauses: usize) -> Self {
+        Self {
+            max_clauses,
+            used_clauses: 0,
+        }
+    }
+
+    // Returns how many items can be added without exceeding the limit.
+    fn can_add(&self, count: usize) -> usize {
+        let remaining = self.max_clauses.saturating_sub(self.used_clauses);
+        remaining.min(count)
+    }
+
+    // Adds the specified number of clauses and returns how many were actually added.
+    // On purpose, we don't check if we've reached the limit here, as we want to
+    // be able to add more clauses than the limit.
+    fn add(&mut self, count: usize) -> usize {
+        let to_add = self.can_add(count);
+        self.used_clauses += to_add;
+        to_add
+    }
+
+    // Returns true if we've used all available clauses.
+    fn is_full(&self) -> bool {
+        self.used_clauses >= self.max_clauses
+    }
+}
+
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
@@ -167,7 +216,13 @@ impl SearchStore for ElasticsearchSearchStore {
         filter: NodesSearchFilter,
         options: Option<NodesSearchOptions>,
         store: Box<dyn Store + Sync + Send>,
-    ) -> Result<(Vec<CoreContentNode>, u64, bool, Option<String>)> {
+    ) -> Result<(
+        Vec<CoreContentNode>,
+        u64,
+        bool,
+        Option<String>,
+        Option<SearchWarningCode>,
+    )> {
         let options = options.unwrap_or_default();
 
         // TODO(20250128, nodes-core): remove this & corresponding timing logs
@@ -204,7 +259,8 @@ impl SearchStore for ElasticsearchSearchStore {
             ));
         }
 
-        let bool_query = self.build_search_query(query.clone(), filter)?;
+        // Build search query with potential truncation.
+        let (bool_query, warning_code) = self.build_search_query(query.clone(), filter)?;
 
         let sort = match query {
             None => self.build_sort(options.sort)?,
@@ -243,6 +299,7 @@ impl SearchStore for ElasticsearchSearchStore {
             data_source_filter = data_source_filter.as_ref().map(|v| v.join(", ")),
             parent_id = parent_id_log,
             node_ids = node_ids_log,
+            warning = warning_code.is_some(),
             "[ElasticsearchSearchStore] Search nodes duration"
         );
 
@@ -298,7 +355,13 @@ impl SearchStore for ElasticsearchSearchStore {
             node_ids = node_ids_log,
             "[ElasticsearchSearchStore] Compute core content nodes duration"
         );
-        Ok((result, hit_count, hit_count_is_accurate, next_cursor))
+        Ok((
+            result,
+            hit_count,
+            hit_count_is_accurate,
+            next_cursor,
+            warning_code,
+        ))
     }
 
     // Data source nodes.
@@ -497,7 +560,7 @@ impl ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
-    ) -> Result<BoolQuery> {
+    ) -> Result<(BoolQuery, Option<SearchWarningCode>)> {
         // Check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
         // dangerous as any data from any workspace can be retrieved.
@@ -505,49 +568,78 @@ impl ElasticsearchSearchStore {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
 
-        // Build nodes query with outer index scope.
-        let nodes_query = Query::bool()
-            .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-            .must(self.build_nodes_content_query(&query, &filter)?);
+        let mut should_queries = vec![];
 
-        let mut should_queries = vec![nodes_query];
+        // Best-effort counter to avoid exceeding the max number of clauses.
+        let mut counter = QueryClauseCounter::new(MAX_ES_QUERY_CLAUSES);
+        let mut warning_code = None;
 
-        // Add data sources query if requested.
+        // Add the outer bool query with should clause.
+        counter.add(1);
+
+        // Starts with a data sources query if requested.
         if filter.include_data_sources.unwrap_or(false) {
-            let data_sources_query = Query::bool()
-                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
-                .must(self.build_data_sources_content_query(&query, &filter)?);
+            // Check if we have enough clauses for at least a basic data sources query.
+            if !counter.is_full() {
+                let data_sources_query = Query::bool()
+                    .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                    .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
-            should_queries.push(data_sources_query);
+                should_queries.push(data_sources_query);
+            }
+        }
+
+        // Build nodes query only if we have clauses left.
+        if !counter.is_full() {
+            let nodes_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
+                .must(self.build_nodes_content_query(&query, &filter, &mut counter)?);
+
+            should_queries.push(nodes_query);
+        }
+
+        // If we've used all available clauses or had to skip any queries, set the warning code.
+        if counter.is_full() {
+            warning_code = Some(SearchWarningCode::TruncatedQueryClauses);
         }
 
         let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
 
-        Ok(bool_query)
+        Ok((bool_query, warning_code))
     }
 
     fn build_shared_permission_filter(
         &self,
         filter: &NodesSearchFilter,
         index_supports_parents: bool,
+        counter: &mut QueryClauseCounter,
     ) -> BoolQuery {
         let filter_conditions: Vec<Query> = filter
             .data_source_views
             .clone()
             .into_iter()
-            .map(|f| {
+            .filter_map(|f| {
+                if counter.is_full() {
+                    // Skip adding this data source view to the filter when we've reached the clause limit.
+                    // This effectively truncates the query without adding any new clauses.
+                    return None;
+                }
+
+                counter.add(1);
                 let mut bool_query =
                     Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
                 // Only add parents filter if the index supports it.
                 if index_supports_parents && !f.view_filter.is_empty() {
+                    counter.add(1);
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
                 }
 
-                Query::Bool(bool_query)
+                Some(Query::Bool(bool_query))
             })
             .collect();
 
+        counter.add(1);
         Query::bool()
             .should(filter_conditions)
             .minimum_should_match(1)
@@ -557,13 +649,17 @@ impl ElasticsearchSearchStore {
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
+        counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
-            .filter(self.build_shared_permission_filter(filter, false));
+            .filter(self.build_shared_permission_filter(filter, false, counter));
 
         // Add search term if present.
         if let Some(query_string) = query {
+            // A match query counts as 1 clause.
+            counter.add(1);
+
             bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
         }
 
@@ -574,11 +670,13 @@ impl ElasticsearchSearchStore {
         &self,
         query: &Option<String>,
         filter: &NodesSearchFilter,
+        counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
         let mut bool_query =
-            Query::bool().filter(self.build_shared_permission_filter(filter, true));
+            Query::bool().filter(self.build_shared_permission_filter(filter, true, counter));
 
         if let Some(node_ids) = &filter.node_ids {
+            counter.add(1);
             bool_query = bool_query.filter(Query::terms("node_id", node_ids));
         }
 
@@ -587,12 +685,14 @@ impl ElasticsearchSearchStore {
                 .iter()
                 .flat_map(|nt| vec![nt.to_string(), nt.to_string().to_lowercase()])
                 .collect();
+            counter.add(1);
             bool_query = bool_query.filter(Query::terms("node_type", terms));
         }
 
         if let Some(parent_id) = &filter.parent_id {
             // if parent_id is root, we filter on all nodes whose parent_id is null
             // otherwise, we filter on all nodes whose parent_id is the given parent_id.
+            counter.add(1);
             if parent_id == ROOT_PARENT_ID {
                 bool_query = bool_query.filter(Query::bool().must_not(Query::exists("parent_id")));
             } else {
@@ -602,6 +702,7 @@ impl ElasticsearchSearchStore {
 
         // Add search term if present.
         if let Some(query_string) = query.clone() {
+            counter.add(1);
             bool_query = bool_query.must(Query::r#match("title.edge", query_string.clone()));
         }
 
