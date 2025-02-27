@@ -445,6 +445,23 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews[0] ?? null;
   }
 
+  static async fetchByConversationWithoutContentPublic(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentPublicType
+  ): Promise<DataSourceViewResource[]> {
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          kind: "default",
+          conversationId: conversation.id,
+        },
+      }
+    );
+    return dataSourceViews;
+  }
+
   static async search(
     auth: Authenticator,
     searchParams: {
