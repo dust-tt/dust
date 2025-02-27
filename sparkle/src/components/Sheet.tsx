@@ -3,7 +3,7 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, ScrollArea } from "@sparkle/components";
+import { Button, Icon, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -204,19 +204,27 @@ const SheetFooter = ({
 );
 SheetFooter.displayName = "SheetFooter";
 
+interface SheetTitleProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
+  icon?: React.ComponentType;
+}
+
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
-    ref={ref}
-    className={cn(
-      "s-text-lg s-font-semibold",
-      "s-text-foreground dark:s-text-foreground-night",
-      className
-    )}
-    {...props}
-  />
+  SheetTitleProps
+>(({ className, icon, ...props }, ref) => (
+  <>
+    {icon && <Icon visual={icon} size="lg" />}
+    <SheetPrimitive.Title
+      ref={ref}
+      className={cn(
+        "s-text-lg s-font-semibold",
+        "s-text-foreground dark:s-text-foreground-night",
+        className
+      )}
+      {...props}
+    />
+  </>
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
 
