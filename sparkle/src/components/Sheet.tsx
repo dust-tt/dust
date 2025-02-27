@@ -98,7 +98,11 @@ const SheetContent = React.forwardRef<
     <FocusScope trapped={trapFocusScope} asChild>
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ size, side }), className, "s-sheet")}
+        className={cn(
+          sheetVariants({ size, side }),
+          className,
+          "s-sheet s-text-foreground dark:s-text-foreground-night"
+        )}
         {...props}
       >
         {children}
@@ -217,11 +221,7 @@ const SheetTitle = React.forwardRef<
     {icon && <Icon visual={icon} size="lg" />}
     <SheetPrimitive.Title
       ref={ref}
-      className={cn(
-        "s-text-lg s-font-semibold",
-        "s-text-foreground dark:s-text-foreground-night",
-        className
-      )}
+      className={cn("s-text-lg s-font-semibold", className)}
       {...props}
     />
   </>
