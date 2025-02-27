@@ -37,11 +37,12 @@ export const ConnectorDataUpdatedModal = ({
         }}
       >
         <SheetHeader hideButton>
-          <SheetTitle />
-          <div className="p-1 text-xl font-bold">
-            <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-            <div>Data sync in progress...</div>
-          </div>
+          <SheetTitle>
+            <div className="p-1 text-xl font-bold">
+              <Icon visual={SparklesIcon} className="text-brand" size="lg" />
+              <div>Data sync in progress...</div>
+            </div>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ContentMessage variant="amber">
