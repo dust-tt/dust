@@ -36,7 +36,7 @@ use dust::{
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        node::{Node, ProviderVisibility},
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -3505,7 +3505,7 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, hit_count, hit_count_is_accurate, next_cursor) = match state
+    let (nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code) = match state
         .search_store
         .search_nodes(
             payload.query,
@@ -3515,9 +3515,13 @@ async fn nodes_search(
         )
         .await
     {
-        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor)) => {
-            (nodes, hit_count, hit_count_is_accurate, next_cursor)
-        }
+        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code)) => (
+            nodes,
+            hit_count,
+            hit_count_is_accurate,
+            next_cursor,
+            warning_code,
+        ),
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3537,6 +3541,7 @@ async fn nodes_search(
                 "hit_count": hit_count,
                 "hit_count_is_accurate": hit_count_is_accurate,
                 "next_page_cursor": next_cursor,
+                "warning_code": warning_code,
             })),
         }),
     )
