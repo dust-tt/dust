@@ -4,10 +4,12 @@ import {
   cn,
   FolderIcon,
   GlobeAltIcon,
+  InformationCircleIcon,
   ListCheckIcon,
   SearchInputWithPopover,
   Tree,
 } from "@dust-tt/sparkle";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
 import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
@@ -15,8 +17,13 @@ import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LightWorkspaceType,
+  SearchWarningCode,
 } from "@dust-tt/types";
-import { defaultSelectionConfiguration, removeNulls } from "@dust-tt/types";
+import {
+  assertNever,
+  defaultSelectionConfiguration,
+  removeNulls,
+} from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -127,7 +134,7 @@ export function DataSourceViewsSelector({
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-  const { searchResultNodes, isSearchLoading } = useSpaceSearch({
+  const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
     disabled: !searchFeatureFlag,
     includeDataSources: true,
@@ -253,6 +260,10 @@ export function DataSourceViewsSelector({
     };
   }
 
+  const contentMessage = warningCode
+    ? LimitedSearchContentMessage({ warningCode })
+    : undefined;
+
   return (
     <div>
       {searchFeatureFlag && (
@@ -275,6 +286,7 @@ export function DataSourceViewsSelector({
               updateSelection(item, prevState)
             );
           }}
+          contentMessage={contentMessage}
           renderItem={(item, selected) => {
             const { dataSourceView } = item;
             const { dataSource } = dataSourceView;
@@ -423,6 +435,26 @@ export function DataSourceViewsSelector({
       </Tree>
     </div>
   );
+}
+
+function LimitedSearchContentMessage({
+  warningCode,
+}: {
+  warningCode: SearchWarningCode;
+}): ContentMessageProps | undefined {
+  switch (warningCode) {
+    case "truncated-query-clauses":
+      return {
+        title: "Search results are partial due to the large amount of data.",
+        variant: "amber",
+        icon: InformationCircleIcon,
+        className: "w-full",
+        size: "lg",
+      };
+
+    default:
+      assertNever(warningCode);
+  }
 }
 
 interface DataSourceViewSelectorProps {
