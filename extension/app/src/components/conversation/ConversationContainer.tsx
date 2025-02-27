@@ -261,7 +261,7 @@ export function ConversationContainer({
           </div>
           <div
             id="assistant-input-header"
-            className="sticky bottom-0 pb-4 z-20  w-full bg-white"
+            className="sticky bottom-0 pb-4 z-20  w-full bg-white dark:bg-slate-950"
           >
             <AssistantInputBar
               owner={owner}

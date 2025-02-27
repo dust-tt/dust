@@ -243,7 +243,12 @@ export function AssistantInputBar({
     <div className="flex w-full flex-col">
       {isCapturing && (
         <div className="fixed absolute inset-0 z-50 overflow-hidden">
-          <div className="fixed flex inset-0 bg-structure-50/80 backdrop-blur-sm transition-opacity" />
+          <div
+            className={classNames(
+              "fixed flex inset-0 backdrop-blur-sm transition-opacity",
+              "bg-structure-50/80 dark:bg-structure-50-night/80"
+            )}
+          />
           <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
             <span className="z-50">
               <Page.Header title="Screen capture in progress..." />
@@ -270,9 +275,15 @@ export function AssistantInputBar({
           <div
             className={classNames(
               "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch p-3",
-              "border-struture-200 border-t bg-white/90 backdrop-blur",
+              "border-struture-200 dark:border-struture-200-night",
+              "border-t  backdrop-blur",
               "transition-all",
-              "rounded-2xl border-b border-l border-r border-element-500 focus-within:border-action-300 focus-within:shadow-md focus-within:ring-1",
+              "rounded-2xl border-b border-l border-r",
+              "bg-muted-background dark:bg-muted-background-night",
+              "border",
+              "border-border-dark dark:border-border-dark-night",
+              "sm:border-border-dark/50 sm:focus-within:border-border-dark",
+              "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

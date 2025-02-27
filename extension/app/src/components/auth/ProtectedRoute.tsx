@@ -1,6 +1,7 @@
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
 import {
   Button,
+  classNames,
   LogoHorizontalColorLogo,
   Page,
   Spinner,
@@ -79,7 +80,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (
-      <div className="flex h-screen flex-col gap-2 p-4">
+      <div
+        className={classNames(
+          "flex h-screen flex-col gap-2 p-4",
+          "dark:bg-slate-950 dark:text-slate-50"
+        )}
+      >
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
         </div>
@@ -89,7 +95,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isLatestVersion) {
     return (
-      <div className="flex h-screen flex-col gap-2 p-4">
+      <div
+        className={classNames(
+          "flex h-screen flex-col gap-2 p-4",
+          "dark:bg-slate-950 dark:text-slate-50"
+        )}
+      >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
           <div className="flex flex-col items-center text-center space-y-4">
             <LogoHorizontalColorLogo className="h-6 w-24" />
@@ -108,7 +119,12 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   }
 
   return (
-    <div className="flex h-screen flex-col gap-2 px-4 overflow-y-auto">
+    <div
+      className={classNames(
+        "flex h-screen flex-col gap-2 px-4 overflow-y-auto",
+        "dark:bg-slate-950 dark:text-slate-50"
+      )}
+    >
       {typeof children === "function"
         ? children({ user, workspace, handleLogout })
         : children}

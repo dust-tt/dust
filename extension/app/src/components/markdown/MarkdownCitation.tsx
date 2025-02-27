@@ -8,6 +8,7 @@ import {
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
+  SalesforceLogo,
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
@@ -26,7 +27,8 @@ export type CitationIconType =
   | "slack"
   | "image"
   | "snowflake"
-  | "bigquery";
+  | "bigquery"
+  | "salesforce";
 
 export const citationIconMap: Record<
   CitationIconType,
@@ -44,6 +46,7 @@ export const citationIconMap: Record<
   image: ImageIcon,
   snowflake: SnowflakeLogo,
   bigquery: BigQueryLogo,
+  salesforce: SalesforceLogo,
 };
 
 export interface MarkdownCitation {
