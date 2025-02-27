@@ -1,0 +1,9 @@
+PUT core.data_sources_nodes_4/_mapping
+{
+  "properties": {
+    "text_size": {
+      "type": "long",
+      "index": false
+    }
+  }
+}

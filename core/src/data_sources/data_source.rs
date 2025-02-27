@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType, ProviderVisibility};
+use super::node::ProviderVisibility;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::search_stores::search_store::{Indexable, SearchStore};
+use crate::search_stores::search_store::{Indexable, NodeItem, SearchStore};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -219,25 +219,6 @@ impl Filterable for Document {
 
     fn get_parents(&self) -> Vec<String> {
         self.parents.clone()
-    }
-}
-
-impl From<Document> for Node {
-    fn from(document: Document) -> Node {
-        Node::new(
-            &document.data_source_id,
-            &document.data_source_internal_id,
-            &document.document_id,
-            NodeType::Document,
-            document.timestamp,
-            &document.title,
-            &document.mime_type,
-            document.provider_visibility,
-            document.parent_id,
-            document.parents.clone(),
-            document.source_url,
-            Some(document.tags),
-        )
     }
 }
 
@@ -557,7 +538,9 @@ impl DataSource {
 
         match document {
             Some(document) => {
-                search_store.index_node(Node::from(document)).await?;
+                search_store
+                    .index_node(NodeItem::Document(document))
+                    .await?;
             }
             None => (),
         }
@@ -850,7 +833,9 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_node(Node::from(document)).await?;
+        search_store
+            .index_node(NodeItem::Document(document))
+            .await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -1849,7 +1834,9 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(Node::from(document)).await?;
+        search_store
+            .delete_node(NodeItem::Document(document))
+            .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
