@@ -1,12 +1,7 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  Breadcrumbs,
-  CloudArrowLeftRightIcon,
   cn,
-  CommandLineIcon,
   DataTable,
-  FolderIcon,
-  GlobeAltIcon,
   SearchInput,
   Spinner,
   useHashParam,
@@ -16,61 +11,27 @@ import type {
   APIError,
   ContentNodesViewType,
   DataSourceViewCategory,
-  DataSourceViewCategoryWithoutApps,
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
   SpaceType,
-  WorkspaceType,
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import type { SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
 import React, { useMemo } from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import { SpacePageTools } from "@app/components/spaces/SpacePageTools";
 import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { getSpaceIcon } from "@app/lib/spaces";
-import {
-  useDataSourceViewContentNodes,
-  useDataSourceViews,
-} from "@app/lib/swr/data_source_views";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-
-export const CATEGORY_DETAILS: {
-  [key: string]: {
-    label: string;
-    icon: ComponentType<{
-      className?: string;
-    }>;
-  };
-} = {
-  managed: {
-    label: "Connected Data",
-    icon: CloudArrowLeftRightIcon,
-  },
-  folder: {
-    label: "Folders",
-    icon: FolderIcon,
-  },
-  website: {
-    label: "Websites",
-    icon: GlobeAltIcon,
-  },
-  apps: {
-    label: "Apps",
-    icon: CommandLineIcon,
-  },
-};
-
-export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -79,25 +40,24 @@ interface BaseSpaceSearchInputProps {
   canWriteInSpace: boolean;
   children: React.ReactNode;
   owner: LightWorkspaceType;
+  dataSourceView: DataSourceViewType | undefined;
+  space: SpaceType;
+  parentId: string | undefined;
+  category: DataSourceViewCategory | undefined;
 }
 
 interface BackendSearchProps extends BaseSpaceSearchInputProps {
   useBackendSearch: true;
-  category: DataSourceViewCategoryWithoutApps;
-  space: SpaceType;
-  dataSourceView: DataSourceViewType;
-  parentId: string | undefined;
 }
 
 interface FrontendSearchProps extends BaseSpaceSearchInputProps {
   useBackendSearch?: false;
-  category: DataSourceViewCategory | undefined;
 }
 
-// Use discriminated union to ensure proper type narrowing
+// Use discriminated union to ensure proper type narrowing.
 type SpaceSearchInputProps = BackendSearchProps | FrontendSearchProps;
 
-// Add this function to check if we're in backend search mode
+// Add this function to check if we're in backend search mode.
 function isBackendSearch(
   props: SpaceSearchInputProps
 ): props is BackendSearchProps {
@@ -171,13 +131,15 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   } else {
     // This branch handles FrontendSearchProps
     return (
-      <FrontendSearch
-        {...props}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        isSearchDisabled={isSearchDisabled}
-        searchContextValue={searchContextValue}
-      />
+      <>
+        <FrontendSearch
+          {...props}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          isSearchDisabled={isSearchDisabled}
+          searchContextValue={searchContextValue}
+        />
+      </>
     );
   }
 }
@@ -249,59 +211,77 @@ function BackendSearch({
 
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
-      <div className="mb-4">
-        <div className="flex w-full gap-2">
-          <SearchInput
-            name="search"
-            placeholder="Search (Name)"
-            value={searchTerm}
-            onChange={setSearchTerm}
-            disabled={isSearchDisabled}
-          />
-        </div>
-        <div className="flex w-full justify-between gap-2 pt-2">
-          <SpaceBreadCrumbs
+      <SearchInput
+        name="search"
+        placeholder="Search remote (Name)"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        disabled={isSearchDisabled}
+      />
+
+      <div className="flex w-full justify-between gap-2">
+        {shouldShowSearchResults ? (
+          <>
+            <SearchingInSpace space={space} dataSourceView={dataSourceView} />
+          </>
+        ) : (
+          <SpacePageTools
+            owner={owner}
             space={space}
             category={category}
-            owner={owner}
             dataSourceView={dataSourceView}
-            parentId={parentId ?? undefined}
+            parentId={parentId}
           />
-          <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
-        </div>
-      </div>
-
-      <div className="border-2 border-red-500">
-        {shouldShowSearchResults ? (
-          <div className="mt-4">
-            <h2 className="mb-2 text-lg font-medium">
-              Search results for "{debouncedSearch}"
-            </h2>
-            {isSearchLoading ? (
-              <div className="flex justify-center py-4">
-                <Spinner />
-              </div>
-            ) : searchResultNodes.length > 0 ? (
-              <SearchResultsTable
-                searchResultNodes={searchResultNodes}
-                category={category}
-                isSearchValidating={isSearchValidating}
-                owner={owner}
-                totalNodesCount={totalNodesCount}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-              />
-            ) : (
-              <div className="py-4 text-muted-foreground">
-                No results found for "{debouncedSearch}"
-              </div>
-            )}
-          </div>
-        ) : (
-          children
         )}
       </div>
+      {shouldShowSearchResults ? (
+        <div className="">
+          {isSearchLoading ? (
+            <div className="flex justify-center py-4">
+              <Spinner />
+            </div>
+          ) : searchResultNodes.length > 0 ? (
+            <SearchResultsTable
+              searchResultNodes={searchResultNodes}
+              category={category}
+              isSearchValidating={isSearchValidating}
+              owner={owner}
+              totalNodesCount={totalNodesCount}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+            />
+          ) : (
+            <div className="py-4 text-muted-foreground">
+              No results found for "{debouncedSearch}"
+            </div>
+          )}
+        </div>
+      ) : (
+        children
+      )}
     </SpaceSearchContext.Provider>
+  );
+}
+
+function SearchingInSpace({
+  space,
+  dataSourceView,
+}: {
+  space: SpaceType;
+  dataSourceView: DataSourceViewType | undefined;
+}) {
+  const searchingIn = useMemo(() => {
+    if (dataSourceView) {
+      return `"${space.name} / ${getDataSourceNameFromView(dataSourceView)}"`;
+    }
+
+    return `"${space.name}"`;
+  }, [space.name, dataSourceView]);
+
+  return (
+    <p className="my-0.5 flex h-8 items-center justify-center">
+      Searching in <strong>{searchingIn}</strong>
+    </p>
   );
 }
 
@@ -318,20 +298,29 @@ function FrontendSearch({
   searchContextValue,
   searchTerm,
   setSearchTerm,
+  space,
+  category,
+  owner,
+  dataSourceView,
+  parentId,
 }: FullFrontendSearchProps) {
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
-      <div className="mb-4">
-        <div className="flex w-full gap-2">
-          <SearchInput
-            name="search"
-            placeholder="Search (Name)"
-            value={searchTerm}
-            onChange={setSearchTerm}
-            disabled={isSearchDisabled}
-          />
-          <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
-        </div>
+      <SearchInput
+        name="search"
+        placeholder="Search local (Name)"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        disabled={isSearchDisabled}
+      />
+      <div className="flex w-full justify-between gap-2">
+        <SpacePageTools
+          owner={owner}
+          space={space}
+          category={category}
+          dataSourceView={dataSourceView}
+          parentId={parentId}
+        />
       </div>
 
       {children}
@@ -355,7 +344,7 @@ const columnsBreakpoints = {
 interface SearchResultsTableProps {
   canReadInSpace: boolean;
   canWriteInSpace: boolean;
-  category: DataSourceViewCategoryWithoutApps;
+  category: DataSourceViewCategory | undefined;
   isSearchValidating: boolean;
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
@@ -511,144 +500,5 @@ function SearchResultsTable({
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
     />
-  );
-}
-
-export function SpacePageWrapper({
-  children,
-  actionButtons,
-  isEmpty,
-}: {
-  children: React.ReactNode;
-  actionButtons: React.ReactNode;
-  isEmpty: boolean;
-}) {
-  const { searchTerm, setSearchTerm } = React.useContext(SpaceSearchContext);
-
-  return (
-    <>
-      {/* Search bar with conditional action buttons */}
-      <div className="mb-4 flex gap-2">
-        <div className="flex-grow">
-          <SearchInput
-            name="search"
-            placeholder="Search (Name)"
-            value={searchTerm}
-            onChange={setSearchTerm}
-          />
-        </div>
-        {/* Show buttons in header only if not empty */}
-        {!isEmpty && <div className="flex gap-2">{actionButtons}</div>}
-      </div>
-
-      {/* Main content */}
-      {isEmpty ? (
-        <div className="flex h-36 w-full items-center justify-center rounded-xl bg-muted-background">
-          {/* Show buttons in center when empty */}
-          {actionButtons}
-        </div>
-      ) : (
-        children
-      )}
-    </>
-  );
-}
-
-function SpaceBreadCrumbs({
-  owner,
-  space,
-  category,
-  dataSourceView,
-  parentId,
-}: {
-  owner: WorkspaceType;
-  space: SpaceType;
-  category?: DataSourceViewCategory;
-  dataSourceView?: DataSourceViewType;
-  parentId?: string;
-}) {
-  const {
-    nodes: [currentFolder],
-  } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView: parentId ? dataSourceView : undefined,
-    internalIds: parentId ? [parentId] : [],
-    viewType: "all",
-  });
-
-  const { nodes: folders } = useDataSourceViewContentNodes({
-    dataSourceView: currentFolder ? dataSourceView : undefined,
-    internalIds: currentFolder?.parentInternalIds ?? [],
-    owner,
-    viewType: "all",
-  });
-
-  const items = useMemo(() => {
-    if (!category) {
-      return [];
-    }
-
-    const items: {
-      label: string;
-      icon?: ComponentType;
-      href?: string;
-    }[] = [
-      {
-        icon: getSpaceIcon(space),
-        label: space.kind === "global" ? "Company Data" : space.name,
-        href: `/w/${owner.sId}/spaces/${space.sId}`,
-      },
-      {
-        label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`,
-      },
-    ];
-
-    if (space.kind === "system") {
-      if (!dataSourceView) {
-        return [];
-      }
-
-      // For system space, we don't want the first breadcrumb to show, since
-      // it's only used to manage "connected data" already. Otherwise it would
-      // expose a useless link, and name would be redundant with the "Connected
-      // data" label
-      items.shift();
-    }
-
-    if (dataSourceView) {
-      if (category === "managed" && space.kind !== "system") {
-        // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
-        // managed connection name
-
-        // Showing the actual managed connection name (e.g. microsoft, slack...) is
-        // more important and implies clearly that we are dealing with connected
-        // data
-        items.pop();
-      }
-
-      items.push({
-        label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
-      });
-
-      for (const node of [...folders].reverse()) {
-        items.push({
-          label: node.title,
-          href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
-        });
-      }
-    }
-    return items;
-  }, [owner, space, category, dataSourceView, folders]);
-
-  if (items.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="pb-8">
-      <Breadcrumbs items={items} />
-    </div>
   );
 }

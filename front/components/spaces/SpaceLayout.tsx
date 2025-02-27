@@ -1,5 +1,4 @@
 import {
-  Breadcrumbs,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,23 +16,15 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import { CATEGORY_DETAILS } from "@app/components/spaces/SpaceCategoriesList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
-import {
-  getSpaceIcon,
-  getSpaceName,
-  isPrivateSpacesLimitReached,
-} from "@app/lib/spaces";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
 export interface SpaceLayoutPageProps {
@@ -51,19 +42,13 @@ export interface SpaceLayoutPageProps {
 
 interface SpaceLayoutProps {
   children: React.ReactNode;
-  hideHeader?: boolean;
-  pageDescription?: React.ReactNode;
   pageProps: SpaceLayoutPageProps;
-  pageTitle?: string;
   useBackendSearch?: boolean;
 }
 
 export function SpaceLayout({
   children,
-  hideHeader,
-  pageDescription,
   pageProps,
-  pageTitle,
   useBackendSearch = false,
 }: SpaceLayoutProps) {
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
@@ -117,15 +102,7 @@ export function SpaceLayout({
           />
         }
       >
-        <Page.Vertical gap="xl" align="stretch">
-          {!hideHeader && (
-            <Page.Header
-              title={pageTitle ?? getSpaceName(space)}
-              icon={getSpaceIcon(space)}
-              description={pageDescription}
-            />
-          )}
-
+        <Page.Vertical gap="md" align="stretch">
           <SpaceSearchInput
             category={category}
             canReadInSpace={canReadInSpace}

@@ -10,7 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderIcon,
   GlobeAltIcon,
   Icon,
   PlusIcon,
@@ -30,6 +29,7 @@ import React from "react";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpaceSearchLayout";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 type RowData = {
@@ -42,32 +42,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, unknown>;
-
-export const CATEGORY_DETAILS: {
-  [key: string]: {
-    label: string;
-    icon: ComponentType<{
-      className?: string;
-    }>;
-  };
-} = {
-  managed: {
-    label: "Connected Data",
-    icon: CloudArrowLeftRightIcon,
-  },
-  folder: {
-    label: "Folders",
-    icon: FolderIcon,
-  },
-  website: {
-    label: "Websites",
-    icon: GlobeAltIcon,
-  },
-  apps: {
-    label: "Apps",
-    icon: CommandLineIcon,
-  },
-};
 
 const getTableColumns = () => {
   return [
