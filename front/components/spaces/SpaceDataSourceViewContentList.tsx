@@ -31,7 +31,6 @@ import {
 import type {
   CellContext,
   ColumnDef,
-  PaginationState,
   SortingState,
 } from "@tanstack/react-table";
 import { useRouter } from "next/router";
@@ -53,7 +52,7 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
-import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -209,60 +208,6 @@ type SpaceDataSourceViewContentListProps = {
   space: SpaceType;
   systemSpace: SpaceType;
 };
-
-// TODO(20250226 aubin): move this hook to sparkle.
-function useCursorPaginationForDataTable(pageSize: number) {
-  const [cursorPagination, setCursorPagination] =
-    useState<CursorPaginationParams>({ cursor: null, limit: pageSize });
-
-  // We keep a history of the cursors to allow going back in pages.
-  const [cursorHistory, setCursorHistory] = useState<
-    CursorPaginationParams["cursor"][]
-  >([null]);
-
-  const [tablePagination, setTablePagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize,
-  });
-
-  const resetPagination = useCallback(() => {
-    setTablePagination({ pageIndex: 0, pageSize: PAGE_SIZE });
-    setCursorHistory([null]);
-    setCursorPagination({ cursor: null, limit: pageSize });
-  }, [pageSize]);
-
-  const handlePaginationChange = useCallback(
-    (newTablePagination: PaginationState, nextPageCursor: string | null) => {
-      if (
-        // This pagination only supports going forward one page at a time.
-        newTablePagination.pageIndex === tablePagination.pageIndex + 1 &&
-        nextPageCursor
-      ) {
-        // Next page - update the history and the cursor.
-        setTablePagination(newTablePagination);
-        if (newTablePagination.pageIndex === cursorHistory.length) {
-          setCursorHistory((prev) => [...prev, nextPageCursor]);
-        }
-        setCursorPagination({ cursor: nextPageCursor, limit: pageSize });
-      } else if (newTablePagination.pageIndex < tablePagination.pageIndex) {
-        // Older page - use the appropriate cursor.
-        setTablePagination(newTablePagination);
-        setCursorPagination({
-          cursor: cursorHistory[newTablePagination.pageIndex],
-          limit: pageSize,
-        });
-      }
-    },
-    [tablePagination.pageIndex, cursorHistory, pageSize]
-  );
-
-  return {
-    cursorPagination,
-    tablePagination,
-    resetPagination,
-    handlePaginationChange,
-  };
-}
 
 export const SpaceDataSourceViewContentList = ({
   canReadInSpace,
