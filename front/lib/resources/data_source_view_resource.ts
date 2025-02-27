@@ -104,6 +104,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationType,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -112,6 +113,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
+        ...(conversation && { conversationId: conversation.id }),
       },
       { transaction }
     );
@@ -129,6 +131,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationType,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
@@ -142,7 +145,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         dataSource,
         editedByUser,
-        t
+        conversation
       );
     };
 
@@ -177,6 +180,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationType,
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -189,6 +193,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space,
       dataSource,
       editedByUser,
+      conversation,
       transaction
     );
   }
