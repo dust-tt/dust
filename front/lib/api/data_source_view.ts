@@ -152,16 +152,23 @@ export async function getContentNodesForDataSourceView(
     nextPageCursor = coreRes.value.next_page_cursor;
   } while (nextPageCursor && resultNodes.length < limit);
 
+  const nodes = resultNodes.map((node) =>
+    getContentNodeFromCoreNode(
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+      node,
+      viewType
+    )
+  );
+  const sortedNodes = !internalIds
+    ? nodes
+    : internalIds.flatMap((id) =>
+        nodes.filter((node) => node.internalId === id)
+      );
+
   return new Ok({
-    nodes: resultNodes.map((node) =>
-      getContentNodeFromCoreNode(
-        dataSourceView instanceof DataSourceViewResource
-          ? dataSourceView.toJSON()
-          : dataSourceView,
-        node,
-        viewType
-      )
-    ),
+    nodes: sortedNodes,
     total: resultNodes.length,
     nextPageCursor: nextPageCursor,
   });
