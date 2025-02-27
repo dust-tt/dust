@@ -71,7 +71,7 @@ export function UserMessage({
 
   const router = useRouter();
   async function switchThread(threadVersion: number | null) {
-    if (threadVersion != null) {
+    if (threadVersion !== null) {
       await router.push(
         `/w/${owner.sId}/assistant/${conversation.sId}?threadVersion=${threadVersion}`,
         undefined,
