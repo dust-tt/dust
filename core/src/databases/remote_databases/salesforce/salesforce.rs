@@ -253,6 +253,8 @@ impl SalesforceRemoteDatabase {
                 .map(|mut record| {
                     // Flatten nested objects
                     self.flatten_record_with_prefix(&mut record, "");
+                    // Remove top-level attributes
+                    record.remove("attributes");
                     QueryResult { value: record }
                 })
                 .collect();
