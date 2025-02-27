@@ -49,7 +49,7 @@ export function AgentSuggestion({
     async (agent: LightAgentConfigurationType) => {
       const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
       const threadVersionParam =
-        conversation.threadVersion != null
+        conversation.threadVersion !== null
           ? `?threadVersion=${conversation.threadVersion}`
           : "";
 
