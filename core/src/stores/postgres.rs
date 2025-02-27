@@ -57,6 +57,7 @@ pub struct UpsertNode<'a> {
     pub parents: &'a Vec<String>,
     pub source_url: &'a Option<String>,
     pub tags: &'a Vec<String>,
+    pub text_size: &'a Option<i64>,
 }
 
 impl PostgresStore {
@@ -168,14 +169,15 @@ impl PostgresStore {
             .prepare(
                 "INSERT INTO data_sources_nodes \
                   (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, source_url, tags_array, \
-                   document, \"table\", folder) \
-                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) \
+                   document, \"table\", folder, text_size) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \
                   ON CONFLICT (data_source, node_id) DO UPDATE \
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
                     folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
                     tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility \
+                    text_size = EXCLUDED.text_size
                   RETURNING id",
             )
             .await?;
@@ -197,6 +199,7 @@ impl PostgresStore {
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
+                    &upsert_params.text_size,
                 ],
             )
             .await?;
@@ -1983,6 +1986,7 @@ impl Store for PostgresStore {
                 parents: &document.parents,
                 source_url: &document.source_url,
                 tags: &document.tags,
+                text_size: &Some(document.text_size as i64),
             },
             data_source_row_id,
             document_row_id,
@@ -2762,6 +2766,7 @@ impl Store for PostgresStore {
                 parents: table.parents(),
                 source_url: table.source_url(),
                 tags: &table.get_tags(),
+                text_size: &None,
             },
             data_source_row_id,
             table_row_id,
@@ -3280,6 +3285,7 @@ impl Store for PostgresStore {
                 parents: folder.parents(),
                 source_url: folder.source_url(),
                 tags: &vec![],
+                text_size: &None,
             },
             data_source_row_id,
             folder_row_id,
