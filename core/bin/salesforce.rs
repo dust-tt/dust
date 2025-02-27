@@ -46,7 +46,5 @@ async fn main() -> Result<(), anyhow::Error> {
         )
         .await?;
 
-    println!("{:?}", r);
-
     Ok(())
 }
