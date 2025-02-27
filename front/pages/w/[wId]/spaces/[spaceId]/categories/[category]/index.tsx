@@ -11,7 +11,6 @@ import {
   removeNulls,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 

@@ -18,7 +18,6 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  DataSourceWithConnectorDetailsType,
   LightWorkspaceType,
   PlanType,
   Result,

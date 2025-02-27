@@ -8,7 +8,6 @@ import {
   CubeIcon,
   DataTable,
   PencilSquareIcon,
-  SearchInput,
   Spinner,
   TrashIcon,
   usePaginationFromUrl,
@@ -18,7 +17,6 @@ import type {
   DataSourceViewCategory,
   DataSourceViewsWithDetails,
   DataSourceViewType,
-  DataSourceWithConnectorDetailsType,
   PlanType,
   SpaceType,
   WorkspaceType,
@@ -53,13 +51,12 @@ import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;

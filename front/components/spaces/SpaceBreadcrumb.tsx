@@ -5,7 +5,6 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import Link from "next/link";
 import React from "react";
 
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
