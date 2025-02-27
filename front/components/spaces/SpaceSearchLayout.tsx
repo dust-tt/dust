@@ -1,7 +1,12 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  Breadcrumbs,
+  CloudArrowLeftRightIcon,
   cn,
+  CommandLineIcon,
   DataTable,
+  FolderIcon,
+  GlobeAltIcon,
   SearchInput,
   Spinner,
   useHashParam,
@@ -15,11 +20,14 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
   LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import type { SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import React from "react";
+import type { ComponentType } from "react";
+import React, { useMemo } from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
@@ -27,9 +35,40 @@ import { makeColumnsForSearchResults } from "@app/components/spaces/search/colum
 import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { useDataSourceViews } from "@app/lib/swr/data_source_views";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { getSpaceIcon } from "@app/lib/spaces";
+import {
+  useDataSourceViewContentNodes,
+  useDataSourceViews,
+} from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+
+export const CATEGORY_DETAILS: {
+  [key: string]: {
+    label: string;
+    icon: ComponentType<{
+      className?: string;
+    }>;
+  };
+} = {
+  managed: {
+    label: "Connected Data",
+    icon: CloudArrowLeftRightIcon,
+  },
+  folder: {
+    label: "Folders",
+    icon: FolderIcon,
+  },
+  website: {
+    label: "Websites",
+    icon: GlobeAltIcon,
+  },
+  apps: {
+    label: "Apps",
+    icon: CommandLineIcon,
+  },
+};
 
 export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
 
@@ -45,6 +84,9 @@ interface BaseSpaceSearchInputProps {
 interface BackendSearchProps extends BaseSpaceSearchInputProps {
   useBackendSearch: true;
   category: DataSourceViewCategoryWithoutApps;
+  space: SpaceType;
+  dataSourceView: DataSourceViewType;
+  parentId: string | undefined;
 }
 
 interface FrontendSearchProps extends BaseSpaceSearchInputProps {
@@ -148,6 +190,7 @@ interface FullBackendSearchProps extends BackendSearchProps {
   setSearchTerm: (term: string) => void;
   targetDataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
+  space: SpaceType;
 }
 
 function BackendSearch({
@@ -163,6 +206,9 @@ function BackendSearch({
   setSearchTerm,
   targetDataSourceViews,
   viewType,
+  space,
+  dataSourceView,
+  parentId,
 }: FullBackendSearchProps) {
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
@@ -212,38 +258,49 @@ function BackendSearch({
             onChange={setSearchTerm}
             disabled={isSearchDisabled}
           />
+        </div>
+        <div className="flex w-full justify-between gap-2 pt-2">
+          <SpaceBreadCrumbs
+            space={space}
+            category={category}
+            owner={owner}
+            dataSourceView={dataSourceView}
+            parentId={parentId ?? undefined}
+          />
           <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
         </div>
       </div>
 
-      {shouldShowSearchResults ? (
-        <div className="mt-4">
-          <h2 className="mb-2 text-lg font-medium">
-            Search results for "{debouncedSearch}"
-          </h2>
-          {isSearchLoading ? (
-            <div className="flex justify-center py-4">
-              <Spinner />
-            </div>
-          ) : searchResultNodes.length > 0 ? (
-            <SearchResultsTable
-              searchResultNodes={searchResultNodes}
-              category={category}
-              isSearchValidating={isSearchValidating}
-              owner={owner}
-              totalNodesCount={totalNodesCount}
-              canReadInSpace={canReadInSpace}
-              canWriteInSpace={canWriteInSpace}
-            />
-          ) : (
-            <div className="py-4 text-muted-foreground">
-              No results found for "{debouncedSearch}"
-            </div>
-          )}
-        </div>
-      ) : (
-        children
-      )}
+      <div className="border-2 border-red-500">
+        {shouldShowSearchResults ? (
+          <div className="mt-4">
+            <h2 className="mb-2 text-lg font-medium">
+              Search results for "{debouncedSearch}"
+            </h2>
+            {isSearchLoading ? (
+              <div className="flex justify-center py-4">
+                <Spinner />
+              </div>
+            ) : searchResultNodes.length > 0 ? (
+              <SearchResultsTable
+                searchResultNodes={searchResultNodes}
+                category={category}
+                isSearchValidating={isSearchValidating}
+                owner={owner}
+                totalNodesCount={totalNodesCount}
+                canReadInSpace={canReadInSpace}
+                canWriteInSpace={canWriteInSpace}
+              />
+            ) : (
+              <div className="py-4 text-muted-foreground">
+                No results found for "{debouncedSearch}"
+              </div>
+            )}
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </SpaceSearchContext.Provider>
   );
 }
@@ -494,5 +551,104 @@ export function SpacePageWrapper({
         children
       )}
     </>
+  );
+}
+
+function SpaceBreadCrumbs({
+  owner,
+  space,
+  category,
+  dataSourceView,
+  parentId,
+}: {
+  owner: WorkspaceType;
+  space: SpaceType;
+  category?: DataSourceViewCategory;
+  dataSourceView?: DataSourceViewType;
+  parentId?: string;
+}) {
+  const {
+    nodes: [currentFolder],
+  } = useDataSourceViewContentNodes({
+    owner,
+    dataSourceView: parentId ? dataSourceView : undefined,
+    internalIds: parentId ? [parentId] : [],
+    viewType: "all",
+  });
+
+  const { nodes: folders } = useDataSourceViewContentNodes({
+    dataSourceView: currentFolder ? dataSourceView : undefined,
+    internalIds: currentFolder?.parentInternalIds ?? [],
+    owner,
+    viewType: "all",
+  });
+
+  const items = useMemo(() => {
+    if (!category) {
+      return [];
+    }
+
+    const items: {
+      label: string;
+      icon?: ComponentType;
+      href?: string;
+    }[] = [
+      {
+        icon: getSpaceIcon(space),
+        label: space.kind === "global" ? "Company Data" : space.name,
+        href: `/w/${owner.sId}/spaces/${space.sId}`,
+      },
+      {
+        label: CATEGORY_DETAILS[category].label,
+        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`,
+      },
+    ];
+
+    if (space.kind === "system") {
+      if (!dataSourceView) {
+        return [];
+      }
+
+      // For system space, we don't want the first breadcrumb to show, since
+      // it's only used to manage "connected data" already. Otherwise it would
+      // expose a useless link, and name would be redundant with the "Connected
+      // data" label
+      items.shift();
+    }
+
+    if (dataSourceView) {
+      if (category === "managed" && space.kind !== "system") {
+        // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
+        // managed connection name
+
+        // Showing the actual managed connection name (e.g. microsoft, slack...) is
+        // more important and implies clearly that we are dealing with connected
+        // data
+        items.pop();
+      }
+
+      items.push({
+        label: getDataSourceNameFromView(dataSourceView),
+        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
+      });
+
+      for (const node of [...folders].reverse()) {
+        items.push({
+          label: node.title,
+          href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
+        });
+      }
+    }
+    return items;
+  }, [owner, space, category, dataSourceView, folders]);
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="pb-8">
+      <Breadcrumbs items={items} />
+    </div>
   );
 }
