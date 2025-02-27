@@ -11,7 +11,6 @@ import {
   SearchInput,
   Spinner,
   useHashParam,
-  usePaginationFromUrl,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
@@ -29,11 +28,7 @@ import {
   isValidContentNodesViewType,
   MIN_SEARCH_QUERY_SIZE,
 } from "@dust-tt/types";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -53,6 +48,7 @@ import {
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import {
@@ -64,7 +60,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
-const ROWS_COUNT_CAPPED = 1000;
+const PAGE_SIZE = 25;
 
 type RowData = DataSourceViewContentNode & {
   icon: React.ComponentType;
@@ -182,8 +178,8 @@ function useStaticDataSourceViewHasContent({
       owner,
       internalIds: parentId ? [parentId] : undefined,
       pagination: {
-        pageIndex: 0,
-        pageSize: 1,
+        cursor: null,
+        limit: 1,
       },
       viewType,
     });
@@ -231,13 +227,15 @@ export const SpaceDataSourceViewContentList = ({
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const sendNotification = useSendNotification();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
-  const { pagination, setPagination } = usePaginationFromUrl({
-    urlPrefix: "table",
-    initialPageSize: 25,
-  });
+  const {
+    cursorPagination,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  } = useCursorPaginationForDataTable(PAGE_SIZE);
+
   const [viewType, setViewType] = useHashParam(
     "viewType",
     DEFAULT_VIEW_TYPE
@@ -255,14 +253,11 @@ export const SpaceDataSourceViewContentList = ({
   const handleViewTypeChange = useCallback(
     (newViewType: ContentNodesViewType) => {
       if (newViewType !== viewType) {
-        setPagination(
-          { pageIndex: 0, pageSize: pagination.pageSize },
-          "replace"
-        );
+        resetPagination();
         setViewType(newViewType);
       }
     },
-    [setPagination, setViewType, viewType, pagination.pageSize]
+    [resetPagination, setViewType, viewType]
   );
 
   const { searchResultNodes, isSearchLoading, isSearchValidating } =
@@ -274,10 +269,6 @@ export const SpaceDataSourceViewContentList = ({
       viewType,
     });
 
-  // TODO(20250127, nodes-core): turn to true and remove when implementing pagination
-  const isServerPagination = false;
-  // isFolder(dataSourceView.dataSource) && !dataSourceSearch;
-
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
     [showSpaceUsage]
@@ -287,12 +278,14 @@ export const SpaceDataSourceViewContentList = ({
     isNodesLoading,
     mutateRegardlessOfQueryParams: mutateContentNodes,
     nodes: childrenNodes,
+    nextPageCursor,
     totalNodesCount,
+    totalNodesCountIsAccurate,
   } = useDataSourceViewContentNodes({
     dataSourceView,
     owner,
     parentId,
-    pagination: isServerPagination ? pagination : undefined,
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     viewType: isValidContentNodesViewType(viewType)
       ? viewType
       : DEFAULT_VIEW_TYPE,
@@ -408,7 +401,7 @@ export const SpaceDataSourceViewContentList = ({
   useEffect(() => {
     if (!isTablesValidating && !isDocumentsValidating) {
       // If the view only has content in one of the two views, we switch to that view.
-      // if both view have content, or neither views have content, we default to documents.
+      // if both views have content, or neither view has content, we default to documents.
       if (hasTables && !hasDocuments) {
         handleViewTypeChange("table");
       } else if (!hasTables && hasDocuments) {
@@ -577,10 +570,7 @@ export const SpaceDataSourceViewContentList = ({
                 placeholder="Search (Name)"
                 value={dataSourceSearch}
                 onChange={(s) => {
-                  setPagination(
-                    { pageIndex: 0, pageSize: pagination.pageSize },
-                    "replace"
-                  );
+                  resetPagination();
                   setDataSourceSearch(s);
                 }}
               />
@@ -690,13 +680,14 @@ export const SpaceDataSourceViewContentList = ({
               "pb-4",
               isSearchValidating && "pointer-events-none opacity-50"
             )}
-            sorting={sorting}
-            setSorting={setSorting}
-            totalRowCount={isServerPagination ? totalNodesCount : undefined}
-            rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
-            pagination={pagination}
-            setPagination={setPagination}
+            totalRowCount={totalNodesCount}
+            rowCountIsCapped={!totalNodesCountIsAccurate}
+            pagination={tablePagination}
+            setPagination={(newTablePagination) =>
+              handlePaginationChange(newTablePagination, nextPageCursor)
+            }
             columnsBreakpoints={columnsBreakpoints}
+            disablePaginationNumbers
           />
         )}
         {searchFeatureFlag &&

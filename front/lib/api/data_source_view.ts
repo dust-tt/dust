@@ -14,28 +14,27 @@ import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
   getContentNodeFromCoreNode,
 } from "@app/lib/api/content_nodes";
-import type {
-  CursorPaginationParams,
-  OffsetPaginationParams,
-} from "@app/lib/api/pagination";
-import { isCursorPaginationParams } from "@app/lib/api/pagination";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
+const DEFAULT_PAGINATION_LIMIT = 1000;
+
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   parentId?: string;
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  pagination?: CursorPaginationParams | OffsetPaginationParams;
+  pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
 }
 
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
 }
 
 function filterNodesByViewType(
@@ -92,7 +91,7 @@ export async function getContentNodesForDataSourceView(
     pagination,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const limit = pagination?.limit ?? 1000;
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
 
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
@@ -122,35 +121,28 @@ export async function getContentNodesForDataSourceView(
         ? undefined
         : ROOT_PARENT_ID);
 
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  let nextPageCursor: string | null = pagination
-    ? isCursorPaginationParams(pagination)
-      ? pagination.cursor
-      : null
-    : null;
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
   let resultNodes: CoreAPIContentNode[] = [];
-  do {
-    const coreRes = await coreAPI.searchNodes({
-      filter: {
-        data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-        node_ids,
-        parent_id,
-      },
-      options: { limit, cursor: nextPageCursor ?? undefined },
-    });
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_ids,
+      parent_id,
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
 
-    if (coreRes.isErr()) {
-      return new Err(new Error(coreRes.error.message));
-    }
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
 
-    const filteredNodes = removeCatchAllFoldersIfEmpty(
-      filterNodesByViewType(coreRes.value.nodes, viewType)
-    );
+  const filteredNodes = removeCatchAllFoldersIfEmpty(
+    filterNodesByViewType(coreRes.value.nodes, viewType)
+  );
 
-    resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
-    nextPageCursor = coreRes.value.next_page_cursor;
-  } while (nextPageCursor && resultNodes.length < limit);
+  resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
+  nextPageCursor = coreRes.value.next_page_cursor;
 
   const nodes = resultNodes.map((node) =>
     getContentNodeFromCoreNode(
@@ -169,7 +161,8 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: sortedNodes,
-    total: resultNodes.length,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
     nextPageCursor: nextPageCursor,
   });
 }
