@@ -213,7 +213,7 @@ function BackendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search remote (Name)"
+        placeholder="Search (Name)"
         value={searchTerm}
         onChange={setSearchTerm}
         disabled={isSearchDisabled}
@@ -304,7 +304,7 @@ function FrontendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search local (Name)"
+        placeholder="Search (Name)"
         value={searchTerm}
         onChange={setSearchTerm}
         disabled={isSearchDisabled}
