@@ -97,7 +97,7 @@ DataSourceViewModel.belongsTo(UserModel, {
 });
 
 Conversation.hasMany(DataSourceViewModel, {
-  as: "conversation",
+  as: "conversationForView",
   foreignKey: { name: "conversationId", allowNull: true },
   onDelete: "RESTRICT",
 });
