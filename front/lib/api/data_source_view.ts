@@ -20,6 +20,8 @@ import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
+const DEFAULT_PAGINATION_LIMIT = 1000;
+
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
@@ -89,7 +91,7 @@ export async function getContentNodesForDataSourceView(
     pagination,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const limit = pagination?.limit ?? 1000;
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
 
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
