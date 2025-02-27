@@ -29,13 +29,14 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
+use dust::search_stores::search_store::NodeItem;
 use dust::{
     api_keys::validate_api_key,
     app,
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        node::{Node, ProviderVisibility},
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -2475,7 +2476,7 @@ async fn tables_upsert(
     {
         Ok(table) => match state
             .search_store
-            .index_node(Node::from(table.clone()))
+            .index_node(NodeItem::Table(table.clone()))
             .await
         {
             Ok(_) => (
@@ -3314,7 +3315,7 @@ async fn folders_upsert(
         ),
         Ok(folder) => match state
             .search_store
-            .index_node(Node::from(folder.clone()))
+            .index_node(NodeItem::Folder(folder.clone()))
             .await
         {
             Ok(_) => (
@@ -3467,7 +3468,10 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(Node::from(folder)).await?;
+        state
+            .search_store
+            .delete_node(NodeItem::Folder(folder))
+            .await?;
         Ok(())
     }
     .await;
@@ -3501,7 +3505,7 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, hit_count, hit_count_is_accurate, next_cursor) = match state
+    let (nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code) = match state
         .search_store
         .search_nodes(
             payload.query,
@@ -3511,9 +3515,13 @@ async fn nodes_search(
         )
         .await
     {
-        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor)) => {
-            (nodes, hit_count, hit_count_is_accurate, next_cursor)
-        }
+        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code)) => (
+            nodes,
+            hit_count,
+            hit_count_is_accurate,
+            next_cursor,
+            warning_code,
+        ),
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3533,6 +3541,7 @@ async fn nodes_search(
                 "hit_count": hit_count,
                 "hit_count_is_accurate": hit_count_is_accurate,
                 "next_page_cursor": next_cursor,
+                "warning_code": warning_code,
             })),
         }),
     )

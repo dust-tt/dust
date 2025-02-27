@@ -144,7 +144,9 @@ export function FeedbackSelector({
               // We enforce written feedback for thumbs down.
               // -> Not saving the reaction until then.
               className={
-                feedback?.thumb === "up" ? "" : "text-muted-foreground"
+                feedback?.thumb === "up"
+                  ? "text-muted-foreground dark:text-muted-foreground-night"
+                  : ""
               }
             />
             <Button
@@ -157,7 +159,9 @@ export function FeedbackSelector({
               // We enforce written feedback for thumbs down.
               // -> Not saving the reaction until then.
               className={
-                feedback?.thumb === "down" ? "" : "text-muted-foreground"
+                feedback?.thumb === "down"
+                  ? "text-muted-foreground dark:text-muted-foreground-night"
+                  : ""
               }
             />
           </div>

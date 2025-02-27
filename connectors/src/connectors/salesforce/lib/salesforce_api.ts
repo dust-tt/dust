@@ -11,6 +11,7 @@ import {
   isValidSchemaInternalId,
 } from "@connectors/connectors/salesforce/lib/internal_ids";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import { isStandardObjectWhitelisted } from "@connectors/connectors/salesforce/lib/permissions";
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
@@ -128,6 +129,9 @@ export async function fetchTables({
     return new Ok(
       tables.sobjects
         .filter((obj) => (isCustomSchema ? obj.custom : !obj.custom))
+        .filter((obj) => {
+          return isCustomSchema ? true : isStandardObjectWhitelisted(obj.name);
+        })
         .map((obj) => ({
           name: obj.name,
           database_name: INTERNAL_ID_DATABASE,

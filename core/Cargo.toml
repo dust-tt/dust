@@ -70,6 +70,10 @@ path = "bin/migrations/20241203_fix_created_dsdocs.rs"
 name = "elasticsearch_backfill_document_tags_index"
 path = "bin/migrations/20250205_backfill_document_tags_index.rs"
 
+[[bin]]
+name = "backfill_elasticsearch_text_size"
+path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
+
 [[test]]
 name = "oauth_connections_test"
 path = "src/oauth/tests/functional_connections.rs"

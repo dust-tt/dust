@@ -81,6 +81,7 @@ interface DataTableProps<TData extends TBaseData> {
   sorting?: SortingState;
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
+  disablePaginationNumbers?: boolean;
 }
 
 function shouldRenderColumn(
@@ -108,6 +109,7 @@ export function DataTable<TData extends TBaseData>({
   sorting,
   setSorting,
   isServerSideSorting = false,
+  disablePaginationNumbers = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -257,6 +259,7 @@ export function DataTable<TData extends TBaseData>({
             setPagination={table.setPagination}
             rowCount={table.getRowCount()}
             rowCountIsCapped={rowCountIsCapped}
+            disablePaginationNumbers={disablePaginationNumbers}
           />
         </div>
       )}
@@ -366,7 +369,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-justify-center s-border-y s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"

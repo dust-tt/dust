@@ -1,6 +1,7 @@
 import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
+  SearchWarningCode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import { assertNever, CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
@@ -49,6 +50,7 @@ const SearchRequestBody = t.type({
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
   total: number;
+  warningCode: SearchWarningCode | null;
 };
 
 async function handler(
@@ -181,7 +183,10 @@ async function handler(
 
     return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
-  return res.status(200).json({ nodes, total: searchRes.value.hit_count });
+
+  return res
+    .status(200)
+    .json({ nodes, total: searchRes.value.hit_count, warningCode: searchRes.value.warning_code });
 }
 
 export default withSessionAuthenticationForWorkspace(

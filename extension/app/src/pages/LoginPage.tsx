@@ -47,7 +47,7 @@ export const LoginPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen flex-col p-4">
+      <div className="flex h-screen flex-col p-4 dark:bg-slate-950 dark:text-slate-50">
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
@@ -94,7 +94,7 @@ export const LoginPage = () => {
             />
           </div>
         </div>
-        <p className="text-center text-element-700 max-w-[300px] mx-auto">
+        <p className="text-center text-element-700 dark:text-element-700-night max-w-[300px] mx-auto">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
@@ -111,7 +111,7 @@ export const LoginPage = () => {
 
   if (isAuthenticated && !isUserSetup && user?.workspaces.length) {
     return (
-      <div className="flex h-screen flex-col gap-2 p-4">
+      <div className="flex h-screen flex-col gap-2 p-4 dark:bg-slate-950 dark:text-slate-50">
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
           <Page.SectionHeader title="Almost there" />
           <DropdownMenu>
