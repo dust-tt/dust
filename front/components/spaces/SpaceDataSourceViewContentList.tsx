@@ -28,11 +28,7 @@ import {
   isValidContentNodesViewType,
   MIN_SEARCH_QUERY_SIZE,
 } from "@dust-tt/types";
-import type {
-  CellContext,
-  ColumnDef,
-  SortingState,
-} from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -231,7 +227,6 @@ export const SpaceDataSourceViewContentList = ({
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const sendNotification = useSendNotification();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
   const contentActionsRef = useRef<ContentActionsRef>(null);
 
   const {
@@ -685,8 +680,6 @@ export const SpaceDataSourceViewContentList = ({
               "pb-4",
               isSearchValidating && "pointer-events-none opacity-50"
             )}
-            sorting={sorting}
-            setSorting={setSorting}
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}
