@@ -90,9 +90,5 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return (
-    <SpaceLayout pageProps={pageProps} hideHeader>
-      {page}
-    </SpaceLayout>
-  );
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
 };

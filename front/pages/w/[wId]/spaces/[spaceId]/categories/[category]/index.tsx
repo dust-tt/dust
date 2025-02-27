@@ -191,32 +191,5 @@ export default function Space({
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {
-  const isSystemSpace = pageProps.space.kind === "system";
-  const pageDescription = isSystemSpace ? (
-    <>
-      Here you can authorize Connections and control what data Dust can access.
-      Once connected, data can be distributed to Open Spaces (accessible to all
-      workspace members) or Restricted Spaces (limited access). <br />
-      Need help? Check out our{" "}
-      <Link
-        href="https://docs.dust.tt/docs/data"
-        className="text-highlight"
-        target="_blank"
-      >
-        guide
-      </Link>
-    </>
-  ) : undefined;
-  const pageTitle = isSystemSpace ? "Connection Admin" : pageProps.category;
-
-  return (
-    <SpaceLayout
-      hideHeader={!isSystemSpace}
-      pageProps={pageProps}
-      pageDescription={pageDescription}
-      pageTitle={pageTitle}
-    >
-      {page}
-    </SpaceLayout>
-  );
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
 };

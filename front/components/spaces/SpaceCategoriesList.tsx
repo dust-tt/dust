@@ -197,8 +197,7 @@ export const SpaceCategoriesList = ({
       {isEmpty && (
         <div
           className={cn(
-            "flex gap-2",
-            "h-36 w-full items-center justify-center rounded-xl",
+            "flex h-36 w-full items-center justify-center gap-2 rounded-xl",
             "bg-muted-background dark:bg-muted-background-night"
           )}
         >

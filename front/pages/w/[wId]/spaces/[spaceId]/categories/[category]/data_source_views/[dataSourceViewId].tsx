@@ -152,7 +152,7 @@ Space.getLayout = (
   pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
 ) => {
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch hideHeader>
+    <SpaceLayout pageProps={pageProps} useBackendSearch>
       {page}
     </SpaceLayout>
   );
