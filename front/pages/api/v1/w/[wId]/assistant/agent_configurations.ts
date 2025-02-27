@@ -57,14 +57,12 @@ const viewRequiresUser = (view?: string): boolean =>
  *           type: string
  *           enum: [all, list, workspace, published, global, favorites]
  *       - in: query
- *         name: includes
+ *         name: withAuthors
  *         required: false
- *         description: Array of additional data to include in the response
+ *         description: When set to 'true', includes recent authors information for each agent
  *         schema:
- *           type: array
- *           items:
- *             type: string
- *             enum: [authors]
+ *           type: string
+ *           enum: ['true', 'false']
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -73,19 +71,23 @@ const viewRequiresUser = (view?: string): boolean =>
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/AgentConfiguration'
+ *               type: object
+ *               properties:
+ *                 agentConfigurations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/AgentConfiguration'
+ *                   description: Array of agent configurations, optionally including lastAuthors if withAuthors=true
  *       400:
  *         description: Bad Request. Missing or invalid parameters.
  *       401:
- *         description: Unauthorized. Invalid or missing authentication token.
- *       500:
- *         description: Internal Server Error.
+ *         description: Unauthorized. Invalid or missing authentication token, or attempting to access restricted views without authentication.
  *       404:
  *         description: Workspace not found.
  *       405:
  *         description: Method not supported. Only GET is expected.
+ *       500:
+ *         description: Internal Server Error.
  */
 
 async function handler(
