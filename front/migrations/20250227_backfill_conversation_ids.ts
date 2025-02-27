@@ -33,8 +33,8 @@ async function backfillDataSourceViewConversationId(
       workspaceId: workspace.id,
       vaultId: conversationsSpace.id,
       conversationId: {
-        [Op.not]: null
-      }
+        [Op.not]: null,
+      },
     },
   });
 
