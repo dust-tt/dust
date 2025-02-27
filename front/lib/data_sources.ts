@@ -87,6 +87,7 @@ const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
   "microsoft",
+  "salesforce",
 ];
 
 export function supportsDocumentsData(ds: DataSource): boolean {
