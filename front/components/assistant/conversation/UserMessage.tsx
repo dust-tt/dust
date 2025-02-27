@@ -135,7 +135,7 @@ export function UserMessage({
       );
     } else {
       if (
-        message.previousThreadVersion != null ||
+        message.previousThreadVersion !== null ||
         message.nextThreadVersion != null
       ) {
         buttons.push(
