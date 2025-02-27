@@ -13,6 +13,7 @@ import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { SparkleContext, SparkleContextLinkType } from "@sparkle/context";
 import { ChevronRightIcon } from "@sparkle/icons";
+import { cn } from "@sparkle/lib";
 
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
@@ -26,6 +27,7 @@ interface BreadcrumbItem {
 
 interface BreadcrumbProps {
   items: BreadcrumbItem[];
+  className?: string;
 }
 
 interface BreadcrumbsAccumulator {
@@ -33,7 +35,7 @@ interface BreadcrumbsAccumulator {
   itemsHidden: BreadcrumbItem[];
 }
 
-export function Breadcrumbs({ items }: BreadcrumbProps) {
+export function Breadcrumbs({ items, className }: BreadcrumbProps) {
   const { components } = React.useContext(SparkleContext);
 
   const Link: SparkleContextLinkType = components.link;
@@ -54,7 +56,7 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
   );
 
   return (
-    <div className="gap-2 s-flex s-flex-row s-items-center">
+    <div className={cn("s-flex s-flex-row s-items-center s-gap-1", className)}>
       {itemsShown.map((item, index) => {
         return (
           <div
@@ -81,23 +83,36 @@ export function Breadcrumbs({ items }: BreadcrumbProps) {
                   </DropdownMenuGroup>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : item.href ? (
+              <Link
+                href={item.href}
+                className={
+                  index === itemsShown.length - 1
+                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    : "s-text-element-700 dark:s-text-element-700-night"
+                }
+              >
+                {index === itemsShown.length - 1
+                  ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
+                  : truncateWithTooltip(
+                      item.label,
+                      LABEL_TRUNCATE_LENGTH_MIDDLE
+                    )}
+              </Link>
             ) : (
-              <div>
-                <Link
-                  href={item.href || "#"}
-                  className={
-                    index === items.length - 1
-                      ? "s-text-foreground dark:s-text-foreground-night"
-                      : "s-text-element-700 dark:s-text-element-700-night"
-                  }
-                >
-                  {index === items.length - 1
-                    ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
-                    : truncateWithTooltip(
-                        item.label,
-                        LABEL_TRUNCATE_LENGTH_MIDDLE
-                      )}
-                </Link>
+              <div
+                className={
+                  index === itemsShown.length - 1
+                    ? "s-font-medium s-text-foreground dark:s-text-foreground-night"
+                    : "s-text-element-700 dark:s-text-element-700-night"
+                }
+              >
+                {index === itemsShown.length - 1
+                  ? truncateWithTooltip(item.label, LABEL_TRUNCATE_LENGTH_END)
+                  : truncateWithTooltip(
+                      item.label,
+                      LABEL_TRUNCATE_LENGTH_MIDDLE
+                    )}
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
