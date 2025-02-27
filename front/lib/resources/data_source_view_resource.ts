@@ -152,7 +152,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         dataSource,
         editedByUser,
-        conversation
+        conversation,
+        t
       );
     };
 
