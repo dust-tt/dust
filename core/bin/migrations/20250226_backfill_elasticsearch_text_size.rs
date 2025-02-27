@@ -6,13 +6,12 @@ use dust::{
     search_stores::search_store::ElasticsearchSearchStore,
     stores::{postgres::PostgresStore, store::Store},
 };
-use elasticsearch::{http::request::JsonBody, indices::IndicesExistsParts, BulkParts};
+use elasticsearch::{indices::IndicesExistsParts, BulkOperation, BulkParts};
 use http::StatusCode;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio_postgres::NoTls;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(long, help = "The version of the index")]
     index_version: u32,
@@ -28,10 +27,10 @@ struct Args {
 }
 
 /*
- * Backfills nodes index in Elasticsearch for core using the postgres table `data_sources_nodes`
+ * Backfills the column text_size of the Elasticsearch index behind the alias core_data_sources_nodes.
  *
  * Usage:
- * cargo run --bin elasticsearch_backfill_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
+ * cargo run --bin backfill_elasticsearch_text_size -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
 #[tokio::main]
@@ -51,9 +50,9 @@ async fn list_data_source_nodes(
 
     let stmt = c
         .prepare(
-            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dns.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.text_size \
+            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dsn.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.text_size \
                FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
-               WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
+               WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
         )
         .await?;
     let rows = c.query(&stmt, &[&id_cursor, &batch_size]).await?;
@@ -80,9 +79,9 @@ async fn list_data_source_nodes(
                 (None, None, Some(id)) => (NodeType::Folder, id),
                 _ => unreachable!(),
             };
-            let source_url: Option<String> = row.get::<_, Option<String>>(11);
-            let row_id = row.get::<_, i64>(12);
-            let text_size = row.get::<_, Option<i64>>(13);
+            let source_url: Option<String> = row.get::<_, Option<String>>(12);
+            let row_id = row.get::<_, i64>(13);
+            let text_size = row.get::<_, Option<i64>>(14);
             (
                 Node::new(
                     &data_source_id,
@@ -155,8 +154,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let db_uri = std::env::var("CORE_DATABASE_READ_REPLICA_URI")
         .expect("CORE_DATABASE_READ_REPLICA_URI must be set");
     let store = PostgresStore::new(&db_uri).await?;
-    // loop on all nodes in postgres using id as cursor, stopping when id is
-    // greated than the last id in data_sources_nodes at start of backfill
+
+    // Loop on all nodes in postgres using id as cursor, stopping when id is
+    // greater than the last id in data_sources_nodes at the start of the backfill
     let mut next_cursor = start_cursor;
 
     // grab last id in data_sources_nodes
@@ -165,6 +165,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let last_id = c
         .query_one("SELECT MAX(id) FROM data_sources_nodes", &[])
         .await?;
+
     let last_id: i64 = last_id.get(0);
     println!("Last id in data_sources_nodes: {}", last_id);
     while next_cursor <= last_id {
@@ -184,29 +185,37 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 break;
             }
         };
-        //
-        let nodes_body: Vec<JsonBody<_>> = nodes
+
+        let bulk_operations = nodes
             .into_iter()
-            .filter(|node| node.source_url.is_some())
-            .flat_map(|node| {
-                [
-                    json!({"index": {"_id": node.unique_id()}}).into(),
-                    json!(node).into(),
-                ]
+            .filter(|node| node.text_size.is_some())
+            .map(|node| {
+                BulkOperation::update(
+                    node.unique_id(),
+                    json!({
+                        "doc": {
+                            "text_size": node.text_size
+                        }
+                    }),
+                )
+                .into()
             })
-            .collect();
-        search_store
+            .collect::<Vec<BulkOperation<Value>>>();
+
+        // Send the bulk request
+        let response = search_store
             .client
             .bulk(BulkParts::Index(index_fullname.as_str()))
-            .body(nodes_body)
+            .body(bulk_operations)
             .send()
             .await?;
+
         match response.status_code() {
             StatusCode::OK => println!("Succeeded."),
             _ => {
-                let body = response.json::<serde_json::Value>().await?;
+                let body = response.json::<Value>().await?;
                 eprintln!("\n{:?}", body);
-                return Err(anyhow::anyhow!("Failed to insert nodes").into());
+                return Err(anyhow::anyhow!("Failed to update nodes").into());
             }
         }
     }

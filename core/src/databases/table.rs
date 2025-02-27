@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::search_stores::search_store::NodeItem;
 use crate::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
+    data_sources::node::ProviderVisibility,
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -150,6 +151,9 @@ impl Table {
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
+    }
     pub fn created(&self) -> u64 {
         self.created
     }
@@ -250,7 +254,9 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store.delete_node(Node::from(self.clone())).await?;
+            search_store
+                .delete_node(NodeItem::Table(self.clone()))
+                .await?;
         }
 
         Ok(())
@@ -271,7 +277,9 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
+        search_store
+            .index_node(NodeItem::Table(self.clone()))
+            .await?;
         Ok(())
     }
 
@@ -308,25 +316,6 @@ impl Table {
             provider_visibility: self.provider_visibility().clone(),
             rows,
         })
-    }
-}
-
-impl From<Table> for Node {
-    fn from(table: Table) -> Node {
-        Node::new(
-            &table.data_source_id,
-            &table.data_source_internal_id,
-            &table.table_id,
-            NodeType::Table,
-            table.timestamp,
-            &table.title,
-            &table.mime_type,
-            table.provider_visibility,
-            table.parents.get(1).cloned(),
-            table.parents,
-            table.source_url,
-            Some(table.tags),
-        )
     }
 }
 
