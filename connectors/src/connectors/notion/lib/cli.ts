@@ -17,6 +17,7 @@ import {
   deleteDatabase,
   deletePage,
   getNotionAccessToken,
+  updateParentsFields,
 } from "@connectors/connectors/notion/temporal/activities";
 import { stopNotionGarbageCollectorWorkflow } from "@connectors/connectors/notion/temporal/client";
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";
@@ -27,7 +28,6 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { getConnectorOrThrow } from "@connectors/lib/cli";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -506,21 +506,41 @@ export const notion = async ({
 
     case "update-core-parents": {
       const connector = await getConnector(args);
-      if (!args.pageId) {
-        throw new Error("Missing --pageId argument");
+
+      // if no pageId or databaseId is provided, we update all parents fields for
+      // all pages and databases for the connector
+      if (args.all) {
+        const runTimestamp = 1;
+        let cursors:
+          | {
+              pageCursor: string | null;
+              databaseCursor: string | null;
+            }
+          | undefined;
+        do {
+          cursors = await updateParentsFields({
+            connectorId: connector.id,
+            cursors,
+            runTimestamp,
+          });
+        } while (cursors?.pageCursor || cursors?.databaseCursor);
+      } else {
+        const pageId = args.pageId && parseNotionResourceId(args.pageId);
+        const databaseId =
+          args.databaseId && parseNotionResourceId(args.databaseId);
+
+        if (!pageId && !databaseId && !args.all) {
+          throw new Error("Missing --pageId or --databaseId or --all argument");
+        }
+
+        await updateAllParentsFields(
+          connector.id,
+          pageId ? [pageId] : [],
+          databaseId ? [databaseId] : [],
+          undefined,
+          async () => {}
+        );
       }
-      const pageId = args.pageId && parseNotionResourceId(args.pageId);
-      const databaseId =
-        args.databaseId && parseNotionResourceId(args.databaseId);
-
-      await updateAllParentsFields(
-        connector.id,
-        pageId ? [pageId] : [],
-        databaseId ? [databaseId] : [],
-        undefined,
-        async () => {}
-      );
-
       return { success: true };
     }
 
