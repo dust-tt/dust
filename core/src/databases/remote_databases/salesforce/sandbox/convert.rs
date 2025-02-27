@@ -4,6 +4,19 @@ use super::structured_query::{
     OrderDirection, StructuredQuery, Validator, WhereClause,
 };
 
+/// Convert a JSON query to a SOQL string with detailed error handling and suggestions
+pub fn convert_json_to_soql(json_str: &str) -> Result<String, String> {
+    // Parse the JSON into a structured query
+    let parsed_query = serde_json::from_str::<StructuredQuery>(json_str).map_err(|e| {
+        let err = SoqlError::JsonParseError(e);
+        err.user_friendly_message()
+    })?;
+
+    // Convert the query to SOQL, providing detailed error messages if validation fails
+    convert_to_soql(&parsed_query).map_err(|e| e.user_friendly_message())
+}
+
+/// Convert a structured query to a SOQL string (internal implementation)
 pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
     // Validate the query structure
     query.validate()?;
@@ -13,17 +26,6 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
 
     // Add fields and/or aggregates
     let mut select_parts: Vec<String> = Vec::new();
-
-    // For aggregate queries with GROUP BY, add the GROUP BY fields first
-    // if !query.aggregates.is_empty() && query.group_by.is_some() {
-    //     if let Some(GroupBy::Simple(fields)) = &query.group_by {
-    //         select_parts.push(fields.join(", "));
-    //     } else if let Some(GroupBy::Advanced { fields, .. }) = &query.group_by {
-    //         select_parts.push(fields.join(", "));
-    //     }
-    // }
-
-    // Special case for advanced grouping - always include the GROUP BY fields in the SELECT clause
 
     // Add regular fields
     if !query.fields.is_empty() {
@@ -52,7 +54,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .aggregates
             .iter()
             .map(|agg| {
-                let function_str = format!("{}({})", agg.function.to_string(), agg.field);
+                let function_str = format!("{}({})", agg.function.as_str(), agg.field);
                 format!("{} {}", function_str, agg.alias)
             })
             .collect();
@@ -142,7 +144,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
                 format!("GROUP BY {}", fields.join(", "))
             }
             GroupBy::Advanced { group_type, fields } => {
-                format!("GROUP BY {}({})", group_type.to_string(), fields.join(", "))
+                format!("GROUP BY {}({})", group_type.as_str(), fields.join(", "))
             }
         };
         soql.push_str(&format!(" {}", group_by_str));
@@ -156,7 +158,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .map(|filter| {
                 format!(
                     "{}({}) {} {}",
-                    filter.function.to_string(),
+                    filter.function.as_str(),
                     filter.field,
                     filter.operator,
                     format_value(&filter.value)
@@ -303,32 +305,6 @@ fn format_value(value: &serde_json::Value) -> String {
     }
 }
 
-/// Trait for converting enum variants to strings.
-trait ToString {
-    fn to_string(&self) -> String;
-}
-
-impl ToString for AggregateFunction {
-    fn to_string(&self) -> String {
-        match self {
-            AggregateFunction::Count => String::from("COUNT"),
-            AggregateFunction::Sum => String::from("SUM"),
-            AggregateFunction::Avg => String::from("AVG"),
-            AggregateFunction::Min => String::from("MIN"),
-            AggregateFunction::Max => String::from("MAX"),
-        }
-    }
-}
-
-impl ToString for GroupType {
-    fn to_string(&self) -> String {
-        match self {
-            GroupType::Rollup => String::from("ROLLUP"),
-            GroupType::Cube => String::from("CUBE"),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -430,5 +406,336 @@ mod tests {
         let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
         let soql = convert_to_soql(&query).unwrap();
         assert_eq!(soql, "SELECT Id, Name, Owner.Department FROM Account");
+    }
+
+    #[test]
+    fn test_json_to_soql_complex_where_clause() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "FirstName", "LastName", "Email"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "LastName", "operator": "!=", "value": null },
+                    { 
+                        "condition": "OR",
+                        "filters": [
+                            { "field": "Email", "operator": "LIKE", "value": "%@example.com" },
+                            { "field": "Email", "operator": "LIKE", "value": "%@salesforce.com" }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, FirstName, LastName, Email FROM Contact WHERE LastName != null AND (Email LIKE '%@example.com' OR Email LIKE '%@salesforce.com')"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_order_by_complex() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["Id", "Name", "Amount", "CloseDate"],
+            "orderBy": [
+                { 
+                    "field": "CloseDate", 
+                    "direction": "DESC",
+                    "nulls": "LAST"
+                },
+                { 
+                    "field": "Amount", 
+                    "direction": "DESC" 
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, Amount, CloseDate FROM Opportunity ORDER BY CloseDate DESC NULLS LAST, Amount DESC"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_parent_fields() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "FirstName", "LastName"],
+            "parentFields": [
+                {
+                    "relationship": "Account",
+                    "fields": ["Name", "Industry", "AnnualRevenue"]
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, FirstName, LastName, Account.Name, Account.Industry, Account.AnnualRevenue FROM Contact"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_relationships() {
+        let json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"],
+            "relationships": [
+                {
+                    "relationship_name": "Contacts",
+                    "fields": ["Id", "FirstName", "LastName", "Email"],
+                    "where": {
+                        "condition": "AND",
+                        "filters": [
+                            { "field": "IsActive", "operator": "=", "value": true }
+                        ]
+                    },
+                    "orderBy": [{ "field": "LastName", "direction": "ASC" }],
+                    "limit": 5
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, (SELECT Id, FirstName, LastName, Email FROM Contacts) WHERE IsActive = true ORDER BY LastName ASC LIMIT 5 FROM Account"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_limit_offset() {
+        let json = r#"{
+            "object": "Lead",
+            "fields": ["Id", "Name", "Company", "Status"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "Status", "operator": "=", "value": "Open" }
+                ]
+            },
+            "limit": 100,
+            "offset": 200
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, Company, Status FROM Lead WHERE Status = 'Open' LIMIT 100 OFFSET 200"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_having_clause() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": ["AccountId"],
+            "having": {
+                "condition": "AND",
+                "filters": [
+                    {
+                        "function": "SUM",
+                        "field": "Amount",
+                        "operator": ">",
+                        "value": 100000
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT AccountId, SUM(Amount) TotalAmount FROM Opportunity GROUP BY AccountId HAVING SUM(Amount) > 100000"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_advanced_group_by() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId", "StageName"],
+            "aggregates": [
+                {
+                    "function": "SUM",
+                    "field": "Amount",
+                    "alias": "TotalAmount"
+                }
+            ],
+            "groupBy": {
+                "type": "CUBE",
+                "fields": ["AccountId", "StageName"]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT AccountId, StageName, SUM(Amount) TotalAmount FROM Opportunity GROUP BY CUBE(AccountId, StageName)"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_array_value_in_where() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "Name", "Email"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "AccountId", "operator": "IN", "value": [
+                        "001xx000003DGT1AAO", "001xx000003DGT2AAO", "001xx000003DGT3AAO"
+                    ]}
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, Email FROM Contact WHERE AccountId IN ('001xx000003DGT1AAO', '001xx000003DGT2AAO', '001xx000003DGT3AAO')"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_not_in_operator() {
+        let json = r#"{
+            "object": "Lead",
+            "fields": ["Id", "Name", "Status"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "Status", "operator": "NOT IN", "value": ["Closed", "Converted"] }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, Status FROM Lead WHERE Status NOT IN ('Closed', 'Converted')"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_like_operators() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "FirstName", "LastName", "Email", "Phone"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "Email", "operator": "LIKE", "value": "%@example.com" },
+                    { "field": "FirstName", "operator": "LIKE", "value": "J%" },
+                    { "field": "LastName", "operator": "LIKE", "value": "%son" },
+                    { "field": "Phone", "operator": "LIKE", "value": "415-%" }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, FirstName, LastName, Email, Phone FROM Contact WHERE Email LIKE '%@example.com' AND FirstName LIKE 'J%' AND LastName LIKE '%son' AND Phone LIKE '415-%'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_not_like_operator() {
+        let json = r#"{
+            "object": "Lead",
+            "fields": ["Id", "FirstName", "LastName", "Email"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "Email", "operator": "NOT LIKE", "value": "%@competitor.com" }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, FirstName, LastName, Email FROM Lead WHERE Email NOT LIKE '%@competitor.com'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_multiple_complex_features() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["AccountId", "StageName"],
+            "aggregates": [
+                { "function": "COUNT", "field": "Id", "alias": "OpportunityCount" },
+                { "function": "SUM", "field": "Amount", "alias": "TotalAmount" }
+            ],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    { "field": "CloseDate", "operator": ">", "value": "2023-01-01" },
+                    { "field": "Amount", "operator": ">", "value": 0 }
+                ]
+            },
+            "groupBy": ["AccountId", "StageName"],
+            "having": {
+                "condition": "AND",
+                "filters": [
+                    { "function": "SUM", "field": "Amount", "operator": ">", "value": 50000 }
+                ]
+            },
+            "orderBy": [
+                { "field": "SUM(Amount)", "direction": "DESC" }
+            ],
+            "limit": 50
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT AccountId, StageName, COUNT(Id) OpportunityCount, SUM(Amount) TotalAmount FROM Opportunity WHERE CloseDate > '2023-01-01' AND Amount > 0 GROUP BY AccountId, StageName HAVING SUM(Amount) > 50000 ORDER BY SUM(Amount) DESC LIMIT 50"
+        );
+    }
+
+    // Test only the JSON parsing error in convert.rs since this is specific to the conversion function
+    #[test]
+    fn test_error_handling_json_parse_error() {
+        let invalid_json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"
+            "where": {
+                "condition": "AND",
+                "filters": []
+            }
+        }"#;
+
+        let result = convert_json_to_soql(invalid_json);
+        assert!(result.is_err());
+        let error_message = result.unwrap_err();
+        assert!(error_message.contains("Check your JSON syntax"));
     }
 }
