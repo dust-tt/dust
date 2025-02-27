@@ -176,7 +176,7 @@ impl PostgresStore {
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
                     folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
-                    tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility \
+                    tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility, \
                     text_size = EXCLUDED.text_size
                   RETURNING id",
             )
