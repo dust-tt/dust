@@ -2,12 +2,12 @@ import type { DataSourceViewKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import { Conversation } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { Conversation } from "@app/lib/models/assistant/conversation";
 
 export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
@@ -27,6 +27,8 @@ export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSo
   declare dataSourceForView: NonAttribute<DataSourceModel>;
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
+
+  declare conversationId: ForeignKey<Conversation["id"]> | null;
 }
 DataSourceViewModel.init(
   {
