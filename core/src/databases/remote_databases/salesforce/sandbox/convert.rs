@@ -98,28 +98,32 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
             .relationships
             .iter()
             .map(|rel| {
+                // Start the subquery but don't close the parenthesis yet
                 let mut subquery = format!(
-                    "(SELECT {} FROM {})",
+                    "(SELECT {} FROM {}",
                     rel.fields.join(", "),
                     rel.relationship_name
                 );
 
-                // Add WHERE clause if present
+                // Add WHERE clause if present - inside the parentheses
                 if let Some(where_clause) = &rel.where_clause {
                     let where_str = build_where_clause(where_clause)?;
                     subquery.push_str(&format!(" {}", where_str));
                 }
 
-                // Add ORDER BY if present
+                // Add ORDER BY if present - inside the parentheses
                 if !rel.order_by.is_empty() {
                     let order_by_str = build_order_by(&rel.order_by);
                     subquery.push_str(&format!(" {}", order_by_str));
                 }
 
-                // Add LIMIT if present
+                // Add LIMIT if present - inside the parentheses
                 if let Some(limit) = rel.limit {
                     subquery.push_str(&format!(" LIMIT {}", limit));
                 }
+
+                // Close the parenthesis after all clauses are added
+                subquery.push_str(")");
 
                 Ok(subquery)
             })
@@ -290,17 +294,24 @@ fn build_order_by(order_by: &[OrderBy]) -> String {
 /// Formats a value for use in a SOQL query.
 fn format_value(value: &serde_json::Value) -> String {
     match value {
-        serde_json::Value::Null => String::from("null"),
+        serde_json::Value::Null => String::from("NULL"),
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::String(s) => format!("'{}'", s.replace('\'', "\\'")),
+        serde_json::Value::String(s) => {
+            // Escape special characters in string values
+            // The main requirement is to escape single quotes by doubling them
+            // per Salesforce documentation
+            let escaped = s.replace('\'', "''");
+            format!("'{}'", escaped)
+        }
         serde_json::Value::Array(arr) => {
             let values: Vec<String> = arr.iter().map(format_value).collect();
             format!("({})", values.join(", "))
         }
         serde_json::Value::Object(_) => {
             // Objects are not supported in SOQL values
-            String::from("null")
+            // This could be improved to serialize simple objects or provide better errors
+            String::from("NULL")
         }
     }
 }
@@ -308,6 +319,44 @@ fn format_value(value: &serde_json::Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Test for the format_value function
+    #[test]
+    fn test_format_value_escaping() {
+        // Test null value
+        assert_eq!(format_value(&serde_json::Value::Null), "NULL");
+
+        // Test boolean value
+        assert_eq!(format_value(&serde_json::json!(true)), "true");
+        assert_eq!(format_value(&serde_json::json!(false)), "false");
+
+        // Test number value
+        assert_eq!(format_value(&serde_json::json!(42)), "42");
+        assert_eq!(format_value(&serde_json::json!(3.14)), "3.14");
+
+        // Test string value with special characters
+        assert_eq!(format_value(&serde_json::json!("hello")), "'hello'");
+        assert_eq!(format_value(&serde_json::json!("O'Reilly")), "'O''Reilly'"); // Single quotes are doubled
+        assert_eq!(
+            format_value(&serde_json::json!("Line1\nLine2")),
+            "'Line1\nLine2'"
+        ); // Newlines preserved
+
+        // Test array value
+        assert_eq!(
+            format_value(&serde_json::json!(["a", "b", "c"])),
+            "('a', 'b', 'c')"
+        );
+
+        // Test mixed array
+        assert_eq!(
+            format_value(&serde_json::json!(["a", 1, true, null])),
+            "('a', 1, true, NULL)"
+        );
+
+        // Test object (not supported)
+        assert_eq!(format_value(&serde_json::json!({"key": "value"})), "NULL");
+    }
 
     #[test]
     fn test_json_to_soql_basic_query() {
@@ -432,7 +481,7 @@ mod tests {
         let soql = convert_to_soql(&query).unwrap();
         assert_eq!(
             soql,
-            "SELECT Id, FirstName, LastName, Email FROM Contact WHERE LastName != null AND (Email LIKE '%@example.com' OR Email LIKE '%@salesforce.com')"
+            "SELECT Id, FirstName, LastName, Email FROM Contact WHERE LastName != NULL AND (Email LIKE '%@example.com' OR Email LIKE '%@salesforce.com')"
         );
     }
 
@@ -508,7 +557,7 @@ mod tests {
         let soql = convert_to_soql(&query).unwrap();
         assert_eq!(
             soql,
-            "SELECT Id, Name, (SELECT Id, FirstName, LastName, Email FROM Contacts) WHERE IsActive = true ORDER BY LastName ASC LIMIT 5 FROM Account"
+            "SELECT Id, Name, (SELECT Id, FirstName, LastName, Email FROM Contacts WHERE IsActive = true ORDER BY LastName ASC LIMIT 5) FROM Account"
         );
     }
 
@@ -737,5 +786,116 @@ mod tests {
         assert!(result.is_err());
         let error_message = result.unwrap_err();
         assert!(error_message.contains("Check your JSON syntax"));
+    }
+
+    #[test]
+    fn test_json_to_soql_special_character_escaping() {
+        let json = r#"{
+            "object": "Contact", 
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {"field": "Description", "operator": "=", "value": "Value with 'single quotes'"},
+                    {"field": "LastName", "operator": "=", "value": "O'Reilly"}
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name FROM Contact WHERE Description = 'Value with ''single quotes''' AND LastName = 'O''Reilly'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_deeply_nested_logic() {
+        let json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {"field": "Type", "operator": "=", "value": "Customer"},
+                    {
+                        "condition": "OR",
+                        "filters": [
+                            {"field": "Industry", "operator": "=", "value": "Technology"},
+                            {
+                                "condition": "AND",
+                                "filters": [
+                                    {"field": "AnnualRevenue", "operator": ">", "value": 1000000},
+                                    {"field": "NumberOfEmployees", "operator": ">", "value": 50}
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name FROM Account WHERE Type = 'Customer' AND (Industry = 'Technology' OR (AnnualRevenue > 1000000 AND NumberOfEmployees > 50))"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_date_time_handling() {
+        let json = r#"{
+            "object": "Opportunity",
+            "fields": ["Id", "Name", "CloseDate"],
+            "where": {
+                "condition": "AND",
+                "filters": [
+                    {"field": "CreatedDate", "operator": ">", "value": "2023-01-01T00:00:00Z"},
+                    {"field": "CloseDate", "operator": "<", "value": "2023-12-31"}
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, CloseDate FROM Opportunity WHERE CreatedDate > '2023-01-01T00:00:00Z' AND CloseDate < '2023-12-31'"
+        );
+    }
+
+    #[test]
+    fn test_json_to_soql_multiple_relationship_queries() {
+        let json = r#"{
+            "object": "Account",
+            "fields": ["Id", "Name"],
+            "relationships": [
+                {
+                    "relationship_name": "Contacts",
+                    "fields": ["Id", "Name"],
+                    "limit": 5
+                },
+                {
+                    "relationship_name": "Opportunities",
+                    "fields": ["Id", "Name", "Amount"],
+                    "where": {
+                        "condition": "AND",
+                        "filters": [
+                            {"field": "StageName", "operator": "!=", "value": "Closed Lost"}
+                        ]
+                    },
+                    "limit": 3
+                }
+            ]
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, (SELECT Id, Name FROM Contacts LIMIT 5), (SELECT Id, Name, Amount FROM Opportunities WHERE StageName != 'Closed Lost' LIMIT 3) FROM Account"
+        );
     }
 }
