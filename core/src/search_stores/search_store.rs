@@ -35,7 +35,7 @@ const MAX_PAGE_SIZE: u64 = 1000;
 // Number of hits that is tracked exactly, above this value we only get a lower bound on the hit count.
 // Note: this is the default value.
 const MAX_TOTAL_HITS_TRACKED: i64 = 10000;
-const MAX_ES_QUERY_CLAUSES: usize = 5; // Default Elasticsearch limit.
+const MAX_ES_QUERY_CLAUSES: usize = 1024; // Default Elasticsearch limit.
 
 #[derive(serde::Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
