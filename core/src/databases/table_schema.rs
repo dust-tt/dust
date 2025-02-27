@@ -294,10 +294,12 @@ impl TableSchema {
                 Some(Value::Number(x)) => {
                     if x.is_i64() {
                         Ok(SqlParam::Int(x.as_i64().unwrap()))
+                    } else if x.is_u64() {
+                        Ok(SqlParam::Int(x.as_u64().unwrap() as i64))
                     } else if x.is_f64() {
                         Ok(SqlParam::Float(x.as_f64().unwrap()))
                     } else {
-                        Err(anyhow!("Number is not an i64 or f64"))
+                        Err(anyhow!("Number is not an i64 or f64: {}", x))
                     }
                 }
                 Some(Value::String(s)) => Ok(SqlParam::Text(s.clone())),
