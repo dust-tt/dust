@@ -21,7 +21,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import type { EditorService } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { MessageEditor } from "@app/components/assistant/conversation/MessageEditor";
 import {
   CiteBlock,
   getCiteDirective,
@@ -30,7 +30,6 @@ import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
-import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useEditMessage } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -58,11 +57,6 @@ export function UserMessage({
     }),
     []
   );
-
-  // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-  });
 
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const editMessagesFeatureFlag = featureFlags.includes("edit_messages");
@@ -200,19 +194,11 @@ export function UserMessage({
       citations={citations}
     >
       {isEditing ? (
-        <InputBarContainer
-          currentMessageValue={message}
-          className="w-full p-0 py-0 sm:py-0 sm:leading-7"
-          ref={editorServiceRef}
-          selectedAssistant={null}
-          onEnterKeyDown={submitEdit}
-          actions={[]}
-          disableAutoFocus={false}
-          allAssistants={[]}
-          agentConfigurations={agentConfigurations}
+        <MessageEditor
+          message={message}
           owner={owner}
-          hideSendButton={true}
-          disableSendButton={false}
+          editorServiceRef={editorServiceRef}
+          submitEdit={submitEdit}
         />
       ) : (
         <Markdown
