@@ -211,3 +211,14 @@ export const getFileContentFragmentId = async (
   const result = await chrome.storage.local.get([key]);
   return result[key] ?? null;
 };
+
+const DEFAULT_THEME = "system";
+
+export const getTheme = async (): Promise<string> => {
+  const result = await chrome.storage.local.get(["theme"]);
+  return result.theme ?? DEFAULT_THEME;
+};
+
+export const saveTheme = async (theme: string) => {
+  await chrome.storage.local.set({ theme });
+};

@@ -1,3 +1,4 @@
+import { classNames } from "@dust-tt/sparkle";
 import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
@@ -58,7 +59,13 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-xs font-medium text-primary-200">
+                <div
+                  className={classNames(
+                    "flex h-4 w-4 items-center justify-center rounded-full text-xs font-medium",
+                    "bg-primary-600 dark:bg-primary-600-night",
+                    "text-primary-200 dark:text-primary-200-night"
+                  )}
+                >
                   {r.counter}
                 </div>
               </a>

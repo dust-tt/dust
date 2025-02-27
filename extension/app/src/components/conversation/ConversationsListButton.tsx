@@ -82,7 +82,7 @@ const Content = () => {
 
   return isConversationsLoading ? (
     <div className="flex items-center justify-center m-4">
-      <Spinner variant="dark" size="xs" />
+      <Spinner size="xs" />
     </div>
   ) : (
     <ScrollArea className="h-[80vh]">
@@ -91,7 +91,9 @@ const Content = () => {
           {conversationsByDate[dateLabel as GroupLabel].length > 0 && (
             <DropdownMenuLabel
               label={dateLabel}
-              className={classNames("text-foreground")}
+              className={classNames(
+                "text-foreground dark:text-foreground-night"
+              )}
             />
           )}
           {conversationsByDate[dateLabel as GroupLabel].map((conversation) => (
@@ -99,8 +101,10 @@ const Content = () => {
               key={conversation.sId}
               label={conversation.title || "Untitled Conversation"}
               className={classNames(
-                "text-sm text-muted-foreground font-normal",
-                conversationId === conversation.sId ? "bg-primary-50" : ""
+                "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
+                conversationId === conversation.sId
+                  ? "bg-primary-50 dark:bg-primary-50-night"
+                  : ""
               )}
               onClick={() => {
                 navigate(`/conversations/${conversation.sId}`);

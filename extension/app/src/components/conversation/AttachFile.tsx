@@ -34,7 +34,7 @@ export const AttachFile = ({
       />
       <Button
         icon={AttachmentIcon}
-        className="text-muted-foreground"
+        className="text-muted-foreground dark:text-muted-foreground-night"
         tooltip="Attach file"
         variant="ghost"
         size="xs"
