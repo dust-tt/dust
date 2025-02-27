@@ -49,6 +49,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import { ConversationWithoutContentPublicType } from "@dust-tt/client";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -104,7 +105,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationType,
+    conversation?:
+      | ConversationType
+      | ConversationWithoutContentPublicType
+      | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -131,7 +135,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationType,
+    conversation?:
+      | ConversationType
+      | ConversationWithoutContentPublicType
+      | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
@@ -180,7 +187,10 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationType,
+    conversation?:
+      | ConversationType
+      | ConversationWithoutContentPublicType
+      | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
