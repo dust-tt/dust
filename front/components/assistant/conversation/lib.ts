@@ -92,7 +92,7 @@ export async function submitMessage({
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
   const threadVersionParam =
-    threadVersion != null ? `?threadVersion=${threadVersion}` : "";
+    threadVersion !== null ? `?threadVersion=${threadVersion}` : "";
   // Create a new content fragment.
   if (contentFragments.length > 0) {
     const contentFragmentsRes = await Promise.all(
