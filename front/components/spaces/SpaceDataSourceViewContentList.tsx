@@ -8,7 +8,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  SearchInput,
   Spinner,
   useHashParam,
   useSendNotification,
@@ -24,14 +23,18 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isValidContentNodesViewType,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@dust-tt/types";
+import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
@@ -47,7 +50,10 @@ import {
 } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
@@ -55,9 +61,8 @@ import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
-import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { useSpaces } from "@app/lib/swr/spaces";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 25;
@@ -191,7 +196,7 @@ function useStaticDataSourceViewHasContent({
   };
 }
 
-type SpaceDataSourceViewContentListProps = {
+interface SpaceDataSourceViewContentListProps {
   canReadInSpace: boolean;
   canWriteInSpace: boolean;
   connector: ConnectorType | null;
@@ -203,7 +208,7 @@ type SpaceDataSourceViewContentListProps = {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
-};
+}
 
 export const SpaceDataSourceViewContentList = ({
   canReadInSpace,
@@ -218,12 +223,6 @@ export const SpaceDataSourceViewContentList = ({
   space,
   systemSpace,
 }: SpaceDataSourceViewContentListProps) => {
-  // TODO(20250220, search-kb): remove this once the feature flag is enabled by default
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
-
-  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const sendNotification = useSendNotification();
@@ -260,14 +259,15 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
-  const { searchResultNodes, isSearchLoading, isSearchValidating } =
-    useSpaceSearch({
-      dataSourceViews: [dataSourceView],
-      includeDataSources: false,
-      owner,
-      search: debouncedSearch,
-      viewType,
-    });
+  const {
+    searchTerm: dataSourceSearch,
+    setIsSearchDisabled,
+    setTargetDataSourceViews,
+  } = useContext(SpaceSearchContext);
+
+  useEffect(() => {
+    setTargetDataSourceViews([dataSourceView]);
+  }, [dataSourceView, setTargetDataSourceViews]);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -291,26 +291,6 @@ export const SpaceDataSourceViewContentList = ({
       : DEFAULT_VIEW_TYPE,
   });
 
-  const isTyping = useMemo(() => {
-    return (
-      dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE &&
-      debouncedSearch !== dataSourceSearch &&
-      searchFeatureFlag
-    );
-  }, [dataSourceSearch, debouncedSearch, searchFeatureFlag]);
-
-  const nodes = useMemo(() => {
-    if (dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE && searchFeatureFlag) {
-      return searchResultNodes;
-    }
-    return childrenNodes;
-  }, [
-    dataSourceSearch.length,
-    childrenNodes,
-    searchResultNodes,
-    searchFeatureFlag,
-  ]);
-
   const { hasContent: hasDocuments, isNodesValidating: isDocumentsValidating } =
     useStaticDataSourceViewHasContent({
       owner,
@@ -325,6 +305,14 @@ export const SpaceDataSourceViewContentList = ({
       parentId,
       viewType: "table",
     });
+
+  useEffect(() => {
+    if (childrenNodes.length === 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [childrenNodes.length, setIsSearchDisabled]);
 
   const isDataSourceManaged = isManaged(dataSourceView.dataSource);
 
@@ -420,30 +408,9 @@ export const SpaceDataSourceViewContentList = ({
     isDataSourceManaged,
   ]);
 
-  // Debounce the search input, and don't trigger the search if the query is < 3 characters
-  useEffect(() => {
-    if (searchFeatureFlag) {
-      const timeout = setTimeout(() => {
-        setDebouncedSearch(
-          dataSourceSearch.length >= MIN_SEARCH_QUERY_SIZE
-            ? dataSourceSearch
-            : ""
-        );
-      }, 300);
-      return () => {
-        clearTimeout(timeout);
-      };
-    }
-  }, [dataSourceSearch, searchFeatureFlag]);
-
-  // Reset search when we navigate to a folder
-  useEffect(() => {
-    setDataSourceSearch("");
-  }, [parentId]);
-
   const rows: RowData[] = useMemo(
     () =>
-      nodes?.map((contentNode) => ({
+      childrenNodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForDataSourceViewContentNode(contentNode),
         spaces: spaces.filter((space) =>
@@ -483,7 +450,7 @@ export const SpaceDataSourceViewContentList = ({
         ),
       })) || [],
     [
-      nodes,
+      childrenNodes,
       spaces,
       canReadInSpace,
       canWriteInSpace,
@@ -537,12 +504,97 @@ export const SpaceDataSourceViewContentList = ({
       <></>
     );
 
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
+
   const emptyContent = parentId ? <div>No content</div> : emptySpaceContent;
-  const isEmpty =
-    rows.length === 0 &&
-    !isNodesLoading &&
-    dataSourceSearch.length === 0 &&
-    !isSearchLoading;
+  const isEmpty = rows.length === 0 && !isNodesLoading;
+
+  const actionButtons = (
+    <>
+      {isFolder(dataSourceView.dataSource) && (
+        <>
+          {((viewType === "table" && hasDocuments) ||
+            (viewType === "document" && hasTables)) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  label={viewType === "document" ? "document" : "table"}
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Documents"
+                  onClick={() => handleViewTypeChange("document")}
+                />
+                <DropdownMenuItem
+                  label="Tables"
+                  onClick={() => handleViewTypeChange("table")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <FoldersHeaderMenu
+            owner={owner}
+            space={space}
+            canWriteInSpace={canWriteInSpace}
+            folder={dataSourceView}
+            contentActionsRef={contentActionsRef}
+          />
+        </>
+      )}
+      {isWebsite(dataSourceView.dataSource) && (
+        <WebsitesHeaderMenu
+          owner={owner}
+          space={space}
+          canWriteInSpace={canWriteInSpace}
+          dataSourceView={dataSourceView}
+        />
+      )}
+      {isManaged(dataSourceView.dataSource) &&
+        space.kind !== "system" &&
+        !isEmpty && (
+          <EditSpaceManagedDataSourcesViews
+            owner={owner}
+            space={space}
+            systemSpace={systemSpace}
+            isAdmin={isAdmin}
+            dataSourceView={dataSourceView}
+            onSelectedDataUpdated={onSelectedDataUpdated}
+          />
+        )}
+      {isManaged(dataSourceView.dataSource) &&
+        connector &&
+        !parentId &&
+        space.kind === "system" && (
+          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+            {isEmpty && <div>Connection ready. Select the data to sync.</div>}
+
+            <ConnectorPermissionsModal
+              owner={owner}
+              connector={connector}
+              dataSourceView={dataSourceView}
+              isOpen={showConnectorPermissionsModal}
+              onClose={(save) => {
+                setShowConnectorPermissionsModal(false);
+                if (save) {
+                  void mutateContentNodes();
+                }
+              }}
+              readOnly={false}
+              isAdmin={isAdmin}
+              onManageButtonClick={() => {
+                setShowConnectorPermissionsModal(true);
+              }}
+            />
+          </div>
+        )}
+    </>
+  );
 
   return (
     // MultipleDocumentsUpload listens to the file drop context and uploads the files.
@@ -552,115 +604,22 @@ export const SpaceDataSourceViewContentList = ({
         title="Add Files"
         disabled={!canWriteInSpace}
       >
-        <div
-          className={classNames(
-            "flex w-full gap-2",
-            isEmpty
-              ? classNames(
-                  "h-36 items-center justify-center rounded-xl",
-                  "bg-muted-background dark:bg-muted-background-night"
-                )
-              : "pb-2"
-          )}
-        >
-          {!isEmpty && (
-            <>
-              <SearchInput
-                name="search"
-                placeholder="Search (Name)"
-                value={dataSourceSearch}
-                onChange={(s) => {
-                  resetPagination();
-                  setDataSourceSearch(s);
-                }}
-              />
-            </>
-          )}
-          {isEmpty && emptyContent}
-          {isFolder(dataSourceView.dataSource) && (
-            <>
-              {((viewType === "table" && hasDocuments) ||
-                (viewType === "document" && hasTables)) && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      label={viewType === "document" ? "document" : "table"}
-                      variant="outline"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem
-                      label="Documents"
-                      onClick={() => handleViewTypeChange("document")}
-                    />
-                    <DropdownMenuItem
-                      label="Tables"
-                      onClick={() => handleViewTypeChange("table")}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-              <FoldersHeaderMenu
-                owner={owner}
-                space={space}
-                canWriteInSpace={canWriteInSpace}
-                folder={dataSourceView}
-                contentActionsRef={contentActionsRef}
-              />
-            </>
-          )}
-          {isWebsite(dataSourceView.dataSource) && (
-            <WebsitesHeaderMenu
-              owner={owner}
-              space={space}
-              canWriteInSpace={canWriteInSpace}
-              dataSourceView={dataSourceView}
-            />
-          )}
-          {isManaged(dataSourceView.dataSource) &&
-            space.kind !== "system" &&
-            !isEmpty && (
-              <EditSpaceManagedDataSourcesViews
-                owner={owner}
-                space={space}
-                systemSpace={systemSpace}
-                isAdmin={isAdmin}
-                dataSourceView={dataSourceView}
-                onSelectedDataUpdated={onSelectedDataUpdated}
-              />
+        {isEmpty && (
+          <div
+            className={cn(
+              "flex w-full gap-2",
+              "h-36 items-center justify-center rounded-xl",
+              "bg-muted-background dark:bg-muted-background-night"
             )}
-          {isManaged(dataSourceView.dataSource) &&
-            connector &&
-            !parentId &&
-            space.kind === "system" && (
-              <div className="flex flex-col items-center gap-2 text-sm text-element-700">
-                {isEmpty && (
-                  <div>Connection ready. Select the data to sync.</div>
-                )}
+          >
+            {emptyContent}
+            {actionButtons}
+          </div>
+        )}
+        {/* Portal buttons next to the search bar if not empty. */}
+        {!isEmpty && portalToHeader(actionButtons)}
 
-                <ConnectorPermissionsModal
-                  owner={owner}
-                  connector={connector}
-                  dataSourceView={dataSourceView}
-                  isOpen={showConnectorPermissionsModal}
-                  onClose={(save) => {
-                    setShowConnectorPermissionsModal(false);
-                    if (save) {
-                      void mutateContentNodes();
-                    }
-                  }}
-                  readOnly={false}
-                  isAdmin={isAdmin}
-                  onManageButtonClick={() => {
-                    setShowConnectorPermissionsModal(true);
-                  }}
-                />
-              </div>
-            )}
-        </div>
-        {(isNodesLoading || isSearchLoading || isSearchValidating) && (
+        {isNodesLoading && (
           <div className="absolute mt-16 flex justify-center">
             <Spinner />
           </div>
@@ -669,17 +628,11 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={
-              // TODO(20250220, search-kb): remove this once the feature flag is enabled by default
-              searchFeatureFlag ? undefined : dataSourceSearch
-            }
+            filter={dataSourceSearch}
             filterColumn={
               "title" // see todo above
             }
-            className={cn(
-              "pb-4",
-              isSearchValidating && "pointer-events-none opacity-50"
-            )}
+            className="pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
             pagination={tablePagination}
@@ -690,16 +643,6 @@ export const SpaceDataSourceViewContentList = ({
             disablePaginationNumbers
           />
         )}
-        {searchFeatureFlag &&
-          rows.length === 0 &&
-          debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE &&
-          !isSearchLoading &&
-          !isSearchValidating &&
-          !isTyping && (
-            <div className="mt-8 flex justify-center">
-              <div>No results found</div>
-            </div>
-          )}
         <ContentActions
           ref={contentActionsRef}
           dataSourceView={dataSourceView}

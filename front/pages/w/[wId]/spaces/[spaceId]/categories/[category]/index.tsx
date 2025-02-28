@@ -1,4 +1,3 @@
-import { CloudArrowLeftRightIcon, Page } from "@dust-tt/sparkle";
 import type {
   ConnectorProvider,
   DataSourceViewCategory,
@@ -8,16 +7,15 @@ import type {
 import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
+  isDataSourceViewCategoryWithoutApps,
   removeNulls,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
-import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
-import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import config from "@app/lib/api/config";
@@ -31,9 +29,14 @@ import type { ActionApp } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 
+type DataSourceViewCategoryWithoutApps = Exclude<
+  DataSourceViewCategory,
+  "apps"
+>;
+
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutProps & {
-    category: DataSourceViewCategory;
+  SpaceLayoutPageProps & {
+    category: DataSourceViewCategoryWithoutApps;
     isAdmin: boolean;
     canWriteInSpace: boolean;
     space: SpaceType;
@@ -47,7 +50,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   const plan = auth.getNonNullablePlan();
   const isAdmin = auth.isAdmin();
 
-  const { spaceId } = context.query;
+  const { category, setupWithSuffixConnector, setupWithSuffixSuffix, spaceId } =
+    context.query;
 
   if (!subscription || typeof spaceId !== "string") {
     return {
@@ -63,25 +67,31 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  if (!isDataSourceViewCategoryWithoutApps(category)) {
+    return {
+      notFound: true,
+    };
+  }
+
   const isBuilder = auth.isBuilder();
   const canWriteInSpace = space.canWrite(auth);
 
   const integrations: DataSourceIntegration[] = [];
 
-  if (space.kind === "system") {
+  if (space.isSystem()) {
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;
     } | null = null;
     if (
-      context.query.setupWithSuffixConnector &&
-      isConnectorProvider(context.query.setupWithSuffixConnector as string) &&
-      context.query.setupWithSuffixSuffix &&
-      typeof context.query.setupWithSuffixSuffix === "string"
+      setupWithSuffixConnector &&
+      isConnectorProvider(setupWithSuffixConnector as string) &&
+      setupWithSuffixSuffix &&
+      typeof setupWithSuffixSuffix === "string"
     ) {
       setupWithSuffix = {
-        connector: context.query.setupWithSuffixConnector as ConnectorProvider,
-        suffix: context.query.setupWithSuffixSuffix,
+        connector: setupWithSuffixConnector as ConnectorProvider,
+        suffix: setupWithSuffixSuffix,
       };
     }
 
@@ -132,17 +142,18 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
 
   return {
     props: {
-      category: context.query.category as DataSourceViewCategory,
+      canReadInSpace: space.canRead(auth),
+      canWriteInSpace,
+      category,
+      integrations,
       isAdmin,
       isBuilder,
-      canWriteInSpace,
       owner,
       plan,
-      subscription,
-      space: space.toJSON(),
-      systemSpace: systemSpace.toJSON(),
-      integrations,
       registryApps,
+      space: space.toJSON(),
+      subscription,
+      systemSpace: systemSpace.toJSON(),
     },
   };
 });
@@ -156,63 +167,25 @@ export default function Space({
   space,
   systemSpace,
   integrations,
-  registryApps,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      {space.kind === "system" && (
-        <>
-          <Page.Header
-            title="Connection Admin"
-            description={
-              <>
-                Here you can authorize Connections and control what data Dust
-                can access. Once connected, data can be distributed to Open
-                Spaces (accessible to all workspace members) or Restricted
-                Spaces (limited access). <br />
-                Need help? Check out our{" "}
-                <Link
-                  href="https://docs.dust.tt/docs/data"
-                  className="text-highlight"
-                  target="_blank"
-                >
-                  guide
-                </Link>
-              </>
-            }
-            icon={CloudArrowLeftRightIcon}
-          />
-        </>
-      )}
-      {category === "apps" ? (
-        <SpaceAppsList
-          owner={owner}
-          space={space}
-          canWriteInSpace={canWriteInSpace}
-          onSelect={(sId) => {
-            void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
-          }}
-          registryApps={registryApps}
-        />
-      ) : (
-        <SpaceResourcesList
-          owner={owner}
-          plan={plan}
-          space={space}
-          systemSpace={systemSpace}
-          isAdmin={isAdmin}
-          canWriteInSpace={canWriteInSpace}
-          category={category}
-          integrations={integrations}
-          onSelect={(sId) => {
-            void router.push(
-              `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${sId}`
-            );
-          }}
-        />
-      )}
-    </Page.Vertical>
+    <SpaceResourcesList
+      owner={owner}
+      plan={plan}
+      space={space}
+      systemSpace={systemSpace}
+      isAdmin={isAdmin}
+      canWriteInSpace={canWriteInSpace}
+      category={category}
+      integrations={integrations}
+      onSelect={(sId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${sId}`
+        );
+      }}
+    />
   );
 }
 

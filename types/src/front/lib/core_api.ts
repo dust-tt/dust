@@ -258,7 +258,8 @@ export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
 >;
 
-export const MIN_SEARCH_QUERY_SIZE = 3;
+// Edge-ngram starts at 2 characters.
+export const MIN_SEARCH_QUERY_SIZE = 2;
 
 export const CoreAPINodesSearchFilterSchema = t.intersection([
   t.type({

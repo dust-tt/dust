@@ -2,6 +2,7 @@ import {
   ArrowUpOnSquareIcon,
   Button,
   CloudArrowLeftRightIcon,
+  cn,
   Cog6ToothIcon,
   CommandLineIcon,
   DataTable,
@@ -9,12 +10,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderIcon,
   GlobeAltIcon,
   Icon,
   PlusIcon,
   RobotIcon,
-  SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type {
@@ -25,10 +24,13 @@ import type {
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
-import { useState } from "react";
+import React from "react";
 
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
+import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
 
 type RowData = {
   category: string;
@@ -40,32 +42,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, unknown>;
-
-export const CATEGORY_DETAILS: {
-  [key: string]: {
-    label: string;
-    icon: ComponentType<{
-      className?: string;
-    }>;
-  };
-} = {
-  managed: {
-    label: "Connected Data",
-    icon: CloudArrowLeftRightIcon,
-  },
-  folder: {
-    label: "Folders",
-    icon: FolderIcon,
-  },
-  website: {
-    label: "Websites",
-    icon: GlobeAltIcon,
-  },
-  apps: {
-    label: "Apps",
-    icon: CommandLineIcon,
-  },
-};
 
 const getTableColumns = () => {
   return [
@@ -126,12 +102,14 @@ export const SpaceCategoriesList = ({
   owner,
   space,
 }: SpaceCategoriesListProps) => {
-  const [dataSourceSearch, setDataSourceSearch] = useState<string>("");
-
   const { spaceInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
+
+  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
+    React.useContext(SpaceSearchContext);
+
   const rows: RowData[] = spaceInfo
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
@@ -148,6 +126,18 @@ export const SpaceCategoriesList = ({
       )
     : [];
 
+  React.useEffect(() => {
+    if (rows.length === 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [rows.length, setIsSearchDisabled]);
+
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
+
   if (isSpaceInfoLoading) {
     return (
       <div className="mt-8 flex justify-center">
@@ -156,71 +146,65 @@ export const SpaceCategoriesList = ({
     );
   }
 
+  const actionButtons = (
+    <>
+      {isAdmin && onButtonClick && space.kind === "regular" && (
+        <Button
+          label="Space settings"
+          icon={Cog6ToothIcon}
+          onClick={onButtonClick}
+          variant="outline"
+        />
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label="Add data" icon={PlusIcon} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem
+            disabled={!isAdmin && !canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
+            icon={CloudArrowLeftRightIcon}
+            label="Connected Data"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
+            icon={ArrowUpOnSquareIcon}
+            label="Upload Data"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
+            icon={GlobeAltIcon}
+            label="Scrape a website"
+          />
+          <DropdownMenuItem
+            disabled={!canWriteInSpace}
+            href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
+            icon={CommandLineIcon}
+            label="Create a Dust App"
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+
+  const isEmpty = rows.length === 0;
+
   return (
     <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          rows.length === 0
-            ? classNames(
-                "h-36 w-full items-center justify-center rounded-xl",
-                "bg-muted-background dark:bg-muted-background-night"
-              )
-            : ""
-        )}
-      >
-        {rows.length > 0 && (
-          <div className="flex w-full gap-2">
-            <SearchInput
-              name="search"
-              placeholder="Search (Name)"
-              value={dataSourceSearch}
-              onChange={(s) => {
-                setDataSourceSearch(s);
-              }}
-            />
-            {isAdmin && onButtonClick && space.kind === "regular" && (
-              <Button
-                label="Space settings"
-                icon={Cog6ToothIcon}
-                onClick={onButtonClick}
-                variant="outline"
-              />
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button label="Add data" icon={PlusIcon} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem
-                  disabled={!isAdmin && !canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed`}
-                  icon={CloudArrowLeftRightIcon}
-                  label="Connected Data"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
-                  icon={ArrowUpOnSquareIcon}
-                  label="Upload Data"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/website`}
-                  icon={GlobeAltIcon}
-                  label="Scrape a website"
-                />
-                <DropdownMenuItem
-                  disabled={!canWriteInSpace}
-                  href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps`}
-                  icon={CommandLineIcon}
-                  label="Create a Dust App"
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
-      </div>
+      {isEmpty && (
+        <div
+          className={cn(
+            "flex h-36 w-full items-center justify-center gap-2 rounded-xl",
+            "bg-muted-background dark:bg-muted-background-night"
+          )}
+        >
+          {actionButtons}
+        </div>
+      )}
+      {!isEmpty && portalToHeader(actionButtons)}
       {rows.length > 0 && (
         <DataTable
           data={rows}
