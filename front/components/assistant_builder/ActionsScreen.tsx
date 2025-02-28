@@ -54,6 +54,7 @@ import {
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
   ActionGithubCreateIssue,
+  ActionGithubCreatePullRequestReview,
   ActionGithubGetPullRequest,
   hasErrorActionGithub,
 } from "@app/components/assistant_builder/actions/GithubAction";
@@ -113,6 +114,7 @@ const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
   "GITHUB_GET_PULL_REQUEST",
   "GITHUB_CREATE_ISSUE",
+  "GITHUB_CREATE_PULL_REQUEST_REVIEW",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -145,6 +147,8 @@ export function hasActionError(
     case "GITHUB_GET_PULL_REQUEST":
       return hasErrorActionGithub(action);
     case "GITHUB_CREATE_ISSUE":
+      return hasErrorActionGithub(action);
+    case "GITHUB_CREATE_PULL_REQUEST_REVIEW":
       return hasErrorActionGithub(action);
     case "REASONING":
       return null;
@@ -231,6 +235,7 @@ export default function ActionsScreen({
         case "WEB_NAVIGATION":
         case "GITHUB_GET_PULL_REQUEST":
         case "GITHUB_CREATE_ISSUE":
+        case "GITHUB_CREATE_PULL_REQUEST_REVIEW":
         case "REASONING":
           break;
 
@@ -909,6 +914,8 @@ function ActionConfigEditor({
       return <ActionGithubGetPullRequest />;
     case "GITHUB_CREATE_ISSUE":
       return <ActionGithubCreateIssue />;
+    case "GITHUB_CREATE_PULL_REQUEST_REVIEW":
+      return <ActionGithubCreatePullRequestReview />;
 
     case "REASONING":
       return <ActionReasoning />;
@@ -1175,7 +1182,6 @@ function AdvancedSettings({
 interface AddActionProps {
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
 }
-
 function AddAction({ onAddAction }: AddActionProps) {
   return (
     <DropdownMenu modal={false}>
@@ -1369,7 +1375,7 @@ function Capabilities({
         <>
           <Page.H variant="h6">Github Actions</Page.H>
 
-          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
+          <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
             <Capability
               name="Pull request retrieval"
               description="Agent can retrieve pull requests by number, including diffs"
@@ -1419,6 +1425,36 @@ function Capabilities({
                   getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
                 assert(defaulGithubCreateIssueAction);
                 deleteAction(defaulGithubCreateIssueAction.name);
+              }}
+            />
+
+            <Capability
+              name="Pull request review"
+              description="Assistant can add comments to pull requests"
+              enabled={
+                !!builderState.actions.find(
+                  (a) => a.type === "GITHUB_CREATE_PULL_REQUEST_REVIEW"
+                )
+              }
+              onEnable={() => {
+                setEdited(true);
+                const defaultGithubCreatePullRequestReviewAction =
+                  getDefaultActionConfiguration(
+                    "GITHUB_CREATE_PULL_REQUEST_REVIEW"
+                  );
+                assert(defaultGithubCreatePullRequestReviewAction);
+                setAction({
+                  type: "insert",
+                  action: defaultGithubCreatePullRequestReviewAction,
+                });
+              }}
+              onDisable={() => {
+                const defaulGithubCreatePullRequestReviewAction =
+                  getDefaultActionConfiguration(
+                    "GITHUB_CREATE_PULL_REQUEST_REVIEW"
+                  );
+                assert(defaulGithubCreatePullRequestReviewAction);
+                deleteAction(defaulGithubCreatePullRequestReviewAction.name);
               }}
             />
           </div>

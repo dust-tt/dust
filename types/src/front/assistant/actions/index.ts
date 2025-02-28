@@ -16,8 +16,8 @@ export type ActionGeneratedFileType = {
 
 export type GithubBaseActionType =
   | "github_get_pull_request_action"
-  | "github_create_issue_action";
-// | "github_review_pull_request_action";
+  | "github_create_issue_action"
+  | "github_create_pull_request_review_action";
 
 export type ConversationBaseActionType =
   | "conversation_list_files_action"

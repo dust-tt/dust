@@ -14,6 +14,8 @@ import {
 import {
   GithubCreateIssueConfigurationType,
   GithubCreateIssueParamsEvent,
+  GithubCreatePullRequestParamsEvent,
+  GithubCreatePullRequestReviewConfigurationType,
   GithubGetPullRequestConfigurationType,
   GithubGetPullRequestParamsEvent,
 } from "../../front/assistant/actions/github";
@@ -54,7 +56,8 @@ import {
 
 type GithubAgentActionConfigurationType =
   | GithubGetPullRequestConfigurationType
-  | GithubCreateIssueConfigurationType;
+  | GithubCreateIssueConfigurationType
+  | GithubCreatePullRequestReviewConfigurationType;
 
 export type AgentActionConfigurationType =
   | TablesQueryConfigurationType
@@ -332,6 +335,7 @@ export type AgentActionSpecificEvent =
   | ConversationIncludeFileParamsEvent
   | GithubGetPullRequestParamsEvent
   | GithubCreateIssueParamsEvent
+  | GithubCreatePullRequestParamsEvent
   | ReasoningStartedEvent
   | ReasoningThinkingEvent
   | ReasoningTokensEvent;
