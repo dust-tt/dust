@@ -13,7 +13,7 @@ use elasticsearch_dsl::{
     SortOrder,
 };
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use tracing::{error, info};
 use url::Url;
 
@@ -952,15 +952,16 @@ impl ElasticsearchSearchStore {
                     .as_array()
                     .unwrap();
 
-                if let Some(bucket) = buckets.first() {
-                    Ok(DataSourceESDocumentWithStats::from((
-                        data_source,
-                        // We unwrap here because if we got a bucket, then it necessarily contains these fields.
-                        bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
-                        bucket["doc_count"].as_i64().unwrap(),
-                    )))
-                } else {
-                    Err(anyhow::anyhow!("Data source stats computation failed."))
+                match buckets.first() {
+                    Some(bucket) => {
+                        Ok(DataSourceESDocumentWithStats::from((
+                            data_source,
+                            // We unwrap here because if we got a bucket, then it necessarily contains these fields.
+                            bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
+                            bucket["doc_count"].as_i64().unwrap(),
+                        )))
+                    }
+                    None => Err(anyhow::anyhow!("Data source stats computation failed.")),
                 }
             }
             _ => Err(anyhow::anyhow!(
