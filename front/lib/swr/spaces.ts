@@ -10,15 +10,17 @@ import type {
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, KeyedMutator } from "swr";
 
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   fetcher,
+  fetcherWithBody,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { PostSpaceSearchResponseBody } from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -597,22 +599,32 @@ const DEFAULT_SEARCH_LIMIT = 15;
 
 export function useSpaceSearch({
   dataSourceViews,
-  owner,
-  viewType,
-  search,
   disabled = false,
-  limit = DEFAULT_SEARCH_LIMIT,
   includeDataSources = false,
+  limit = DEFAULT_SEARCH_LIMIT,
+  owner,
+  search,
+  space,
+  viewType,
 }: {
   dataSourceViews: DataSourceViewType[];
-  owner: LightWorkspaceType;
-  viewType: ContentNodesViewType;
-  search: string;
   disabled?: boolean;
-  limit?: number;
   includeDataSources: boolean;
+  limit?: number;
+  owner: LightWorkspaceType;
+  search: string;
+  space: SpaceType;
+  viewType: ContentNodesViewType;
   warningCode?: SearchWarningCode;
-}) {
+}): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  mutate: KeyedMutator<PostSpaceSearchResponseBody>;
+  searchResultNodes: DataSourceViewContentNode[];
+  total: number;
+  warningCode: SearchWarningCode | null;
+} {
   const body = {
     datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     includeDataSources,
@@ -621,30 +633,22 @@ export function useSpaceSearch({
     viewType,
   };
 
-  const spaceId = dataSourceViews[0]?.spaceId;
-
-  // Only create a key if we have a valid search.
-  const key =
-    search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
-      ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
+  // Only perform a query if we have a valid search.
+  const url =
+    search.length >= MIN_SEARCH_QUERY_SIZE
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/search`
       : null;
 
-  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
-    key as [string, typeof body],
-    async ([url, postBody]) => {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(postBody),
-      });
+  const fetchKey = [url, body];
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch search results");
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return null;
       }
 
-      return res.json();
+      return fetcherWithBody([url, body, "POST"]);
     },
     {
       revalidateOnFocus: false,
@@ -654,10 +658,7 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(
-      () => data?.nodes ?? [],
-      [data]
-    ) as DataSourceViewContentNode[],
+    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
     total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,

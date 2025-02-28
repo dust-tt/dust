@@ -56,8 +56,9 @@ export const DataSourceViewsSpaceSelector = ({
   }
 
   if (filteredSpaces.length === 1) {
-    const dataSourceViewsForSpace = filteredSpaces[0]
-      ? dataSourceViews.filter((dsv) => dsv.spaceId === filteredSpaces[0].sId)
+    const [space] = filteredSpaces;
+    const dataSourceViewsForSpace = space
+      ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
       : dataSourceViews;
 
     return (
@@ -69,6 +70,7 @@ export const DataSourceViewsSpaceSelector = ({
         setSelectionConfigurations={setSelectionConfigurations}
         viewType={viewType}
         isRootSelectable={isRootSelectable}
+        space={space}
       />
     );
   }
@@ -87,6 +89,10 @@ export const DataSourceViewsSpaceSelector = ({
           return <>No data source in this space.</>;
         }
 
+        if (!space) {
+          return <>No space selected.</>;
+        }
+
         return (
           <DataSourceViewsSelector
             owner={owner}
@@ -96,6 +102,7 @@ export const DataSourceViewsSpaceSelector = ({
             setSelectionConfigurations={setSelectionConfigurations}
             viewType={viewType}
             isRootSelectable={isRootSelectable}
+            space={space}
           />
         );
       }}
