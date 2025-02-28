@@ -341,13 +341,6 @@ impl SearchStore for ElasticsearchSearchStore {
             true => {
                 let response_body = response.json::<serde_json::Value>().await?;
                 let hits = response_body["hits"]["hits"].as_array().unwrap();
-                // Safe to unwrap because it's always set as per the official documentation.
-                let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
-                // hits.total.relation can be "eq" or "gte".
-                // It indicates whether the count above is an exact count or a lower bound.
-                // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
-                let hit_count_is_accurate =
-                    response_body["hits"]["total"]["relation"].as_str() == Some("eq");
 
                 let next_cursor = if hits.len() == limit as usize {
                     hits.last()
@@ -364,6 +357,8 @@ impl SearchStore for ElasticsearchSearchStore {
                     .iter()
                     .map(|h| SearchItem::from_hit(h))
                     .collect::<Result<Vec<_>>>()?;
+
+                let (hit_count, hit_count_is_accurate) = self.get_hits_metadata(response_body);
 
                 (items, hit_count, hit_count_is_accurate, next_cursor)
             }
@@ -455,21 +450,15 @@ impl SearchStore for ElasticsearchSearchStore {
         let (items, hit_count, hit_count_is_accurate): (Vec<SearchItem>, u64, bool) =
             match response.status_code().is_success() {
                 true => {
-                    // TODO(2025-02-28 aubin): share this piece of code with search_nodes.
                     let response_body = response.json::<serde_json::Value>().await?;
-                    let hits = response_body["hits"]["hits"].as_array().unwrap();
-                    // Safe to unwrap because it's always set as per the official documentation.
-                    let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
-                    // hits.total.relation can be "eq" or "gte".
-                    // It indicates whether the count above is an exact count or a lower bound.
-                    // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
-                    let hit_count_is_accurate =
-                        response_body["hits"]["total"]["relation"].as_str() == Some("eq");
 
-                    let items: Vec<SearchItem> = hits
+                    let items: Vec<SearchItem> = response_body["hits"]["hits"]
+                        .as_array()
+                        .unwrap()
                         .iter()
                         .map(|h| SearchItem::from_hit(h))
                         .collect::<Result<Vec<_>>>()?;
+                    let (hit_count, hit_count_is_accurate) = self.get_hits_metadata(response_body);
 
                     (items, hit_count, hit_count_is_accurate)
                 }
@@ -667,6 +656,18 @@ impl SearchStore for ElasticsearchSearchStore {
 }
 
 impl ElasticsearchSearchStore {
+    fn get_hits_metadata(&self, response_body: serde_json::Value) -> (u64, bool) {
+        // Safe to unwrap because it's always set as per the official documentation.
+        let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
+        // hits.total.relation can be "eq" or "gte".
+        // It indicates whether the count above is an exact count or a lower bound.
+        // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
+        let hit_count_is_accurate =
+            response_body["hits"]["total"]["relation"].as_str() == Some("eq");
+
+        (hit_count, hit_count_is_accurate)
+    }
+
     fn build_search_node_query(
         &self,
         query: Option<String>,
