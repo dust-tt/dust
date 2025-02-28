@@ -15,7 +15,7 @@ import type {
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
-  CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
   CLAUDE_INSTANT_DEFAULT_MODEL_CONFIG,
@@ -635,7 +635,7 @@ function _getClaude3GlobalAgent({
     versionCreatedAt: null,
     versionAuthorId: null,
     name: "claude-3",
-    description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
+    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
     instructions:
       "Only use visualization if it is strictly necessary to visualize " +
       "data or if it was explicitly requested by the user. " +
@@ -645,10 +645,11 @@ function _getClaude3GlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-      modelId: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
       temperature: 0.7,
     },
+
     actions: [],
     maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
     visualizationEnabled: true,
