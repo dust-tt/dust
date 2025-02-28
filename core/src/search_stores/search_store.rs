@@ -278,10 +278,10 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Build search query with potential truncation.
-        let (bool_query, warning_code) = self.build_search_query(query.clone(), filter)?;
+        let (bool_query, warning_code) = self.build_search_node_query(query.clone(), filter)?;
 
         let sort = match query {
-            None => self.build_sort(options.sort)?,
+            None => self.build_search_nodes_sort(options.sort)?,
             Some(_) => vec![],
         };
 
@@ -364,7 +364,7 @@ impl SearchStore for ElasticsearchSearchStore {
         };
 
         let compute_node_start = utils::now();
-        let result = self.process_search_results(items, store).await?;
+        let result = self.process_search_nodes_results(items, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -584,7 +584,7 @@ impl SearchStore for ElasticsearchSearchStore {
 }
 
 impl ElasticsearchSearchStore {
-    fn build_search_query(
+    fn build_search_node_query(
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
@@ -739,7 +739,7 @@ impl ElasticsearchSearchStore {
 
     // Enrich search results with children counts and parent titles.
 
-    async fn process_search_results(
+    async fn process_search_nodes_results(
         &self,
         items: Vec<SearchItem>,
         store: Box<dyn Store + Sync + Send>,
@@ -868,7 +868,7 @@ impl ElasticsearchSearchStore {
     }
 
     // Always add node_id as a tie-breaker
-    fn build_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
+    fn build_search_nodes_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
         let mut base_sort = match sort {
             Some(sort) => {
                 if sort.iter().any(|s| s.field == "node_id") {
