@@ -1183,7 +1183,7 @@ export async function getChannelsToGarbageCollect(
 export async function deleteChannel(channelId: string, connectorId: ModelId) {
   const maxMessages = 1000;
   let nbDeleted = 0;
-
+  const loggerArgs = { channelId, connectorId };
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Could not find connector ${connectorId}`);
@@ -1201,7 +1201,11 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
-      await deleteDataSourceDocument(dataSourceConfig, slackMessage.documentId);
+      await deleteDataSourceDocument(
+        dataSourceConfig,
+        slackMessage.documentId,
+        loggerArgs
+      );
       nbDeleted++;
 
       if (nbDeleted % 50 === 0) {
@@ -1222,10 +1226,11 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+    loggerArgs,
   });
 
   logger.info(
-    { nbDeleted, channelId, connectorId },
+    { nbDeleted, ...loggerArgs },
     "Deleted documents from datasource while garbage collecting."
   );
 }
