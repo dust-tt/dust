@@ -67,7 +67,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                label="🤓 Show raw objects"
+                label="Show raw objects"
               />
             </div>
             {isPaused && isRunning && (
