@@ -31,7 +31,7 @@ import { apiError } from "@app/logger/withlogging";
  *         required: true
  *         schema:
  *           type: string
- *         description: Conversation ID
+ *         description: Conversation sId
  *       - name: mId
  *         in: path
  *         required: true
