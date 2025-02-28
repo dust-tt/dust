@@ -41,7 +41,8 @@ export async function createDataSourceProject({
     projectId: dustProject.value.project.project_id.toString(),
     config: sourceRegionCoreDataSource.config,
     credentials: dustManagedCredentials(),
-    name: sourceRegionCoreDataSource.name,
+    // Temporary to unblock migration. Name was not returned by the core API.
+    name: sourceRegionCoreDataSource.name ?? "",
   });
 
   if (dustDataSource.isErr()) {
