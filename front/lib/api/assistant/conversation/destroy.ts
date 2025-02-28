@@ -1,3 +1,4 @@
+import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
 import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
@@ -26,6 +27,7 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 
 const DESTROY_MESSAGE_BATCH = 50;
@@ -156,6 +158,27 @@ async function destroyConversationDataSource(
   }
 }
 
+async function destroyConversationDataSourceView(
+  auth: Authenticator,
+  {
+    conversation,
+  }: {
+    conversation: ConversationWithoutContentPublicType;
+  }
+) {
+  // Find all dataSourceViews that have this conversationId
+  const dataSourceViews = await DataSourceViewResource.fetchByConversation(
+    auth,
+    conversation
+  );
+
+  if (dataSourceViews) {
+    for (const dsv of dataSourceViews) {
+      await dsv.delete(auth, { hardDelete: true });
+    }
+  }
+}
+
 // This belongs to the ConversationResource. The authenticator is expected to have access to the
 // groups involved in the conversation.
 export async function destroyConversation(
@@ -233,6 +256,7 @@ export async function destroyConversation(
     where: { conversationId: conversation.id },
   });
 
+  await destroyConversationDataSourceView(auth, { conversation });
   await destroyConversationDataSource(auth, { conversation });
 
   const c = await Conversation.findOne({

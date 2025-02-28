@@ -45,10 +45,11 @@ async function getJITActions(
       filesUsableAsRetrievalQuery.length > 0
     ) {
       // Get the datasource view for the conversation.
-      const dataSourceView = await DataSourceViewResource.fetchByConversation(
-        auth,
-        conversation
-      );
+      const dataSourceView =
+        await DataSourceViewResource.fetchByDataSourceConversation(
+          auth,
+          conversation
+        );
 
       if (!dataSourceView) {
         logger.warn(
