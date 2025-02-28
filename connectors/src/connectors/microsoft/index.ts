@@ -48,7 +48,6 @@ import {
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
@@ -458,64 +457,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-    viewType,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${this.connectorId}`)
-      );
-    }
-
-    try {
-      const nodes = await MicrosoftNodeResource.fetchByInternalIds(
-        this.connectorId,
-        internalIds
-      );
-
-      const contentNodes = nodes.map((node) =>
-        getMicrosoftNodeAsContentNode(node, viewType === "table")
-      );
-
-      const selectedResources = (
-        await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-      ).map((r) => r.internalId);
-
-      const contentNodesWithPermissions = contentNodes.map((node) => ({
-        ...node,
-        permission: (selectedResources.includes(node.internalId) ||
-        (node.parentInternalId &&
-          selectedResources.includes(node.parentInternalId))
-          ? "read"
-          : "none") as ConnectorPermission,
-      }));
-
-      return new Ok(contentNodesWithPermissions);
-    } catch (error) {
-      return new Err(new Error("Failed to retrieve Microsoft content nodes"));
-    }
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parents = await getParents({
-      connectorId: this.connectorId,
-      internalId,
-      // base memoization, caches the parents for 30mn
-      startSyncTs: 0,
-    });
-    return new Ok(parents);
   }
 
   async setConfigurationKey({

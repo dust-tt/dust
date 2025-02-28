@@ -22,30 +22,8 @@ export function isGithubCodeFileId(internalId: string): boolean {
   return /^github-code-\d+-file-[a-f0-9]+$/.test(internalId);
 }
 
-export function getGithubIdsFromDiscussionInternalId(internalId: string): {
-  repoId: string;
-  discussionNumber: number;
-} {
-  const pattern = /^github-discussion-(\d+)-(\d+)$/;
-  return {
-    repoId: parseInt(internalId.replace(pattern, "$1"), 10).toString(),
-    discussionNumber: parseInt(internalId.replace(pattern, "$2"), 10),
-  };
-}
-
-export function getGithubIdsFromIssueInternalId(internalId: string): {
-  repoId: string;
-  issueNumber: number;
-} {
-  const pattern = /^github-issue-(\d+)-(\d+)$/;
-  return {
-    repoId: parseInt(internalId.replace(pattern, "$1"), 10).toString(),
-    issueNumber: parseInt(internalId.replace(pattern, "$2"), 10),
-  };
-}
-
 /**
- * Gets the type of the Github content node from its internal id.
+ * Gets the type of the GitHub content node from its internal id.
  */
 export function matchGithubInternalIdType(internalId: string): {
   type: GithubContentNodeType;
@@ -182,18 +160,6 @@ export function getIssuesUrl(repoUrl: string): string {
 
 export function getDiscussionsUrl(repoUrl: string): string {
   return `${repoUrl}/discussions`;
-}
-
-// Must match https://docs.github.com/en/rest/issues/issues#get-an-issue
-export function getIssueUrl(repoUrl: string, issueNumber: number): string {
-  return `${repoUrl}/issues/${issueNumber}`;
-}
-
-export function getDiscussionUrl(
-  repoUrl: string,
-  discussionNumber: number
-): string {
-  return `${repoUrl}/discussions/${discussionNumber}`;
 }
 
 export function getFileUrl(
