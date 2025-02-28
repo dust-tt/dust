@@ -17,27 +17,18 @@
       "edge_analyzer": {
         "type": "custom",
         "tokenizer": "icu_tokenizer",
-        "filter": [
-          "lowercase",
-          "edge_ngram_filter"
-        ]
+        "filter": ["lowercase", "edge_ngram_filter"]
       },
       "tag_edge_analyzer": {
         "type": "custom",
         "tokenizer": "icu_tokenizer",
-        "filter": [
-          "tags_cleaner",
-          "lowercase",
-          "edge_ngram_filter"
-        ]
+        "filter": ["tags_cleaner", "lowercase", "edge_ngram_filter"]
       }
     },
     "normalizer": {
       "tag_normalizer": {
         "type": "custom",
-        "filter": [
-          "tags_cleaner"
-        ]
+        "filter": ["tags_cleaner"]
       }
     },
     "filter": {
@@ -48,7 +39,7 @@
       },
       "edge_ngram_filter": {
         "type": "edge_ngram",
-        "min_gram": 2,
+        "min_gram": 1,
         "max_gram": 20
       },
       "tags_cleaner": {

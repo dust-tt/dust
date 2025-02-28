@@ -9,8 +9,8 @@ use elasticsearch::{
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
 use elasticsearch_dsl::{
-    Aggregation, BoolQuery, FieldSort, Query, Script, ScriptSort, ScriptSortType, Search, Sort,
-    SortOrder,
+    Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
+    Sort, SortOrder,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -555,6 +555,9 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 }
 
+/// Boost factor applied to exact matches to increase their relevance in search results.
+const EXACT_MATCH_BOOST: f32 = 2.0;
+
 impl ElasticsearchSearchStore {
     fn build_search_query(
         &self,
@@ -645,6 +648,34 @@ impl ElasticsearchSearchStore {
             .minimum_should_match(1)
     }
 
+    fn build_match_query(
+        &self,
+        field: &str,
+        query: &str,
+        counter: &mut QueryClauseCounter,
+    ) -> Result<BoolQuery> {
+        let edge_field = format!("{}.edge", field);
+
+        counter.add(2);
+
+        Ok(Query::bool()
+            .should(vec![
+                // Primary match using edge n-grams for partial matching.
+                // - Uses the `.edge` analyzer for prefix matching on terms.
+                // - All terms must be present when operator is AND.
+                // - Terms can appear in any order.
+                // - Enables search-as-you-type behavior.
+                Query::from(Query::r#match(edge_field, query).operator(Operator::And)),
+                // Exact phrase match for higher relevance.
+                // - Requires terms to appear in exact order
+                // - Gives higher score (EXACT_MATCH_BOOST) for exact matches
+                // - Stricter matching than regular match query
+                // - Perfect for catching exact title matches.
+                Query::from(Query::r#match_phrase(field, query).boost(EXACT_MATCH_BOOST)),
+            ])
+            .minimum_should_match(1))
+    }
+
     fn build_data_sources_content_query(
         &self,
         query: &Option<String>,
@@ -660,7 +691,7 @@ impl ElasticsearchSearchStore {
             // A match query counts as 1 clause.
             counter.add(1);
 
-            bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
+            bool_query = bool_query.must(self.build_match_query("name", &query_string, counter)?);
         }
 
         Ok(bool_query)
@@ -703,7 +734,8 @@ impl ElasticsearchSearchStore {
         // Add search term if present.
         if let Some(query_string) = query.clone() {
             counter.add(1);
-            bool_query = bool_query.must(Query::r#match("title.edge", query_string.clone()));
+            bool_query =
+                bool_query.must(self.build_match_query("title", &query_string, counter)?);
         }
 
         Ok(bool_query)
