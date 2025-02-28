@@ -13,11 +13,11 @@ use elasticsearch_dsl::{
     Sort, SortOrder,
 };
 use serde::Serialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use tracing::{error, info};
 use url::Url;
 
-use crate::data_sources::data_source::Document;
+use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
 use crate::data_sources::folder::Folder;
 use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
@@ -118,6 +118,10 @@ pub trait SearchStore {
     async fn delete_node(&self, node: NodeItem) -> Result<()>;
 
     // Data sources.
+    async fn get_data_source_stats(
+        &self,
+        data_source_id: String,
+    ) -> Result<Option<DataSourceESDocumentWithStats>>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -260,10 +264,10 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Build search query with potential truncation.
-        let (bool_query, warning_code) = self.build_search_query(query.clone(), filter)?;
+        let (bool_query, warning_code) = self.build_search_node_query(query.clone(), filter)?;
 
         let sort = match query {
-            None => self.build_sort(options.sort)?,
+            None => self.build_search_nodes_sort(options.sort)?,
             Some(_) => vec![],
         };
 
@@ -346,7 +350,7 @@ impl SearchStore for ElasticsearchSearchStore {
         };
 
         let compute_node_start = utils::now();
-        let result = self.process_search_results(items, store).await?;
+        let result = self.process_search_nodes_results(items, store).await?;
         info!(
             duration = utils::now() - compute_node_start,
             data_source_id = data_source_id,
@@ -382,6 +386,48 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     // Data sources.
+
+    async fn get_data_source_stats(
+        &self,
+        data_source_id: String,
+    ) -> Result<Option<DataSourceESDocumentWithStats>> {
+        // Search on data_source_id.
+        let response = self
+            .client
+            .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
+            .body(
+                Search::new()
+                    .query(Query::bool().filter(Query::term("data_source_id", data_source_id))),
+            )
+            .send()
+            .await?;
+
+        let items: Vec<SearchItem> = match response.status_code().is_success() {
+            true => response.json::<serde_json::Value>().await?["hits"]["hits"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|h| SearchItem::from_hit(h))
+                .collect::<Result<Vec<_>>>()?,
+            false => {
+                return Err(anyhow::anyhow!(
+                    "Failed to search data sources: {}",
+                    response.json::<serde_json::Value>().await?
+                ));
+            }
+        };
+
+        if items.len() > 1 {
+            // This should never ever happen since we are searching by data_source_id.
+            Err(anyhow::anyhow!("Found more than one matching data source."))
+        } else {
+            if let Some(item) = items.first() {
+                Some(self.compute_data_sources_stats(item.clone()).await).transpose()
+            } else {
+                Ok(None)
+            }
+        }
+    }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
         self.index_document(data_source).await
@@ -559,7 +605,7 @@ impl SearchStore for ElasticsearchSearchStore {
 const EXACT_MATCH_BOOST: f32 = 2.0;
 
 impl ElasticsearchSearchStore {
-    fn build_search_query(
+    fn build_search_node_query(
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
@@ -743,7 +789,7 @@ impl ElasticsearchSearchStore {
 
     // Enrich search results with children counts and parent titles.
 
-    async fn process_search_results(
+    async fn process_search_nodes_results(
         &self,
         items: Vec<SearchItem>,
         store: Box<dyn Store + Sync + Send>,
@@ -765,7 +811,10 @@ impl ElasticsearchSearchStore {
         for (pos, item) in items.into_iter().enumerate() {
             match item {
                 SearchItem::DataSource(data_source) => {
-                    result.push((pos, self.create_data_source_node(data_source)));
+                    result.push((
+                        pos,
+                        CoreContentNode::from_es_data_source_document(data_source),
+                    ));
                 }
                 SearchItem::Node(node) => {
                     position_map.insert(node.node_id.clone(), pos);
@@ -790,10 +839,6 @@ impl ElasticsearchSearchStore {
         // Restore original order.
         result.sort_by_key(|(pos, _)| *pos);
         Ok(result.into_iter().map(|(_, node)| node).collect())
-    }
-
-    fn create_data_source_node(&self, item: DataSourceESDocument) -> CoreContentNode {
-        CoreContentNode::from_es_data_source_document(item)
     }
 
     /// Compute core content nodes from a list of nodes.
@@ -872,7 +917,7 @@ impl ElasticsearchSearchStore {
     }
 
     // Always add node_id as a tie-breaker
-    fn build_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
+    fn build_search_nodes_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
         let mut base_sort = match sort {
             Some(sort) => {
                 if sort.iter().any(|s| s.field == "node_id") {
@@ -908,6 +953,55 @@ impl ElasticsearchSearchStore {
         ));
 
         Ok(base_sort)
+    }
+
+    async fn compute_data_sources_stats(
+        &self,
+        item: SearchItem,
+    ) -> Result<DataSourceESDocumentWithStats> {
+        match item {
+            SearchItem::DataSource(data_source) => {
+                let search = Search::new()
+                    .size(0)
+                    .query(Query::bool().must(Query::term(
+                        "data_source_id",
+                        data_source.data_source_id.clone(),
+                    )))
+                    .aggregate(
+                        "data_sources",
+                        Aggregation::terms("data_source_id")
+                            .aggregate("total_size", Aggregation::sum("text_size")),
+                    );
+                let response = self
+                    .client
+                    .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+                    .body(search)
+                    .send()
+                    .await?;
+
+                let response_body = response.json::<serde_json::Value>().await?;
+                let buckets = response_body["aggregations"]["data_sources"]["buckets"]
+                    .as_array()
+                    .unwrap();
+
+                buckets
+                    .first()
+                    .map(|bucket| {
+                        Ok(DataSourceESDocumentWithStats::from((
+                            data_source,
+                            // We unwrap here because if we got a bucket, then it necessarily contains these fields.
+                            bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
+                            bucket["doc_count"].as_i64().unwrap(),
+                        )))
+                    })
+                    .unwrap_or(Err(anyhow::anyhow!(
+                        "Data source stats computation failed."
+                    )))
+            }
+            _ => Err(anyhow::anyhow!(
+                "Invalid search item type, expected a DataSource."
+            )),
+        }
     }
 
     // Generic document methods.

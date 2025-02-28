@@ -3549,6 +3549,60 @@ async fn nodes_search(
     )
 }
 
+async fn data_sources_stats(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "data_source_not_found",
+            &format!("No data source found for id `{}`", data_source_id),
+            None,
+        ),
+        Ok(Some(data_source)) => {
+            match state
+                .search_store
+                .get_data_source_stats(data_source.data_source_id().to_string())
+                .await
+            {
+                Ok(Some(data_source_stats)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_source": data_source_stats
+                        })),
+                    }),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_not_found",
+                    &format!("No data source indexed for id `{}`", data_source_id),
+                    None,
+                ),
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to get stats relative to data source",
+                    Some(e),
+                ),
+            }
+        }
+    }
+}
+
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct TagsSearchPayload {
@@ -4110,6 +4164,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
+        .route("/projects/:project_id/data_sources/:data_source_id/stats", get(data_sources_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc
