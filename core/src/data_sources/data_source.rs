@@ -2480,6 +2480,7 @@ pub struct DataSourceESDocument {
     pub data_source_internal_id: String,
     pub timestamp: u64,
     pub name: String,
+    pub text_size: Option<i64>,
 }
 
 impl From<&DataSource> for DataSourceESDocument {
@@ -2489,6 +2490,7 @@ impl From<&DataSource> for DataSourceESDocument {
             data_source_internal_id: ds.internal_id().to_string(),
             timestamp: ds.created(),
             name: ds.name().to_string(),
+            text_size: None,
         }
     }
 }

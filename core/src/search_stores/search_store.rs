@@ -134,8 +134,12 @@ pub trait SearchStore {
         query: Option<String>,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<()>;
+    ) -> Result<(
+        Vec<DataSourceESDocument>,
+        u64,
+        bool,
+        Option<SearchWarningCode>,
+    )>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -158,6 +162,12 @@ impl Default for NodesSearchOptions {
             cursor: None,
             sort: None,
         }
+    }
+}
+
+impl Default for DataSourcesSearchOptions {
+    fn default() -> Self {
+        DataSourcesSearchOptions { sort: None }
     }
 }
 
@@ -406,9 +416,83 @@ impl SearchStore for ElasticsearchSearchStore {
         query: Option<String>,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-        store: Box<dyn Store + Sync + Send>,
-    ) -> Result<()> {
-        todo!()
+    ) -> Result<(
+        Vec<DataSourceESDocument>,
+        u64,
+        bool,
+        Option<SearchWarningCode>,
+    )> {
+        let options = options.unwrap_or_default();
+
+        // Passing both a sort and a query is not allowed as these are mutually exclusive.
+        if options.sort.is_some() && query.is_some() {
+            return Err(anyhow::anyhow!(
+                "Sort option and query string are mutually exclusive"
+            ));
+        }
+
+        // Build the search query, truncating it with potential truncation.
+        let bool_query = self.build_search_data_source_query(query.clone(), filter)?;
+
+        let sort = match query {
+            None => self.build_search_data_sources_sort(options.sort)?,
+            Some(_) => vec![],
+        };
+
+        // Build and run search
+        let search = Search::new()
+            .query(bool_query)
+            .track_total_hits(MAX_TOTAL_HITS_TRACKED)
+            .sort(sort);
+
+        let response = self
+            .client
+            .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
+            .body(search)
+            .send()
+            .await?;
+
+        // Parse response and return enriched nodes
+        let (items, hit_count, hit_count_is_accurate): (Vec<SearchItem>, u64, bool) =
+            match response.status_code().is_success() {
+                true => {
+                    // TODO(2025-02-28 aubin): share this piece of code with search_nodes.
+                    let response_body = response.json::<serde_json::Value>().await?;
+                    let hits = response_body["hits"]["hits"].as_array().unwrap();
+                    // Safe to unwrap because it's always set as per the official documentation.
+                    let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
+                    // hits.total.relation can be "eq" or "gte".
+                    // It indicates whether the count above is an exact count or a lower bound.
+                    // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
+                    let hit_count_is_accurate =
+                        response_body["hits"]["total"]["relation"].as_str() == Some("eq");
+
+                    let items: Vec<SearchItem> = hits
+                        .iter()
+                        .map(|h| SearchItem::from_hit(h))
+                        .collect::<Result<Vec<_>>>()?;
+
+                    (items, hit_count, hit_count_is_accurate)
+                }
+                false => {
+                    let error = response.json::<serde_json::Value>().await?;
+                    return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
+                }
+            };
+
+        let result = items
+            .into_iter()
+            .try_fold(Vec::new(), |mut acc, item| match item {
+                SearchItem::DataSource(ds) => {
+                    acc.push(ds);
+                    Ok(acc)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "Invalid search item type, expected a DataSource."
+                )),
+            })?;
+
+        Ok((result, hit_count, hit_count_is_accurate, None))
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -901,6 +985,62 @@ impl ElasticsearchSearchStore {
 
         base_sort.push(Sort::FieldSort(
             FieldSort::new("node_id").order(SortOrder::Asc),
+        ));
+
+        Ok(base_sort)
+    }
+
+    fn build_search_data_source_query(
+        &self,
+        query: Option<String>,
+        filter: DataSourcesSearchFilter,
+    ) -> Result<BoolQuery> {
+        let mut bool_query = Query::bool();
+
+        if filter.include_text_size.unwrap_or(false) {
+            todo!()
+        }
+
+        if let Some(data_source_id) = &filter.data_source_id {
+            bool_query = bool_query.filter(Query::term("data_source_id", data_source_id));
+        }
+
+        if let Some(query_string) = query {
+            bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
+        }
+
+        // We don't count the number of clauses here as it is always lower or equal than 3.
+        Ok(bool_query)
+    }
+
+    // Builds the Sort for searching data sources, defaulting to sorting alphabetically by name
+    // and using the data_source_id as a tie-breaker.
+    fn build_search_data_sources_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
+        let mut base_sort = match sort {
+            Some(sort) => {
+                if sort.iter().any(|s| s.field == "data_source_id") {
+                    return Err(anyhow::anyhow!(
+                        "Explicit sort on data_source_id is not allowed, it is used as a tie-breaker."
+                    ));
+                }
+                sort.into_iter()
+                    .map(|s| {
+                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
+                            SortDirection::Asc => SortOrder::Asc,
+                            SortDirection::Desc => SortOrder::Desc,
+                        }))
+                    })
+                    .collect()
+            }
+            // Default to sorting alphabetically by name.
+            None => vec![Sort::FieldSort(
+                FieldSort::new("name.keyword").order(SortOrder::Asc),
+            )],
+        };
+
+        // Add the data source ID as a tie-breaker.
+        base_sort.push(Sort::FieldSort(
+            FieldSort::new("data_source_id").order(SortOrder::Asc),
         ));
 
         Ok(base_sort)
