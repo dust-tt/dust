@@ -132,7 +132,7 @@ pub trait SearchStore {
         &self,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-    ) -> Result<Vec<DataSourceESDocument>>;
+    ) -> Result<Option<DataSourceESDocument>>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -410,7 +410,7 @@ impl SearchStore for ElasticsearchSearchStore {
         &self,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-    ) -> Result<Vec<DataSourceESDocument>> {
+    ) -> Result<Option<DataSourceESDocument>> {
         // Search on data_source_id.
         let response =
             self.client
@@ -443,7 +443,12 @@ impl SearchStore for ElasticsearchSearchStore {
             )
             .await?;
 
-        Ok(result)
+        if result.len() > 1 {
+            // This should never ever happen since we are searching by data_source_id.
+            Err(anyhow::anyhow!("Found more than one matching data source."))
+        } else {
+            Ok(result.first().cloned())
+        }
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {

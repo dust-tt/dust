@@ -3560,7 +3560,7 @@ async fn data_sources_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<DataSourcesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let data_sources = match state
+    let data_source = match state
         .search_store
         .search_data_source(payload.filter, payload.options)
         .await
@@ -3581,7 +3581,7 @@ async fn data_sources_search(
         Json(APIResponse {
             error: None,
             response: Some(json!({
-                "data_sources": data_sources,
+                "data_source": data_source,
             })),
         }),
     )
