@@ -478,7 +478,7 @@ export async function handleDataSourceSearch({
   const credentials = dustManagedCredentials();
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const data = await coreAPI.searchDataSource(
+  const data = await coreAPI.searchInDataSource(
     dataSource.dustAPIProjectId,
     dataSource.dustAPIDataSourceId,
     {
