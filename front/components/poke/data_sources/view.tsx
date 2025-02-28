@@ -218,27 +218,6 @@ export function ViewDataSourceTable({
                         )}
                       </PokeTableCell>
                     </PokeTableRow>
-                    <PokeTableRow>
-                      <PokeTableCell>Total text size</PokeTableCell>
-                      <PokeTableCell>
-                        {connector?.lastSyncSuccessfulTime ? (
-                          <span className="font-bold text-green-600">
-                            {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
-                              useLongFormat: true,
-                            })}
-                          </span>
-                        ) : (
-                          <span className="font-bold text-warning-600">
-                            "Never"
-                          </span>
-                        )}
-                        {isWebhookBasedProvider(connector.type) && (
-                          <span className="pl-2 italic text-gray-500">
-                            (webhook-based)
-                          </span>
-                        )}
-                      </PokeTableCell>
-                    </PokeTableRow>
                   </>
                 )}
               </PokeTableBody>
