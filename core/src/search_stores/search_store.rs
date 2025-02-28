@@ -84,6 +84,17 @@ pub struct NodesSearchFilter {
     include_data_sources: Option<bool>,
 }
 
+#[derive(serde::Deserialize)]
+pub struct DataSourcesSearchOptions {
+    sort: Option<Vec<SortSpec>>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+pub struct DataSourcesSearchFilter {
+    data_source_id: Option<String>,
+    include_text_size: Option<bool>,
+}
+
 #[derive(Debug, Clone)]
 pub enum NodeItem {
     Document(Document),
@@ -118,6 +129,13 @@ pub trait SearchStore {
     async fn delete_node(&self, node: NodeItem) -> Result<()>;
 
     // Data sources.
+    async fn search_data_source(
+        &self,
+        query: Option<String>,
+        filter: DataSourcesSearchFilter,
+        options: Option<DataSourcesSearchOptions>,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<()>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -382,6 +400,16 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     // Data sources.
+
+    async fn search_data_source(
+        &self,
+        query: Option<String>,
+        filter: DataSourcesSearchFilter,
+        options: Option<DataSourcesSearchOptions>,
+        store: Box<dyn Store + Sync + Send>,
+    ) -> Result<()> {
+        todo!()
+    }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
         self.index_document(data_source).await
