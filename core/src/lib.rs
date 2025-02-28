@@ -111,6 +111,7 @@ pub mod databases_store {
     pub mod store;
 }
 
+pub mod cache;
 pub mod cached_request;
 pub mod consts;
 

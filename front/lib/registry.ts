@@ -131,13 +131,13 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b4f205e453",
       appHash:
-        "a06c46394a0fab02e41cd24dc6a85484520229482e085f76884198db0a0e1b0a",
+        "744630c61e399d2e984f9a1c69a8530d4ece5aaa6b8cebe9ccbc74727eed0b2e",
     },
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
-        function_call: "execute_sql_query",
+        function_call: "execute_query",
       },
     },
   },
