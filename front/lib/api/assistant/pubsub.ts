@@ -473,9 +473,6 @@ export async function* getConversationEvents(
   const useHybridEvents = flags.includes("hybrid_events");
 
   if (useHybridEvents) {
-    const start = Date.now();
-    const TIMEOUT = 60000; // 1 minute
-
     const callbackPromise = createCallbackPromise<EventPayload | "close">();
     const { history, unsubscribe } = await redisHybridManager.subscribe(
       pubsubChannel,
@@ -495,13 +492,28 @@ export async function* getConversationEvents(
     }
 
     try {
+      const TIMEOUT = 60000; // 1 minute
+
       // Do not loop forever, we will timeout after some time to avoid blocking the load balancer
-      while (Date.now() - start < TIMEOUT) {
+      while (true) {
         if (signal.aborted) {
           break;
         }
+        const timeoutPromise = new Promise<"timeout">((resolve) => {
+          setTimeout(() => {
+            resolve("timeout");
+          }, TIMEOUT);
+        });
+        const rawEvent = await Promise.race([
+          callbackPromise.promise,
+          timeoutPromise,
+        ]);
 
-        const rawEvent = await callbackPromise.promise;
+        // Determine if we timeouted
+        if (rawEvent === "timeout") {
+          break;
+        }
+
         // to reset the promise for the next event
         callbackPromise.reset();
 

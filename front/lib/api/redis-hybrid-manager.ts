@@ -1,4 +1,3 @@
-// redis-hybrid-manager.ts
 import type { RedisClientType } from "redis";
 import { createClient } from "redis";
 
@@ -247,7 +246,27 @@ class RedisHybridManager {
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
     const pubSubChannelName = this.getPubSubChannelName(channelName);
+
+    // Make sure the subscribers map is initialized
+    if (!this.subscribers.has(pubSubChannelName)) {
+      this.subscribers.set(pubSubChannelName, new Set());
+    }
+
     const history: EventPayload[] = [];
+
+    const eventsDuringHistoryFetch: EventPayload[] = [];
+    const eventsDuringHistoryFetchCallback: EventCallback = (
+      event: EventPayload | "close"
+    ) => {
+      if (event !== "close") {
+        eventsDuringHistoryFetch.push(event);
+      }
+    };
+
+    // Add to subscribers map during history fetch to avoid race condition
+    this.subscribers
+      .get(pubSubChannelName)!
+      .add(eventsDuringHistoryFetchCallback);
 
     try {
       // Non-blocking read from stream to get history
@@ -278,12 +297,27 @@ class RedisHybridManager {
       );
     }
 
-    // Add to subscribers map
-    if (!this.subscribers.has(pubSubChannelName)) {
-      this.subscribers.set(pubSubChannelName, new Set());
-    }
+    // Remove the temporary callback from the subscribers map
+    this.subscribers
+      .get(pubSubChannelName)!
+      .delete(eventsDuringHistoryFetchCallback);
 
+    // Immediately add the real callback to the subscribers map
     this.subscribers.get(pubSubChannelName)!.add(callback);
+
+    // Append the events during history fetch to the history, if any
+    if (eventsDuringHistoryFetch.length > 0) {
+      for (const event of eventsDuringHistoryFetch) {
+        // deduplicate events
+        if (history.find((h) => h.id === event.id)) {
+          continue;
+        }
+
+        history.push(event);
+      }
+      // Sort the history just in case
+      history.sort((a, b) => a.id.localeCompare(b.id));
+    }
 
     return {
       history,
