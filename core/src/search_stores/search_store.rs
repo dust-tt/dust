@@ -86,13 +86,12 @@ pub struct NodesSearchFilter {
 
 #[derive(serde::Deserialize)]
 pub struct DataSourcesSearchOptions {
-    sort: Option<Vec<SortSpec>>,
-    include_text_size: Option<bool>,
+    include_text_size: bool,
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct DataSourcesSearchFilter {
-    data_source_id: Option<String>,
+    data_source_id: String,
 }
 
 #[derive(Debug, Clone)]
@@ -131,15 +130,9 @@ pub trait SearchStore {
     // Data sources.
     async fn search_data_source(
         &self,
-        query: Option<String>,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-    ) -> Result<(
-        Vec<DataSourceESDocument>,
-        u64,
-        bool,
-        Option<SearchWarningCode>,
-    )>;
+    ) -> Result<Vec<DataSourceESDocument>>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -168,8 +161,7 @@ impl Default for NodesSearchOptions {
 impl Default for DataSourcesSearchOptions {
     fn default() -> Self {
         DataSourcesSearchOptions {
-            sort: None,
-            include_text_size: None,
+            include_text_size: false,
         }
     }
 }
@@ -344,6 +336,13 @@ impl SearchStore for ElasticsearchSearchStore {
             true => {
                 let response_body = response.json::<serde_json::Value>().await?;
                 let hits = response_body["hits"]["hits"].as_array().unwrap();
+                // Safe to unwrap because it's always set as per the official documentation.
+                let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
+                // hits.total.relation can be "eq" or "gte".
+                // It indicates whether the count above is an exact count or a lower bound.
+                // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
+                let hit_count_is_accurate =
+                    response_body["hits"]["total"]["relation"].as_str() == Some("eq");
 
                 let next_cursor = if hits.len() == limit as usize {
                     hits.last()
@@ -360,8 +359,6 @@ impl SearchStore for ElasticsearchSearchStore {
                     .iter()
                     .map(|h| SearchItem::from_hit(h))
                     .collect::<Result<Vec<_>>>()?;
-
-                let (hit_count, hit_count_is_accurate) = self.get_hits_metadata(response_body);
 
                 (items, hit_count, hit_count_is_accurate, next_cursor)
             }
@@ -411,71 +408,42 @@ impl SearchStore for ElasticsearchSearchStore {
 
     async fn search_data_source(
         &self,
-        query: Option<String>,
         filter: DataSourcesSearchFilter,
         options: Option<DataSourcesSearchOptions>,
-    ) -> Result<(
-        Vec<DataSourceESDocument>,
-        u64,
-        bool,
-        Option<SearchWarningCode>,
-    )> {
-        let options = options.unwrap_or_default();
+    ) -> Result<Vec<DataSourceESDocument>> {
+        // Search on data_source_id.
+        let response =
+            self.client
+                .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
+                .body(Search::new().query(
+                    Query::bool().filter(Query::term("data_source_id", filter.data_source_id)),
+                ))
+                .send()
+                .await?;
 
-        // Passing both a sort and a query is not allowed as these are mutually exclusive.
-        if options.sort.is_some() && query.is_some() {
-            return Err(anyhow::anyhow!(
-                "Sort option and query string are mutually exclusive"
-            ));
-        }
-
-        // Build the search query, truncating it with potential truncation.
-        let bool_query = self.build_search_data_source_query(query.clone(), filter)?;
-
-        let sort = match query {
-            None => self.build_search_data_sources_sort(options.sort)?,
-            Some(_) => vec![],
+        let items: Vec<SearchItem> = match response.status_code().is_success() {
+            true => response.json::<serde_json::Value>().await?["hits"]["hits"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|h| SearchItem::from_hit(h))
+                .collect::<Result<Vec<_>>>()?,
+            false => {
+                return Err(anyhow::anyhow!(
+                    "Failed to search data sources: {}",
+                    response.json::<serde_json::Value>().await?
+                ));
+            }
         };
 
-        let search = Search::new()
-            .query(bool_query)
-            .track_total_hits(MAX_TOTAL_HITS_TRACKED)
-            .sort(sort);
-
-        let response = self
-            .client
-            .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
-            .body(search)
-            .send()
-            .await?;
-
-        // Parse response and return enriched nodes
-        let (items, hit_count, hit_count_is_accurate): (Vec<SearchItem>, u64, bool) =
-            match response.status_code().is_success() {
-                true => {
-                    let response_body = response.json::<serde_json::Value>().await?;
-
-                    let items: Vec<SearchItem> = response_body["hits"]["hits"]
-                        .as_array()
-                        .unwrap()
-                        .iter()
-                        .map(|h| SearchItem::from_hit(h))
-                        .collect::<Result<Vec<_>>>()?;
-                    let (hit_count, hit_count_is_accurate) = self.get_hits_metadata(response_body);
-
-                    (items, hit_count, hit_count_is_accurate)
-                }
-                false => {
-                    let error = response.json::<serde_json::Value>().await?;
-                    return Err(anyhow::anyhow!("Failed to search nodes: {}", error));
-                }
-            };
-
         let result = self
-            .process_search_data_sources_results(items, options.include_text_size)
+            .process_search_data_sources_results(
+                items,
+                options.unwrap_or_default().include_text_size,
+            )
             .await?;
 
-        Ok((result, hit_count, hit_count_is_accurate, None))
+        Ok(result)
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -651,18 +619,6 @@ impl SearchStore for ElasticsearchSearchStore {
 }
 
 impl ElasticsearchSearchStore {
-    fn get_hits_metadata(&self, response_body: serde_json::Value) -> (u64, bool) {
-        // Safe to unwrap because it's always set as per the official documentation.
-        let hit_count = response_body["hits"]["total"]["value"].as_u64().unwrap();
-        // hits.total.relation can be "eq" or "gte".
-        // It indicates whether the count above is an exact count or a lower bound.
-        // https://www.elastic.co/guide/en/elasticsearch/reference/current/search-search.html#search-api-response-body
-        let hit_count_is_accurate =
-            response_body["hits"]["total"]["relation"].as_str() == Some("eq");
-
-        (hit_count, hit_count_is_accurate)
-    }
-
     fn build_search_node_query(
         &self,
         query: Option<String>,
@@ -984,25 +940,6 @@ impl ElasticsearchSearchStore {
         Ok(base_sort)
     }
 
-    fn build_search_data_source_query(
-        &self,
-        query: Option<String>,
-        filter: DataSourcesSearchFilter,
-    ) -> Result<BoolQuery> {
-        let mut bool_query = Query::bool();
-
-        if let Some(data_source_id) = &filter.data_source_id {
-            bool_query = bool_query.filter(Query::term("data_source_id", data_source_id));
-        }
-
-        if let Some(query_string) = query {
-            bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
-        }
-
-        // We don't count the number of clauses here as it is always lower or equal than 3.
-        Ok(bool_query)
-    }
-
     // Builds the Sort for searching data sources, defaulting to sorting alphabetically by name
     // and using the data_source_id as a tie-breaker.
     fn build_search_data_sources_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
@@ -1039,7 +976,7 @@ impl ElasticsearchSearchStore {
     async fn process_search_data_sources_results(
         &self,
         items: Vec<SearchItem>,
-        include_text_size: Option<bool>,
+        include_text_size: bool,
     ) -> Result<Vec<DataSourceESDocument>> {
         let mut result = items
             .into_iter()
@@ -1053,7 +990,7 @@ impl ElasticsearchSearchStore {
                 )),
             })?;
 
-        if include_text_size.unwrap_or(false) {
+        if include_text_size {
             let search = Search::new()
                 .size(0) // We only want aggregations, no hits.
                 .query(

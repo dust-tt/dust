@@ -3552,7 +3552,6 @@ async fn nodes_search(
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 struct DataSourcesSearchPayload {
-    query: Option<String>,
     filter: DataSourcesSearchFilter,
     options: Option<DataSourcesSearchOptions>,
 }
@@ -3561,9 +3560,9 @@ async fn data_sources_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<DataSourcesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (data_sources, hit_count, hit_count_is_accurate, warning_code) = match state
+    let data_sources = match state
         .search_store
-        .search_data_source(payload.query, payload.filter, payload.options)
+        .search_data_source(payload.filter, payload.options)
         .await
     {
         Ok(result) => result,
@@ -3583,9 +3582,6 @@ async fn data_sources_search(
             error: None,
             response: Some(json!({
                 "data_sources": data_sources,
-                "hit_count": hit_count,
-                "hit_count_is_accurate": hit_count_is_accurate,
-                "warning_code": warning_code,
             })),
         }),
     )
