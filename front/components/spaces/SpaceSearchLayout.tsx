@@ -175,6 +175,14 @@ function BackendSearch({
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
 
+  // Determine whether to show search results or children.
+  const shouldShowSearchResults =
+    hasSearchKnowledgeBuilderFF && debouncedSearch.length > 0;
+
+  // Transition state.
+  const [isChanging, setIsChanging] = React.useState(false);
+  const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
+
   // Debounce search term for backend search.
   React.useEffect(() => {
     const timeout = setTimeout(() => {
@@ -205,9 +213,19 @@ function BackendSearch({
     viewType,
   });
 
-  // Determine whether to show search results or children.
-  const shouldShowSearchResults =
-    hasSearchKnowledgeBuilderFF && debouncedSearch.length > 0;
+  // Handle transition when search state changes.
+  React.useEffect(() => {
+    if (shouldShowSearchResults !== showSearch) {
+      setIsChanging(true);
+      const timer = setTimeout(() => {
+        setShowSearch(shouldShowSearchResults);
+        // Small delay to start fade-in after content change.
+        setTimeout(() => setIsChanging(false), 50);
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }
+  }, [shouldShowSearchResults, showSearch]);
 
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
@@ -219,42 +237,57 @@ function BackendSearch({
         disabled={isSearchDisabled}
       />
 
-      {shouldShowSearchResults ? (
-        <SearchingInSpace space={space} dataSourceView={dataSourceView} />
-      ) : (
-        <SpacePageTools
-          owner={owner}
-          space={space}
-          category={category}
-          dataSourceView={dataSourceView}
-          parentId={parentId}
-        />
-      )}
-      {shouldShowSearchResults ? (
-        <div className="">
-          {isSearchLoading ? (
-            <div className="flex justify-center py-4">
-              <Spinner />
-            </div>
-          ) : searchResultNodes.length > 0 ? (
-            <SearchResultsTable
-              searchResultNodes={searchResultNodes}
-              category={category}
-              isSearchValidating={isSearchValidating}
-              owner={owner}
-              totalNodesCount={totalNodesCount}
-              canReadInSpace={canReadInSpace}
-              canWriteInSpace={canWriteInSpace}
-            />
-          ) : (
-            <div className="py-4 text-muted-foreground">
-              No results found for "{debouncedSearch}"
-            </div>
-          )}
-        </div>
-      ) : (
-        children
-      )}
+      <div
+        className={cn(
+          "transition-opacity duration-150",
+          isChanging && "opacity-0"
+        )}
+      >
+        {showSearch ? (
+          <SearchingInSpace space={space} dataSourceView={dataSourceView} />
+        ) : (
+          <SpacePageTools
+            owner={owner}
+            space={space}
+            category={category}
+            dataSourceView={dataSourceView}
+            parentId={parentId}
+          />
+        )}
+      </div>
+
+      <div
+        className={cn(
+          "transform transition-all duration-150",
+          isChanging && "translate-y-1 opacity-0"
+        )}
+      >
+        {showSearch ? (
+          <div>
+            {isSearchLoading ? (
+              <div className="flex justify-center py-4">
+                <Spinner />
+              </div>
+            ) : searchResultNodes.length > 0 ? (
+              <SearchResultsTable
+                searchResultNodes={searchResultNodes}
+                category={category}
+                isSearchValidating={isSearchValidating}
+                owner={owner}
+                totalNodesCount={totalNodesCount}
+                canReadInSpace={canReadInSpace}
+                canWriteInSpace={canWriteInSpace}
+              />
+            ) : (
+              <div className="py-4 text-muted-foreground">
+                No results found for "{debouncedSearch}"
+              </div>
+            )}
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </SpaceSearchContext.Provider>
   );
 }
