@@ -1484,6 +1484,7 @@ async fn data_sources_retrieve(
                             "data_source_id": ds.data_source_id(),
                             "data_source_internal_id": ds.internal_id(),
                             "config": ds.config(),
+                            "name": ds.name(),
                         },
                     })),
                 }),
