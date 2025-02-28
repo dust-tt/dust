@@ -4,11 +4,16 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
   LightWorkspaceType,
+  MentionType,
+  MessageType,
 } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import { deleteConversation } from "@app/components/assistant/conversation/lib";
+import {
+  createThreadVersionParam,
+  deleteConversation,
+} from "@app/components/assistant/conversation/lib";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
 import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
@@ -23,9 +28,11 @@ import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wI
 export function useConversation({
   conversationId,
   workspaceId,
+  threadVersion,
   options,
 }: {
   conversationId: string | null;
+  threadVersion?: number;
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
@@ -39,7 +46,7 @@ export function useConversation({
 
   const { data, error, mutate } = useSWRWithDefaults(
     conversationId
-      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}`
+      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}${createThreadVersionParam(threadVersion)}`
       : null,
     conversationFetcher,
     options
@@ -100,14 +107,18 @@ export function useConversationFeedbacks({
   };
 }
 
+export const DEFAULT_PAGE_LIMIT = 50;
+
 export function useConversationMessages({
   conversationId,
+  threadVersion,
   workspaceId,
-  limit,
+  limit = DEFAULT_PAGE_LIMIT,
 }: {
   conversationId: string | null;
+  threadVersion?: number;
   workspaceId: string;
-  limit: number;
+  limit?: number;
   startAtRank?: number;
 }) {
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
@@ -119,6 +130,8 @@ export function useConversationMessages({
           return null;
         }
 
+        const threadVersionParam =
+          threadVersion != null ? `&threadVersion=${threadVersion}` : "";
         // If we have reached the last page and there are no more
         // messages or the previous page has no messages, return null.
         if (
@@ -129,10 +142,10 @@ export function useConversationMessages({
         }
 
         if (previousPageData === null) {
-          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}`;
+          return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?orderDirection=desc&orderColumn=rank&limit=${limit}${threadVersionParam}`;
         }
 
-        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}`;
+        return `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages?lastValue=${previousPageData.lastValue}&orderDirection=desc&orderColumn=rank&limit=${limit}${threadVersionParam}`;
       },
       messagesFetcher,
       {
@@ -267,3 +280,51 @@ export function useVisualizationRetry({
 
   return handleVisualizationRetry;
 }
+
+export const useEditMessage = (owner: LightWorkspaceType) => {
+  const sendNotification = useSendNotification();
+
+  const doEditMessage = async (
+    conversation: ConversationWithoutContentType | null,
+    message: MessageType,
+    text: string,
+    mentions: MentionType[]
+  ) => {
+    if (!conversation) {
+      return false;
+    }
+    const threadVersionParam =
+      conversation.threadVersion != null
+        ? `?threadVersion=${conversation.threadVersion}`
+        : "";
+
+    const body = {
+      content: text,
+      mentions,
+    };
+
+    const mRes = await fetch(
+      `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${message.sId}/edit${threadVersionParam}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!mRes.ok) {
+      const data = await mRes.json();
+      sendNotification({
+        type: "error",
+        title: "Edit message",
+        description: `Error editing message: ${data.error.message}`,
+      });
+    }
+
+    return mRes.json();
+  };
+
+  return doEditMessage;
+};

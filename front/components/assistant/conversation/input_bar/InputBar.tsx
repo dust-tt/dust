@@ -1,8 +1,10 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import type { AgentMention, MentionType, Result } from "@dust-tt/types";
-import type { UploadedContentFragment } from "@dust-tt/types";
 import type {
+  AgentMention,
   LightAgentConfigurationType,
+  MentionType,
+  Result,
+  UploadedContentFragment,
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";

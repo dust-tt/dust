@@ -45,10 +45,9 @@ import {
   rateLimiter,
   removeNulls,
 } from "@dust-tt/types";
-import { isEqual, sortBy } from "lodash";
-import _ from "lodash";
+import { isEqual, keyBy, sortBy, uniq } from "lodash";
 import type { Transaction } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
 import { runAgent } from "@app/lib/api/assistant/agent";
@@ -122,6 +121,7 @@ export async function createConversation(
     title: title,
     visibility: visibility,
     requestedGroupIds: [],
+    lastThreadVersion: 0,
   });
 
   return {
@@ -131,6 +131,8 @@ export async function createConversation(
     sId: conversation.sId,
     title: conversation.title,
     visibility: conversation.visibility,
+    threadVersion: 0,
+    lastThreadVersion: 0,
     content: [],
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -263,7 +265,7 @@ export async function getUserConversations(
   const conversations = (
     await Conversation.findAll({
       where: {
-        id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
+        id: { [Op.in]: uniq(participations.map((p) => p.conversationId)) },
         workspaceId: owner.id,
         visibility: { [Op.in]: includedConversationVisibilities },
       },
@@ -278,13 +280,15 @@ export async function getUserConversations(
         owner,
         title: c.title,
         visibility: c.visibility,
+        threadVersion: c.lastThreadVersion,
+        lastThreadVersion: c.lastThreadVersion,
         requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
       }) satisfies ConversationWithoutContentType
   );
 
-  const conversationById = _.keyBy(conversations, "id");
+  const conversationById = keyBy(conversations, "id");
 
   return removeNulls(
     participations.map((p) => {
@@ -343,7 +347,8 @@ async function createOrUpdateParticipation({
 export async function getConversation(
   auth: Authenticator,
   conversationId: string,
-  includeDeleted?: boolean
+  includeDeleted?: boolean,
+  threadVersion?: number
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
@@ -369,6 +374,9 @@ export async function getConversation(
   const messages = await Message.findAll({
     where: {
       conversationId: conversation.id,
+      threadVersions: {
+        [Op.contains]: [threadVersion ?? conversation.lastThreadVersion],
+      },
     },
     order: [
       ["rank", "ASC"],
@@ -431,6 +439,8 @@ export async function getConversation(
     owner,
     title: conversation.title,
     visibility: conversation.visibility,
+    threadVersion: threadVersion ?? conversation.lastThreadVersion,
+    lastThreadVersion: conversation.lastThreadVersion,
     content,
     requestedGroupIds: getConversationRequestedGroupIdsFromModel(
       owner,
@@ -785,21 +795,28 @@ export async function* postUserMessage(
       // connection pool, resulting in a deadlock.
       await getConversationRankVersionLock(conversation, t);
 
-      let nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
+      const lastMessage = await Message.findOne({
+        attributes: ["id", "rank"],
+        where: {
+          conversationId: conversation.id,
+          threadVersions: {
+            [Op.contains]: [conversation.threadVersion],
           },
-          transaction: t,
-        })) ?? -1) + 1;
+        },
+        order: [["rank", "DESC"]],
+        transaction: t,
+      });
+
+      let nextMessageRank = lastMessage ? lastMessage.rank + 1 : 0;
 
       async function createMessageAndUserMessage(workspace: WorkspaceType) {
         return Message.create(
           {
             sId: generateRandomModelSId(),
             rank: nextMessageRank++,
+            threadVersions: [conversation.threadVersion],
             conversationId: conversation.id,
-            parentId: null,
+            parentId: lastMessage?.id,
             userMessageId: (
               await UserMessage.create(
                 {
@@ -844,6 +861,9 @@ export async function* postUserMessage(
         content,
         context,
         rank: m.rank,
+        threadVersions: m.threadVersions,
+        previousThreadVersion: m.previousThreadVersion,
+        nextThreadVersion: m.nextThreadVersion,
       };
 
       const results: ({ row: AgentMessage; m: AgentMessageType } | null)[] =
@@ -882,6 +902,7 @@ export async function* postUserMessage(
                 {
                   sId: generateRandomModelSId(),
                   rank: nextMessageRank++,
+                  threadVersions: [conversation.threadVersion],
                   conversationId: conversation.id,
                   parentId: userMessage.id,
                   agentMessageId: agentMessageRow.id,
@@ -1151,37 +1172,40 @@ export async function* editUserMessage(
     };
     return;
   }
-  if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "not_allowed",
-        message:
-          "Editing a message that already has agent mentions is not yet supported",
-      },
-    };
-    return;
-  }
+  const flags = await getFeatureFlags(owner);
+  const editMessagesFeatureFlag = flags.includes("edit_messages");
+  if (!editMessagesFeatureFlag) {
+    if (message.mentions.filter((m) => isAgentMention(m)).length > 0) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "not_allowed",
+          message:
+            "Editing a message that already has agent mentions is not yet supported",
+        },
+      };
+      return;
+    }
 
-  if (
-    !conversation.content[conversation.content.length - 1].some(
-      (m) => m.sId === message.sId
-    ) &&
-    mentions.filter((m) => isAgentMention(m)).length > 0
-  ) {
-    yield {
-      type: "user_message_error",
-      created: Date.now(),
-      error: {
-        code: "edition_unsupported",
-        message:
-          "Adding agent mentions when editing is only supported for the last message of the conversation",
-      },
-    };
-    return;
+    if (
+      !conversation.content[conversation.content.length - 1].some(
+        (m) => m.sId === message.sId
+      ) &&
+      mentions.filter((m) => isAgentMention(m)).length > 0
+    ) {
+      yield {
+        type: "user_message_error",
+        created: Date.now(),
+        error: {
+          code: "edition_unsupported",
+          message:
+            "Adding agent mentions when editing is only supported for the last message of the conversation",
+        },
+      };
+      return;
+    }
   }
-
   // local error class to differentiate from other errors
   class UserMessageError extends Error {}
 
@@ -1245,32 +1269,69 @@ export async function* editUserMessage(
           "Unexpected: Message or UserMessage to edit not found in DB"
         );
       }
-      const newerMessage = await Message.findOne({
+      const lastMessageVersion = await Message.findOne({
         where: {
           rank: messageRow.rank,
           conversationId: conversation.id,
-          version: messageRow.version + 1,
+          parentId: messageRow.parentId,
         },
+        order: [["version", "DESC"]],
         transaction: t,
       });
-      if (newerMessage) {
-        throw new UserMessageError(
-          "Invalid user message edit request, this message was already edited."
-        );
-      }
+      const lastVersion = lastMessageVersion?.version ?? 0;
+      const newThreadVersion = conversation.lastThreadVersion + 1;
       const userMessageRow = messageRow.userMessage;
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(
         workspace: WorkspaceType,
         messageRow: Message
       ) {
-        return Message.create(
+        const previousThreadVersion = lastMessageVersion?.threadVersions[0];
+        if (newThreadVersion) {
+          // Update threadVersions for all messages with lower rank
+          // The Message model requires exactly one of userMessageId, agentMessageId, or contentFragmentId
+          // to be set. When doing an update, we need to preserve the existing message type by keeping
+          // whichever ID field was already set.
+          await Message.update(
+            {
+              threadVersions: Sequelize.literal(
+                `array_append("threadVersions", ${newThreadVersion})`
+              ),
+            },
+            {
+              where: {
+                conversationId: conversation.id,
+                threadVersions: {
+                  [Op.contains]: [conversation.threadVersion],
+                },
+                rank: { [Op.lt]: messageRow.rank },
+              },
+              transaction: t,
+              hooks: false,
+              silent: true,
+            }
+          );
+          await Conversation.update(
+            {
+              lastThreadVersion: newThreadVersion,
+            },
+            {
+              where: { id: conversation.id },
+              transaction: t,
+            }
+          );
+          conversation.threadVersion = newThreadVersion;
+        }
+
+        const newMessage = await Message.create(
           {
             sId: generateRandomModelSId(),
             rank: messageRow.rank,
             conversationId: conversation.id,
             parentId: messageRow.parentId,
-            version: messageRow.version + 1,
+            previousThreadVersion: previousThreadVersion,
+            version: lastVersion + 1,
+            threadVersions: [newThreadVersion ?? conversation.threadVersion],
             userMessageId: (
               await UserMessage.create(
                 {
@@ -1301,6 +1362,21 @@ export async function* editUserMessage(
             transaction: t,
           }
         );
+        await Message.update(
+          {
+            nextThreadVersion: newThreadVersion,
+          },
+          {
+            where: {
+              conversationId: conversation.id,
+              id: lastMessageVersion?.id,
+            },
+            transaction: t,
+            hooks: false,
+            silent: true,
+          }
+        );
+        return newMessage;
       }
 
       const m = await createMessageAndUserMessage(owner, messageRow);
@@ -1317,6 +1393,9 @@ export async function* editUserMessage(
         content,
         context: message.context,
         rank: m.rank,
+        threadVersions: m.threadVersions,
+        previousThreadVersion: m.previousThreadVersion,
+        nextThreadVersion: m.nextThreadVersion,
       };
 
       // For now agent messages are appended at the end of conversation
@@ -1326,6 +1405,9 @@ export async function* editUserMessage(
         ((await Message.max<number | null, Message>("rank", {
           where: {
             conversationId: conversation.id,
+            threadVersions: {
+              [Op.contains]: [conversation.threadVersion],
+            },
           },
           transaction: t,
         })) ?? -1) + 1;
@@ -1353,7 +1435,6 @@ export async function* editUserMessage(
               },
               { transaction: t }
             );
-
             const agentMessageRow = await AgentMessage.create(
               {
                 status: "created",
@@ -1367,6 +1448,7 @@ export async function* editUserMessage(
               {
                 sId: generateRandomModelSId(),
                 rank: nextMessageRank++,
+                threadVersions: [conversation.threadVersion],
                 conversationId: conversation.id,
                 parentId: userMessage.id,
                 agentMessageId: agentMessageRow.id,
@@ -1608,6 +1690,7 @@ export async function* retryAgentMessage(
         {
           sId: generateRandomModelSId(),
           rank: messageRow.rank,
+          threadVersions: messageRow.threadVersions,
           conversationId: conversation.id,
           parentId: messageRow.parentId,
           version: messageRow.version + 1,
@@ -1808,17 +1891,25 @@ export async function postNewContentFragment(
         }
       })();
 
-      const nextMessageRank =
-        ((await Message.max<number | null, Message>("rank", {
-          where: {
-            conversationId: conversation.id,
+      const lastMessage = await Message.findOne({
+        attributes: ["id", "rank"],
+        where: {
+          conversationId: conversation.id,
+          threadVersions: {
+            [Op.contains]: [conversation.threadVersion],
           },
-          transaction: t,
-        })) ?? -1) + 1;
+        },
+        order: [["rank", "DESC"]],
+        transaction: t,
+      });
+
+      const nextMessageRank = lastMessage ? lastMessage.rank + 1 : 0;
       const messageRow = await Message.create(
         {
           sId: messageId,
           rank: nextMessageRank,
+          parentId: lastMessage?.id,
+          threadVersions: [conversation.threadVersion],
           conversationId: conversation.id,
           contentFragmentId: contentFragment.id,
           workspaceId: owner.id,

@@ -102,10 +102,16 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
 export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   getKey: SWRInfiniteKeyLoader<TData, TKey>,
   fetcher: Fetcher<TData, TKey> | null,
-  config?: SWRInfiniteConfiguration
+  config?: SWRInfiniteConfiguration & {
+    disabled?: boolean;
+    keyFilter?: (key: TKey) => boolean;
+  }
 ) {
   const mergedConfig = { ...DEFAULT_SWR_CONFIG, ...config };
-  return useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
+
+  const result = useSWRInfinite<TData>(getKey, fetcher, mergedConfig);
+
+  return result;
 }
 
 const addCommitHashToHeaders = (headers: HeadersInit = {}): HeadersInit => ({

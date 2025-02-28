@@ -21,6 +21,7 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
+  ConversationType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
   RetrievalActionType,
@@ -115,7 +116,7 @@ export const FeedbackSelectorPopoverContent = ({
 };
 
 interface AgentMessageProps {
-  conversationId: string;
+  conversation: ConversationType;
   isLastMessage: boolean;
   message: AgentMessageType;
   messageFeedback: FeedbackSelectorProps;
@@ -132,7 +133,7 @@ export type AgentStateClassification = "thinking" | "acting" | "done";
  * @returns
  */
 export function AgentMessage({
-  conversationId,
+  conversation,
   isLastMessage,
   message,
   messageFeedback,
@@ -152,6 +153,8 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+
+  const conversationId = conversation.sId;
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
