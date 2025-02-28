@@ -72,62 +72,62 @@ struct SalesforceQueryResponse {
 }
 
 impl SalesforceRemoteDatabase {
-    /// Flatten a Salesforce record to convert nested objects like "Owner": {"Name": "value"} 
+    /// Flatten a Salesforce record to convert nested objects like "Owner": {"Name": "value"}
     /// into flattened fields like "Owner.Name": "value"
     ///
-    /// This function recursively processes nested objects to ensure that deeply nested 
+    /// This function recursively processes nested objects to ensure that deeply nested
     /// structures (e.g., Account.Parent.Owner.Name) are properly flattened as well.
     fn flatten_record_with_prefix(&self, record: &mut Map<String, Value>, prefix: &str) {
         // Collect fields to modify to avoid borrowing issues
         let mut modifications = Vec::new();
-        
+
         // Identify nested objects to flatten
         for (key, value) in record.iter() {
             // Skip the special attributes field from Salesforce
             if key == "attributes" {
                 continue;
             }
-            
+
             if let Some(obj) = value.as_object() {
                 // This is a nested object that needs flattening
                 modifications.push((key.clone(), obj.clone()));
             }
         }
-        
+
         // Process the identified modifications
         for (key, obj) in modifications {
             // Remove the original nested object
             record.remove(&key);
-            
+
             // Process each field in the nested object
             for (subkey, subvalue) in obj {
                 if subkey == "attributes" {
                     continue;
                 }
-                
+
                 // Create the flattened key name with proper prefix handling
                 let flat_key = if prefix.is_empty() {
                     format!("{}.{}", key, subkey)
                 } else {
                     format!("{}.{}.{}", prefix, key, subkey)
                 };
-                
+
                 // Handle nested objects recursively
                 if let Some(nested_obj) = subvalue.as_object() {
                     if nested_obj.keys().any(|k| k != "attributes") {
                         // Prepare nested object for recursion
                         let mut nested_map = nested_obj.clone();
-                        
+
                         // Create new prefix for recursion
                         let new_prefix = if prefix.is_empty() {
                             key.clone()
                         } else {
                             format!("{}.{}", prefix, key)
                         };
-                        
+
                         // Recursively flatten
                         self.flatten_record_with_prefix(&mut nested_map, &new_prefix);
-                        
+
                         // Add resulting flattened fields
                         for (nested_key, nested_value) in nested_map {
                             if nested_key != "attributes" {
@@ -142,7 +142,7 @@ impl SalesforceRemoteDatabase {
             }
         }
     }
-    
+
     pub fn new(response: &ConnectionAccessTokenResponse) -> Result<Self, QueryDatabaseError> {
         let client = match (
             env::var("PROXY_HOST"),
