@@ -461,7 +461,6 @@ Message.init(
         fields: ["conversationId", "rank", "version", "parentId"],
       },
       {
-        unique: true,
         fields: ["conversationId", "rank", "parentId"],
       },
       {
