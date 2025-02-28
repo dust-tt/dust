@@ -773,7 +773,7 @@ export async function upsertTable({
     if (tableRes.error.type === "invalid_request_error") {
       return new Err({
         name: "dust_error",
-        code: "invalid_parent_id",
+        code: "invalid_csv_and_file",
         message: "Invalid request body: " + tableRes.error.message,
       });
     }
