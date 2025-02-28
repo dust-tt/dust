@@ -23,12 +23,18 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
           <span>{info.getValue()}</span>
         </DataTable.CellContent>
       ),
+      meta: {
+        className: "w-3/6",
+      },
     },
     {
       header: "Location",
       accessorKey: "location",
       id: "location",
       enableSorting: false,
+      meta: {
+        className: "w-2/6",
+      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.BasicCellContent label={info.getValue()} />
       ),
@@ -56,7 +62,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       id: "actions",
       enableSorting: false,
       meta: {
-        className: "flex justify-end items-center",
+        className: "flex justify-end items-center w-12",
       },
       cell: (info) =>
         info.row.original.menuItems && (

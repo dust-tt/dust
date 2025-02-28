@@ -32,6 +32,7 @@ const SearchRequestBody = t.type({
   includeDataSources: t.boolean,
   limit: t.number,
 });
+export type PostSpaceSearchRequestBody = t.TypeOf<typeof SearchRequestBody>;
 
 export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
