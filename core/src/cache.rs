@@ -58,7 +58,8 @@ pub async fn set<T: serde::Serialize>(key: &str, value: &T, ttl_seconds: u64) ->
                 // Convert value to JSON string for Redis storage
                 if let Ok(json_string) = serde_json::to_string(value) {
                     // Use set_ex to set with expiration
-                    let set_result: Result<(), RedisError> = conn.set_ex(key, json_string, ttl_seconds).await;
+                    let set_result: Result<(), RedisError> =
+                        conn.set_ex(key, json_string, ttl_seconds).await;
 
                     if let Err(e) = set_result {
                         error!("Failed to store in Redis: {}", e);
