@@ -18,17 +18,16 @@ import type {
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useMemo } from "react";
+import React from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -249,7 +248,7 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <SearchingInSpace
+          <SearchLocation
             category={category}
             dataSourceViews={
               dataSourceView ? [dataSourceView] : targetDataSourceViews
@@ -300,36 +299,6 @@ function BackendSearch({
         )}
       </div>
     </SpaceSearchContext.Provider>
-  );
-}
-
-interface SearchingInSpaceProps {
-  category: DataSourceViewCategory | undefined;
-  dataSourceViews: DataSourceViewType[];
-  space: SpaceType;
-}
-
-function SearchingInSpace({
-  category,
-  dataSourceViews,
-  space,
-}: SearchingInSpaceProps) {
-  const searchingIn = useMemo(() => {
-    if (dataSourceViews.length === 1) {
-      return `${space.name} / ${getDataSourceNameFromView(dataSourceViews[0])}`;
-    }
-
-    if (dataSourceViews.length > 1 && category) {
-      return `${space.name} / ${CATEGORY_DETAILS[category].label}`;
-    }
-
-    return `${space.name}`;
-  }, [space.name, dataSourceViews, category]);
-
-  return (
-    <p className="my-0.5 flex h-8 items-center gap-1">
-      Searching in <span className="font-bold">"{searchingIn}"</span>
-    </p>
   );
 }
 
