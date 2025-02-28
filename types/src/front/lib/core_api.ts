@@ -271,15 +271,7 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
 
-export type CoreAPIDataSourcesSearchOptions = {
-  include_text_size: boolean;
-};
-
-export type CoreAPIDataSourcesSearchFilter = {
-  data_source_id: string;
-};
-
-export interface CoreAPISearchDataSourcesResponse {
+export interface CoreAPIDataSourceStatsResponse {
   data_source_id: string;
   data_source_internal_id: string;
   timestamp: number;
@@ -867,7 +859,7 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async searchInDataSource(
+  async searchDataSource(
     projectId: string,
     dataSourceId: string,
     payload: {
@@ -1863,24 +1855,18 @@ export class CoreAPI {
     return this._resultFromResponse(response);
   }
 
-  async searchDataSources({
-    filter,
-    options,
+  async getDataSourceStats({
+    dataSourceId,
   }: {
-    filter: CoreAPIDataSourcesSearchFilter;
-    options?: CoreAPIDataSourcesSearchOptions;
-  }): Promise<CoreAPIResponse<CoreAPISearchDataSourcesResponse>> {
+    dataSourceId: string;
+  }): Promise<CoreAPIResponse<CoreAPIDataSourceStatsResponse>> {
     const response = await this._fetchWithError(
-      `${this._url}/data_sources/search`,
+      `${this._url}/data_sources/${encodeURIComponent(dataSourceId)}/stats`,
       {
-        method: "POST",
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          filter,
-          options,
-        }),
       }
     );
 

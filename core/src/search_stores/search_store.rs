@@ -84,16 +84,6 @@ pub struct NodesSearchFilter {
     include_data_sources: Option<bool>,
 }
 
-#[derive(serde::Deserialize)]
-pub struct DataSourcesSearchOptions {
-    include_text_size: bool,
-}
-
-#[derive(serde::Deserialize, Debug)]
-pub struct DataSourcesSearchFilter {
-    data_source_id: String,
-}
-
 #[derive(Debug, Clone)]
 pub enum NodeItem {
     Document(Document),
@@ -128,10 +118,9 @@ pub trait SearchStore {
     async fn delete_node(&self, node: NodeItem) -> Result<()>;
 
     // Data sources.
-    async fn search_data_source(
+    async fn get_data_source_stats(
         &self,
-        filter: DataSourcesSearchFilter,
-        options: Option<DataSourcesSearchOptions>,
+        data_source_id: String,
     ) -> Result<Option<DataSourceESDocument>>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
@@ -154,14 +143,6 @@ impl Default for NodesSearchOptions {
             limit: Some(MAX_PAGE_SIZE),
             cursor: None,
             sort: None,
-        }
-    }
-}
-
-impl Default for DataSourcesSearchOptions {
-    fn default() -> Self {
-        DataSourcesSearchOptions {
-            include_text_size: false,
         }
     }
 }
@@ -406,20 +387,20 @@ impl SearchStore for ElasticsearchSearchStore {
 
     // Data sources.
 
-    async fn search_data_source(
+    async fn get_data_source_stats(
         &self,
-        filter: DataSourcesSearchFilter,
-        options: Option<DataSourcesSearchOptions>,
+        data_source_id: String,
     ) -> Result<Option<DataSourceESDocument>> {
         // Search on data_source_id.
-        let response =
-            self.client
-                .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
-                .body(Search::new().query(
-                    Query::bool().filter(Query::term("data_source_id", filter.data_source_id)),
-                ))
-                .send()
-                .await?;
+        let response = self
+            .client
+            .search(SearchParts::Index(&[DATA_SOURCE_INDEX_NAME]))
+            .body(
+                Search::new()
+                    .query(Query::bool().filter(Query::term("data_source_id", data_source_id))),
+            )
+            .send()
+            .await?;
 
         let items: Vec<SearchItem> = match response.status_code().is_success() {
             true => response.json::<serde_json::Value>().await?["hits"]["hits"]
@@ -441,14 +422,7 @@ impl SearchStore for ElasticsearchSearchStore {
             Err(anyhow::anyhow!("Found more than one matching data source."))
         } else {
             if let Some(item) = items.first() {
-                Some(
-                    self.process_search_data_sources_results(
-                        item.clone(),
-                        options.unwrap_or_default().include_text_size,
-                    )
-                    .await,
-                )
-                .transpose()
+                Some(self.process_search_data_sources_results(item.clone()).await).transpose()
             } else {
                 Ok(None)
             }
@@ -985,40 +959,37 @@ impl ElasticsearchSearchStore {
     async fn process_search_data_sources_results(
         &self,
         item: SearchItem,
-        include_text_size: bool,
     ) -> Result<DataSourceESDocument> {
         match item {
             SearchItem::DataSource(mut data_source) => {
-                if include_text_size {
-                    let search = Search::new()
-                        .size(0)
-                        .query(Query::bool().must(Query::term(
-                            "data_source_id",
-                            data_source.data_source_id.clone(),
-                        )))
-                        .aggregate(
-                            "data_sources",
-                            Aggregation::terms("data_source_id")
-                                .aggregate("total_size", Aggregation::sum("text_size")),
-                        );
-                    let response = self
-                        .client
-                        .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
-                        .body(search)
-                        .send()
-                        .await?;
+                let search = Search::new()
+                    .size(0)
+                    .query(Query::bool().must(Query::term(
+                        "data_source_id",
+                        data_source.data_source_id.clone(),
+                    )))
+                    .aggregate(
+                        "data_sources",
+                        Aggregation::terms("data_source_id")
+                            .aggregate("total_size", Aggregation::sum("text_size")),
+                    );
+                let response = self
+                    .client
+                    .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+                    .body(search)
+                    .send()
+                    .await?;
 
-                    let response_body = response.json::<serde_json::Value>().await?;
-                    let buckets = response_body["aggregations"]["data_sources"]["buckets"]
-                        .as_array()
-                        .unwrap();
+                let response_body = response.json::<serde_json::Value>().await?;
+                let buckets = response_body["aggregations"]["data_sources"]["buckets"]
+                    .as_array()
+                    .unwrap();
 
-                    if let Some(bucket) = buckets.first() {
-                        data_source.text_size = bucket["total_size"]["value"]
-                            .as_f64()
-                            .map(|f| f.round() as i64);
-                        data_source.document_count = bucket["doc_count"].as_i64();
-                    }
+                if let Some(bucket) = buckets.first() {
+                    data_source.text_size = bucket["total_size"]["value"]
+                        .as_f64()
+                        .map(|f| f.round() as i64);
+                    data_source.document_count = bucket["doc_count"].as_i64();
                 }
                 Ok(data_source)
             }

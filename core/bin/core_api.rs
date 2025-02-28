@@ -29,9 +29,7 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
-use dust::search_stores::search_store::{
-    DataSourcesSearchFilter, DataSourcesSearchOptions, NodeItem,
-};
+use dust::search_stores::search_store::NodeItem;
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -1507,7 +1505,7 @@ struct DatasourceSearchPayload {
     target_document_tokens: Option<usize>,
 }
 
-async fn data_sources_documents_search(
+async fn data_sources_search(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
     Json(payload): Json<DatasourceSearchPayload>,
@@ -3549,20 +3547,13 @@ async fn nodes_search(
     )
 }
 
-#[derive(serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct DataSourcesSearchPayload {
-    filter: DataSourcesSearchFilter,
-    options: Option<DataSourcesSearchOptions>,
-}
-
-async fn data_sources_search(
+async fn data_sources_stats(
+    Path(data_source_id): Path<String>,
     State(state): State<Arc<APIState>>,
-    Json(payload): Json<DataSourcesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let data_source = match state
         .search_store
-        .search_data_source(payload.filter, payload.options)
+        .get_data_source_stats(data_source_id)
         .await
     {
         Ok(result) => result,
@@ -4051,7 +4042,7 @@ fn main() {
         // Provided by the data_source block.
         .route(
             "/projects/:project_id/data_sources/:data_source_id/search",
-            post(data_sources_documents_search),
+            post(data_sources_search),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
@@ -4148,7 +4139,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
-        .route("/data_sources/search", post(data_sources_search))
+        .route("/data_sources/:data_source_id/stats", get(data_sources_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc
