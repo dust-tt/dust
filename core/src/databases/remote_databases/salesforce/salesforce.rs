@@ -11,6 +11,7 @@ use redis::{AsyncCommands, Client as RedisClient};
 use reqwest::Proxy;
 use serde::Deserialize;
 use serde_json::{Map, Value};
+use tracing::error;
 
 use crate::databases::remote_databases::salesforce::sandbox::{
     convert::convert_to_soql, extract::extract_objects,
@@ -182,13 +183,13 @@ impl SalesforceRemoteDatabase {
             };
 
         // Try to connect to Redis if the environment variable is set
-        let redis_client = match env::var("REDIS_URL") {
+        let redis_client = match env::var("REDIS_URI") {
             Ok(redis_url) => {
                 match RedisClient::open(redis_url) {
                     Ok(client) => Some(Arc::new(client)),
                     Err(e) => {
                         // Log error but continue without Redis
-                        eprintln!(
+                        error!(
                             "Failed to connect to Redis: {}. Continuing without Redis cache.",
                             e
                         );
@@ -344,14 +345,14 @@ impl SalesforceRemoteDatabase {
                             }
                             Err(e) => {
                                 // Log error but continue to API call
-                                eprintln!("Error parsing cached Redis value: {}. Making API call instead.", e);
+                                error!("Error parsing cached Redis value: {}. Making API call instead.", e);
                             }
                         }
                     }
                 }
                 Err(e) => {
                     // Log error but continue to API call
-                    eprintln!("Error connecting to Redis: {}. Making API call instead.", e);
+                    error!("Error connecting to Redis: {}. Making API call instead.", e);
                 }
             }
         }
@@ -404,13 +405,13 @@ impl SalesforceRemoteDatabase {
                             .await;
 
                         if let Err(e) = set_result {
-                            eprintln!("Failed to store in Redis: {}", e);
+                            error!("Failed to store in Redis: {}", e);
                         }
                     }
                 }
                 Err(e) => {
                     // Just log the error and continue
-                    eprintln!("Failed to cache object description in Redis: {}", e);
+                    error!("Failed to cache object description in Redis: {}", e);
                 }
             }
         }
@@ -641,7 +642,7 @@ impl SalesforceRemoteDatabase {
                 }
                 Err(e) => {
                     // If we can't get relationships for a table, log but continue
-                    eprintln!("Failed to get relationships for {}: {}", table, e);
+                    error!("Failed to get relationships for {}: {}", table, e);
                 }
             }
         }
