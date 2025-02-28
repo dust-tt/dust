@@ -78,14 +78,14 @@ async function handler(
     });
   }
 
-  const { datasourceViewIds, includeDataSources, limit, query, viewType } =
+  const { dataSourceViewIds, includeDataSources, limit, query, viewType } =
     bodyValidation.right;
 
   // If no data source views are provided, use all data source views in the space.
   const dataSourceViews =
-    datasourceViewIds.length === 0
+    !dataSourceViewIds || dataSourceViewIds.length === 0
       ? await DataSourceViewResource.listBySpace(auth, space)
-      : await DataSourceViewResource.fetchByIds(auth, datasourceViewIds);
+      : await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds);
 
   if (query.length < MIN_SEARCH_QUERY_SIZE) {
     return apiError(req, res, {
