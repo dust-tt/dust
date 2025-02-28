@@ -1,10 +1,28 @@
+import { Button } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactElement } from "react";
-import React from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
+import {
+  Benefits,
+  DemoVideo,
+  Hero,
+  Metrics,
+  pageSettings,
+  pageSettings as pageSettingsNew,
+  Quote,
+  ROI,
+  Stories,
+  UseCases,
+} from "@app/components/home/content/Solutions/configs/marketingConfig";
+import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
+import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
   CarousselContentBlock,
-  HeaderContentBlock,
+  MetricSection,
+  QuoteSection,
 } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -13,156 +31,94 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSection } from "@app/components/home/SolutionSection";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { classNames } from "@app/lib/utils";
 
 export async function getServerSideProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.pyramid),
+      shape: getParticleShapeIndexByName(shapeNames.octahedron),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-const pageSettings: pageSettingsProps = {
-  uptitle: "Marketing",
-  title: (
-    <>
-      Go&nbsp;from&nbsp;insight to&nbsp;content in&nbsp;the&nbsp;blink
-      of&nbsp;an&nbsp;eye
-    </>
-  ),
-  from: "from-pink-200",
-  to: "to-pink-500",
-  description: (
-    <>
-      Leverage AI agents to&nbsp;gather market&nbsp;intelligence and
-      customer&nbsp;insights, and to produce content faster.
-    </>
-  ),
-};
+const GRID_SECTION_CLASSES = classNames(
+  "flex flex-col gap-8",
+  "col-span-12",
+  "lg:col-span-12 lg:col-start-1",
+  "xl:col-span-12 xl:col-start-1",
+  "2xl:col-start-1"
+);
 
 export default function Marketing() {
   return (
     <>
-      <HeaderContentBlock
-        uptitle={"Dust for " + pageSettings.uptitle}
-        title={pageSettings.title}
-        from={pageSettings.from}
-        to={pageSettings.to}
-        subtitle={pageSettings.description}
-      />
-      <TrustedBy />
-      <Grid>
-        <SolutionSection
-          title={
-            <>
-              Generate content fast
-              <br />
-              that remains on brand.
-            </>
-          }
-          blocks={[
-            {
-              color: "pink",
-              contentBlocks: [
-                {
-                  title: <>Consistent content at&nbsp;last</>,
-                  content: (
-                    <>
-                      Uses agents to&nbsp;ensure consistency across teams
-                      and&nbsp;customer touchpoints. Leverage
-                      your&nbsp;carefully crafted brand voice guidelines
-                      and&nbsp;past content to&nbsp;support a&nbsp;quick
-                      and&nbsp;intuitive creative process.
-                    </>
-                  ),
-                },
-                {
-                  title: <>Cross-posting made easy</>,
-                  content: (
-                    <>
-                      Generate inspired and&nbsp;aligned versions of&nbsp;your
-                      content adapted to&nbsp;blogs, websites, product
-                      documentation, and&nbsp;social media faster.
-                    </>
-                  ),
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[0],
-                assistantExamples[1],
-                assistantExamples[3],
-              ],
-            },
-          ]}
+      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
+        <HeroSection
+          {...Hero}
+          fromColor={pageSettings.from}
+          toColor={pageSettings.to}
         />
-
-        <SolutionSection
-          title={<>AI&nbsp;Power-ups on&nbsp;tap.</>}
-          blocks={[
-            {
-              color: "pink",
-              contentBlocks: [
-                {
-                  title: (
-                    <>
-                      Set up a&nbsp;live competitive
-                      <br />
-                      intelligence feed
-                    </>
-                  ),
-                  content: [
-                    <>
-                      Leverage AI agents to&nbsp;keep tabs on&nbsp;your market
-                      and&nbsp;its participants.
-                    </>,
-                    <>
-                      Generate reports on&nbsp;competitors' moves to&nbsp;never
-                      be&nbsp;caught off-guard and&nbsp;inform
-                      your&nbsp;decisions.
-                    </>,
-                  ],
-                },
-                {
-                  title: <>Man the&nbsp;battle card stations</>,
-                  content: [
-                    <>
-                      Bridge the&nbsp;gap with Sales, Product, and&nbsp;Support
-                      teams by&nbsp;translating marketing decisions, objectives,
-                      and&nbsp;strategies into their&nbsp;language.
-                    </>,
-                    <>
-                      Easily generate content and&nbsp;insights leveraging
-                      competitive intelligence and&nbsp;the positioning you've
-                      decided on.
-                    </>,
-                  ],
-                },
-              ],
-              assistantBlocks: [
-                assistantExamples[2],
-                assistantExamples[4],
-                assistantExamples[5],
-              ],
-            },
-          ]}
-        />
-      </Grid>
-      <BlogSection
-        headerColorFrom="from-pink-200"
-        headerColorTo="from-pink-300"
-      />
+        <Grid>
+          <div className={GRID_SECTION_CLASSES}>
+            <BenefitsSection
+              benefits={Benefits}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+            <MetricSection {...Metrics} />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <UseCasesSection
+              useCase={UseCases}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <DemoVideoSection
+              demoVideo={DemoVideo}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
+            <QuoteSection {...Quote} />
+            <CustomerStoriesSection
+              title="Customer stories"
+              stories={Stories}
+              fromColor={pageSettings.from}
+              toColor={pageSettings.to}
+            />
+          </div>
+          <TrustedBy />
+          <div className={GRID_SECTION_CLASSES}>
+            {Hero.ctaButtons && (
+              <div className="mt-4 flex justify-center gap-4">
+                {Hero.ctaButtons.primary && (
+                  <Link href={Hero.ctaButtons.primary.href} shallow={true}>
+                    <Button
+                      variant="highlight"
+                      size="md"
+                      label={Hero.ctaButtons.primary.label}
+                      icon={Hero.ctaButtons.primary.icon}
+                    />
+                  </Link>
+                )}
+                {Hero.ctaButtons.secondary && (
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label={Hero.ctaButtons.secondary.label}
+                    href={Hero.ctaButtons.secondary.href}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </Grid>
+      </div>
     </>
   );
 }
@@ -171,86 +127,17 @@ Marketing.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
 
-const assistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🖋️",
-    name: "@contentWriter",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Creates content based on best-in class &nbsp;examples availble
-        internally
-      </>
-    ),
-  },
-  {
-    emoji: "🖇️",
-    name: "@crossPost",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Generates versioned&nbsp;content for social media outlets taking into
-        account company guidelines
-      </>
-    ),
-  },
-  {
-    emoji: "♠️",
-    name: "@battleCard",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Generates arguments for your product in comparison to a specific
-        competitor, in line with internal product guidelines and category
-        positioning
-      </>
-    ),
-  },
-  {
-    emoji: "🌍",
-    name: "@internationalizer",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Transcreate all your content to adapt content for international markets
-      </>
-    ),
-  },
-  {
-    emoji: "⭐️",
-    name: "@marketing",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Answer any question about your&nbsp;team's marketing knowledge base.
-        Resurface past ideas and&nbsp;create new ones
-      </>
-    ),
-  },
-  {
-    emoji: "🧐",
-    name: "@competitive",
-    backgroundColor: "bg-pink-300",
-    description: (
-      <>
-        Tracks competitors websites to highlight changes and pro-actively detect
-        market positioning opportunities
-      </>
-    ),
-  },
-];
-
 export function MarketingCaroussel() {
   return (
     <CarousselContentBlock
       title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={assistantExamples.slice(0, 4)}
       from={pageSettings.from}
       to={pageSettings.to}
       border="border-pink-100/60"
       href="/home/solutions/marketing"
+      bulletPoints={pageSettingsNew.bulletPoints}
+      image={pageSettings.image}
+      roi={ROI}
     />
   );
 }
