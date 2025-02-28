@@ -18,7 +18,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 
 const SearchRequestBody = t.type({
-  datasourceViewIds: t.array(t.string),
+  // Optional array of data source view IDs to search in.
+  // If not provided or empty array, search across all data source views in the space.
+  dataSourceViewIds: t.union([t.undefined, t.array(t.string)]),
   query: t.string,
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
