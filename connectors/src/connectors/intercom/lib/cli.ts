@@ -3,6 +3,7 @@ import type {
   IntercomCheckMissingConversationsResponseType,
   IntercomCheckTeamsResponseType,
   IntercomCommandType,
+  IntercomFetchArticlesResponseType,
   IntercomFetchConversationResponseType,
   IntercomForceResyncArticlesResponseType,
 } from "@dust-tt/types";
@@ -10,6 +11,7 @@ import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
+  fetchIntercomArticles,
   fetchIntercomConversation,
   fetchIntercomConversationsForDay,
   fetchIntercomTeams,
@@ -22,16 +24,18 @@ import {
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-export const intercom = async ({
-  command,
-  args,
-}: IntercomCommandType): Promise<
+type IntercomResponse =
   | IntercomCheckConversationResponseType
   | IntercomFetchConversationResponseType
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
-> => {
+  | IntercomFetchArticlesResponseType;
+
+export const intercom = async ({
+  command,
+  args,
+}: IntercomCommandType): Promise<IntercomResponse> => {
   const logger = topLogger.child({ majorCommand: "intercom", command, args });
 
   const connectorId = args.connectorId ? args.connectorId.toString() : null;
@@ -113,6 +117,30 @@ export const intercom = async ({
         conversation: conversationOnIntercom,
       };
     }
+    case "fetch-articles": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const helpCenterId = args.helpCenterId?.toString();
+
+      if (!helpCenterId) {
+        throw new Error("Missing --helpCenterId argument");
+      }
+
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+      const articles = await fetchIntercomArticles({
+        accessToken,
+        helpCenterId,
+        page: 1,
+        pageSize: 1000,
+      });
+
+      return {
+        articles: articles.data.articles,
+      };
+    }
+
     case "check-missing-conversations": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
