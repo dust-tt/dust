@@ -418,7 +418,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews ?? null;
   }
 
-  static async fetchByConversation(
+  static async fetchByDataSourceConversation(
     auth: Authenticator,
     conversation: ConversationType
   ): Promise<DataSourceViewResource | null> {
@@ -445,7 +445,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews[0] ?? null;
   }
 
-  static async fetchByConversationWithoutContentPublic(
+  static async fetchByConversation(
     auth: Authenticator,
     conversation: ConversationWithoutContentPublicType
   ): Promise<DataSourceViewResource[]> {
