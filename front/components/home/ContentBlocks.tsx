@@ -1,16 +1,9 @@
-import { ArrowRightIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@app/components/home/Carousel";
 import {
   Grid,
   H1,
@@ -20,9 +13,9 @@ import {
   P,
   Strong,
 } from "@app/components/home/ContentComponents";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-import { SolutionSectionAssistantBlock } from "@app/components/home/SolutionSection";
 import { classNames } from "@app/lib/utils";
+
+import type { ROIProps } from "./content/Solutions/configs/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -51,7 +44,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
 
   return (
     <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="ml-[10%] pr-[20%] md:m-0 md:pr-[28%]">
+      <div className="ml-[10%] pr-[20%] lg:m-0 lg:pr-[28%]">
         {children ? children : null}
       </div>
       <div className="flex flex-col px-0 py-6">
@@ -149,7 +142,7 @@ export const HeaderContentBlock = ({
       className={classNames(
         "sm:pt-18 flex flex-col justify-end gap-12 pt-12 lg:pt-36",
         "col-span-12",
-        "sm:col-span-12",
+        "sm:col-span-12 md:col-span-12",
         "lg:col-span-8 lg:col-start-2",
         "xl:col-span-8 xl:col-start-2",
         "2xl:col-start-3"
@@ -172,19 +165,21 @@ export const HeaderContentBlock = ({
         </P>
       )}
       {hasCTA && (
-        <div className="flex gap-4">
+        <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
           <Button
             variant="highlight"
             size="md"
             label="Get started"
             href="/pricing"
             icon={RocketIcon}
+            className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
           <Button
             href="/home/contact"
             variant="outline"
             size="md"
             label="Talk to sales"
+            className="w-full xs:w-auto sm:w-auto md:w-auto"
           />
         </div>
       )}
@@ -205,7 +200,7 @@ interface MetricComponentProps {
 export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
   <div
     className={classNames(
-      "grid w-full grid-cols-2 gap-8 sm:grid-cols-2",
+      "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
       metrics.length === 2
         ? "lg:grid-cols-2"
         : metrics.length === 3
@@ -240,7 +235,7 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 md:col-span-10 md:col-start-2 lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 lg:col-span-10 lg:col-start-2">
     <div className="flex justify-center">
       <div className="flex items-center justify-center">
         <Image
@@ -252,7 +247,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
         />
         <P
           size="sm"
-          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg"
+          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
         >
           <Strong>
             <span className="text-pink-300">{name}</span>
@@ -261,7 +256,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
         </P>
       </div>
     </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl lg:text-2xl">
+    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
   </div>
@@ -269,72 +264,173 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
 
 interface CarousselContentBlockProps {
   title: ReactNode;
-  subtitle?: ReactNode;
-  description?: ReactNode;
-  assistants: SolutionSectionAssistantBlockProps[];
   from: string;
   to: string;
   border: string;
   href: string;
+  bulletPoints: string[];
+  image: string;
+  quote?: QuoteProps;
+  roi?: ROIProps;
 }
 
 export const CarousselContentBlock = ({
   title,
-  subtitle,
-  description,
-  assistants,
   from,
   to,
   border,
   href,
-}: CarousselContentBlockProps) => (
-  <div
-    className={classNames(
-      "flex flex-col gap-6 rounded-3xl border bg-gradient-to-br py-8 md:h-full",
-      from,
-      to,
-      border
-    )}
-  >
-    <div className="flex flex-col gap-4 px-8 md:flex-1">
-      <H3 className="text-slate-800">{"Dust for " + title}</H3>
-      <div className="flex flex-col gap-2">
-        <H2 className="w-full text-white">{subtitle}</H2>
-        <P size="md" className="w-full text-slate-700">
-          {description}
-        </P>
-      </div>
-      <div className="w-full text-left">
-        <Link href={href} shallow={true} className="inline-block max-w-full">
-          <Button
-            label={"Discover Dust"}
-            variant="outline"
-            size="md"
-            icon={ArrowRightIcon}
-            className="flex max-w-full md:hidden"
-          />
-          <Button
-            label={"Discover Dust for " + title}
-            variant="outline"
-            size="md"
-            icon={ArrowRightIcon}
-            className="hidden max-w-full md:flex"
-          />
-        </Link>
+  bulletPoints,
+  image,
+  quote,
+  roi,
+}: CarousselContentBlockProps) => {
+  return (
+    <div
+      className={classNames(
+        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 md:h-full lg:py-7",
+        from,
+        to,
+        border
+      )}
+    >
+      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
+        <div className="flex flex-col lg:h-full lg:w-1/2">
+          <div className="mb-2 lg:mb-4">
+            <H2 className="mb-4 text-slate-900">{title}</H2>
+
+            {bulletPoints && (
+              <ul className="flex list-none flex-col gap-3">
+                {bulletPoints.map((feature, index) => (
+                  <li key={index} className="flex items-start gap-3">
+                    <div className="flex-shrink-0 pt-1">
+                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
+                    </div>
+                    <P
+                      size="md"
+                      className="text-sm text-slate-800 md:text-base"
+                    >
+                      {feature}
+                    </P>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {/* Mobile-only image - between bullet points and quote */}
+          <div className="my-6 lg:hidden">
+            <div className="flex items-center justify-center">
+              <div className="w-full max-w-md">
+                <Image
+                  src={image}
+                  alt={title as string}
+                  width={1200}
+                  height={630}
+                  className="h-auto w-full"
+                />
+              </div>
+            </div>
+          </div>
+          {/* Quote and ROI section */}
+          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6 lg:flex-grow">
+            {" "}
+            {/* flex-grow only on lg */}
+            {quote && (
+              <>
+                <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                  <P
+                    size="sm"
+                    className="w-full text-xs italic text-slate-800 md:text-sm"
+                  >
+                    "{quote?.quote}"
+                  </P>
+                  <div className="flex items-center gap-3">
+                    {quote.logo ? (
+                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                        <Image
+                          src={quote.logo}
+                          height={40}
+                          width={120}
+                          alt={`${quote.name} logo`}
+                          className="h-10 w-auto rounded-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500 shadow-md">
+                        <div className="flex h-full w-full items-center justify-center text-white">
+                          {quote.name.charAt(0)}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <P
+                        size="sm"
+                        className="text-xs font-bold text-slate-800 md:text-sm"
+                      >
+                        {quote.name}
+                      </P>
+                      <P size="xs" className="text-xs text-slate-700">
+                        {quote.title}
+                      </P>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            {roi && (
+              <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
+                    <Image
+                      src={roi.logo}
+                      height={48}
+                      width={120}
+                      alt={`${roi.subtitle} logo`}
+                      className="h-12 w-auto object-cover"
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
+                      {roi.number}
+                    </H2>
+                    <P
+                      size="md"
+                      className="text-sm font-medium text-slate-800 md:text-base"
+                    >
+                      {roi.subtitle}
+                    </P>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Button */}
+          <div className="mt-4">
+            {" "}
+            {/* mt-auto only on lg */}
+            <Link href={href} shallow={true}>
+              <Button
+                label={`Learn more →`}
+                variant="outline"
+                size="md"
+                className="bg-white/80 hover:bg-white"
+              />
+            </Link>
+          </div>
+        </div>
+        {/* Desktop-only image - right column */}
+        <div className="hidden items-center justify-center lg:flex lg:w-3/5">
+          <div className="w-full max-w-md lg:max-w-2xl">
+            <Image
+              src={image}
+              alt={title as string}
+              width={1200}
+              height={630}
+              className="h-auto w-full"
+            />
+          </div>
+        </div>
       </div>
     </div>
-    <Carousel className="w-full" isLooping={true}>
-      <CarouselContent>
-        {assistants.map((block, index) => (
-          <CarouselItem key={index} className="basis-1/2 px-6 md:basis-1/4">
-            <SolutionSectionAssistantBlock {...block} />
-          </CarouselItem>
-        ))}
-      </CarouselContent>
-      <div className="flex w-full flex-row items-center justify-end gap-3 px-8 md:hidden">
-        <CarouselPrevious />
-        <CarouselNext />
-      </div>
-    </Carousel>
-  </div>
-);
+  );
+};
