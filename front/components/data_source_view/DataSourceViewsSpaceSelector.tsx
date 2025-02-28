@@ -69,6 +69,7 @@ export const DataSourceViewsSpaceSelector = ({
         setSelectionConfigurations={setSelectionConfigurations}
         viewType={viewType}
         isRootSelectable={isRootSelectable}
+        space={filteredSpaces[0]}
       />
     );
   }
@@ -96,6 +97,7 @@ export const DataSourceViewsSpaceSelector = ({
             setSelectionConfigurations={setSelectionConfigurations}
             viewType={viewType}
             isRootSelectable={isRootSelectable}
+            space={space}
           />
         );
       }}

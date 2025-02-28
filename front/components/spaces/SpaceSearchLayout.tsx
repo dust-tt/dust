@@ -23,9 +23,9 @@ import React, { useMemo } from "react";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
-import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
-import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
@@ -210,6 +210,7 @@ function BackendSearch({
     includeDataSources: false,
     owner,
     search: debouncedSearch,
+    space,
     viewType,
   });
 
