@@ -114,7 +114,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
-        ...(conversation && { conversationId: conversation.id }),
+        conversationId: conversation?.id ?? null,
       },
       { transaction }
     );
