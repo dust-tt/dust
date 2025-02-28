@@ -300,13 +300,17 @@ export const SpaceResourcesList = ({
     category,
   });
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+  const {
+    searchTerm: dataSourceSearch,
+    setIsSearchDisabled,
+    setTargetDataSourceViews,
+  } = useContext(SpaceSearchContext);
 
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];
     }
+
     return spaceDataSourceViews.map((dataSourceView) => {
       const provider = dataSourceView.dataSource.connectorProvider;
 
@@ -375,6 +379,7 @@ export const SpaceResourcesList = ({
     isDark,
   ]);
 
+  // Disable the search if there are no rows.
   useEffect(() => {
     if (rows.length === 0) {
       setIsSearchDisabled(true);
@@ -382,6 +387,11 @@ export const SpaceResourcesList = ({
       setIsSearchDisabled(false);
     }
   }, [rows.length, setIsSearchDisabled]);
+
+  // Set the target data source views to use when searching.
+  useEffect(() => {
+    setTargetDataSourceViews(spaceDataSourceViews);
+  }, [spaceDataSourceViews, setTargetDataSourceViews]);
 
   const onSelectedDataUpdated = useCallback(async () => {
     await mutateSpaceDataSourceViews();

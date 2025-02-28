@@ -28,6 +28,7 @@ import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchCon
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -70,7 +71,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
     React.useState<boolean>(false);
   const [targetDataSourceViews, setTargetDataSourceViews] = React.useState<
     DataSourceViewType[]
-  >([]);
+  >(props.dataSourceView ? [props.dataSourceView] : []);
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
@@ -87,7 +88,10 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Reset the search term when the URL changes.
   React.useEffect(() => {
     setSearchTerm("");
-  }, [router.asPath]);
+    setTargetDataSourceViews(
+      props.dataSourceView ? [props.dataSourceView] : []
+    );
+  }, [props.dataSourceView, router.asPath]);
 
   const [viewType] = useHashParam("viewType", DEFAULT_VIEW_TYPE) as [
     ContentNodesViewType,
@@ -245,7 +249,13 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <SearchingInSpace space={space} dataSourceView={dataSourceView} />
+          <SearchingInSpace
+            category={category}
+            dataSourceViews={
+              dataSourceView ? [dataSourceView] : targetDataSourceViews
+            }
+            space={space}
+          />
         ) : (
           <SpacePageHeader
             owner={owner}
@@ -293,20 +303,28 @@ function BackendSearch({
   );
 }
 
-function SearchingInSpace({
-  space,
-  dataSourceView,
-}: {
+interface SearchingInSpaceProps {
+  category: DataSourceViewCategory | undefined;
+  dataSourceViews: DataSourceViewType[];
   space: SpaceType;
-  dataSourceView: DataSourceViewType | undefined;
-}) {
+}
+
+function SearchingInSpace({
+  category,
+  dataSourceViews,
+  space,
+}: SearchingInSpaceProps) {
   const searchingIn = useMemo(() => {
-    if (dataSourceView) {
-      return `${space.name} / ${getDataSourceNameFromView(dataSourceView)}`;
+    if (dataSourceViews.length === 1) {
+      return `${space.name} / ${getDataSourceNameFromView(dataSourceViews[0])}`;
+    }
+
+    if (dataSourceViews.length > 1 && category) {
+      return `${space.name} / ${CATEGORY_DETAILS[category].label}`;
     }
 
     return `${space.name}`;
-  }, [space.name, dataSourceView]);
+  }, [space.name, dataSourceViews, category]);
 
   return (
     <p className="my-0.5 flex h-8 items-center gap-1">

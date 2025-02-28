@@ -633,14 +633,21 @@ export function useSpaceSearch({
     viewType,
   };
 
-  const url = `/api/w/${owner.sId}/spaces/${space.sId}/search`;
+  // Only perform a query if we have a valid search.
+  const url =
+    search.length >= MIN_SEARCH_QUERY_SIZE
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/search`
+      : null;
 
-  // Only create a key if we have a valid search.
-  const fetchKey = search.length >= MIN_SEARCH_QUERY_SIZE ? [url, body] : null;
+  const fetchKey = [url, body];
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
     async () => {
+      if (!url) {
+        return null;
+      }
+
       return fetcherWithBody([url, body, "POST"]);
     },
     {

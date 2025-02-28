@@ -259,19 +259,8 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
-  const {
-    searchTerm: dataSourceSearch,
-    setIsSearchDisabled,
-    setTargetDataSourceViews,
-  } = useContext(SpaceSearchContext);
-
-  useEffect(() => {
-    setTargetDataSourceViews([dataSourceView]);
-
-    return () => {
-      setTargetDataSourceViews([]);
-    };
-  }, [dataSourceView, setTargetDataSourceViews]);
+  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
+    useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
