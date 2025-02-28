@@ -9,8 +9,8 @@ use elasticsearch::{
     DeleteByQueryParts, DeleteParts, Elasticsearch, IndexParts, SearchParts,
 };
 use elasticsearch_dsl::{
-    Aggregation, BoolQuery, FieldSort, Query, Script, ScriptSort, ScriptSortType, Search, Sort,
-    SortOrder,
+    Aggregation, BoolQuery, FieldSort, Operator, Query, Script, ScriptSort, ScriptSortType, Search,
+    Sort, SortOrder,
 };
 use serde::Serialize;
 use serde_json::json;
@@ -660,7 +660,8 @@ impl ElasticsearchSearchStore {
             // A match query counts as 1 clause.
             counter.add(1);
 
-            bool_query = bool_query.must(Query::r#match("name.edge", query_string.clone()));
+            bool_query = bool_query
+                .must(Query::r#match("name.edge", query_string.clone()).operator(Operator::And));
         }
 
         Ok(bool_query)
@@ -703,7 +704,8 @@ impl ElasticsearchSearchStore {
         // Add search term if present.
         if let Some(query_string) = query.clone() {
             counter.add(1);
-            bool_query = bool_query.must(Query::r#match("title.edge", query_string.clone()));
+            bool_query = bool_query
+                .must(Query::r#match("title.edge", query_string.clone()).operator(Operator::And));
         }
 
         Ok(bool_query)
