@@ -128,12 +128,23 @@ export async function botAnswerMessage(
       "Unexpected exception answering to Slack Chat Bot message"
     );
     const slackClient = await getSlackClient(connector.id);
-    await slackClient.chat.postMessage({
-      channel: slackChannel,
-      text: "An unexpected error occurred. Our team has been notified",
-      thread_ts: slackMessageTs,
-    });
-
+    try {
+      await slackClient.chat.postMessage({
+        channel: slackChannel,
+        text: "An unexpected error occurred. Our team has been notified",
+        thread_ts: slackMessageTs,
+      });
+    } catch (e) {
+      logger.error(
+        {
+          slackChannel,
+          slackMessageTs,
+          slackTeamId,
+          error: e,
+        },
+        "Failed to post error message to Slack"
+      );
+    }
     return new Err(new Error("An unexpected error occurred"));
   }
 }
