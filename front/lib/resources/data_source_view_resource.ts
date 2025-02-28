@@ -1,6 +1,7 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
+import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import type {
   ConversationType,
   DataSourceViewCategory,
@@ -104,6 +105,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -112,6 +114,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
+        conversationId: conversation?.id ?? null,
       },
       { transaction }
     );
@@ -129,6 +132,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
@@ -142,6 +146,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         dataSource,
         editedByUser,
+        conversation,
         t
       );
     };
@@ -177,6 +182,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -189,6 +195,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space,
       dataSource,
       editedByUser,
+      conversation,
       transaction
     );
   }
@@ -411,7 +418,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews ?? null;
   }
 
-  static async fetchByConversation(
+  static async fetchByDataSourceConversation(
     auth: Authenticator,
     conversation: ConversationType
   ): Promise<DataSourceViewResource | null> {
@@ -436,6 +443,23 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     );
 
     return dataSourceViews[0] ?? null;
+  }
+
+  static async fetchByConversation(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentPublicType
+  ): Promise<DataSourceViewResource[]> {
+    const dataSourceViews = await this.baseFetch(
+      auth,
+      {},
+      {
+        where: {
+          kind: "default",
+          conversationId: conversation.id,
+        },
+      }
+    );
+    return dataSourceViews;
   }
 
   static async search(
