@@ -36,17 +36,22 @@ function finalizeUriForProvider(provider: OAuthProvider): string {
 const PROVIDER_STRATEGIES: Record<
   OAuthProvider,
   {
-    setupUri: (
-      connection: OAuthConnectionType,
-      useCase: OAuthUseCase
-    ) => string;
+    setupUri: ({
+      connection,
+      useCase,
+      clientId,
+    }: {
+      connection: OAuthConnectionType;
+      useCase: OAuthUseCase;
+      clientId?: string;
+    }) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
     isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
   }
 > = {
   github: {
-    setupUri: (connection, useCase) => {
+    setupUri: ({ connection, useCase }) => {
       const app =
         useCase === "platform_actions"
           ? config.getOAuthGithubAppPlatformActions()
@@ -74,7 +79,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   google_drive: {
-    setupUri: (connection, useCase) => {
+    setupUri: ({ connection, useCase }) => {
       const scopes =
         useCase === "labs_transcripts"
           ? ["https://www.googleapis.com/auth/drive.meet.readonly"]
@@ -104,7 +109,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   notion: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       return (
         `https://api.notion.com/v1/oauth/authorize?owner=user` +
         `&response_type=code` +
@@ -128,7 +133,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   slack: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       const scopes = [
         "app_mentions:read",
         "channels:history",
@@ -166,7 +171,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   confluence: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       const scopes = [
         "read:confluence-space.summary",
         "read:confluence-content.all",
@@ -205,7 +210,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   intercom: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       return (
         `https://app.intercom.com/oauth` +
         `?client_id=${config.getOAuthIntercomClientId()}` +
@@ -224,7 +229,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   gong: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       const scopes = [
         "api:calls:read:transcript",
         "api:calls:read:extensive",
@@ -251,7 +256,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   microsoft: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       const scopes = [
         "User.Read",
         "Sites.Read.All",
@@ -282,7 +287,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   zendesk: {
-    setupUri: (connection) => {
+    setupUri: ({ connection }) => {
       const scopes = ["read"];
       if (!isValidZendeskSubdomain(connection.metadata.zendesk_subdomain)) {
         throw "Invalid Zendesk subdomain";
@@ -311,7 +316,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   salesforce: {
-    setupUri: (connection) => {
+    setupUri: ({ connection, clientId }) => {
       if (!connection.metadata.instance_url) {
         throw new Error("Missing Salesforce instance URL");
       }
@@ -322,10 +327,14 @@ const PROVIDER_STRATEGIES: Record<
         throw new Error("Missing PKCE code verifier or challenge");
       }
 
+      if (!clientId) {
+        throw new Error("Missing Salesforce client ID");
+      }
+
       return (
         `${connection.metadata.instance_url}/services/oauth2/authorize` +
         `?response_type=code` +
-        `&client_id=${config.getOAuthSalesforceClientId()}` +
+        `&client_id=${clientId}` +
         `&state=${connection.connection_id}` +
         `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("salesforce"))}` +
         `&code_challenge=${connection.metadata.code_challenge}` +
@@ -339,7 +348,11 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig) => {
-      if (!extraConfig.instance_url) {
+      if (
+        !extraConfig.instance_url ||
+        !extraConfig.client_id ||
+        !extraConfig.client_secret
+      ) {
         return false;
       }
       try {
@@ -373,6 +386,34 @@ export async function createConnectionAndGetSetupUrl(
     });
   }
 
+  // For Salesforce, move client_id and client_secret to related_credential
+  let relatedCredential:
+    | {
+        content: Record<string, unknown>;
+        metadata: { workspace_id: string; user_id: string };
+      }
+    | undefined = undefined;
+
+  const clientId: string | undefined = extraConfig.client_id;
+
+  if (provider === "salesforce") {
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    const userId = auth.getNonNullableUser().sId;
+
+    // Use the helper function to extract credentials and get cleaned config
+    const salesforceCredential = {
+      content: {
+        client_id: extraConfig.client_id,
+        client_secret: extraConfig.client_secret,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+    };
+    delete extraConfig.client_id;
+    delete extraConfig.client_secret;
+
+    relatedCredential = salesforceCredential;
+  }
+
   const metadata: Record<string, string> = {
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
@@ -383,6 +424,7 @@ export async function createConnectionAndGetSetupUrl(
   const cRes = await api.createConnection({
     provider,
     metadata,
+    relatedCredential,
   });
   if (cRes.isErr()) {
     logger.error({ provider, useCase }, "OAuth: Failed to create connection");
@@ -395,7 +437,9 @@ export async function createConnectionAndGetSetupUrl(
 
   const connection = cRes.value.connection;
 
-  return new Ok(PROVIDER_STRATEGIES[provider].setupUri(connection, useCase));
+  return new Ok(
+    PROVIDER_STRATEGIES[provider].setupUri({ connection, useCase, clientId })
+  );
 }
 
 export async function finalizeConnection(
