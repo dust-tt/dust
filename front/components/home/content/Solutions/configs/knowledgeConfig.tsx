@@ -134,7 +134,7 @@ export const UseCases: UseCaseProps = {
       title: "Product expert",
       content:
         "Provide comprehensive product information and documentation support to all employees.",
-      images: ["/static/landing/knowledge/productguru.png"],
+      images: ["/static/landing/knowledge/productGuru.png"],
     },
     {
       title: "Activity digests",
