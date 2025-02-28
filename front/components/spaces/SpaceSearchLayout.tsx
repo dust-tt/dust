@@ -17,7 +17,6 @@ import type {
   SpaceType,
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import type { SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
@@ -193,17 +192,17 @@ function BackendSearch({
 
   // Use the space search hook for backend search.
   const {
-    searchResultNodes,
     isSearchLoading,
     isSearchValidating,
+    searchResultNodes,
     total: totalNodesCount,
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
+    disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
     includeDataSources: false,
     owner,
     search: debouncedSearch,
     viewType,
-    disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
   });
 
   // Determine whether to show search results or children.
@@ -357,8 +356,6 @@ function SearchResultsTable({
   searchResultNodes,
   totalNodesCount,
 }: SearchResultsTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-
   const router = useRouter();
 
   const { spaces } = useSpaces({
@@ -483,14 +480,10 @@ function SearchResultsTable({
     <DataTable
       data={rows}
       columns={makeColumnsForSearchResults()}
-      filter={undefined}
-      filterColumn={"title"}
       className={cn(
         "pb-4",
         isSearchValidating && "pointer-events-none opacity-50"
       )}
-      sorting={sorting}
-      setSorting={setSorting}
       // TODO(20250226, search-kb): support server side pagination.
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
