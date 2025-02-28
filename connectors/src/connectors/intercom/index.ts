@@ -4,8 +4,7 @@ import type {
   ContentNodesViewType,
   Result,
 } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
-import { Op } from "sequelize";
+import { Err, Ok } from "@dust-tt/types";
 
 import {
   allowSyncTeam,
@@ -23,15 +22,9 @@ import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/inte
 import { fetchIntercomWorkspace } from "@connectors/connectors/intercom/lib/intercom_api";
 import { retrieveSelectedNodes } from "@connectors/connectors/intercom/lib/permissions";
 import {
-  getHelpCenterArticleIdFromInternalId,
-  getHelpCenterArticleInternalId,
   getHelpCenterCollectionIdFromInternalId,
-  getHelpCenterCollectionInternalId,
   getHelpCenterIdFromInternalId,
-  getHelpCenterInternalId,
   getTeamIdFromInternalId,
-  getTeamInternalId,
-  getTeamsInternalId,
   isInternalIdForAllTeams,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
@@ -50,8 +43,6 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  IntercomArticle,
-  IntercomCollection,
   IntercomHelpCenter,
   IntercomTeam,
   IntercomWorkspace,
@@ -525,279 +516,6 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       );
       return new Err(new Error("Error setting permissions"));
     }
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const helpCenterIds: string[] = [];
-    const collectionIds: string[] = [];
-    const articleIds: string[] = [];
-    let isAllConversations = false;
-    const teamIds: string[] = [];
-
-    const intercomWorkspace = await IntercomWorkspace.findOne({
-      where: {
-        connectorId: this.connectorId,
-      },
-    });
-    if (!intercomWorkspace) {
-      return new Err(
-        new Error(
-          `Intercom workspace not found for connector ${this.connectorId}`
-        )
-      );
-    }
-
-    internalIds.forEach((internalId) => {
-      let objectId = getHelpCenterIdFromInternalId(
-        this.connectorId,
-        internalId
-      );
-      if (objectId) {
-        helpCenterIds.push(objectId);
-        return;
-      }
-      objectId = getHelpCenterCollectionIdFromInternalId(
-        this.connectorId,
-        internalId
-      );
-      if (objectId) {
-        collectionIds.push(objectId);
-        return;
-      }
-      objectId = getHelpCenterArticleIdFromInternalId(
-        this.connectorId,
-        internalId
-      );
-      if (objectId) {
-        articleIds.push(objectId);
-        return;
-      }
-      if (
-        !isAllConversations &&
-        isInternalIdForAllTeams(this.connectorId, internalId)
-      ) {
-        isAllConversations = true;
-      }
-      objectId = getTeamIdFromInternalId(this.connectorId, internalId);
-      if (objectId) {
-        teamIds.push(objectId);
-      }
-    });
-
-    const [helpCenters, collections, articles, teams] = await Promise.all([
-      IntercomHelpCenter.findAll({
-        where: {
-          connectorId: this.connectorId,
-          helpCenterId: { [Op.in]: helpCenterIds },
-        },
-      }),
-      IntercomCollection.findAll({
-        where: {
-          connectorId: this.connectorId,
-          collectionId: { [Op.in]: collectionIds },
-        },
-      }),
-      IntercomArticle.findAll({
-        where: {
-          connectorId: this.connectorId,
-          articleId: { [Op.in]: articleIds },
-        },
-      }),
-      IntercomTeam.findAll({
-        where: {
-          connectorId: this.connectorId,
-          teamId: { [Op.in]: teamIds },
-        },
-      }),
-    ]);
-
-    const nodes: ContentNode[] = [];
-    for (const helpCenter of helpCenters) {
-      nodes.push({
-        internalId: getHelpCenterInternalId(
-          this.connectorId,
-          helpCenter.helpCenterId
-        ),
-        parentInternalId: null,
-        type: "folder",
-        title: helpCenter.name,
-        sourceUrl: null,
-        expandable: true,
-        permission: helpCenter.permission,
-        lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
-      });
-    }
-    for (const collection of collections) {
-      nodes.push({
-        internalId: getHelpCenterCollectionInternalId(
-          this.connectorId,
-          collection.collectionId
-        ),
-        parentInternalId: collection.parentId
-          ? getHelpCenterCollectionInternalId(
-              this.connectorId,
-              collection.parentId
-            )
-          : null,
-        type: "folder",
-        title: collection.name,
-        sourceUrl: collection.url,
-        expandable: true,
-        permission: collection.permission,
-        lastUpdatedAt: collection.lastUpsertedTs?.getTime() || null,
-        mimeType: MIME_TYPES.INTERCOM.COLLECTION,
-      });
-    }
-    for (const article of articles) {
-      nodes.push({
-        internalId: getHelpCenterArticleInternalId(
-          this.connectorId,
-          article.articleId
-        ),
-        parentInternalId: article.parentId
-          ? getHelpCenterCollectionInternalId(
-              this.connectorId,
-              article.parentId
-            )
-          : null,
-        type: "document",
-        title: article.title,
-        sourceUrl: article.url,
-        expandable: false,
-        permission: article.permission,
-        lastUpdatedAt: article.lastUpsertedTs?.getTime() || null,
-        mimeType: MIME_TYPES.INTERCOM.ARTICLE,
-      });
-    }
-    if (isAllConversations) {
-      nodes.push({
-        internalId: getTeamsInternalId(this.connectorId),
-        parentInternalId: null,
-        type: "folder",
-        title: "Conversations",
-        sourceUrl: null,
-        expandable: true,
-        permission:
-          intercomWorkspace.syncAllConversations === "activated"
-            ? "read"
-            : "none",
-        lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
-      });
-    }
-    for (const team of teams) {
-      nodes.push({
-        internalId: getTeamInternalId(this.connectorId, team.teamId),
-        parentInternalId: getTeamsInternalId(this.connectorId),
-        type: "folder",
-        title: team.name,
-        sourceUrl: null,
-        expandable: false,
-        permission: team.permission,
-        lastUpdatedAt: null,
-        mimeType: MIME_TYPES.INTERCOM.TEAM,
-      });
-    }
-
-    return new Ok(nodes);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    // No parent for Help Center & Team
-    const helpCenterId = getHelpCenterIdFromInternalId(
-      this.connectorId,
-      internalId
-    );
-    if (helpCenterId) {
-      return new Ok([internalId]);
-    }
-    const teamId = getTeamIdFromInternalId(this.connectorId, internalId);
-    if (teamId) {
-      return new Ok([internalId, getTeamsInternalId(this.connectorId)]);
-    }
-
-    const parents: string[] = [internalId];
-    let collection = null;
-
-    const collectionId = getHelpCenterCollectionIdFromInternalId(
-      this.connectorId,
-      internalId
-    );
-    const articleId = getHelpCenterArticleIdFromInternalId(
-      this.connectorId,
-      internalId
-    );
-
-    if (collectionId) {
-      collection = await IntercomCollection.findOne({
-        where: {
-          connectorId: this.connectorId,
-          collectionId,
-        },
-      });
-    } else if (articleId) {
-      const article = await IntercomArticle.findOne({
-        where: {
-          connectorId: this.connectorId,
-          articleId,
-        },
-      });
-      if (article && article.parentType === "collection" && article.parentId) {
-        parents.push(
-          getHelpCenterCollectionInternalId(this.connectorId, article.parentId)
-        );
-        collection = await IntercomCollection.findOne({
-          where: {
-            connectorId: this.connectorId,
-            collectionId: article.parentId,
-          },
-        });
-      }
-    }
-
-    if (collection && collection.parentId) {
-      parents.push(
-        getHelpCenterCollectionInternalId(this.connectorId, collection.parentId)
-      );
-      const parentCollection = await IntercomCollection.findOne({
-        where: {
-          connectorId: this.connectorId,
-          collectionId: collection.parentId,
-        },
-      });
-      if (parentCollection && parentCollection.parentId) {
-        parents.push(
-          getHelpCenterCollectionInternalId(
-            this.connectorId,
-            parentCollection.parentId
-          )
-        );
-      }
-      // we can stop here as Intercom has max 3 levels of collections
-    }
-
-    if (collection && collection.helpCenterId) {
-      parents.push(
-        getHelpCenterInternalId(this.connectorId, collection.helpCenterId)
-      );
-    }
-
-    return new Ok(parents);
   }
 
   async setConfigurationKey({

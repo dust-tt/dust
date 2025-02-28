@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
 import { assertNever, Err, isSnowflakeCredentials, Ok } from "@dust-tt/types";
 
 import type {
@@ -19,8 +14,6 @@ import {
   fetchAvailableChildrenInSnowflake,
   fetchReadNodes,
   fetchSyncedChildren,
-  getBatchContentNodes,
-  getContentNodeParents,
 } from "@connectors/connectors/snowflake/lib/permissions";
 import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
@@ -32,7 +25,6 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
-  getConnector,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
@@ -355,48 +347,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorRes = await getConnector({
-      connectorId: this.connectorId,
-      logger,
-    });
-    if (connectorRes.isErr()) {
-      return connectorRes;
-    }
-    const connector = connectorRes.value.connector;
-
-    const nodesRes = await getBatchContentNodes({
-      connectorId: connector.id,
-      internalIds,
-    });
-    if (nodesRes.isErr()) {
-      return nodesRes;
-    }
-    return new Ok(nodesRes.value);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parentsRes = getContentNodeParents({ internalId });
-    if (parentsRes.isErr()) {
-      return parentsRes;
-    }
-    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {
