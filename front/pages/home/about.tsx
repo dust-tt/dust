@@ -192,6 +192,13 @@ const PEOPLE: Record<
     github: "https://github.com/theo-vanneufville",
     linkedIn: "https://www.linkedin.com/in/th%C3%A9o-vanneufville-aab050193/",
   },
+  kevin: {
+    name: "Kevin Straszburger",
+    title: "Community",
+    image: "https://avatars.githubusercontent.com/u/7229871?v=4",
+    github: "https://github.com/k7vin",
+    linkedIn: "https://www.linkedin.com/in/kevinstraszburger/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
