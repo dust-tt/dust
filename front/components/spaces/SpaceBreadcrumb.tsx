@@ -27,7 +27,7 @@ export function SpaceBreadCrumbs({
   parentId,
 }: SpaceBreadcrumbProps) {
   const {
-    nodes: [currentFolder],
+    nodes: [currentNavigationItem],
   } = useDataSourceViewContentNodes({
     owner,
     dataSourceView: parentId ? dataSourceView : undefined,
@@ -36,8 +36,8 @@ export function SpaceBreadCrumbs({
   });
 
   const { nodes: folders } = useDataSourceViewContentNodes({
-    dataSourceView: currentFolder ? dataSourceView : undefined,
-    internalIds: currentFolder?.parentInternalIds ?? [],
+    dataSourceView: currentNavigationItem ? dataSourceView : undefined,
+    internalIds: currentNavigationItem?.parentInternalIds ?? [],
     owner,
     viewType: "all",
   });

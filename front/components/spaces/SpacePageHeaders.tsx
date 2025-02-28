@@ -19,7 +19,7 @@ interface SpacePageToolsProps {
   space: SpaceType;
 }
 
-export function SpacePageTools({
+export function SpacePageHeader({
   category,
   dataSourceView,
   owner,
@@ -52,7 +52,7 @@ export function SpacePageTools({
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <div className="flex h-[36px] w-full items-center justify-center justify-between gap-2">
+      <div className="flex h-9 w-full items-center justify-between gap-2">
         <SpaceBreadCrumbs
           space={space}
           category={category}

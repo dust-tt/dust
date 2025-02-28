@@ -26,7 +26,7 @@ import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import React from "react";
 
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageTools";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";

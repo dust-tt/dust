@@ -23,7 +23,7 @@ import React, { useMemo } from "react";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
-import { SpacePageTools } from "@app/components/spaces/SpacePageTools";
+import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -246,7 +246,7 @@ function BackendSearch({
         {showSearch ? (
           <SearchingInSpace space={space} dataSourceView={dataSourceView} />
         ) : (
-          <SpacePageTools
+          <SpacePageHeader
             owner={owner}
             space={space}
             category={category}
@@ -343,7 +343,7 @@ function FrontendSearch({
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">
-        <SpacePageTools
+        <SpacePageHeader
           owner={owner}
           space={space}
           category={category}
