@@ -1,7 +1,9 @@
 import {
+  BracesIcon,
   Button,
   Chip,
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -66,7 +68,8 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                label="🤓 Show raw objects"
+                icon={BracesIcon}
+                label="Show raw objects"
               />
             </div>
             {isPaused && isRunning && (
@@ -253,7 +256,7 @@ function RawObjectsModal({
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
-        <div className="mx-2 my-4 overflow-y-auto">
+        <DialogContainer>
           <span className="text-sm font-bold">dataSource</span>
           <JsonViewer
             theme={isDark ? "dark" : "light"}
@@ -275,7 +278,7 @@ function RawObjectsModal({
             rootName={false}
             defaultInspectDepth={1}
           />
-        </div>
+        </DialogContainer>
       </DialogContent>
     </Dialog>
   );
