@@ -23,6 +23,7 @@ export interface TablesQueryActionType extends BaseAction {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  richTextFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   agentMessageId: ModelId;
@@ -64,6 +65,7 @@ export function getTablesQueryResultsFileAttachment({
   if (!includeSnippet) {
     return `${attachment} />`;
   }
+  // TODO DAPHNE: add rich text file snippet
 
   return `${attachment}>\n${resultsFileSnippet}\n</file>`;
 }

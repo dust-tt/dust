@@ -18,6 +18,7 @@ import {
   getTablesQueryResultsFileAttachment,
   getTablesQueryResultsFileTitle,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -46,6 +47,7 @@ interface TablesQueryActionBlob {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  richTextFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -58,6 +60,7 @@ export class TablesQueryAction extends BaseAction {
   readonly output: Record<string, string | number | boolean> | null;
   readonly resultsFileId: string | null;
   readonly resultsFileSnippet: string | null;
+  readonly richTextFileId: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -74,6 +77,7 @@ export class TablesQueryAction extends BaseAction {
     this.step = blob.step;
     this.resultsFileId = blob.resultsFileId;
     this.resultsFileSnippet = blob.resultsFileSnippet;
+    this.richTextFileId = blob.richTextFileId;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -193,8 +197,15 @@ export async function tableQueryTypesFromAgentMessageIds(
         model: FileModel,
         as: "resultsFile",
       },
+      {
+        model: FileModel,
+        as: "richTextFile",
+      },
     ],
   });
+
+  console.log("SOUPINOU");
+  console.log(actions);
 
   return actions.map((action) => {
     const resultsFile: ActionGeneratedFileType | null = action.resultsFile
@@ -214,6 +225,26 @@ export async function tableQueryTypesFromAgentMessageIds(
         }
       : null;
 
+    const richTextFile: ActionGeneratedFileType | null = action.richTextFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.richTextFile.id,
+            workspaceId: owner.id,
+          }),
+          title: `${getTablesQueryResultsFileTitle({
+            output: action.output as Record<
+              string,
+              string | number | boolean
+            > | null,
+          })} (Rich Text)`,
+          contentType: action.richTextFile.contentType,
+          snippet: action.richTextFile.snippet,
+        }
+      : null;
+
+    console.log("SOUPINOU");
+    console.log(richTextFile);
+
     return new TablesQueryAction({
       id: action.id,
       params: action.params as DustAppParameters,
@@ -224,6 +255,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       step: action.step,
       resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
+      richTextFileId: richTextFile ? richTextFile.fileId : null,
       generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
@@ -328,6 +360,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        richTextFileId: null,
         generatedFiles: [],
       }),
     };
@@ -528,6 +561,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 step: action.step,
                 resultsFileId: null,
                 resultsFileSnippet: null,
+                richTextFileId: null,
                 generatedFiles: [],
               }),
             };
@@ -548,14 +582,17 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const updateParams: {
       resultsFileId: number | null;
       resultsFileSnippet: string | null;
+      richTextFileId: number | null;
       output: Record<string, unknown> | null;
     } = {
       resultsFileId: null,
       resultsFileSnippet: null,
+      richTextFileId: null,
       output: null,
     };
 
     let resultFile: ActionGeneratedFileType | null = null;
+    let richTextFile: ActionGeneratedFileType | null = null;
 
     if (
       "results" in sanitizedOutput &&
@@ -566,25 +603,33 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
-        auth,
-        {
+      const { csvFile, textFile, snippet } =
+        await getToolResultOutputCsvFileAndSnippet(auth, {
           title: queryTitle,
           conversationId: conversation.sId,
           results,
-        }
-      );
+        });
 
       resultFile = {
-        fileId: file.sId,
+        fileId: csvFile.sId,
         title: queryTitle,
-        contentType: file.contentType,
-        snippet: file.snippet,
+        contentType: csvFile.contentType,
+        snippet: csvFile.snippet,
       };
 
+      if (textFile) {
+        richTextFile = {
+          fileId: textFile.sId,
+          title: `${queryTitle} (Rich Text)`,
+          contentType: textFile.contentType,
+          snippet: textFile.snippet,
+        };
+      }
+
       delete sanitizedOutput.results;
-      updateParams.resultsFileId = file.id;
+      updateParams.resultsFileId = csvFile.id;
       updateParams.resultsFileSnippet = snippet;
+      updateParams.richTextFileId = textFile?.id ?? null;
     }
 
     // Updating action
@@ -609,7 +654,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: resultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
-        generatedFiles: resultFile ? [resultFile] : [],
+        richTextFileId: richTextFile?.fileId ?? null,
+        generatedFiles: removeNulls([resultFile, richTextFile]),
       }),
     };
     return;

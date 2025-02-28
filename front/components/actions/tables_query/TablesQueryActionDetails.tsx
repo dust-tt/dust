@@ -110,10 +110,14 @@ function QueryTablesResults({
   const { output } = action;
   const title = getTablesQueryResultsFileTitle({ output });
 
-  const handleDownload = useCallback(() => {
-    if (action.resultsFileId) {
+  const handleDownload = useCallback(
+    (fileId: string | null) => {
+      if (!fileId) {
+        return;
+      }
+
       try {
-        const downloadUrl = `/api/w/${owner.sId}/files/${action.resultsFileId}?action=download`;
+        const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
         // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
         // to cloud storage.
         window.open(downloadUrl, "_blank");
@@ -125,14 +129,9 @@ function QueryTablesResults({
           description: "An error occurred while opening the download link.",
         });
       }
-    } else {
-      sendNotification({
-        title: "No Results Available",
-        type: "error",
-        description: "There are no results available to download.",
-      });
-    }
-  }, [action.resultsFileId, sendNotification, owner.sId]);
+    },
+    [sendNotification, owner.sId]
+  );
 
   if (!action.resultsFileId!) {
     if (typeof output?.error === "string") {
@@ -148,23 +147,42 @@ function QueryTablesResults({
     return null;
   }
 
+  console.log("soupinou");
+  console.log(action.richTextFileId);
+
   return (
     <div className="flex flex-col">
       <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Results
       </span>
       <div>
-        <Citation
-          className="w-48 min-w-48 max-w-48"
-          containerClassName="my-2"
-          onClick={handleDownload}
-          tooltip={title}
-        >
-          <CitationIcons>
-            <Icon visual={TableIcon} />
-          </CitationIcons>
-          <CitationTitle>{title}</CitationTitle>
-        </Citation>
+        {action.resultsFileId && (
+          <Citation
+            className="w-48 min-w-48 max-w-48"
+            containerClassName="my-2"
+            onClick={() => handleDownload(action.resultsFileId)}
+            tooltip={title}
+          >
+            <CitationIcons>
+              <Icon visual={TableIcon} />
+            </CitationIcons>
+            <CitationTitle>{title}</CitationTitle>
+          </Citation>
+        )}
+
+        {action.richTextFileId && (
+          <Citation
+            className="w-48 min-w-48 max-w-48"
+            containerClassName="my-2"
+            onClick={() => handleDownload(action.richTextFileId)}
+            tooltip={title}
+          >
+            <CitationIcons>
+              <Icon visual={TableIcon} />
+            </CitationIcons>
+            <CitationTitle>{title}</CitationTitle>
+          </Citation>
+        )}
       </div>
 
       <CollapsibleComponent
