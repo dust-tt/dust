@@ -23,9 +23,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  isValidContentNodesViewType,
-} from "@dust-tt/types";
+import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";

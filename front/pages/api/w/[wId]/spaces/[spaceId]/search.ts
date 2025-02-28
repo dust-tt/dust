@@ -184,9 +184,11 @@ async function handler(
     return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
   });
 
-  return res
-    .status(200)
-    .json({ nodes, total: searchRes.value.hit_count, warningCode: searchRes.value.warning_code });
+  return res.status(200).json({
+    nodes,
+    total: searchRes.value.hit_count,
+    warningCode: searchRes.value.warning_code,
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(
