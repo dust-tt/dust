@@ -1,3 +1,4 @@
+import type { UpsertDocumentArgs } from "@app/lib/api/data_sources";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
