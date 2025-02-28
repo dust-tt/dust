@@ -520,7 +520,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
   modelId: CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   displayName: "Claude 3.7 Sonnet",
-  contextSize: 180_000,
+  contextSize: 200_000,
   recommendedTopK: 16,
   recommendedExhaustiveTopK: 128, // 65_536
   largeModel: true,
@@ -531,7 +531,7 @@ export const CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
-  tokenCountAdjustment: 1,
+  tokenCountAdjustment: 1.15,
 };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
