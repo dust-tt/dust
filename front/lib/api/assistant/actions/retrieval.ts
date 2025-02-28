@@ -552,7 +552,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
         messageId: agentMessage.sId,
         error: {
           code: "retrieval_search_error",
-          message: `Error searching data sources: ${res.error.message}`,
+          message: "An error occured while searching our data sources.",
         },
       };
       return;
@@ -596,7 +596,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           messageId: agentMessage.sId,
           error: {
             code: "retrieval_search_error",
-            message: `Error searching data sources: ${event.content.message}`,
+            message: "An error occured while searching our data sources.",
           },
         };
         return;
@@ -620,7 +620,7 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
             messageId: agentMessage.sId,
             error: {
               code: "retrieval_search_error",
-              message: `Error searching data sources: ${e.error}`,
+              message: "An error occured while searching our data sources.",
             },
           };
           return;

@@ -348,7 +348,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         messageId: agentMessage.sId,
         error: {
           code: "process_execution_error",
-          message: `Error running process app: ${res.error.message}`,
+          message: "An error occured while extracting data.",
         },
       };
       return;
@@ -374,7 +374,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           messageId: agentMessage.sId,
           error: {
             code: "process_execution_error",
-            message: `Error running process app: ${event.content.message}`,
+            message: "An error occured while extracting data.",
           },
         };
         return;
@@ -398,7 +398,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
             messageId: agentMessage.sId,
             error: {
               code: "process_execution_error",
-              message: `Error running process app: ${e.error}`,
+              message: "An error occured while extracting data.",
             },
           };
           return;
