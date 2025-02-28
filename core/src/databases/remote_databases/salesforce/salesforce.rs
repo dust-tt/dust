@@ -1,11 +1,13 @@
 use std::{
     collections::{HashMap, HashSet},
     env,
+    sync::Arc,
 };
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
+use redis::{AsyncCommands, Client as RedisClient};
 use reqwest::Proxy;
 use serde::Deserialize;
 use serde_json::{Map, Value};
@@ -30,11 +32,14 @@ use super::sandbox::structured_query::{StructuredQuery, Validator};
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const GET_SESSION_MAX_TRIES: usize = 3;
+pub const REDIS_CACHE_TTL_SECONDS: u64 = 60 * 60; // 1 hour
 
 pub struct SalesforceRemoteDatabase {
     client: reqwest::Client,
     instance_url: String,
     access_token: String,
+    // Redis client for caching object descriptions
+    redis_client: Option<Arc<RedisClient>>,
 }
 
 #[allow(dead_code)]
@@ -176,10 +181,29 @@ impl SalesforceRemoteDatabase {
                 )))?,
             };
 
+        // Try to connect to Redis if the environment variable is set
+        let redis_client = match env::var("REDIS_URL") {
+            Ok(redis_url) => {
+                match RedisClient::open(redis_url) {
+                    Ok(client) => Some(Arc::new(client)),
+                    Err(e) => {
+                        // Log error but continue without Redis
+                        eprintln!(
+                            "Failed to connect to Redis: {}. Continuing without Redis cache.",
+                            e
+                        );
+                        None
+                    }
+                }
+            }
+            Err(_) => None, // Redis URL not configured
+        };
+
         Ok(Self {
             client,
             instance_url,
             access_token: response.access_token.clone(),
+            redis_client,
         })
     }
 
@@ -284,7 +308,55 @@ impl SalesforceRemoteDatabase {
     /// Describes a Salesforce object and returns its schema
     /// Fetches a Salesforce object's describe information
     /// Returns the raw JSON response which can be used for multiple purposes
+    /// Uses Redis for caching if available, otherwise makes direct API calls
     async fn fetch_object_describe(&self, sobject: &str) -> Result<Value, QueryDatabaseError> {
+        // Extract instance identifier from the instance URL
+        // This helps namespace the cache keys by Salesforce instance
+        let instance_id = self
+            .instance_url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split('.')
+            .next()
+            .ok_or_else(|| {
+                QueryDatabaseError::GenericError(anyhow!(
+                    "Failed to extract instance ID from Salesforce instance URL: {}",
+                    self.instance_url
+                ))
+            })?;
+
+        // Create a cache key based on instance identifier and sobject name
+        let cache_key = format!("salesforce:{}:object_describe:{}", instance_id, sobject);
+
+        // Check if Redis is available and try to get cached data
+        if let Some(redis_client) = &self.redis_client {
+            // Get a connection from the Redis client
+            match redis_client.get_async_connection().await {
+                Ok(mut conn) => {
+                    // Try to get the cached description
+                    let cached_result: Result<Option<String>, _> = conn.get(&cache_key).await;
+
+                    if let Ok(Some(cached_json)) = cached_result {
+                        // Parse the cached JSON string back to a Value
+                        match serde_json::from_str(&cached_json) {
+                            Ok(parsed_value) => {
+                                return Ok(parsed_value);
+                            }
+                            Err(e) => {
+                                // Log error but continue to API call
+                                eprintln!("Error parsing cached Redis value: {}. Making API call instead.", e);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Log error but continue to API call
+                    eprintln!("Error connecting to Redis: {}. Making API call instead.", e);
+                }
+            }
+        }
+
+        // Cache miss or Redis unavailable; make the API call
         let url = format!(
             "{}/services/data/v63.0/sobjects/{}/describe",
             self.instance_url, sobject
@@ -319,6 +391,29 @@ impl SalesforceRemoteDatabase {
         let describe_result: Value = serde_json::from_str(&response_text).map_err(|e| {
             QueryDatabaseError::GenericError(anyhow!("Error parsing response: {}", e))
         })?;
+
+        // Store the result in Redis if available
+        if let Some(redis_client) = &self.redis_client {
+            match redis_client.get_async_connection().await {
+                Ok(mut conn) => {
+                    // Convert Value to JSON string for Redis storage
+                    if let Ok(json_string) = serde_json::to_string(&describe_result) {
+                        // Use set_ex to set with expiration
+                        let set_result: Result<(), _> = conn
+                            .set_ex(&cache_key, json_string, REDIS_CACHE_TTL_SECONDS)
+                            .await;
+
+                        if let Err(e) = set_result {
+                            eprintln!("Failed to store in Redis: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // Just log the error and continue
+                    eprintln!("Failed to cache object description in Redis: {}", e);
+                }
+            }
+        }
 
         Ok(describe_result)
     }
