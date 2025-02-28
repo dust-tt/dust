@@ -271,6 +271,23 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
 
+export type CoreAPIDataSourcesSearchOptions = {
+  include_text_size: boolean;
+};
+
+export type CoreAPIDataSourcesSearchFilter = {
+  data_source_id: string;
+};
+
+export interface CoreAPISearchDataSourcesResponse {
+  data_source_id: string;
+  data_source_internal_id: string;
+  timestamp: number;
+  name: string;
+  text_size: number | null;
+  document_count: number | null;
+}
+
 export interface CoreAPIUpsertDataSourceDocumentPayload {
   projectId: string;
   dataSourceId: string;
@@ -1842,6 +1859,30 @@ export class CoreAPI {
         options,
       }),
     });
+
+    return this._resultFromResponse(response);
+  }
+
+  async searchDataSources({
+    filter,
+    options,
+  }: {
+    filter: CoreAPIDataSourcesSearchFilter;
+    options?: CoreAPIDataSourcesSearchOptions;
+  }): Promise<CoreAPIResponse<CoreAPISearchDataSourcesResponse>> {
+    const response = await this._fetchWithError(
+      `${this._url}/data_sources/search`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filter,
+          options,
+        }),
+      }
+    );
 
     return this._resultFromResponse(response);
   }
