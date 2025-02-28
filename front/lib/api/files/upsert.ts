@@ -255,6 +255,22 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+const updateUseCaseMetadata = async (
+  file: FileResource,
+  tableIds: string[]
+) => {
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        ...tableIds,
+      ],
+    });
+  }
+};
+
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
@@ -305,6 +321,8 @@ const upsertTableToDatasource: ProcessingFunction = async (
       data_source_error: upsertTableRes.error,
     });
   }
+
+  await updateUseCaseMetadata(file, [tableId]);
 
   return new Ok(undefined);
 };
@@ -402,16 +420,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     await upsertWorksheet(worksheetName, worksheetContent);
   }
 
-  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
-  if (file.useCaseMetadata) {
-    await file.setUseCaseMetadata({
-      ...file.useCaseMetadata,
-      generatedTables: [
-        ...(file.useCaseMetadata.generatedTables ?? []),
-        ...tableIds,
-      ],
-    });
-  }
+  await updateUseCaseMetadata(file, tableIds);
 
   return new Ok(undefined);
 };
