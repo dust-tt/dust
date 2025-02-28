@@ -1,14 +1,21 @@
-use std::{collections::HashSet, env};
+use std::{
+    collections::{HashMap, HashSet},
+    env,
+};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
-use lazy_static::lazy_static;
-use regex::Regex;
 use reqwest::Proxy;
 use serde::Deserialize;
 use serde_json::{Map, Value};
-use thiserror::Error;
+use tracing::error;
+
+use crate::cache;
+
+use crate::databases::remote_databases::salesforce::sandbox::{
+    convert::convert_to_soql, extract::extract_objects,
+};
 
 use crate::{
     databases::{
@@ -22,12 +29,11 @@ use crate::{
     },
 };
 
-lazy_static! {
-    static ref SUBSELECT_PATTERN: Regex = Regex::new(r"\(\s*SELECT").unwrap();
-}
+use super::sandbox::structured_query::{StructuredQuery, Validator};
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const GET_SESSION_MAX_TRIES: usize = 3;
+pub const REDIS_CACHE_TTL_SECONDS: u64 = 60 * 60; // 1 hour
 
 pub struct SalesforceRemoteDatabase {
     client: reqwest::Client,
@@ -57,12 +63,6 @@ pub struct SalesforceQueryPlanNote {
     table_enum_or_id: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SalesforceQueryPlansResponse {
-    plans: Vec<SalesforceQueryPlan>,
-}
-
 #[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -75,19 +75,78 @@ struct SalesforceQueryResponse {
     total_size: i32,
 }
 
-#[derive(Debug, Error, PartialEq)]
-pub enum SoqlValidationError {
-    #[error("Query must start with SELECT")]
-    NotSelectQuery,
-    #[error("Query contains subselects which is not supported")]
-    ContainsSubselect,
-    #[error("Query contains multiple tables in FROM clause which is not supported")]
-    MultipleFromTables,
-    #[error("Query contains nested fields which is not supported")]
-    NestedFields,
-}
-
 impl SalesforceRemoteDatabase {
+    /// Flatten a Salesforce record to convert nested objects like "Owner": {"Name": "value"}
+    /// into flattened fields like "Owner.Name": "value"
+    ///
+    /// This function recursively processes nested objects to ensure that deeply nested
+    /// structures (e.g., Account.Parent.Owner.Name) are properly flattened as well.
+    fn flatten_record_with_prefix(&self, record: &mut Map<String, Value>, prefix: &str) {
+        // Collect fields to modify to avoid borrowing issues
+        let mut modifications = Vec::new();
+
+        // Identify nested objects to flatten
+        for (key, value) in record.iter() {
+            // Skip the special attributes field from Salesforce
+            if key == "attributes" {
+                continue;
+            }
+
+            if let Some(obj) = value.as_object() {
+                // This is a nested object that needs flattening
+                modifications.push((key.clone(), obj.clone()));
+            }
+        }
+
+        // Process the identified modifications
+        for (key, obj) in modifications {
+            // Remove the original nested object
+            record.remove(&key);
+
+            // Process each field in the nested object
+            for (subkey, subvalue) in obj {
+                if subkey == "attributes" {
+                    continue;
+                }
+
+                // Create the flattened key name with proper prefix handling
+                let flat_key = if prefix.is_empty() {
+                    format!("{}.{}", key, subkey)
+                } else {
+                    format!("{}.{}.{}", prefix, key, subkey)
+                };
+
+                // Handle nested objects recursively
+                if let Some(nested_obj) = subvalue.as_object() {
+                    if nested_obj.keys().any(|k| k != "attributes") {
+                        // Prepare nested object for recursion
+                        let mut nested_map = nested_obj.clone();
+
+                        // Create new prefix for recursion
+                        let new_prefix = if prefix.is_empty() {
+                            key.clone()
+                        } else {
+                            format!("{}.{}", prefix, key)
+                        };
+
+                        // Recursively flatten
+                        self.flatten_record_with_prefix(&mut nested_map, &new_prefix);
+
+                        // Add resulting flattened fields
+                        for (nested_key, nested_value) in nested_map {
+                            if nested_key != "attributes" {
+                                record.insert(nested_key, nested_value);
+                            }
+                        }
+                    }
+                } else {
+                    // Add the flattened field directly
+                    record.insert(flat_key, subvalue);
+                }
+            }
+        }
+    }
+
     pub fn new(response: &ConnectionAccessTokenResponse) -> Result<Self, QueryDatabaseError> {
         let client = match (
             env::var("PROXY_HOST"),
@@ -126,121 +185,6 @@ impl SalesforceRemoteDatabase {
             instance_url,
             access_token: response.access_token.clone(),
         })
-    }
-
-    /// Validates if a SOQL query string meets certain criteria.
-    /// Returns an error if the query:
-    /// - Does not start with SELECT
-    /// - Contains a subselect (e.g., "(SELECT Id FROM Contacts)")
-    /// - Has multiple FROM clauses
-    /// - Contains nested fields (e.g., Owner.Name)
-    ///
-    /// # Arguments
-    ///
-    /// * `query` - The SOQL query string to validate
-    ///
-    /// # Returns
-    ///
-    /// Returns `Ok(())` if the query is valid according to the criteria, `Err(SoqlValidationError)` otherwise.
-    pub fn is_valid_soql_query(query: &str) -> Result<(), SoqlValidationError> {
-        let query = query.trim();
-        let query_upper = query.to_uppercase();
-
-        // Basic validation - query must start with SELECT
-        if !query_upper.starts_with("SELECT") {
-            return Err(SoqlValidationError::NotSelectQuery);
-        }
-
-        // Check for subselects using regex pattern
-        // Matches: '(' followed by zero or more whitespace followed by 'SELECT'
-        if SUBSELECT_PATTERN.is_match(&query_upper) {
-            return Err(SoqlValidationError::ContainsSubselect);
-        }
-
-        // Check for multiple tables (comma in the FROM clause)
-        let from_parts: Vec<&str> = query_upper.split("FROM").collect();
-        if let Some(from_part) = from_parts.get(1) {
-            let table_part = from_part.split_whitespace().next().unwrap_or("");
-            if table_part.contains(',') {
-                return Err(SoqlValidationError::MultipleFromTables);
-            }
-        }
-
-        // Extract fields between SELECT and FROM
-        if let Some(select_part) = query_upper.split("FROM").next() {
-            let fields_part = select_part.replace("SELECT", "");
-            let fields_part = fields_part.trim();
-            let fields: Vec<&str> = fields_part.split(',').map(|s| s.trim()).collect();
-
-            // Check for nested fields
-            for field in fields {
-                if field.contains('.') {
-                    return Err(SoqlValidationError::NestedFields);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Gets the query plans for a SOQL query from Salesforce.
-    ///
-    /// This method sends a request to Salesforce's query endpoint to get the execution plans
-    /// for a given SOQL query. The plans contain information about which tables/objects
-    /// will be accessed by the query. Since Salesforce may generate multiple possible execution
-    /// plans and the documentation does not specify which one will ultimately be chosen,
-    /// this method returns all potential plans.
-    ///
-    /// # Arguments
-    ///
-    /// * `query` - The SOQL query string to get plans for
-    ///
-    /// # Returns
-    ///
-    /// Returns a `Result` containing a `SalesforceQueryPlansResponse` with all possible query plans
-    /// if successful, or a `QueryDatabaseError` if the request fails.
-    ///
-    /// # Errors
-    ///
-    /// Will return `QueryDatabaseError::GenericError` if:
-    /// - The HTTP request to Salesforce fails
-    /// - The response cannot be parsed into a `SalesforceQueryPlansResponse`
-    async fn get_query_plans(
-        &self,
-        query: &str,
-    ) -> Result<Vec<SalesforceQueryPlan>, QueryDatabaseError> {
-        let url = format!(
-            "{}/services/data/v63.0/query/?explain={}",
-            self.instance_url,
-            urlencoding::encode(query)
-        );
-
-        let response = self
-            .client
-            .get(&url)
-            .header("Authorization", format!("Bearer {}", self.access_token))
-            .header("Content-Type", "application/json")
-            .send()
-            .await
-            .map_err(|e| {
-                QueryDatabaseError::GenericError(anyhow!("Error getting query plan: {}", e))
-            })?;
-
-        let response_text = response.text().await.map_err(|e| {
-            QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
-        })?;
-
-        let query_plans: SalesforceQueryPlansResponse = serde_json::from_str(&response_text)
-            .map_err(|e| {
-                QueryDatabaseError::GenericError(anyhow!(
-                    "Error parsing response of query plan: {} => {} with response {}",
-                    e,
-                    query,
-                    response_text
-                ))
-            })?;
-
-        Ok(query_plans.plans)
     }
 
     async fn execute_query(
@@ -310,7 +254,13 @@ impl SalesforceRemoteDatabase {
             let results: Vec<QueryResult> = query_response
                 .records
                 .into_iter()
-                .map(|record| QueryResult { value: record })
+                .map(|mut record| {
+                    // Flatten nested objects
+                    self.flatten_record_with_prefix(&mut record, "");
+                    // Remove top-level attributes
+                    record.remove("attributes");
+                    QueryResult { value: record }
+                })
                 .collect();
 
             all_records.extend(results);
@@ -335,7 +285,35 @@ impl SalesforceRemoteDatabase {
         Ok((all_records, schema))
     }
 
-    async fn describe_sobject(&self, sobject: &str) -> Result<TableSchema, QueryDatabaseError> {
+    /// Describes a Salesforce object and returns its schema
+    /// Fetches a Salesforce object's describe information
+    /// Returns the raw JSON response which can be used for multiple purposes
+    /// Uses Redis for caching if available, otherwise makes direct API calls
+    async fn fetch_object_describe(&self, sobject: &str) -> Result<Value, QueryDatabaseError> {
+        // Extract instance identifier from the instance URL
+        // This helps namespace the cache keys by Salesforce instance
+        let instance_id = self
+            .instance_url
+            .trim_start_matches("https://")
+            .trim_start_matches("http://")
+            .split('.')
+            .next()
+            .ok_or_else(|| {
+                QueryDatabaseError::GenericError(anyhow!(
+                    "Failed to extract instance ID from Salesforce instance URL: {}",
+                    self.instance_url
+                ))
+            })?;
+
+        // Create a cache key based on instance identifier and sobject name
+        let cache_key = format!("salesforce:{}:object_describe:{}", instance_id, sobject);
+
+        // Try to get the object description from the cache
+        if let Ok(Some(cached_value)) = cache::get::<Value>(&cache_key).await {
+            return Ok(cached_value);
+        }
+
+        // Cache miss or Redis unavailable; make the API call
         let url = format!(
             "{}/services/data/v63.0/sobjects/{}/describe",
             self.instance_url, sobject
@@ -370,6 +348,17 @@ impl SalesforceRemoteDatabase {
         let describe_result: Value = serde_json::from_str(&response_text).map_err(|e| {
             QueryDatabaseError::GenericError(anyhow!("Error parsing response: {}", e))
         })?;
+
+        // Store the result in Redis
+        if let Err(e) = cache::set(&cache_key, &describe_result, REDIS_CACHE_TTL_SECONDS).await {
+            error!("Failed to cache object description in Redis: {}", e);
+        }
+
+        Ok(describe_result)
+    }
+
+    async fn describe_sobject(&self, sobject: &str) -> Result<TableSchema, QueryDatabaseError> {
+        let describe_result = self.fetch_object_describe(sobject).await?;
 
         let fields = describe_result["fields"].as_array().ok_or_else(|| {
             QueryDatabaseError::GenericError(anyhow!("No fields found in schema"))
@@ -463,6 +452,169 @@ impl SalesforceRemoteDatabase {
 
         Ok(TableSchema::from_columns(columns))
     }
+
+    /// Fetches the relationships for a Salesforce object
+    /// Returns a map of relationship names to target object types
+    async fn get_object_relationships(
+        &self,
+        sobject: &str,
+    ) -> Result<HashMap<String, String>, QueryDatabaseError> {
+        let describe_result = self.fetch_object_describe(sobject).await?;
+
+        // Extract child relationships (parent-to-child)
+        let child_relationships = describe_result["childRelationships"]
+            .as_array()
+            .ok_or_else(|| {
+                QueryDatabaseError::GenericError(anyhow!("No child relationships found in schema"))
+            })?;
+
+        let mut relationships = HashMap::new();
+
+        // Add child relationship names and their corresponding object types
+        for rel in child_relationships {
+            if let (Some(rel_name), Some(child_obj)) = (
+                rel["relationshipName"].as_str(),
+                rel["childSObject"].as_str(),
+            ) {
+                // Only include relationships with names (some relationships are internal and have no name)
+                if !rel_name.is_empty() {
+                    relationships.insert(rel_name.to_string(), child_obj.to_string());
+                }
+            }
+        }
+
+        // Extract fields to find parent relationships (child-to-parent)
+        let fields = describe_result["fields"].as_array().ok_or_else(|| {
+            QueryDatabaseError::GenericError(anyhow!("No fields found in schema"))
+        })?;
+
+        for field in fields {
+            // Look for reference fields
+            if let Some(reference_to) = field["referenceTo"].as_array() {
+                if !reference_to.is_empty() {
+                    if let (Some(rel_name), Some(field_name)) =
+                        (field["relationshipName"].as_str(), field["name"].as_str())
+                    {
+                        // For each reference target, add the relationship
+                        for ref_obj in reference_to {
+                            if let Some(ref_name) = ref_obj.as_str() {
+                                if !rel_name.is_empty() {
+                                    relationships
+                                        .insert(rel_name.to_string(), ref_name.to_string());
+                                }
+
+                                // If this is a standard ID field (ends with 'Id'), also add the field name without 'Id'
+                                if field_name.ends_with("Id") {
+                                    let field_base = &field_name[..field_name.len() - 2]; // Remove 'Id'
+                                    relationships
+                                        .insert(field_base.to_string(), ref_name.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(relationships)
+    }
+
+    /// Validates referenced objects against allowed tables, using Salesforce relationship info
+    async fn validate_referenced_objects(
+        &self,
+        referenced_objects: &[String],
+        allowed_tables: &HashSet<String>,
+        primary_object: &str,
+    ) -> Result<(), QueryDatabaseError> {
+        // First, check if the objects are directly in the allowed tables list
+        let mut allowed_objects = allowed_tables.clone();
+
+        // RecordType should always be allowed
+        allowed_objects.insert("RecordType".to_lowercase());
+
+        // The primary object is always allowed
+        allowed_objects.insert(primary_object.to_lowercase());
+
+        // Check for objects that aren't directly allowed
+        let mut unknown_objects: Vec<&String> = referenced_objects
+            .iter()
+            .filter(|obj| !allowed_objects.contains(&obj.to_lowercase()))
+            .collect();
+
+        if unknown_objects.is_empty() {
+            return Ok(());
+        }
+
+        // For remaining unknown objects, check if they're relationships of allowed objects
+        // Fetch relationships for all the allowed tables
+        let mut all_relationships = HashMap::new();
+
+        // Create a collection of tables we need to fetch
+        let mut tables_to_fetch = Vec::new();
+
+        // Add allowed tables
+        for table in allowed_tables {
+            tables_to_fetch.push(table.clone());
+        }
+
+        // Add primary object if not already in allowed tables
+        if !allowed_tables.contains(&primary_object.to_lowercase()) {
+            tables_to_fetch.push(primary_object.to_lowercase());
+        }
+
+        // Fetch relationships for all tables concurrently
+        let relationship_results =
+            futures::future::join_all(tables_to_fetch.iter().map(|table| async {
+                let result = self.get_object_relationships(table).await;
+                (table.clone(), result)
+            }))
+            .await;
+
+        // Process results
+        for (table, result) in relationship_results {
+            match result {
+                Ok(rel) => {
+                    for (rel_name, target_obj) in rel {
+                        all_relationships.insert(rel_name, target_obj);
+                    }
+                }
+                Err(e) => {
+                    // If we can't get relationships for a table, log but continue
+                    error!("Failed to get relationships for {}: {}", table, e);
+                }
+            }
+        }
+
+        // Now filter unknown_objects again, removing those that are valid relationships
+        unknown_objects = unknown_objects
+            .into_iter()
+            .filter(|obj| {
+                // Check if it's a direct relationship name
+                if all_relationships.contains_key(*obj) {
+                    let target_obj = &all_relationships[*obj];
+                    // The relationship is allowed if its target is an allowed table
+                    return !allowed_tables.contains(&target_obj.to_lowercase());
+                }
+
+                // It's not a known relationship
+                true
+            })
+            .collect();
+
+        // If we still have unknown objects, they're not allowed
+        if !unknown_objects.is_empty() {
+            return Err(QueryDatabaseError::ExecutionError(format!(
+                "Query uses tables/relationships that are not allowed: {}",
+                unknown_objects
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )));
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -476,13 +628,23 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         tables: &Vec<Table>,
         query: &str,
     ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
-        let plans = self.get_query_plans(query).await?;
+        // Parse the JSON query
+        let parsed_query = serde_json::from_str::<StructuredQuery>(query).map_err(|e| {
+            QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e))
+        })?;
 
-        let used_tables: HashSet<&str> = plans
-            .iter()
-            .map(|plan| plan.sobject_type.as_str())
-            .collect();
+        // Validate the structured query
+        if let Err(e) = parsed_query.validate() {
+            return Err(QueryDatabaseError::ExecutionError(format!(
+                "Invalid structured query: {}",
+                e
+            )));
+        }
 
+        // Extract all objects referenced in the query
+        let referenced_objects = extract_objects(&parsed_query);
+
+        // Get the tables allowed in the query
         let allowed_tables: HashSet<String> = tables
             .iter()
             .map(|table| {
@@ -495,26 +657,25 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
             })
             .collect::<Result<HashSet<_>>>()?;
 
-        let used_forbidden_tables = used_tables
-            .into_iter()
-            .filter(|table| !allowed_tables.contains(table.to_lowercase().as_str()))
-            .collect::<Vec<_>>();
-
-        if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+        // Validate referenced objects against allowed tables using Salesforce metadata API
+        // This will handle polymorphic relationships, plural forms, etc.
+        if let Err(e) = self
+            .validate_referenced_objects(&referenced_objects, &allowed_tables, &parsed_query.object)
+            .await
+        {
+            return Err(e);
         }
 
-        if let Err(e) = SalesforceRemoteDatabase::is_valid_soql_query(query) {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Invalid SOQL query: {}",
+        // Convert the structured query to SOQL
+        let soql_query = convert_to_soql(&parsed_query).map_err(|e| {
+            QueryDatabaseError::ExecutionError(format!(
+                "Error converting JSON query to SOQL: {}",
                 e
-            )));
-        }
+            ))
+        })?;
 
-        self.execute_query(query).await
+        // Execute the SOQL query
+        self.execute_query(&soql_query).await
     }
 
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>> {
@@ -530,64 +691,5 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         .await?;
 
         Ok(schemas)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_is_valid_soql_query() {
-        // Valid queries
-        assert!(
-            SalesforceRemoteDatabase::is_valid_soql_query("SELECT Id, Name FROM Account").is_ok()
-        );
-        assert!(SalesforceRemoteDatabase::is_valid_soql_query(
-            "SELECT Id, Name, Type FROM Account WHERE Name LIKE '%Test%'"
-        )
-        .is_ok());
-        assert!(SalesforceRemoteDatabase::is_valid_soql_query(
-            "SELECT Id FROM Contact ORDER BY LastName DESC LIMIT 100"
-        )
-        .is_ok());
-        // Valid query with parentheses in WHERE clause
-        assert!(SalesforceRemoteDatabase::is_valid_soql_query(
-            "SELECT Id FROM Account WHERE (Name LIKE '%Test%' OR Type = 'Customer')"
-        )
-        .is_ok());
-        // Valid query with 'SELECT' in string literal
-        assert!(SalesforceRemoteDatabase::is_valid_soql_query(
-            "SELECT Id FROM Account WHERE Description LIKE '%SELECT%'"
-        )
-        .is_ok());
-        // Valid query with 'FROM' in string literal
-        assert!(SalesforceRemoteDatabase::is_valid_soql_query(
-            "SELECT Id FROM Account WHERE Description LIKE '%FROM%'"
-        )
-        .is_ok());
-
-        // Test specific error types
-        assert_eq!(
-            SalesforceRemoteDatabase::is_valid_soql_query("UPDATE Account SET Name = 'Test'"),
-            Err(SoqlValidationError::NotSelectQuery)
-        );
-
-        assert_eq!(
-            SalesforceRemoteDatabase::is_valid_soql_query(
-                "SELECT Id, Name, (SELECT Id FROM Contacts) FROM Account"
-            ),
-            Err(SoqlValidationError::ContainsSubselect)
-        );
-
-        assert_eq!(
-            SalesforceRemoteDatabase::is_valid_soql_query("SELECT Id FROM Account, Contact"),
-            Err(SoqlValidationError::MultipleFromTables)
-        );
-
-        assert_eq!(
-            SalesforceRemoteDatabase::is_valid_soql_query("SELECT Id, Owner.Name FROM Account"),
-            Err(SoqlValidationError::NestedFields)
-        );
     }
 }

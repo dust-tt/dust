@@ -1322,6 +1322,7 @@ dependencies = [
  "qdrant-client",
  "rand",
  "rayon",
+ "redis",
  "regex",
  "reqwest 0.12.12",
  "ring 0.17.8",
