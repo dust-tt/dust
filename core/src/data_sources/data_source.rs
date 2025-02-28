@@ -2500,6 +2500,29 @@ impl From<serde_json::Value> for DataSourceESDocument {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataSourceESDocumentWithStats {
+    pub data_source_id: String,
+    pub data_source_internal_id: String,
+    pub timestamp: u64,
+    pub name: String,
+    pub text_size: i64,
+    pub document_count: i64,
+}
+
+impl From<(DataSourceESDocument, i64, i64)> for DataSourceESDocumentWithStats {
+    fn from((document, text_size, document_count): (DataSourceESDocument, i64, i64)) -> Self {
+        Self {
+            data_source_id: document.data_source_id,
+            data_source_internal_id: document.data_source_internal_id,
+            timestamp: document.timestamp,
+            name: document.name,
+            text_size,
+            document_count,
+        }
+    }
+}
+
 impl Indexable for DataSource {
     type Doc = DataSourceESDocument;
 
