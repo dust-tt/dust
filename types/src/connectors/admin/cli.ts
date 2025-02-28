@@ -491,6 +491,7 @@ export const AdminResponseSchema = t.union([
   IntercomCheckMissingConversationsResponseSchema,
   IntercomCheckTeamsResponseSchema,
   IntercomFetchConversationResponseSchema,
+  IntercomFetchArticlesResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
