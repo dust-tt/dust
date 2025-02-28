@@ -33,14 +33,8 @@ import {
   getSlackClient,
 } from "@connectors/connectors/slack/lib/slack_client";
 import {
-  getSlackChannelSourceUrl,
-  isSlackChannelInternalId,
-  isSlackNonThreadedMessagesInternalId,
-  isSlackThreadInternalId,
   slackChannelIdFromInternalId,
-  slackChannelIdFromSlackNonThreadedMessagesInternalId,
   slackChannelInternalIdFromSlackChannelId,
-  slackThreadIdentifierFromSlackThreadInternalId,
 } from "@connectors/connectors/slack/lib/utils";
 import { launchSlackSyncWorkflow } from "@connectors/connectors/slack/temporal/client.js";
 import {
@@ -593,85 +587,6 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const slackChannelIds = internalIds.map((id) =>
-      slackChannelIdFromInternalId(id)
-    );
-    const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
-      this.connectorId
-    );
-    if (!slackConfig) {
-      logger.error(
-        { connectorId: this.connectorId },
-        "Slack configuration not found"
-      );
-      return new Err(new Error("Slack configuration not found"));
-    }
-
-    const channels = await SlackChannel.findAll({
-      where: {
-        connectorId: this.connectorId,
-        slackChannelId: slackChannelIds,
-      },
-    });
-
-    const contentNodes: ContentNode[] = channels.map((ch) => ({
-      internalId: slackChannelInternalIdFromSlackChannelId(ch.slackChannelId),
-      parentInternalId: null,
-      type: "folder",
-      title: `#${ch.slackChannelName}`,
-      sourceUrl: getSlackChannelSourceUrl(ch.slackChannelId, slackConfig),
-      expandable: false,
-      permission: ch.permission,
-      lastUpdatedAt: null,
-      providerVisibility: ch.private ? "private" : "public",
-      mimeType: MIME_TYPES.SLACK.CHANNEL,
-    }));
-
-    return new Ok(contentNodes);
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-  }): Promise<Result<string[], Error>> {
-    // If the internal ID is a Slack channel ID, it has no other parent
-    if (isSlackChannelInternalId(internalId)) {
-      return new Ok([internalId]);
-    }
-    // If it is a slack thread, or a slack "non-threaded" message document, it also
-    // needs the channel internal ID as parent
-    else if (isSlackThreadInternalId(internalId)) {
-      const { channelId } =
-        slackThreadIdentifierFromSlackThreadInternalId(internalId);
-      return new Ok([
-        internalId,
-        slackChannelInternalIdFromSlackChannelId(channelId),
-      ]);
-    } else if (isSlackNonThreadedMessagesInternalId(internalId)) {
-      const channelId =
-        slackChannelIdFromSlackNonThreadedMessagesInternalId(internalId);
-      return new Ok([
-        internalId,
-        slackChannelInternalIdFromSlackChannelId(channelId),
-      ]);
-    }
-    // This in theory shouldn't happen
-    else {
-      logger.error(
-        { internalId, panic: true },
-        "Unknown internal ID for Slack connector"
-      );
-      return new Ok([internalId]);
-    }
   }
 
   async setConfigurationKey({

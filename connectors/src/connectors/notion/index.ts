@@ -6,7 +6,6 @@ import {
   Ok,
 } from "@dust-tt/types";
 import _ from "lodash";
-import { v4 as uuidv4 } from "uuid";
 
 import type {
   CreateConnectorErrorCode,
@@ -34,7 +33,7 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
-import { getOrphanedCount, getParents, hasChildren } from "./lib/parents";
+import { getOrphanedCount, hasChildren } from "./lib/parents";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -532,124 +531,6 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     });
 
     return new Ok(nodes.concat(folderNodes));
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-  }): Promise<Result<ContentNode[], Error>> {
-    const notionIds = internalIds.map((id) => notionIdFromNodeId(id));
-
-    const [pages, dbs] = await Promise.all([
-      NotionPage.findAll({
-        where: {
-          connectorId: this.connectorId,
-          notionPageId: notionIds,
-        },
-      }),
-      NotionDatabase.findAll({
-        where: {
-          connectorId: this.connectorId,
-          notionDatabaseId: notionIds,
-        },
-      }),
-    ]);
-
-    const hasChildrenByPageId = await hasChildren(pages, this.connectorId);
-    const pageNodes: ContentNode[] = await Promise.all(
-      pages.map(async (page) => ({
-        internalId: nodeIdFromNotionId(page.notionPageId),
-        parentInternalId:
-          !page.parentId || page.parentId === "workspace"
-            ? null
-            : nodeIdFromNotionId(page.parentId),
-        type: "document",
-        title: page.title || "",
-        sourceUrl: page.notionUrl || null,
-        expandable: Boolean(hasChildrenByPageId[page.notionPageId]),
-        permission: "read",
-        lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-        mimeType: MIME_TYPES.NOTION.PAGE,
-      }))
-    );
-
-    const dbNodes: ContentNode[] = dbs.map((db) => ({
-      internalId: nodeIdFromNotionId(db.notionDatabaseId),
-      parentInternalId:
-        !db.parentId || db.parentId === "workspace"
-          ? null
-          : nodeIdFromNotionId(db.parentId),
-      type: "table",
-      title: db.title || "",
-      sourceUrl: db.notionUrl || null,
-      expandable: true,
-      permission: "read",
-      lastUpdatedAt: null,
-      mimeType: MIME_TYPES.NOTION.DATABASE,
-    }));
-
-    const contentNodes = pageNodes.concat(dbNodes);
-
-    if (notionIds.includes("unknown")) {
-      const orphanedCount = await getOrphanedCount(this.connectorId);
-      if (orphanedCount > 0) {
-        contentNodes.push({
-          // Orphaned resources in the database will have "unknown" as their parentId.
-          internalId: nodeIdFromNotionId("unknown"),
-          parentInternalId: null,
-          type: "folder",
-          title: "Orphaned Resources",
-          sourceUrl: null,
-          expandable: true,
-          permission: "read",
-          lastUpdatedAt: null,
-          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
-        });
-      }
-    }
-    return new Ok(contentNodes);
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-    memoizationKey,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const notionId = notionIdFromNodeId(internalId);
-
-    // The two nodes unknonwn and syncing are special folders always found at the root (no parent).
-    if (notionId === "unknown" || notionId === "syncing") {
-      return new Ok([internalId]);
-    }
-
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      logger.error({ connectorId: this.connectorId }, "Connector not found");
-      return new Err(new Error("Connector not found"));
-    }
-
-    const memo = memoizationKey || uuidv4();
-
-    try {
-      const parents = await getParents(
-        this.connectorId,
-        notionId,
-        [],
-        false,
-        memo
-      );
-
-      return new Ok(parents.map((p) => nodeIdFromNotionId(p)));
-    } catch (e) {
-      logger.error(
-        { connectorId: this.connectorId, internalId, memoizationKey, error: e },
-        "Error retrieving notion resource parents"
-      );
-      return new Err(e as Error);
-    }
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

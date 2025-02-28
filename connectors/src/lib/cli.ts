@@ -189,21 +189,6 @@ export const connectors = async ({
       return { success: true };
     }
 
-    case "get-parents": {
-      if (!args.fileId) {
-        throw new Error("Missing --fileId argument");
-      }
-      const parents = await manager.retrieveContentNodeParents({
-        internalId: args.fileId,
-      });
-
-      if (parents.isErr()) {
-        throw new Error(`Cannot fetch parents: ${parents.error}`);
-      }
-
-      return { parents: parents.value };
-    }
-
     case "garbage-collect": {
       await throwOnError(manager.garbageCollect());
       return { success: true };

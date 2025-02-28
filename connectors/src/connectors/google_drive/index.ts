@@ -6,9 +6,7 @@ import type {
 } from "@dust-tt/types";
 import {
   Err,
-  getGoogleIdsFromSheetContentNodeInternalId,
   getGoogleSheetContentNodeInternalId,
-  isGoogleSheetContentNodeInternalId,
   MIME_TYPES,
   Ok,
   removeNulls,
@@ -16,13 +14,8 @@ import {
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
-import { Op } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
-import {
-  getLocalParents,
-  isDriveObjectExpandable,
-} from "@connectors/connectors/google_drive/lib";
+import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
@@ -603,165 +596,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-    viewType,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const driveFileIds = internalIds
-      .filter((id) => !isGoogleSheetContentNodeInternalId(id))
-      .map(getDriveFileId);
-    const sheetIds = internalIds
-      .filter((id) => isGoogleSheetContentNodeInternalId(id))
-      .map(getGoogleIdsFromSheetContentNodeInternalId);
-
-    if (!!sheetIds.length && viewType !== "table") {
-      return new Err(
-        new Error(
-          `Cannot retrieve Google Sheets Content Nodes in view type "${viewType}".`
-        )
-      );
-    }
-
-    const folderOrFiles = driveFileIds.length
-      ? await GoogleDriveFiles.findAll({
-          where: {
-            connectorId: this.connectorId,
-            driveFileId: driveFileIds,
-          },
-        })
-      : [];
-
-    const drivesOrTopLevelFolders = driveFileIds.length
-      ? (
-          await GoogleDriveFolders.findAll({
-            where: {
-              connectorId: this.connectorId,
-              folderId: driveFileIds,
-            },
-          })
-        ).filter(
-          // no need to add it if already in folderOrFiles
-          (f) => folderOrFiles.every((ff) => ff.driveFileId !== f.folderId)
-        )
-      : [];
-
-    const sheets = sheetIds.length
-      ? await GoogleDriveSheet.findAll({
-          where: {
-            connectorId: this.connectorId,
-            [Op.or]: sheetIds.map((s) => ({
-              [Op.and]: [
-                {
-                  driveFileId: s.googleFileId,
-                },
-                {
-                  driveSheetId: s.googleSheetId,
-                },
-              ],
-            })),
-          },
-        })
-      : [];
-
-    const folderOrFileNodes = await concurrentExecutor(
-      folderOrFiles,
-      async (f): Promise<ContentNode> => {
-        const type = getPermissionViewType(f);
-        const sourceUrl = getSourceUrlForGoogleDriveFiles(f);
-
-        return {
-          internalId: getInternalId(f.driveFileId),
-          parentInternalId: null,
-          type,
-          title: f.name || "",
-          lastUpdatedAt: f.lastUpsertedTs?.getTime() || null,
-          sourceUrl,
-          expandable: await isDriveObjectExpandable({
-            objectId: f.driveFileId,
-            mimeType: f.mimeType,
-            connectorId: this.connectorId,
-            viewType,
-          }),
-          permission: "read",
-          mimeType:
-            type === "folder" ? MIME_TYPES.GOOGLE_DRIVE.FOLDER : f.mimeType,
-        };
-      },
-      { concurrency: 4 }
-    );
-
-    const drivesOrTopLevelFolderNodes = await (async () => {
-      if (drivesOrTopLevelFolders.length === 0) {
-        return [];
-      }
-      const c = await ConnectorResource.fetchById(this.connectorId);
-      if (!c) {
-        logger.error({ connectorId: this.connectorId }, "Connector not found");
-        throw new Error("Connector not found");
-      }
-      const authCredentials = await getAuthObject(c.connectionId);
-      return removeNulls(
-        await getFoldersAsContentNodes({
-          authCredentials,
-          folders: drivesOrTopLevelFolders,
-          viewType,
-        })
-      );
-    })();
-
-    const sheetNodes: ContentNode[] = sheets.map((s) => ({
-      internalId: getGoogleSheetContentNodeInternalId(
-        s.driveFileId,
-        s.driveSheetId
-      ),
-      parentInternalId: getInternalId(s.driveFileId),
-      type: "table",
-      title: s.name || "",
-      lastUpdatedAt: s.updatedAt.getTime() || null,
-      sourceUrl: getSourceUrlForGoogleDriveSheet(s),
-      expandable: false,
-      permission: "read",
-      mimeType: "text/csv",
-    }));
-
-    // Return the nodes in the same order as the input internalIds.
-    const nodeByInternalId = new Map(
-      [...folderOrFileNodes, ...drivesOrTopLevelFolderNodes, ...sheetNodes].map(
-        (n) => [n.internalId, n]
-      )
-    );
-    return new Ok(
-      internalIds
-        .filter((id) => nodeByInternalId.has(id))
-        .map((id) => {
-          const node = nodeByInternalId.get(id);
-          if (!node) {
-            throw new Error(`Could not find node with internalId ${id}`);
-          }
-          return node;
-        })
-    );
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-    memoizationKey,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const memo = memoizationKey || uuidv4();
-    try {
-      const parents = await getLocalParents(this.connectorId, internalId, memo);
-      return new Ok(parents);
-    } catch (err) {
-      return new Err(err as Error);
-    }
   }
 
   async setConfigurationKey({
