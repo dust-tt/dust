@@ -1014,7 +1014,9 @@ impl ElasticsearchSearchStore {
                         .unwrap();
 
                     if let Some(bucket) = buckets.first() {
-                        data_source.text_size = bucket["total_size"]["value"].as_i64();
+                        data_source.text_size = bucket["total_size"]["value"]
+                            .as_f64()
+                            .map(|f| f.round() as i64);
                         data_source.document_count = bucket["doc_count"].as_i64();
                     }
                 }
