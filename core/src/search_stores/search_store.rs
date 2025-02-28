@@ -422,7 +422,7 @@ impl SearchStore for ElasticsearchSearchStore {
             Err(anyhow::anyhow!("Found more than one matching data source."))
         } else {
             if let Some(item) = items.first() {
-                Some(self.process_search_data_sources_results(item.clone()).await).transpose()
+                Some(self.compute_data_sources_stats(item.clone()).await).transpose()
             } else {
                 Ok(None)
             }
@@ -923,10 +923,7 @@ impl ElasticsearchSearchStore {
         Ok(base_sort)
     }
 
-    async fn process_search_data_sources_results(
-        &self,
-        item: SearchItem,
-    ) -> Result<DataSourceESDocument> {
+    async fn compute_data_sources_stats(&self, item: SearchItem) -> Result<DataSourceESDocument> {
         match item {
             SearchItem::DataSource(mut data_source) => {
                 let search = Search::new()
