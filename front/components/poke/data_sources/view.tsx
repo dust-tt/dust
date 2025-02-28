@@ -13,6 +13,7 @@ import type {
   DataSourceType,
 } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
+import { CodeIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -67,6 +68,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
+                icon={CodeIcon}
                 label="Show raw objects"
               />
             </div>
@@ -197,6 +199,27 @@ export function ViewDataSourceTable({
                     </PokeTableRow>
                     <PokeTableRow>
                       <PokeTableCell>Last sync success</PokeTableCell>
+                      <PokeTableCell>
+                        {connector?.lastSyncSuccessfulTime ? (
+                          <span className="font-bold text-green-600">
+                            {timeAgoFrom(connector?.lastSyncSuccessfulTime, {
+                              useLongFormat: true,
+                            })}
+                          </span>
+                        ) : (
+                          <span className="font-bold text-warning-600">
+                            "Never"
+                          </span>
+                        )}
+                        {isWebhookBasedProvider(connector.type) && (
+                          <span className="pl-2 italic text-gray-500">
+                            (webhook-based)
+                          </span>
+                        )}
+                      </PokeTableCell>
+                    </PokeTableRow>
+                    <PokeTableRow>
+                      <PokeTableCell>Total text size</PokeTableCell>
                       <PokeTableCell>
                         {connector?.lastSyncSuccessfulTime ? (
                           <span className="font-bold text-green-600">
