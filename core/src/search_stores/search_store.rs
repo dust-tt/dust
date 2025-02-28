@@ -87,12 +87,12 @@ pub struct NodesSearchFilter {
 #[derive(serde::Deserialize)]
 pub struct DataSourcesSearchOptions {
     sort: Option<Vec<SortSpec>>,
+    include_text_size: Option<bool>,
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct DataSourcesSearchFilter {
     data_source_id: Option<String>,
-    include_text_size: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -167,7 +167,10 @@ impl Default for NodesSearchOptions {
 
 impl Default for DataSourcesSearchOptions {
     fn default() -> Self {
-        DataSourcesSearchOptions { sort: None }
+        DataSourcesSearchOptions {
+            sort: None,
+            include_text_size: None,
+        }
     }
 }
 
@@ -468,17 +471,9 @@ impl SearchStore for ElasticsearchSearchStore {
                 }
             };
 
-        let result = items
-            .into_iter()
-            .try_fold(Vec::new(), |mut acc, item| match item {
-                SearchItem::DataSource(ds) => {
-                    acc.push(ds);
-                    Ok(acc)
-                }
-                _ => Err(anyhow::anyhow!(
-                    "Invalid search item type, expected a DataSource."
-                )),
-            })?;
+        let result = self
+            .process_search_data_sources_results(items, options.include_text_size)
+            .await?;
 
         Ok((result, hit_count, hit_count_is_accurate, None))
     }
@@ -996,10 +991,6 @@ impl ElasticsearchSearchStore {
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool();
 
-        if filter.include_text_size.unwrap_or(false) {
-            todo!()
-        }
-
         if let Some(data_source_id) = &filter.data_source_id {
             bool_query = bool_query.filter(Query::term("data_source_id", data_source_id));
         }
@@ -1043,6 +1034,70 @@ impl ElasticsearchSearchStore {
         ));
 
         Ok(base_sort)
+    }
+
+    async fn process_search_data_sources_results(
+        &self,
+        items: Vec<SearchItem>,
+        include_text_size: Option<bool>,
+    ) -> Result<Vec<DataSourceESDocument>> {
+        let mut result = items
+            .into_iter()
+            .try_fold(Vec::new(), |mut acc, item| match item {
+                SearchItem::DataSource(ds) => {
+                    acc.push(ds);
+                    Ok(acc)
+                }
+                _ => Err(anyhow::anyhow!(
+                    "Invalid search item type, expected a DataSource."
+                )),
+            })?;
+
+        if include_text_size.unwrap_or(false) {
+            let search = Search::new()
+                .size(0) // We only want aggregations, no hits.
+                .query(
+                    Query::bool().must(Query::terms(
+                        "data_source_id",
+                        result
+                            .iter()
+                            .map(|ds| ds.data_source_id.clone())
+                            .collect::<Vec<String>>(),
+                    )),
+                )
+                .aggregate(
+                    "data_sources",
+                    Aggregation::terms("data_source_id")
+                        .aggregate("total_size", Aggregation::sum("text_size")),
+                );
+            let response = self
+                .client
+                .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+                .body(search)
+                .send()
+                .await?;
+
+            let response_body = response.json::<serde_json::Value>().await?;
+            let buckets = response_body["aggregations"]["data_sources"]["buckets"]
+                .as_array()
+                .unwrap();
+
+            let size_by_ds: HashMap<String, i64> = buckets
+                .iter()
+                .map(|bucket| {
+                    (
+                        bucket["key"].as_str().unwrap().to_string(),
+                        bucket["total_size"]["value"].as_i64().unwrap(),
+                    )
+                })
+                .collect();
+
+            result.iter_mut().for_each(|ds| {
+                ds.text_size = size_by_ds.get(&ds.data_source_id).copied();
+            });
+        }
+
+        Ok(result)
     }
 
     // Generic document methods.
