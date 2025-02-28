@@ -282,7 +282,10 @@ const upsertTableToDatasource: ProcessingFunction = async (
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
       ],
-      parents: [tableId],
+      parentId: isUpsertTableArgs(upsertArgs)
+        ? upsertArgs?.parentId
+        : upsertArgs?.parent_id ?? null,
+      parents: upsertArgs?.parents ?? [tableId],
       async: false,
       title,
       mimeType: file.contentType,
@@ -300,17 +303,6 @@ const upsertTableToDatasource: ProcessingFunction = async (
       code: "internal_server_error",
       message: "There was an error upserting the table.",
       data_source_error: upsertTableRes.error,
-    });
-  }
-
-  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
-  if (file.useCaseMetadata) {
-    await file.setUseCaseMetadata({
-      ...file.useCaseMetadata,
-      generatedTables: [
-        ...(file.useCaseMetadata.generatedTables ?? []),
-        tableId,
-      ],
     });
   }
 
@@ -332,6 +324,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     return new Err(new Error("Invalid upsert args"));
   }
 
+  const tableIds: string[] = [];
+
   const upsertWorksheet = async (
     worksheetName: string,
     worksheetContent: string
@@ -342,6 +336,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       title,
       name: slugify(title),
       tableId: `${file.sId}-${slugify(worksheetName)}`,
+      parentId: `${file.sId}`,
+      parents: [`${file.sId}-${slugify(worksheetName)}`, `${file.sId}`],
       description: "Table uploaded from excel file",
       truncate: true,
       mimeType: "text/csv",
@@ -362,6 +358,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       file: worksheetFile,
       reqOrString: worksheetContent,
     });
+
+    tableIds.push(`${file.sId}-${slugify(worksheetName)}`);
 
     await upsertTableToDatasource(auth, {
       file: worksheetFile,
@@ -401,8 +399,20 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
   } else {
     await upsertWorksheet(worksheetName, worksheetContent);
-    return new Ok(undefined);
   }
+
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        ...tableIds,
+      ],
+    });
+  }
+
+  return new Ok(undefined);
 };
 
 // Processing for datasource upserts.
