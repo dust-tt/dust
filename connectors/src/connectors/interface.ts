@@ -75,20 +75,6 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>>;
 
-  abstract retrieveBatchContentNodes(params: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>>;
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  abstract retrieveContentNodeParents(params: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>>;
-
   abstract setConfigurationKey(params: {
     configKey: string;
     configValue: string;
