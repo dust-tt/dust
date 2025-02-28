@@ -2,8 +2,9 @@ import { Chip, InformationCircleIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useMemo } from "react";
+import React from "react";
 
+import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
@@ -66,13 +67,17 @@ export default function Space({
   userId,
   space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const [showSpaceEditionModal, setShowSpaceEditionModal] =
+    React.useState(false);
+
   const { spaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
 
   const router = useRouter();
-  const isMember = useMemo(
+
+  const isMember = React.useMemo(
     () => spaceInfo?.members?.some((m) => m.sId === userId),
     [userId, spaceInfo?.members]
   );
@@ -99,6 +104,14 @@ export default function Space({
             `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`
           );
         }}
+        isAdmin={isAdmin}
+        onButtonClick={() => setShowSpaceEditionModal(true)}
+      />
+      <CreateOrEditSpaceModal
+        owner={owner}
+        isOpen={showSpaceEditionModal}
+        onClose={() => setShowSpaceEditionModal(false)}
+        space={space}
         isAdmin={isAdmin}
       />
     </Page.Vertical>
