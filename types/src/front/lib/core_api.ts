@@ -282,8 +282,8 @@ export interface CoreAPIDataSourceStatsResponse {
   data_source_internal_id: string;
   timestamp: number;
   name: string;
-  text_size: number | null;
-  document_count: number | null;
+  text_size: number;
+  document_count: number;
 }
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {

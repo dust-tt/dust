@@ -17,7 +17,7 @@ use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
-use crate::data_sources::data_source::Document;
+use crate::data_sources::data_source::{DataSourceESDocumentWithStats, Document};
 use crate::data_sources::folder::Folder;
 use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
@@ -121,7 +121,7 @@ pub trait SearchStore {
     async fn get_data_source_stats(
         &self,
         data_source_id: String,
-    ) -> Result<Option<DataSourceESDocument>>;
+    ) -> Result<Option<DataSourceESDocumentWithStats>>;
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()>;
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()>;
 
@@ -390,7 +390,7 @@ impl SearchStore for ElasticsearchSearchStore {
     async fn get_data_source_stats(
         &self,
         data_source_id: String,
-    ) -> Result<Option<DataSourceESDocument>> {
+    ) -> Result<Option<DataSourceESDocumentWithStats>> {
         // Search on data_source_id.
         let response = self
             .client
@@ -923,9 +923,12 @@ impl ElasticsearchSearchStore {
         Ok(base_sort)
     }
 
-    async fn compute_data_sources_stats(&self, item: SearchItem) -> Result<DataSourceESDocument> {
+    async fn compute_data_sources_stats(
+        &self,
+        item: SearchItem,
+    ) -> Result<DataSourceESDocumentWithStats> {
         match item {
-            SearchItem::DataSource(mut data_source) => {
+            SearchItem::DataSource(data_source) => {
                 let search = Search::new()
                     .size(0)
                     .query(Query::bool().must(Query::term(
@@ -950,12 +953,15 @@ impl ElasticsearchSearchStore {
                     .unwrap();
 
                 if let Some(bucket) = buckets.first() {
-                    data_source.text_size = bucket["total_size"]["value"]
-                        .as_f64()
-                        .map(|f| f.round() as i64);
-                    data_source.document_count = bucket["doc_count"].as_i64();
+                    Ok(DataSourceESDocumentWithStats::from((
+                        data_source,
+                        // We unwrap here because if we got a bucket, then it necessarily contains these fields.
+                        bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
+                        bucket["doc_count"].as_i64().unwrap(),
+                    )))
+                } else {
+                    Err(anyhow::anyhow!("Data source stats computation failed."))
                 }
-                Ok(data_source)
             }
             _ => Err(anyhow::anyhow!(
                 "Invalid search item type, expected a DataSource."
