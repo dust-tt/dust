@@ -844,7 +844,10 @@ impl ElasticsearchSearchStore {
         for (pos, item) in items.into_iter().enumerate() {
             match item {
                 SearchItem::DataSource(data_source) => {
-                    result.push((pos, self.create_data_source_node(data_source)));
+                    result.push((
+                        pos,
+                        CoreContentNode::from_es_data_source_document(data_source),
+                    ));
                 }
                 SearchItem::Node(node) => {
                     position_map.insert(node.node_id.clone(), pos);
@@ -869,10 +872,6 @@ impl ElasticsearchSearchStore {
         // Restore original order.
         result.sort_by_key(|(pos, _)| *pos);
         Ok(result.into_iter().map(|(_, node)| node).collect())
-    }
-
-    fn create_data_source_node(&self, item: DataSourceESDocument) -> CoreContentNode {
-        CoreContentNode::from_es_data_source_document(item)
     }
 
     /// Compute core content nodes from a list of nodes.
