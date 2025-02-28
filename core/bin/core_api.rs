@@ -1505,7 +1505,7 @@ struct DatasourceSearchPayload {
     target_document_tokens: Option<usize>,
 }
 
-async fn data_sources_search(
+async fn data_sources_documents_search(
     Path((project_id, data_source_id)): Path<(i64, String)>,
     State(state): State<Arc<APIState>>,
     Json(payload): Json<DatasourceSearchPayload>,
@@ -4011,7 +4011,7 @@ fn main() {
         // Provided by the data_source block.
         .route(
             "/projects/:project_id/data_sources/:data_source_id/search",
-            post(data_sources_search),
+            post(data_sources_documents_search),
         )
         .route(
             "/projects/:project_id/data_sources/:data_source_id/documents",
