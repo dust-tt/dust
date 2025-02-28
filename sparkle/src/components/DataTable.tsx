@@ -37,7 +37,13 @@ import {
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  ClipboardCheckIcon,
+  ClipboardIcon,
+  MoreIcon,
+} from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -270,6 +276,8 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
   isLoading?: boolean;
 }
 
+const COLUMN_HEIGHT = 50;
+
 export function ScrollableDataTable<TData extends TBaseData>({
   data,
   totalRowCount,
@@ -306,10 +314,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
   const columnsWithSize = React.useMemo(() => {
     if (!tableWidth || !columns.length) {
-      return columns.map((col) => ({
-        ...col,
-        size: col.size || 150,
-      }));
+      return columns;
     }
 
     const equalWidth = Math.floor(tableWidth / columns.length);
@@ -343,7 +348,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 50,
+    estimateSize: () => COLUMN_HEIGHT,
   });
 
   useEffect(() => {
@@ -353,13 +358,14 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
     const observer = new IntersectionObserver(
       (entries) => {
+        // retrieving the sentinel div
         if (entries[0].isIntersecting && !isLoading) {
           onLoadMore();
         }
       },
       {
         root: tableContainerRef.current,
-        rootMargin: "300px 0px",
+        rootMargin: "200% 0% 0% 0%",
         threshold: 0.1,
       }
     );
@@ -383,11 +389,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
         )}
         ref={tableContainerRef}
       >
-        <DataTable.Root
-          className="s-table-fixed"
-          containerClassName="!s-overflow-visible"
-          style={{ width: "100%" }}
-        >
+        <DataTable.Root className="s-w-full s-table-fixed">
           <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
             {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
@@ -428,12 +430,10 @@ export function ScrollableDataTable<TData extends TBaseData>({
               </DataTable.Row>
             ))}
           </DataTable.Header>
-
           <DataTable.Body
+            className="s-relative s-w-full"
             style={{
               height: `${rowVirtualizer.getTotalSize()}px`,
-              position: "relative",
-              width: "100%",
             }}
           >
             {rowVirtualizer.getVirtualItems().map((virtualRow) => {
@@ -480,6 +480,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
               );
             })}
 
+            {/*sentinel div used for the intersection observer*/}
             <div
               ref={loadMoreRef}
               className="s-absolute s-bottom-0 s-h-1 s-w-full"
