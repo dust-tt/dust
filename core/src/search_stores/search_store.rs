@@ -436,18 +436,20 @@ impl SearchStore for ElasticsearchSearchStore {
             }
         };
 
-        let result = self
-            .process_search_data_sources_results(
-                items,
-                options.unwrap_or_default().include_text_size,
-            )
-            .await?;
-
-        if result.len() > 1 {
+        if items.len() > 1 {
             // This should never ever happen since we are searching by data_source_id.
             Err(anyhow::anyhow!("Found more than one matching data source."))
         } else {
-            Ok(result.first().cloned())
+            items
+                .first()
+                .map(async |item| {
+                    self.process_search_data_sources_results(
+                        item.clone(),
+                        options.unwrap_or_default().include_text_size,
+                    )
+                    .await
+                })
+                .transpose()
         }
     }
 
@@ -980,72 +982,46 @@ impl ElasticsearchSearchStore {
 
     async fn process_search_data_sources_results(
         &self,
-        items: Vec<SearchItem>,
+        item: SearchItem,
         include_text_size: bool,
-    ) -> Result<Vec<DataSourceESDocument>> {
-        let mut result = items
-            .into_iter()
-            .try_fold(Vec::new(), |mut acc, item| match item {
-                SearchItem::DataSource(ds) => {
-                    acc.push(ds);
-                    Ok(acc)
+    ) -> Result<DataSourceESDocument> {
+        match item {
+            SearchItem::DataSource(mut data_source) => {
+                if include_text_size {
+                    let search = Search::new()
+                        .size(0)
+                        .query(Query::bool().must(Query::term(
+                            "data_source_id",
+                            data_source.data_source_id.clone(),
+                        )))
+                        .aggregate(
+                            "data_sources",
+                            Aggregation::terms("data_source_id")
+                                .aggregate("total_size", Aggregation::sum("text_size")),
+                        );
+                    let response = self
+                        .client
+                        .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+                        .body(search)
+                        .send()
+                        .await?;
+
+                    let response_body = response.json::<serde_json::Value>().await?;
+                    let buckets = response_body["aggregations"]["data_sources"]["buckets"]
+                        .as_array()
+                        .unwrap();
+
+                    if let Some(bucket) = buckets.first() {
+                        data_source.text_size = bucket["total_size"]["value"].as_i64();
+                        data_source.document_count = bucket["doc_count"].as_i64();
+                    }
                 }
-                _ => Err(anyhow::anyhow!(
-                    "Invalid search item type, expected a DataSource."
-                )),
-            })?;
-
-        if include_text_size {
-            let search = Search::new()
-                .size(0) // We only want aggregations, no hits.
-                .query(
-                    Query::bool().must(Query::terms(
-                        "data_source_id",
-                        result
-                            .iter()
-                            .map(|ds| ds.data_source_id.clone())
-                            .collect::<Vec<String>>(),
-                    )),
-                )
-                .aggregate(
-                    "data_sources",
-                    Aggregation::terms("data_source_id")
-                        .aggregate("total_size", Aggregation::sum("text_size")),
-                );
-            let response = self
-                .client
-                .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
-                .body(search)
-                .send()
-                .await?;
-
-            let response_body = response.json::<serde_json::Value>().await?;
-            let buckets = response_body["aggregations"]["data_sources"]["buckets"]
-                .as_array()
-                .unwrap();
-
-            let metadata_map: HashMap<String, (i64, i64)> = buckets
-                .iter()
-                .map(|bucket| {
-                    (
-                        bucket["key"].as_str().unwrap().to_string(),
-                        (
-                            bucket["total_size"]["value"].as_i64().unwrap(),
-                            bucket["doc_count"].as_i64().unwrap(),
-                        ),
-                    )
-                })
-                .collect();
-
-            result.iter_mut().for_each(|ds| {
-                let (text_size, document_count) =
-                    metadata_map.get(&ds.data_source_id).unwrap_or(&(0, 0));
-                ds.text_size = Some(text_size.clone());
-                ds.document_count = Some(document_count.clone());
-            });
+                Ok(data_source)
+            }
+            _ => Err(anyhow::anyhow!(
+                "Invalid search item type, expected a DataSource."
+            )),
         }
-
-        Ok(result)
     }
 
     // Generic document methods.
