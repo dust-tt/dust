@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Navigate legal research efficiently",
     "Generate compliant legal documents",
   ],
-  image: "/static/landing/legal/legalReview.png",
+  image: "/static/landing/legal/legalreviewer.png",
 };
 
 export const Hero: HeroProps = {
@@ -128,26 +128,26 @@ export const UseCases: UseCaseProps = {
       title: "Legal helpdesk",
       content:
         "Provide team members instant legal guidance using your approved policies, documentation and external sources.",
-      images: ["/static/landing/solutions/legal1.png"],
+      images: ["/static/landing/legal/asklegal.png"],
     },
     {
       title: "Legal review",
       content:
         "Analyze contracts or RFPs automatically for compliance and risk, highlighting key terms and obligations.",
-      images: ["/static/landing/legal/legalReview.png"],
+      images: ["/static/landing/legal/legalreviewer.png"],
     },
     {
       title: "Legal research and monitoring",
       content:
         "Navigate legal databases and documentation to surface relevant precedents. Monitor regulation updates for compliance check.",
-      images: ["/static/landing/solutions/legal3.png"],
+      images: ["/static/landing/legal/regulatorywatch.png"],
     },
 
     {
       title: "Document creation",
       content:
         "Generate legal documents and agreements using pre-approved templates and clauses.",
-      images: ["/static/landing/solutions/legal4.png"],
+      images: ["/static/landing/legal/contractwriter.png"],
     },
   ],
 };

@@ -34,7 +34,7 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Get real-time coding support and troubleshooting with all relevant context",
+    "Get coding support and troubleshooting with relevant context",
     "Speed up incident resolution and communication",
     "Create instant team updates",
     "Surface relevant context and solutions from past incidents",
@@ -169,7 +169,7 @@ export const Quote: QuoteProps = {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/0hizroojjb?seo=true&videoFoam=true&captions=on",
+    "https://fast.wistia.net/embed/iframe/6z5rtwsuvo?web_component=true&seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [

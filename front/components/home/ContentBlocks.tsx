@@ -419,7 +419,7 @@ export const CarousselContentBlock = ({
           </div>
         </div>
         {/* Desktop-only image - right column */}
-        <div className="hidden items-center justify-center lg:flex lg:w-1/2">
+        <div className="hidden items-center justify-center lg:flex lg:w-3/5">
           <div className="w-full max-w-md lg:max-w-2xl">
             <Image
               src={image}

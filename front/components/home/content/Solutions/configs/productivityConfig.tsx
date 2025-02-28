@@ -38,7 +38,7 @@ export const pageSettings: pageSettingsProps = {
     "Polish communications professionally",
     "Get expert coaching on any topic",
   ],
-  image: "/static/landing/sales/accountSnapshot.png",
+  image: "/static/landing/productivity/contentoptimizer.png",
 };
 
 export const Hero: HeroProps = {
@@ -128,25 +128,25 @@ export const UseCases: UseCaseProps = {
       title: "Meeting summaries",
       content:
         "Instantly change transcripts into personalized, richly contextualized summaries with clear next steps.",
-      images: ["/static/landing/solutions/productivity1.png"],
+      images: ["/static/landing/productivity/leadershipmeetingrecap.png"],
     },
     {
       title: "Content summarization",
       content:
         "Transform lengthy documents into clear summaries and key takeaways for quick comprehension.",
-      images: ["/static/landing/solutions/productivity2.png"],
+      images: ["/static/landing/productivity/blogdigest.png"],
     },
     {
       title: "Writing coach",
       content:
         "Enhance your communications with professional polish, improved clarity, and perfect grammar.",
-      images: ["/static/landing/solutions/productivity3.png"],
+      images: ["/static/landing/productivity/contentoptimizer.png"],
     },
     {
       title: "Domain Expert",
       content:
         "Access expert guidance and deep insights across any skill or knowledge domain.",
-      images: ["/static/landing/solutions/productivity4.png"],
+      images: ["/static/landing/productivity/discoverycoach.png"],
     },
   ],
 };

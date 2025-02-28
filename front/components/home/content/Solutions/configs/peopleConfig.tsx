@@ -34,7 +34,7 @@ export const pageSettings: pageSettingsProps = {
     "Onboard new hires through company processes and documentation",
     "Guide managers to deliver quality feedback based on your company guidelines",
   ],
-  image: "/static/landing/sales/accountSnapshot.png",
+  image: "/static/landing/hr/askhr.png",
 };
 
 export const Hero: HeroProps = {
@@ -124,25 +124,25 @@ export const UseCases: UseCaseProps = {
       title: "HR helpdesk",
       content:
         "Answer employee questions instantly using your HR policies and documented processes.",
-      images: ["/static/landing/solutions/hr1.png"],
+      images: ["/static/landing/hr/askhr.png"],
     },
     {
       title: "Recruiting assistant",
       content:
         "Streamline candidate screening, communications, and interview preparation with automated support.",
-      images: ["/static/landing/solutions/hr2.png"],
+      images: ["/static/landing/hr/interviewnotes.png"],
     },
     {
       title: "Manager coach",
       content:
         "Guide managers through feedback and reviews using company guidelines and best practices.",
-      images: ["/static/landing/solutions/hr3.png"],
+      images: ["/static/landing/hr/reviewhelper.png"],
     },
     {
       title: "Onboarding guide",
       content:
         "Provide new employees with personalized guidance through company processes and culture.",
-      images: ["/static/landing/solutions/hr4.png"],
+      images: ["/static/landing/hr/onboardingbuddy.png"],
     },
   ],
 };

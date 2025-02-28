@@ -34,7 +34,7 @@ export const pageSettings: pageSettingsProps = {
     </>
   ),
   bulletPoints: [
-    "Localize content in multiple languages while maintaining brand consistency and accuracy",
+    "Localize content in multiple languages with brand consistency",
     "Draft high-quality customer stories following company templates",
     "Create compelling social media copy",
     "Monitor industry and competitor news",
@@ -135,7 +135,7 @@ export const UseCases: UseCaseProps = {
       title: "Content optimization",
       content:
         "Transform raw content into polished, SEO-optimized pieces that align with brand guidelines.",
-      images: ["/static/landing/marketing/content2.png"],
+      images: ["/static/landing/marketing/contentOptimizer.png"],
     },
     {
       title: "Social media cross-posting",
