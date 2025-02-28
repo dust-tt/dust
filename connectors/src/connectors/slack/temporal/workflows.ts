@@ -22,13 +22,14 @@ const {
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
   attemptChannelJoinActivity,
-  deleteChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-const { syncThread, syncNonThreaded } = proxyActivities<typeof activities>({
+const { deleteChannel, syncThread, syncNonThreaded } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "30 minutes",
 });
 
