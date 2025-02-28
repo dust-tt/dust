@@ -112,6 +112,7 @@ pub mod databases_store {
 }
 
 pub mod cached_request;
+pub mod cache;
 pub mod consts;
 
 pub mod oauth {

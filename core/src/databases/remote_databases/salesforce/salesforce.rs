@@ -1,17 +1,17 @@
 use std::{
     collections::{HashMap, HashSet},
     env,
-    sync::Arc,
 };
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::future::try_join_all;
-use redis::{AsyncCommands, Client as RedisClient};
 use reqwest::Proxy;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::error;
+
+use crate::cache;
 
 use crate::databases::remote_databases::salesforce::sandbox::{
     convert::convert_to_soql, extract::extract_objects,
@@ -39,8 +39,6 @@ pub struct SalesforceRemoteDatabase {
     client: reqwest::Client,
     instance_url: String,
     access_token: String,
-    // Redis client for caching object descriptions
-    redis_client: Option<Arc<RedisClient>>,
 }
 
 #[allow(dead_code)]
@@ -182,29 +180,10 @@ impl SalesforceRemoteDatabase {
                 )))?,
             };
 
-        // Try to connect to Redis if the environment variable is set
-        let redis_client = match env::var("REDIS_URI") {
-            Ok(redis_url) => {
-                match RedisClient::open(redis_url) {
-                    Ok(client) => Some(Arc::new(client)),
-                    Err(e) => {
-                        // Log error but continue without Redis
-                        error!(
-                            "Failed to connect to Redis: {}. Continuing without Redis cache.",
-                            e
-                        );
-                        None
-                    }
-                }
-            }
-            Err(_) => None, // Redis URL not configured
-        };
-
         Ok(Self {
             client,
             instance_url,
             access_token: response.access_token.clone(),
-            redis_client,
         })
     }
 
@@ -329,32 +308,9 @@ impl SalesforceRemoteDatabase {
         // Create a cache key based on instance identifier and sobject name
         let cache_key = format!("salesforce:{}:object_describe:{}", instance_id, sobject);
 
-        // Check if Redis is available and try to get cached data
-        if let Some(redis_client) = &self.redis_client {
-            // Get a connection from the Redis client
-            match redis_client.get_async_connection().await {
-                Ok(mut conn) => {
-                    // Try to get the cached description
-                    let cached_result: Result<Option<String>, _> = conn.get(&cache_key).await;
-
-                    if let Ok(Some(cached_json)) = cached_result {
-                        // Parse the cached JSON string back to a Value
-                        match serde_json::from_str(&cached_json) {
-                            Ok(parsed_value) => {
-                                return Ok(parsed_value);
-                            }
-                            Err(e) => {
-                                // Log error but continue to API call
-                                error!("Error parsing cached Redis value: {}. Making API call instead.", e);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    // Log error but continue to API call
-                    error!("Error connecting to Redis: {}. Making API call instead.", e);
-                }
-            }
+        // Try to get the object description from the cache
+        if let Ok(Some(cached_value)) = cache::get::<Value>(&cache_key).await {
+            return Ok(cached_value);
         }
 
         // Cache miss or Redis unavailable; make the API call
@@ -393,27 +349,9 @@ impl SalesforceRemoteDatabase {
             QueryDatabaseError::GenericError(anyhow!("Error parsing response: {}", e))
         })?;
 
-        // Store the result in Redis if available
-        if let Some(redis_client) = &self.redis_client {
-            match redis_client.get_async_connection().await {
-                Ok(mut conn) => {
-                    // Convert Value to JSON string for Redis storage
-                    if let Ok(json_string) = serde_json::to_string(&describe_result) {
-                        // Use set_ex to set with expiration
-                        let set_result: Result<(), _> = conn
-                            .set_ex(&cache_key, json_string, REDIS_CACHE_TTL_SECONDS)
-                            .await;
-
-                        if let Err(e) = set_result {
-                            error!("Failed to store in Redis: {}", e);
-                        }
-                    }
-                }
-                Err(e) => {
-                    // Just log the error and continue
-                    error!("Failed to cache object description in Redis: {}", e);
-                }
-            }
+        // Store the result in Redis
+        if let Err(e) = cache::set(&cache_key, &describe_result, REDIS_CACHE_TTL_SECONDS).await {
+            error!("Failed to cache object description in Redis: {}", e);
         }
 
         Ok(describe_result)
