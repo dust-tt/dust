@@ -90,6 +90,7 @@ export const NotionCommandSchema = t.type({
     t.literal("upsert-page"),
     t.literal("upsert-database"),
     t.literal("search-pages"),
+    t.literal("update-core-parents"),
     t.literal("check-url"),
     t.literal("find-url"),
     t.literal("delete-url"),

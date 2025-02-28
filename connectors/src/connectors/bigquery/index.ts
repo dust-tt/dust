@@ -1,9 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
+import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
 import {
   assertNever,
   Err,
@@ -17,8 +12,6 @@ import {
   fetchAvailableChildrenInBigQuery,
   fetchReadNodes,
   fetchSyncedChildren,
-  getBatchContentNodes,
-  getContentNodeParents,
 } from "@connectors/connectors/bigquery/lib/permissions";
 import {
   launchBigQuerySyncWorkflow,
@@ -37,7 +30,6 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import {
-  getConnector,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
@@ -354,48 +346,6 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorRes = await getConnector({
-      connectorId: this.connectorId,
-      logger,
-    });
-    if (connectorRes.isErr()) {
-      return connectorRes;
-    }
-    const connector = connectorRes.value.connector;
-
-    const nodesRes = await getBatchContentNodes({
-      connectorId: connector.id,
-      internalIds,
-    });
-    if (nodesRes.isErr()) {
-      return nodesRes;
-    }
-    return new Ok(nodesRes.value);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parentsRes = getContentNodeParents({ internalId });
-    if (parentsRes.isErr()) {
-      return parentsRes;
-    }
-    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {
