@@ -1,11 +1,11 @@
 import {
-  Breadcrumbs,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Page,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewCategory,
@@ -16,21 +16,20 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import type { ComponentType } from "react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import RootLayout from "@app/components/app/RootLayout";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import { CATEGORY_DETAILS } from "@app/components/spaces/SpaceCategoriesList";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
-import { getSpaceIcon, isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
-export interface SpaceLayoutProps {
+export interface SpaceLayoutPageProps {
+  canReadInSpace: boolean;
+  canWriteInSpace: boolean;
   category?: DataSourceViewCategory;
   dataSourceView?: DataSourceViewType;
   isAdmin: boolean;
@@ -41,27 +40,33 @@ export interface SpaceLayoutProps {
   subscription: SubscriptionType;
 }
 
+interface SpaceLayoutProps {
+  children: React.ReactNode;
+  pageProps: SpaceLayoutPageProps;
+  useBackendSearch?: boolean;
+}
+
 export function SpaceLayout({
   children,
   pageProps,
-}: {
-  children: React.ReactNode;
-  pageProps: SpaceLayoutProps;
-}) {
+  useBackendSearch = false,
+}: SpaceLayoutProps) {
   const [spaceCreationModalState, setSpaceCreationModalState] = useState({
     isOpen: false,
     defaultRestricted: false,
   });
 
   const {
-    owner,
-    plan,
-    isAdmin,
-    subscription,
-    space,
     category,
+    canReadInSpace,
+    canWriteInSpace,
     dataSourceView,
+    isAdmin,
+    owner,
     parentId,
+    plan,
+    space,
+    subscription,
   } = pageProps;
   const router = useRouter();
 
@@ -97,14 +102,23 @@ export function SpaceLayout({
           />
         }
       >
-        <SpaceBreadCrumbs
-          space={space}
-          category={category}
-          owner={owner}
-          dataSourceView={dataSourceView}
-          parentId={parentId ?? undefined}
-        />
-        {children}
+        <div className="flex flex-col pt-4">
+          <Page.Vertical gap="lg" align="stretch">
+            <SpaceSearchInput
+              category={category}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              owner={owner}
+              useBackendSearch={useBackendSearch}
+              space={space}
+              dataSourceView={dataSourceView}
+              parentId={parentId}
+            >
+              {children}
+            </SpaceSearchInput>
+          </Page.Vertical>
+        </div>
+
         {isAdmin && !isLimitReached && (
           <CreateOrEditSpaceModal
             isAdmin={isAdmin}
@@ -147,104 +161,5 @@ export function SpaceLayout({
         )}
       </AppLayout>
     </RootLayout>
-  );
-}
-
-function SpaceBreadCrumbs({
-  owner,
-  space,
-  category,
-  dataSourceView,
-  parentId,
-}: {
-  owner: WorkspaceType;
-  space: SpaceType;
-  category?: DataSourceViewCategory;
-  dataSourceView?: DataSourceViewType;
-  parentId?: string;
-}) {
-  const {
-    nodes: [currentFolder],
-  } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView: parentId ? dataSourceView : undefined,
-    internalIds: parentId ? [parentId] : [],
-    viewType: "all",
-  });
-
-  const { nodes: folders } = useDataSourceViewContentNodes({
-    dataSourceView: currentFolder ? dataSourceView : undefined,
-    internalIds: currentFolder?.parentInternalIds ?? [],
-    owner,
-    viewType: "all",
-  });
-
-  const items = useMemo(() => {
-    if (!category) {
-      return [];
-    }
-
-    const items: {
-      label: string;
-      icon?: ComponentType;
-      href?: string;
-    }[] = [
-      {
-        icon: getSpaceIcon(space),
-        label: space.kind === "global" ? "Company Data" : space.name,
-        href: `/w/${owner.sId}/spaces/${space.sId}`,
-      },
-      {
-        label: CATEGORY_DETAILS[category].label,
-        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`,
-      },
-    ];
-
-    if (space.kind === "system") {
-      if (!dataSourceView) {
-        return [];
-      }
-
-      // For system space, we don't want the first breadcrumb to show, since
-      // it's only used to manage "connected data" already. Otherwise it would
-      // expose a useless link, and name would be redundant with the "Connected
-      // data" label
-      items.shift();
-    }
-
-    if (dataSourceView) {
-      if (category === "managed" && space.kind !== "system") {
-        // Remove the "Connected data" from breadcrumbs to avoid hiding the actual
-        // managed connection name
-
-        // Showing the actual managed connection name (e.g. microsoft, slack...) is
-        // more important and implies clearly that we are dealing with connected
-        // data
-        items.pop();
-      }
-
-      items.push({
-        label: getDataSourceNameFromView(dataSourceView),
-        href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}`,
-      });
-
-      for (const node of [...folders].reverse()) {
-        items.push({
-          label: node.title,
-          href: `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${node.internalId}`,
-        });
-      }
-    }
-    return items;
-  }, [owner, space, category, dataSourceView, folders]);
-
-  if (items.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="pb-8">
-      <Breadcrumbs items={items} />
-    </div>
   );
 }

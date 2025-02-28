@@ -1,4 +1,12 @@
-import { LockIcon, PlanetIcon, ServerIcon } from "@dust-tt/sparkle";
+import {
+  CloudArrowLeftRightIcon,
+  CommandLineIcon,
+  FolderIcon,
+  GlobeAltIcon,
+  LockIcon,
+  PlanetIcon,
+  ServerIcon,
+} from "@dust-tt/sparkle";
 import type { PlanType, SpaceType, WorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { groupBy } from "lodash";
@@ -80,3 +88,29 @@ export const isPrivateSpacesLimitReached = (
   plan.limits.vaults.maxVaults !== -1 &&
   spaces.filter((s) => s.kind === "regular" || s.kind === "public").length >=
     plan.limits.vaults.maxVaults;
+
+export const CATEGORY_DETAILS: {
+  [key: string]: {
+    label: string;
+    icon: React.ComponentType<{
+      className?: string;
+    }>;
+  };
+} = {
+  managed: {
+    label: "Connected Data",
+    icon: CloudArrowLeftRightIcon,
+  },
+  folder: {
+    label: "Folders",
+    icon: FolderIcon,
+  },
+  website: {
+    label: "Websites",
+    icon: GlobeAltIcon,
+  },
+  apps: {
+    label: "Apps",
+    icon: CommandLineIcon,
+  },
+};

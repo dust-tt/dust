@@ -18,7 +18,6 @@ import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
-  DataSourceWithConnectorDetailsType,
   LightWorkspaceType,
   PlanType,
   Result,
@@ -57,7 +56,6 @@ export type DataSourceIntegration = {
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
-  existingDataSources: DataSourceWithConnectorDetailsType[];
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
   onCreated(dataSource: DataSourceType): void;
   integrations: DataSourceIntegration[];
@@ -97,7 +95,6 @@ export async function setupConnection({
 export const AddConnectionMenu = ({
   owner,
   plan,
-  existingDataSources,
   setIsProviderLoading,
   onCreated,
   integrations,
@@ -284,28 +281,19 @@ export const AddConnectionMenu = ({
       configuration.connectorProvider
     );
 
-    const existingDataSource = existingDataSources.find(
-      (view) => view.connectorProvider === integration.connectorProvider
-    );
-    if (
-      !existingDataSource ||
-      !existingDataSource.connector ||
-      integration.setupWithSuffix
-    ) {
-      if (!isProviderAllowed) {
-        setShowUpgradePopup(true);
+    if (!isProviderAllowed) {
+      setShowUpgradePopup(true);
+    } else {
+      if (isBuilt) {
+        setShowConfirmConnection({
+          isOpen: true,
+          integration,
+        });
       } else {
-        if (isBuilt) {
-          setShowConfirmConnection({
-            isOpen: true,
-            integration,
-          });
-        } else {
-          setShowPreviewPopupForProvider({
-            isOpen: true,
-            connector: integration.connectorProvider,
-          });
-        }
+        setShowPreviewPopupForProvider({
+          isOpen: true,
+          connector: integration.connectorProvider,
+        });
       }
     }
   };

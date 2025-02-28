@@ -1,4 +1,3 @@
-import { Page } from "@dust-tt/sparkle";
 import type {
   ConnectorType,
   DataSourceType,
@@ -12,7 +11,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
-import type { SpaceLayoutProps } from "@app/components/spaces/SpaceLayout";
+import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -21,12 +20,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutProps & {
+  SpaceLayoutPageProps & {
     category: DataSourceViewCategory;
     dataSource: DataSourceType;
     dataSourceView: DataSourceViewType;
-    canWriteInSpace: boolean;
-    canReadInSpace: boolean;
     parentId?: string;
     systemSpace: SpaceType;
     connector: ConnectorType | null;
@@ -127,29 +124,35 @@ export default function Space({
   connector,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <SpaceDataSourceViewContentList
-        owner={owner}
-        space={space}
-        plan={plan}
-        canWriteInSpace={canWriteInSpace}
-        canReadInSpace={canReadInSpace}
-        parentId={parentId}
-        dataSourceView={dataSourceView}
-        onSelect={(parentId) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
-          );
-        }}
-        isAdmin={isAdmin}
-        systemSpace={systemSpace}
-        connector={connector}
-      />
-    </Page.Vertical>
+    <SpaceDataSourceViewContentList
+      owner={owner}
+      space={space}
+      plan={plan}
+      canWriteInSpace={canWriteInSpace}
+      canReadInSpace={canReadInSpace}
+      parentId={parentId}
+      dataSourceView={dataSourceView}
+      onSelect={(parentId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
+        );
+      }}
+      isAdmin={isAdmin}
+      systemSpace={systemSpace}
+      connector={connector}
+    />
   );
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
-  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+Space.getLayout = (
+  page: ReactElement,
+  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+) => {
+  return (
+    <SpaceLayout pageProps={pageProps} useBackendSearch>
+      {page}
+    </SpaceLayout>
+  );
 };

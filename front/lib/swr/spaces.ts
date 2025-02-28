@@ -658,6 +658,7 @@ export function useSpaceSearch({
       () => data?.nodes ?? [],
       [data]
     ) as DataSourceViewContentNode[],
+    total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,
