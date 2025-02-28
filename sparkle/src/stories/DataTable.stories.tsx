@@ -551,6 +551,9 @@ export const ScrollableDataTableExample = () => {
     }, 1000);
   }, []);
 
+  const columnsWithSize = columns.map((column) => {
+    return { ...column };
+  });
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
       <h3 className="s-text-lg s-font-medium">
@@ -569,7 +572,7 @@ export const ScrollableDataTableExample = () => {
           data={data}
           filter={filter}
           filterColumn="name"
-          columns={columns}
+          columns={columnsWithSize}
           onLoadMore={loadMore}
           isLoading={isLoading}
           maxHeight="s-max-h-[500px]"
