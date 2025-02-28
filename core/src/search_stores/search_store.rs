@@ -440,16 +440,18 @@ impl SearchStore for ElasticsearchSearchStore {
             // This should never ever happen since we are searching by data_source_id.
             Err(anyhow::anyhow!("Found more than one matching data source."))
         } else {
-            items
-                .first()
-                .map(async |item| {
+            if let Some(item) = items.first() {
+                Some(
                     self.process_search_data_sources_results(
                         item.clone(),
                         options.unwrap_or_default().include_text_size,
                     )
-                    .await
-                })
+                    .await,
+                )
                 .transpose()
+            } else {
+                Ok(None)
+            }
         }
     }
 
