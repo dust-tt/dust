@@ -331,13 +331,14 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     worksheetContent: string
   ) => {
     const title = `${file.fileName} ${worksheetName}`;
+    const tableId = `${file.sId}-${slugify(worksheetName)}`;
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
       title,
       name: slugify(title),
-      tableId: `${file.sId}-${slugify(worksheetName)}`,
-      parentId: `${file.sId}`,
-      parents: [`${file.sId}-${slugify(worksheetName)}`, `${file.sId}`],
+      tableId,
+      parentId: file.sId,
+      parents: [tableId, file.sId],
       description: "Table uploaded from excel file",
       truncate: true,
       mimeType: "text/csv",
@@ -359,7 +360,7 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       reqOrString: worksheetContent,
     });
 
-    tableIds.push(`${file.sId}-${slugify(worksheetName)}`);
+    tableIds.push(tableId);
 
     await upsertTableToDatasource(auth, {
       file: worksheetFile,
