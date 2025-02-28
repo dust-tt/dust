@@ -35,12 +35,12 @@ import type {
 } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import {
-  CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
-} from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -292,9 +292,6 @@ export function DataSourceViewsSelector({
           }}
           contentMessage={contentMessage}
           renderItem={(item, selected) => {
-            const { dataSourceView } = item;
-            const { dataSource } = dataSourceView;
-
             return (
               <div
                 className={cn(
@@ -317,7 +314,7 @@ export function DataSourceViewsSelector({
                 </span>
                 {item.parentTitle && (
                   <div className="ml-auto flex-none text-sm text-slate-500">
-                    {`${dataSource.connectorProvider ? CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].name : "Folders"}/../${item.parentTitle}`}
+                    {getLocationForDataSourceViewContentNode(item)}
                   </div>
                 )}
               </div>

@@ -30,14 +30,14 @@ const SearchRequestBody = t.type({
   limit: t.number,
 });
 
-export type PostSpaceSearchResponseBody = {
+export type PostWorkspaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
   warningCode: SearchWarningCode | null;
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostSpaceSearchResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceSearchResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   if (req.method !== "POST") {

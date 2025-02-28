@@ -27,7 +27,10 @@ import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -471,7 +474,7 @@ function SearchResultsTable({
         dropdownMenuProps: {
           modal: false,
         },
-        location: node.parentTitle ?? "-",
+        location: getLocationForDataSourceViewContentNode(node),
         menuItems: getMenuItems(
           canReadInSpace,
           canWriteInSpace,

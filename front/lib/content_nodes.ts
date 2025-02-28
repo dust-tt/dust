@@ -116,3 +116,12 @@ export function getVisualForContentNode(node: ContentNode) {
       assertNever(node.type);
   }
 }
+
+export function getLocationForDataSourceViewContentNode(
+  node: DataSourceViewContentNode
+) {
+  const { dataSource } = node.dataSourceView;
+  const { connectorProvider } = dataSource;
+
+  return `${connectorProvider ? CONNECTOR_CONFIGURATIONS[connectorProvider].name : "Folders"}/../${node.parentTitle}`;
+}
