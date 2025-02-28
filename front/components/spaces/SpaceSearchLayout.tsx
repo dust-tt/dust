@@ -145,6 +145,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 }
 
 interface FullBackendSearchProps extends BackendSearchProps {
+  // TODO(20250228, search-kb): remove this once released.
   hasSearchKnowledgeBuilderFF: boolean;
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
@@ -213,7 +214,7 @@ function BackendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder="Search remote (Name)"
+        placeholder="Search (Name)"
         value={searchTerm}
         onChange={setSearchTerm}
         disabled={isSearchDisabled}
