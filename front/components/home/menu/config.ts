@@ -108,6 +108,18 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/engineering",
     },
     {
+      title: "Data & Analytics",
+      href: "/home/solutions/data-analytics",
+    },
+    {
+      title: "IT",
+      href: "/home/solutions/it",
+    },
+    {
+      title: "Legal",
+      href: "/home/solutions/legal",
+    },
+    {
       title: "Marketing & Content",
       href: "/home/solutions/marketing",
     },
@@ -116,12 +128,12 @@ const SolutionsMenuConfig: MenuConfig = {
       href: "/home/solutions/recruiting-people",
     },
     {
-      title: "Data & Analytics",
-      href: "/home/solutions/data-analytics",
-    },
-    {
       title: "Knowledge Management",
       href: "/home/solutions/knowledge",
+    },
+    {
+      title: "Productivity",
+      href: "/home/solutions/productivity",
     },
   ],
 };
@@ -279,7 +291,7 @@ export const menuConfig: DocsConfig = {
     {
       title: SolutionsMenuConfig.title,
       label: "Dust for...",
-      rows: 4,
+      rows: 5,
       items: SolutionsMenuConfig.items,
     },
     {

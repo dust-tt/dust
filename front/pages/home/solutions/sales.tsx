@@ -4,7 +4,6 @@ import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
 import {
-  AssistantExamples,
   Benefits,
   DemoVideo,
   Hero,
@@ -129,12 +128,12 @@ Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
 export function SalesCaroussel() {
   return (
     <CarousselContentBlock
+      image={pageSettings.image}
       title={pageSettings.uptitle}
-      subtitle={pageSettings.title}
-      description={pageSettings.description}
-      assistants={AssistantExamples}
       from={pageSettings.from}
       to={pageSettings.to}
+      bulletPoints={pageSettings.bulletPoints}
+      quote={Quote}
       border="border-pink-100/60"
       href="/home/solutions/sales"
     />
