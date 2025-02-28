@@ -615,7 +615,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
           resultsFileContentType: "text/csv",
         });
 
-        const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+        const { csvFile, snippet } = await getToolResultOutputCsvFileAndSnippet(
           auth,
           {
             title: fileTitle,
@@ -625,14 +625,14 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         );
 
         resultFile = {
-          fileId: file.sId,
+          fileId: csvFile.sId,
           title: fileTitle,
-          contentType: file.contentType,
-          snippet: file.snippet,
+          contentType: csvFile.contentType,
+          snippet: csvFile.snippet,
         };
 
         delete sanitizedOutput.__dust_file;
-        updateParams.resultsFileId = file.id;
+        updateParams.resultsFileId = csvFile.id;
         updateParams.resultsFileSnippet = snippet;
       } else if (containsValidDocumentOutput(sanitizedOutput)) {
         const fileTitle = getDustAppRunResultsFileTitle({

@@ -699,6 +699,7 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
   resultsFileId: z.string().nullable(),
   resultsFileSnippet: z.string().nullable(),
+  richTextFileId: z.string().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
