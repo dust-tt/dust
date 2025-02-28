@@ -6,7 +6,7 @@ import { statsDClient } from "@app/logger/withlogging";
 
 let client: RedisClientType;
 
-type RedisUsageTagsType =
+export type RedisUsageTagsType =
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"

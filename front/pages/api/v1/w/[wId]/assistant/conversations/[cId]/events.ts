@@ -80,14 +80,32 @@ async function handler(
       });
       res.flushHeaders();
 
+      // Create an AbortController to handle client disconnection
+      const controller = new AbortController();
+      const { signal } = controller;
+
+      // Handle client disconnection
+      req.on("close", () => {
+        controller.abort();
+      });
+
       const eventStream: AsyncGenerator<ConversationEventType> =
-        getConversationEvents(conversation.sId, null);
+        getConversationEvents(auth, {
+          conversationId: conversation.sId,
+          lastEventId: null,
+          signal,
+        });
 
       for await (const event of eventStream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
 
         // @ts-expect-error we need to flush for streaming but TS thinks flush() does not exists.
         res.flush();
+
+        // If the client disconnected, stop the event stream
+        if (signal.aborted) {
+          break;
+        }
       }
       res.write("data: done\n\n");
       // @ts-expect-error - We need it for streaming but it does not exists in the types.

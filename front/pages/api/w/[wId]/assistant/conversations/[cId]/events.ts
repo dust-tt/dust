@@ -48,8 +48,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const eventStream = getConversationEvents(conversation.sId, lastEventId);
-
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -57,10 +55,30 @@ async function handler(
       });
       res.flushHeaders();
 
+      // Create an AbortController to handle client disconnection
+      const controller = new AbortController();
+      const { signal } = controller;
+
+      // Handle client disconnection
+      req.on("close", () => {
+        controller.abort();
+      });
+
+      const eventStream = getConversationEvents(auth, {
+        conversationId: conversation.sId,
+        lastEventId,
+        signal,
+      });
+
       for await (const event of eventStream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
         // @ts-expect-error - We need it for streaming but it does not exists in the types.
         res.flush();
+
+        // If the client disconnected, stop the event stream
+        if (signal.aborted) {
+          break;
+        }
       }
       res.write("data: done\n\n");
       // @ts-expect-error - We need it for streaming but it does not exists in the types.
