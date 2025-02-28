@@ -3561,7 +3561,7 @@ async fn data_sources_stats(
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",
-                "Failed to search data sources",
+                "Failed to get stats relative to data source",
                 Some(e),
             );
         }
