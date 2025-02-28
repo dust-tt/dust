@@ -19,6 +19,7 @@ import { apiError } from "@app/logger/withlogging";
 const TRACKER_LIMIT_BY_WORKSPACE: Record<string, number> = {
   baf50ff50aa28e3b3ebb09bf21fbc29d: -1, // dust US workspace
   "9904970eeaa283f18656c6e60b66cb19": 5,
+  "3217705b52deca860526591bb186fc16": 3,
 };
 
 export type GetTrackersResponseBody = {
