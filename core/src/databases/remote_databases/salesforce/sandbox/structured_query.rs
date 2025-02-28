@@ -50,10 +50,16 @@ pub struct StructuredQuery {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhereClause {
     /// The logical condition for combining filters ("AND" or "OR").
+    #[serde(default = "default_logical_operator")]
     pub condition: LogicalOperator,
 
     /// The list of filters to apply.
     pub filters: Vec<Filter>,
+}
+
+/// Default function for logical operator.
+fn default_logical_operator() -> LogicalOperator {
+    LogicalOperator::And
 }
 
 /// Represents a logical operator for combining filters.
@@ -220,6 +226,7 @@ pub enum GroupType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HavingClause {
     /// The logical condition for combining filters ("AND" or "OR").
+    #[serde(default = "default_logical_operator")]
     pub condition: LogicalOperator,
 
     /// The list of aggregate filters to apply.
