@@ -41,6 +41,7 @@ import {
 } from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { MCPConfigurationType, MCPParamsEvent } from "./actions/mcp";
 import {
   ReasoningConfigurationType,
   ReasoningStartedEvent,
@@ -71,7 +72,8 @@ type ConversationAgentActionConfigurationType =
 
 export type ActionConfigurationType =
   | AgentActionConfigurationType
-  | ConversationAgentActionConfigurationType;
+  | ConversationAgentActionConfigurationType
+  | MCPConfigurationType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 
@@ -334,7 +336,8 @@ export type AgentActionSpecificEvent =
   | GithubCreateIssueParamsEvent
   | ReasoningStartedEvent
   | ReasoningThinkingEvent
-  | ReasoningTokensEvent;
+  | ReasoningTokensEvent
+  | MCPParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

@@ -6,6 +6,7 @@ import { ModelConfigurationType } from "../../../front/lib/assistant";
 import { ModelId } from "../../../shared/model_id";
 import { SupportedFileContentType } from "../../files";
 import { ConversationType } from "../conversation";
+import { MCPActionType } from "./mcp";
 
 export type ActionGeneratedFileType = {
   fileId: string;
@@ -23,6 +24,9 @@ export type ConversationBaseActionType =
   | "conversation_list_files_action"
   | "conversation_include_file_action";
 
+export type MCPBaseActionType = MCPActionType["type"];
+// will also support "external" (run by an external server), "custom" (run by us in isolation) and "system" (dust provided actions)
+
 export type BaseActionType =
   | "dust_app_run_action"
   | "tables_query_action"
@@ -33,7 +37,8 @@ export type BaseActionType =
   | "visualization_action"
   | "reasoning_action"
   | ConversationBaseActionType
-  | GithubBaseActionType;
+  | GithubBaseActionType
+  | MCPBaseActionType;
 
 export abstract class BaseAction {
   readonly id: ModelId;
