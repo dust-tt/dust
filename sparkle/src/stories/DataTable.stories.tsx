@@ -4,7 +4,7 @@ import {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import {
   DataTable,
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DropdownMenu,
   Input,
+  ScrollableDataTable,
 } from "@sparkle/components/";
 import { MenuItem } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons";
@@ -515,6 +516,69 @@ export const DataTablePaginatedServerSideRowCountCappedExample = () => {
         columnsBreakpoints={{ lastUpdated: "sm" }}
         isServerSideSorting={true}
       />
+    </div>
+  );
+};
+
+const createData = (start: number, count: number) => {
+  return Array(count)
+    .fill(0)
+    .map((_, i) => ({
+      name: `Item ${start + i + 1}`,
+      usedBy: Math.floor(Math.random() * 100),
+      addedBy: `UserUserUserUserUserUserUserUserUserUserUser ${Math.floor(Math.random() * 10) + 1}`,
+      lastUpdated: `2023-08-${Math.floor(Math.random() * 30) + 1}`,
+      size: `${Math.floor(Math.random() * 200)}kb`,
+      menuItems: [
+        { kind: "item", label: "test", onClick: () => console.log("hey") },
+      ],
+    })) as TransformedData[];
+};
+
+export const ScrollableDataTableExample = () => {
+  const [filter, setFilter] = useState("");
+  const [data, setData] = useState(() => createData(0, 50));
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load more data when user scrolls to bottom
+  const loadMore = useCallback(() => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      setData((prevData) => [...prevData, ...createData(prevData.length, 50)]);
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">
+        Virtualized ScrollableDataTable with Infinite Scrolling
+      </h3>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <ScrollableDataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columns}
+          onLoadMore={loadMore}
+          isLoading={isLoading}
+          maxHeight="s-max-h-[500px]"
+        />
+
+        <div className="s-text-sm s-text-muted-foreground">
+          Loaded {data.length} rows. Scroll to the bottom to load more.
+        </div>
+      </div>
     </div>
   );
 };
