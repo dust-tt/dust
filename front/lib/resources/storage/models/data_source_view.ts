@@ -2,7 +2,6 @@ import type { DataSourceViewKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { Conversation } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -27,8 +26,6 @@ export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSo
   declare dataSourceForView: NonAttribute<DataSourceModel>;
   declare editedByUser: NonAttribute<UserModel>;
   declare space: NonAttribute<SpaceModel>;
-
-  declare conversationId: ForeignKey<Conversation["id"]> | null;
 }
 DataSourceViewModel.init(
   {
@@ -65,7 +62,6 @@ DataSourceViewModel.init(
     indexes: [
       { fields: ["workspaceId", "id"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "conversationId"] },
       {
         fields: ["workspaceId", "dataSourceId", "vaultId", "deletedAt"],
         unique: true,
@@ -96,10 +92,4 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
 DataSourceViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
-});
-
-Conversation.hasMany(DataSourceViewModel, {
-  as: "conversationForView",
-  foreignKey: { name: "conversationId", allowNull: true },
-  onDelete: "RESTRICT",
 });

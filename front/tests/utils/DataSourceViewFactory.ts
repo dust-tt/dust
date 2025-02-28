@@ -22,7 +22,6 @@ export class DataSourceViewFactory {
       },
       space,
       null,
-      null,
       t
     );
   }
