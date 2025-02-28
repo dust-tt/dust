@@ -952,17 +952,19 @@ impl ElasticsearchSearchStore {
                     .as_array()
                     .unwrap();
 
-                match buckets.first() {
-                    Some(bucket) => {
+                buckets
+                    .first()
+                    .map(|bucket| {
                         Ok(DataSourceESDocumentWithStats::from((
                             data_source,
                             // We unwrap here because if we got a bucket, then it necessarily contains these fields.
                             bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
                             bucket["doc_count"].as_i64().unwrap(),
                         )))
-                    }
-                    None => Err(anyhow::anyhow!("Data source stats computation failed.")),
-                }
+                    })
+                    .unwrap_or(Err(anyhow::anyhow!(
+                        "Data source stats computation failed."
+                    )))
             }
             _ => Err(anyhow::anyhow!(
                 "Invalid search item type, expected a DataSource."
