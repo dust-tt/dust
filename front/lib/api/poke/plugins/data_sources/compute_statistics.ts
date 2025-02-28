@@ -37,7 +37,7 @@ export const computeStatsPlugin = createPlugin({
       return new Err(new Error(result.error.message));
     }
 
-    const { name, text_size, document_count } = result.value;
+    const { name, text_size, document_count } = result.value.data_source;
 
     return new Ok({
       display: "json",

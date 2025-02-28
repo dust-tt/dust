@@ -279,12 +279,14 @@ export type CoreAPINodesSearchFilter = t.TypeOf<
 >;
 
 export interface CoreAPIDataSourceStatsResponse {
-  data_source_id: string;
-  data_source_internal_id: string;
-  timestamp: number;
-  name: string;
-  text_size: number;
-  document_count: number;
+  data_source: {
+    data_source_id: string;
+    data_source_internal_id: string;
+    timestamp: number;
+    name: string;
+    text_size: number;
+    document_count: number;
+  };
 }
 
 export interface CoreAPIUpsertDataSourceDocumentPayload {
