@@ -2481,6 +2481,7 @@ pub struct DataSourceESDocument {
     pub timestamp: u64,
     pub name: String,
     pub text_size: Option<i64>,
+    pub document_count: Option<i64>,
 }
 
 impl From<&DataSource> for DataSourceESDocument {
@@ -2491,6 +2492,7 @@ impl From<&DataSource> for DataSourceESDocument {
             timestamp: ds.created(),
             name: ds.name().to_string(),
             text_size: None,
+            document_count: None,
         }
     }
 }

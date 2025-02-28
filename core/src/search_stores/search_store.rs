@@ -1082,18 +1082,24 @@ impl ElasticsearchSearchStore {
                 .as_array()
                 .unwrap();
 
-            let size_by_ds: HashMap<String, i64> = buckets
+            let metadata_map: HashMap<String, (i64, i64)> = buckets
                 .iter()
                 .map(|bucket| {
                     (
                         bucket["key"].as_str().unwrap().to_string(),
-                        bucket["total_size"]["value"].as_i64().unwrap(),
+                        (
+                            bucket["total_size"]["value"].as_i64().unwrap(),
+                            bucket["doc_count"].as_i64().unwrap(),
+                        ),
                     )
                 })
                 .collect();
 
             result.iter_mut().for_each(|ds| {
-                ds.text_size = size_by_ds.get(&ds.data_source_id).copied();
+                let (text_size, document_count) =
+                    metadata_map.get(&ds.data_source_id).unwrap_or(&(0, 0));
+                ds.text_size = Some(text_size.clone());
+                ds.document_count = Some(document_count.clone());
             });
         }
 
