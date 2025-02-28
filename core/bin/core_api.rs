@@ -29,7 +29,9 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
-use dust::search_stores::search_store::NodeItem;
+use dust::search_stores::search_store::{
+    DataSourcesSearchFilter, DataSourcesSearchOptions, NodeItem,
+};
 use dust::{
     api_keys::validate_api_key,
     app,
@@ -3549,6 +3551,48 @@ async fn nodes_search(
 
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+struct DataSourcesSearchPayload {
+    query: Option<String>,
+    filter: DataSourcesSearchFilter,
+    options: Option<DataSourcesSearchOptions>,
+}
+
+async fn data_sources_search(
+    State(state): State<Arc<APIState>>,
+    Json(payload): Json<DataSourcesSearchPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    let (data_sources, hit_count, hit_count_is_accurate, warning_code) = match state
+        .search_store
+        .search_data_source(payload.query, payload.filter, payload.options)
+        .await
+    {
+        Ok(result) => result,
+        Err(e) => {
+            return error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "internal_server_error",
+                "Failed to search data sources",
+                Some(e),
+            );
+        }
+    };
+
+    (
+        StatusCode::OK,
+        Json(APIResponse {
+            error: None,
+            response: Some(json!({
+                "data_sources": data_sources,
+                "hit_count": hit_count,
+                "hit_count_is_accurate": hit_count_is_accurate,
+                "warning_code": warning_code,
+            })),
+        }),
+    )
+}
+
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TagsSearchPayload {
     query: Option<String>,
     query_type: Option<TagsQueryType>,
@@ -4108,6 +4152,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
+        .route("/data_sources/search", post(data_sources_search))
         .route("/tags/search", post(tags_search))
 
         // Misc

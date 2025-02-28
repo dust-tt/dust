@@ -439,7 +439,6 @@ impl SearchStore for ElasticsearchSearchStore {
             Some(_) => vec![],
         };
 
-        // Build and run search
         let search = Search::new()
             .query(bool_query)
             .track_total_hits(MAX_TOTAL_HITS_TRACKED)
