@@ -226,13 +226,10 @@ describe("POST /api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/csv",
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          message:
-            "Invalid request body: The file provided has not the expected `upsert_table` use-case",
-          type: "invalid_request_error",
-        },
-      });
+      expect(res._getJSONData().error.message).toContain(
+        "The file provided has not the expected use-case"
+      );
+      expect(res._getJSONData().error.type).toBe("invalid_request_error");
     }
   );
 });

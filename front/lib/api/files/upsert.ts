@@ -298,7 +298,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "There was an error upserting the table.",
+      message: `There was an error upserting the table. Error: ${upsertTableRes.error.message}`,
       data_source_error: upsertTableRes.error,
     });
   }

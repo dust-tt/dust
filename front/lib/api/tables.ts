@@ -135,13 +135,13 @@ export async function upsertTableFromCsv({
       });
     }
 
-    // Table upserts can come from both upsert_table and conversations use-cases (internal CSV apis
-    // and JIT).
-    if (!["upsert_table", "conversation"].includes(file.useCase)) {
+    const VALID_USE_CASES = ["upsert_table", "conversation", "tool_output"];
+    if (!VALID_USE_CASES.includes(file.useCase)) {
       return new Err({
         type: "invalid_request_error",
-        message:
-          "The file provided has not the expected `upsert_table` use-case",
+        message: `The file provided has not the expected use-case. Expected one of: ${VALID_USE_CASES.join(
+          ", "
+        )}`,
       });
     }
   }
