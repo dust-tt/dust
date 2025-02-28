@@ -20,7 +20,6 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { PostSpaceSearchResponseBody } from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -32,7 +31,10 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type { PostSpaceSearchRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type {
+  PostSpaceSearchRequestBody,
+  PostSpaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
 
 export function useSpaces({
   workspaceId,
