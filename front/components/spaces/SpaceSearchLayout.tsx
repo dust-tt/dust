@@ -18,16 +18,16 @@ import type {
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import React, { useMemo } from "react";
+import React from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
+import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
+import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
-import type { SpaceSearchContextType } from "@app/components/spaces/SpaceSearchContext";
-import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -70,7 +70,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
     React.useState<boolean>(false);
   const [targetDataSourceViews, setTargetDataSourceViews] = React.useState<
     DataSourceViewType[]
-  >([]);
+  >(props.dataSourceView ? [props.dataSourceView] : []);
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
@@ -87,7 +87,10 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Reset the search term when the URL changes.
   React.useEffect(() => {
     setSearchTerm("");
-  }, [router.asPath]);
+    setTargetDataSourceViews(
+      props.dataSourceView ? [props.dataSourceView] : []
+    );
+  }, [props.dataSourceView, router.asPath]);
 
   const [viewType] = useHashParam("viewType", DEFAULT_VIEW_TYPE) as [
     ContentNodesViewType,
@@ -210,6 +213,7 @@ function BackendSearch({
     includeDataSources: false,
     owner,
     search: debouncedSearch,
+    space,
     viewType,
   });
 
@@ -244,7 +248,13 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <SearchingInSpace space={space} dataSourceView={dataSourceView} />
+          <SearchLocation
+            category={category}
+            dataSourceViews={
+              dataSourceView ? [dataSourceView] : targetDataSourceViews
+            }
+            space={space}
+          />
         ) : (
           <SpacePageHeader
             owner={owner}
@@ -289,28 +299,6 @@ function BackendSearch({
         )}
       </div>
     </SpaceSearchContext.Provider>
-  );
-}
-
-function SearchingInSpace({
-  space,
-  dataSourceView,
-}: {
-  space: SpaceType;
-  dataSourceView: DataSourceViewType | undefined;
-}) {
-  const searchingIn = useMemo(() => {
-    if (dataSourceView) {
-      return `${space.name} / ${getDataSourceNameFromView(dataSourceView)}`;
-    }
-
-    return `${space.name}`;
-  }, [space.name, dataSourceView]);
-
-  return (
-    <p className="my-0.5 flex h-8 items-center gap-1">
-      Searching in <span className="font-bold">"{searchingIn}"</span>
-    </p>
   );
 }
 

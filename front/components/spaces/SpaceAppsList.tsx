@@ -22,9 +22,9 @@ import type { ComponentType } from "react";
 import * as React from "react";
 import { useContext, useState } from "react";
 
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
-import { SpaceSearchContext } from "@app/components/spaces/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";

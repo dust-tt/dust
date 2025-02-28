@@ -1,40 +1,26 @@
 import type {
-  ContentNodesViewType,
   DataSourceViewContentNode,
   SearchWarningCode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { assertNever, CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
-import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
-  switch (viewType) {
-    case "document":
-      return ["folder", "document"];
-    case "table":
-      return ["folder", "table"];
-    case "all":
-      return ["folder", "table", "document"];
-    default:
-      assertNever(viewType);
-  }
-}
-
 const SearchRequestBody = t.type({
-  datasourceViewIds: t.array(t.string),
+  // Optional array of data source view IDs to search in.
+  // If not provided or empty array, search across all data source views in the space.
+  dataSourceViewIds: t.union([t.undefined, t.array(t.string)]),
   query: t.string,
   // should use ContentNodesViewTypeCodec, but the type system
   // fails to infer the type correctly.
@@ -92,23 +78,14 @@ async function handler(
     });
   }
 
-  const {
-    datasourceViewIds: datasourceViewSids,
-    includeDataSources,
-    limit,
-    query,
-    viewType,
-  } = bodyValidation.right;
+  const { dataSourceViewIds, includeDataSources, limit, query, viewType } =
+    bodyValidation.right;
 
-  if (datasourceViewSids.length === 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "No datasource view filters provided.",
-      },
-    });
-  }
+  // If no data source views are provided, use all data source views in the space.
+  const dataSourceViews =
+    !dataSourceViewIds || dataSourceViewIds.length === 0
+      ? await DataSourceViewResource.listBySpace(auth, space)
+      : await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds);
 
   if (query.length < MIN_SEARCH_QUERY_SIZE) {
     return apiError(req, res, {
@@ -120,12 +97,7 @@ async function handler(
     });
   }
 
-  const datasourceViews = await DataSourceViewResource.fetchByIds(
-    auth,
-    datasourceViewSids
-  );
-
-  if (datasourceViews.some((dsv) => dsv.space.id !== space.id)) {
+  if (dataSourceViews.some((dsv) => dsv.space.id !== space.id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -135,22 +107,17 @@ async function handler(
     });
   }
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  const searchRes = await coreAPI.searchNodes({
-    query,
-    filter: {
-      data_source_views: datasourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-      })),
-      include_data_sources: includeDataSources,
-      node_types: getCoreViewTypeFilter(viewType),
-    },
-    options: {
+  const searchRes = await searchContenNodesInSpace(
+    auth,
+    space,
+    dataSourceViews,
+    {
+      includeDataSources,
       limit,
-    },
-  });
+      query,
+      viewType,
+    }
+  );
 
   if (searchRes.isErr()) {
     return apiError(req, res, {
@@ -162,32 +129,10 @@ async function handler(
     });
   }
 
-  const dataSourceViewById = new Map(
-    datasourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
-  );
-
-  const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSourceView = dataSourceViewById.get(node.data_source_id);
-
-    if (!dataSourceView) {
-      logger.error(
-        {
-          nodeId: node.node_id,
-          expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
-        },
-        "DataSourceView lookup failed for node"
-      );
-      return [];
-    }
-
-    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
-  });
-
   return res.status(200).json({
-    nodes,
-    total: searchRes.value.hit_count,
-    warningCode: searchRes.value.warning_code,
+    nodes: searchRes.value.nodes,
+    total: searchRes.value.total,
+    warningCode: searchRes.value.warningCode,
   });
 }
 

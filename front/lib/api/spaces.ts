@@ -1,9 +1,18 @@
-import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import type {
+  ContentNodesViewType,
+  CoreAPIError,
+  DataSourceViewContentNode,
+  DataSourceWithAgentsUsageType,
+  Result,
+  SearchWarningCode,
+} from "@dust-tt/types";
+import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import config from "@app/lib/api/config";
+import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -233,4 +242,96 @@ export async function createRegularSpaceAndGroup(
   }
 
   return new Ok(space);
+}
+
+function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
+  switch (viewType) {
+    case "document":
+      return ["folder", "document"];
+    case "table":
+      return ["folder", "table"];
+    case "all":
+      return ["folder", "table", "document"];
+    default:
+      assertNever(viewType);
+  }
+}
+
+export async function searchContenNodesInSpace(
+  auth: Authenticator,
+  space: SpaceResource,
+  dataSourceViews: DataSourceViewResource[],
+  {
+    includeDataSources,
+    limit,
+    query,
+    viewType,
+  }: {
+    includeDataSources: boolean;
+    limit: number;
+    query: string;
+    viewType: ContentNodesViewType;
+  }
+): Promise<
+  Result<
+    {
+      nodes: DataSourceViewContentNode[];
+      total: number;
+      warningCode: SearchWarningCode | null;
+    },
+    DustError | CoreAPIError
+  >
+> {
+  if (!space.canRead(auth)) {
+    return new Err(new DustError("unauthorized", "Unauthorized"));
+  }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const searchRes = await coreAPI.searchNodes({
+    query,
+    filter: {
+      data_source_views: dataSourceViews.map((dsv) => ({
+        data_source_id: dsv.dataSource.dustAPIDataSourceId,
+        view_filter: dsv.parentsIn ?? [],
+      })),
+      include_data_sources: includeDataSources,
+      node_types: getCoreViewTypeFilter(viewType),
+    },
+    options: {
+      limit,
+    },
+  });
+
+  if (searchRes.isErr()) {
+    return searchRes;
+  }
+
+  const dataSourceViewById = new Map(
+    dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
+  );
+
+  const nodes = searchRes.value.nodes.flatMap((node) => {
+    const dataSourceView = dataSourceViewById.get(node.data_source_id);
+    if (!dataSourceView) {
+      logger.error(
+        {
+          nodeId: node.node_id,
+          expectedDataSourceId: node.data_source_id,
+          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
+        },
+        "DataSourceView lookup failed for node"
+      );
+
+      return [];
+    }
+
+    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
+  });
+
+  return new Ok({
+    nodes,
+    total: searchRes.value.hit_count,
+    warningCode: searchRes.value.warning_code,
+  });
 }

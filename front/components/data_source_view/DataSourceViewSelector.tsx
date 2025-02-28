@@ -18,6 +18,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
   SearchWarningCode,
+  SpaceType,
 } from "@dust-tt/types";
 import {
   assertNever,
@@ -113,6 +114,7 @@ interface DataSourceViewsSelectorProps {
   >;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
+  space: SpaceType;
 }
 
 export function DataSourceViewsSelector({
@@ -123,6 +125,7 @@ export function DataSourceViewsSelector({
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
+  space,
 }: DataSourceViewsSelectorProps) {
   // TODO(20250221, search-kb): remove this once the feature flag is enabled by default
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -141,6 +144,7 @@ export function DataSourceViewsSelector({
     owner,
     search: debouncedSearch,
     viewType,
+    space,
   });
 
   useEffect(() => {

@@ -158,6 +158,7 @@ export default function SpaceManagedDataSourcesViewsModal({
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType="all"
               isRootSelectable={true}
+              space={space}
             />
           </div>
         </SheetContainer>
