@@ -923,39 +923,6 @@ impl ElasticsearchSearchStore {
         Ok(base_sort)
     }
 
-    // Builds the Sort for searching data sources, defaulting to sorting alphabetically by name
-    // and using the data_source_id as a tie-breaker.
-    fn build_search_data_sources_sort(&self, sort: Option<Vec<SortSpec>>) -> Result<Vec<Sort>> {
-        let mut base_sort = match sort {
-            Some(sort) => {
-                if sort.iter().any(|s| s.field == "data_source_id") {
-                    return Err(anyhow::anyhow!(
-                        "Explicit sort on data_source_id is not allowed, it is used as a tie-breaker."
-                    ));
-                }
-                sort.into_iter()
-                    .map(|s| {
-                        Sort::FieldSort(FieldSort::new(s.field).order(match s.direction {
-                            SortDirection::Asc => SortOrder::Asc,
-                            SortDirection::Desc => SortOrder::Desc,
-                        }))
-                    })
-                    .collect()
-            }
-            // Default to sorting alphabetically by name.
-            None => vec![Sort::FieldSort(
-                FieldSort::new("name.keyword").order(SortOrder::Asc),
-            )],
-        };
-
-        // Add the data source ID as a tie-breaker.
-        base_sort.push(Sort::FieldSort(
-            FieldSort::new("data_source_id").order(SortOrder::Asc),
-        ));
-
-        Ok(base_sort)
-    }
-
     async fn process_search_data_sources_results(
         &self,
         item: SearchItem,
