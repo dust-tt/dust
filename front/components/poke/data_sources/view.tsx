@@ -1,4 +1,5 @@
 import {
+  BracesIcon,
   Button,
   Chip,
   Dialog,
@@ -13,7 +14,6 @@ import type {
   DataSourceType,
 } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
-import { CodeIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -68,7 +68,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                icon={CodeIcon}
+                icon={BracesIcon}
                 label="Show raw objects"
               />
             </div>
