@@ -2191,6 +2191,7 @@ async fn data_sources_documents_retrieve(
                                 "created": ds.created(),
                                 "data_source_id": ds.data_source_id(),
                                 "config": ds.config(),
+                                "name": ds.name(),
                             },
                         })),
                     }),
