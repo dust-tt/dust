@@ -255,6 +255,22 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+const updateUseCaseMetadata = async (
+  file: FileResource,
+  tableIds: string[]
+) => {
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        ...tableIds,
+      ],
+    });
+  }
+};
+
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
@@ -282,7 +298,10 @@ const upsertTableToDatasource: ProcessingFunction = async (
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
       ],
-      parents: [tableId],
+      parentId: isUpsertTableArgs(upsertArgs)
+        ? upsertArgs?.parentId
+        : upsertArgs?.parent_id ?? null,
+      parents: upsertArgs?.parents ?? [tableId],
       async: false,
       title,
       mimeType: file.contentType,
@@ -303,16 +322,7 @@ const upsertTableToDatasource: ProcessingFunction = async (
     });
   }
 
-  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
-  if (file.useCaseMetadata) {
-    await file.setUseCaseMetadata({
-      ...file.useCaseMetadata,
-      generatedTables: [
-        ...(file.useCaseMetadata.generatedTables ?? []),
-        tableId,
-      ],
-    });
-  }
+  await updateUseCaseMetadata(file, [tableId]);
 
   return new Ok(undefined);
 };
@@ -332,16 +342,21 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     return new Err(new Error("Invalid upsert args"));
   }
 
+  const tableIds: string[] = [];
+
   const upsertWorksheet = async (
     worksheetName: string,
     worksheetContent: string
   ) => {
     const title = `${file.fileName} ${worksheetName}`;
+    const tableId = `${file.sId}-${slugify(worksheetName)}`;
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
       title,
       name: slugify(title),
-      tableId: `${file.sId}-${slugify(worksheetName)}`,
+      tableId,
+      parentId: file.sId,
+      parents: [tableId, file.sId],
       description: "Table uploaded from excel file",
       truncate: true,
       mimeType: "text/csv",
@@ -362,6 +377,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       file: worksheetFile,
       reqOrString: worksheetContent,
     });
+
+    tableIds.push(tableId);
 
     await upsertTableToDatasource(auth, {
       file: worksheetFile,
@@ -401,8 +418,11 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
   } else {
     await upsertWorksheet(worksheetName, worksheetContent);
-    return new Ok(undefined);
   }
+
+  await updateUseCaseMetadata(file, tableIds);
+
+  return new Ok(undefined);
 };
 
 // Processing for datasource upserts.
