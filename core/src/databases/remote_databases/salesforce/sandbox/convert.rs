@@ -789,6 +789,26 @@ mod tests {
     }
 
     #[test]
+    fn test_json_to_soql_where_clause_without_condition() {
+        let json = r#"{
+            "object": "Contact",
+            "fields": ["Id", "Name", "Title", "Phone", "Email", "Department", "MailingCity", "MailingState"],
+            "where": {
+                "filters": [
+                    {"field": "AccountId", "operator": "=", "value": "001Qy00000ccRXcIAM"}
+                ]
+            }
+        }"#;
+
+        let query = serde_json::from_str::<StructuredQuery>(json).unwrap();
+        let soql = convert_to_soql(&query).unwrap();
+        assert_eq!(
+            soql,
+            "SELECT Id, Name, Title, Phone, Email, Department, MailingCity, MailingState FROM Contact WHERE AccountId = '001Qy00000ccRXcIAM'"
+        );
+    }
+
+    #[test]
     fn test_json_to_soql_special_character_escaping() {
         let json = r#"{
             "object": "Contact", 
