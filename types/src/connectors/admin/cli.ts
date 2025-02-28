@@ -202,6 +202,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("force-resync-articles"),
     t.literal("check-conversation"),
     t.literal("fetch-conversation"),
+    t.literal("fetch-articles"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
   ]),
@@ -210,6 +211,7 @@ export const IntercomCommandSchema = t.type({
     connectorId: t.union([t.number, t.undefined]),
     conversationId: t.union([t.number, t.undefined]),
     day: t.union([t.string, t.undefined]),
+    helpCenterId: t.union([t.number, t.undefined]),
   }),
 });
 
@@ -228,6 +230,12 @@ export const IntercomFetchConversationResponseSchema = t.type({
 });
 export type IntercomFetchConversationResponseType = t.TypeOf<
   typeof IntercomFetchConversationResponseSchema
+>;
+export const IntercomFetchArticlesResponseSchema = t.type({
+  articles: t.array(t.union([t.UnknownRecord, t.null])), // intercom type, can't be iots'd
+});
+export type IntercomFetchArticlesResponseType = t.TypeOf<
+  typeof IntercomFetchArticlesResponseSchema
 >;
 export const IntercomCheckTeamsResponseSchema = t.type({
   teams: t.array(
@@ -483,6 +491,7 @@ export const AdminResponseSchema = t.union([
   IntercomCheckMissingConversationsResponseSchema,
   IntercomCheckTeamsResponseSchema,
   IntercomFetchConversationResponseSchema,
+  IntercomFetchArticlesResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
