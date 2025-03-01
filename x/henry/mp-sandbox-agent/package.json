@@ -17,6 +17,7 @@
     "dotenv": "^16.4.7",
     "google-search-results-nodejs": "^2.1.0",
     "openai": "^4.85.1",
+    "tiktoken": "^1.0.20",
     "zod": "^3.24.2"
   }
 }

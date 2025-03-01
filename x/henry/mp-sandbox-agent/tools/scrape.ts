@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { defineTool } from "./helpers";
+import { encoding_for_model } from "tiktoken";
 
 if (!process.env.FIRECRAWL_API_KEY) {
   throw new Error(
@@ -48,14 +49,67 @@ export const scrapePages = defineTool(
         )
       );
 
+      // Use OpenAI's tokenizer (cl100k_base is used by GPT-4 and newer models)
+      const tokenizer = encoding_for_model("gpt-4");
+      
+      // Function to count tokens using tiktoken
+      function countTokens(text: string): number {
+        try {
+          const tokens = tokenizer.encode(text);
+          return tokens.length;
+        } catch (error) {
+          console.error("Error counting tokens:", error);
+          // Fallback to a simple approximation if tiktoken fails
+          return Math.ceil(text.length / 4);
+        }
+      }
+
+      // Function to truncate text to token limit using tiktoken
+      function truncateToTokenLimit(text: string, tokenLimit: number): string {
+        try {
+          const tokens = tokenizer.encode(text);
+          
+          if (tokens.length <= tokenLimit) {
+            return text;
+          }
+          
+          // For safety, use a character-based approach for truncation
+          // Calculate roughly how many characters to include to stay under token limit
+          const charLimit = Math.floor((tokenLimit / tokens.length) * text.length);
+          
+          // Truncate text directly (more reliable than using tiktoken's decode)
+          const truncatedText = text.substring(0, charLimit);
+          
+          return truncatedText + "\n... [content truncated, full content available in result]";
+        } catch (error) {
+          console.error("Error truncating text:", error);
+          // Fallback to a simple approximation if tiktoken fails
+          return text.substring(0, tokenLimit * 4) + "\n... [content truncated, full content available in result]";
+        }
+      }
+
+      // Log a human-friendly summary
+      console.log(
+        "Scrape results:",
+        input.urls
+          .map((url, i) =>
+            results[i].success
+              ? `${url}: Scraped successfully (${results[i].data.markdown.length} chars, ~${countTokens(results[i].data.markdown)} tokens)`
+              : `${url}: Failed to scrape`
+          )
+          .join("\n")
+      );
+      
+      // Log content for the agent with proper token limiting
+      const TOKEN_LIMIT = 2000;
       log(
         input.urls
           .map((url, i) =>
             results[i].success
-              ? `${url}:\n${JSON.stringify(results[i].data.markdown)}`
-              : `${url}: failed to scrape`
+              ? `Content from ${url}:\n${truncateToTokenLimit(results[i].data.markdown, TOKEN_LIMIT)}`
+              : `${url}: Failed to scrape`
           )
-          .join("\n\n")
+          .join("\n\n---\n\n")
       );
 
       return {
