@@ -5,14 +5,19 @@ import { Agent } from "./agent";
 import { scrapePages } from "./tools/scrape";
 import { searchWeb } from "./tools/serp";
 import { logger, LogLevel } from "./utils/logger";
+import { ConfigurationError, wrapError } from "./utils/errors";
 
 // Load environment variables from .env file
 dotenv.config();
 
+// Validate required environment variables
 if (!process.env.OPENAI_API_KEY) {
-  throw new Error(
-    "Please set the OPENAI_API_KEY environment variable in your .env file"
-  );
+  throw new ConfigurationError(
+    "Missing required environment variable: OPENAI_API_KEY",
+  ).addContext({
+    configFile: '.env',
+    requiredVariable: 'OPENAI_API_KEY'
+  });
 }
 
 async function main() {
@@ -54,7 +59,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  logger.error("Error: %s", error.message);
-  logger.debug("Stack trace: %s", error.stack);
+  // Wrap and log the error with full context
+  const wrappedError = wrapError(error, "Failed to execute agent");
+  logger.logError(wrappedError, "Application terminated with error");
   process.exit(1);
 });

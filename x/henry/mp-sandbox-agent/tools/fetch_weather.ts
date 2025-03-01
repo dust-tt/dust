@@ -1,6 +1,8 @@
 import { defineTool } from "./helpers";
 import { z } from "zod";
 import { ok, err } from "./types";
+import { logger } from "../utils/logger";
+import { APIError, ValidationError } from "../utils/errors";
 
 const WeatherSchema = z.object({
   city: z.string().describe("Full city name with country"),
@@ -23,17 +25,48 @@ export const fetchWeather = defineTool(
   }),
   WeatherSchema,
   async ({ city }, { log }) => {
+    logger.debug(`Fetching weather for city: "${city}"`);
+    
+    // Validate city parameter
+    if (!city.trim()) {
+      const validationError = new ValidationError("City name cannot be empty")
+        .addContext({ providedCity: city });
+      logger.debug(`Weather validation error: ${validationError.message}`);
+      return err(`Invalid city name: ${validationError.message}`);
+    }
+    
     try {
       // First get coordinates for the city
-      const geocodeResponse = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-          city
-        )}&count=1&language=en&format=json`
-      );
+      const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+        city
+      )}&count=1&language=en&format=json`;
+      
+      logger.debug(`Geocoding API request: ${geocodeUrl}`);
+      const geocodeResponse = await fetch(geocodeUrl);
+      
+      if (!geocodeResponse.ok) {
+        const apiError = new APIError(
+          "Geocoding API request failed", 
+          geocodeResponse.status
+        ).addContext({
+          city,
+          url: geocodeUrl,
+          statusText: geocodeResponse.statusText
+        });
+        logger.debug(`Geocoding API error: ${apiError.message} (${apiError.statusCode})`);
+        return err(`Failed to geocode city: ${apiError.message}`);
+      }
+      
       const geocodeData = await geocodeResponse.json();
 
       if (!geocodeData.results?.[0]) {
-        return err(`City "${city}" not found`);
+        const cityNotFoundError = new ValidationError(`City "${city}" not found`)
+          .addContext({ 
+            searchedCity: city,
+            responseData: JSON.stringify(geocodeData) 
+          });
+        logger.debug(`City not found: ${city}`);
+        return err(`City "${city}" not found in geocoding database`);
       }
 
       const {
@@ -42,15 +75,50 @@ export const fetchWeather = defineTool(
         name: foundCity,
         country,
       } = geocodeData.results[0];
+      
+      logger.debug(`Found city coordinates: ${foundCity}, ${country} (${latitude}, ${longitude})`);
 
       // Then get weather for those coordinates
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation,weathercode`
-      );
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,precipitation,weathercode`;
+      logger.debug(`Weather API request: ${weatherUrl}`);
+      
+      const response = await fetch(weatherUrl);
+      
+      if (!response.ok) {
+        const apiError = new APIError(
+          "Weather API request failed", 
+          response.status
+        ).addContext({
+          city: `${foundCity}, ${country}`,
+          coordinates: { latitude, longitude },
+          url: weatherUrl,
+          statusText: response.statusText
+        });
+        logger.debug(`Weather API error: ${apiError.message} (${apiError.statusCode})`);
+        return err(`Failed to fetch weather data: ${apiError.message}`);
+      }
+      
       const data = await response.json();
+      
+      // Validate weather data
+      if (!data.current || 
+          typeof data.current.temperature_2m !== 'number' || 
+          typeof data.current.precipitation !== 'number' || 
+          typeof data.current.weathercode !== 'number') {
+        const dataError = new APIError("Weather API returned invalid data format")
+          .addContext({ 
+            response: JSON.stringify(data),
+            city: `${foundCity}, ${country}`
+          });
+        logger.debug(`Weather data validation error: ${dataError.message}`);
+        return err(`Weather data for ${foundCity}, ${country} has invalid format`);
+      }
+      
       log(
         `Weather data for ${foundCity}, ${country}:\n${JSON.stringify(data)}`
       );
+      
+      logger.debug(`Successfully fetched weather for ${foundCity}, ${country}`);
 
       return ok({
         city: `${foundCity}, ${country}`,
@@ -63,10 +131,17 @@ export const fetchWeather = defineTool(
         },
       });
     } catch (error) {
+      const wrappedError = error instanceof Error 
+        ? error 
+        : new Error(String(error));
+        
+      logger.debug(`Error in fetch_weather tool: ${wrappedError.message}`);
+      if (wrappedError.stack) {
+        logger.debug(`Stack trace: ${wrappedError.stack}`);
+      }
+      
       return err(
-        `Error fetching weather: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Error fetching weather: ${wrappedError.message}`
       );
     }
   }

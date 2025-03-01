@@ -3,6 +3,8 @@ import {
   type MicroPythonInstance,
 } from "@micropython/micropython-webassembly-pyscript/micropython.mjs";
 import * as z from "zod";
+import { logger } from "./utils/logger";
+import { SandboxError, wrapError } from "./utils/errors";
 
 export interface CodeExecutionResult {
   result: unknown;
@@ -128,39 +130,43 @@ async def ${name}(*args, **kwargs):
 
   async runCode(code: string): Promise<{ stdout: string; stderr: string }> {
     this.clearBuffers();
-
+    
+    const codeLength = code.length;
+    const codeSummary = code.length > 50 
+      ? `${code.substring(0, 47)}...` 
+      : code;
+    
+    logger.debug(`Running code (${codeLength} chars): ${codeSummary}`);
     const importCode = this.generateImports();
 
     try {
-      await this.mp.runPythonAsync(`${importCode}\n\n${code.trim()}`);
-      return this.getOutput();
+      const fullCode = `${importCode}\n\n${code.trim()}`;
+      await this.mp.runPythonAsync(fullCode);
+      const output = this.getOutput();
+      logger.debug(`Code execution successful with ${output.stdout.length} bytes of stdout`);
+      return output;
     } catch (error) {
-      // Get stdout before throwing
+      // Get stdout and stderr before creating error object
       const { stdout, stderr } = this.getOutput();
-
-      // Create a proper error object
-      let errorObj: Error;
-      if (error instanceof Error) {
-        errorObj = error;
-      } else if (typeof error === "string") {
-        errorObj = new Error(error);
-      } else {
-        errorObj = new Error(String(error));
-      }
-
-      // Add stdout and stderr to the error
-      Object.defineProperty(errorObj, "stdout", {
-        value: stdout,
-        enumerable: true,
-        writable: false,
+      
+      logger.debug(`Code execution failed with ${stderr.length} bytes of stderr`);
+      
+      // Create a SandboxError with context
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const sandboxError = new SandboxError(
+        `Python code execution failed: ${errorMessage}`,
+        stdout,
+        stderr,
+        { cause: error instanceof Error ? error : undefined }
+      ).addContext({
+        codeLength,
+        codeSummary,
+        moduleId: this.moduleId,
+        hasStdout: stdout.length > 0,
+        hasStderr: stderr.length > 0
       });
-      Object.defineProperty(errorObj, "stderr", {
-        value: stderr,
-        enumerable: true,
-        writable: false,
-      });
-
-      throw errorObj;
+      
+      throw sandboxError;
     }
   }
 }

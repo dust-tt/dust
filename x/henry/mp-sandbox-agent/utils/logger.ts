@@ -2,6 +2,7 @@
  * A configurable logging system for the MicroPython Sandbox Agent.
  * Supports different log levels and output formats.
  */
+import { AppError, isAppError } from "./errors";
 
 export enum LogLevel {
   ERROR = 0,
@@ -96,6 +97,61 @@ export class Logger {
    */
   error(message: string, ...args: any[]): void {
     this.log(LogLevel.ERROR, message, ...args);
+  }
+  
+  /**
+   * Log an error object with full context
+   */
+  logError(error: unknown, message?: string): void {
+    if (this.options.level < LogLevel.ERROR) return;
+    
+    if (isAppError(error)) {
+      // Already an AppError with context
+      if (message) {
+        this.error(message);
+      }
+      
+      // Log the structured error
+      const errorObj = error.toJSON();
+      this.options.outputFn(
+        this.formatMessage(LogLevel.ERROR, `[${errorObj.code}] ${errorObj.message}`),
+        LogLevel.ERROR
+      );
+      
+      // Log context if present
+      if (Object.keys(errorObj.context).length > 0) {
+        this.options.outputFn(
+          this.formatMessage(LogLevel.ERROR, `Context: ${JSON.stringify(errorObj.context, null, 2)}`),
+          LogLevel.ERROR
+        );
+      }
+      
+      // Log stack trace at debug level
+      if (errorObj.stack && this.options.level >= LogLevel.DEBUG) {
+        this.options.outputFn(
+          this.formatMessage(LogLevel.DEBUG, `Stack: ${errorObj.stack}`),
+          LogLevel.DEBUG
+        );
+      }
+      
+      // Log cause if present
+      if (errorObj.cause) {
+        this.options.outputFn(
+          this.formatMessage(LogLevel.ERROR, `Caused by: ${JSON.stringify(errorObj.cause, null, 2)}`),
+          LogLevel.ERROR
+        );
+      }
+    } else if (error instanceof Error) {
+      // Standard Error object
+      this.error(message || error.message);
+      if (this.options.level >= LogLevel.DEBUG && error.stack) {
+        this.debug(`Stack: ${error.stack}`);
+      }
+    } else {
+      // Unknown error type
+      this.error(message || 'Unknown error occurred');
+      this.debug(`Error details: ${JSON.stringify(error, null, 2)}`);
+    }
   }
   
   /**

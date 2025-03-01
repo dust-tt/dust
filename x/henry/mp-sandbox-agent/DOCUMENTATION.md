@@ -274,7 +274,7 @@ The following improvements would enhance the codebase's architecture, security, 
 
 2. **Code Quality**:
    - Replace `any` types with proper TypeScript definitions
-   - Implement consistent error handling with proper context information
+   - ✅ Implement consistent error handling with proper context information
    - ✅ Replace direct console.log statements with a configurable logging system
    - Add proper validation and defaults for environment variables
 
@@ -324,6 +324,58 @@ logger.setShowLevel(false);  // Hide log level
 ```
 
 The Agent and main.ts files have been updated to use this logging system, providing better control over verbosity and output format.
+
+### ✅ Consistent Error Handling (Completed)
+
+A comprehensive error handling system has been implemented in `utils/errors.ts` to provide consistent error handling with proper context information. The system includes:
+
+- **Custom Error Classes**: A hierarchy of error classes for different types of errors, each with specific context fields.
+- **Context Information**: All errors can have context information attached to provide details for debugging.
+- **Error Wrapping**: Utility functions to wrap unknown errors in structured format.
+- **Integration with Logger**: Special error logging methods that display context information.
+
+Key error classes:
+- `AppError`: Base error class with context support
+- `ValidationError`: For input validation failures
+- `ConfigurationError`: For configuration and environment issues
+- `APIError`: For issues with external API calls
+- `SandboxError`: For Python code execution failures
+- `ToolError`: For errors in tool execution
+
+Usage example:
+
+```typescript
+import { ValidationError, APIError, wrapError } from "./utils/errors";
+import { logger } from "./utils/logger";
+
+// Create an error with context
+const validationError = new ValidationError("Invalid city name")
+  .addContext({
+    providedValue: city,
+    expectedFormat: "non-empty string"
+  });
+
+// Log the error with full context
+logger.logError(validationError);
+
+// Wrap an unknown error
+try {
+  await someOperation();
+} catch (error) {
+  const wrappedError = wrapError(error, "Operation failed");
+  wrappedError.addContext({
+    operation: "someOperation",
+    input: JSON.stringify(input)
+  });
+  logger.logError(wrappedError);
+}
+```
+
+This error handling system is now integrated throughout the codebase, including:
+- Sandbox code execution
+- Tool implementations (especially API calls)
+- Agent steps and API interactions
+- Configuration validation
 
 ## Installation
 

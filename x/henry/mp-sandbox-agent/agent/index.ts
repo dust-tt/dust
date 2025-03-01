@@ -7,6 +7,14 @@ import { type ChatCompletionMessageParam } from "openai/resources/chat/completio
 import { defineTool } from "../tools/helpers";
 import { systemPrompt } from "./prompts";
 import { logger } from "../utils/logger";
+import { 
+  AppError,
+  ValidationError,
+  APIError,
+  SandboxError,
+  ToolError,
+  wrapError
+} from "../utils/errors";
 
 type StepResult = {
   generation: string;
@@ -52,7 +60,11 @@ export class Agent {
   async step(_tools: Record<string, Tool>): Promise<string | null> {
     const tools = { ..._tools };
     if (Object.keys(tools).some((name) => name === "stop_execution")) {
-      throw new Error("`stop_execution` is a reserved tool name.");
+      throw new ValidationError("Reserved tool name cannot be used")
+        .addContext({
+          reservedToolName: "stop_execution",
+          providedTools: Object.keys(tools)
+        });
     }
     tools["stop_execution"] = this.getFinalExecutionTool();
 
@@ -116,13 +128,30 @@ export class Agent {
     logger.debug(JSON.stringify(messages, null, 2));
     logger.separator();
 
-    const response = await this.openai.chat.completions.create({
-      model: "gpt-4o",
-      messages,
-    });
+    let response;
+    try {
+      response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages,
+      });
+    } catch (error) {
+      throw new APIError(
+        "Failed to generate response from OpenAI API",
+        error instanceof Error && 'status' in error ? (error as any).status : undefined,
+        { cause: error instanceof Error ? error : undefined }
+      ).addContext({
+        model: "gpt-4o",
+        messageCount: messages.length,
+        totalTokens: JSON.stringify(messages).length / 4 // Rough estimation
+      });
+    }
 
     if (!response.choices[0].message.content) {
-      throw new Error("No code generated from OpenAI");
+      throw new APIError("OpenAI returned empty response content")
+        .addContext({
+          response: JSON.stringify(response),
+          model: "gpt-4o"
+        });
     }
 
     // Extract code from the response
@@ -137,9 +166,13 @@ export class Agent {
     const code = codeMatch[1].trim();
 
     // Execute the code
+    // Execute the code with improved error handling
     const codeOutput = await (async () => {
       try {
+        // Run the code in sandbox
         const codeOutput = await this.sandbox.runCode(code);
+        
+        // Format the outputs
         let output = "";
         if (codeOutput.stdout) {
           output += `STDOUT:\n${codeOutput.stdout}\n\n`;
@@ -162,7 +195,24 @@ export class Agent {
 
         return output;
       } catch (error) {
-        return `STDERR:\n${error}`;
+        // Log detailed error for debugging
+        if (error instanceof SandboxError) {
+          logger.debug("Sandbox execution failed with error:");
+          logger.debug(`Message: ${error.message}`);
+          logger.debug(`Context: ${JSON.stringify(error.context, null, 2)}`);
+          logger.debug(`Stdout: ${error.stdout}`);
+          logger.debug(`Stderr: ${error.stderr}`);
+          
+          // Return formatted error for the model
+          return `STDERR:\n${error.stderr || error.message}`;
+        } else {
+          // For other errors, wrap them for consistent handling
+          const wrappedError = wrapError(error, "Code execution failed");
+          logger.debug(`Code execution error: ${wrappedError.message}`);
+          
+          // Return a user-friendly error message for the model
+          return `STDERR:\n${wrappedError.message}`;
+        }
       }
     })();
 
@@ -182,11 +232,38 @@ export class Agent {
         content:
           "Please provide a comprehensive final answer to the goal based on the execution logs you have.",
       });
-      const finalResponse = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-      });
-      return finalResponse.choices[0].message.content;
+      try {
+        const finalResponse = await this.openai.chat.completions.create({
+          model: "gpt-4o",
+          messages,
+        });
+        
+        if (!finalResponse.choices[0].message.content) {
+          throw new APIError("OpenAI returned empty final response content")
+            .addContext({
+              responseId: finalResponse.id,
+              model: "gpt-4o"
+            });
+        }
+        
+        return finalResponse.choices[0].message.content;
+      } catch (error) {
+        // Handle API errors in final response generation
+        const apiError = new APIError(
+          "Failed to generate final response from OpenAI API",
+          error instanceof Error && 'status' in error ? (error as any).status : undefined,
+          { cause: error instanceof Error ? error : undefined }
+        ).addContext({
+          model: "gpt-4o",
+          messageCount: messages.length,
+          isFinalAnswer: true
+        });
+        
+        logger.logError(apiError);
+        
+        // Return a fallback response since this is the final step
+        return "I was unable to generate a final response due to an API error. Please check the execution logs for the information gathered so far.";
+      }
     }
 
     const stepResult: StepResult = {
