@@ -424,7 +424,7 @@ export function AgentMessage({
               const markdownText = cleanUpCitations(
                 agentMessageToRender.content || ""
               );
-              // Convert markdown to HTML (you'll need to add a markdown-to-html converter)
+              // Convert markdown to HTML
               const htmlContent = await marked(markdownText);
 
               void navigator.clipboard.write([
