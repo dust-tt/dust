@@ -48,6 +48,17 @@ const PROVIDER_STRATEGIES: Record<
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
     isExtraConfigValid: (extraConfig: Record<string, string>) => boolean;
+    getRelatedCredential?: (
+      extraConfig: Record<string, string>,
+      workspaceId: string,
+      userId: string
+    ) => {
+      credential: {
+        content: Record<string, unknown>;
+        metadata: { workspace_id: string; user_id: string };
+      };
+      cleanedConfig: Record<string, string>;
+    } | null;
   }
 > = {
   github: {
@@ -364,6 +375,20 @@ const PROVIDER_STRATEGIES: Record<
         return false;
       }
     },
+    getRelatedCredential: (extraConfig, workspaceId, userId) => {
+      const { client_id, client_secret, ...restConfig } = extraConfig;
+
+      return {
+        credential: {
+          content: {
+            client_id,
+            client_secret,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
+    },
   },
 };
 
@@ -386,7 +411,7 @@ export async function createConnectionAndGetSetupUrl(
     });
   }
 
-  // For Salesforce, move client_id and client_secret to related_credential
+  // Extract related credential and update config if the provider has a method for it
   let relatedCredential:
     | {
         content: Record<string, unknown>;
@@ -394,24 +419,20 @@ export async function createConnectionAndGetSetupUrl(
       }
     | undefined = undefined;
 
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const userId = auth.getNonNullableUser().sId;
   const clientId: string | undefined = extraConfig.client_id;
 
-  if (provider === "salesforce") {
-    const workspaceId = auth.getNonNullableWorkspace().sId;
-    const userId = auth.getNonNullableUser().sId;
-
-    // Use the helper function to extract credentials and get cleaned config
-    const salesforceCredential = {
-      content: {
-        client_id: extraConfig.client_id,
-        client_secret: extraConfig.client_secret,
-      },
-      metadata: { workspace_id: workspaceId, user_id: userId },
-    };
-    delete extraConfig.client_id;
-    delete extraConfig.client_secret;
-
-    relatedCredential = salesforceCredential;
+  if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
+    const result = PROVIDER_STRATEGIES[provider].getRelatedCredential!(
+      extraConfig,
+      workspaceId,
+      userId
+    );
+    if (result) {
+      relatedCredential = result.credential;
+      extraConfig = result.cleanedConfig;
+    }
   }
 
   const metadata: Record<string, string> = {
