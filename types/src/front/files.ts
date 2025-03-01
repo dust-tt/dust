@@ -51,7 +51,7 @@ export function maxFileSizeToHumanReadable(size: number, decimals = 0) {
   }
 
   if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(decimals)} kB`;
+    return `${(size / 1024).toFixed(decimals)} KB`;
   }
 
   return `${(size / (1024 * 1024)).toFixed(decimals)} MB`;
