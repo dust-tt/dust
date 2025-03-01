@@ -18,7 +18,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   const frontReplica = getFrontReplicaDbConnection();
   const GdriveDataSources: { id: number; connectorId: string }[] =
     await frontReplica.query(
-      `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive'`,
+      `SELECT id, "connectorId" FROM data_sources WHERE "connectorProvider" = 'google_drive' AND "errorType" IS NULL`,
       { type: QueryTypes.SELECT }
     );
 
