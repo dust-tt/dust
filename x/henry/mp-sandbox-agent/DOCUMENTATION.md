@@ -110,6 +110,47 @@ The `fetch_weather` tool retrieves weather data:
 weather = await fetch_weather({"location": "New York"})
 ```
 
+## Utility Components
+
+### Logging System
+
+The `Logger` class in `utils/logger.ts` provides a configurable logging system:
+
+```typescript
+import { logger, LogLevel } from "./utils/logger";
+
+// Set log level (ERROR, WARN, INFO, DEBUG, TRACE)
+logger.setLevel(LogLevel.DEBUG);
+
+// Basic logging
+logger.info("This is an informational message");
+logger.error("An error occurred: %s", errorMessage);
+logger.debug("Debug data: %o", debugObject);
+
+// Configure logger options
+logger.setTimestamps(false); // Disable timestamps in log output
+logger.setShowLevel(false);  // Hide log level in output
+
+// Create a custom logger instance
+const customLogger = new Logger({
+  level: LogLevel.WARN,
+  timestamps: true,
+  showLevel: true,
+  outputFn: (message, level) => {
+    // Custom output function
+    myLoggingService.log(message, level);
+  }
+});
+```
+
+This logging system replaces direct `console.log` calls and provides:
+
+- Multiple severity levels (ERROR, WARN, INFO, DEBUG, TRACE)
+- Configurable formatting (timestamps, level indicators)
+- Support for string interpolation with %s, %d, %o, etc.
+- Customizable output destinations through outputFn
+- Runtime configuration
+
 ## Usage Examples
 
 ### Basic Usage
@@ -220,6 +261,69 @@ Based on the TODO section in the README, the project aims to enhance the agent's
    - Improved error handling and recovery
 
 This vision positions the package as a powerful tool for generating, executing, and reasoning with Python code to solve complex tasks while maintaining a secure execution environment.
+
+## Improvement Suggestions
+
+The following improvements would enhance the codebase's architecture, security, and maintainability:
+
+1. **Architectural Improvements**:
+   - Reduce coupling between the Agent and PythonSandbox classes
+   - Split the Agent class into smaller components with single responsibilities
+   - Define clear interfaces for key components to improve testability
+   - Make model selection configurable rather than hardcoded
+
+2. **Code Quality**:
+   - Replace `any` types with proper TypeScript definitions
+   - Implement consistent error handling with proper context information
+   - ✅ Replace direct console.log statements with a configurable logging system
+   - Add proper validation and defaults for environment variables
+
+3. **Security Enhancements**:
+   - Implement input validation for all external inputs (URLs, API parameters)
+   - Add resource limits to the sandbox (memory, execution time)
+   - Improve handling of API keys and sensitive information
+   - Implement proper security boundaries for the sandbox
+
+4. **Testing and Documentation**:
+   - Expand test coverage, especially for integration scenarios
+   - Add end-to-end tests for complete system behavior
+   - Improve JSDoc comments for all public APIs
+   - Add architectural documentation with component diagrams
+
+These improvements would significantly enhance the codebase's maintainability, security, and extensibility without changing its core concepts.
+
+## Implementation Progress
+
+### ✅ Configurable Logging System (Completed)
+
+A configurable logging system has been implemented in `utils/logger.ts` to replace direct console.log statements. This system provides:
+
+- Different log levels (ERROR, WARN, INFO, DEBUG, TRACE)
+- Environment variable configuration (LOG_LEVEL)
+- Formatted output with timestamps and level indicators
+- String interpolation for cleaner log messages
+- Customizable output functions
+
+Usage example:
+
+```typescript
+import { logger, LogLevel } from "./utils/logger";
+
+// Set log level
+logger.setLevel(LogLevel.DEBUG);
+
+// Log messages at different levels
+logger.error("Critical error: %s", errorMessage);
+logger.warn("Warning: The operation may be slow");
+logger.info("Processing file: %s", filename);
+logger.debug("Request payload: %o", payload);
+
+// Configure output format
+logger.setTimestamps(false); // Disable timestamps
+logger.setShowLevel(false);  // Hide log level
+```
+
+The Agent and main.ts files have been updated to use this logging system, providing better control over verbosity and output format.
 
 ## Installation
 

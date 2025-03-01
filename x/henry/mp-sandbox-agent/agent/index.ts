@@ -6,6 +6,7 @@ import { z } from "zod";
 import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { defineTool } from "../tools/helpers";
 import { systemPrompt } from "./prompts";
+import { logger } from "../utils/logger";
 
 type StepResult = {
   generation: string;
@@ -40,9 +41,9 @@ export class Agent {
   }
 
   static async create(goal: string): Promise<Agent> {
-    console.log("--------------------------------");
-    console.log(`Creating agent with goal: ${goal}`);
-    console.log("--------------------------------");
+    logger.separator();
+    logger.info(`Creating agent with goal: ${goal}`);
+    logger.separator();
     const agent = new Agent(goal, process.env.OPENAI_API_KEY!);
     agent.sandbox = await PythonSandbox.create();
     return agent;
@@ -110,10 +111,10 @@ export class Agent {
       `\n\nYou currently have access to the following function:` +
       `\n${generateToolDocs(tools)}`;
 
-    console.log("--------------------------------");
-    console.log("Messages:");
-    console.log(messages);
-    console.log("--------------------------------");
+    logger.separator();
+    logger.debug("Messages:");
+    logger.debug(JSON.stringify(messages, null, 2));
+    logger.separator();
 
     const response = await this.openai.chat.completions.create({
       model: "gpt-4o",
@@ -126,10 +127,10 @@ export class Agent {
 
     // Extract code from the response
     const content = response.choices[0].message.content;
-    console.log("--------------------------------");
-    console.log("Code generation response:");
-    console.log(content);
-    console.log("--------------------------------");
+    logger.separator();
+    logger.info("Code generation response:");
+    logger.info(content);
+    logger.separator();
 
     const codeMatch = content.match(/```python\n([\s\S]*?)```/) ||
       content.match(/```\n([\s\S]*?)```/) || [null, content];
@@ -165,10 +166,10 @@ export class Agent {
       }
     })();
 
-    console.log("--------------------------------");
-    console.log("Code output:");
-    console.log(codeOutput);
-    console.log("--------------------------------");
+    logger.separator();
+    logger.info("Code output:");
+    logger.info(codeOutput);
+    logger.separator();
 
     messages.push({
       role: "assistant",
@@ -193,10 +194,10 @@ export class Agent {
       codeOutput: codeOutput,
     };
 
-    console.log("--------------------------------");
-    console.log("Step result:");
-    console.log(stepResult);
-    console.log("--------------------------------");
+    logger.separator();
+    logger.debug("Step result:");
+    logger.debug(JSON.stringify(stepResult, null, 2));
+    logger.separator();
 
     this.steps.push(stepResult);
 

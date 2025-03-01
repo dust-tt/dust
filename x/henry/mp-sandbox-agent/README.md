@@ -31,13 +31,25 @@ Run the agent with a query:
 bun start "What's the weather in Paris?"
 ```
 
+You can set the log level using the LOG_LEVEL environment variable:
+
+```bash
+LOG_LEVEL=DEBUG bun start "What's the weather in Paris?"
+```
+
+Available log levels: ERROR, WARN, INFO, DEBUG, TRACE
+
 Or programmatically:
 
 ```typescript
 import { Agent } from "./agent";
 import { fetchWeather, searchWeb } from "./tools";
+import { logger, LogLevel } from "./utils/logger";
 
 async function main() {
+  // Configure the logger
+  logger.setLevel(LogLevel.INFO);
+  
   const agent = await Agent.create("What's the weather in Paris?");
   
   const tools = {
@@ -50,7 +62,7 @@ async function main() {
     answer = await agent.step(tools);
   }
   
-  console.log("Final answer:", answer);
+  logger.info("Final answer: %s", answer);
 }
 ```
 
@@ -75,3 +87,27 @@ Future enhancements to consider:
 - Create an "Extract from page" tool that scrapes a page, processes it by 32k token chunks, and extracts relevant information
 - Implement a more robust web search and content processing system
 - Add ability to persist agent state to redis/postgres/filesystem for better recovery and continuation of long-running tasks
+
+## Improvement Status
+
+This project is currently undergoing improvements based on code review feedback:
+
+✅ **Completed**:
+- Configurable logging system (replacing direct console.log statements)
+
+🔄 **In Progress**:
+- None currently
+
+⏳ **Pending**:
+- Reduce coupling between Agent and PythonSandbox classes
+- Make model selection configurable
+- Replace `any` types with proper TypeScript definitions
+- Implement consistent error handling
+- Add proper validation for environment variables
+- Implement input validation for external inputs
+- Add resource limits to the sandbox
+- Improve handling of API keys
+- Expand test coverage
+- Improve JSDoc comments
+
+For more details, see the [Implementation Progress](./DOCUMENTATION.md#implementation-progress) section in the documentation.
