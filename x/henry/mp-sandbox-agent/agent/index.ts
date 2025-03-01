@@ -1,20 +1,18 @@
-import OpenAI from "openai";
 import { PythonSandbox } from "../sandbox";
 import type { Tool, AnyTool } from "../tools/types";
 import { generateToolDocs } from "./helpers";
 import { z } from "zod";
-import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { defineTool } from "../tools/helpers";
 import { systemPrompt } from "./prompts";
 import { logger } from "../utils/logger";
 import { 
-  AppError,
   ValidationError,
   APIError,
   SandboxError,
-  ToolError,
   wrapError
 } from "../utils/errors";
+import { LLMService, Message } from "../services/llm";
+import { loadModelConfig, ModelConfig } from "../utils/config";
 
 /**
  * Represents a single step in the agent's execution
@@ -32,8 +30,10 @@ interface StepResult {
 export class Agent {
   /** The sandbox for executing Python code */
   private sandbox!: PythonSandbox;
-  /** The OpenAI client for generating code */
-  private openai: OpenAI;
+  /** The LLM service for generating code */
+  private llmService: LLMService;
+  /** The model configuration */
+  private modelConfig: ModelConfig;
   /** Set of tool names that have been exposed to the sandbox */
   private exposedTools: Set<string> = new Set();
   /** The goal the agent is trying to achieve */
@@ -43,9 +43,10 @@ export class Agent {
   /** Whether the agent should continue or return a final answer */
   private shouldContinue = true;
 
-  private constructor(goal: string, apiKey: string) {
+  private constructor(goal: string, modelConfig: ModelConfig) {
     this.goal = goal;
-    this.openai = new OpenAI({ apiKey });
+    this.modelConfig = modelConfig;
+    this.llmService = new LLMService(modelConfig);
   }
 
   /**
@@ -70,7 +71,12 @@ export class Agent {
     logger.separator();
     logger.info(`Creating agent with goal: ${goal}`);
     logger.separator();
-    const agent = new Agent(goal, process.env.OPENAI_API_KEY!);
+    
+    // Load model configuration from environment variables
+    const modelConfig = loadModelConfig();
+    logger.info(`Using ${modelConfig.provider} with model: ${modelConfig.model}`);
+    
+    const agent = new Agent(goal, modelConfig);
     agent.sandbox = await PythonSandbox.create();
     return agent;
   }
@@ -124,7 +130,7 @@ export class Agent {
       this.exposedTools.add(name);
     }
 
-    const messages: ChatCompletionMessageParam[] = [
+    const messages: Message[] = [
       {
         role: "system",
         content: systemPrompt,
@@ -162,34 +168,16 @@ export class Agent {
     logger.debug(JSON.stringify(messages, null, 2));
     logger.separator();
 
-    let response;
+    let llmResponse;
     try {
-      response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages,
-      });
+      llmResponse = await this.llmService.generateCompletion(messages);
     } catch (error) {
-      throw new APIError(
-        "Failed to generate response from OpenAI API",
-        error instanceof Error && 'status' in error ? (error as any).status : undefined,
-        { cause: error instanceof Error ? error : undefined }
-      ).addContext({
-        model: "gpt-4o",
-        messageCount: messages.length,
-        totalTokens: JSON.stringify(messages).length / 4 // Rough estimation
-      });
-    }
-
-    if (!response.choices[0].message.content) {
-      throw new APIError("OpenAI returned empty response content")
-        .addContext({
-          response: JSON.stringify(response),
-          model: "gpt-4o"
-        });
+      // The LLMService already wraps the error, so we just rethrow it
+      throw error;
     }
 
     // Extract code from the response
-    const content = response.choices[0].message.content;
+    const content = llmResponse.content;
     logger.separator();
     logger.info("Code generation response:");
     logger.info(content);
@@ -267,33 +255,17 @@ export class Agent {
           "Please provide a comprehensive final answer to the goal based on the execution logs you have.",
       });
       try {
-        const finalResponse = await this.openai.chat.completions.create({
-          model: "gpt-4o",
-          messages,
-        });
-        
-        if (!finalResponse.choices[0].message.content) {
-          throw new APIError("OpenAI returned empty final response content")
-            .addContext({
-              responseId: finalResponse.id,
-              model: "gpt-4o"
-            });
-        }
-        
-        return finalResponse.choices[0].message.content;
+        const finalResponse = await this.llmService.generateCompletion(messages);
+        return finalResponse.content;
       } catch (error) {
         // Handle API errors in final response generation
-        const apiError = new APIError(
-          "Failed to generate final response from OpenAI API",
-          error instanceof Error && 'status' in error ? (error as any).status : undefined,
-          { cause: error instanceof Error ? error : undefined }
-        ).addContext({
-          model: "gpt-4o",
-          messageCount: messages.length,
-          isFinalAnswer: true
-        });
-        
-        logger.logError(apiError);
+        if (error instanceof APIError) {
+          logger.logError(error.addContext({
+            isFinalAnswer: true
+          }));
+        } else {
+          logger.logError(wrapError(error, "Failed to generate final response"));
+        }
         
         // Return a fallback response since this is the final step
         return "I was unable to generate a final response due to an API error. Please check the execution logs for the information gathered so far.";

@@ -4,6 +4,7 @@
     "": {
       "name": "mp-sandbox",
       "dependencies": {
+        "@anthropic-ai/sdk": "^0.39.0",
         "@micropython/micropython-webassembly-pyscript": "^1.24.1",
         "dotenv": "^16.4.7",
         "google-search-results-nodejs": "^2.1.0",
@@ -20,6 +21,8 @@
     },
   },
   "packages": {
+    "@anthropic-ai/sdk": ["@anthropic-ai/sdk@0.39.0", "", { "dependencies": { "@types/node": "^18.11.18", "@types/node-fetch": "^2.6.4", "abort-controller": "^3.0.0", "agentkeepalive": "^4.2.1", "form-data-encoder": "1.7.2", "formdata-node": "^4.3.2", "node-fetch": "^2.6.7" } }, "sha512-eMyDIPRZbt1CCLErRCi3exlAvNkBtRe+kW5vvJyef93PmNr/clstYgHhtvmkxN82nlKgzyGPCyGxrm0JQ1ZIdg=="],
+
     "@micropython/micropython-webassembly-pyscript": ["@micropython/micropython-webassembly-pyscript@1.24.1", "", {}, "sha512-FC+Lv9TcwyBczC3FcyKYV/loxieXF7B7I5mwxA8wlmw8zm7RFHTL83kOSb06m0bOwgIkiSBwVlxd+2wTBM5NjA=="],
 
     "@types/bun": ["@types/bun@1.2.2", "", { "dependencies": { "bun-types": "1.2.2" } }, "sha512-tr74gdku+AEDN5ergNiBnplr7hpDp3V1h7fqI2GcR/rsUaM39jpSeKH0TFibRvU0KwniRx5POgaYnaXbk0hU+w=="],

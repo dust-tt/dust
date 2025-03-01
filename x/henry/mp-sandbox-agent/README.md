@@ -17,11 +17,26 @@ An AI agent that generates and executes Python code, inspired by [CodeAct (Wang 
 bun install
 ```
 
-3. Create a `.env` file in the root directory with your OpenAI API key:
+3. Create a `.env` file in the root directory with your API keys and configuration:
 
 ```
-OPENAI_API_KEY=your_api_key_here
+# Required API keys
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+SERPAPI_API_KEY=your_serpapi_key_here
+FIRECRAWL_API_KEY=your_firecrawl_key_here
+
+# LLM Configuration
+AI_PROVIDER=openai  # openai or anthropic
+AI_MODEL=gpt-4o    # See .env.example for available models
+AI_TEMPERATURE=0.0  # 0.0 to 1.0
+AI_MAX_TOKENS=4096  # Maximum tokens to generate
+
+# Logging
+LOG_LEVEL=INFO      # ERROR, WARN, INFO, DEBUG, TRACE
 ```
+
+See `.env.example` for a full list of configuration options.
 
 ## Usage
 
@@ -102,8 +117,8 @@ This project is currently undergoing improvements based on code review feedback:
 
 ⏳ **Pending**:
 - Reduce coupling between Agent and PythonSandbox classes
-- Make model selection configurable
-- Add proper validation for environment variables
+✅ Make model selection configurable
+✅ Add proper validation for environment variables
 - Implement input validation for external inputs
 - Add resource limits to the sandbox
 - Improve handling of API keys

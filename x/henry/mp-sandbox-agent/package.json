@@ -13,6 +13,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
     "@micropython/micropython-webassembly-pyscript": "^1.24.1",
     "dotenv": "^16.4.7",
     "google-search-results-nodejs": "^2.1.0",
