@@ -45,16 +45,16 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   image: 5 * 1024 * 1024, // 5 MB
 };
 
-export function maxFileSizeToHumanReadable(size: number) {
+export function maxFileSizeToHumanReadable(size: number, decimals = 0) {
   if (size < 1024) {
-    return `${size} B`;
+    return `${size.toFixed(decimals)} B`;
   }
 
   if (size < 1024 * 1024) {
-    return `${size / 1024} kB`;
+    return `${(size / 1024).toFixed(decimals)} kB`;
   }
 
-  return `${size / (1024 * 1024)} MB`;
+  return `${(size / (1024 * 1024)).toFixed(decimals)} MB`;
 }
 
 const BIG_FILE_SIZE = 5_000_000;
