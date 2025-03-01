@@ -1,5 +1,4 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { H2, P } from "@app/components/home/ContentComponents";
@@ -51,7 +50,7 @@ export function CapabilitySection() {
           title={<>Leverage the best models on the market.</>}
           content={
             <>
-              “Choose GPT-4, Anthropic, Gemini, Mistral, or any cutting-edge
+              “Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
               model to ensure your agents stay smartest.”
             </>
           }
@@ -96,20 +95,20 @@ export function CapabilitySection() {
             <Div3D depth={0} className="absolute top-0">
               <img src="/static/landing/connect/connect2.png" />
             </Div3D>
-            <Div3D depth={15} className="absolute top-0">
+            <Div3D depth={60} className="absolute top-0">
               <img src="/static/landing/connect/connect3.png" />
             </Div3D>
-            <Div3D depth={60} className="absolute top-0">
+            {/* <Div3D depth={60} className="absolute top-0">
               <img src="/static/landing/connect/connect4.png" />
-            </Div3D>
+            </Div3D> */}
           </Hover3D>
         </ImgBlock>
         <ImgBlock
           title={<>Share with your team, collect feedback</>}
           content={
             <>
-              Empower those with a&nbsp;builder mindset to build agents for
-              their teams and get actionable feedback.
+              Empower tinkerers to build agents for their teams and get
+              continuous feedback to iterate on them.
             </>
           }
         >

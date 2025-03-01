@@ -38,7 +38,7 @@ export function ExtensibilitySection() {
             content={
               <>
                 Develop advanced or agentic capabilities, from document
-                auto-updates, triggered actions, or external API access.
+                auto-updates, triggered actions, or leveraging external APIs.
               </>
             }
           >
@@ -105,10 +105,7 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/crm/crm1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/crm/crm2.png" />
+                <img src="/static/landing/support/ticketdeflection.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
