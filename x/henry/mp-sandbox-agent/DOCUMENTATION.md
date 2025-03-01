@@ -21,6 +21,11 @@ MicroPython Sandbox Agent is a secure, code-first AI agent framework that uses e
 - **Clear Tool Documentation**: Automatically generates documentation for available tools.
 - **Error Handling**: Robust error handling for tool execution with clear error messages.
 
+### 4. Multi-Model Support
+- **Model Flexibility**: Support for both OpenAI (GPT-4o, GPT-4, etc.) and Anthropic (Claude) models.
+- **Configurable Parameters**: Customizable model settings like temperature and token limits.
+- **Easy Switching**: Simple environment variable configuration to change between providers.
+
 ## Core Components
 
 ### 1. Agent Class
@@ -270,13 +275,13 @@ The following improvements would enhance the codebase's architecture, security, 
    - Reduce coupling between the Agent and PythonSandbox classes
    - Split the Agent class into smaller components with single responsibilities
    - Define clear interfaces for key components to improve testability
-   - Make model selection configurable rather than hardcoded
+   - ✅ Make model selection configurable rather than hardcoded
 
 2. **Code Quality**:
    - ✅ Replace `any` types with proper TypeScript definitions
    - ✅ Implement consistent error handling with proper context information
    - ✅ Replace direct console.log statements with a configurable logging system
-   - Add proper validation and defaults for environment variables
+   - ✅ Add proper validation and defaults for environment variables
 
 3. **Security Enhancements**:
    - Implement input validation for all external inputs (URLs, API parameters)
@@ -423,6 +428,56 @@ These changes improve:
 - Documentation through types
 - Developer experience
 
+### ✅ Configurable Model Selection (Completed)
+
+A flexible model configuration system has been implemented to support both OpenAI and Anthropic models:
+
+- **Model Configuration**: Centralized configuration in `utils/config.ts` for all model settings
+- **Environment Variables**: Support for environment variables to control model selection and parameters
+- **Provider Abstraction**: An LLM service layer in `services/llm.ts` that abstracts provider-specific implementation details
+- **Default Values**: Sensible defaults for all model parameters
+
+The system supports multiple configuration options:
+- `AI_PROVIDER`: Choose between 'openai' and 'anthropic'
+- `AI_MODEL`: Specify the exact model version to use
+- `AI_TEMPERATURE`: Control the temperature parameter (0.0 to 1.0)
+- `AI_MAX_TOKENS`: Set the maximum tokens to generate
+
+Latest models supported:
+- OpenAI: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+- Anthropic: claude-3-7-sonnet-20250219, claude-3-5-sonnet-20241022, claude-3-5-haiku-20241022, etc.
+
+Usage example:
+
+```bash
+# Use OpenAI GPT-4o
+AI_PROVIDER=openai AI_MODEL=gpt-4o bun run main.ts "What's the weather in Paris?"
+
+# Use Anthropic Claude 3.7 Sonnet
+AI_PROVIDER=anthropic AI_MODEL=claude-3-7-sonnet-20250219 bun run main.ts "What's the weather in Paris?"
+```
+
+### ✅ Improved Prompt Management (Completed)
+
+The prompt management system has been improved for better organization and maintainability:
+
+- **Centralized Prompts**: All prompts are now defined in `agent/prompts.ts` with clear structure
+- **Documented Prompts**: Each prompt has JSDoc comments explaining its purpose and usage
+- **Modular Structure**: Separate prompt constants for different stages of the agent lifecycle
+- **Functional Approach**: Function-based templates for prompts that need dynamic content
+
+Key prompts:
+- `systemPrompt`: Defines the agent's role and response format
+- `firstStepPrompt`: Instructions for the first step of execution
+- `continuePrompt`: Template for continuing after code execution
+- `toolDocsPrompt`: Template for tool documentation
+- `finalAnswerPrompt`: Prompt for generating the final answer
+
+This structure improves:
+- Code organization and readability
+- Prompt maintenance and versioning
+- Documentation of prompt purposes and structures
+
 ## Installation
 
 1. Clone the repository
@@ -430,9 +485,23 @@ These changes improve:
 ```bash
 bun install
 ```
-3. Create a `.env` file with your OpenAI API key:
+3. Create a `.env` file with your API keys and configuration:
 ```
-OPENAI_API_KEY=your_api_key_here
+# Required API keys
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+SERPAPI_API_KEY=your_serpapi_key_here
+FIRECRAWL_API_KEY=your_firecrawl_key_here
+
+# LLM Configuration
+AI_PROVIDER=openai  # openai or anthropic
+AI_MODEL=gpt-4o    # For OpenAI: gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5-turbo
+                   # For Anthropic: claude-3-7-sonnet-20250219, claude-3-5-sonnet-20241022, etc.
+AI_TEMPERATURE=0.0  # 0.0 to 1.0
+AI_MAX_TOKENS=4096  # Maximum tokens to generate
+
+# Logging
+LOG_LEVEL=INFO      # ERROR, WARN, INFO, DEBUG, TRACE
 ```
 
 ## Development

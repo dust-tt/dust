@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
-import { ModelConfig, Provider } from "../utils/config";
+import { type ModelConfig, type Provider } from "../utils/config";
 import { type ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { APIError } from "../utils/errors";
 import { logger } from "../utils/logger";
@@ -145,19 +145,22 @@ export class LLMService {
       messages: anthropicMessages,
       system: systemMessage,
       temperature: this.config.temperature,
-      max_tokens: this.config.maxTokens,
+      max_tokens: this.config.maxTokens || 4096,
     });
 
-    if (!response.content[0].text) {
-      throw new APIError("Anthropic returned empty response content")
+    // Check for text content in the first content block
+    const content = response.content[0];
+    if (!content || !('text' in content)) {
+      throw new APIError("Anthropic returned empty or invalid response content")
         .addContext({
           responseId: response.id,
-          model: this.config.model
+          model: this.config.model,
+          contentType: content ? typeof content : 'undefined'
         });
     }
 
     return {
-      content: response.content[0].text,
+      content: content.text,
       totalTokens: response.usage?.input_tokens + response.usage?.output_tokens,
     };
   }

@@ -1,3 +1,12 @@
+/**
+ * This file contains all prompts used by the agent
+ * Each prompt is a separate exported constant with descriptive name
+ */
+
+/**
+ * System prompt that establishes the agent's role, response format,
+ * and explains the Python environment and conversation structure
+ */
 export const systemPrompt = `
 <role>
 You are a research AI agent that uses Python code to work towards a goal that has been provided by the user.
@@ -28,3 +37,27 @@ You will then be asked to continue working towards the goal by providing a new a
 Once you believe you have enough information to provide a final answer to the user, you must output a code block that uses the \`stop_execution\` function.
 </conversation_structure>
 `;
+
+/**
+ * Prompt for the first step, instructing the agent to begin with analysis and code
+ */
+export const firstStepPrompt = "\nPlease begin by an analysis and a python code block to achieve the goal.\n";
+
+/**
+ * Prompt template for continuing after seeing code output
+ * Use codeOutput as a placeholder for the actual output
+ */
+export const continuePrompt = (codeOutput: string) => 
+  `Here is the output of the code you generated:\n\n${codeOutput}\n\nPlease continue generating code.`;
+
+/**
+ * Prompt for tool documentation
+ * Use toolDocs as a placeholder for the actual tool documentation
+ */
+export const toolDocsPrompt = (toolDocs: string) => 
+  `\n\nYou currently have access to the following function:\n${toolDocs}`;
+
+/**
+ * Prompt for requesting a final answer
+ */
+export const finalAnswerPrompt = "Please provide a comprehensive final answer to the goal based on the execution logs you have.";

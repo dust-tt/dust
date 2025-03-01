@@ -111,14 +111,15 @@ This project is currently undergoing improvements based on code review feedback:
 - Configurable logging system (replacing direct console.log statements)
 - Consistent error handling with proper context information
 - Replace `any` types with proper TypeScript definitions
+- Configurable model selection with support for OpenAI and Anthropic
+- Improved environment variable validation
+- Better prompt organization and management
 
 🔄 **In Progress**:
 - None currently
 
 ⏳ **Pending**:
 - Reduce coupling between Agent and PythonSandbox classes
-✅ Make model selection configurable
-✅ Add proper validation for environment variables
 - Implement input validation for external inputs
 - Add resource limits to the sandbox
 - Improve handling of API keys

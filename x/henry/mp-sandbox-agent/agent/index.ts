@@ -3,7 +3,7 @@ import type { Tool, AnyTool } from "../tools/types";
 import { generateToolDocs } from "./helpers";
 import { z } from "zod";
 import { defineTool } from "../tools/helpers";
-import { systemPrompt } from "./prompts";
+import { systemPrompt, firstStepPrompt, continuePrompt, toolDocsPrompt, finalAnswerPrompt } from "./prompts";
 import { logger } from "../utils/logger";
 import { 
   ValidationError,
@@ -11,8 +11,10 @@ import {
   SandboxError,
   wrapError
 } from "../utils/errors";
-import { LLMService, Message } from "../services/llm";
-import { loadModelConfig, ModelConfig } from "../utils/config";
+import { LLMService } from "../services/llm";
+import type { Message } from "../services/llm";
+import { loadModelConfig } from "../utils/config";
+import type { ModelConfig } from "../utils/config";
 
 /**
  * Represents a single step in the agent's execution
@@ -130,6 +132,7 @@ export class Agent {
       this.exposedTools.add(name);
     }
 
+    // Initialize messages with system and user prompts
     const messages: Message[] = [
       {
         role: "system",
@@ -141,27 +144,28 @@ export class Agent {
       },
     ];
 
-    for (const [i, step] of this.steps.entries()) {
+    // Add messages for each previous step
+    for (const step of this.steps) {
+      // Add the assistant's response from the previous step
       messages.push({
         role: "assistant",
         content: step.generation,
       });
+      
+      // Add the user's response with the code output
       messages.push({
         role: "user",
-        content:
-          `Here is the output of the code you generated:\n\n` +
-          `${step.codeOutput}\n\nPlease continue generating code.`,
+        content: continuePrompt(step.codeOutput),
       });
     }
 
+    // For the first step, add instructions to begin with analysis and code block
     if (!this.steps.length) {
-      messages[messages.length - 1].content +=
-        "\nPlease begin by an analysis and a python code block to achieve the goal.\n";
+      messages[messages.length - 1].content += firstStepPrompt;
     }
 
-    messages[messages.length - 1].content +=
-      `\n\nYou currently have access to the following function:` +
-      `\n${generateToolDocs(tools)}`;
+    // Add tool documentation to the last message
+    messages[messages.length - 1].content += toolDocsPrompt(generateToolDocs(tools));
 
     logger.separator();
     logger.debug("Messages:");
@@ -249,11 +253,12 @@ export class Agent {
     });
 
     if (!this.shouldContinue) {
+      // Add the final answer prompt
       messages.push({
         role: "user",
-        content:
-          "Please provide a comprehensive final answer to the goal based on the execution logs you have.",
+        content: finalAnswerPrompt,
       });
+      
       try {
         const finalResponse = await this.llmService.generateCompletion(messages);
         return finalResponse.content;
