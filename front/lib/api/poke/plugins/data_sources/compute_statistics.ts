@@ -42,7 +42,7 @@ export const computeStatsPlugin = createPlugin({
       display: "json",
       value: {
         name,
-        text_size: maxFileSizeToHumanReadable(text_size),
+        text_size: maxFileSizeToHumanReadable(text_size, 2),
         document_count,
       },
     });
