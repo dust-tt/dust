@@ -95,6 +95,7 @@ This project is currently undergoing improvements based on code review feedback:
 ✅ **Completed**:
 - Configurable logging system (replacing direct console.log statements)
 - Consistent error handling with proper context information
+- Replace `any` types with proper TypeScript definitions
 
 🔄 **In Progress**:
 - None currently
@@ -102,7 +103,6 @@ This project is currently undergoing improvements based on code review feedback:
 ⏳ **Pending**:
 - Reduce coupling between Agent and PythonSandbox classes
 - Make model selection configurable
-- Replace `any` types with proper TypeScript definitions
 - Add proper validation for environment variables
 - Implement input validation for external inputs
 - Add resource limits to the sandbox

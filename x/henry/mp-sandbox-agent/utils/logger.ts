@@ -20,7 +20,7 @@ export interface LoggerOptions {
   /** Whether to include log level in logs */
   showLevel?: boolean;
   /** Custom output function (defaults to console) */
-  outputFn?: (message: string, level: LogLevel) => void;
+  outputFn: (message: string, level: LogLevel) => void;
 }
 
 export class Logger {
@@ -75,17 +75,42 @@ export class Logger {
   
   /**
    * Log a message if the level is enabled
+   * @param level The log level
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  private log(level: LogLevel, message: string, ...args: any[]): void {
+  private log(level: LogLevel, message: string, ...args: unknown[]): void {
     if (level > this.options.level) return;
     
     let formattedMessage = this.formatMessage(level, message);
     
     // Handle additional args by replacing %s, %d, etc.
     if (args.length > 0) {
-      formattedMessage = formattedMessage.replace(/%[sdjifoO%]/g, (match) => {
+      formattedMessage = formattedMessage.replace(/%[sdjifoO%]/g, (match): string => {
         if (match === '%%') return '%';
-        return String(args.shift() ?? '');
+        
+        const value = args.shift();
+        if (value === undefined) return '';
+        
+        // Format based on specifier
+        switch (match) {
+          case '%j':
+          case '%o':
+          case '%O':
+            try {
+              return JSON.stringify(value, null, 2);
+            } catch (err) {
+              return String(value);
+            }
+          case '%d':
+          case '%i':
+            return Number(value).toString();
+          case '%f':
+            return Number(value).toFixed(6);
+          case '%s':
+          default:
+            return String(value);
+        }
       });
     }
     
@@ -94,13 +119,17 @@ export class Logger {
   
   /**
    * Log an error message
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  error(message: string, ...args: any[]): void {
+  error(message: string, ...args: unknown[]): void {
     this.log(LogLevel.ERROR, message, ...args);
   }
   
   /**
    * Log an error object with full context
+   * @param error The error object to log
+   * @param message Optional message to display before the error
    */
   logError(error: unknown, message?: string): void {
     if (this.options.level < LogLevel.ERROR) return;
@@ -119,7 +148,7 @@ export class Logger {
       );
       
       // Log context if present
-      if (Object.keys(errorObj.context).length > 0) {
+      if (errorObj.context && typeof errorObj.context === 'object' && Object.keys(errorObj.context).length > 0) {
         this.options.outputFn(
           this.formatMessage(LogLevel.ERROR, `Context: ${JSON.stringify(errorObj.context, null, 2)}`),
           LogLevel.ERROR
@@ -156,29 +185,37 @@ export class Logger {
   
   /**
    * Log a warning message
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  warn(message: string, ...args: any[]): void {
+  warn(message: string, ...args: unknown[]): void {
     this.log(LogLevel.WARN, message, ...args);
   }
   
   /**
    * Log an info message
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  info(message: string, ...args: any[]): void {
+  info(message: string, ...args: unknown[]): void {
     this.log(LogLevel.INFO, message, ...args);
   }
   
   /**
    * Log a debug message
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  debug(message: string, ...args: any[]): void {
+  debug(message: string, ...args: unknown[]): void {
     this.log(LogLevel.DEBUG, message, ...args);
   }
   
   /**
    * Log a trace message (most verbose)
+   * @param message The message to log
+   * @param args Values to substitute into the message
    */
-  trace(message: string, ...args: any[]): void {
+  trace(message: string, ...args: unknown[]): void {
     this.log(LogLevel.TRACE, message, ...args);
   }
   

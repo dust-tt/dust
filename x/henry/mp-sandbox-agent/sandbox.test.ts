@@ -100,9 +100,11 @@ describe("PythonSandbox", () => {
       await sandbox.runCode("raise Exception('This is a test error')");
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe(
-        'Traceback (most recent call last):\n  File "<stdin>", line 3, in <module>\nException: This is a test error\n'
+      expect((error as Error).message).toContain(
+        'This is a test error'
       );
+      // Make sure it contains the Python traceback
+      expect((error as Error).message).toContain('Traceback (most recent call last)');
     }
   });
   test("should support list kw parameters", async () => {

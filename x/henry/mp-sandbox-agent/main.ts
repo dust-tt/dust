@@ -6,6 +6,7 @@ import { scrapePages } from "./tools/scrape";
 import { searchWeb } from "./tools/serp";
 import { logger, LogLevel } from "./utils/logger";
 import { ConfigurationError, wrapError } from "./utils/errors";
+import type { AnyTool } from "./tools/types";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,10 +34,13 @@ async function main() {
   }
 
   const agent = await Agent.create(request);
-  const tools = {
-    fetch_weather: fetchWeather,
-    scrape_pages: scrapePages,
-    search_web: searchWeb,
+  // Convert typed tools to AnyTool for compatibility
+  const asAnyTool = <T>(tool: T): AnyTool => tool as unknown as AnyTool;
+  
+  const tools: Record<string, AnyTool> = {
+    fetch_weather: asAnyTool(fetchWeather),
+    scrape_pages: asAnyTool(scrapePages),
+    search_web: asAnyTool(searchWeb),
   };
   
   let answer: string | null = null;

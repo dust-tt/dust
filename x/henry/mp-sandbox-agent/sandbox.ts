@@ -11,17 +11,43 @@ export interface CodeExecutionResult {
   stdout: string;
 }
 
-type ExposedFunction = {
-  fn: (input: any) => Promise<any>;
-  input: z.ZodType<any>;
-  output: z.ZodType<any>;
+/**
+ * Represents a parsed JSON value (string, number, boolean, null, array, or object)
+ */
+export type JsonValue = 
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+/**
+ * Represents a function that can be exposed to the sandbox
+ */
+export interface ExposedFunction<
+  TInput = unknown,
+  TOutput = unknown
+> {
+  /** Function to execute when called from Python */
+  fn: (input: TInput) => Promise<TOutput>;
+  /** Schema to validate and parse the input */
+  input: z.ZodType<TInput>;
+  /** Schema to validate and parse the output */
+  output: z.ZodType<TOutput>;
+  /** Description of the function */
   description: string;
-};
+}
+
+/**
+ * Untyped version of ExposedFunction for internal use
+ */
+type AnyExposedFunction = ExposedFunction<unknown, unknown>;
 
 export class PythonSandbox {
   private mp!: MicroPythonInstance;
-  private exposedFunctions: { [key: string]: ExposedFunction } = {};
-  private module: Record<string, any> = {};
+  private exposedFunctions: { [key: string]: AnyExposedFunction } = {};
+  private module: Record<string, Function> = {};
   private moduleId: string;
   private stdoutBuffer: string[] = [];
   private stderrBuffer: string[] = [];
@@ -63,40 +89,65 @@ export class PythonSandbox {
     return { stdout, stderr };
   }
 
-  expose(name: string, func: ExposedFunction) {
-    this.exposedFunctions[name] = func;
+  /**
+   * Expose a function to the Python environment
+   * @param name The name of the function in Python
+   * @param func The function to expose
+   */
+  expose<TInput, TOutput>(name: string, func: ExposedFunction<TInput, TOutput>): void {
+    this.exposedFunctions[name] = func as AnyExposedFunction;
 
-    const wrapper = (_args: string, _kwargs: string) => {
-      // Parse input according to schema
-      const args = JSON.parse(_args);
-      const kwargs = JSON.parse(_kwargs);
+    // Create a wrapper function that handles JSON serialization/deserialization
+    const wrapper = (_args: string, _kwargs: string): Promise<string | number | boolean> => {
+      // Parse input JSON strings
+      const args: JsonValue[] = JSON.parse(_args);
+      const kwargs: Record<string, JsonValue> = JSON.parse(_kwargs);
 
-      const toParse: any = {};
-      const inputObject = func.input as z.ZodObject<z.ZodRawShape>;
-      for (const [i, key] of Object.keys(inputObject.shape).entries()) {
-        if (kwargs[key]) {
-          toParse[key] = kwargs[key];
-        } else {
-          toParse[key] = args[i];
+      // Convert positional and keyword arguments to an object that can be validated
+      // against the input schema
+      const paramsObj: Record<string, JsonValue> = {};
+      
+      // Handle object schemas differently than other schemas
+      if (func.input instanceof z.ZodObject) {
+        // Map parameters from positional args and keyword args
+        for (const [i, key] of Object.keys(func.input.shape).entries()) {
+          if (key in kwargs) {
+            paramsObj[key] = kwargs[key];
+          } else if (i < args.length) {
+            paramsObj[key] = args[i];
+          }
+        }
+      } else {
+        // For non-object schemas, just use the first argument
+        if (args.length > 0) {
+          return Promise.resolve(JSON.stringify(args[0]));
         }
       }
 
-      const params = func.input.parse(toParse);
+      // Parse with the input schema to validate and transform
+      const params = func.input.parse(paramsObj);
 
-      const r = func.fn(params);
+      // Call the function
+      const result = func.fn(params);
 
-      const maybeParseValue = (value: unknown) =>
-        typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean"
-          ? value
-          : JSON.stringify(value);
+      // Function to convert result to a JSON-compatible value
+      const serializeValue = (value: unknown): string | number | boolean => {
+        if (
+          typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean"
+        ) {
+          return value;
+        }
+        return JSON.stringify(value);
+      };
 
-      if (r instanceof Promise) {
-        return r.then(maybeParseValue);
+      // Handle async results
+      if (result instanceof Promise) {
+        return result.then(serializeValue);
       }
 
-      return maybeParseValue(r);
+      return Promise.resolve(serializeValue(result));
     };
 
     // Create an object to hold our exposed functions

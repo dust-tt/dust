@@ -1,7 +1,13 @@
-import type { Tool } from "../tools/types";
+import type { AnyTool } from "../tools/types";
 import { z } from "zod";
 
-function describeZodType(schema: z.ZodType, indent: string = ""): string {
+/**
+ * Converts a Zod schema to a readable description string
+ * @param schema The Zod schema to describe
+ * @param indent Indentation level for nested schemas
+ * @returns A human-readable description of the schema
+ */
+function describeZodType(schema: z.ZodTypeAny, indent = ""): string {
   if (schema instanceof z.ZodArray) {
     return `list of ${describeZodType(schema.element, indent + "  ")}`;
   } else if (schema instanceof z.ZodObject) {
@@ -18,9 +24,12 @@ function describeZodType(schema: z.ZodType, indent: string = ""): string {
   } else if (schema instanceof z.ZodUnion && schema.options.length === 2) {
     // Check if this is a ToolOutput schema
     const successCase = schema.options.find(
-      (opt: z.ZodType) =>
-        opt instanceof z.ZodObject && opt.shape.type?.value === "success"
-    ) as z.ZodObject<any> | undefined;
+      (opt: z.ZodTypeAny) =>
+        opt instanceof z.ZodObject && 
+        'type' in opt.shape && 
+        opt.shape.type instanceof z.ZodLiteral && 
+        opt.shape.type.value === "success"
+    ) as z.ZodObject<{ type: z.ZodLiteral<"success">; result: z.ZodTypeAny }> | undefined;
 
     if (successCase?.shape.result) {
       return describeZodType(successCase.shape.result, indent);
@@ -38,28 +47,31 @@ function describeZodType(schema: z.ZodType, indent: string = ""): string {
   }
 }
 
-export function generateToolDocs(tools: Record<string, Tool>): string {
+/**
+ * Generates documentation for tools that can be used in Python code
+ * @param tools Dictionary of tools to document
+ * @returns A string containing documentation for all tools
+ */
+export function generateToolDocs(tools: Record<string, AnyTool>): string {
   let docs =
     "Note: \n" +
     "- All functions listed may return None if they fail (check for None before accessing the result)\n" +
     "- All functions listed here are asynchronous and must be always be awaited, even if they don't return anything or you don't care about the result.\n";
-  for (const [fnName, { description, input, output }] of Object.entries(
-    tools
-  )) {
+  
+  for (const [fnName, { description, input, output }] of Object.entries(tools)) {
+    // Check that input is an object schema
+    if (!(input instanceof z.ZodObject)) {
+      continue;
+    }
+    
     // Function signature with description
-    const inputObject = input as z.ZodObject<any>;
-
-    docs += `- ${fnName}(${Object.keys(inputObject.shape).join(
-      ", "
-    )}): ${description}\n`;
+    const paramNames = Object.keys(input.shape);
+    docs += `- ${fnName}(${paramNames.join(", ")}): ${description}\n`;
 
     // Input parameters
     docs += "  Parameters:\n";
-    for (const [paramName, paramSchema] of Object.entries(inputObject.shape)) {
-      docs += `  * ${paramName}: ${describeZodType(
-        paramSchema as z.ZodType,
-        "  "
-      )}\n`;
+    for (const [paramName, paramSchema] of Object.entries(input.shape)) {
+      docs += `  * ${paramName}: ${describeZodType(paramSchema as z.ZodTypeAny, "  ")}\n`;
     }
 
     // Output fields

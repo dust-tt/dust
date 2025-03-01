@@ -3,6 +3,12 @@ import { z } from "zod";
 import { generateToolDocs } from "./helpers";
 import { defineTool } from "../tools/helpers";
 import { ToolOutput } from "../tools/types";
+import type { AnyTool, Tool } from "../tools/types";
+
+// Helper function to convert any Tool to AnyTool for testing
+function asAnyTool<T extends Tool<any, any>>(tool: T): AnyTool {
+  return tool as unknown as AnyTool;
+}
 
 describe("generateToolDocs", () => {
   it("should generate docs for a simple tool", () => {
@@ -15,7 +21,7 @@ describe("generateToolDocs", () => {
       async () => ({ type: "success", result: "test" })
     );
 
-    const docs = generateToolDocs({ simpleTool });
+    const docs = generateToolDocs({ simpleTool: asAnyTool(simpleTool) });
     expect(docs).toContain(
       "All functions listed may return None if they fail (check for None before accessing the result)"
     );
@@ -51,7 +57,7 @@ describe("generateToolDocs", () => {
       async () => ({ type: "success", result: { id: 1, settings: [] } })
     );
 
-    const docs = generateToolDocs({ complexTool });
+    const docs = generateToolDocs({ complexTool: asAnyTool(complexTool) });
     expect(docs).toContain(
       "complexTool(user, options): A complex test function"
     );
@@ -82,7 +88,10 @@ describe("generateToolDocs", () => {
       async () => ({ type: "success", result: "test" })
     );
 
-    const docs = generateToolDocs({ tool1, tool2 });
+    const docs = generateToolDocs({ 
+      tool1: asAnyTool(tool1), 
+      tool2: asAnyTool(tool2) 
+    });
     expect(docs).toContain("tool1(a): First tool");
     expect(docs).toContain("tool2(b): Second tool");
   });
@@ -95,7 +104,7 @@ describe("generateToolDocs", () => {
       async () => ({ type: "success", result: "test" })
     );
 
-    const docs = generateToolDocs({ outputTool });
+    const docs = generateToolDocs({ outputTool: asAnyTool(outputTool) });
     // Should only show the success case type
     expect(docs).toContain("Returns:");
     expect(docs).toContain("string");

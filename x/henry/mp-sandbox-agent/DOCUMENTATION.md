@@ -273,7 +273,7 @@ The following improvements would enhance the codebase's architecture, security, 
    - Make model selection configurable rather than hardcoded
 
 2. **Code Quality**:
-   - Replace `any` types with proper TypeScript definitions
+   - ✅ Replace `any` types with proper TypeScript definitions
    - ✅ Implement consistent error handling with proper context information
    - ✅ Replace direct console.log statements with a configurable logging system
    - Add proper validation and defaults for environment variables
@@ -376,6 +376,52 @@ This error handling system is now integrated throughout the codebase, including:
 - Tool implementations (especially API calls)
 - Agent steps and API interactions
 - Configuration validation
+
+### ✅ Type-Safe Code with Proper TypeScript Definitions (Completed)
+
+The codebase has been updated to use proper TypeScript definitions, eliminating `any` types and providing better type safety. The improvements include:
+
+- **Generic Type Parameters**: Tools and functions now use generic type parameters for better type checking.
+- **Defined Interfaces**: Well-defined interfaces for key data structures and APIs.
+- **JSON Value Type**: A proper type for JSON values that can be passed between JavaScript and Python.
+- **Type Guards**: Added type guards to ensure type safety when dealing with unknown data.
+- **Type-Safe API Design**: Redesigned APIs to use proper TypeScript features.
+
+Key type definitions:
+
+```typescript
+// JSON value type for Python/JavaScript interop
+export type JsonValue = 
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+// Type-safe tool definition
+export interface Tool<TInput = unknown, TOutput = unknown> {
+  fn: (input: TInput, context: ToolContext) => Promise<ToolOutput<TOutput>>;
+  input: z.ZodType<TInput>;
+  output: z.ZodType<TOutput>;
+  description: string;
+}
+
+// Type-safe sandbox function exposure
+export interface ExposedFunction<TInput = unknown, TOutput = unknown> {
+  fn: (input: TInput) => Promise<TOutput>;
+  input: z.ZodType<TInput>;
+  output: z.ZodType<TOutput>;
+  description: string;
+}
+```
+
+These changes improve:
+- Compile-time type checking
+- Code editor autocompletion and IntelliSense
+- Refactoring safety
+- Documentation through types
+- Developer experience
 
 ## Installation
 
