@@ -60,10 +60,10 @@ async function handler(
       let event: Stripe.Event | null = null;
 
       // Collect raw body using stream pipeline
-      let rawBody = "";
+      let rawBody = Buffer.from("");
       const collector = new Writable({
         write(chunk, encoding, callback) {
-          rawBody += chunk.toString();
+          rawBody = Buffer.concat([rawBody, chunk]);
           callback();
         },
       });
@@ -102,11 +102,6 @@ async function handler(
           },
         });
       }
-
-      logger.info(
-        { sig, stripeError: false, rawBody },
-        "Processing Strip event."
-      );
 
       let subscription;
       let stripeSubscription;
