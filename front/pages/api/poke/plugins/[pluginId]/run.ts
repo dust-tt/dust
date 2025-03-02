@@ -1,5 +1,8 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { createIoTsCodecFromArgs } from "@dust-tt/types";
+import {
+  createIoTsCodecFromArgs,
+  supportedResourceTypes,
+} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -8,18 +11,27 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginResponse } from "@app/lib/api/poke/types";
+import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-export const RunPluginParamsCodec = t.intersection([
+const [first, second, ...rest] = supportedResourceTypes;
+const SupportedResourceTypeCodec = t.union([
+  t.literal(first),
+  t.literal(second),
+  ...rest.map((value) => t.literal(value)),
+]);
+
+const RunPluginParamsCodec = t.union([
   t.type({
     pluginId: t.string,
   }),
-  // If workspaceId is provided, we can only run plugin on a specific resourceId.
-  t.partial({
+  t.type({
+    pluginId: t.string,
     resourceId: t.string,
+    resourceType: SupportedResourceTypeCodec,
     workspaceId: t.string,
   }),
 ]);
@@ -61,7 +73,16 @@ async function handler(
         });
       }
 
-      const { pluginId, resourceId, workspaceId } = pluginRunValidation.right;
+      const { pluginId } = pluginRunValidation.right;
+      const { resourceId, resourceType, workspaceId } =
+        "resourceId" in pluginRunValidation.right
+          ? pluginRunValidation.right
+          : {
+              resourceId: undefined,
+              resourceType: undefined,
+              workspaceId: undefined,
+            };
+
       // If the run targets a specific workspace, use a workspace-scoped authenticator.
       if (workspaceId) {
         auth = await Authenticator.fromSuperUserSession(session, workspaceId);
@@ -77,6 +98,10 @@ async function handler(
           },
         });
       }
+
+      const resource = resourceType
+        ? await fetchPluginResource(auth, resourceType, resourceId)
+        : null;
 
       const pluginCodec = createIoTsCodecFromArgs(plugin.manifest.args);
       const pluginArgsValidation = pluginCodec.decode(req.body);
@@ -105,7 +130,7 @@ async function handler(
       );
       const runRes = await plugin.execute(
         auth,
-        resourceId,
+        resource,
         pluginArgsValidation.right
       );
       if (runRes.isErr()) {

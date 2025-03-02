@@ -1,4 +1,4 @@
-import type { PluginArgs } from "@dust-tt/types";
+import type { PluginArgs, SupportedResourceType } from "@dust-tt/types";
 
 import type { Plugin } from "@app/lib/api/poke/types";
 
@@ -6,7 +6,9 @@ import * as allPlugins from "./plugins";
 
 class PluginManager {
   private plugins: Map<string, Plugin<PluginArgs>> = new Map();
-  private pluginsByResourceType: Record<string, Plugin<PluginArgs>[]> = {};
+  private pluginsByResourceType: Partial<
+    Record<SupportedResourceType, Plugin<PluginArgs>[]>
+  > = {};
 
   constructor() {
     this.loadPlugins();
@@ -34,11 +36,15 @@ class PluginManager {
     return obj && typeof obj === "object" && "manifest" in obj;
   }
 
-  private getResourceTypesFromPlugin(plugin: Plugin<PluginArgs>): string[] {
+  private getResourceTypesFromPlugin(
+    plugin: Plugin<PluginArgs>
+  ): SupportedResourceType[] {
     return plugin.manifest.resourceTypes || ["default"];
   }
 
-  getPluginsForResourceType(resourceType: string): Plugin<PluginArgs>[] {
+  getPluginsForResourceType(
+    resourceType: SupportedResourceType
+  ): Plugin<PluginArgs>[] {
     return this.pluginsByResourceType[resourceType] || [];
   }
 

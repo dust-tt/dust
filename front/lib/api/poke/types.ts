@@ -36,7 +36,10 @@ export type PluginResponse =
   | { display: "text"; value: string }
   | { display: "json"; value: Record<string, unknown> };
 
-export interface Plugin<T extends PluginArgs, R extends SupportedResourceType> {
+export interface Plugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> {
   manifest: PluginManifest<T, R>;
   execute: (
     auth: Authenticator,
