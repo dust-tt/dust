@@ -14,6 +14,7 @@ import type { PluginResponse } from "@app/lib/api/poke/types";
 import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -128,12 +129,23 @@ async function handler(
         },
         "Running Poke plugin."
       );
+
+      const pluginRun = await PluginRunResource.makeNew(
+        plugin,
+        pluginArgsValidation.right,
+        auth.getNonNullableUser(),
+        workspaceId ? await auth.getNonNullableWorkspace() : null
+      );
+
       const runRes = await plugin.execute(
         auth,
         resource,
         pluginArgsValidation.right
       );
+
       if (runRes.isErr()) {
+        await pluginRun.recordError(runRes.error.message);
+
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -142,6 +154,8 @@ async function handler(
           },
         });
       }
+
+      await pluginRun.recordResult(runRes.value);
 
       res.status(200).json({ result: runRes.value });
 

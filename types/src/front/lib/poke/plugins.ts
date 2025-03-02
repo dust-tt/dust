@@ -3,8 +3,9 @@ import * as t from "io-ts";
 import { LightWorkspaceType } from "../../user";
 
 interface BaseArgDefinition {
-  label: string;
   description?: string;
+  label: string;
+  redact?: boolean;
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];

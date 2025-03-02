@@ -25,7 +25,7 @@ type InferArgType<
           ? V
           : never;
 
-type InferPluginArgs<T extends PluginArgs> = {
+export type InferPluginArgs<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<
     T[K]["type"],
     T[K] extends { values: readonly any[] } ? T[K]["values"][number] : never

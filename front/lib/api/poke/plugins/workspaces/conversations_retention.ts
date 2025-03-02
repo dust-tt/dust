@@ -18,7 +18,7 @@ export const conversationsRetentionPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const retentionDays = args.retentionDays;
 
     if (retentionDays !== -1 && retentionDays < 1) {
