@@ -35,6 +35,7 @@ import {
   isWebsearchActionType,
   removeNulls,
 } from "@dust-tt/types";
+import { marked } from "marked";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import {
@@ -419,10 +420,21 @@ export function AgentMessage({
             tooltip="Copy to clipboard"
             variant="outline"
             size="xs"
-            onClick={() => {
-              void navigator.clipboard.writeText(
-                cleanUpCitations(agentMessageToRender.content || "")
+            onClick={async () => {
+              const markdownText = cleanUpCitations(
+                agentMessageToRender.content || ""
               );
+              // Convert markdown to HTML
+              const htmlContent = await marked(markdownText);
+
+              void navigator.clipboard.write([
+                new ClipboardItem({
+                  "text/plain": new Blob([markdownText], {
+                    type: "text/plain",
+                  }),
+                  "text/html": new Blob([htmlContent], { type: "text/html" }),
+                }),
+              ]);
             }}
             icon={ClipboardIcon}
             className="text-muted-foreground"
