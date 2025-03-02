@@ -23,6 +23,7 @@ import type {
 import {
   assertNever,
   defaultSelectionConfiguration,
+  MIN_SEARCH_QUERY_SIZE,
   removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
@@ -54,7 +55,6 @@ import { useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
-const MIN_SEARCH_QUERY_SIZE = 3;
 
 const getUseResourceHook =
   (

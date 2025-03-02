@@ -47,13 +47,16 @@ export type StrictPluginArgs = {
 
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
-export interface PluginManifest<T extends PluginArgs> {
+export interface PluginManifest<
+  T extends PluginArgs,
+  R extends SupportedResourceType
+> {
   args: T;
   description: string;
   explanation?: string;
   id: string;
   name: string;
-  resourceTypes: string[];
+  resourceTypes: R[];
   warning?: string;
 }
 
@@ -96,4 +99,22 @@ export function createIoTsCodecFromArgs(
   }
 
   return t.type(codecProps);
+}
+
+export const supportedResourceTypes = [
+  "apps",
+  "data_source_views",
+  "data_sources",
+  "spaces",
+  "workspaces",
+  // Special case for global operations.
+  "global",
+] as const;
+
+export type SupportedResourceType = (typeof supportedResourceTypes)[number];
+
+export function isSupportedResourceType(
+  resourceType: string
+): resourceType is SupportedResourceType {
+  return supportedResourceTypes.includes(resourceType as SupportedResourceType);
 }
