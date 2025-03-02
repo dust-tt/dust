@@ -2,7 +2,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import { promisify } from "util";
 
 import apiConfig from "@app/lib/api/config";
@@ -76,10 +76,21 @@ async function handler(
           apiConfig.getStripeSecretWebhookKey()
         );
       } catch (error) {
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
+        // This will happen for events targeted to a different region.
+        if (
+          error instanceof Stripe.errors.StripeSignatureVerificationError &&
+          error.type === "StripeSignatureVerificationError"
+        ) {
+          logger.error(
+            { error, sig, stripeError: true, rawBody },
+            "Invalid signature check when building Stripe event."
+          );
+        } else {
+          logger.error(
+            { error, stripeError: true },
+            "Error constructing Stripe event in Webhook."
+          );
+        }
       }
 
       if (!event) {
@@ -91,6 +102,12 @@ async function handler(
           },
         });
       }
+
+      logger.info(
+        { sig, stripeError: false, rawBody },
+        "Processing Strip event."
+      );
+
       let subscription;
       let stripeSubscription;
       let invoice;
