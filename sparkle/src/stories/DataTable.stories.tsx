@@ -211,7 +211,7 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
-    is: "addedBy",
+    id: "addedBy",
     meta: {
       className: "s-w-[128px]",
     },
