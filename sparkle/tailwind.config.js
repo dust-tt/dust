@@ -88,6 +88,11 @@ module.exports = {
       zIndex: {
         60: "60",
       },
+      height: {
+        100: "400px",
+        125: "500px",
+        150: "600px",
+      },
       minHeight: (theme) => ({
         ...theme("spacing"),
       }),

@@ -55,6 +55,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
+    sizeRatio?: number;
   }
 }
 
@@ -276,7 +277,9 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
   isLoading?: boolean;
 }
 
-const COLUMN_HEIGHT = 50;
+// cellHeight in pixels
+const COLUMN_HEIGHT = 48;
+const MIN_COLUMN_WIDTH = 40;
 
 export function ScrollableDataTable<TData extends TBaseData>({
   data,
@@ -285,7 +288,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   className,
   widthClassName = "s-w-full",
   columnsBreakpoints = {},
-  maxHeight = "s-h-[400px]",
+  maxHeight = "s-h-100",
   onLoadMore,
   isLoading = false,
 }: ScrollableDataTableProps<TData>) {
@@ -294,6 +297,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const [tableWidth, setTableWidth] = useState(0);
 
+  // Monitor table width changes
   useEffect(() => {
     if (!tableContainerRef.current) {
       return;
@@ -312,37 +316,58 @@ export function ScrollableDataTable<TData extends TBaseData>({
     };
   }, []);
 
-  const columnsWithSize = React.useMemo(() => {
-    if (!tableWidth || !columns.length) {
-      return columns;
-    }
-
-    const equalWidth = Math.floor(tableWidth / columns.length);
-
-    return columns.map((col) => ({
-      ...col,
-      size: equalWidth,
-    }));
-  }, [columns, tableWidth]);
-
   const table = useReactTable({
     data,
-    columns: columnsWithSize,
+    columns,
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    enableColumnResizing: true,
   });
 
-  // Calculate column widths once for consistent sizing
-  const columnSizing = React.useMemo(() => {
-    return table.getAllColumns().reduce(
+  useEffect(() => {
+    if (!tableContainerRef.current || !table || !tableWidth) {
+      return;
+    }
+
+    // Get all visible columns
+    const columns = table.getAllColumns();
+
+    // Calculate ideal widths and handle minimums
+    const idealSizing = columns.reduce(
       (acc, column) => {
-        acc[column.id] = column.getSize();
-        return acc;
+        const ratio = column.columnDef.meta?.sizeRatio || 0;
+        const calculated = Math.max(
+          Math.floor((ratio / 100) * tableWidth),
+          MIN_COLUMN_WIDTH
+        );
+        return { ...acc, [column.id]: calculated };
       },
       {} as Record<string, number>
     );
-  }, [table]);
+
+    // Ensure total width matches container
+    const totalIdealWidth = Object.values(idealSizing).reduce(
+      (a, b) => a + b,
+      0
+    );
+    const widthDifference = tableWidth - totalIdealWidth;
+
+    if (widthDifference !== 0) {
+      // Find column best able to absorb the difference
+      const adjustColumnId = Object.entries(idealSizing).sort(
+        (a, b) => b[1] - a[1] // Prefer larger columns first
+      )[0][0];
+
+      idealSizing[adjustColumnId] += widthDifference;
+    }
+
+    // Apply final sizing
+    table.setColumnSizing(idealSizing);
+  }, [table, tableWidth]);
+
+  // Get the current column sizing from the table for rendering
+  const columnSizing = table.getState().columnSizing;
 
   const { rows } = table.getRowModel();
   const rowVirtualizer = useVirtualizer({
@@ -351,6 +376,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     estimateSize: () => COLUMN_HEIGHT,
   });
 
+  // Intersection observer for infinite loading
   useEffect(() => {
     if (!onLoadMore || !loadMoreRef.current) {
       return;
@@ -409,7 +435,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     <DataTable.Head
                       column={header.column}
                       key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
                       className="s-max-w-0"
                       style={{
                         width: columnSizing[header.id],

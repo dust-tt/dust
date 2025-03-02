@@ -180,6 +180,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
+    id: "name",
     meta: {
       className: "s-w-full",
       tooltip: "User's full name",
@@ -198,6 +199,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
+    id: "usedBy",
     meta: {
       className: "s-w-[82px] s-hidden @xs/table:s-table-cell",
     },
@@ -209,6 +211,7 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
+    is: "addedBy",
     meta: {
       className: "s-w-[128px]",
     },
@@ -222,6 +225,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "lastUpdated",
+    id: "lastUpdated",
     header: "Last updated",
     meta: {
       className: "s-w-[128px] s-hidden @sm/table:s-table-cell",
@@ -233,6 +237,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "size",
+    id: "size",
     header: "Size",
     meta: {
       className: "s-w-[48px] s-hidden @sm/table:s-table-cell",
@@ -551,8 +556,8 @@ export const ScrollableDataTableExample = () => {
     }, 1000);
   }, []);
 
-  const columnsWithSize = columns.map((column) => {
-    return { ...column };
+  const columnsWithSize = columns.map((column, index) => {
+    return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
   });
   return (
     <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
