@@ -102,6 +102,12 @@ async function handler(
           },
         });
       }
+
+      logger.info(
+        { sig, stripeError: false, rawBody },
+        "Processing Strip event."
+      );
+
       let subscription;
       let stripeSubscription;
       let invoice;
