@@ -81,16 +81,16 @@ async function handler(
           error instanceof Stripe.errors.StripeSignatureVerificationError &&
           error.type === "StripeSignatureVerificationError"
         ) {
-          logger.info(
-            { error, stripeError: true },
-            "Invalid signature, ignoring event."
+          logger.error(
+            { error, sig, stripeError: true, rawBody },
+            "Invalid signature check when building Stripe event."
           );
-          return res.status(200).json({ success: true });
+        } else {
+          logger.error(
+            { error, stripeError: true },
+            "Error constructing Stripe event in Webhook."
+          );
         }
-        logger.error(
-          { error, stripeError: true },
-          "Error constructing Stripe event in Webhook."
-        );
       }
 
       if (!event) {
