@@ -386,62 +386,62 @@ export async function upsertArticle({
   // append the collection description at the beginning of the article
   const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
 
-  if (articleContentInMarkdown) {
-    const createdAtDate = new Date(article.created_at * 1000);
-    const updatedAtDate = new Date(article.updated_at * 1000);
-
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
-    );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: article.title,
-      content: renderedMarkdown,
-      createdAt: createdAtDate,
-      updatedAt: updatedAtDate,
-    });
-
-    const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
-
-    const parents = await getParentIdsForArticle({
-      documentId,
-      connectorId,
-      parentCollectionId,
-      helpCenterId,
-    });
-
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent: renderedPage,
-      documentUrl: articleUrl,
-      timestampMs: updatedAtDate.getTime(),
-      tags: [
-        `title:${article.title}`,
-        `createdAt:${createdAtDate.getTime()}`,
-        `updatedAt:${updatedAtDate.getTime()}`,
-      ],
-      parents,
-      parentId: parents[1],
-      loggerArgs: {
-        ...loggerArgs,
-        articleId: article.id,
-      },
-      upsertContext: {
-        sync_type: "batch",
-      },
-      title: article.title,
-      mimeType: MIME_TYPES.INTERCOM.ARTICLE,
-      async: true,
-    });
-    await articleOnDb.update({
-      lastUpsertedTs: new Date(currentSyncMs),
-    });
-  } else {
+  if (!articleContentInMarkdown) {
     logger.warn(
       { ...loggerArgs, connectorId, articleId: article.id },
       "[Intercom] Article has no content. Skipping sync."
     );
   }
+
+  const createdAtDate = new Date(article.created_at * 1000);
+  const updatedAtDate = new Date(article.updated_at * 1000);
+
+  const renderedMarkdown = await renderMarkdownSection(
+    dataSourceConfig,
+    markdown
+  );
+  const renderedPage = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: article.title,
+    content: renderedMarkdown,
+    createdAt: createdAtDate,
+    updatedAt: updatedAtDate,
+  });
+
+  const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
+
+  const parents = await getParentIdsForArticle({
+    documentId,
+    connectorId,
+    parentCollectionId,
+    helpCenterId,
+  });
+
+  await upsertDataSourceDocument({
+    dataSourceConfig,
+    documentId,
+    documentContent: renderedPage,
+    documentUrl: articleUrl,
+    timestampMs: updatedAtDate.getTime(),
+    tags: [
+      `title:${article.title}`,
+      `createdAt:${createdAtDate.getTime()}`,
+      `updatedAt:${updatedAtDate.getTime()}`,
+    ],
+    parents,
+    parentId: parents[1],
+    loggerArgs: {
+      ...loggerArgs,
+      articleId: article.id,
+    },
+    upsertContext: {
+      sync_type: "batch",
+    },
+    title: article.title,
+    mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+    async: true,
+  });
+  await articleOnDb.update({
+    lastUpsertedTs: new Date(currentSyncMs),
+  });
 }
