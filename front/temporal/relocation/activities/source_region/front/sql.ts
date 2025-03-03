@@ -96,8 +96,9 @@ export async function readCoreEntitiesFromSourceRegion({
 
   const blob: CoreEntitiesRelocationBlob = {
     statements: {
-      // Plans enforce a unique constraint on the code field.
-      plans: generateParameterizedInsertStatements("plans", plans),
+      plans: generateParameterizedInsertStatements("plans", plans, {
+        onConflict: "ignore",
+      }),
       users: generateParameterizedInsertStatements("users", users, {
         onConflict: "ignore",
       }),
