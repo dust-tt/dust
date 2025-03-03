@@ -152,7 +152,7 @@ function ContentNodeTreeChildren({
   // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
   const hiddenNodesCount = totalResourceCount
     ? Math.max(0, totalResourceCount - filteredNodes.length)
-    : filteredNodes.length;
+    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
