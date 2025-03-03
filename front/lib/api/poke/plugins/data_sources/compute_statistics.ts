@@ -1,5 +1,4 @@
-import { Err, Ok } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types/src";
+import { CoreAPI, Err, maxFileSizeToHumanReadable, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -18,7 +17,7 @@ export const computeStatsPlugin = createPlugin({
   manifest: {
     id: "compute-stats",
     name: "Compute statistics",
-    description: "Compute statistics for the data source",
+    description: "Gather statistics for the data source",
     resourceTypes: ["data_sources"],
     args: {},
   },
@@ -43,7 +42,7 @@ export const computeStatsPlugin = createPlugin({
       display: "json",
       value: {
         name,
-        text_size,
+        text_size: maxFileSizeToHumanReadable(text_size, 2),
         document_count,
       },
     });
