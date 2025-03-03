@@ -6,3 +6,5 @@ ALTER TABLE "public"."messages" ADD COLUMN "threadVersions" INTEGER[] DEFAULT AR
 CREATE UNIQUE INDEX CONCURRENTLY "messages_conversation_id_rank_version_parent_id" ON "messages" ("conversationId", "rank", "version", "parentId");
 CREATE INDEX CONCURRENTLY "messages_conversation_id_rank_parent_id" ON "messages" ("conversationId", "rank", "parentId");
 CREATE INDEX CONCURRENTLY "messages_conversation_id_thread_versions" ON "messages" USING GIN ("conversationId", "threadVersions");
+CREATE INDEX CONCURRENTLY "messages_thread_versions" ON "messages" USING GIN ("threadVersions");
+CREATE INDEX CONCURRENTLY "messages_conversation_id_rank_0" ON "messages" ("conversationId", rank ASC)  WHERE "threadVersions" @> ARRAY[0];
