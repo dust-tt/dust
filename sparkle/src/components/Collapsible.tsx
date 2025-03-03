@@ -1,10 +1,50 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+
+const labelVariants = cva(
+  "s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none s-text-sm",
+  {
+    variants: {
+      variant: {
+        primary: "s-text-action-600 dark:s-text-action-600-night",
+        secondary: "s-text-foreground dark:s-text-foreground-night",
+      },
+      disabled: {
+        true: "s-text-muted dark:s-text-muted-night",
+        false:
+          "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night active:s-text-action-700 dark:active:s-text-action-700-night",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      disabled: false,
+    },
+  }
+);
+
+const chevronVariants = cva("s-transition-transform s-duration-150", {
+  variants: {
+    variant: {
+      primary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    },
+    disabled: {
+      true: "s-text-muted dark:s-text-muted-night",
+      false:
+        "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night active:s-text-action-700 dark:active:s-text-action-700-night",
+    },
+  },
+  defaultVariants: {
+    variant: "primary",
+    disabled: false,
+  },
+});
 
 export interface CollapsibleProps
   extends CollapsiblePrimitive.CollapsibleProps {
@@ -23,10 +63,9 @@ const Collapsible = React.forwardRef<
 Collapsible.displayName = "Collapsible";
 
 export interface CollapsibleTriggerProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger> {
+  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
+    Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
-  variant?: "primary" | "secondary";
-  disabled?: boolean;
 }
 
 const CollapsibleTrigger = React.forwardRef<
@@ -37,7 +76,7 @@ const CollapsibleTrigger = React.forwardRef<
     {
       label,
       children,
-      className = "",
+      className,
       disabled = false,
       variant = "primary",
       ...props
@@ -46,79 +85,33 @@ const CollapsibleTrigger = React.forwardRef<
   ) => {
     const [isOpen, setIsOpen] = React.useState(false);
 
-    const labelClasses = {
-      primary: {
-        base: "s-text-action-500 dark:s-text-action-500-night s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-        hover:
-          "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
-        active: "active:s-text-action-600 dark:active:s-text-action-600-night",
-        disabled: "s-element-500 dark:s-element-500-night",
-      },
-
-      secondary: {
-        base: "s-text-foreground dark:s-text-foreground-night s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none",
-        hover:
-          "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night",
-        active: "active:s-text-action-600 dark:active:s-text-action-600-night",
-        disabled: "s-element-500 dark:s-element-500-night",
-      },
-    };
-
-    const chevronClasses = {
-      primary: {
-        base: "s-text-element-600 dark:s-text-element-600-night",
-        hover:
-          "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
-        active: "active:s-text-action-700 dark:active:s-text-action-700-night",
-        disabled: "s-element-500 dark:s-element-500-night",
-      },
-      secondary: {
-        base: "s-text-element-600 dark:s-text-element-600-night",
-        hover:
-          "group-hover/col:s-text-action-400 dark:group-hover/col:s-text-action-400-night",
-        active: "active:s-text-action-700 dark:active:s-text-action-700-night",
-        disabled: "s-element-500 dark:s-element-500-night",
-      },
-    };
-
-    const finalLabelClasses = cn(
-      labelClasses[variant].base,
-      !disabled ? labelClasses[variant].active : "",
-      !disabled ? labelClasses[variant].hover : "",
-      disabled ? labelClasses[variant].disabled : ""
-    );
-
-    const finalChevronClasses = cn(
-      chevronClasses[variant].base,
-      !disabled ? chevronClasses[variant].active : "",
-      !disabled ? chevronClasses[variant].hover : "",
-      disabled ? chevronClasses[variant].disabled : "",
-      "s-transition-transform s-duration-300"
-    );
-
     return (
       <CollapsiblePrimitive.Trigger
         ref={ref}
         disabled={disabled}
         className={cn(
+          "s-group/col s-flex s-items-center s-gap-1 s-font-medium focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
-          className,
-          "s-group/col s-flex s-items-center s-justify-items-center s-gap-1 s-text-sm s-font-medium focus:s-outline-none focus:s-ring-0"
+          className
         )}
         onClick={() => setIsOpen((prev) => !prev)}
         {...props}
       >
-        <div className="s-transition-transform s-duration-200 data-[state=open]:s-rotate-90">
+        <span
+          className={cn(
+            "s-transition-transform s-duration-200",
+            chevronVariants({ variant, disabled })
+          )}
+        >
           <Icon
             visual={isOpen ? ChevronDownIcon : ChevronRightIcon}
             size="sm"
-            className={finalChevronClasses}
           />
-        </div>
+        </span>
         {children ? (
           children
         ) : (
-          <span className={finalLabelClasses}>{label}</span>
+          <span className={labelVariants({ variant, disabled })}>{label}</span>
         )}
       </CollapsiblePrimitive.Trigger>
     );
@@ -126,17 +119,29 @@ const CollapsibleTrigger = React.forwardRef<
 );
 CollapsibleTrigger.displayName = "CollapsibleTrigger";
 
+const contentVariants = cva("s-overflow-hidden s-transition-all", {
+  variants: {
+    variant: {
+      default: "s-text-foreground dark:s-text-foreground-night",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
 export interface CollapsibleContentProps
-  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content> {}
+  extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>,
+    VariantProps<typeof contentVariants> {}
 
 const CollapsibleContent = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Content>,
   CollapsibleContentProps
->(({ children, className, ...props }, ref) => (
+>(({ children, className, variant, ...props }, ref) => (
   <CollapsiblePrimitive.Content
     ref={ref}
     className={cn(
-      "s-overflow-hidden s-text-primary-500 dark:s-text-primary-500-night",
+      contentVariants({ variant }),
       "data-[state=closed]:s-animate-collapse-up data-[state=open]:s-animate-collapse-down",
       className
     )}

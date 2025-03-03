@@ -216,8 +216,8 @@ module.exports = {
         "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
         rainbow: "rainbow var(--speed, 6s) infinite linear",
-        "collapse-down": "collapse-down 300ms ease-out",
-        "collapse-up": "collapse-up 300ms ease-out",
+        "collapse-down": "collapse-down 150ms ease-out",
+        "collapse-up": "collapse-up 150ms ease-out",
       },
       colors: {
         brand: {
