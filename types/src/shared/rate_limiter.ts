@@ -8,6 +8,8 @@ import { getStatsDClient } from "./statsd";
 
 export class RateLimitError extends Error {}
 
+let rateLimiterRedisClient: Awaited<ReturnType<typeof redisClient>> | undefined;
+
 async function getRedisClient({
   origin,
   redisUri,
@@ -20,7 +22,14 @@ async function getRedisClient({
     throw new Error("REDIS_URI is not defined");
   }
 
-  return redisClient({ origin, redisUri: REDIS_URI });
+  if (!rateLimiterRedisClient) {
+    rateLimiterRedisClient = await redisClient({
+      origin,
+      redisUri: REDIS_URI,
+    });
+  }
+
+  return rateLimiterRedisClient;
 }
 
 export const RATE_LIMITER_PREFIX = "rate_limiter";
