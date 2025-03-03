@@ -29,8 +29,10 @@ const getUseResourceHook =
         preventSelection:
           n.preventSelection || (viewType === "table" && n.type !== "table"),
       })),
+      totalResourceCount: res.totalNodesCount,
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,
+      isResourcesTruncated: !res.totalNodesCountIsAccurate,
     };
   };
 

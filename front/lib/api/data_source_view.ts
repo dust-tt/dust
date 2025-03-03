@@ -161,7 +161,9 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: sortedNodes,
-    total: coreRes.value.hit_count,
+    total:
+      coreRes.value.hit_count -
+      (coreRes.value.nodes.length - sortedNodes.length), // Deducing the number of folders we hid from the total count.
     totalIsAccurate: coreRes.value.hit_count_is_accurate,
     nextPageCursor: nextPageCursor,
   });

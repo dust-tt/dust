@@ -48,8 +48,10 @@ const unselectedChildren = (
 
 export type UseResourcesHook = (parentId: string | null) => {
   resources: ContentNode[];
+  totalResourceCount?: number; // This count can be higher than resources.length if the call is paginated.
   isResourcesLoading: boolean;
   isResourcesError: boolean;
+  isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
 };
 
@@ -127,7 +129,7 @@ function ContentNodeTreeChildren({
 
   const sendNotification = useSendNotification();
   const [search, setSearch] = useState("");
-  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
@@ -135,12 +137,22 @@ function ContentNodeTreeChildren({
   const { useResourcesHook, emptyComponent, defaultExpandedIds } =
     useContentNodeTreeContext();
 
-  const { resources, isResourcesLoading, isResourcesError, resourcesError } =
-    useResourcesHook(parentId);
+  const {
+    resources,
+    isResourcesLoading,
+    isResourcesError,
+    resourcesError,
+    isResourcesTruncated,
+    totalResourceCount,
+  } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
     (n) => search.trim().length === 0 || n.title.includes(search)
   );
+  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
+  const hiddenNodesCount = totalResourceCount
+    ? Math.max(0, totalResourceCount - filteredNodes.length)
+    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -222,7 +234,7 @@ function ContentNodeTreeChildren({
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
-                          // Handle clicking on partial : unselect all selected children
+                          // Handle clicking on partial: unselect all selected children
                           setSelectedNodes((prev) =>
                             unselectedChildren(prev, n, sendNotification)
                           );
@@ -303,6 +315,11 @@ function ContentNodeTreeChildren({
           />
         );
       })}
+      {hiddenNodesCount > 0 && (
+        <Tree.Empty
+          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
+        />
+      )}
     </Tree>
   );
 
