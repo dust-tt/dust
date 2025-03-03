@@ -96,9 +96,9 @@ export function getContentNodeFromCoreNode(
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
     mimeType: coreNode.mime_type,
-    preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
-      coreNode.mime_type
-    ),
+    preventSelection:
+      FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
+      (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
     dataSourceView,
   };
