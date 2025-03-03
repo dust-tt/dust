@@ -378,20 +378,22 @@ export async function upsertArticle({
       ? ` - ${parentCollection.description}`
       : "";
 
-  const articleContentInMarkdown =
+  let articleContentInMarkdown =
     typeof article.body === "string"
       ? turndownService.turndown(article.body)
       : "";
 
-  // append the collection description at the beginning of the article
-  const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
-
   if (!articleContentInMarkdown) {
     logger.warn(
       { ...loggerArgs, connectorId, articleId: article.id },
-      "[Intercom] Article has no content. Skipping sync."
+      "[Intercom] Article has no content."
     );
+    // We still sync articles that have no content to have the node appear.
+    articleContentInMarkdown = "Article without content.";
   }
+
+  // append the collection description at the beginning of the article
+  const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
 
   const createdAtDate = new Date(article.created_at * 1000);
   const updatedAtDate = new Date(article.updated_at * 1000);
