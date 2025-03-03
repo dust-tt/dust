@@ -30,9 +30,11 @@ therefore acceptable.
 
 ### [GEN5] No mutation of function parameters
 
-Never mutate arrays or objects passed as parameters to functions. Create and return new instances instead. This includes avoiding methods like `splice` that mutate arrays in place.
+Never mutate arrays or objects passed as parameters to functions. Create and return new instances
+instead. This includes avoiding methods like `splice` that mutate arrays in place.
 
-Reviewer: If you detect parameter mutation in the code (including array methods like `splice`), request the author to refactor the code to create and return new instances instead.
+Reviewer: If you detect parameter mutation in the code (including array methods like `splice`),
+request the author to refactor the code to create and return new instances instead.
 
 Example:
 
