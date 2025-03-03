@@ -83,7 +83,7 @@ export function UbiquitySection() {
             title={<>Add to workflows</>}
             content={
               <>
-                Trigger AI actions via Zapier, Make or Slack workflows to
+                Trigger AI actions via Zapier, Make, n8n or Slack workflows to
                 automate tasks end-to-end.
               </>
             }
