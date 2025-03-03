@@ -65,7 +65,7 @@ class RedisHybridManager {
       });
 
       // Set up reconnect handler
-      this.subscriptionClient.on("connect", () => {
+      this.subscriptionClient.on("connect", async () => {
         logger.debug("Redis subscription client connected");
 
         if (this.pubSubReconnectTimer) {
@@ -75,10 +75,14 @@ class RedisHybridManager {
 
         // Resubscribe to all channels
         if (this.subscriptionClient) {
-          void this.subscriptionClient.pSubscribe(
-            `${this.CHANNEL_PREFIX}*`,
-            this.onMessage
-          );
+          try {
+            await this.subscriptionClient.pSubscribe(
+              `${this.CHANNEL_PREFIX}*`,
+              this.onMessage
+            );
+          } catch (error) {
+            logger.error({ error }, "Error resubscribing to all channels");
+          }
         }
       });
 
@@ -375,5 +379,6 @@ class RedisHybridManager {
   }
 }
 
-// Export a singleton instance
-export const redisHybridManager = RedisHybridManager.getInstance();
+export const getRedisHybridManager = () => {
+  return RedisHybridManager.getInstance();
+};

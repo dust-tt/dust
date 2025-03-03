@@ -38,6 +38,10 @@ const KillPage = () => {
       title: "Data Source Views",
       description: "Disable saving of data source views",
     },
+    disable_hybrid_events: {
+      title: "Hybrid Events",
+      description: "Disable hybrid events",
+    },
   };
 
   async function toggleKillSwitch(killSwitch: KillSwitchType) {
