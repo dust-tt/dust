@@ -213,7 +213,7 @@ function BackendSearch({
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
     disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
-    includeDataSources: false,
+    includeDataSources: true,
     owner,
     search: debouncedSearch,
     space,

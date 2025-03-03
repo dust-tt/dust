@@ -13,7 +13,7 @@ use elasticsearch_dsl::{
     Sort, SortOrder,
 };
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
@@ -23,7 +23,7 @@ use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
 use crate::{
     data_sources::{
-        data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
+        data_source::{DataSource, DATA_SOURCE_INDEX_NAME},
         node::{CoreContentNode, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
     },
     search_stores::search_types::SearchItem,
@@ -212,6 +212,15 @@ impl QueryClauseCounter {
     }
 }
 
+/// Boost factor applied to exact matches to increase their relevance in search results.
+const EXACT_MATCH_BOOST: f32 = 2.0;
+
+/// Boost factor applied to data sources to increase their relevance in search results.
+const DATA_SOURCE_BOOST: f32 = 2.0;
+
+/// Boost factor applied to data source nodes to increase their relevance in search results.
+const DATA_SOURCE_NODE_BOOST: f32 = 1.0;
+
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
@@ -276,6 +285,8 @@ impl SearchStore for ElasticsearchSearchStore {
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
             .track_total_hits(MAX_TOTAL_HITS_TRACKED)
+            .indices_boost(DATA_SOURCE_NODE_INDEX_NAME, DATA_SOURCE_NODE_BOOST)
+            .indices_boost(DATA_SOURCE_INDEX_NAME, DATA_SOURCE_BOOST)
             .sort(sort);
 
         if let Some(cursor) = options.cursor {
@@ -600,9 +611,6 @@ impl SearchStore for ElasticsearchSearchStore {
         Box::new(self.clone())
     }
 }
-
-/// Boost factor applied to exact matches to increase their relevance in search results.
-const EXACT_MATCH_BOOST: f32 = 2.0;
 
 impl ElasticsearchSearchStore {
     fn build_search_node_query(
