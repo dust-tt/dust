@@ -21,10 +21,13 @@ function findMatchingChannelPatterns(
   remoteChannelName: string,
   autoReadChannelPatterns: SlackAutoReadPattern[]
 ): SlackAutoReadPattern[] {
-  return autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(pattern.pattern);
-    return regex.test(remoteChannelName);
-  });
+  if (Array.isArray(autoReadChannelPatterns)) {
+    return autoReadChannelPatterns.filter((pattern) => {
+      const regex = new RegExp(pattern.pattern);
+      return regex.test(remoteChannelName);
+    });
+  }
+  return [];
 }
 
 export async function autoReadChannel(
