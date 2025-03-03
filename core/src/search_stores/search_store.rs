@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -871,12 +871,30 @@ impl ElasticsearchSearchStore {
             "[ElasticsearchSearchStore] Count children duration"
         );
 
-        // Build parent titles query
-        let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
+        // Build parent titles query.
+        let mut parent_ids = HashSet::new();
+        let mut data_source_ids = HashSet::new();
+
+        // Collect distinct parent IDs and data source internal IDs.
+        for node in nodes.iter() {
+            if let Some(parent_id) = &node.parent_id {
+                parent_ids.insert(parent_id);
+                data_source_ids.insert(&node.data_source_internal_id);
+            }
+        }
+
+        // Convert to vectors.
+        let parent_ids: Vec<_> = parent_ids.into_iter().collect();
+        let data_source_ids: Vec<_> = data_source_ids.into_iter().collect();
+
+        // Scope the query to the internal data source ids of the nodes to avoid leaking data
+        // from other data sources.
         let parent_titles_search = Search::new()
-            .size(parent_ids.len() as u64)
-            .query(Query::bool().filter(Query::terms("node_id", parent_ids)))
-            .source(vec!["node_id", "title"]);
+            .query(Query::bool().filter(vec![
+                Query::terms("node_id", parent_ids),
+                Query::terms("data_source_internal_id", data_source_ids),
+            ]))
+            .source(vec!["data_source_internal_id", "node_id", "title"]);
 
         let parent_titles_response = self
             .client
@@ -886,25 +904,26 @@ impl ElasticsearchSearchStore {
             .await?;
 
         // Process parent titles results
-        let parent_titles_map = if parent_titles_response.status_code().is_success() {
-            let response_body = parent_titles_response.json::<serde_json::Value>().await?;
-            response_body["hits"]["hits"]
-                .as_array()
-                .map(|hits| {
-                    hits.iter()
-                        .filter_map(|hit| {
-                            Some((
-                                hit["_source"]["node_id"].as_str()?.to_string(),
-                                hit["_source"]["title"].as_str()?.to_string(),
-                            ))
-                        })
-                        .collect::<HashMap<_, _>>()
-                })
-                .unwrap_or_default()
-        } else {
-            let error = parent_titles_response.json::<serde_json::Value>().await?;
-            return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
-        };
+        let parent_titles_map: HashMap<(String, String), String> =
+            if parent_titles_response.status_code().is_success() {
+                let response_body = parent_titles_response.json::<serde_json::Value>().await?;
+                response_body["hits"]["hits"]
+                    .as_array()
+                    .map(|hits| {
+                        hits.iter()
+                            .filter_map(|hit| {
+                                let node_id = hit["_source"]["node_id"].as_str()?;
+                                let ds_id = hit["_source"]["data_source_internal_id"].as_str()?;
+                                let title = hit["_source"]["title"].as_str()?;
+                                Some(((node_id.to_string(), ds_id.to_string()), title.to_string()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                let error = parent_titles_response.json::<serde_json::Value>().await?;
+                return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
+            };
 
         // Create CoreContentNodes using the above results
         let core_content_nodes = nodes
@@ -914,7 +933,8 @@ impl ElasticsearchSearchStore {
                 let parent_title = node
                     .parent_id
                     .as_ref()
-                    .and_then(|pid| parent_titles_map.get(pid))
+                    .map(|pid| (pid.clone(), node.data_source_internal_id.clone()))
+                    .and_then(|key| parent_titles_map.get(&key))
                     .cloned();
 
                 CoreContentNode::new(node, children_count, parent_title)
