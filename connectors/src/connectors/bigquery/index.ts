@@ -360,7 +360,14 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method unpause not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    await connector.markAsUnpaused();
+    return this.resume();
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
