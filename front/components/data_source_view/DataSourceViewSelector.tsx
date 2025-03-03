@@ -64,7 +64,13 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
-    const { nodes, isNodesLoading, isNodesError } = useContentNodes({
+    const {
+      nodes,
+      isNodesLoading,
+      isNodesError,
+      totalNodesCountIsAccurate,
+      totalNodesCount,
+    } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
@@ -76,8 +82,10 @@ const getUseResourceHook =
         preventSelection:
           n.preventSelection || (viewType === "table" && n.type !== "table"),
       })),
+      totalResourceCount: totalNodesCount,
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
+      isResourcesTruncated: !totalNodesCountIsAccurate,
     };
   };
 

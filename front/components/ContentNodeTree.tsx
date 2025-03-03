@@ -48,8 +48,10 @@ const unselectedChildren = (
 
 export type UseResourcesHook = (parentId: string | null) => {
   resources: ContentNode[];
+  totalResourceCount?: number; // This count can be higher than resources.length if the call is paginated.
   isResourcesLoading: boolean;
   isResourcesError: boolean;
+  isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
 };
 
@@ -127,7 +129,7 @@ function ContentNodeTreeChildren({
 
   const sendNotification = useSendNotification();
   const [search, setSearch] = useState("");
-  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
@@ -222,7 +224,7 @@ function ContentNodeTreeChildren({
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
-                          // Handle clicking on partial : unselect all selected children
+                          // Handle clicking on partial: unselect all selected children
                           setSelectedNodes((prev) =>
                             unselectedChildren(prev, n, sendNotification)
                           );
