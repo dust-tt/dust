@@ -38,6 +38,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
+  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -232,7 +233,7 @@ export function DataSourceViewsSelector({
       (r) => r.internalId === item.internalId
     );
 
-    if (item.mimeType === "application/vnd.dust.datasource") {
+    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
       return {
         ...prevState,
         [dsv.sId]: {

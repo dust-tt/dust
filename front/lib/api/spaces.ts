@@ -282,7 +282,7 @@ export async function searchContenNodesInSpace(
     DustError | CoreAPIError
   >
 > {
-  if (!space.canRead(auth)) {
+  if (!space.canReadOrAdministrate(auth)) {
     return new Err(new DustError("unauthorized", "Unauthorized"));
   }
 

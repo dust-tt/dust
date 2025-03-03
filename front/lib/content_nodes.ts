@@ -39,10 +39,8 @@ export const SPREADSHEET_MIME_TYPES = [
   MIME_TYPES.MICROSOFT.SPREADSHEET,
 ] as readonly string[];
 
-// Mime types that represent a datasource.
-export const DATA_SOURCE_MIME_TYPES = [
-  "application/vnd.dust.datasource",
-] as readonly string[];
+// Mime type that represents a datasource.
+export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource";
 
 function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
   if (node.expandable) {
@@ -55,10 +53,10 @@ function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
 export function getVisualForDataSourceViewContentNode(
   node: DataSourceViewContentNode
 ) {
-  // Handle data sources with connector providers
+  // Handle data sources with connector providers.
   if (
     node.mimeType &&
-    DATA_SOURCE_MIME_TYPES.includes(node.mimeType) &&
+    node.mimeType === DATA_SOURCE_MIME_TYPE &&
     node.dataSourceView?.dataSource?.connectorProvider &&
     CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
   ) {
