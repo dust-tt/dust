@@ -145,6 +145,7 @@ export function DataSourceViewsSelector({
   >();
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
@@ -158,13 +159,16 @@ export function DataSourceViewsSelector({
 
   useEffect(() => {
     if (searchFeatureFlag) {
+      setIsDebouncing(true);
       const timeout = setTimeout(() => {
         setDebouncedSearch(
           searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
         );
+        setIsDebouncing(false);
       }, 300);
       return () => {
         clearTimeout(timeout);
+        setIsDebouncing(false);
       };
     }
   }, [searchSpaceText, searchFeatureFlag]);
@@ -290,7 +294,7 @@ export function DataSourceViewsSelector({
               setSearchSpaceText("");
             }
           }}
-          isLoading={isSearchLoading}
+          isLoading={isSearchLoading || isDebouncing}
           items={searchResultNodes}
           onItemSelect={(item) => {
             setSearchResult(item);
