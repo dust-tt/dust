@@ -8,6 +8,8 @@ import { getStatsDClient } from "./statsd";
 
 export class RateLimitError extends Error {}
 
+let rateLimiterRedisClient: Awaited<ReturnType<typeof redisClient>> | undefined;
+
 async function getRedisClient({
   origin,
   redisUri,
@@ -20,10 +22,14 @@ async function getRedisClient({
     throw new Error("REDIS_URI is not defined");
   }
 
-  return redisClient({
-    origin,
-    redisUri: REDIS_URI,
-  });
+  if (!rateLimiterRedisClient) {
+    rateLimiterRedisClient = await redisClient({
+      origin,
+      redisUri: REDIS_URI,
+    });
+  }
+
+  return rateLimiterRedisClient;
 }
 
 export const RATE_LIMITER_PREFIX = "rate_limiter";
@@ -94,10 +100,6 @@ export async function rateLimiter({
 
     // In case of error on our side, we allow the request.
     return 1;
-  } finally {
-    if (redis) {
-      await redis.quit();
-    }
   }
 }
 
@@ -116,10 +118,6 @@ export async function expireRateLimiterKey({
     return new Ok(isExpired);
   } catch (err) {
     return new Err(err as Error);
-  } finally {
-    if (redis) {
-      await redis.quit();
-    }
   }
 }
 
