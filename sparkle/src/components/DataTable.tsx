@@ -329,8 +329,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     if (!tableContainerRef.current || !table || !tableWidth) {
       return;
     }
-
-    // Get all visible columns
     const columns = table.getAllColumns();
 
     // Calculate ideal widths and handle minimums
@@ -346,23 +344,21 @@ export function ScrollableDataTable<TData extends TBaseData>({
       {} as Record<string, number>
     );
 
-    // Ensure total width matches container
+    // Ensure total width matches tableWidth
     const totalIdealWidth = Object.values(idealSizing).reduce(
       (a, b) => a + b,
       0
     );
     const widthDifference = tableWidth - totalIdealWidth;
 
+    // adjust largest column
     if (widthDifference !== 0) {
-      // Find column best able to absorb the difference
       const adjustColumnId = Object.entries(idealSizing).sort(
-        (a, b) => b[1] - a[1] // Prefer larger columns first
+        (a, b) => b[1] - a[1]
       )[0][0];
 
       idealSizing[adjustColumnId] += widthDifference;
     }
-
-    // Apply final sizing
     table.setColumnSizing(idealSizing);
   }, [table, tableWidth]);
 
