@@ -29,10 +29,10 @@ import { commandOptions } from "redis";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
-import { redisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { createCallbackPromise } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
@@ -469,12 +469,12 @@ export async function* getConversationEvents(
 > {
   const pubsubChannel = getConversationChannelId(conversationId);
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const useHybridEvents = flags.includes("hybrid_events");
+  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
 
   if (useHybridEvents) {
     const callbackPromise = createCallbackPromise<EventPayload | "close">();
-    const { history, unsubscribe } = await redisHybridManager.subscribe(
+    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
       pubsubChannel,
       callbackPromise.callback,
       lastEventId,
@@ -621,15 +621,15 @@ export async function* getMessagesEvents(
 > {
   const pubsubChannel = getMessageChannelId(messageId);
 
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const useHybridEvents = flags.includes("hybrid_events");
+  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
 
   if (useHybridEvents) {
     const start = Date.now();
     const TIMEOUT = 60000; // 1 minute
 
     const callbackPromise = createCallbackPromise<EventPayload | "close">();
-    const { history, unsubscribe } = await redisHybridManager.subscribe(
+    const { history, unsubscribe } = await getRedisHybridManager().subscribe(
       pubsubChannel,
       callbackPromise.callback,
       lastEventId,
@@ -735,9 +735,11 @@ async function publishEvent(
     event: string;
   }
 ) {
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (flags.includes("hybrid_events")) {
-    await redisHybridManager.publish(channel, event, origin);
+  const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
+  const useHybridEvents = !killSwitches.includes("disable_hybrid_events");
+
+  if (useHybridEvents) {
+    await getRedisHybridManager().publish(channel, event, origin);
   } else {
     await redis.xAdd(channel, "*", {
       payload: event,

@@ -21,7 +21,6 @@ export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
   "search_knowledge_builder",
   "attach_from_datasources",
-  "hybrid_events",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
