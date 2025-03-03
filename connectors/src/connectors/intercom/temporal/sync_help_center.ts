@@ -385,7 +385,7 @@ export async function upsertArticle({
 
   if (!articleContentInMarkdown) {
     logger.warn(
-      { ...loggerArgs, connectorId, articleId: article.id },
+      { ...loggerArgs, articleId: article.id },
       "[Intercom] Article has no content."
     );
     // We still sync articles that have no content to have the node appear.
