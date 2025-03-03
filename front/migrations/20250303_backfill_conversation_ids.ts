@@ -55,12 +55,14 @@ async function backfillDataSourceViewConversationId(
 
       if (execute) {
         const dsvForConversations = dataSourceViews.map((view) => ({
-          conversationId: dataSource.conversationId!,
+          conversationId: dataSource.conversationId,
           dataSourceViewId: view.id,
           workspaceId: workspace.id,
         }));
 
-        await DataSourceViewForConversation.bulkCreate(dsvForConversations);
+        await DataSourceViewForConversation.bulkCreate(dsvForConversations, {
+          ignoreDuplicates: true,
+        });
 
         logger.info(
           {
