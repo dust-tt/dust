@@ -341,7 +341,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article already up to date. Skipping sync."
     );
@@ -353,7 +353,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article to sync."
     );
@@ -401,7 +401,7 @@ export async function upsertArticle({
   const parents = await getParentIdsForArticle({
     documentId,
     connectorId,
-    parentCollectionId: parentCollectionIds[0],
+    parentCollectionId: parentCollection.collectionId,
     helpCenterId,
   });
 
