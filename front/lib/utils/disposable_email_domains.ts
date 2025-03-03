@@ -3192,6 +3192,7 @@ const DISPOSABLE_EMAIL_DOMAINS = new Set([
   "mantramail.com",
   "mantraonline.com",
   "manybrain.com",
+  "mao-mao-tou.com",
   "marchmail.com",
   "mariahc.com",
   "marijuana.com",
