@@ -642,6 +642,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         dataSourceViewId: this.id,
       },
     });
+    await DataSourceViewForConversation.destroy({
+      where: {
+        dataSourceViewId: this.id,
+      },
+      transaction,
+    });
 
     const deletedCount = await DataSourceViewModel.destroy({
       where: {
