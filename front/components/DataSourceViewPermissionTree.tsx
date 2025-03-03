@@ -24,11 +24,7 @@ const getUseResourceHook =
       viewType,
     });
     return {
-      resources: res.nodes.map((n) => ({
-        ...n,
-        preventSelection:
-          n.preventSelection || (viewType === "table" && n.type !== "table"),
-      })),
+      resources: res.nodes,
       totalResourceCount: res.totalNodesCount,
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,
