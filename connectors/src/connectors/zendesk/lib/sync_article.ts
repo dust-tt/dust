@@ -31,10 +31,7 @@ export async function deleteArticle(
   dataSourceConfig: DataSourceConfig,
   loggerArgs: Record<string, string | number | null>
 ): Promise<void> {
-  logger.info(
-    { ...loggerArgs, connectorId, articleId },
-    "[Zendesk] Deleting article."
-  );
+  logger.info({ ...loggerArgs, articleId }, "[Zendesk] Deleting article.");
   await deleteDataSourceDocument(
     dataSourceConfig,
     getArticleInternalId({ connectorId, brandId, articleId })
@@ -101,7 +98,6 @@ export async function syncArticle({
   logger.info(
     {
       ...loggerArgs,
-      connectorId,
       articleId: article.id,
       articleUpdatedAt: updatedAtDate,
       dataSourceLastUpsertedAt: articleInDb?.lastUpsertedTs ?? null,
@@ -116,7 +112,7 @@ export async function syncArticle({
 
   if (!articleContentInMarkdown) {
     logger.warn(
-      { ...loggerArgs, connectorId, articleId: article.id },
+      { ...loggerArgs, articleId: article.id },
       "[Zendesk] Article has no content."
     );
     // We still sync articles that have no content to have the node appear.
