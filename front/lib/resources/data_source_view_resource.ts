@@ -129,11 +129,14 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     if (conversation) {
       // dataSourceView attached to a conversation, we create an entry in the
       // join table
-      await DataSourceViewForConversation.create({
-        conversationId: conversation.id,
-        dataSourceViewId: dataSourceView.id,
-        workspaceId: blob.workspaceId,
-      });
+      await DataSourceViewForConversation.create(
+        {
+          conversationId: conversation.id,
+          dataSourceViewId: dataSourceView.id,
+          workspaceId: blob.workspaceId,
+        },
+        { transaction }
+      );
     }
 
     return dsv;

@@ -29,7 +29,7 @@ DataSourceViewForConversation.init(
     },
   },
   {
-    modelName: "data_source_view_for_conversation",
+    modelName: "data_source_view_for_conversations",
     sequelize: frontSequelize,
     indexes: [
       {
