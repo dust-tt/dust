@@ -11,10 +11,12 @@ import type {
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
 } from "@dust-tt/types";
+import type { MCPConfigurationType } from "@dust-tt/types/dist/front/assistant/actions/mcp";
 
 import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/browse";
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
+import { MCPConfigurationServerRunner } from "@app/lib/api/assistant/actions/mcp";
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
 import { ReasoningConfigurationServerRunner } from "@app/lib/api/assistant/actions/reasoning";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
@@ -42,6 +44,7 @@ interface ActionToConfigTypeMap {
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
   github_create_issue_configuration: GithubCreateIssueConfigurationType;
   reasoning_configuration: ReasoningConfigurationType;
+  mcp_configuration: MCPConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -55,6 +58,7 @@ interface ActionTypeToClassMap {
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
   github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner;
   reasoning_configuration: ReasoningConfigurationServerRunner;
+  mcp_configuration: MCPConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -103,6 +107,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
     GithubGetPullRequestConfigurationServerRunner,
   github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
   reasoning_configuration: ReasoningConfigurationServerRunner,
+  mcp_configuration: MCPConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

@@ -253,6 +253,7 @@ export function AgentMessage({
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "mcp_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

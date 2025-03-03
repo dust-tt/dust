@@ -29,6 +29,7 @@ export * from "./front/assistant/actions/dust_app_run";
 export * from "./front/assistant/actions/github";
 export * from "./front/assistant/actions/guards";
 export * from "./front/assistant/actions/index";
+export * from "./front/assistant/actions/mcp";
 export * from "./front/assistant/actions/process";
 export * from "./front/assistant/actions/reasoning";
 export * from "./front/assistant/actions/retrieval";
