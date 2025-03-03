@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "salesforce_feature",
   "advanced_notion_management",
   "search_knowledge_builder",
+  "edit_messages",
   "attach_from_datasources",
   "hybrid_events",
 ] as const;

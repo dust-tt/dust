@@ -1,3 +1,4 @@
+import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { MentionPluginKey } from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import type { Editor, JSONContent } from "@tiptap/react";
@@ -57,6 +58,54 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   }
 
   return { text: textContent, mentions: mentions };
+}
+
+// TODO: Replace with MarkdownParser
+export function getJSONFromText(
+  text: string,
+  agentConfigurations: LightAgentConfigurationType[]
+): JSONContent {
+  const mentionRegex =
+    /(:mention\[[a-zA-Z0-9_.=-]+]\{sId=([a-zA-Z0-9_.=-]+)})+/g;
+  const trimmedText = text.trim();
+  const content = [];
+  let matches;
+  let lastIndex = 0;
+  while ((matches = mentionRegex.exec(trimmedText)) !== null) {
+    if (mentionRegex.lastIndex - matches[0].length > 0) {
+      content.push({
+        type: "text",
+        text: trimmedText.substring(
+          lastIndex,
+          mentionRegex.lastIndex - matches[0].length
+        ),
+      });
+    }
+    lastIndex = mentionRegex.lastIndex;
+    const id = matches[2];
+    const label =
+      agentConfigurations.find((a) => a.sId === id)?.name || "Unknown";
+    content.push({
+      type: "mention",
+      attrs: { id, label },
+    });
+  }
+  if (lastIndex < trimmedText.length) {
+    content.push({
+      type: "text",
+      text: trimmedText.substring(lastIndex),
+    });
+  }
+
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content,
+      },
+    ],
+  };
 }
 
 const useEditorService = (editor: Editor | null) => {
@@ -125,6 +174,10 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getJSON();
       },
 
+      setJSONContent(content: JSONContent) {
+        editor?.commands.setContent(content);
+      },
+
       getTextAndMentions() {
         const { mentions, text } = getTextAndMentionsFromNode(
           editor?.getJSON()
@@ -191,6 +244,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
+  content?: JSONContent;
 }
 
 const useCustomEditor = ({
@@ -198,9 +252,11 @@ const useCustomEditor = ({
   resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
+  content,
 }: CustomEditorProps) => {
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
+    content,
     extensions: [
       StarterKit.configure({
         hardBreak: false, // Disable the built-in Shift+Enter.

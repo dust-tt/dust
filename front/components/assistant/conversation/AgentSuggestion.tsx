@@ -8,6 +8,7 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
+  ConversationType,
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
@@ -16,20 +17,23 @@ import { useRouter } from "next/router";
 import { useCallback, useMemo, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { createThreadVersionParam } from "@app/components/assistant/conversation/lib";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
 
 interface AgentSuggestionProps {
-  conversationId: string;
+  conversation: ConversationType;
   owner: WorkspaceType;
   userMessage: UserMessageType;
+  switchThread: (threadVersion: number) => Promise<void>;
 }
 
 export function AgentSuggestion({
-  conversationId,
+  conversation,
   owner,
   userMessage,
+  switchThread,
 }: AgentSuggestionProps) {
   const { agentConfigurations } = useAgentConfigurations({
     workspaceId: owner.sId,
@@ -46,7 +50,7 @@ export function AgentSuggestion({
     async (agent: LightAgentConfigurationType) => {
       const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
       const mRes = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
+        `/api/w/${owner.sId}/assistant/conversations/${conversation.sId}/messages/${userMessage.sId}/edit${createThreadVersionParam(conversation.threadVersion)}`,
         {
           method: "POST",
           headers: {
@@ -71,6 +75,9 @@ export function AgentSuggestion({
           title: "Invite sent",
           description: `Error adding mention to message: ${data.error.message}`,
         });
+      } else {
+        const result = await mRes.json();
+        await switchThread(result.message.threadVersions[0]);
       }
     }
   );

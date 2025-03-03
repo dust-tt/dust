@@ -1,4 +1,5 @@
 import type {
+  ConversationType,
   FetchConversationMessagesResponse,
   MessageWithContentFragmentsType,
   UserType,
@@ -12,7 +13,7 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 interface MessageGroupProps {
   messages: MessageWithContentFragmentsType[];
   isLastMessageGroup: boolean;
-  conversationId: string;
+  conversation: ConversationType;
   feedbacks: AgentMessageFeedbackType[];
   isInModal: boolean;
   owner: WorkspaceType;
@@ -31,7 +32,7 @@ export const LAST_MESSAGE_GROUP_ID = "last-message-group";
 export default function MessageGroup({
   messages,
   isLastMessageGroup,
-  conversationId,
+  conversation,
   feedbacks,
   isInModal,
   owner,
@@ -64,7 +65,7 @@ export default function MessageGroup({
       {messages.map((message) => (
         <MessageItem
           key={`message-${message.sId}`}
-          conversationId={conversationId}
+          conversation={conversation}
           messageFeedback={feedbacks.find(
             (feedback) => feedback.messageId === message.sId
           )}
