@@ -1,108 +1,87 @@
 import { stringify } from "csv-stringify";
 
 import { generateCSVSnippet } from "@app/lib/api/csv";
-import { internalCreateToolOutputFile } from "@app/lib/api/files/tool_output";
+import {
+  internalCreateSearchableTextFile,
+  internalCreateToolOutputFile,
+} from "@app/lib/api/files/tool_output";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 
-export async function getToolResultOutputCsvFileAndSnippet(
+export type CSVRecord = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+const RICH_TEXT_MIN_LENGTH = 500;
+
+const toCsv = (
+  records: Array<CSVRecord>,
+  options: { header: boolean } = { header: true }
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    stringify(records, options, (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    });
+  });
+};
+
+export async function getToolResultOutputFilesAndSnippet(
   auth: Authenticator,
   {
     title,
     conversationId,
     results,
+    generateSearchableFile = false,
   }: {
     title: string;
     conversationId: string;
-    results: Array<
-      Record<string, string | number | boolean | null | undefined>
-    >;
+    results: Array<CSVRecord>;
+    generateSearchableFile?: boolean;
   }
 ): Promise<{
   csvFile: FileResource;
-  snippet: string;
-  textFile: FileResource | null;
+  csvSnippet: string;
+  searchableFile: FileResource | null;
 }> {
-  const toCsv = (
-    records: Array<
-      Record<string, string | number | boolean | null | undefined>
-    >,
-    options: { header: boolean } = { header: true }
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      stringify(records, options, (err, data) => {
-        if (err) {
-          reject(err);
+  const shouldGenerateSearchableFile =
+    generateSearchableFile &&
+    results.some((result) => {
+      for (const value of Object.values(result)) {
+        if (typeof value === "string" && value.length > RICH_TEXT_MIN_LENGTH) {
+          return true;
         }
-        resolve(data);
-      });
+      }
+      return false;
     });
-  };
 
-  // Preprocess results to replace rich text with a placeholder
-  // TODO WRAP IN A IF
-  const richTextRecords: Array<
-    Record<string, string | number | boolean | null | undefined>
-  > = [];
-
-  const preprocessedResults = results.map((result) => {
-    let putInRichTextRecord = false;
-    const preprocessedResult = Object.fromEntries(
-      Object.entries(result).map(([key, value]) => {
-        if (typeof value === "string" && value.length > 1000) {
-          putInRichTextRecord = true;
-          return [key, "[Long text removed and uploaded to conversation]"];
-        }
-        return [key, value];
-      })
-    );
-    if (putInRichTextRecord) {
-      richTextRecords.push(result);
-    }
-    return preprocessedResult;
-  });
-
-  const csvOutput = await toCsv(preprocessedResults);
-
+  // Generate the CSV file.
+  const csvOutput = await toCsv(results);
   const csvFile = await internalCreateToolOutputFile(auth, {
     title,
     conversationId,
     content: csvOutput,
     contentType: "text/csv",
   });
+  const csvSnippet = generateCSVSnippet({
+    content: csvOutput,
+    totalRecords: results.length,
+    hasSearchableFile: shouldGenerateSearchableFile,
+  });
 
-  let textFile: FileResource | null = null;
-  if (richTextRecords.length > 0) {
-    const richTextContent = richTextRecords
-      .map((row) => {
-        // Ensure we're creating valid JSON strings
-        try {
-          return JSON.stringify(row, null, 2);
-        } catch (e) {
-          console.error("Failed to stringify row:", e);
-          return JSON.stringify({ error: "Failed to stringify row" });
-        }
-      })
-      .join("\n");
-
-    textFile = await internalCreateToolOutputFile(auth, {
-      title: `${title} (Rich Text)`,
+  // Generate a searchable text file (JSONL).
+  let searchableFile: FileResource | null = null;
+  if (shouldGenerateSearchableFile) {
+    searchableFile = await internalCreateSearchableTextFile(auth, {
+      title,
       conversationId,
-      content: richTextContent,
-      contentType: "text/plain",
+      rows: results,
     });
   }
 
-  const snippet = generateCSVSnippet({
-    content: csvOutput,
-    totalRecords: results.length,
-    hasReplacedRichText: richTextRecords.length > 0,
-  });
-
-  console.log("SOUPINOU");
-  console.log(textFile);
-
-  return { csvFile, textFile, snippet };
+  return { csvFile, searchableFile, csvSnippet };
 }
 
 export async function getToolResultOutputPlainTextFileAndSnippet(

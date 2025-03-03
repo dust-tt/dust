@@ -293,6 +293,12 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
+    case "text/vnd.dust.attachment.searchable.text":
+      if (useCase === "tool_output") {
+        return upsertDocumentToDatasource;
+      } else {
+        return undefined;
+      }
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {

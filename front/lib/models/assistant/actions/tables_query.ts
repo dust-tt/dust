@@ -165,10 +165,10 @@ export class AgentTablesQueryAction extends WorkspaceAwareModel<AgentTablesQuery
 
   declare step: number;
   declare resultsFileId: ForeignKey<FileModel["id"]> | null;
-  declare richTextFileId: ForeignKey<FileModel["id"]> | null;
+  declare searchableFileId: ForeignKey<FileModel["id"]> | null;
 
   declare resultsFile: NonAttribute<FileModel>;
-  declare richTextFile: NonAttribute<FileModel>;
+  declare searchableFile: NonAttribute<FileModel>;
 }
 
 AgentTablesQueryAction.init(
@@ -231,7 +231,7 @@ AgentTablesQueryAction.init(
         concurrently: true,
       },
       {
-        fields: ["richTextFileId"],
+        fields: ["searchableFileId"],
         concurrently: true,
       },
     ],
@@ -257,11 +257,11 @@ AgentTablesQueryAction.belongsTo(FileModel, {
 });
 
 FileModel.hasMany(AgentTablesQueryAction, {
-  foreignKey: { name: "richTextFileId", allowNull: true },
+  foreignKey: { name: "searchableFileId", allowNull: true },
   onDelete: "SET NULL",
 });
 AgentTablesQueryAction.belongsTo(FileModel, {
-  as: "richTextFile",
-  foreignKey: { name: "richTextFileId", allowNull: true },
+  as: "searchableFile",
+  foreignKey: { name: "searchableFileId", allowNull: true },
   onDelete: "SET NULL",
 });

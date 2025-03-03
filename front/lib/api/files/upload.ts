@@ -289,7 +289,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-
+    case "text/vnd.dust.attachment.searchable.text":
+      if (useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
     default:
       assertNever(contentType);
   }
