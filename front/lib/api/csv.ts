@@ -105,11 +105,11 @@ export function analyzeCSVColumns(
 export function generateCSVSnippet({
   content,
   totalRecords,
-  hasReplacedRichText,
+  hasSearchableFile,
 }: {
   content: string;
   totalRecords: number;
-  hasReplacedRichText: boolean;
+  hasSearchableFile: boolean;
 }): string {
   // Max number of characters in the snippet.
   const MAX_SNIPPET_CHARS = 16384;
@@ -129,11 +129,15 @@ export function generateCSVSnippet({
   let currentCharCount = snippetOutput.length;
   let linesIncluded = 0;
 
-  const truncationString = hasReplacedRichText
-    ? "(...truncated)"
-    : "(...truncated, some long text values were replaced with a placeholder and uploaded to the conversation)";
+  const searchableTextMention = hasSearchableFile
+    ? " - Full results in separate file available in the conversation."
+    : "";
+
+  const truncationString = `(...truncated${searchableTextMention})`;
   const endOfSnippetString = (omitted: number) =>
-    omitted > 0 ? `\n(${omitted} lines omitted)\n` : "\n(end of file)\n";
+    omitted > 0
+      ? `\n(${omitted} lines omitted)\n`
+      : `\n(end of file${searchableTextMention})\n`;
 
   // Process header
   const header = stringify([records[0]], { header: true }).split("\n")[0];

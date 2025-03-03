@@ -1,11 +1,13 @@
 import {
   Citation,
+  CitationDescription,
   CitationIcons,
   CitationTitle,
   CodeBlock,
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
+  DocumentTextIcon,
   Icon,
   InformationCircleIcon,
   Markdown,
@@ -147,40 +149,36 @@ function QueryTablesResults({
     return null;
   }
 
-  console.log("soupinou");
-  console.log(action.richTextFileId);
-
   return (
     <div className="flex flex-col">
       <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Results
       </span>
-      <div>
+      <div className="flex flex-row gap-2">
         {action.resultsFileId && (
           <Citation
             className="w-48 min-w-48 max-w-48"
             containerClassName="my-2"
             onClick={() => handleDownload(action.resultsFileId)}
-            tooltip={title}
           >
             <CitationIcons>
               <Icon visual={TableIcon} />
             </CitationIcons>
             <CitationTitle>{title}</CitationTitle>
+            <CitationDescription>(CSV)</CitationDescription>
           </Citation>
         )}
-
-        {action.richTextFileId && (
+        {action.searchableFileId && (
           <Citation
             className="w-48 min-w-48 max-w-48"
             containerClassName="my-2"
-            onClick={() => handleDownload(action.richTextFileId)}
-            tooltip={title}
+            onClick={() => handleDownload(action.searchableFileId)}
           >
             <CitationIcons>
-              <Icon visual={TableIcon} />
+              <Icon visual={DocumentTextIcon} />
             </CitationIcons>
             <CitationTitle>{title}</CitationTitle>
+            <CitationDescription>(JSONL)</CitationDescription>
           </Citation>
         )}
       </div>

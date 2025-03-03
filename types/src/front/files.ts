@@ -105,6 +105,12 @@ const FILE_FORMATS = {
     exts: [".xlsx"],
   },
 
+  // Custom for searchable text files generated from tables query results.
+  "text/vnd.dust.attachment.searchable.text": {
+    cat: "data",
+    exts: [".txt", ".json"],
+  },
+
   // Data
   "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
   "text/markdown": { cat: "data", exts: [".md", ".markdown"] },

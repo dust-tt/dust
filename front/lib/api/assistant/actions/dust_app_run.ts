@@ -28,7 +28,7 @@ import {
 
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
 import {
-  getToolResultOutputCsvFileAndSnippet,
+  getToolResultOutputFilesAndSnippet,
   getToolResultOutputPlainTextFileAndSnippet,
 } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -615,14 +615,12 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
           resultsFileContentType: "text/csv",
         });
 
-        const { csvFile, snippet } = await getToolResultOutputCsvFileAndSnippet(
-          auth,
-          {
+        const { csvFile, csvSnippet } =
+          await getToolResultOutputFilesAndSnippet(auth, {
             title: fileTitle,
             conversationId: conversation.sId,
             results: sanitizedOutput.__dust_file.content,
-          }
-        );
+          });
 
         resultFile = {
           fileId: csvFile.sId,
@@ -633,7 +631,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
         delete sanitizedOutput.__dust_file;
         updateParams.resultsFileId = csvFile.id;
-        updateParams.resultsFileSnippet = snippet;
+        updateParams.resultsFileSnippet = csvSnippet;
       } else if (containsValidDocumentOutput(sanitizedOutput)) {
         const fileTitle = getDustAppRunResultsFileTitle({
           appName: app.name,

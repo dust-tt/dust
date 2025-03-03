@@ -23,7 +23,7 @@ export interface TablesQueryActionType extends BaseAction {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
-  richTextFileId: string | null;
+  searchableFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   agentMessageId: ModelId;
@@ -41,33 +41,35 @@ export function getTablesQueryResultsFileTitle({
     : "query_results";
 }
 
-export function getTablesQueryResultsFileAttachment({
+export function getTablesQueryResultsFileAttachments({
   resultsFileId,
   resultsFileSnippet,
+  searchableFileId,
   output,
-  includeSnippet = true,
 }: {
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  searchableFileId: string | null;
   output: Record<string, unknown> | null;
-  includeSnippet: boolean;
 }): string | null {
   if (!resultsFileId || !resultsFileSnippet) {
     return null;
   }
 
-  const attachment =
+  const fileTitle = getTablesQueryResultsFileTitle({ output });
+
+  const resultsFileAttachment =
     `<file ` +
-    `id="${resultsFileId}" type="text/csv" title=${getTablesQueryResultsFileTitle(
-      { output }
-    )}`;
+    `id="${resultsFileId}" type="text/csv" title="${fileTitle}">\n${resultsFileSnippet}\n</file>`;
 
-  if (!includeSnippet) {
-    return `${attachment} />`;
+  let searchableFileAttachment = "";
+  if (searchableFileId) {
+    searchableFileAttachment =
+      `\n<file ` +
+      `id="${searchableFileId}" type="text/vnd.dust.attachment.searchable.text" title="${fileTitle} (Results optimized for search)" />`;
   }
-  // TODO DAPHNE: add rich text file snippet
 
-  return `${attachment}>\n${resultsFileSnippet}\n</file>`;
+  return `${resultsFileAttachment}${searchableFileAttachment}`;
 }
 
 /**
