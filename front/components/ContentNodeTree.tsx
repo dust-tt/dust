@@ -137,12 +137,22 @@ function ContentNodeTreeChildren({
   const { useResourcesHook, emptyComponent, defaultExpandedIds } =
     useContentNodeTreeContext();
 
-  const { resources, isResourcesLoading, isResourcesError, resourcesError } =
-    useResourcesHook(parentId);
+  const {
+    resources,
+    isResourcesLoading,
+    isResourcesError,
+    resourcesError,
+    isResourcesTruncated,
+    totalResourceCount,
+  } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
     (n) => search.trim().length === 0 || n.title.includes(search)
   );
+  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
+  const hiddenNodesCount = totalResourceCount
+    ? Math.max(0, totalResourceCount - filteredNodes.length)
+    : filteredNodes.length;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -305,6 +315,11 @@ function ContentNodeTreeChildren({
           />
         );
       })}
+      {hiddenNodesCount > 0 && (
+        <Tree.Empty
+          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
+        />
+      )}
     </Tree>
   );
 
