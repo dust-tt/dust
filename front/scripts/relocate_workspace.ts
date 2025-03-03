@@ -129,15 +129,11 @@ makeScript(
 
           // 3) Update all users' region metadata.
           const updateUsersRegionToDestRes =
-            await updateAllWorkspaceUsersRegionMetadata(
-              auth,
-              sourceRegion,
-              logger,
-              {
-                execute,
-                rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              }
-            );
+            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+              execute,
+              newRegion: destinationRegion,
+              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+            });
           if (updateUsersRegionToDestRes.isErr()) {
             logger.error(
               `Failed to update users' region metadata: ${updateUsersRegionToDestRes.error.message}`
@@ -200,15 +196,11 @@ makeScript(
 
           // 3) Update all users' region metadata.
           const updateUsersRegionToSrcRes =
-            await updateAllWorkspaceUsersRegionMetadata(
-              auth,
-              sourceRegion,
-              logger,
-              {
-                execute,
-                rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              }
-            );
+            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+              execute,
+              newRegion: sourceRegion,
+              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+            });
           if (updateUsersRegionToSrcRes.isErr()) {
             logger.error(
               `Failed to update users' region metadata: ${updateUsersRegionToSrcRes.error.message}`

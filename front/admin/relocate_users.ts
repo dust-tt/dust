@@ -88,19 +88,25 @@ async function changeUserRegion(
 
 export async function updateAllWorkspaceUsersRegionMetadata(
   auth: Authenticator,
-  newRegion: RegionType,
   logger: Logger,
   {
     execute,
+    newRegion,
     rateLimitThreshold,
-  }: { execute: boolean; rateLimitThreshold: number }
+  }: {
+    execute: boolean;
+    newRegion: RegionType;
+    rateLimitThreshold: number;
+  }
 ): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
   const members = await MembershipResource.getMembershipsForWorkspace({
     workspace,
   });
-  const userIds = removeNulls(members.memberships.map((m) => m.userId));
+  const userIds = [
+    ...new Set(removeNulls(members.memberships.map((m) => m.userId))),
+  ];
   const allMemberships = await MembershipResource.fetchByUserIds(userIds);
 
   const externalMemberships = allMemberships.filter(
@@ -167,12 +173,11 @@ makeScript(
   ) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-    const res = await updateAllWorkspaceUsersRegionMetadata(
-      auth,
-      destinationRegion as RegionType,
-      logger,
-      { execute, rateLimitThreshold }
-    );
+    const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+      execute,
+      newRegion: destinationRegion as RegionType,
+      rateLimitThreshold,
+    });
 
     if (res.isErr()) {
       logger.error(res.error.message);
