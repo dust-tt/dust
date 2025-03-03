@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -871,11 +871,29 @@ impl ElasticsearchSearchStore {
             "[ElasticsearchSearchStore] Count children duration"
         );
 
-        // Build parent titles query
-        let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
+        // Build parent titles query.
+        let mut parent_ids = HashSet::new();
+        let mut data_source_ids = HashSet::new();
+
+        // Collect distinct parent IDs and data source internal IDs.
+        for node in nodes.iter() {
+            if let Some(parent_id) = &node.parent_id {
+                parent_ids.insert(parent_id);
+                data_source_ids.insert(&node.data_source_internal_id);
+            }
+        }
+
+        // Convert to vectors.
+        let parent_ids: Vec<_> = parent_ids.into_iter().collect();
+        let data_source_ids: Vec<_> = data_source_ids.into_iter().collect();
+
+        // Scope the query to the internal data source ids of the nodes to avoid leaking data
+        // from other data sources.
         let parent_titles_search = Search::new()
-            .size(parent_ids.len() as u64)
-            .query(Query::bool().filter(Query::terms("node_id", parent_ids)))
+            .query(Query::bool().filter(vec![
+                Query::terms("node_id", parent_ids),
+                Query::terms("data_source_internal_id", data_source_ids),
+            ]))
             .source(vec!["node_id", "title"]);
 
         let parent_titles_response = self
