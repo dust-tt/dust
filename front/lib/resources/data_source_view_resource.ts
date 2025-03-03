@@ -49,6 +49,8 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import { ConversationWithoutContentPublicType } from "@dust-tt/client";
+import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -104,6 +106,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -122,6 +125,17 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space
     );
     dsv.ds = dataSource;
+
+    if (conversation) {
+      // dataSourceView attached to a conversation, we create an entry in the
+      // join table
+      await DataSourceViewForConversation.create({
+        conversationId: conversation.id,
+        dataSourceViewId: dataSourceView.id,
+        workspaceId: blob.workspaceId,
+      });
+    }
+
     return dsv;
   }
 
@@ -129,6 +143,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
@@ -142,6 +157,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         dataSource,
         editedByUser,
+        conversation,
         t
       );
     };
@@ -177,6 +193,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
+    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -189,6 +206,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space,
       dataSource,
       editedByUser,
+      conversation,
       transaction
     );
   }
