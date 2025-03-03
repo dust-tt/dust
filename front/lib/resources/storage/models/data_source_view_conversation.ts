@@ -35,10 +35,9 @@ DataSourceViewForConversation.init(
       {
         unique: true,
         fields: ["conversationId", "dataSourceViewId"],
-        name: "data_source_view_for_conversation_unique",
       },
-      { fields: ["conversationId"] },
-      { fields: ["dataSourceViewId"] },
+      { fields: ["conversationId"], concurrently: true },
+      { fields: ["dataSourceViewId"], concurrently: true },
     ],
   }
 );
