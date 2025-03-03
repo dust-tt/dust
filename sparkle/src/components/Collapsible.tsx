@@ -1,5 +1,5 @@
-import * as React from "react";
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
+import * as React from "react";
 
 import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/solid";
 import { cn } from "@sparkle/lib/utils";
@@ -137,9 +137,7 @@ const CollapsibleContent = React.forwardRef<
     ref={ref}
     className={cn(
       "s-overflow-hidden s-text-primary-500 dark:s-text-primary-500-night",
-      "s-transition-all s-duration-300 s-ease-out",
-      "data-[state=closed]:s-h-0 data-[state=closed]:s-opacity-0",
-      "data-[state=open]:s-h-auto data-[state=open]:s-opacity-100",
+      "data-[state=closed]:s-animate-collapse-up data-[state=open]:s-animate-collapse-down",
       className
     )}
     {...props}
