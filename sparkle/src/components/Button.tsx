@@ -72,7 +72,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-text-foreground dark:s-text-white",
     "hover:s-bg-primary-150 dark:hover:s-bg-primary-800",
     "hover:s-text-primary-900 dark:hover:s-text-white",
-    "hover:s-border-border-dark dark:hover:s-border-border-night",
+    "hover:s-border-primary-150 dark:hover:s-border-border-night",
     "active:s-bg-primary-300 dark:active:s-bg-primary-900",
     "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
   ),
@@ -82,7 +82,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
     "s-text-muted-foreground dark:s-text-muted-foreground-night",
     "hover:s-bg-primary-150 dark:hover:s-bg-primary-800",
     "hover:s-text-primary-900 dark:hover:s-text-primary-900-night",
-    "hover:s-border-border-dark dark:hover:s-border-border-night",
+    "hover:s-border-primary-150 dark:hover:s-border-border-night",
     "active:s-bg-primary-300 dark:active:s-bg-primary-900",
     "disabled:s-text-primary-400 dark:disabled:s-text-primary-400-night"
   ),
