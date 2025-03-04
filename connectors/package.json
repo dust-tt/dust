@@ -1,6 +1,9 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "resolutions": {
+    "@octokit/plugin-paginate-rest": "9.1.5"
+  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
