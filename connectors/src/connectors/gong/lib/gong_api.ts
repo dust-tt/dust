@@ -12,12 +12,12 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);
 
-const SpokenLanguageCodec = t.type({
+const GongSpokenLanguageCodec = t.type({
   language: t.string,
   primary: t.boolean,
 });
 
-const UserCodec = t.type({
+const GongUserCodec = t.type({
   id: t.string,
   emailAddress: t.string,
   created: t.string,
@@ -33,26 +33,26 @@ const UserCodec = t.type({
   settings: CatchAllCodec,
   managerId: t.string,
   meetingConsentPageUrl: t.string,
-  spokenLanguages: t.array(SpokenLanguageCodec),
+  spokenLanguages: t.array(GongSpokenLanguageCodec),
 });
 
-const SentenceCodec = t.type({
+const GongTranscriptSentenceCodec = t.type({
   start: t.number,
   end: t.number,
   text: t.string,
 });
 
-const TranscriptMonologueCodec = t.type({
+const GongTranscriptMonologueCodec = t.type({
   speakerId: t.string,
   topic: t.string,
   // A monologue is constituted of multiple sentences.
-  sentences: t.array(SentenceCodec),
+  sentences: t.array(GongTranscriptSentenceCodec),
 });
 
-const SingleCallTranscriptCodec = t.type({
+const GongCallTranscriptCodec = t.type({
   callId: t.string,
   // A transcript is constituted of multiple monologues.
-  transcript: t.array(TranscriptMonologueCodec),
+  transcript: t.array(GongTranscriptMonologueCodec),
 });
 
 // Generic codec for paginated results from Gong API.
@@ -74,7 +74,7 @@ export async function getGongAccessToken(
   const tokenResult = await getOAuthConnectionAccessToken({
     config: apiConfig.getOAuthAPIConfig(),
     logger,
-    provider: "confluence",
+    provider: "gong",
     connectionId: connector.connectionId,
   });
   if (tokenResult.isErr()) {
@@ -122,7 +122,7 @@ export class GongClient {
       }
 
       throw new GongAPIError(
-        `Confluence API responded with status: ${response.status}: ${this.baseUrl}${endpoint}`,
+        `Gong API responded with status: ${response.status}: ${this.baseUrl}${endpoint}`,
         {
           type: "http_response_error",
           status: response.status,
@@ -160,18 +160,40 @@ export class GongClient {
             fromDateTime: fromDateTime.toISOString(),
           },
         },
-        GongPaginatedResults("callTranscripts", SingleCallTranscriptCodec)
+        GongPaginatedResults("callTranscripts", GongCallTranscriptCodec)
       );
-      const nextPageCursor = transcripts.records.cursor;
-
       return {
         transcripts: transcripts.callTranscripts,
-        nextPageCursor,
+        nextPageCursor: transcripts.records.cursor,
       };
     } catch (err) {
       if (err instanceof GongAPIError && err.status === 404) {
         return {
           pages: [],
+          nextPageCursor: null,
+        };
+      }
+      throw err;
+    }
+  }
+
+  async getUsers({ pageCursor }: { pageCursor: string | null }) {
+    try {
+      const users = await this.request(
+        `/users`,
+        {
+          cursor: pageCursor,
+        },
+        GongPaginatedResults("users", GongUserCodec)
+      );
+      return {
+        users: users.users,
+        nextPageCursor: users.records.cursor,
+      };
+    } catch (err) {
+      if (err instanceof GongAPIError && err.status === 404) {
+        return {
+          users: [],
           nextPageCursor: null,
         };
       }
