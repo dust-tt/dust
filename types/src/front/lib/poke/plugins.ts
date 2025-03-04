@@ -63,6 +63,7 @@ export interface PluginManifest<
 
 export interface PluginWorkspaceResource {
   resourceId: string;
+  resourceType: SupportedResourceType;
   workspace: LightWorkspaceType;
 }
 

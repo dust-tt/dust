@@ -18,18 +18,16 @@ import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[plu
 
 export function usePokeListPluginForResourceType({
   disabled,
-  resourceType,
   workspaceResource,
 }: {
   disabled?: boolean;
-  resourceType: string;
   workspaceResource?: PluginWorkspaceResource;
 }) {
   const workspacesFetcher: Fetcher<PokeListPluginsForScopeResponseBody> =
     fetcher;
 
   const urlSearchParams = new URLSearchParams({
-    resourceType,
+    resourceType: workspaceResource?.resourceType ?? "global",
   });
 
   if (workspaceResource?.resourceId) {
@@ -87,16 +85,17 @@ export function usePokePluginManifest({
 
 export function useRunPokePlugin({
   pluginId,
-  resourceType,
   workspaceResource,
 }: {
   pluginId: string;
-  resourceType: SupportedResourceType;
   workspaceResource?: PluginWorkspaceResource;
 }) {
   const urlSearchParams = new URLSearchParams({});
 
-  urlSearchParams.append("resourceType", resourceType);
+  urlSearchParams.append(
+    "resourceType",
+    workspaceResource?.resourceType ?? "global"
+  );
 
   if (workspaceResource) {
     urlSearchParams.append("resourceId", workspaceResource.resourceId);

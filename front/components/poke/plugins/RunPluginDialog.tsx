@@ -33,7 +33,6 @@ type ExecutePluginDialogProps = {
 export function RunPluginDialog({
   onClose,
   plugin,
-  resourceType,
   workspaceResource,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +46,6 @@ export function RunPluginDialog({
 
   const { doRunPlugin } = useRunPokePlugin({
     pluginId: plugin.id,
-    resourceType,
     workspaceResource,
   });
 

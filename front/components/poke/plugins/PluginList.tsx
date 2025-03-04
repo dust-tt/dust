@@ -39,16 +39,11 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
 }
 
 interface PluginListProps {
-  resourceType: SupportedResourceType;
   workspaceResource?: PluginWorkspaceResource;
 }
 
-export function PluginList({
-  resourceType,
-  workspaceResource,
-}: PluginListProps) {
+export function PluginList({ workspaceResource }: PluginListProps) {
   const { plugins } = usePokeListPluginForResourceType({
-    resourceType,
     workspaceResource,
   });
   const [selectedPlugin, setSelectedPlugin] = useState<PluginListItem | null>(
@@ -98,7 +93,6 @@ export function PluginList({
         <RunPluginDialog
           onClose={handleDialogClose}
           plugin={selectedPlugin}
-          resourceType={resourceType}
           workspaceResource={workspaceResource}
         />
       )}
