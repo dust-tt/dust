@@ -204,6 +204,20 @@ module.exports = {
           "0%": { "background-position": "0%" },
           "100%": { "background-position": "200%" },
         },
+        "collapse-down": {
+          from: { height: "0", opacity: "0" },
+          to: {
+            height: "var(--radix-collapsible-content-height)",
+            opacity: "1",
+          },
+        },
+        "collapse-up": {
+          from: {
+            height: "var(--radix-collapsible-content-height)",
+            opacity: "1",
+          },
+          to: { height: "0", opacity: "0" },
+        },
       },
       animation: {
         "shiny-text": "shiny-text 2s infinite",
@@ -216,6 +230,8 @@ module.exports = {
         "cursor-blink": "cursor-blink 0.9s infinite;",
         "move-square": "move-square 3s ease-out infinite",
         rainbow: "rainbow var(--speed, 6s) infinite linear",
+        "collapse-down": "collapse-down 150ms ease-out",
+        "collapse-up": "collapse-up 150ms ease-out",
       },
       colors: {
         brand: {
