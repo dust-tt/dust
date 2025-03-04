@@ -23,6 +23,14 @@ async function updateConnector(
     throw new Error("Notion connector state not found.");
   }
 
+  if (notionState.notionWorkspaceId) {
+    logger.info(
+      { connectorId: connector.id },
+      "Notion workspace ID already exists."
+    );
+    return;
+  }
+
   const workspaceIdRes = await workspaceIdFromConnectionId(
     connector.connectionId
   );

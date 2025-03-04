@@ -15,7 +15,7 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare parentsLastUpdatedAt?: Date;
 
   // TODO(2025-03-04): Set this to NOT NULL once we've migrated all existing connectors.
-  declare notionWorkspaceId: string;
+  declare notionWorkspaceId: string | null;
 }
 NotionConnectorState.init(
   {
