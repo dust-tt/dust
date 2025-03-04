@@ -100,6 +100,11 @@ export async function processDataSourceTables({
         return upsertRes;
       }
 
+      // Return early if there are no rows to upsert.
+      if (d.rows.length === 0) {
+        return upsertRes;
+      }
+
       // 2) Upsert the table rows.
       const rowsRes = await coreAPI.upsertTableRows({
         projectId: destIds.dustAPIProjectId,
