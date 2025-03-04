@@ -46,7 +46,7 @@ function notionIdFromNodeId(nodeId: string) {
   return _.last(nodeId.split("notion-"))!;
 }
 
-async function workspaceIdFromConnectionId(connectionId: string) {
+export async function workspaceIdFromConnectionId(connectionId: string) {
   const tokRes = await getOAuthConnectionAccessToken({
     config: apiConfig.getOAuthAPIConfig(),
     logger,
@@ -70,7 +70,7 @@ async function workspaceIdFromConnectionId(connectionId: string) {
       "Invalid Notion OAuth response"
     );
 
-    return new Ok(null);
+    return new Err(new Error("Invalid Notion OAuth response"));
   }
 
   return new Ok(validationRes.value.workspace_id);
