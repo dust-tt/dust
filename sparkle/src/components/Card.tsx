@@ -18,21 +18,21 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 const variantClasses: Record<CardVariantType, string> = {
   primary: cn(
     "s-bg-muted-background",
-    "s-border-border-dark/0",
+    "s-border-border/0",
     "dark:s-bg-muted-background-night",
-    "dark:s-border-border-dark-night/0"
+    "dark:s-border-border-night/0"
   ),
   secondary: cn(
     "s-bg-background",
-    "s-border-border-dark",
+    "s-border-border",
     "dark:s-bg-background-night",
-    "dark:s-border-border-dark-night"
+    "dark:s-border-border-night"
   ),
   tertiary: cn(
     "s-bg-white",
-    "s-border-border-dark/0",
+    "s-border-border/0",
     "dark:s-bg-black",
-    "dark:s-border-border-dark-night/0"
+    "dark:s-border-border-night/0"
   ),
 };
 
