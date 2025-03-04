@@ -24,7 +24,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         </DataTable.CellContent>
       ),
       meta: {
-        className: "w-3/6",
+        sizeRatio: 40,
       },
     },
     {
@@ -32,21 +32,18 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       accessorKey: "location",
       id: "location",
       enableSorting: false,
-      meta: {
-        className: "w-2/6",
-      },
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.BasicCellContent label={info.getValue()} />
       ),
+      meta: {
+        sizeRatio: 35,
+      },
     },
     {
       header: "Last updated",
       id: "lastUpdatedAt",
       accessorKey: "lastUpdatedAt",
       enableSorting: false,
-      meta: {
-        className: "w-20",
-      },
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
           className="justify-end"
@@ -57,12 +54,17 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
           }
         />
       ),
+      meta: {
+        sizeRatio: 20,
+      },
     },
     {
       id: "actions",
+      accessorKey: "actions",
+      header: "Actions",
       enableSorting: false,
       meta: {
-        className: "flex justify-end items-center w-12",
+        sizeRatio: 5,
       },
       cell: (info) =>
         info.row.original.menuItems && (

@@ -1,7 +1,7 @@
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
-  DataTable,
+  MenuItem,
+  ScrollableDataTable,
   SearchInput,
   Spinner,
   useHashParam,
@@ -35,6 +35,7 @@ import {
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -162,6 +163,8 @@ interface FullBackendSearchProps extends BackendSearchProps {
   space: SpaceType;
 }
 
+const PAGE_SIZE = 5;
+
 function BackendSearch({
   canReadInSpace,
   canWriteInSpace,
@@ -205,6 +208,13 @@ function BackendSearch({
     };
   }, [searchTerm, hasSearchKnowledgeBuilderFF]);
 
+  const {
+    cursorPagination,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  } = useCursorPaginationForDataTable(PAGE_SIZE);
+
   // Use the space search hook for backend search.
   const {
     isSearchLoading,
@@ -215,6 +225,7 @@ function BackendSearch({
     dataSourceViews: targetDataSourceViews,
     disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
     includeDataSources: true,
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     owner,
     search: debouncedSearch,
     space,
@@ -507,7 +518,7 @@ function SearchResultsTable({
   ]);
 
   return (
-    <DataTable
+    <ScrollableDataTable
       data={rows}
       columns={makeColumnsForSearchResults()}
       className={cn(
@@ -518,6 +529,7 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
+      maxHeight="h-full"
     />
   );
 }
