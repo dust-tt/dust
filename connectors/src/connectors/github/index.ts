@@ -94,13 +94,16 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const [oldGithubInstallationId, newGithubInstallationId] =
-        await Promise.all([
-          installationIdFromConnectionId(c.connectionId),
-          installationIdFromConnectionId(connectionId),
-        ]);
+      const connectorState = await GithubConnectorState.findOne({
+        where: {
+          connectorId: c.id,
+        },
+      });
 
-      if (oldGithubInstallationId !== newGithubInstallationId) {
+      const newGithubInstallationId =
+        await installationIdFromConnectionId(connectionId);
+
+      if (connectorState?.installationId !== newGithubInstallationId) {
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
