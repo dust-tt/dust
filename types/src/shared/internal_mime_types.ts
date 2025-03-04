@@ -64,9 +64,13 @@ export const MIME_TYPES = {
       "CODE_ROOT",
       "CODE_DIRECTORY",
       "CODE_FILE",
+      // ISSUES is the folder containing all issues.
       "ISSUES",
+      // ISSUE is a single issue.
       "ISSUE",
+      // DISCUSSIONS is the folder containing all discussions.
       "DISCUSSIONS",
+      // DISCUSSION is a single discussion.
       "DISCUSSION",
     ],
   }),
@@ -118,7 +122,9 @@ export const MIME_TYPES = {
       "HELP_CENTER",
       "CATEGORY",
       "ARTICLE",
+      // TICKETS is the folder containing all tickets.
       "TICKETS",
+      // TICKET is a single ticket.
       "TICKET",
     ],
   }),
