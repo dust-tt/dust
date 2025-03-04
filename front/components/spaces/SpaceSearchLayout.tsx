@@ -184,6 +184,10 @@ function BackendSearch({
 }: FullBackendSearchProps) {
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
+  const [currentCursor, setCurrentCursor] = React.useState<string | null>(null);
+  const [searchResults, setSearchResults] = React.useState<
+    DataSourceViewContentNode[]
+  >([]);
 
   // Determine whether to show search results or children.
   const shouldShowSearchResults =
@@ -221,6 +225,7 @@ function BackendSearch({
     isSearchValidating,
     searchResultNodes,
     total: totalNodesCount,
+    nextPageCursor,
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
     disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
@@ -231,6 +236,24 @@ function BackendSearch({
     space,
     viewType,
   });
+
+  const handleLoadMore = React.useCallback(() => {
+    if (nextPageCursor && !isSearchValidating) {
+      setCurrentCursor(nextPageCursor);
+    }
+  }, [nextPageCursor, isSearchValidating]);
+
+  React.useEffect(() => {
+    if (searchResultNodes.length > 0) {
+      if (currentCursor) {
+        // Append new results
+        setSearchResults((prev) => [...prev, ...searchResultNodes]);
+      } else {
+        // Replace results on new search
+        setSearchResults(searchResultNodes);
+      }
+    }
+  }, [searchResultNodes, currentCursor]);
 
   // Handle transition when search state changes.
   React.useEffect(() => {
@@ -302,6 +325,7 @@ function BackendSearch({
                 totalNodesCount={totalNodesCount}
                 canReadInSpace={canReadInSpace}
                 canWriteInSpace={canWriteInSpace}
+                onLoadMore={handleLoadMore}
               />
             ) : (
               <div className="py-4 text-muted-foreground">
@@ -381,6 +405,7 @@ interface SearchResultsTableProps {
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
+  onLoadMore: () => void;
 }
 
 function SearchResultsTable({
@@ -391,6 +416,7 @@ function SearchResultsTable({
   owner,
   searchResultNodes,
   totalNodesCount,
+  onLoadMore,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -529,7 +555,8 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
-      maxHeight="h-full"
+      maxHeight="h-[100px]"
+      onLoadMore={onLoadMore}
     />
   );
 }

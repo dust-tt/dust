@@ -281,6 +281,7 @@ export async function searchContenNodesInSpace(
       nodes: DataSourceViewContentNode[];
       total: number;
       warningCode: SearchWarningCode | null;
+      nextPageCursor: string | null;
     },
     DustError | CoreAPIError
   >
@@ -309,6 +310,8 @@ export async function searchContenNodesInSpace(
     return searchRes;
   }
 
+  console.log(">>> ");
+
   const dataSourceViewById = new Map(
     dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
   );
@@ -335,5 +338,6 @@ export async function searchContenNodesInSpace(
     nodes,
     total: searchRes.value.hit_count,
     warningCode: searchRes.value.warning_code,
+    nextPageCursor: searchRes.value.next_page_cursor,
   });
 }

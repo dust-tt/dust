@@ -630,6 +630,7 @@ export function useSpaceSearch({
   searchResultNodes: DataSourceViewContentNode[];
   total: number;
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 } {
   const params = new URLSearchParams();
   if (pagination?.cursor) {
@@ -679,5 +680,6 @@ export function useSpaceSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }
