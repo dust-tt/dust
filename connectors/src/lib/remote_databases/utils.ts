@@ -53,17 +53,6 @@ export const parseSchemaInternalId = (
   };
 };
 
-export const parseTableInternalId = (
-  tableInternalId: string
-): RemoteDBTable => {
-  const [dbName, schemaName, tableName] = tableInternalId.split(".");
-  if (!dbName || !schemaName || !tableName) {
-    throw new Error(`Invalid table internalId: ${tableInternalId}`);
-  }
-
-  return { name: tableName, database_name: dbName, schema_name: schemaName };
-};
-
 // Helper functions to get connector and credentials
 export const getConnector = async ({
   connectorId,
