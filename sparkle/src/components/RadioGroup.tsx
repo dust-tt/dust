@@ -10,7 +10,7 @@ import { cn } from "@sparkle/lib/utils";
 const radioStyles = cva(
   cn(
     "s-aspect-square s-rounded-full s-border",
-    "s-border-border-darker dark:s-border-primary-500",
+    "s-s-border-border-dark dark:s-border-primary-500",
     "s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",
     "s-flex s-items-center s-justify-center",
