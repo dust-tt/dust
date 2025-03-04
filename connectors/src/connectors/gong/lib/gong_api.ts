@@ -94,13 +94,18 @@ export class GongClient {
 
   constructor(private readonly authToken: string) {}
 
-  private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    body: unknown,
+    codec: t.Type<T>
+  ): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.authToken}`,
         "Content-Type": "application/json",
       },
+      body: JSON.stringify(body),
       // Timeout after 30 seconds.
       signal: AbortSignal.timeout(30000),
     });
@@ -137,5 +142,40 @@ export class GongClient {
     }
 
     return result.right;
+  }
+
+  async getTranscripts({
+    fromDateTime,
+    pageCursor,
+  }: {
+    fromDateTime: Date;
+    pageCursor: string | null;
+  }) {
+    try {
+      const transcripts = await this.request(
+        `/calls/transcript`,
+        {
+          cursor: pageCursor,
+          filter: {
+            fromDateTime: fromDateTime.toISOString(),
+          },
+        },
+        GongPaginatedResults("callTranscripts", SingleCallTranscriptCodec)
+      );
+      const nextPageCursor = transcripts.records.cursor;
+
+      return {
+        transcripts: transcripts.callTranscripts,
+        nextPageCursor,
+      };
+    } catch (err) {
+      if (err instanceof GongAPIError && err.status === 404) {
+        return {
+          pages: [],
+          nextPageCursor: null,
+        };
+      }
+      throw err;
+    }
   }
 }
