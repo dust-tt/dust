@@ -37,13 +37,7 @@ import {
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  MoreIcon,
-} from "@sparkle/icons";
+import { ArrowDownIcon, ArrowUpIcon, ClipboardCheckIcon, ClipboardIcon, MoreIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 import { breakpoints, useWindowSize } from "./WindowUtility";
@@ -627,7 +621,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-justify-center s-border-y s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"
