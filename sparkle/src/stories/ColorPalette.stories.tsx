@@ -16,6 +16,7 @@ const semanticColorFamilies = [
   "highlight",
   "success",
   "warning",
+  "info",
 ] as const;
 
 // Shades to display for each color
