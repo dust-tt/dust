@@ -1,11 +1,16 @@
 import { assertNever } from "@dust-tt/types";
 
+import { updateAllWorkspaceUsersRegionMetadata } from "@app/admin/relocate_users";
 import {
   pauseAllManagedDataSources,
   resumeAllManagedDataSources,
 } from "@app/lib/api/data_sources";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { config, SUPPORTED_REGIONS } from "@app/lib/api/regions/config";
+import {
+  config,
+  isRegionType,
+  SUPPORTED_REGIONS,
+} from "@app/lib/api/regions/config";
 import {
   setWorkspaceRelocated,
   setWorkspaceRelocating,
@@ -19,8 +24,19 @@ const RELOCATION_STEPS = [
   "relocate",
   "cutover",
   "resume-in-destination",
+  "rollback",
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
+
+const AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD = 3;
+
+function assertCorrectRegion(region: RegionType) {
+  if (config.getCurrentRegion() !== region) {
+    throw new Error(
+      `Relocation must be run from ${region}. Current region is ${config.getCurrentRegion()}.`
+    );
+  }
+}
 
 makeScript(
   {
@@ -49,11 +65,8 @@ makeScript(
     { destinationRegion, sourceRegion, step, workspaceId, execute },
     logger
   ) => {
-    const currentRegion = config.getCurrentRegion();
-    if (sourceRegion !== currentRegion) {
-      logger.error(
-        `Relocation must be run from the source region. Current region is ${currentRegion}.`
-      );
+    if (!isRegionType(sourceRegion) || !isRegionType(destinationRegion)) {
+      logger.error("Invalid region.");
       return;
     }
 
@@ -65,13 +78,15 @@ makeScript(
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const owner = auth.getNonNullableWorkspace();
 
-    logger.info("Start relocating workspace");
+    logger.info(`About to run step ${step} for workspace ${owner.sId}`);
 
     if (execute) {
       const s = step as RelocationStep;
 
       switch (s) {
         case "relocate":
+          assertCorrectRegion(sourceRegion);
+
           // 1) Set the workspace as relocating.
           const workspaceRelocatingRes = await setWorkspaceRelocating(owner);
           if (workspaceRelocatingRes.isErr()) {
@@ -101,7 +116,9 @@ makeScript(
           break;
 
         case "cutover":
-          // 1) Set the workspace as relocated.
+          assertCorrectRegion(sourceRegion);
+
+          // 1) Set the workspace in the source region as relocated.
           const workspaceRelocatedRes = await setWorkspaceRelocated(owner);
           if (workspaceRelocatedRes.isErr()) {
             logger.error(
@@ -109,38 +126,88 @@ makeScript(
             );
             return;
           }
+
+          // 3) Update all users' region metadata.
+          const updateUsersRegionToDestRes =
+            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+              execute,
+              newRegion: destinationRegion,
+              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+            });
+          if (updateUsersRegionToDestRes.isErr()) {
+            logger.error(
+              `Failed to update users' region metadata: ${updateUsersRegionToDestRes.error.message}`
+            );
+            return;
+          }
           break;
 
         case "resume-in-destination":
-          if (config.getCurrentRegion() !== destinationRegion) {
-            logger.error(
-              `Resume-in-destination must be run from the destination region. Current region is ${config.getCurrentRegion()}.`
-            );
-            return;
-          }
+          assertCorrectRegion(destinationRegion);
 
-          // 1) Resume all connectors in the destination region.
-          const resumeRes = await resumeAllManagedDataSources(auth);
-          if (resumeRes.isErr()) {
-            logger.error(
-              `Failed to resume connectors: ${resumeRes.error.message}`
-            );
-            return;
-          }
-
-          // 2) Remove the maintenance metadata.
-          const clearWorkspaceMetadataRes = await updateWorkspaceMetadata(
+          // 1) Remove the maintenance metadata.
+          const clearDestWorkspaceMetadataRes = await updateWorkspaceMetadata(
             owner,
             {
               maintenance: undefined,
             }
           );
-          if (clearWorkspaceMetadataRes.isErr()) {
+          if (clearDestWorkspaceMetadataRes.isErr()) {
             logger.error(
-              `Failed to clear workspace metadata: ${clearWorkspaceMetadataRes.error.message}`
+              `Failed to clear workspace metadata: ${clearDestWorkspaceMetadataRes.error.message}`
             );
             return;
           }
+
+          // 2) Resume all connectors in the destination region.
+          const resumeDestConnectorsRes =
+            await resumeAllManagedDataSources(auth);
+          if (resumeDestConnectorsRes.isErr()) {
+            logger.error(
+              `Failed to resume connectors: ${resumeDestConnectorsRes.error.message}`
+            );
+            return;
+          }
+
+          break;
+
+        case "rollback":
+          assertCorrectRegion(sourceRegion);
+
+          // 1) Clear workspace maintenance metadata in source region.
+          const clearSrcWorkspaceMetadataRes =
+            await setWorkspaceRelocated(owner);
+          if (clearSrcWorkspaceMetadataRes.isErr()) {
+            logger.error(
+              `Failed to clear workspace maintenance metadata: ${clearSrcWorkspaceMetadataRes.error.message}`
+            );
+            return;
+          }
+
+          // 2) Resume all connectors in the source region.
+          const resumeSrcConnectorsRes =
+            await resumeAllManagedDataSources(auth);
+          if (resumeSrcConnectorsRes.isErr()) {
+            logger.error(
+              `Failed to resume connectors: ${resumeSrcConnectorsRes.error.message}`
+            );
+            return;
+          }
+
+          // 3) Update all users' region metadata.
+          const updateUsersRegionToSrcRes =
+            await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+              execute,
+              newRegion: sourceRegion,
+              rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+            });
+          if (updateUsersRegionToSrcRes.isErr()) {
+            logger.error(
+              `Failed to update users' region metadata: ${updateUsersRegionToSrcRes.error.message}`
+            );
+            return;
+          }
+
           break;
 
         default:

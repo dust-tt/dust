@@ -8,6 +8,10 @@ export interface RegionInfo {
   url: string;
 }
 
+export function isRegionType(region: string): region is RegionType {
+  return SUPPORTED_REGIONS.includes(region as RegionType);
+}
+
 export const config = {
   getCurrentRegion: (): RegionType => {
     return EnvironmentConfig.getEnvVariable("DUST_REGION") as RegionType;
