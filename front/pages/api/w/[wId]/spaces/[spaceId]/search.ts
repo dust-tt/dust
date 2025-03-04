@@ -11,13 +11,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { NON_SEARCHABLE_NODES_MIME_TYPES } from "@app/lib/api/content_nodes";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import { getCursorPaginationParams } from "@app/lib/api/pagination";
 
 const SearchRequestBody = t.type({
   // Optional array of data source view IDs to search in.
@@ -40,6 +40,7 @@ export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
   total: number;
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 };
 
 async function handler(
@@ -81,7 +82,7 @@ async function handler(
     });
   }
 
-  const { dataSourceViewIds, includeDataSources, limit, query, viewType } =
+  const { dataSourceViewIds, includeDataSources, query, viewType } =
     bodyValidation.right;
 
   // If no data source views are provided, use all data source views in the space.
@@ -150,6 +151,7 @@ async function handler(
     nodes: searchRes.value.nodes,
     total: searchRes.value.total,
     warningCode: searchRes.value.warningCode,
+    nextPageCursor: searchRes.value.nextPageCursor,
   });
 }
 
