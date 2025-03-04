@@ -72,7 +72,7 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
     }),
     t.type({
       [fieldName]: t.array(codec),
-    }),
+    } as Record<F, t.ArrayC<C>>),
   ]);
 
 export async function getGongAccessToken(
