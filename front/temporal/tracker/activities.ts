@@ -6,6 +6,7 @@ import type {
   TrackerIdWorkspaceId,
 } from "@dust-tt/types";
 import { CoreAPI, Err, GPT_4O_MODEL_CONFIG, Ok } from "@dust-tt/types";
+import { withRetries } from "@dust-tt/types";
 import _ from "lodash";
 
 import { isErrorWithRunId } from "@app/lib/actions/helpers";
@@ -19,7 +20,6 @@ import { callDocTrackerSuggestChangesAction } from "@app/lib/document_upsert_hoo
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
-import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 
 // If a diff is less than this number of characters, we don't run the tracker.
@@ -81,7 +81,10 @@ export async function trackersGenerationActivity(
     return;
   }
 
-  const dataSourceDocumentRes = await withRetries(getDataSourceDocument)({
+  const dataSourceDocumentRes = await withRetries(
+    logger,
+    getDataSourceDocument
+  )({
     workspaceId,
     dataSourceId,
     documentId,

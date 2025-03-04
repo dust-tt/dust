@@ -1,4 +1,4 @@
-import logger from "@app/logger/logger";
+import { LoggerInterface } from "./logger";
 
 type RetryOptions = {
   retries?: number;
@@ -6,6 +6,7 @@ type RetryOptions = {
 };
 
 export function withRetries<T, U>(
+  logger: LoggerInterface,
   fn: (arg: T) => Promise<U>,
   { retries = 10, delayBetweenRetriesMs = 1000 }: RetryOptions = {}
 ): (arg: T & RetryOptions) => Promise<U> {

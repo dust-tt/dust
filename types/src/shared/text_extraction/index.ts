@@ -8,6 +8,7 @@ import { Readable } from "stream";
 
 import { LoggerInterface } from "../logger";
 import { Err, Ok, Result } from "../result";
+import { withRetries } from "../retries";
 import { assertNever } from "../utils/assert_never";
 import {
   readableStreamToReadable,
@@ -129,15 +130,34 @@ export class TextExtraction {
     fileStream: Readable,
     contentType: SupportedContentTypes
   ): Promise<Readable> {
-    const response = await fetch(`${this.url}/tika/`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": contentType,
-        ...this.getAdditionalHeaders(),
-      },
-      body: Readable.toWeb(fileStream),
-      duplex: "half",
-    } as RequestInitWithDuplex);
+    const response = await withRetries(
+      this.options.logger,
+      ({
+        url,
+        additionalHeaders,
+        contentType,
+        fileStream,
+      }: {
+        url: string;
+        additionalHeaders: HeadersInit;
+        contentType: SupportedContentTypes;
+        fileStream: Readable;
+      }) =>
+        fetch(`${url}/tika/`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+            ...additionalHeaders,
+          },
+          body: Readable.toWeb(fileStream),
+          duplex: "half",
+        } as RequestInitWithDuplex)
+    )({
+      url: this.url,
+      additionalHeaders: this.getAdditionalHeaders(),
+      contentType,
+      fileStream,
+    });
 
     if (!response.body) {
       throw new Error("Response body is null");
@@ -177,14 +197,36 @@ export class TextExtraction {
       contentTypeConfig[contentType]?.handler ?? DEFAULT_HANDLER;
 
     try {
-      const response = await fetch(`${this.url}/tika/${handlerType}`, {
-        method: "PUT",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": contentType,
-          ...this.getAdditionalHeaders(),
-        },
-        body: fileBuffer,
+      const response = await withRetries(
+        this.options.logger,
+        ({
+          url,
+          additionalHeaders,
+          handlerType,
+          contentType,
+          fileBuffer,
+        }: {
+          url: string;
+          additionalHeaders: HeadersInit;
+          handlerType: string;
+          contentType: SupportedContentTypes;
+          fileBuffer: Buffer;
+        }) =>
+          fetch(`${url}/tika/${handlerType}`, {
+            method: "PUT",
+            headers: {
+              Accept: "application/json",
+              "Content-Type": contentType,
+              ...additionalHeaders,
+            },
+            body: fileBuffer,
+          })
+      )({
+        url: this.url,
+        additionalHeaders: this.getAdditionalHeaders(),
+        handlerType,
+        contentType,
+        fileBuffer,
       });
 
       if (!response.ok) {

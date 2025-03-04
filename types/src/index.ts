@@ -87,6 +87,7 @@ export * from "./shared/internal_mime_types";
 export * from "./shared/model_id";
 export * from "./shared/rate_limiter";
 export * from "./shared/result";
+export * from "./shared/retries";
 export * from "./shared/text_extraction";
 export * from "./shared/typescipt_utils";
 export * from "./shared/user_operation";

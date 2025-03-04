@@ -1,12 +1,12 @@
 import type { ProviderVisibility } from "@dust-tt/types";
 import { concurrentExecutor, CoreAPI, Ok } from "@dust-tt/types";
+import { withRetries } from "@dust-tt/types";
 import assert from "assert";
 import { QueryTypes } from "sequelize";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { withRetries } from "@app/lib/utils/retries";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -86,6 +86,7 @@ async function migrateNode({
 
   if (execute) {
     await withRetries(
+      logger,
       async () => {
         let updateRes;
         if (coreNode.document) {
