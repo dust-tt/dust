@@ -158,7 +158,7 @@ export interface CollapsibleComponentProps {
   rootProps: Omit<CollapsibleProps, "children">;
   triggerProps: Omit<CollapsibleTriggerProps, "children" | "defaultOpen">;
   triggerChildren?: React.ReactNode;
-  contentProps: Omit<CollapsibleContentProps, "children">;
+  contentProps?: Omit<CollapsibleContentProps, "children">;
   contentChildren?: React.ReactNode;
 }
 
