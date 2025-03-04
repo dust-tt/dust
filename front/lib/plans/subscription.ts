@@ -445,6 +445,9 @@ export const getCheckoutUrlForUpgrade = async (
     auth,
     billingPeriod,
     planCode,
+    allowedPaymentMethods: owner.metadata?.isBusiness
+      ? ["card", "sepa_debit"]
+      : ["card"],
   });
 
   if (!checkoutUrl) {
