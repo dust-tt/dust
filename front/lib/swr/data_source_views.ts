@@ -3,7 +3,7 @@ import type {
   DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
@@ -125,7 +125,7 @@ export function useDataSourceViewContentNodes({
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
   totalNodesCountIsAccurate: boolean;
-  nextPageCursor: string | null;
+  loadNextPage: () => void;
 } {
   const params = new URLSearchParams();
   if (pagination?.cursor) {
@@ -135,28 +135,31 @@ export function useDataSourceViewContentNodes({
     params.append("limit", pagination.limit.toString());
   }
 
-  const url = dataSourceView
-    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
+  const baseUrl = dataSourceView
+    ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes`
     : null;
 
-  const body = {
-    internalIds,
-    parentId,
-    viewType,
-  };
+  const body = useMemo(
+    () => ({
+      internalIds,
+      parentId,
+      viewType,
+    }),
+    [internalIds, parentId, viewType]
+  );
 
-  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
+  const fetchKey = JSON.stringify([baseUrl + "?" + params.toString(), body]);
 
   const { data, error, mutate, isValidating, mutateRegardlessOfQueryParams } =
     useSWRWithDefaults(
       fetchKey,
       async () => {
-        if (!url) {
+        if (!baseUrl) {
           return undefined;
         }
 
         return fetcherWithBody([
-          url,
+          `${baseUrl}?${params}`,
           { internalIds, parentId, viewType },
           "POST",
         ]);
@@ -167,6 +170,33 @@ export function useDataSourceViewContentNodes({
       }
     );
 
+  const loadNextPage = useCallback(async () => {
+    if (!data?.nextPageCursor) {
+      return;
+    }
+
+    const nextParams = new URLSearchParams();
+    if (pagination?.limit) {
+      nextParams.append("limit", pagination.limit.toString());
+    }
+    nextParams.append("cursor", data.nextPageCursor);
+
+    const nextPageData = await fetcherWithBody([
+      baseUrl + "?" + nextParams.toString(),
+      body,
+      "POST",
+    ]);
+
+    await mutate(
+      (current: GetDataSourceViewContentNodes) => ({
+        ...current,
+        nodes: [...(current?.nodes || []), ...(nextPageData?.nodes || [])],
+        nextPageCursor: nextPageData?.nextPageCursor || null,
+      }),
+      false
+    );
+  }, [data?.nextPageCursor, pagination?.limit, baseUrl, body, mutate]);
+
   return {
     isNodesError: !!error,
     isNodesLoading: !error && !data,
@@ -176,7 +206,7 @@ export function useDataSourceViewContentNodes({
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
-    nextPageCursor: data?.nextPageCursor || null,
+    loadNextPage,
   };
 }
 
