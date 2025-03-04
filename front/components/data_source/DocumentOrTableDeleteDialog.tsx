@@ -50,7 +50,7 @@ export const DocumentOrTableDeleteDialog = ({
 
       sendNotification({
         type: "success",
-        title: `${_.capitalize(itemType)} deletion successfully submitted`,
+        title: `${_.capitalize(itemType)} deletion submitted`,
         description: `Deletion of ${itemType} ${contentNode.title} ongoing, it will complete shortly.`,
       });
       onClose(true);
