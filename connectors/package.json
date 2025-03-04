@@ -1,6 +1,9 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "overrides": {
+    "@octokit/request-error": "6.1.7"
+  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
