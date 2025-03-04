@@ -24,8 +24,17 @@ const safeColorsArray = [
   "violet",
   "yellow",
   "action",
-  "slate",
+  "slate", //To be cleaned after transition
 ];
+
+// Get all color names from Tailwind's default palette, excluding special colors
+const colorNames = Object.keys(colors).filter(
+  (color) =>
+    typeof colors[color] === "object" && // Only get color objects (with shades)
+    !["lightBlue", "warmGray", "trueGray", "coolGray", "blueGray"].includes(
+      color
+    ) // Exclude deprecated colors
+);
 
 // Custom color definitions
 const customColors = {
@@ -102,7 +111,10 @@ Object.assign(colors, {
   blue: customColors.blue,
   gray: customColors.gray,
   rose: customColors.rose,
+  red: customColors.rose,
   golden: customColors.golden,
+  amber: customColors.golden, //For compatibility, to be removed after all "amber" ref are retired for golden
+  slate: customColors.gray, //For compatibility, to be removed after all "slate" ref are retired for gray
 });
 
 const safeColorlist = safeColorsArray.flatMap((color) => [
@@ -182,8 +194,6 @@ module.exports = {
         "2xl": "0 25px 50px rgba(15, 23, 42, 0.12)",
         "inner-border": "inset 0px -2px 0px 0px #1E293B",
         "inner-border-night": "inset 0px -2px 0px 0px #E2E8F0",
-        tale: "0px 0px 12px 12px #F6F8FB",
-        "tale-white": "0px 0px 12px 12px #FFF",
       },
       zIndex: {
         60: "60",
@@ -197,7 +207,7 @@ module.exports = {
         ...theme("spacing"),
       }),
       backgroundImage: {
-        "rainbow-gradient": `linear-gradient(90deg, ${colors.golden[300]}, ${colors.golden[500]}, ${colors.green[300]}, ${colors.green[500]}, ${colors.blue[300]}, ${colors.blue[500]}, ${colors.rose[300]}, ${colors.rose[500]}, ${colors.rose[300]})`,
+        "rainbow-gradient": `linear-gradient(90deg, ${colors.purple[300]}, ${colors.purple[500]}, ${colors.green[300]}, ${colors.green[500]}, ${colors.blue[300]}, ${colors.blue[500]}, ${colors.rose[300]}, ${colors.rose[500]})`,
       },
       keyframes: {
         pulse: {
@@ -339,20 +349,91 @@ module.exports = {
         "collapse-up": "collapse-up 150ms ease-out",
       },
       colors: {
-        brand: {
-          DEFAULT: colors.green[500],
-          night: colors.green[500],
+        // Creates night shades for all colors
+        ...Object.fromEntries(
+          colorNames.map((colorName) => [
+            colorName,
+            Object.fromEntries(
+              Object.entries(colors[colorName]).map(([shade, color]) => [
+                `${shade}-night`,
+                colors[colorName][Math.min(950, 1000 - parseInt(shade))],
+              ])
+            ),
+          ])
+        ),
+        // Additional palette colors
+        golden: {
+          950: {
+            DEFAULT: customColors.golden[950],
+            night: customColors.golden[50],
+          },
+          900: {
+            DEFAULT: customColors.golden[900],
+            night: customColors.golden[100],
+          },
+          800: {
+            DEFAULT: customColors.golden[800],
+            night: customColors.golden[200],
+          },
+          700: {
+            DEFAULT: customColors.golden[700],
+            night: customColors.golden[300],
+          },
+          600: {
+            DEFAULT: customColors.golden[600],
+            night: customColors.golden[400],
+          },
+          500: {
+            DEFAULT: customColors.golden[500],
+            night: customColors.golden[500],
+          },
+          400: {
+            DEFAULT: customColors.golden[400],
+            night: customColors.golden[600],
+          },
+          300: {
+            DEFAULT: customColors.golden[300],
+            night: customColors.golden[700],
+          },
+          200: {
+            DEFAULT: customColors.golden[200],
+            night: customColors.golden[800],
+          },
+          100: {
+            DEFAULT: customColors.golden[100],
+            night: customColors.golden[900],
+          },
+          50: {
+            DEFAULT: customColors.golden[50],
+            night: customColors.golden[950],
+          },
         },
+        // Brand colors
+        brand: {
+          DEFAULT: colors.green[600],
+          "hunter-green": colors.green[600],
+          "tea-green": colors.green[200],
+          "support-green": colors.green[50],
+          "electric-blue": colors.blue[500],
+          "sky-blue": colors.blue[200],
+          "support-blue": colors.blue[50],
+          "red-rose": colors.red[500],
+          "pink-rose": colors.red[200],
+          "support-rose": colors.red[50],
+          "orange-golden": customColors.golden[500],
+          "sunshine-golden": customColors.golden[200],
+          "support-golden": customColors.golden[50],
+          "dark-gray": colors.gray[700],
+          "light-gray": colors.gray[200],
+          "support-gray": colors.gray[50],
+        },
+        // Semantic Colors
         border: {
           DEFAULT: colors.gray[100],
           night: colors.gray[900],
           dark: {
             DEFAULT: colors.gray[150],
             night: colors.gray[700],
-          },
-          darker: {
-            DEFAULT: colors.gray[200],
-            night: colors.gray[600],
           },
           focus: {
             DEFAULT: colors.blue[400],
@@ -394,6 +475,7 @@ module.exports = {
             night: colors.gray[900],
           },
         },
+        // Semantic Palette
         highlight: {
           DEFAULT: colors.blue[500],
           light: { DEFAULT: colors.blue[400], night: colors.blue[600] },
@@ -464,91 +546,7 @@ module.exports = {
           950: { DEFAULT: colors.green[950], night: colors.green[50] },
           50: { DEFAULT: colors.green[50], night: colors.green[950] },
         },
-        red: {
-          950: { DEFAULT: colors.rose[950], night: colors.rose[50] },
-          900: { DEFAULT: colors.rose[900], night: colors.rose[100] },
-          800: { DEFAULT: colors.rose[800], night: colors.rose[200] },
-          700: { DEFAULT: colors.rose[700], night: colors.rose[300] },
-          600: { DEFAULT: colors.rose[600], night: colors.rose[400] },
-          500: { DEFAULT: colors.rose[500], night: colors.rose[500] },
-          400: { DEFAULT: colors.rose[400], night: colors.rose[600] },
-          200: { DEFAULT: colors.rose[200], night: colors.rose[800] },
-          300: { DEFAULT: colors.rose[300], night: colors.rose[700] },
-          100: { DEFAULT: colors.rose[100], night: colors.rose[900] },
-          50: { DEFAULT: colors.rose[50], night: colors.rose[950] },
-        },
-        blue: {
-          950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
-          900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
-          800: { DEFAULT: colors.blue[800], night: colors.blue[200] },
-          700: { DEFAULT: colors.blue[700], night: colors.blue[300] },
-          600: { DEFAULT: colors.blue[600], night: colors.blue[400] },
-          500: { DEFAULT: colors.blue[500], night: colors.blue[500] },
-          400: { DEFAULT: colors.blue[400], night: colors.blue[600] },
-          300: { DEFAULT: colors.blue[300], night: colors.blue[700] },
-          200: { DEFAULT: colors.blue[200], night: colors.blue[800] },
-          100: { DEFAULT: colors.blue[100], night: colors.blue[900] },
-          50: { DEFAULT: colors.blue[50], night: colors.blue[950] },
-        },
-        green: {
-          950: { DEFAULT: colors.green[950], night: colors.green[50] },
-          900: { DEFAULT: colors.green[900], night: colors.green[100] },
-          800: { DEFAULT: colors.green[800], night: colors.green[200] },
-          700: { DEFAULT: colors.green[700], night: colors.green[300] },
-          600: { DEFAULT: colors.green[600], night: colors.green[400] },
-          500: { DEFAULT: colors.green[500], night: colors.green[500] },
-          400: { DEFAULT: colors.green[400], night: colors.green[600] },
-          200: { DEFAULT: colors.green[200], night: colors.green[800] },
-          300: { DEFAULT: colors.green[300], night: colors.green[700] },
-          100: { DEFAULT: colors.green[100], night: colors.green[900] },
-          50: { DEFAULT: colors.green[50], night: colors.green[950] },
-        },
-        golden: {
-          950: {
-            DEFAULT: customColors.golden[950],
-            night: customColors.golden[50],
-          },
-          900: {
-            DEFAULT: customColors.golden[900],
-            night: customColors.golden[100],
-          },
-          800: {
-            DEFAULT: customColors.golden[800],
-            night: customColors.golden[200],
-          },
-          700: {
-            DEFAULT: customColors.golden[700],
-            night: customColors.golden[300],
-          },
-          600: {
-            DEFAULT: customColors.golden[600],
-            night: customColors.golden[400],
-          },
-          500: {
-            DEFAULT: customColors.golden[500],
-            night: customColors.golden[500],
-          },
-          400: {
-            DEFAULT: customColors.golden[400],
-            night: customColors.golden[600],
-          },
-          300: {
-            DEFAULT: customColors.golden[300],
-            night: customColors.golden[700],
-          },
-          200: {
-            DEFAULT: customColors.golden[200],
-            night: customColors.golden[800],
-          },
-          100: {
-            DEFAULT: customColors.golden[100],
-            night: customColors.golden[900],
-          },
-          50: {
-            DEFAULT: customColors.golden[50],
-            night: customColors.golden[950],
-          },
-        },
+        // Deprecated colors
         action: {
           950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
           900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
@@ -564,97 +562,19 @@ module.exports = {
         },
         structure: {
           0: { DEFAULT: colors.white, night: colors.black },
-          50: { DEFAULT: "#F6F8FB", night: colors.gray[900] },
+          50: { DEFAULT: colors.gray[50], night: colors.gray[900] },
           100: { DEFAULT: colors.gray[100], night: colors.gray[800] },
-          150: { DEFAULT: "#E9EFF5", night: "#172033" },
+          150: { DEFAULT: colors.gray[150], night: colors.gray[800] },
           200: { DEFAULT: colors.gray[200], night: colors.gray[700] },
           300: { DEFAULT: colors.gray[300], night: colors.gray[600] },
         },
         element: {
-          950: { DEFAULT: colors.gray[950], night: "#F6F8FB" },
+          950: { DEFAULT: colors.gray[950], night: colors.gray[50] },
           900: { DEFAULT: colors.gray[900], night: colors.gray[100] },
           800: { DEFAULT: colors.gray[700], night: colors.gray[200] },
           700: { DEFAULT: colors.gray[500], night: colors.gray[300] },
           600: { DEFAULT: colors.gray[400], night: colors.gray[400] },
           500: { DEFAULT: colors.gray[300], night: colors.gray[500] },
-        },
-        amber: {
-          950: { DEFAULT: colors.golden[950], night: colors.golden[50] },
-          900: { DEFAULT: colors.golden[900], night: colors.golden[100] },
-          800: { DEFAULT: colors.golden[800], night: colors.golden[200] },
-          700: { DEFAULT: colors.golden[700], night: colors.golden[300] },
-          600: { DEFAULT: colors.golden[600], night: colors.golden[400] },
-          500: { DEFAULT: colors.golden[500], night: colors.golden[500] },
-          400: { DEFAULT: colors.golden[400], night: colors.golden[600] },
-          300: { DEFAULT: colors.golden[300], night: colors.golden[700] },
-          200: { DEFAULT: colors.golden[200], night: colors.golden[800] },
-          100: { DEFAULT: colors.golden[100], night: colors.golden[900] },
-          50: { DEFAULT: colors.golden[50], night: colors.golden[950] },
-        },
-        slate: {
-          950: { DEFAULT: colors.gray[950], night: colors.gray[50] },
-          900: { DEFAULT: colors.gray[900], night: colors.gray[100] },
-          800: { DEFAULT: colors.gray[800], night: colors.gray[200] },
-          700: { DEFAULT: colors.gray[700], night: colors.gray[300] },
-          600: { DEFAULT: colors.gray[600], night: colors.gray[400] },
-          500: { DEFAULT: colors.gray[500], night: colors.gray[500] },
-          400: { DEFAULT: colors.gray[400], night: colors.gray[600] },
-          300: { DEFAULT: colors.gray[300], night: colors.gray[700] },
-          200: { DEFAULT: colors.gray[200], night: colors.gray[800] },
-          100: { DEFAULT: colors.gray[100], night: colors.gray[900] },
-          50: { DEFAULT: colors.gray[50], night: colors.gray[950] },
-        },
-        purple: {
-          950: { DEFAULT: colors.purple[950], night: colors.purple[50] },
-          900: { DEFAULT: colors.purple[900], night: colors.purple[100] },
-          800: { DEFAULT: colors.purple[800], night: colors.purple[200] },
-          700: { DEFAULT: colors.purple[700], night: colors.purple[300] },
-          600: { DEFAULT: colors.purple[600], night: colors.purple[400] },
-          500: { DEFAULT: colors.purple[500], night: colors.purple[500] },
-          400: { DEFAULT: colors.purple[400], night: colors.purple[600] },
-          300: { DEFAULT: colors.purple[300], night: colors.purple[700] },
-          200: { DEFAULT: colors.purple[200], night: colors.purple[800] },
-          100: { DEFAULT: colors.purple[100], night: colors.purple[900] },
-          50: { DEFAULT: colors.purple[50], night: colors.purple[950] },
-        },
-        sky: {
-          950: { DEFAULT: colors.sky[950], night: colors.sky[50] },
-          900: { DEFAULT: colors.sky[900], night: colors.sky[100] },
-          800: { DEFAULT: colors.sky[800], night: colors.sky[200] },
-          700: { DEFAULT: colors.sky[700], night: colors.sky[300] },
-          600: { DEFAULT: colors.sky[600], night: colors.sky[400] },
-          500: { DEFAULT: colors.sky[500], night: colors.sky[500] },
-          400: { DEFAULT: colors.sky[400], night: colors.sky[600] },
-          300: { DEFAULT: colors.sky[300], night: colors.sky[700] },
-          200: { DEFAULT: colors.sky[200], night: colors.sky[800] },
-          100: { DEFAULT: colors.sky[100], night: colors.sky[900] },
-          50: { DEFAULT: colors.sky[50], night: colors.sky[950] },
-        },
-        pink: {
-          950: { DEFAULT: colors.pink[950], night: colors.pink[50] },
-          900: { DEFAULT: colors.pink[900], night: colors.pink[100] },
-          800: { DEFAULT: colors.pink[800], night: colors.pink[200] },
-          700: { DEFAULT: colors.pink[700], night: colors.pink[300] },
-          600: { DEFAULT: colors.pink[600], night: colors.pink[400] },
-          500: { DEFAULT: colors.pink[500], night: colors.pink[500] },
-          400: { DEFAULT: colors.pink[400], night: colors.pink[600] },
-          300: { DEFAULT: colors.pink[300], night: colors.pink[700] },
-          200: { DEFAULT: colors.pink[200], night: colors.pink[800] },
-          100: { DEFAULT: colors.pink[100], night: colors.pink[900] },
-          50: { DEFAULT: colors.pink[50], night: colors.pink[950] },
-        },
-        emerald: {
-          950: { DEFAULT: colors.green[950], night: colors.green[50] },
-          900: { DEFAULT: colors.green[900], night: colors.green[100] },
-          800: { DEFAULT: colors.green[800], night: colors.green[200] },
-          700: { DEFAULT: colors.green[700], night: colors.green[300] },
-          600: { DEFAULT: colors.green[600], night: colors.green[400] },
-          500: { DEFAULT: colors.green[500], night: colors.green[500] },
-          400: { DEFAULT: colors.green[400], night: colors.green[600] },
-          300: { DEFAULT: colors.green[300], night: colors.green[700] },
-          200: { DEFAULT: colors.green[200], night: colors.green[800] },
-          100: { DEFAULT: colors.green[100], night: colors.green[900] },
-          50: { DEFAULT: colors.green[50], night: colors.green[950] },
         },
       },
     },
