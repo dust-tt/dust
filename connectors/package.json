@@ -71,6 +71,9 @@
     "uuid": "^9.0.0",
     "yargs": "^17.7.2"
   },
+  "overrides": {
+    "@octokit/request": "9.2.2"
+  },
   "devDependencies": {
     "@types/eslint": "^8.56.10",
     "@types/fast-levenshtein": "^0.0.2",
