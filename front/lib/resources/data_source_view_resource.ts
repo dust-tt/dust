@@ -553,7 +553,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       );
     }
 
-    // Check parentsToAdd  exist in core as part of this data source view.
+    // Check parentsToAdd exist in core as part of this data source view.
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     const coreRes = await coreAPI.searchNodes({
