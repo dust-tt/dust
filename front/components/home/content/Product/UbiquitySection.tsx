@@ -94,13 +94,13 @@ export function UbiquitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/support/ticketClassificationZapier.png" />
+                <img src="/static/landing/zapier/zapier.png" />
               </Div3D>
               <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/support/ticketClassificationZapier.png" />
+                <img src="/static/landing/zapier/zapier.png" />
               </Div3D>
               <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/support/ticketClassificationZapier.png" />
+                <img src="/static/landing/zapier/zapier.png" />
               </Div3D>
               {/* <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
                 <img src="/static/landing/sales/sales4.png" />

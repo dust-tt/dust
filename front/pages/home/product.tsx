@@ -39,7 +39,7 @@ export function Landing() {
         toColor="to-sky-500"
       />
       <UbiquitySection />
-      <ExtensibilitySection />
+      <ExtensibilitySection page="default" />
       <SecuritySection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"

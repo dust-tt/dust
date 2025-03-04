@@ -1,5 +1,6 @@
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
@@ -124,7 +125,12 @@ export default function DustPlatform() {
           </ImgBlock>
         </div>
       </Grid>
-      <ExtensibilitySection />
+      <ExtensibilitySection page="platform" />
+      <DemoVideoSection
+        demoVideo={DemoVideo}
+        fromColor="from-sky-200"
+        toColor="to-sky-500"
+      />
       <QuoteSection
         quote="Dust functions as a 'meta-platform.' Its aggregation approach offers flexibility, allowing us to leverage multiple data sources across tools and avoid being locked into specific tools or vertical ecosystems."
         name="Charles Gorintin"

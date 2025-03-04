@@ -18,7 +18,7 @@ export function SecuritySection() {
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. Avoid
               shadow IT and benefit from Enterprise-level privacy from model
-              providers.
+              providers. SOC2, HIPAA & GDPR compliant.
               <br></br>
               <Link href="/home/security" shallow={true}>
                 <A variant="primary">More about Security</A>

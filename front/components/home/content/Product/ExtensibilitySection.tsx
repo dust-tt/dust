@@ -5,7 +5,7 @@ import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function ExtensibilitySection() {
+export function ExtensibilitySection({ page = "default" }) {
   return (
     <>
       <Grid>
@@ -18,11 +18,13 @@ export function ExtensibilitySection() {
               Developer friendly&nbsp;platform designed to&nbsp;build custom
               actions and&nbsp;application orchestration to&nbsp;fit your
               team’s&nbsp;exact&nbsp;needs.{" "}
-              <Link href="/home/solutions/dust-platform" shallow={true}>
-                <A variant="primary">
-                  More about Dust's&nbsp;Developer Platform
-                </A>
-              </Link>
+              {page == "default" && (
+                <Link href="/home/solutions/dust-platform" shallow={true}>
+                  <A variant="primary">
+                    More about Dust's&nbsp;Developer Platform
+                  </A>
+                </Link>
+              )}
             </P>
           </div>
         </div>
@@ -47,7 +49,7 @@ export function ExtensibilitySection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
+              {/* <Div3D depth={-20}>
                 <img src="/static/landing/apps/apps1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
@@ -58,6 +60,9 @@ export function ExtensibilitySection() {
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
                 <img src="/static/landing/apps/apps4.png" />
+              </Div3D> */}
+              <Div3D depth={-40}>
+                <img src="/static/landing/apps/ticketgeneration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
@@ -76,7 +81,7 @@ export function ExtensibilitySection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
+              {/* <Div3D depth={-20}>
                 <img src="/static/landing/support/support1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
@@ -87,6 +92,9 @@ export function ExtensibilitySection() {
               </Div3D>
               <Div3D depth={60} className="absolute top-0">
                 <img src="/static/landing/support/support4.png" />
+              </Div3D> */}
+              <Div3D depth={-40}>
+                <img src="/static/landing/api/customconnections.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
