@@ -13,6 +13,8 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
 
   declare lastGarbageCollectionFinishTime?: Date;
   declare parentsLastUpdatedAt?: Date;
+
+  declare notionWorkspaceId: string;
 }
 NotionConnectorState.init(
   {
@@ -37,6 +39,10 @@ NotionConnectorState.init(
     parentsLastUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    notionWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {

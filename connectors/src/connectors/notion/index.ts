@@ -17,6 +17,7 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import { validateAccessToken } from "@connectors/connectors/notion/lib/notion_api";
+import { validateNotionOAuthResponse } from "@connectors/connectors/notion/lib/utils";
 import {
   launchNotionSyncWorkflow,
   stopNotionSyncWorkflow,
@@ -45,7 +46,7 @@ function notionIdFromNodeId(nodeId: string) {
   return _.last(nodeId.split("notion-"))!;
 }
 
-async function workspaceIdFromConnectionId(connectionId: string) {
+export async function workspaceIdFromConnectionId(connectionId: string) {
   const tokRes = await getOAuthConnectionAccessToken({
     config: apiConfig.getOAuthAPIConfig(),
     logger,
@@ -55,10 +56,24 @@ async function workspaceIdFromConnectionId(connectionId: string) {
   if (tokRes.isErr()) {
     return tokRes;
   }
-  return new Ok(
-    (tokRes.value.scrubbed_raw_json as { workspace_id?: string })
-      .workspace_id ?? null
+
+  const validationRes = validateNotionOAuthResponse(
+    tokRes.value.scrubbed_raw_json,
+    logger
   );
+  if (validationRes.isErr()) {
+    logger.error(
+      {
+        errors: validationRes.error,
+        rawJson: tokRes.value.scrubbed_raw_json,
+      },
+      "Invalid Notion OAuth response"
+    );
+
+    return new Err(new Error("Invalid Notion OAuth response"));
+  }
+
+  return new Ok(validationRes.value.workspace_id);
 }
 
 export class NotionConnectorManager extends BaseConnectorManager<null> {
@@ -84,6 +99,15 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       throw new Error("Notion access token is invalid");
     }
 
+    // Validate the response with our utility function
+    const rawJson = validateNotionOAuthResponse(
+      tokRes.value.scrubbed_raw_json,
+      logger
+    );
+    if (rawJson.isErr()) {
+      throw new Error("Invalid Notion OAuth response");
+    }
+
     const connector = await ConnectorResource.makeNew(
       "notion",
       {
@@ -92,7 +116,9 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      {}
+      {
+        notionWorkspaceId: rawJson.value.workspace_id,
+      }
     );
 
     // For each connector, there are 2 special folders (root folders):
@@ -147,44 +173,36 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
     if (connectionId) {
       const oldConnectionId = c.connectionId;
-      const [workspaceIdRes, newWorkspaceIdRes] = await Promise.all([
-        workspaceIdFromConnectionId(oldConnectionId),
-        workspaceIdFromConnectionId(connectionId),
-      ]);
+      const newWorkspaceIdRes = await workspaceIdFromConnectionId(connectionId);
 
-      if (workspaceIdRes.isErr() || newWorkspaceIdRes.isErr()) {
-        if (workspaceIdRes.isErr()) {
-          logger.error(
-            {
-              oldConnectionId,
-              connectionId,
-              connectorId: c.id,
-              error: workspaceIdRes.error,
-            },
-            "Error retrieving workspace Id from old connection"
-          );
-        }
-        if (newWorkspaceIdRes.isErr()) {
-          logger.error(
-            {
-              oldConnectionId,
-              connectionId,
-              connectorId: c.id,
-              error: newWorkspaceIdRes.error,
-            },
-            "Error retrieving workspace Id from new connection"
-          );
-        }
-
-        throw new Error(
-          "Error retrieving workspace Ids from connections while checking update validity"
+      if (newWorkspaceIdRes.isErr()) {
+        logger.error(
+          {
+            oldConnectionId,
+            connectionId,
+            connectorId: c.id,
+            error: newWorkspaceIdRes.error,
+          },
+          "Error retrieving workspace Id from new connection"
         );
+        throw new Error("Error retrieving workspace Id from new connection");
       }
 
-      if (!workspaceIdRes.value || !newWorkspaceIdRes.value) {
+      if (!newWorkspaceIdRes.value) {
         throw new Error("Error retrieving connection info to update connector");
       }
-      if (workspaceIdRes.value !== newWorkspaceIdRes.value) {
+
+      const connectorState = await NotionConnectorState.findOne({
+        where: {
+          connectorId: c.id,
+        },
+      });
+
+      if (!connectorState) {
+        throw new Error("Notion connector state not found");
+      }
+
+      if (connectorState.notionWorkspaceId !== newWorkspaceIdRes.value) {
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",
