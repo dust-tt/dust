@@ -44,7 +44,7 @@ export {
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
-export { DataTable } from "./DataTable";
+export { DataTable, ScrollableDataTable } from "./DataTable";
 export {
   Dialog,
   DialogClose,
