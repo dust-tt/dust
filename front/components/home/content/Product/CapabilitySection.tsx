@@ -119,15 +119,6 @@ export function CapabilitySection() {
             <Div3D depth={-20}>
               <img src="/static/landing/feedback/feedback.png" />
             </Div3D>
-            <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/feedback/feedback.png" />
-            </Div3D>
-            <Div3D depth={15} className="absolute top-0">
-              <img src="/static/landing/feedback/feedback.png" />
-            </Div3D>
-            <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/feedback/feedback.png" />
-            </Div3D>
           </Hover3D>
         </ImgBlock>
       </div>

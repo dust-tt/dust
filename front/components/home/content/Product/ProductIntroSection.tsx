@@ -1,4 +1,4 @@
-import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { H1, P } from "@app/components/home/ContentComponents";
@@ -7,11 +7,10 @@ import TrustedBy from "@app/components/home/TrustedBy";
 const VideoPlayer = () => {
   return (
     <div className="relative w-full pt-[56.25%]">
-      {" "}
       <iframe
-        src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true&autoPlay=true"
-        title="Dust product tour"
-        allow="autoplay; fullscreen"
+        src="https://fast.wistia.net/embed/iframe/v90n8beuh9?web_component=true&seo=true"
+        title="Dust demo"
+        allow="fullscreen"
         frameBorder="0"
         className="absolute inset-0 h-full w-full rounded-lg"
       ></iframe>
@@ -20,12 +19,6 @@ const VideoPlayer = () => {
 };
 
 export function ProductIntroSection() {
-  const MainVisual = () => (
-    <Hover3D depth={-40} perspective={1000} className="relative w-full">
-      <VideoPlayer />
-    </Hover3D>
-  );
-
   return (
     <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">
       <div className="flex flex-col gap-16">
@@ -35,7 +28,7 @@ export function ProductIntroSection() {
               Accelerate your entire organization with AI
             </H1>
             <div className="w-full md:hidden">
-              <MainVisual />
+              <VideoPlayer />
             </div>
             <P size="lg" className="text-slate-50">
               Build your team of AI agents: secure, connected to your data and
@@ -56,7 +49,7 @@ export function ProductIntroSection() {
             </div>
           </div>
           <div className="hidden w-full max-w-2xl md:block">
-            <MainVisual />
+            <VideoPlayer />
           </div>
         </div>
         <TrustedBy />

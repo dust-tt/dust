@@ -49,20 +49,8 @@ export function ExtensibilitySection({ page = "default" }) {
               perspective={1000}
               className={classNames("relative")}
             >
-              {/* <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
-              </Div3D> */}
               <Div3D depth={-40}>
-                <img src="/static/landing/apps/ticketgeneration.png" />
+                <img src="/static/landing/apps/ticketagent.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
@@ -81,18 +69,6 @@ export function ExtensibilitySection({ page = "default" }) {
               perspective={1000}
               className={classNames("relative")}
             >
-              {/* <Div3D depth={-20}>
-                <img src="/static/landing/support/support1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/support/support2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/support/support3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/support/support4.png" />
-              </Div3D> */}
               <Div3D depth={-40}>
                 <img src="/static/landing/api/customconnections.png" />
               </Div3D>
@@ -113,7 +89,7 @@ export function ExtensibilitySection({ page = "default" }) {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/support/ticketdeflection.png" />
+                <img src="/static/landing/api/customintegration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
