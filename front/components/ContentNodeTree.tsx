@@ -145,6 +145,7 @@ function ContentNodeTreeChildren({
     resourcesError,
     isResourcesTruncated,
     totalResourceCount,
+    loadNextPage,
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
@@ -319,6 +320,11 @@ function ContentNodeTreeChildren({
       {hiddenNodesCount > 0 && (
         <Tree.Empty
           label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
+          onItemClick={() => {
+            if (loadNextPage) {
+              loadNextPage();
+            }
+          }}
         />
       )}
     </Tree>
