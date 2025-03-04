@@ -10,6 +10,7 @@ import type { CreationAttributes, Model, Transaction } from "sequelize";
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
+import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
 import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
@@ -53,6 +54,7 @@ export interface ConnectorProviderModelM {
   zendesk: ZendeskConfigurationModel;
   bigquery: BigQueryConfigurationModel;
   salesforce: SalesforceConfigurationModel;
+  gong: GongConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -89,6 +91,7 @@ export interface ConnectorProviderConfigurationTypeM {
   zendesk: null;
   bigquery: null;
   salesforce: null;
+  gong: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -155,8 +158,12 @@ export function getConnectorProviderStrategy(
 
     case "bigquery":
       return new BigQueryConnectorStrategy();
+
     case "salesforce":
       return new SalesforceConnectorStrategy();
+
+    case "gong":
+      return new GongConnectorStrategy();
 
     default:
       assertNever(type);

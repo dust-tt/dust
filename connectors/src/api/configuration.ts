@@ -70,6 +70,7 @@ const _patchConnectorConfiguration = async (
     case "snowflake":
     case "bigquery":
     case "zendesk":
+    case "gong":
     case "slack": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`
