@@ -35,6 +35,7 @@ import type {
   PostSpaceSearchRequestBody,
   PostSpaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 
 export function useSpaces({
   workspaceId,
@@ -609,6 +610,7 @@ export function useSpaceSearch({
   search,
   space,
   viewType,
+  pagination,
 }: {
   dataSourceViews: DataSourceViewType[];
   disabled?: boolean;
@@ -619,6 +621,7 @@ export function useSpaceSearch({
   space: SpaceType;
   viewType: ContentNodesViewType;
   warningCode?: SearchWarningCode;
+  pagination?: CursorPaginationParams;
 }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -628,10 +631,18 @@ export function useSpaceSearch({
   total: number;
   warningCode: SearchWarningCode | null;
 } {
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
   const body: PostSpaceSearchRequestBody = {
     dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     includeDataSources,
-    limit,
+    limit: pagination?.limit ?? limit,
     query: search,
     viewType,
   };
@@ -639,10 +650,10 @@ export function useSpaceSearch({
   // Only perform a query if we have a valid search.
   const url =
     search.length >= MIN_SEARCH_QUERY_SIZE
-      ? `/api/w/${owner.sId}/spaces/${space.sId}/search`
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
       : null;
 
-  const fetchKey = [url, body];
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
