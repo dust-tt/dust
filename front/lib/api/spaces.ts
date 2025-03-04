@@ -300,7 +300,7 @@ export async function searchContenNodesInSpace(
       // For webcrawler datasources, we want to search the only datasource
       // title, not the nodes titles.
       if (dsv.dataSource.connectorProvider === "webcrawler") {
-        return "data_source_title";
+        return "data_source_name";
       }
 
       return "both";

@@ -53,13 +53,13 @@ pub enum TagsQueryType {
 }
 
 // For each data source view, the scope of search can be:
-// - DataSourceTitle: only check if the datasource title matches the query;
+// - DataSourceName: only check if the datasource name matches the query;
 // - NodesTitles: check if any of the datasource's nodes titles match the query;
-// - Both: check if either the datasource title or any of its nodes titles match the query;
+// - Both: check if either the datasource name or any of its nodes titles match the query;
 #[derive(serde::Deserialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum SearchScopeType {
-    DataSourceTitle,
+    DataSourceName,
     NodesTitles,
     Both,
 }
@@ -655,7 +655,7 @@ impl ElasticsearchSearchStore {
         if filter.data_source_views.iter().any(|f| {
             matches!(
                 f.search_scope,
-                SearchScopeType::DataSourceTitle | SearchScopeType::Both
+                SearchScopeType::DataSourceName | SearchScopeType::Both
             )
         }) {
             let data_sources_query = Query::bool()
@@ -685,15 +685,15 @@ impl ElasticsearchSearchStore {
     }
 
     /// On the data source index, we only want to add a clause if the search scope is
-    /// DataSourceTitle or Both. On the data source node index, we only want to add a clause
-    /// if the search scope is ChildrenTitles or Both.
+    /// DataSourceName or Both. On the data source node index, we only want to add a clause
+    /// if the search scope is NodesTitles or Both.
     fn should_add_data_source_clause(
         &self,
         filter: &DatasourceViewFilter,
         index_name: &str,
     ) -> bool {
         match (filter.search_scope, index_name) {
-            (SearchScopeType::DataSourceTitle | SearchScopeType::Both, DATA_SOURCE_INDEX_NAME) => {
+            (SearchScopeType::DataSourceName | SearchScopeType::Both, DATA_SOURCE_INDEX_NAME) => {
                 true
             }
             (SearchScopeType::NodesTitles | SearchScopeType::Both, DATA_SOURCE_NODE_INDEX_NAME) => {
