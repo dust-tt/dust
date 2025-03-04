@@ -56,17 +56,24 @@ const GongCallTranscriptCodec = t.type({
 });
 
 // Generic codec for paginated results from Gong API.
-const GongPaginatedResults = <C extends t.Mixed>(fieldName: string, codec: C) =>
-  t.type({
-    requestId: t.string,
-    records: t.type({
-      totalRecords: t.number,
-      currentPageSize: t.number,
-      currentPageNumber: t.number,
-      cursor: t.string,
+const GongPaginatedResults = <C extends t.Mixed, F extends string>(
+  fieldName: F,
+  codec: C
+) =>
+  t.intersection([
+    t.type({
+      requestId: t.string,
+      records: t.type({
+        totalRecords: t.number,
+        currentPageSize: t.number,
+        currentPageNumber: t.number,
+        cursor: t.string,
+      }),
     }),
-    [fieldName]: t.array(codec),
-  });
+    t.type({
+      [fieldName]: t.array(codec),
+    }),
+  ]);
 
 export async function getGongAccessToken(
   connector: ConnectorResource
