@@ -17,6 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 
 const SearchRequestBody = t.type({
   // Optional array of data source view IDs to search in.
@@ -108,6 +109,16 @@ async function handler(
       },
     });
   }
+  const paginationRes = getCursorPaginationParams(req);
+  if (paginationRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_pagination_parameters",
+        message: "Invalid pagination parameters",
+      },
+    });
+  }
 
   const searchRes = await searchContenNodesInSpace(
     auth,
@@ -116,7 +127,10 @@ async function handler(
     {
       excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
       includeDataSources,
-      limit,
+      options: {
+        limit: paginationRes.value?.limit,
+        cursor: paginationRes.value?.cursor ?? undefined,
+      },
       query,
       viewType,
     }
