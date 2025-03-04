@@ -7,7 +7,12 @@ import {
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import type { PlanType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewCategory,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
@@ -96,10 +101,8 @@ const DATA_SOURCE_CATEGORIES = [
   "website",
 ] as const;
 
-type DataSourceCategory = (typeof DATA_SOURCE_CATEGORIES)[number];
-
 export const CATEGORY_DETAILS: {
-  [key in DataSourceCategory]: {
+  [key in DataSourceViewCategory]: {
     label: string;
     icon: React.ComponentType<{
       className?: string;
