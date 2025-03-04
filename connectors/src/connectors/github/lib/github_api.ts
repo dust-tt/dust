@@ -136,19 +136,30 @@ export async function getReposPage(
           per_page: API_PAGE_SIZE,
           page: page,
         })
-      ).data.repositories.map((r) => ({
-        id: r.id,
-        name: r.name,
-        private: r.private,
-        url: r.html_url,
-        createdAt: r.created_at ? new Date(r.created_at) : null,
-        updatedAt: r.updated_at ? new Date(r.updated_at) : null,
-        description: r.description,
-        owner: {
-          id: r.owner.id,
-          login: r.owner.login,
-        },
-      }))
+      ).data.repositories.map(
+        (r: {
+          id: number;
+          name: string;
+          private: boolean;
+          html_url: string;
+          created_at: string | null;
+          updated_at: string | null;
+          description: string | null;
+          owner: { id: number; login: string };
+        }) => ({
+          id: r.id,
+          name: r.name,
+          private: r.private,
+          url: r.html_url,
+          createdAt: r.created_at ? new Date(r.created_at) : null,
+          updatedAt: r.updated_at ? new Date(r.updated_at) : null,
+          description: r.description,
+          owner: {
+            id: r.owner.id,
+            login: r.owner.login,
+          },
+        })
+      )
     );
   } catch (e) {
     if (isGithubRequestErrorNotFound(e)) {
@@ -210,23 +221,36 @@ export async function getRepoIssuesPage(
       })
     ).data;
 
-    return issues.map((i) => ({
-      id: i.id,
-      number: i.number,
-      title: i.title,
-      url: i.html_url,
-      creator: i.user
-        ? {
-            id: i.user.id,
-            login: i.user.login,
-          }
-        : null,
-      createdAt: new Date(i.created_at),
-      updatedAt: new Date(i.updated_at),
-      body: i.body,
-      labels: getIssueLabels(i.labels),
-      isPullRequest: !!i.pull_request,
-    }));
+    return issues.map(
+      (i: {
+        id: number;
+        number: number;
+        title: string;
+        html_url: string;
+        user: { id: number; login: string } | null;
+        created_at: string;
+        updated_at: string;
+        body: string | null;
+        labels: { name: string }[];
+        pull_request: { url: string } | undefined;
+      }) => ({
+        id: i.id,
+        number: i.number,
+        title: i.title,
+        url: i.html_url,
+        creator: i.user
+          ? {
+              id: i.user.id,
+              login: i.user.login,
+            }
+          : null,
+        createdAt: new Date(i.created_at),
+        updatedAt: new Date(i.updated_at),
+        body: i.body,
+        labels: getIssueLabels(i.labels),
+        isPullRequest: !!i.pull_request,
+      })
+    );
   } catch (err) {
     if (isBadCredentials(err)) {
       throw new ProviderWorkflowError(
@@ -325,19 +349,28 @@ export async function getIssueCommentsPage(
     })
   ).data;
 
-  return comments.map((c) => ({
-    id: c.id,
-    url: c.html_url,
-    creator: c.user
-      ? {
-          id: c.user.id,
-          login: c.user.login,
-        }
-      : null,
-    createdAt: new Date(c.created_at),
-    updatedAt: new Date(c.updated_at),
-    body: c.body,
-  }));
+  return comments.map(
+    (c: {
+      id: number;
+      html_url: string;
+      user: { id: number; login: string } | null;
+      created_at: string;
+      updated_at: string;
+      body: string | null;
+    }) => ({
+      id: c.id,
+      url: c.html_url,
+      creator: c.user
+        ? {
+            id: c.user.id,
+            login: c.user.login,
+          }
+        : null,
+      createdAt: new Date(c.created_at),
+      updatedAt: new Date(c.updated_at),
+      body: c.body,
+    })
+  );
 }
 
 export async function getRepoDiscussionsPage(

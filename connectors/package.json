@@ -1,5 +1,8 @@
 {
   "name": "connectors",
+  "overrides": {
+    "@octokit/plugin-paginate-rest": "latest"
+  },
   "version": "0.1.0",
   "scripts": {
     "format": "prettier --write .",
@@ -52,7 +55,7 @@
     "minimist": "^1.2.8",
     "morgan": "^1.10.0",
     "node-zendesk": "^5.0.13",
-    "octokit": "^3.1.2",
+    "octokit": "^4.0.0",
     "p-queue": "^7.3.4",
     "pg": "^8.8.0",
     "pg-hstore": "^2.3.4",
