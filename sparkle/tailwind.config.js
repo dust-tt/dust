@@ -11,6 +11,7 @@ const safeColorsArray = [
   "highlight",
   "success",
   "warning",
+  "info",
   "indigo",
   "lime",
   "orange",
@@ -476,23 +477,6 @@ module.exports = {
           },
         },
         // Semantic Palette
-        highlight: {
-          DEFAULT: colors.blue[500],
-          light: { DEFAULT: colors.blue[400], night: colors.blue[600] },
-          dark: { DEFAULT: colors.blue[600], night: colors.blue[400] },
-          muted: { DEFAULT: "#AFCDEF", night: "#284896" },
-          950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
-          900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
-          800: { DEFAULT: colors.blue[800], night: colors.blue[200] },
-          700: { DEFAULT: colors.blue[700], night: colors.blue[300] },
-          600: { DEFAULT: colors.blue[600], night: colors.blue[400] },
-          500: { DEFAULT: colors.blue[500], night: colors.blue[500] },
-          400: { DEFAULT: colors.blue[400], night: colors.blue[600] },
-          300: { DEFAULT: colors.blue[300], night: colors.blue[700] },
-          200: { DEFAULT: colors.blue[200], night: colors.blue[800] },
-          100: { DEFAULT: colors.blue[100], night: colors.blue[900] },
-          50: { DEFAULT: colors.blue[50], night: colors.blue[950] },
-        },
         primary: {
           DEFAULT: colors.gray[800],
           night: colors.gray[200],
@@ -512,11 +496,28 @@ module.exports = {
           100: { DEFAULT: colors.gray[100], night: colors.gray[900] },
           50: { DEFAULT: colors.gray[50], night: colors.gray[950] },
         },
+        highlight: {
+          DEFAULT: colors.blue[500],
+          light: { DEFAULT: colors.blue[400], night: colors.blue[600] },
+          dark: { DEFAULT: colors.blue[600], night: colors.blue[400] },
+          muted: { DEFAULT: "#8EB2D3", night: "#8EB2D3" },
+          950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
+          900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
+          800: { DEFAULT: colors.blue[800], night: colors.blue[200] },
+          700: { DEFAULT: colors.blue[700], night: colors.blue[300] },
+          600: { DEFAULT: colors.blue[600], night: colors.blue[400] },
+          500: { DEFAULT: colors.blue[500], night: colors.blue[500] },
+          400: { DEFAULT: colors.blue[400], night: colors.blue[600] },
+          300: { DEFAULT: colors.blue[300], night: colors.blue[700] },
+          200: { DEFAULT: colors.blue[200], night: colors.blue[800] },
+          100: { DEFAULT: colors.blue[100], night: colors.blue[900] },
+          50: { DEFAULT: colors.blue[50], night: colors.blue[950] },
+        },
         warning: {
           DEFAULT: colors.rose[500],
           light: { DEFAULT: colors.rose[400], night: colors.rose[600] },
           dark: { DEFAULT: colors.rose[600], night: colors.rose[400] },
-          muted: { DEFAULT: "#E3BDC3", night: "#762F39" },
+          muted: { DEFAULT: "#D5AAA1", night: "#D5AAA1" },
           950: { DEFAULT: colors.rose[950], night: colors.rose[50] },
           900: { DEFAULT: colors.rose[900], night: colors.rose[100] },
           800: { DEFAULT: colors.rose[800], night: colors.rose[200] },
@@ -533,7 +534,7 @@ module.exports = {
           DEFAULT: colors.green[500],
           light: { DEFAULT: colors.green[400], night: colors.green[600] },
           dark: { DEFAULT: colors.green[600], night: colors.green[400] },
-          muted: { DEFAULT: "#9CDECC", night: "#1C5D56" },
+          muted: { DEFAULT: "#A9B8A9", night: "#A9B8A9" },
           500: { DEFAULT: colors.green[500], night: colors.green[500] },
           400: { DEFAULT: colors.green[400], night: colors.green[600] },
           200: { DEFAULT: colors.green[200], night: colors.green[800] },
@@ -545,6 +546,62 @@ module.exports = {
           900: { DEFAULT: colors.green[900], night: colors.green[100] },
           950: { DEFAULT: colors.green[950], night: colors.green[50] },
           50: { DEFAULT: colors.green[50], night: colors.green[950] },
+        },
+        info: {
+          DEFAULT: customColors.golden[500],
+          light: {
+            DEFAULT: customColors.golden[400],
+            night: customColors.golden[600],
+          },
+          dark: {
+            DEFAULT: customColors.golden[600],
+            night: customColors.golden[400],
+          },
+          muted: { DEFAULT: "#E1C99B", night: "#E1C99B" },
+          500: {
+            DEFAULT: customColors.golden[500],
+            night: customColors.golden[500],
+          },
+          400: {
+            DEFAULT: customColors.golden[400],
+            night: customColors.golden[600],
+          },
+          200: {
+            DEFAULT: customColors.golden[200],
+            night: customColors.golden[800],
+          },
+          300: {
+            DEFAULT: customColors.golden[300],
+            night: customColors.golden[700],
+          },
+          100: {
+            DEFAULT: customColors.golden[100],
+            night: customColors.golden[900],
+          },
+          600: {
+            DEFAULT: customColors.golden[600],
+            night: customColors.golden[400],
+          },
+          700: {
+            DEFAULT: customColors.golden[700],
+            night: customColors.golden[300],
+          },
+          800: {
+            DEFAULT: customColors.golden[800],
+            night: customColors.golden[200],
+          },
+          900: {
+            DEFAULT: customColors.golden[900],
+            night: customColors.golden[100],
+          },
+          950: {
+            DEFAULT: customColors.golden[950],
+            night: customColors.golden[50],
+          },
+          50: {
+            DEFAULT: customColors.golden[50],
+            night: customColors.golden[950],
+          },
         },
         // Deprecated colors
         action: {
