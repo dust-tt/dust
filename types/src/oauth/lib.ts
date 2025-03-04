@@ -67,6 +67,14 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   );
 }
 
+export function isValidSalesforceClientId(s: unknown): s is string {
+  return typeof s === "string" && s.trim().length > 0;
+}
+
+export function isValidSalesforceClientSecret(s: unknown): s is string {
+  return typeof s === "string" && s.trim().length > 0;
+}
+
 // Credentials Providers
 
 export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
@@ -81,6 +89,7 @@ export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "modjo",
   "bigquery",
+  "salesforce",
 ] as const;
 export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
@@ -149,10 +158,19 @@ export const ApiKeyCredentialsSchema = t.type({
 });
 export type ModjoCredentials = t.TypeOf<typeof ApiKeyCredentialsSchema>;
 
+export const SalesforceCredentialsSchema = t.type({
+  client_id: t.string,
+  client_secret: t.string,
+});
+export type SalesforceCredentials = t.TypeOf<
+  typeof SalesforceCredentialsSchema
+>;
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | ModjoCredentials
-  | BigQueryCredentialsWithLocation;
+  | BigQueryCredentialsWithLocation
+  | SalesforceCredentials;
 
 export function isSnowflakeCredentials(
   credentials: ConnectionCredentials
@@ -174,6 +192,12 @@ export function isBigQueryWithLocationCredentials(
     "project_id" in credentials &&
     "location" in credentials
   );
+}
+
+export function isSalesforceCredentials(
+  credentials: ConnectionCredentials
+): credentials is SalesforceCredentials {
+  return "client_id" in credentials && "client_secret" in credentials;
 }
 
 export type OauthAPIPostCredentialsResponse = {

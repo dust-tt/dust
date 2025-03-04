@@ -313,6 +313,7 @@ pub struct Connection {
     encrypted_access_token: Option<Vec<u8>>,
     encrypted_refresh_token: Option<Vec<u8>>,
     encrypted_raw_json: Option<Vec<u8>>,
+    related_credential_id: Option<String>,
 }
 
 impl Connection {
@@ -328,6 +329,7 @@ impl Connection {
         encrypted_access_token: Option<Vec<u8>>,
         encrypted_refresh_token: Option<Vec<u8>>,
         encrypted_raw_json: Option<Vec<u8>>,
+        related_credential_id: Option<String>,
     ) -> Self {
         Connection {
             connection_id,
@@ -341,6 +343,7 @@ impl Connection {
             encrypted_access_token,
             encrypted_refresh_token,
             encrypted_raw_json,
+            related_credential_id,
         }
     }
 
@@ -445,6 +448,10 @@ impl Connection {
         }
     }
 
+    pub fn related_credential_id(&self) -> Option<String> {
+        self.related_credential_id.clone()
+    }
+
     async fn reload(&mut self, store: Box<dyn OAuthStore + Sync + Send>) -> Result<()> {
         let connection = store
             .retrieve_connection_by_provider(self.provider, &self.connection_id)
@@ -460,6 +467,7 @@ impl Connection {
         self.encrypted_access_token = connection.encrypted_access_token;
         self.encrypted_refresh_token = connection.encrypted_refresh_token;
         self.encrypted_raw_json = connection.encrypted_raw_json;
+        self.related_credential_id = connection.related_credential_id;
 
         Ok(())
     }
@@ -469,8 +477,11 @@ impl Connection {
         provider: ConnectionProvider,
         metadata: serde_json::Value,
         migrated_credentials: Option<MigratedCredentials>,
+        related_credential_id: Option<String>,
     ) -> Result<Self> {
-        let mut c = store.create_connection(provider, metadata).await?;
+        let mut c = store
+            .create_connection(provider, metadata, related_credential_id)
+            .await?;
 
         if let Some(creds) = migrated_credentials {
             c.redirect_uri = Some(creds.redirect_uri);

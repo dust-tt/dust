@@ -2,6 +2,7 @@ import type { WithAPIErrorResponse } from "@dust-tt/types";
 import {
   BigQueryCredentialsWithLocationSchema,
   OAuthAPI,
+  SalesforceCredentialsSchema,
   SnowflakeCredentialsSchema,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
@@ -25,9 +26,15 @@ const PostBigQueryCredentialsBodySchema = t.type({
   credentials: BigQueryCredentialsWithLocationSchema,
 });
 
+const PostSalesforceCredentialsBodySchema = t.type({
+  provider: t.literal("salesforce"),
+  credentials: SalesforceCredentialsSchema,
+});
+
 const PostCredentialsBodySchema = t.union([
   PostSnowflakeCredentialsBodySchema,
   PostBigQueryCredentialsBodySchema,
+  PostSalesforceCredentialsBodySchema,
 ]);
 
 export type PostCredentialsBody = t.TypeOf<typeof PostCredentialsBodySchema>;

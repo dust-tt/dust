@@ -17,6 +17,7 @@ pub enum CredentialProvider {
     Snowflake,
     Modjo,
     Bigquery,
+    Salesforce,
 }
 
 impl fmt::Display for CredentialProvider {
@@ -41,8 +42,8 @@ impl FromStr for CredentialProvider {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CredentialMetadata {
-    user_id: String,
-    workspace_id: String,
+    pub user_id: String,
+    pub workspace_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -129,6 +130,9 @@ impl Credential {
                     "universe_domain",
                     "location",
                 ]
+            }
+            CredentialProvider::Salesforce => {
+                vec!["client_id", "client_secret"]
             }
         };
 

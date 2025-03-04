@@ -11,6 +11,8 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import {
+  isValidSalesforceClientId,
+  isValidSalesforceClientSecret,
   isValidSalesforceDomain,
   isValidZendeskSubdomain,
 } from "@dust-tt/types";
@@ -50,6 +52,10 @@ export function CreateConnectionConfirmationModal({
         return (
           !!extraConfig.instance_url &&
           isValidSalesforceDomain(extraConfig.instance_url) &&
+          !!extraConfig.client_id &&
+          isValidSalesforceClientId(extraConfig.client_id) &&
+          !!extraConfig.client_secret &&
+          isValidSalesforceClientSecret(extraConfig.client_secret) &&
           !!extraConfig.code_verifier &&
           !!extraConfig.code_challenge
         );
@@ -207,16 +213,48 @@ export function CreateConnectionConfirmationModal({
 
               {connectorProviderConfiguration.connectorProvider ===
                 "salesforce" && (
-                <Input
-                  label="Salesforce instance URL"
-                  message="The URL of your Salesforce organization instance."
-                  name="instance_url"
-                  value={extraConfig.instance_url ?? ""}
-                  placeholder="https://my-org.salesforce.com"
-                  onChange={(e) => {
-                    setExtraConfig({ instance_url: e.target.value });
-                  }}
-                />
+                <>
+                  <Input
+                    label="Salesforce instance URL"
+                    message="The URL of your Salesforce organization instance."
+                    name="instance_url"
+                    value={extraConfig.instance_url ?? ""}
+                    placeholder="https://my-org.salesforce.com"
+                    onChange={(e) => {
+                      setExtraConfig((prev) => ({
+                        ...prev,
+                        instance_url: e.target.value,
+                      }));
+                    }}
+                  />
+                  <Input
+                    label="Client ID"
+                    message="The client ID from your Salesforce connected app."
+                    name="client_id"
+                    value={extraConfig.client_id ?? ""}
+                    placeholder="3MVG9..."
+                    onChange={(e) => {
+                      setExtraConfig((prev) => ({
+                        ...prev,
+                        client_id: e.target.value,
+                      }));
+                    }}
+                  />
+                  <Input
+                    label="Client Secret"
+                    message="The client secret from your Salesforce connected app."
+                    name="client_secret"
+                    value={extraConfig.client_secret ?? ""}
+                    placeholder="..."
+                    type="password"
+                    onChange={(e) => {
+                      setExtraConfig((prev) => ({
+                        ...prev,
+                        client_secret: e.target.value,
+                      }));
+                    }}
+                  />
+                </>
               )}
 
               <div className="flex justify-center pt-2">

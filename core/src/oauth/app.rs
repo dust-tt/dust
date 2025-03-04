@@ -38,22 +38,60 @@ async fn index() -> &'static str {
 }
 
 #[derive(Deserialize)]
+struct RelatedCredentialPayload {
+    content: serde_json::Map<String, serde_json::Value>,
+    metadata: CredentialMetadata,
+}
+
+#[derive(Deserialize)]
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
     // Optionally present secret fields (migration case).
     migrated_credentials: Option<MigratedCredentials>,
+    // Optionally present related credential for creating a new credential.
+    related_credential: Option<RelatedCredentialPayload>,
 }
 
 async fn connections_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<ConnectionCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
+    // Handle credential creation if related_credential is provided
+    let related_credential_id = if let Some(related_credential) = payload.related_credential {
+        // Use the credential content and metadata from the payload
+        let credential_content = related_credential.content;
+        let credential_metadata = related_credential.metadata;
+
+        // Create credential
+        match Credential::create(
+            state.store.clone(),
+            crate::oauth::credential::CredentialProvider::Salesforce,
+            credential_metadata,
+            credential_content,
+        )
+        .await
+        {
+            Ok(credential) => Some(credential.credential_id().to_string()),
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "credential_creation_failed",
+                    "Failed to create credential",
+                    Some(e),
+                );
+            }
+        }
+    } else {
+        None
+    };
+
     match Connection::create(
         state.store.clone(),
         payload.provider,
         payload.metadata,
         payload.migrated_credentials,
+        related_credential_id,
     )
     .await
     {
@@ -144,6 +182,7 @@ async fn connections_finalize(
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct ConnectionAccessTokenPayload {
     provider: ConnectionProvider,
 }
