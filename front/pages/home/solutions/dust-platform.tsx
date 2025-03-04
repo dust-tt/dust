@@ -1,18 +1,22 @@
+import { Button, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import type { ReactElement } from "react";
+
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
+import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
+import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
+
 import { classNames } from "@app/lib/utils";
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import type { ReactElement } from "react";
+import { Div3D, Hover3D } from "@dust-tt/sparkle";
 
 export async function getServerSideProps() {
   return {
@@ -32,33 +36,7 @@ export const DemoVideo: DemoVideoProps = {
 export default function DustPlatform() {
   return (
     <>
-      <div
-        className={classNames(
-          "flex flex-col justify-end gap-4 pt-12 sm:pt-12 lg:pt-24",
-          "col-span-10"
-        )}
-      >
-        <P size="lg" className="text-muted-foreground">
-          Dust Platform
-        </P>
-        <H1 from="from-amber-200" to="to-amber-400">
-          For Developers
-        </H1>
-        <P size="lg" className="text-slate-50">
-          Push the boundaries by building custom actions and integrations
-          to&nbsp;fit your team's exact&nbsp;needs.
-        </P>
-        <div className="flex flex-col gap-4 xs:flex-row sm:flex-row md:flex-row">
-          <Button
-            variant="primary"
-            label="Go to Documentation"
-            size="md"
-            className="mt-8"
-            href="https://docs.dust.tt"
-            target="_blank"
-          />
-        </div>
-      </div>
+      <PlatformIntroSection />
       <Grid>
         <div
           className={classNames(

@@ -61,17 +61,14 @@ export function CapabilitySection() {
             className={classNames("relative")}
           >
             <Div3D depth={-20}>
-              <img src="/static/landing/connect/connect1.png" />
+              <img src="/static/landing/connect/cloud1.png" />
             </Div3D>
             <Div3D depth={0} className="absolute top-0">
-              <img src="/static/landing/connect/connect2.png" />
+              <img src="/static/landing/connect/cloud2.png" />
             </Div3D>
             <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/connect/connect3.png" />
+              <img src="/static/landing/connect/cloud3.png" />
             </Div3D>
-            {/* <Div3D depth={60} className="absolute top-0">
-              <img src="/static/landing/connect/connect4.png" />
-            </Div3D> */}
           </Hover3D>
         </ImgBlock>
         <ImgBlock
