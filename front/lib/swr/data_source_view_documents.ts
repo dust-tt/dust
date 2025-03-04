@@ -1,6 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import type {
+  DataSourceViewType,
+  LightWorkspaceType,
   PatchDataSourceWithNameDocumentRequestBody,
   PostDataSourceWithNameDocumentRequestBody,
 } from "@dust-tt/types";
@@ -143,7 +144,7 @@ export function useCreateDataSourceViewDocument(
       sendNotification({
         type: "success",
         title: "Document created",
-        description: "Document has been created",
+        description: "Document processing ongoing, it will appear shortly",
       });
 
       const response: PostDocumentResponseBody = await res.json();
