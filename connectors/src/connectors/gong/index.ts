@@ -52,7 +52,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not implemented.");
   }
 
-  async sync(): Promise<Result<string, Error>> {
+  async sync({
+    fromTs,
+  }: {
+    fromTs: number | null;
+  }): Promise<Result<string, Error>> {
     throw new Error("Method not implemented.");
   }
 
