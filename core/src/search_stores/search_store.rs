@@ -52,11 +52,15 @@ pub enum TagsQueryType {
     Match,
 }
 
+// For each data source view, the scope of search can be:
+// - DataSourceTitle: only check if the datasource title matches the query;
+// - NodesTitles: check if any of the datasource's nodes titles match the query;
+// - Both: check if either the datasource title or any of its nodes titles match the query;
 #[derive(serde::Deserialize, Clone, Copy, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum SearchScopeType {
     DataSourceTitle,
-    ChildrenTitles,
+    NodesTitles,
     Both,
 }
 
@@ -86,14 +90,13 @@ pub struct DatasourceViewFilter {
 }
 
 fn default_search_scope() -> SearchScopeType {
-    SearchScopeType::ChildrenTitles
+    SearchScopeType::NodesTitles
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     excluded_node_mime_types: Option<Vec<String>>,
-    include_data_sources: Option<bool>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -693,10 +696,9 @@ impl ElasticsearchSearchStore {
             (SearchScopeType::DataSourceTitle | SearchScopeType::Both, DATA_SOURCE_INDEX_NAME) => {
                 true
             }
-            (
-                SearchScopeType::ChildrenTitles | SearchScopeType::Both,
-                DATA_SOURCE_NODE_INDEX_NAME,
-            ) => true,
+            (SearchScopeType::NodesTitles | SearchScopeType::Both, DATA_SOURCE_NODE_INDEX_NAME) => {
+                true
+            }
             _ => false,
         }
     }
