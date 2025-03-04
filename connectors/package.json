@@ -1,6 +1,35 @@
 {
   "name": "connectors",
   "version": "0.1.0",
+  "overrides": {
+    "octokit": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/auth-app": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/auth-unauthenticated": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/core": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/request": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/oauth-app": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/plugin-retry": {
+      "@octokit/request-error": "6.1.7"
+    },
+    "@octokit/webhooks": {
+      "@octokit/request-error": "6.1.7"
+    }
+  },
+  "overrides": {
+    "@octokit/request-error": "6.1.7"
+  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
