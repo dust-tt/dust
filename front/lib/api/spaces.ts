@@ -1,6 +1,7 @@
 import type {
   ContentNodesViewType,
   CoreAPIError,
+  CoreAPISearchOptions,
   DataSourceViewContentNode,
   DataSourceWithAgentsUsageType,
   Result,
@@ -264,13 +265,13 @@ export async function searchContenNodesInSpace(
   {
     excludedNodeMimeTypes,
     includeDataSources,
-    limit,
+    options,
     query,
     viewType,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
-    limit: number;
+    options: CoreAPISearchOptions;
     query: string;
     viewType: ContentNodesViewType;
   }
@@ -301,9 +302,7 @@ export async function searchContenNodesInSpace(
       include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },
-    options: {
-      limit,
-    },
+    options,
   });
 
   if (searchRes.isErr()) {
