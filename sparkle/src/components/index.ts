@@ -27,9 +27,9 @@ export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
 export {
   Collapsible,
+  CollapsibleComponent,
   CollapsibleContent,
   CollapsibleTrigger,
-  CollapsibleComponent,
 } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
