@@ -4,8 +4,7 @@ import {
   MIME_TYPES,
 } from "@dust-tt/types";
 import _ from "lodash";
-import type { LoggerOptions } from "pino";
-import type pino from "pino";
+import type { pino } from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { getSourceUrlForGoogleDriveFiles } from "@connectors/connectors/google_drive";
@@ -29,7 +28,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 async function migrateConnector(
   connector: ConnectorResource,
   execute: boolean,
-  parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
+  parentLogger: pino.Logger
 ) {
   const logger = parentLogger.child({ connectorId: connector.id });
   logger.info("Starting migration");

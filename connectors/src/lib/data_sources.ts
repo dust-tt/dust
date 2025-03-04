@@ -22,7 +22,6 @@ import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
 import https from "https";
-import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
 import { toMarkdown } from "mdast-util-to-markdown";
@@ -150,8 +149,11 @@ async function _upsertDataSourceDocument({
 
       const now = new Date();
 
+      // Explicitly cast to PostDataSourceDocumentRequestBody['timestamp'] to satisfy type check
       const timestamp = timestampMs
-        ? (Math.floor(timestampMs) as Branded<number, IntBrand>)
+        ? (Math.floor(
+            timestampMs
+          ) as PostDataSourceDocumentRequestBody["timestamp"])
         : null;
 
       const dustRequestPayload: PostDataSourceDocumentRequestBody = {

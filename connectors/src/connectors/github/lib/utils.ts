@@ -203,6 +203,6 @@ export function getIssueLabels(
   )[]
 ): string[] {
   return labels.map((label) =>
-    typeof label === "string" ? label : label.name ?? ""
+    typeof label === "string" ? label : (label.name ?? "")
   );
 }

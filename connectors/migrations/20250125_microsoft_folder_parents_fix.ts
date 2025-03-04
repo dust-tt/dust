@@ -1,6 +1,5 @@
 import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
-import type { LoggerOptions } from "pino";
-import type pino from "pino";
+import type { pino } from "pino";
 import { makeScript } from "scripts/helpers";
 
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
@@ -13,7 +12,7 @@ import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource"
 async function backfillConnector(
   connector: ConnectorResource,
   execute: boolean,
-  parentLogger: pino.Logger<LoggerOptions & pino.ChildLoggerOptions>
+  parentLogger: pino.Logger
 ) {
   const startSyncTs = Date.now();
   const logger = parentLogger.child({

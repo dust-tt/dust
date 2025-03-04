@@ -825,7 +825,7 @@ async function getDeltaData({
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, node.internalId);
+      return getFullDeltaResults(client, node.internalId);
     }
     throw e;
   }
