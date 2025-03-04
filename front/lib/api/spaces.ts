@@ -310,8 +310,6 @@ export async function searchContenNodesInSpace(
     return searchRes;
   }
 
-  console.log(">>> ");
-
   const dataSourceViewById = new Map(
     dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
   );

@@ -24,7 +24,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         </DataTable.CellContent>
       ),
       meta: {
-        sizeRatio: 40,
+        sizeRatio: 50,
       },
     },
     {
@@ -36,7 +36,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         <DataTable.BasicCellContent label={info.getValue()} />
       ),
       meta: {
-        sizeRatio: 35,
+        sizeRatio: 25,
       },
     },
     {
