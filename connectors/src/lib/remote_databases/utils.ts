@@ -39,20 +39,6 @@ export type RemoteDBTree = {
   })[];
 };
 
-export const parseSchemaInternalId = (
-  schemaInternalId: string
-): RemoteDBSchema => {
-  const [dbName, schemaName] = schemaInternalId.split(".");
-  if (!dbName || !schemaName) {
-    throw new Error(`Invalid schema internalId: ${schemaInternalId}`);
-  }
-
-  return {
-    name: schemaName,
-    database_name: dbName,
-  };
-};
-
 // Helper functions to get connector and credentials
 export const getConnector = async ({
   connectorId,

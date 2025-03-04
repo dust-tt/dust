@@ -122,26 +122,15 @@ export const fetchDatasets = async ({
  */
 export const fetchTables = async ({
   credentials,
-  datasetName,
-  schemaName,
+  dataset,
   connection,
 }: {
   credentials: BigQueryCredentialsWithLocation;
-  datasetName?: string;
-  schemaName?: string;
+  dataset: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
-    if (!datasetName && !schemaName) {
-      throw new Error("Either datasetName or schemaName must be provided");
-    }
-    if (datasetName && schemaName) {
-      throw new Error("Both datasetName and schemaName cannot be provided");
-    }
-
-    const dataset = schemaName ? schemaName : datasetName;
-
     // Can't happen, to please TS.
     if (!dataset) {
       throw new Error("Dataset name is required");
@@ -194,7 +183,7 @@ export const fetchTree = async ({
               .map(async (schema) => {
                 const tablesRes = await fetchTables({
                   credentials,
-                  datasetName: schema.name,
+                  dataset: schema.name,
                 });
                 if (tablesRes.isErr()) {
                   throw tablesRes.error;
