@@ -14,8 +14,7 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare lastGarbageCollectionFinishTime?: Date;
   declare parentsLastUpdatedAt?: Date;
 
-  // TODO(2025-03-04): Set this to NOT NULL once we've migrated all existing connectors.
-  declare notionWorkspaceId: string | null;
+  declare notionWorkspaceId: string;
 }
 NotionConnectorState.init(
   {
@@ -43,7 +42,7 @@ NotionConnectorState.init(
     },
     notionWorkspaceId: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
   },
   {
