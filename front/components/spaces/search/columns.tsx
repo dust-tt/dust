@@ -55,7 +55,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         />
       ),
       meta: {
-        sizeRatio: 20,
+        sizeRatio: 15,
       },
     },
     {
@@ -64,7 +64,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       header: "Actions",
       enableSorting: false,
       meta: {
-        sizeRatio: 5,
+        sizeRatio: 10,
       },
       cell: (info) =>
         info.row.original.menuItems && (

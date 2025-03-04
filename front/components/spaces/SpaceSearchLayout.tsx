@@ -3,7 +3,6 @@ import {
   MenuItem,
   ScrollableDataTable,
   SearchInput,
-  Spinner,
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -270,7 +269,6 @@ function BackendSearch({
     isSearchValidating,
     handlePaginationChange,
     tablePagination.pageIndex,
-    PAGE_SIZE,
   ]);
 
   // Handle transition when search state changes.
@@ -329,29 +327,17 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <div>
-            {isSearchLoading ? (
-              <div className="flex justify-center py-4">
-                <Spinner />
-              </div>
-            ) : searchResultNodes.length > 0 ? (
-              <SearchResultsTable
-                searchResultNodes={searchResults}
-                category={category}
-                isSearchValidating={isSearchValidating}
-                owner={owner}
-                totalNodesCount={totalNodesCount}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-                onLoadMore={handleLoadMore}
-                isLoading={isSearchLoading}
-              />
-            ) : (
-              <div className="py-4 text-muted-foreground">
-                No results found for "{debouncedSearch}"
-              </div>
-            )}
-          </div>
+          <SearchResultsTable
+            searchResultNodes={searchResults}
+            category={category}
+            isSearchValidating={isSearchValidating}
+            owner={owner}
+            totalNodesCount={totalNodesCount}
+            canReadInSpace={canReadInSpace}
+            canWriteInSpace={canWriteInSpace}
+            onLoadMore={handleLoadMore}
+            isLoading={isSearchLoading}
+          />
         ) : (
           children
         )}
@@ -520,6 +506,7 @@ function SearchResultsTable({
 
       return {
         ...node,
+        id: node.internalId,
         icon: getVisualForDataSourceViewContentNode(node),
         ...(node.expandable && {
           onClick: () => {
