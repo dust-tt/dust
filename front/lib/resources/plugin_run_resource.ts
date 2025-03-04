@@ -36,6 +36,7 @@ function redactPluginArgs(
   return sanitizedArgs;
 }
 
+// This might save a non-valid JSON object in the DB. It needs to be safely parsed.
 function trimPluginRunResultOrError(result: PluginResponse | string) {
   let stringResult: string;
   if (typeof result === "string") {

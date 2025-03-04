@@ -17,3 +17,6 @@ CREATE TABLE
       "id" BIGSERIAL,
       PRIMARY KEY ("id")
   );
+
+CREATE INDEX "plugin_runs_workspace_id" ON "plugin_runs" ("workspaceId");
+CREATE INDEX "plugin_runs_resource_type_resource_id" ON "plugin_runs" ("resourceType", "resourceId");

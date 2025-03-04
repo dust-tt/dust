@@ -20,11 +20,9 @@ class PluginManager {
         const resourceTypes = this.getResourceTypesFromPlugin(plugin);
 
         for (const rt of resourceTypes) {
-          if (!this.pluginsByResourceType[rt]) {
-            this.pluginsByResourceType[rt] = [];
-          }
-
-          this.pluginsByResourceType[rt].push(plugin);
+          // Initialize and push in one statement.
+          (this.pluginsByResourceType[rt] =
+            this.pluginsByResourceType[rt] || []).push(plugin);
         }
 
         this.plugins.set(plugin.manifest.id, plugin);
