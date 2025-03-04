@@ -45,13 +45,13 @@ const SentenceCodec = t.type({
 const TranscriptMonologueCodec = t.type({
   speakerId: t.string,
   topic: t.string,
-  // A monologue is consistuted of multiple sentences.
+  // A monologue is constituted of multiple sentences.
   sentences: t.array(SentenceCodec),
 });
 
 const SingleCallTranscriptCodec = t.type({
   callId: t.string,
-  // A transcript is consistuted of multiple monologues.
+  // A transcript is constituted of multiple monologues.
   transcript: t.array(TranscriptMonologueCodec),
 });
 
