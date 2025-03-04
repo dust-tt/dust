@@ -12,6 +12,7 @@ import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
@@ -604,21 +605,21 @@ export function useSpaceSearch({
   dataSourceViews,
   disabled = false,
   includeDataSources = false,
-  limit = DEFAULT_SEARCH_LIMIT,
   owner,
   search,
   space,
   viewType,
+  pagination,
 }: {
   dataSourceViews: DataSourceViewType[];
   disabled?: boolean;
   includeDataSources: boolean;
-  limit?: number;
   owner: LightWorkspaceType;
   search: string;
   space: SpaceType;
   viewType: ContentNodesViewType;
   warningCode?: SearchWarningCode;
+  pagination?: CursorPaginationParams;
 }): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -627,11 +628,20 @@ export function useSpaceSearch({
   searchResultNodes: DataSourceViewContentNode[];
   total: number;
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 } {
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
   const body: PostSpaceSearchRequestBody = {
     dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     includeDataSources,
-    limit,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     query: search,
     viewType,
   };
@@ -639,10 +649,10 @@ export function useSpaceSearch({
   // Only perform a query if we have a valid search.
   const url =
     search.length >= MIN_SEARCH_QUERY_SIZE
-      ? `/api/w/${owner.sId}/spaces/${space.sId}/search`
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
       : null;
 
-  const fetchKey = [url, body];
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
   const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     fetchKey,
@@ -668,5 +678,6 @@ export function useSpaceSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }
