@@ -16,7 +16,7 @@ export const menuStyleClasses = {
   inset: "s-pl-8",
   container: cn(
     "s-rounded-xl s-border-hovering s-p-1",
-    "s-border s-border-border-dark dark:s-border-border-dark-night",
+    "s-border s-border-border dark:s-border-border-night",
     "s-bg-background dark:s-bg-background-night",
     "s-text-primary-950 dark:s-text-primary-950-night",
     "s-z-50 s-min-w-[8rem] s-overflow-hidden",
@@ -32,8 +32,8 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "focus:s-text-primary-950 dark:focus:s-text-primary-950-night",
-            "hover:s-bg-primary-150 dark:hover:s-bg-primary-300-night",
-            "focus:s-bg-primary-150 dark:focus:s-bg-primary-300-night"
+            "hover:s-bg-muted-background dark:hover:s-bg-primary-300-night",
+            "focus:s-bg-muted-background dark:focus:s-bg-primary-300-night"
           ),
           warning: cn(
             "s-text-warning-500 dark:s-text-warning-500-night",
