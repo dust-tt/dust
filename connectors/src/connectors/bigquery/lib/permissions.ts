@@ -100,10 +100,12 @@ export const fetchAvailableChildrenInBigQuery = async ({
       where: { connectorId },
     });
     const syncedTablesInternalIds = syncedTables.map((db) => db.internalId);
-
+    const datasetName = parentInternalId.substring(
+      parentInternalId.indexOf(".") + 1
+    );
     const allTablesRes = await fetchTables({
       credentials,
-      internalDatasetId: parentInternalId,
+      dataset: datasetName,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);

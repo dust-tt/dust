@@ -13,10 +13,10 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import type { RemoteDBTree } from "@connectors/lib/remote_databases/utils";
-import {
-  parseSchemaInternalId,
-  parseTableInternalId,
+import type {
+  RemoteDBSchema,
+  RemoteDBTable,
+  RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -97,11 +97,13 @@ const createDatabase = async ({
 const isSchemaReadGranted = ({
   readGrantedInternalIds,
   internalId,
+  schema,
 }: {
   readGrantedInternalIds: Set<string>;
   internalId: string;
+  schema: RemoteDBSchema;
 }) => {
-  const { database_name } = parseSchemaInternalId(internalId);
+  const { database_name } = schema;
 
   return (
     readGrantedInternalIds.has(database_name) ||
@@ -111,14 +113,14 @@ const isSchemaReadGranted = ({
 
 const createSchemaAndHierarchy = async ({
   dataSourceConfig,
-  schemaInternalId,
+  schema,
   allDatabases,
   allSchemas,
   connector,
   mimeTypes,
 }: {
   dataSourceConfig: DataSourceConfig;
-  schemaInternalId: string;
+  schema: RemoteDBSchema;
   allDatabases: RemoteDatabaseModel[];
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
@@ -134,7 +136,8 @@ const createSchemaAndHierarchy = async ({
   const usedInternalIds = new Set<string>();
   let newSchema: RemoteSchemaModel | null = null;
 
-  const { database_name, name } = parseSchemaInternalId(schemaInternalId);
+  const { database_name, name } = schema;
+  const schemaInternalId = `${database_name}.${name}`;
 
   const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
     await createDatabase({
@@ -190,23 +193,26 @@ const createSchemaAndHierarchy = async ({
 
 const isTableReadGranted = ({
   readGrantedInternalIds,
-  internalId,
+  tableInternalId,
+  table,
 }: {
   readGrantedInternalIds: Set<string>;
-  internalId: string;
+  tableInternalId: string;
+  table: RemoteDBTable;
 }) => {
-  const { database_name, schema_name } = parseTableInternalId(internalId);
+  const { database_name, schema_name } = table;
   const schemaInternalId = [database_name, schema_name].join(".");
 
   return (
     readGrantedInternalIds.has(database_name) ||
     readGrantedInternalIds.has(schemaInternalId) ||
-    readGrantedInternalIds.has(internalId)
+    readGrantedInternalIds.has(tableInternalId)
   );
 };
 
 const createTableAndHierarchy = async ({
   tableInternalId,
+  table,
   allTables,
   allSchemas,
   allDatabases,
@@ -215,6 +221,7 @@ const createTableAndHierarchy = async ({
   internalTableIdToRemoteTableId,
 }: {
   tableInternalId: string;
+  table: RemoteDBTable;
   allTables: RemoteTableModel[];
   allSchemas: RemoteSchemaModel[];
   allDatabases: RemoteDatabaseModel[];
@@ -239,17 +246,17 @@ const createTableAndHierarchy = async ({
     database_name: dbName,
     schema_name: schemaName,
     name: tableName,
-  } = parseTableInternalId(tableInternalId);
+  } = table;
 
-  const schemaInternalId = [dbName, schemaName].join(".");
-
+  const schema = { name: schemaName, database_name: dbName };
+  const schemaInternalId = `${dbName}.${schemaName}`;
   const {
     newDatabase,
     newSchema,
     usedInternalIds: newSchemaUsedInternalIds,
   } = await createSchemaAndHierarchy({
     dataSourceConfig,
-    schemaInternalId,
+    schema,
     allDatabases,
     allSchemas,
     connector,
@@ -419,6 +426,7 @@ export async function sync({
         isSchemaReadGranted({
           readGrantedInternalIds,
           internalId: schemaInternalId,
+          schema,
         })
       ) {
         const {
@@ -427,7 +435,7 @@ export async function sync({
           usedInternalIds: newSchemaUsedInternalIds,
         } = await createSchemaAndHierarchy({
           dataSourceConfig,
-          schemaInternalId,
+          schema,
           allDatabases,
           allSchemas,
           connector,
@@ -453,7 +461,8 @@ export async function sync({
         if (
           isTableReadGranted({
             readGrantedInternalIds,
-            internalId: tableInternalId,
+            tableInternalId,
+            table,
           })
         ) {
           const {
@@ -463,6 +472,7 @@ export async function sync({
             usedInternalIds: newTableUsedInternalIds,
           } = await createTableAndHierarchy({
             tableInternalId,
+            table,
             allTables,
             allSchemas,
             allDatabases,
