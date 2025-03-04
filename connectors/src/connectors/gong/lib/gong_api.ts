@@ -96,6 +96,7 @@ export class GongClient {
 
   private async request<T>(endpoint: string, codec: t.Type<T>): Promise<T> {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${this.authToken}`,
         "Content-Type": "application/json",
