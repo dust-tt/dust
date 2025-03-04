@@ -53,6 +53,7 @@ export type UseResourcesHook = (parentId: string | null) => {
   isResourcesError: boolean;
   isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
+  loadNextPage?: () => void;
 };
 
 export type ContentNodeTreeItemStatus = {
