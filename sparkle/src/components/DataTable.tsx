@@ -344,7 +344,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     );
     const widthDifference = tableWidth - totalIdealWidth;
 
-    // adjust largest column
+    // adjust the largest column with leftover size
     if (widthDifference !== 0) {
       const adjustColumnId = Object.entries(idealSizing).sort(
         (a, b) => b[1] - a[1]
