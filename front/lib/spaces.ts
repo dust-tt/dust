@@ -89,8 +89,17 @@ export const isPrivateSpacesLimitReached = (
   spaces.filter((s) => s.kind === "regular" || s.kind === "public").length >=
     plan.limits.vaults.maxVaults;
 
+const DATA_SOURCE_CATEGORIES = [
+  "apps",
+  "folder",
+  "managed",
+  "website",
+] as const;
+
+type DataSourceCategory = (typeof DATA_SOURCE_CATEGORIES)[number];
+
 export const CATEGORY_DETAILS: {
-  [key: string]: {
+  [key in DataSourceCategory]: {
     label: string;
     icon: React.ComponentType<{
       className?: string;
