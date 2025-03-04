@@ -290,15 +290,29 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  // If we search datasources, then for webcrawler, we only want to search the
+  // data source title, not the children titles.
+  const searchScopeForDsv = (dsv: DataSourceViewResource) => {
+    if (includeDataSources) {
+      if (dsv.dataSource.connectorProvider === "webcrawler") {
+        return "data_source_title";
+      }
+
+      return "both";
+    }
+
+    return "children_titles";
+  };
+
   const searchRes = await coreAPI.searchNodes({
     query,
     filter: {
       data_source_views: dataSourceViews.map((dsv) => ({
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
+        search_scope: searchScopeForDsv(dsv),
       })),
       excluded_node_mime_types: excludedNodeMimeTypes,
-      include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },
     options: {
