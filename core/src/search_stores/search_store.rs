@@ -649,11 +649,18 @@ impl ElasticsearchSearchStore {
         // Add the outer bool query with should clause.
         counter.add(1);
 
-        let data_sources_query = Query::bool()
-            .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
-            .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
+        if filter.data_source_views.iter().any(|f| {
+            matches!(
+                f.search_scope,
+                SearchScopeType::DataSourceTitle | SearchScopeType::Both
+            )
+        }) {
+            let data_sources_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
-        should_queries.push(data_sources_query);
+            should_queries.push(data_sources_query);
+        }
 
         // Build nodes query only if we have clauses left.
         if !counter.is_full() {
