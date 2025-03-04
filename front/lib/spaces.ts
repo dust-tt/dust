@@ -94,13 +94,6 @@ export const isPrivateSpacesLimitReached = (
   spaces.filter((s) => s.kind === "regular" || s.kind === "public").length >=
     plan.limits.vaults.maxVaults;
 
-const DATA_SOURCE_CATEGORIES = [
-  "apps",
-  "folder",
-  "managed",
-  "website",
-] as const;
-
 export const CATEGORY_DETAILS: {
   [key in DataSourceViewCategory]: {
     label: string;
