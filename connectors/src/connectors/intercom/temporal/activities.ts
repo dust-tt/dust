@@ -415,11 +415,16 @@ export async function syncArticleBatchActivity({
   await concurrentExecutor(
     articles,
     async (article) => {
-      const parentCollectionIdAsString = article.parent_id
-        ? article.parent_id.toString()
-        : null;
+      const parentCollectionIds = article.parent_ids.map((id) => id.toString());
+      if (parentCollectionIds.length === 0) {
+        logger.warn(
+          { ...loggerArgs, articleId: article.id },
+          "[Intercom] Article has no parent."
+        );
+        return;
+      }
       const parentCollection = collectionsInRead.find(
-        (c) => c.collectionId === parentCollectionIdAsString
+        (c) => c.collectionId === parentCollectionIds[0]
       );
       if (parentCollection) {
         await upsertArticle({
@@ -434,6 +439,11 @@ export async function syncArticleBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
+      } else {
+        logger.warn(
+          { ...loggerArgs, articleId: article.id },
+          "[Intercom] Article has no parent collection."
+        );
       }
     },
     { concurrency: 4 }
