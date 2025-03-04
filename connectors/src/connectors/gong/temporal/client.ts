@@ -1,14 +1,13 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { WorkflowHandle } from "@temporalio/client";
+import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleOverlapPolicy,
   WorkflowNotFoundError,
 } from "@temporalio/client";
 
+import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
 import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
-import { QUEUE_NAME } from "@connectors/connectors/salesforce/temporal/config";
-import { resyncSignal } from "@connectors/connectors/salesforce/temporal/signals";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -28,25 +27,22 @@ export async function launchGongSyncWorkflow(
   const client = await getTemporalClient();
   const workflowId = makeGongSyncWorkflowId(connector);
 
+  const action: ScheduleOptionsAction = {
+    type: "startWorkflow",
+    workflowType: gongSyncWorkflow,
+    args: [],
+    taskQueue: QUEUE_NAME,
+  };
+
   try {
-    await client.workflow.signalWithStart(gongSyncWorkflow, {
-      args: [
-        {
-          connectorId: connector.id,
-        },
-      ],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      searchAttributes: {
-        connectorId: [connectorId],
-      },
-      signal: resyncSignal,
-      signalArgs: [],
-      memo: {
-        connectorId,
-      },
-      // TODO(2025-03-04) - Validate this.
+    await client.schedule.create({
+      action,
+      scheduleId: makeGongSyncWorkflowId(connector),
       policies: {
+        // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
+        // Backfill scheduled action up to the previous day.
+        catchupWindow: "1 day",
+        // We allow only one workflow at a time.
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
@@ -66,9 +62,7 @@ export async function stopGongSyncWorkflow(
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(
-      `[Salesforce] Connector not found. ConnectorId: ${connectorId}`
-    );
+    throw new Error(`[Gong] Connector not found. ConnectorId: ${connectorId}`);
   }
 
   const workflowId = makeGongSyncWorkflowId(connector);
