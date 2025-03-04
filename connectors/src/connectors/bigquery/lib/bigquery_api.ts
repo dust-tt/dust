@@ -8,7 +8,6 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
-import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
 
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
@@ -124,30 +123,24 @@ export const fetchDatasets = async ({
 export const fetchTables = async ({
   credentials,
   datasetName,
-  internalDatasetId,
+  schemaName,
   connection,
 }: {
   credentials: BigQueryCredentialsWithLocation;
   datasetName?: string;
-  internalDatasetId?: string;
+  schemaName?: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
-    if (!datasetName && !internalDatasetId) {
-      throw new Error(
-        "Either datasetName or internalDatasetId must be provided"
-      );
+    if (!datasetName && !schemaName) {
+      throw new Error("Either datasetName or schemaName must be provided");
     }
-    if (datasetName && internalDatasetId) {
-      throw new Error(
-        "Both datasetName and internalDatasetId cannot be provided"
-      );
+    if (datasetName && schemaName) {
+      throw new Error("Both datasetName and schemaName cannot be provided");
     }
 
-    const dataset = internalDatasetId
-      ? parseSchemaInternalId(internalDatasetId).name
-      : datasetName;
+    const dataset = schemaName ? schemaName : datasetName;
 
     // Can't happen, to please TS.
     if (!dataset) {

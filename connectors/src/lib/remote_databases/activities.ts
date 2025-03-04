@@ -14,10 +14,10 @@ import {
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
 import type {
+  RemoteDBSchema,
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
-import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -97,11 +97,13 @@ const createDatabase = async ({
 const isSchemaReadGranted = ({
   readGrantedInternalIds,
   internalId,
+  schema,
 }: {
   readGrantedInternalIds: Set<string>;
   internalId: string;
+  schema: RemoteDBSchema;
 }) => {
-  const { database_name } = parseSchemaInternalId(internalId);
+  const { database_name } = schema;
 
   return (
     readGrantedInternalIds.has(database_name) ||
@@ -111,14 +113,14 @@ const isSchemaReadGranted = ({
 
 const createSchemaAndHierarchy = async ({
   dataSourceConfig,
-  schemaInternalId,
+  schema,
   allDatabases,
   allSchemas,
   connector,
   mimeTypes,
 }: {
   dataSourceConfig: DataSourceConfig;
-  schemaInternalId: string;
+  schema: RemoteDBSchema;
   allDatabases: RemoteDatabaseModel[];
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
@@ -134,7 +136,8 @@ const createSchemaAndHierarchy = async ({
   const usedInternalIds = new Set<string>();
   let newSchema: RemoteSchemaModel | null = null;
 
-  const { database_name, name } = parseSchemaInternalId(schemaInternalId);
+  const { database_name, name } = schema;
+  const schemaInternalId = `${database_name}.${name}`;
 
   const { newDatabase, usedInternalIds: newDatabaseUsedInternalIds } =
     await createDatabase({
@@ -245,15 +248,15 @@ const createTableAndHierarchy = async ({
     name: tableName,
   } = table;
 
-  const schemaInternalId = [dbName, schemaName].join(".");
-
+  const schema = { name: schemaName, database_name: dbName };
+  const schemaInternalId = `${dbName}.${schemaName}`;
   const {
     newDatabase,
     newSchema,
     usedInternalIds: newSchemaUsedInternalIds,
   } = await createSchemaAndHierarchy({
     dataSourceConfig,
-    schemaInternalId,
+    schema,
     allDatabases,
     allSchemas,
     connector,
@@ -423,6 +426,7 @@ export async function sync({
         isSchemaReadGranted({
           readGrantedInternalIds,
           internalId: schemaInternalId,
+          schema,
         })
       ) {
         const {
@@ -431,7 +435,7 @@ export async function sync({
           usedInternalIds: newSchemaUsedInternalIds,
         } = await createSchemaAndHierarchy({
           dataSourceConfig,
-          schemaInternalId,
+          schema,
           allDatabases,
           allSchemas,
           connector,

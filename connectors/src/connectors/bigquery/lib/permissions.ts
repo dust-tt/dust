@@ -20,6 +20,7 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
 
 /**
  * Retrieves the existing content nodes for a parent in the BigQuery account.
@@ -103,7 +104,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
 
     const allTablesRes = await fetchTables({
       credentials,
-      internalDatasetId: parentInternalId,
+      schemaName: parseSchemaInternalId(parentInternalId).name,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
