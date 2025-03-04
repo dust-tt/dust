@@ -59,6 +59,11 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
+    const launchResult = await launchSalesforceSyncWorkflow(connector.id);
+    if (launchResult.isErr()) {
+      await connector.delete();
+      throw launchResult.error;
+    }
 
     return new Ok(connector.id.toString());
   }
