@@ -52,7 +52,6 @@ export default function Browser({
   onBlockUp: () => void;
   onBlockDown: () => void;
   onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
-  g;
 }>) {
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
