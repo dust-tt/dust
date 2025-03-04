@@ -143,7 +143,7 @@ export function useCreateDataSourceViewDocument(
 
       sendNotification({
         type: "success",
-        title: "Document created",
+        title: "Document creation submitted",
         description: "Document processing ongoing, it will appear shortly",
       });
 
