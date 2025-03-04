@@ -305,28 +305,14 @@ export async function upsertArticle({
     ? article.url
     : getArticleInAppUrl(article, region);
 
-  const parentCollectionId = article.parent_id?.toString();
   const parentCollectionIds = article.parent_ids.map((id) => id.toString());
-
-  if (!parentCollectionId) {
-    logger.error(
-      {
-        connectorId,
-        helpCenterId,
-        articleId: article.id,
-        loggerArgs,
-      },
-      "[Intercom] Article has no parent. Skipping sync"
-    );
-    return;
-  }
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
       title: article.title,
       url: articleUrl,
       authorId: article.author_id,
-      parentId: parentCollectionId,
+      parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
@@ -339,7 +325,7 @@ export async function upsertArticle({
       url: articleUrl,
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
-      parentId: parentCollectionId,
+      parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
@@ -355,7 +341,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article already up to date. Skipping sync."
     );
@@ -367,7 +353,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article to sync."
     );
@@ -415,7 +401,7 @@ export async function upsertArticle({
   const parents = await getParentIdsForArticle({
     documentId,
     connectorId,
-    parentCollectionId,
+    parentCollectionId: parentCollection.collectionId,
     helpCenterId,
   });
 
