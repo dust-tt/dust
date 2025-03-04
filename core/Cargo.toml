@@ -152,3 +152,4 @@ unicode-normalization = "0.1.24"
 dateparser = "0.2.1"
 once_cell = "1.18"
 redis = { version = "0.24.0", features = ["tokio-comp"] }
+parse_duration = "2.1.1"
