@@ -78,10 +78,11 @@ pub struct DatasourceViewFilter {
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
-    node_ids: Option<Vec<String>>,
-    parent_id: Option<String>,
-    node_types: Option<Vec<NodeType>>,
+    excluded_node_mime_types: Option<Vec<String>>,
     include_data_sources: Option<bool>,
+    node_ids: Option<Vec<String>>,
+    node_types: Option<Vec<NodeType>>,
+    parent_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -486,7 +487,7 @@ impl SearchStore for ElasticsearchSearchStore {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
 
-        let bool_query = Query::bool().must(
+        let bool_query = Query::bool().filter(
             Query::bool()
                 .should(
                     data_source_views
@@ -511,12 +512,12 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let bool_query = match node_ids {
             None => bool_query,
-            Some(node_ids) => bool_query.must(Query::terms("node_id", node_ids)),
+            Some(node_ids) => bool_query.filter(Query::terms("node_id", node_ids)),
         };
         let bool_query = match query.clone() {
             None => bool_query,
             Some(query) => match query_type {
-                TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", query)),
+                TagsQueryType::Exact => bool_query.filter(Query::term("tags.keyword", query)),
                 TagsQueryType::Prefix => bool_query.must(Query::match_phrase("tags.edge", query)),
                 TagsQueryType::Match => bool_query.must(Query::r#match("tags.edge", query)),
             },
@@ -640,7 +641,11 @@ impl ElasticsearchSearchStore {
             if !counter.is_full() {
                 let data_sources_query = Query::bool()
                     .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
-                    .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
+                    .filter(self.build_data_sources_content_query(
+                        &query,
+                        &filter,
+                        &mut counter,
+                    )?);
 
                 should_queries.push(data_sources_query);
             }
@@ -650,7 +655,7 @@ impl ElasticsearchSearchStore {
         if !counter.is_full() {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .must(self.build_nodes_content_query(&query, &filter, &mut counter)?);
+                .filter(self.build_nodes_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(nodes_query);
         }
@@ -783,6 +788,15 @@ impl ElasticsearchSearchStore {
             } else {
                 bool_query = bool_query.filter(Query::term("parent_id", parent_id));
             }
+        }
+
+        if let Some(excluded_node_mime_types) = filter
+            .excluded_node_mime_types
+            .as_ref()
+            .filter(|types| !types.is_empty())
+        {
+            counter.add(1);
+            bool_query = bool_query.must_not(Query::terms("mime_type", excluded_node_mime_types));
         }
 
         // Add search term if present.
@@ -991,7 +1005,7 @@ impl ElasticsearchSearchStore {
             SearchItem::DataSource(data_source) => {
                 let search = Search::new()
                     .size(0)
-                    .query(Query::bool().must(Query::term(
+                    .query(Query::bool().filter(Query::term(
                         "data_source_id",
                         data_source.data_source_id.clone(),
                     )))
