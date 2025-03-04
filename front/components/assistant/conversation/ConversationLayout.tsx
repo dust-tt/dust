@@ -2,7 +2,6 @@ import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
-import RootLayout from "@app/components/app/RootLayout";
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
@@ -35,19 +34,17 @@ export default function ConversationLayout({
   const { baseUrl, owner, subscription } = pageProps;
 
   return (
-    <RootLayout>
-      <ConversationsNavigationProvider
-        initialConversationId={pageProps.conversationId}
+    <ConversationsNavigationProvider
+      initialConversationId={pageProps.conversationId}
+    >
+      <ConversationLayoutContent
+        owner={owner}
+        subscription={subscription}
+        baseUrl={baseUrl}
       >
-        <ConversationLayoutContent
-          owner={owner}
-          subscription={subscription}
-          baseUrl={baseUrl}
-        >
-          {children}
-        </ConversationLayoutContent>
-      </ConversationsNavigationProvider>
-    </RootLayout>
+        {children}
+      </ConversationLayoutContent>
+    </ConversationsNavigationProvider>
   );
 }
 
