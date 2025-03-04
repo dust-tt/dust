@@ -29,6 +29,7 @@ export {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  CollapsibleComponent,
 } from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
