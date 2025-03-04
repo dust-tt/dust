@@ -1,4 +1,11 @@
-import { cn, MenuItem, ScrollableDataTable, SearchInput, useHashParam, useSendNotification } from "@dust-tt/sparkle";
+import type { MenuItem } from "@dust-tt/sparkle";
+import {
+  cn,
+  ScrollableDataTable,
+  SearchInput,
+  useHashParam,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   APIError,
   ContentNodesViewType,
@@ -19,6 +26,7 @@ import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import {
   DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
@@ -27,7 +35,6 @@ import {
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -320,22 +327,22 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <div className="flex flex-col w-full gap-2">
-            <div className="text-muted-foreground text-sm text-end">
+          <div className="flex w-full flex-col gap-2">
+            <div className="text-end text-sm text-muted-foreground">
               Showing {searchResults.length} of {totalNodesCount} results
             </div>
-          <SearchResultsTable
-            searchResultNodes={searchResults}
-            category={category}
-            isSearchValidating={isSearchValidating}
-            owner={owner}
-            totalNodesCount={totalNodesCount}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-            onLoadMore={handleLoadMore}
-            isLoading={isSearchLoading}
-          />
-            </div>
+            <SearchResultsTable
+              searchResultNodes={searchResults}
+              category={category}
+              isSearchValidating={isSearchValidating}
+              owner={owner}
+              totalNodesCount={totalNodesCount}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              onLoadMore={handleLoadMore}
+              isLoading={isSearchLoading}
+            />
+          </div>
         ) : (
           children
         )}
