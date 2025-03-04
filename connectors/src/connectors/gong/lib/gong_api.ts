@@ -1,13 +1,72 @@
 import type { Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
-import type * as t from "io-ts";
+import * as t from "io-ts";
 
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { apiConfig } from "@connectors/lib/api/config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+// Pass-through codec that is used to allow unknown properties.
+const CatchAllCodec = t.record(t.string, t.unknown);
+
+const SpokenLanguageCodec = t.type({
+  language: t.string,
+  primary: t.boolean,
+});
+
+const UserCodec = t.type({
+  id: t.string,
+  emailAddress: t.string,
+  created: t.string,
+  active: t.boolean,
+  emailAliases: t.array(t.string),
+  trustedEmailAddress: t.string,
+  firstName: t.string,
+  lastName: t.string,
+  title: t.string,
+  phoneNumber: t.string,
+  extension: t.string,
+  personalMeetingUrls: t.array(t.string),
+  settings: CatchAllCodec,
+  managerId: t.string,
+  meetingConsentPageUrl: t.string,
+  spokenLanguages: t.array(SpokenLanguageCodec),
+});
+
+const SentenceCodec = t.type({
+  start: t.number,
+  end: t.number,
+  text: t.string,
+});
+
+const TranscriptMonologueCodec = t.type({
+  speakerId: t.string,
+  topic: t.string,
+  // A monologue is consistuted of multiple sentences.
+  sentences: t.array(SentenceCodec),
+});
+
+const SingleCallTranscriptCodec = t.type({
+  callId: t.string,
+  // A transcript is consistuted of multiple monologues.
+  transcript: t.array(TranscriptMonologueCodec),
+});
+
+// Generic codec for paginated results from Gong API.
+const GongPaginatedResults = <C extends t.Mixed>(fieldName: string, codec: C) =>
+  t.type({
+    requestId: t.string,
+    records: t.type({
+      totalRecords: t.number,
+      currentPageSize: t.number,
+      currentPageNumber: t.number,
+      cursor: t.string,
+    }),
+    [fieldName]: t.array(codec),
+  });
 
 export async function getGongAccessToken(
   connector: ConnectorResource
