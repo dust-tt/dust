@@ -256,7 +256,7 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   }),
   t.partial({
     search_scope: t.union([
-      t.literal("children_titles"),
+      t.literal("nodes_titles"),
       t.literal("data_source_title"),
       t.literal("both"),
     ]),

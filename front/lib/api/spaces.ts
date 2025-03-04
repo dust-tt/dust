@@ -301,7 +301,7 @@ export async function searchContenNodesInSpace(
       return "both";
     }
 
-    return "children_titles";
+    return "nodes_titles";
   };
 
   const searchRes = await coreAPI.searchNodes({
