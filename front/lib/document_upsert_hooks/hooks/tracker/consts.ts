@@ -16,6 +16,7 @@ export function isConnectorTypeTrackable(
     case "zendesk":
     case "bigquery":
     case "salesforce":
+    case "gong":
       return true;
     case "slack":
       return false;

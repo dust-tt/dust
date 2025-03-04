@@ -931,6 +931,7 @@ export function ConnectorPermissionsModal({
           case "zendesk":
           case "webcrawler":
           case "salesforce":
+          case "gong":
             return (
               <DataSourceEditionModal
                 key={`${c.type}-${modalToShow}`}

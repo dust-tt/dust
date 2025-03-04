@@ -312,6 +312,7 @@ export function getTableIdForContentNode(
     case "github":
     case "zendesk":
     case "webcrawler":
+    case "gong":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
