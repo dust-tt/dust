@@ -36,7 +36,7 @@ export function ExtensibilitySection({ page = "default" }) {
           )}
         >
           <ImgBlock
-            title={<>Build your own agentic tools</>}
+            title={<>Build custom agentic tools</>}
             content={
               <>
                 Develop advanced or agentic capabilities, from document
@@ -50,12 +50,12 @@ export function ExtensibilitySection({ page = "default" }) {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/apps/ticketagent.png" />
+                <img src="/static/landing/apps/ticketgeneration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own connections</>}
+            title={<>Build custom connections</>}
             content={
               <>
                 No ceiling on data connections. Leverage the API to import in
@@ -70,12 +70,12 @@ export function ExtensibilitySection({ page = "default" }) {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/api/customconnections.png" />
+                <img src="/static/landing/api/connections.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own integrations</>}
+            title={<>Build custom integrations</>}
             content={
               <>
                 Use our API to embed agents in your apps or websites, unlocking
@@ -89,7 +89,7 @@ export function ExtensibilitySection({ page = "default" }) {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/api/customintegration.png" />
+                <img src="/static/landing/api/integration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
