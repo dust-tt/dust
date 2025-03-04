@@ -168,6 +168,7 @@ function QueryTablesResults({
       </div>
 
       <CollapsibleComponent
+        rootProps={{ defaultOpen: false }}
         triggerChildren={
           <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Preview

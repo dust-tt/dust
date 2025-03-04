@@ -278,6 +278,7 @@ export default function DataSource({
 
         <div className="w-full">
           <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
             triggerProps={{ label: "Filters" }}
             contentChildren={
               <div className="flex w-full flex-col gap-2">

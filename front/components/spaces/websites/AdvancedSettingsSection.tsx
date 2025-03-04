@@ -38,6 +38,7 @@ export function AdvancedSettingsSection({
 
   return (
     <CollapsibleComponent
+      rootProps={{ defaultOpen: false }}
       triggerProps={{ label: "Advanced settings", variant: "secondary" }}
       contentChildren={
         <div className="flex w-full flex-col gap-3">

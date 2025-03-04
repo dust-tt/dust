@@ -288,6 +288,7 @@ export default function Chat({
         </div>
         <div>
           <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
             triggerProps={{ label: "Advanced" }}
             contentChildren={
               <div className="flex flex-row gap-2">
@@ -402,6 +403,7 @@ export default function Chat({
         </div>
         <div>
           <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
             triggerProps={{ label: "Functions" }}
             contentChildren={
               <div className="flex flex-col gap-2 text-sm">
