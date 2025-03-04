@@ -1,6 +1,7 @@
 import type {
   ContentNodesViewType,
   CoreAPIError,
+  CoreAPISearchOptions,
   CoreAPISearchScope,
   DataSourceViewContentNode,
   DataSourceWithAgentsUsageType,
@@ -292,13 +293,13 @@ export async function searchContenNodesInSpace(
   {
     excludedNodeMimeTypes,
     includeDataSources,
-    limit,
+    options,
     query,
     viewType,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
-    limit: number;
+    options: CoreAPISearchOptions;
     query: string;
     viewType: ContentNodesViewType;
   }
@@ -308,6 +309,7 @@ export async function searchContenNodesInSpace(
       nodes: DataSourceViewContentNode[];
       total: number;
       warningCode: SearchWarningCode | null;
+      nextPageCursor: string | null;
     },
     DustError | CoreAPIError
   >
@@ -334,9 +336,7 @@ export async function searchContenNodesInSpace(
       excluded_node_mime_types: excludedNodeMimeTypes,
       node_types: getCoreViewTypeFilter(viewType),
     },
-    options: {
-      limit,
-    },
+    options,
   });
 
   if (searchRes.isErr()) {
@@ -369,5 +369,6 @@ export async function searchContenNodesInSpace(
     nodes,
     total: searchRes.value.hit_count,
     warningCode: searchRes.value.warning_code,
+    nextPageCursor: searchRes.value.next_page_cursor,
   });
 }

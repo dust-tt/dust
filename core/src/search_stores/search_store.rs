@@ -295,7 +295,7 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let sort = match query {
             None => self.build_search_nodes_sort(options.sort)?,
-            Some(_) => vec![],
+            Some(_) => self.build_relevance_sort(),
         };
 
         // Build and run search
@@ -1033,6 +1033,13 @@ impl ElasticsearchSearchStore {
         ));
 
         Ok(base_sort)
+    }
+
+    fn build_relevance_sort(&self) -> Vec<Sort> {
+        vec![
+            Sort::FieldSort(FieldSort::new("_score").order(SortOrder::Asc)),
+            Sort::FieldSort(FieldSort::new("node_id").order(SortOrder::Asc)),
+        ]
     }
 
     async fn compute_data_sources_stats(
