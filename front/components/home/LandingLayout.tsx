@@ -13,7 +13,6 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
-import RootLayout from "@app/components/app/RootLayout";
 import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
@@ -80,7 +79,7 @@ export default function LandingLayout({
   }, []);
 
   return (
-    <RootLayout>
+    <>
       <Header />
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
@@ -168,7 +167,7 @@ export default function LandingLayout({
         )}
         <FooterNavigation />
       </main>
-    </RootLayout>
+    </>
   );
 }
 
