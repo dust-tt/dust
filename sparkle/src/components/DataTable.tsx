@@ -321,7 +321,6 @@ export function ScrollableDataTable<TData extends TBaseData>({
     columns,
     rowCount: totalRowCount,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     enableColumnResizing: true,
   });
 
@@ -437,7 +436,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                         minWidth: columnSizing[header.id],
                       }}
                     >
-                      <div className="s-flex s-w-full s-items-center s-space-x-1 s-truncate">
+                      <div className="s-flex s-w-full s-items-center s-space-x-1">
                         <span className="s-truncate">
                           {flexRender(
                             header.column.columnDef.header,
@@ -462,9 +461,10 @@ export function ScrollableDataTable<TData extends TBaseData>({
               return (
                 <DataTable.Row
                   key={row.id}
+                  id={row.id}
                   widthClassName={widthClassName}
                   onClick={row.original.onClick}
-                  className="s-absolute s-w-full"
+                  className="s-absolute s-h-full s-w-full"
                   style={{
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
@@ -482,17 +482,20 @@ export function ScrollableDataTable<TData extends TBaseData>({
                       <DataTable.Cell
                         column={cell.column}
                         key={cell.id}
+                        id={cell.id}
                         className="s-max-w-0"
                         style={{
                           width: columnSizing[cell.column.id],
                           minWidth: columnSizing[cell.column.id],
                         }}
                       >
-                        <div className="s-flex s-items-center s-space-x-1 s-truncate s-whitespace-nowrap">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                        <div className="s-flex s-items-center s-space-x-1">
+                          <span className="s-truncate">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </span>
                         </div>
                       </DataTable.Cell>
                     );
