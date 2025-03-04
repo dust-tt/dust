@@ -652,6 +652,8 @@ impl ElasticsearchSearchStore {
         // Add the outer bool query with should clause.
         counter.add(1);
 
+        // Queries on DATA_SOURCE_INDEX_NAME are prioritized over queries on
+        // DATA_SOURCE_NODE_INDEX_NAME, if we run out of clauses.
         if filter.data_source_views.iter().any(|f| {
             matches!(
                 f.search_scope,

@@ -249,17 +249,21 @@ export interface CoreAPISearchTagsResponse {
   };
 }
 
+export const CoreAPISearchScopeSchema = t.union([
+  t.literal("nodes_titles"),
+  t.literal("data_source_name"),
+  t.literal("both"),
+]);
+
+export type CoreAPISearchScope = t.TypeOf<typeof CoreAPISearchScopeSchema>;
+
 export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   t.type({
     data_source_id: t.string,
     view_filter: t.array(t.string),
   }),
   t.partial({
-    search_scope: t.union([
-      t.literal("nodes_titles"),
-      t.literal("data_source_name"),
-      t.literal("both"),
-    ]),
+    search_scope: CoreAPISearchScopeSchema,
   }),
 ]);
 
