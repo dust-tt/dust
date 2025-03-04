@@ -65,7 +65,7 @@ class RedisHybridManager {
       });
 
       // Set up reconnect handler
-      this.subscriptionClient.on("connect", () => {
+      this.subscriptionClient.on("connect", async () => {
         logger.debug("Redis subscription client connected");
 
         if (this.pubSubReconnectTimer) {
@@ -73,13 +73,8 @@ class RedisHybridManager {
           this.pubSubReconnectTimer = null;
         }
 
-        // Resubscribe to all channels
-        if (this.subscriptionClient) {
-          void this.subscriptionClient.pSubscribe(
-            `${this.CHANNEL_PREFIX}*`,
-            this.onMessage
-          );
-        }
+        // Resubscribe to all active channels
+        await this.resubscribeToChannels();
       });
 
       await this.subscriptionClient.connect();
@@ -169,6 +164,21 @@ class RedisHybridManager {
     }, 5000);
   }
 
+  private async resubscribeToChannels(): Promise<void> {
+    if (!this.subscriptionClient) {
+      return;
+    }
+
+    // Use the keys of the subscribers Map instead of activeSubscriptions
+    for (const channel of this.subscribers.keys()) {
+      try {
+        await this.subscriptionClient.subscribe(channel, this.onMessage);
+      } catch (error) {
+        logger.error({ error, channel }, "Error resubscribing to channel");
+      }
+    }
+  }
+
   /**
    * Publish an event to both a stream and a pub/sub channel
    */
@@ -240,9 +250,7 @@ class RedisHybridManager {
     lastEventId: string | null = null,
     origin: string
   ): Promise<{ history: EventPayload[]; unsubscribe: () => void }> {
-    // Ensure the subscription client is connected
-    await this.getSubscriptionClient();
-
+    const subscriptionClient = await this.getSubscriptionClient();
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channelName);
     const pubSubChannelName = this.getPubSubChannelName(channelName);
@@ -250,10 +258,11 @@ class RedisHybridManager {
     // Make sure the subscribers map is initialized
     if (!this.subscribers.has(pubSubChannelName)) {
       this.subscribers.set(pubSubChannelName, new Set());
+      // Subscribe to the channel if this is the first subscriber
+      await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
     }
 
     const history: EventPayload[] = [];
-
     const eventsDuringHistoryFetch: EventPayload[] = [];
     const eventsDuringHistoryFetchCallback: EventCallback = (
       event: EventPayload | "close"
@@ -321,7 +330,7 @@ class RedisHybridManager {
 
     return {
       history,
-      unsubscribe: () => {
+      unsubscribe: async () => {
         const subscribers = this.subscribers.get(pubSubChannelName);
         if (subscribers) {
           callback("close");
@@ -330,6 +339,17 @@ class RedisHybridManager {
           if (subscribers.size === 0) {
             // No more subscribers for this channel
             this.subscribers.delete(pubSubChannelName);
+            // Unsubscribe from the channel
+            if (this.subscriptionClient) {
+              try {
+                await this.subscriptionClient.unsubscribe(pubSubChannelName);
+              } catch (error) {
+                logger.error(
+                  { error, channel: pubSubChannelName },
+                  "Error unsubscribing from channel"
+                );
+              }
+            }
             logger.debug(
               { pubSubChannelName: pubSubChannelName, origin },
               "Unsubscribed from Redis channel"
@@ -375,5 +395,6 @@ class RedisHybridManager {
   }
 }
 
-// Export a singleton instance
-export const redisHybridManager = RedisHybridManager.getInstance();
+export const getRedisHybridManager = () => {
+  return RedisHybridManager.getInstance();
+};

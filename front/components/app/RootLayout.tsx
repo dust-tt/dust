@@ -62,6 +62,9 @@ function NextLinkWrapper({
   );
 }
 
+/**
+ * This layout is used in _app only
+ */
 export default function RootLayout({
   children,
 }: {

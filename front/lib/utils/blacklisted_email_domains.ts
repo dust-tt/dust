@@ -2104,6 +2104,7 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "mannawo.com",
   "mansiondev.com",
   "manybrain.com",
+  "mao-mao-tou.com",
   "mark-compressoren.ru",
   "marketlink.info",
   "markmurfin.com",

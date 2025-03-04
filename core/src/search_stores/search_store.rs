@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -13,7 +13,7 @@ use elasticsearch_dsl::{
     Sort, SortOrder,
 };
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::{error, info};
 use url::Url;
 
@@ -23,7 +23,7 @@ use crate::data_sources::node::NodeESDocument;
 use crate::databases::table::Table;
 use crate::{
     data_sources::{
-        data_source::{DataSource, DataSourceESDocument, DATA_SOURCE_INDEX_NAME},
+        data_source::{DataSource, DATA_SOURCE_INDEX_NAME},
         node::{CoreContentNode, NodeType, DATA_SOURCE_NODE_INDEX_NAME},
     },
     search_stores::search_types::SearchItem,
@@ -52,6 +52,18 @@ pub enum TagsQueryType {
     Match,
 }
 
+// For each data source view, the scope of search can be:
+// - DataSourceName: only check if the datasource name matches the query;
+// - NodesTitles: check if any of the datasource's nodes titles match the query;
+// - Both: check if either the datasource name or any of its nodes titles match the query;
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchScopeType {
+    DataSourceName,
+    NodesTitles,
+    Both,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
@@ -73,15 +85,21 @@ pub struct NodesSearchOptions {
 pub struct DatasourceViewFilter {
     data_source_id: String,
     view_filter: Vec<String>,
+    #[serde(default = "default_search_scope")]
+    search_scope: SearchScopeType,
+}
+
+fn default_search_scope() -> SearchScopeType {
+    SearchScopeType::NodesTitles
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
+    excluded_node_mime_types: Option<Vec<String>>,
     node_ids: Option<Vec<String>>,
-    parent_id: Option<String>,
     node_types: Option<Vec<NodeType>>,
-    include_data_sources: Option<bool>,
+    parent_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -212,6 +230,15 @@ impl QueryClauseCounter {
     }
 }
 
+/// Boost factor applied to exact matches to increase their relevance in search results.
+const EXACT_MATCH_BOOST: f32 = 2.0;
+
+/// Boost factor applied to data sources to increase their relevance in search results.
+const DATA_SOURCE_BOOST: f32 = 2.0;
+
+/// Boost factor applied to data source nodes to increase their relevance in search results.
+const DATA_SOURCE_NODE_BOOST: f32 = 1.0;
+
 #[async_trait]
 impl SearchStore for ElasticsearchSearchStore {
     async fn search_nodes(
@@ -276,6 +303,8 @@ impl SearchStore for ElasticsearchSearchStore {
             .size(options.limit.unwrap_or(MAX_PAGE_SIZE))
             .query(bool_query)
             .track_total_hits(MAX_TOTAL_HITS_TRACKED)
+            .indices_boost(DATA_SOURCE_NODE_INDEX_NAME, DATA_SOURCE_NODE_BOOST)
+            .indices_boost(DATA_SOURCE_INDEX_NAME, DATA_SOURCE_BOOST)
             .sort(sort);
 
         if let Some(cursor) = options.cursor {
@@ -475,7 +504,7 @@ impl SearchStore for ElasticsearchSearchStore {
             return Err(anyhow::anyhow!("No data source views provided"));
         }
 
-        let bool_query = Query::bool().must(
+        let bool_query = Query::bool().filter(
             Query::bool()
                 .should(
                     data_source_views
@@ -500,12 +529,12 @@ impl SearchStore for ElasticsearchSearchStore {
 
         let bool_query = match node_ids {
             None => bool_query,
-            Some(node_ids) => bool_query.must(Query::terms("node_id", node_ids)),
+            Some(node_ids) => bool_query.filter(Query::terms("node_id", node_ids)),
         };
         let bool_query = match query.clone() {
             None => bool_query,
             Some(query) => match query_type {
-                TagsQueryType::Exact => bool_query.must(Query::term("tags.keyword", query)),
+                TagsQueryType::Exact => bool_query.filter(Query::term("tags.keyword", query)),
                 TagsQueryType::Prefix => bool_query.must(Query::match_phrase("tags.edge", query)),
                 TagsQueryType::Match => bool_query.must(Query::r#match("tags.edge", query)),
             },
@@ -601,9 +630,6 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 }
 
-/// Boost factor applied to exact matches to increase their relevance in search results.
-const EXACT_MATCH_BOOST: f32 = 2.0;
-
 impl ElasticsearchSearchStore {
     fn build_search_node_query(
         &self,
@@ -626,23 +652,26 @@ impl ElasticsearchSearchStore {
         // Add the outer bool query with should clause.
         counter.add(1);
 
-        // Starts with a data sources query if requested.
-        if filter.include_data_sources.unwrap_or(false) {
-            // Check if we have enough clauses for at least a basic data sources query.
-            if !counter.is_full() {
-                let data_sources_query = Query::bool()
-                    .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
-                    .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
+        // Queries on DATA_SOURCE_INDEX_NAME are prioritized over queries on
+        // DATA_SOURCE_NODE_INDEX_NAME, if we run out of clauses.
+        if filter.data_source_views.iter().any(|f| {
+            matches!(
+                f.search_scope,
+                SearchScopeType::DataSourceName | SearchScopeType::Both
+            )
+        }) {
+            let data_sources_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
-                should_queries.push(data_sources_query);
-            }
+            should_queries.push(data_sources_query);
         }
 
         // Build nodes query only if we have clauses left.
         if !counter.is_full() {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .must(self.build_nodes_content_query(&query, &filter, &mut counter)?);
+                .filter(self.build_nodes_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(nodes_query);
         }
@@ -657,10 +686,29 @@ impl ElasticsearchSearchStore {
         Ok((bool_query, warning_code))
     }
 
+    /// On the data source index, we only want to add a clause if the search scope is
+    /// DataSourceName or Both. On the data source node index, we only want to add a clause
+    /// if the search scope is NodesTitles or Both.
+    fn should_add_data_source_clause(
+        &self,
+        filter: &DatasourceViewFilter,
+        index_name: &str,
+    ) -> bool {
+        match (filter.search_scope, index_name) {
+            (SearchScopeType::DataSourceName | SearchScopeType::Both, DATA_SOURCE_INDEX_NAME) => {
+                true
+            }
+            (SearchScopeType::NodesTitles | SearchScopeType::Both, DATA_SOURCE_NODE_INDEX_NAME) => {
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn build_shared_permission_filter(
         &self,
         filter: &NodesSearchFilter,
-        index_supports_parents: bool,
+        index_name: &str,
         counter: &mut QueryClauseCounter,
     ) -> BoolQuery {
         let filter_conditions: Vec<Query> = filter
@@ -668,9 +716,9 @@ impl ElasticsearchSearchStore {
             .clone()
             .into_iter()
             .filter_map(|f| {
-                if counter.is_full() {
-                    // Skip adding this data source view to the filter when we've reached the clause limit.
-                    // This effectively truncates the query without adding any new clauses.
+                // Skip adding this data source view to the filter when we've reached the clause limit.
+                // This effectively truncates the query without adding any new clauses.
+                if counter.is_full() || !self.should_add_data_source_clause(&f, index_name) {
                     return None;
                 }
 
@@ -679,7 +727,7 @@ impl ElasticsearchSearchStore {
                     Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
                 // Only add parents filter if the index supports it.
-                if index_supports_parents && !f.view_filter.is_empty() {
+                if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
                     counter.add(1);
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
                 }
@@ -730,7 +778,7 @@ impl ElasticsearchSearchStore {
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
-            .filter(self.build_shared_permission_filter(filter, false, counter));
+            .filter(self.build_shared_permission_filter(filter, DATA_SOURCE_INDEX_NAME, counter));
 
         // Add search term if present.
         if let Some(query_string) = query {
@@ -749,8 +797,11 @@ impl ElasticsearchSearchStore {
         filter: &NodesSearchFilter,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
-        let mut bool_query =
-            Query::bool().filter(self.build_shared_permission_filter(filter, true, counter));
+        let mut bool_query = Query::bool().filter(self.build_shared_permission_filter(
+            filter,
+            DATA_SOURCE_NODE_INDEX_NAME,
+            counter,
+        ));
 
         if let Some(node_ids) = &filter.node_ids {
             counter.add(1);
@@ -775,6 +826,15 @@ impl ElasticsearchSearchStore {
             } else {
                 bool_query = bool_query.filter(Query::term("parent_id", parent_id));
             }
+        }
+
+        if let Some(excluded_node_mime_types) = filter
+            .excluded_node_mime_types
+            .as_ref()
+            .filter(|types| !types.is_empty())
+        {
+            counter.add(1);
+            bool_query = bool_query.must_not(Query::terms("mime_type", excluded_node_mime_types));
         }
 
         // Add search term if present.
@@ -863,12 +923,30 @@ impl ElasticsearchSearchStore {
             "[ElasticsearchSearchStore] Count children duration"
         );
 
-        // Build parent titles query
-        let parent_ids: Vec<_> = nodes.iter().filter_map(|n| n.parent_id.as_ref()).collect();
+        // Build parent titles query.
+        let mut parent_ids = HashSet::new();
+        let mut data_source_ids = HashSet::new();
+
+        // Collect distinct parent IDs and data source internal IDs.
+        for node in nodes.iter() {
+            if let Some(parent_id) = &node.parent_id {
+                parent_ids.insert(parent_id);
+                data_source_ids.insert(&node.data_source_internal_id);
+            }
+        }
+
+        // Convert to vectors.
+        let parent_ids: Vec<_> = parent_ids.into_iter().collect();
+        let data_source_ids: Vec<_> = data_source_ids.into_iter().collect();
+
+        // Scope the query to the internal data source ids of the nodes to avoid leaking data
+        // from other data sources.
         let parent_titles_search = Search::new()
-            .size(parent_ids.len() as u64)
-            .query(Query::bool().filter(Query::terms("node_id", parent_ids)))
-            .source(vec!["node_id", "title"]);
+            .query(Query::bool().filter(vec![
+                Query::terms("node_id", parent_ids),
+                Query::terms("data_source_internal_id", data_source_ids),
+            ]))
+            .source(vec!["data_source_internal_id", "node_id", "title"]);
 
         let parent_titles_response = self
             .client
@@ -878,25 +956,26 @@ impl ElasticsearchSearchStore {
             .await?;
 
         // Process parent titles results
-        let parent_titles_map = if parent_titles_response.status_code().is_success() {
-            let response_body = parent_titles_response.json::<serde_json::Value>().await?;
-            response_body["hits"]["hits"]
-                .as_array()
-                .map(|hits| {
-                    hits.iter()
-                        .filter_map(|hit| {
-                            Some((
-                                hit["_source"]["node_id"].as_str()?.to_string(),
-                                hit["_source"]["title"].as_str()?.to_string(),
-                            ))
-                        })
-                        .collect::<HashMap<_, _>>()
-                })
-                .unwrap_or_default()
-        } else {
-            let error = parent_titles_response.json::<serde_json::Value>().await?;
-            return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
-        };
+        let parent_titles_map: HashMap<(String, String), String> =
+            if parent_titles_response.status_code().is_success() {
+                let response_body = parent_titles_response.json::<serde_json::Value>().await?;
+                response_body["hits"]["hits"]
+                    .as_array()
+                    .map(|hits| {
+                        hits.iter()
+                            .filter_map(|hit| {
+                                let node_id = hit["_source"]["node_id"].as_str()?;
+                                let ds_id = hit["_source"]["data_source_internal_id"].as_str()?;
+                                let title = hit["_source"]["title"].as_str()?;
+                                Some(((node_id.to_string(), ds_id.to_string()), title.to_string()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            } else {
+                let error = parent_titles_response.json::<serde_json::Value>().await?;
+                return Err(anyhow::anyhow!("Failed to fetch parent titles: {}", error));
+            };
 
         // Create CoreContentNodes using the above results
         let core_content_nodes = nodes
@@ -906,7 +985,8 @@ impl ElasticsearchSearchStore {
                 let parent_title = node
                     .parent_id
                     .as_ref()
-                    .and_then(|pid| parent_titles_map.get(pid))
+                    .map(|pid| (pid.clone(), node.data_source_internal_id.clone()))
+                    .and_then(|key| parent_titles_map.get(&key))
                     .cloned();
 
                 CoreContentNode::new(node, children_count, parent_title)
@@ -963,7 +1043,7 @@ impl ElasticsearchSearchStore {
             SearchItem::DataSource(data_source) => {
                 let search = Search::new()
                     .size(0)
-                    .query(Query::bool().must(Query::term(
+                    .query(Query::bool().filter(Query::term(
                         "data_source_id",
                         data_source.data_source_id.clone(),
                     )))

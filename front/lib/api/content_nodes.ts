@@ -14,7 +14,14 @@ export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.GITHUB.DISCUSSIONS,
   MIME_TYPES.GITHUB.ISSUES,
   MIME_TYPES.INTERCOM.TEAM,
-  MIME_TYPES.ZENDESK.TICKETS,
+] as readonly string[];
+
+export const NON_SEARCHABLE_NODES_MIME_TYPES = [
+  MIME_TYPES.GITHUB.DISCUSSION,
+  MIME_TYPES.GITHUB.ISSUE,
+  MIME_TYPES.INTERCOM.CONVERSATION,
+  MIME_TYPES.SLACK.MESSAGES,
+  MIME_TYPES.SLACK.THREAD,
 ] as readonly string[];
 
 export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
@@ -96,9 +103,9 @@ export function getContentNodeFromCoreNode(
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
     mimeType: coreNode.mime_type,
-    preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
-      coreNode.mime_type
-    ),
+    preventSelection:
+      FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
+      (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
     dataSourceView,
   };

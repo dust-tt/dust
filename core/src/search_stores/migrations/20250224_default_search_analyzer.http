@@ -1,4 +1,4 @@
-PUT core.data_sources_nodes/_mapping
+PUT core.data_sources_nodes_4/_mapping
 {
   "properties": {
     "title": {
@@ -13,20 +13,21 @@ PUT core.data_sources_nodes/_mapping
           "type": "keyword"
         }
       },
-      "tags": {
+      "analyzer": "standard"
+    },
+    "tags": {
+      "type": "text",
+      "fields": {
+        "edge": {
           "type": "text",
-          "fields": {
-            "edge": {
-              "type": "text",
-              "analyzer": "edge_analyzer",
-              "search_analyzer": "standard"
-            },
-            "keyword": {
-              "type": "keyword"
-            }
-          },
-          "analyzer": "standard"
+          "analyzer": "tag_edge_analyzer",
+          "search_analyzer": "standard"
         },
+        "keyword": {
+          "type": "keyword",
+          "normalizer": "tag_normalizer"
+        }
+      },
       "analyzer": "standard"
     }
   }

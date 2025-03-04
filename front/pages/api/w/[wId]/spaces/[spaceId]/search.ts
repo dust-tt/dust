@@ -10,6 +10,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { NON_SEARCHABLE_NODES_MIME_TYPES } from "@app/lib/api/content_nodes";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,6 +114,7 @@ async function handler(
     space,
     dataSourceViews,
     {
+      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
       includeDataSources,
       limit,
       query,

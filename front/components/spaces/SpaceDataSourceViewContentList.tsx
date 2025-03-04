@@ -548,18 +548,16 @@ export const SpaceDataSourceViewContentList = ({
           dataSourceView={dataSourceView}
         />
       )}
-      {isManaged(dataSourceView.dataSource) &&
-        space.kind !== "system" &&
-        !isEmpty && (
-          <EditSpaceManagedDataSourcesViews
-            owner={owner}
-            space={space}
-            systemSpace={systemSpace}
-            isAdmin={isAdmin}
-            dataSourceView={dataSourceView}
-            onSelectedDataUpdated={onSelectedDataUpdated}
-          />
-        )}
+      {isManaged(dataSourceView.dataSource) && space.kind !== "system" && (
+        <EditSpaceManagedDataSourcesViews
+          owner={owner}
+          space={space}
+          systemSpace={systemSpace}
+          isAdmin={isAdmin}
+          dataSourceView={dataSourceView}
+          onSelectedDataUpdated={onSelectedDataUpdated}
+        />
+      )}
       {isManaged(dataSourceView.dataSource) &&
         connector &&
         !parentId &&

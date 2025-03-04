@@ -305,28 +305,14 @@ export async function upsertArticle({
     ? article.url
     : getArticleInAppUrl(article, region);
 
-  const parentCollectionId = article.parent_id?.toString();
   const parentCollectionIds = article.parent_ids.map((id) => id.toString());
-
-  if (!parentCollectionId) {
-    logger.error(
-      {
-        connectorId,
-        helpCenterId,
-        articleId: article.id,
-        loggerArgs,
-      },
-      "[Intercom] Article has no parent. Skipping sync"
-    );
-    return;
-  }
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
       title: article.title,
       url: articleUrl,
       authorId: article.author_id,
-      parentId: parentCollectionId,
+      parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
@@ -339,7 +325,7 @@ export async function upsertArticle({
       url: articleUrl,
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
-      parentId: parentCollectionId,
+      parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
       parents: parentCollectionIds,
       state: article.state === "published" ? "published" : "draft",
@@ -355,7 +341,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article already up to date. Skipping sync."
     );
@@ -367,7 +353,7 @@ export async function upsertArticle({
         connectorId,
         articleId: article.id,
         articleUpdatedAt: articleUpdatedAtDate,
-        dataSourcelastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
+        dataSourceLastUpsertedAt: articleOnDb?.lastUpsertedTs ?? null,
       },
       "[Intercom] Article to sync."
     );
@@ -378,70 +364,72 @@ export async function upsertArticle({
       ? ` - ${parentCollection.description}`
       : "";
 
-  const articleContentInMarkdown =
+  let articleContentInMarkdown =
     typeof article.body === "string"
       ? turndownService.turndown(article.body)
       : "";
 
+  if (!articleContentInMarkdown) {
+    logger.warn(
+      { ...loggerArgs, articleId: article.id },
+      "[Intercom] Article has no content."
+    );
+    // We still sync articles that have no content to have the node appear.
+    articleContentInMarkdown = "Article without content.";
+  }
+
   // append the collection description at the beginning of the article
   const markdown = `CATEGORY: ${categoryContent}\n\n${articleContentInMarkdown}`;
 
-  if (articleContentInMarkdown) {
-    const createdAtDate = new Date(article.created_at * 1000);
-    const updatedAtDate = new Date(article.updated_at * 1000);
+  const createdAtDate = new Date(article.created_at * 1000);
+  const updatedAtDate = new Date(article.updated_at * 1000);
 
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
-    );
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: article.title,
-      content: renderedMarkdown,
-      createdAt: createdAtDate,
-      updatedAt: updatedAtDate,
-    });
+  const renderedMarkdown = await renderMarkdownSection(
+    dataSourceConfig,
+    markdown
+  );
+  const renderedPage = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: article.title,
+    content: renderedMarkdown,
+    createdAt: createdAtDate,
+    updatedAt: updatedAtDate,
+  });
 
-    const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
+  const documentId = getHelpCenterArticleInternalId(connectorId, article.id);
 
-    const parents = await getParentIdsForArticle({
-      documentId,
-      connectorId,
-      parentCollectionId,
-      helpCenterId,
-    });
+  const parents = await getParentIdsForArticle({
+    documentId,
+    connectorId,
+    parentCollectionId: parentCollection.collectionId,
+    helpCenterId,
+  });
 
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent: renderedPage,
-      documentUrl: articleUrl,
-      timestampMs: updatedAtDate.getTime(),
-      tags: [
-        `title:${article.title}`,
-        `createdAt:${createdAtDate.getTime()}`,
-        `updatedAt:${updatedAtDate.getTime()}`,
-      ],
-      parents,
-      parentId: parents[1],
-      loggerArgs: {
-        ...loggerArgs,
-        articleId: article.id,
-      },
-      upsertContext: {
-        sync_type: "batch",
-      },
-      title: article.title,
-      mimeType: MIME_TYPES.INTERCOM.ARTICLE,
-      async: true,
-    });
-    await articleOnDb.update({
-      lastUpsertedTs: new Date(currentSyncMs),
-    });
-  } else {
-    logger.warn(
-      { ...loggerArgs, connectorId, articleId: article.id },
-      "[Intercom] Article has no content. Skipping sync."
-    );
-  }
+  await upsertDataSourceDocument({
+    dataSourceConfig,
+    documentId,
+    documentContent: renderedPage,
+    documentUrl: articleUrl,
+    timestampMs: updatedAtDate.getTime(),
+    tags: [
+      `title:${article.title}`,
+      `createdAt:${createdAtDate.getTime()}`,
+      `updatedAt:${updatedAtDate.getTime()}`,
+    ],
+    parents,
+    parentId: parents[1],
+    loggerArgs: {
+      ...loggerArgs,
+      articleId: article.id,
+    },
+    upsertContext: {
+      sync_type: "batch",
+    },
+    title: article.title,
+    mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+    async: true,
+  });
+  await articleOnDb.update({
+    lastUpsertedTs: new Date(currentSyncMs),
+  });
 }

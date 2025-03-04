@@ -914,7 +914,8 @@ export async function createDataSourceWithoutProvider(
         conversationId: conversation?.id,
       },
       space,
-      auth.user()
+      auth.user(),
+      conversation
     );
 
   try {

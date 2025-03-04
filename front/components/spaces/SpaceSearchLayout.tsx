@@ -28,6 +28,7 @@ import type { SpaceSearchContextType } from "@app/components/spaces/search/Space
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import {
+  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -213,7 +214,7 @@ function BackendSearch({
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
     disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
-    includeDataSources: false,
+    includeDataSources: true,
     owner,
     search: debouncedSearch,
     space,
@@ -465,9 +466,14 @@ function SearchResultsTable({
         ...(node.expandable && {
           onClick: () => {
             if (node.expandable) {
-              void router.push(
-                `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
-              );
+              const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}`;
+              // If the node is a data source, we don't need to pass the parentId.
+              const url =
+                node.mimeType === DATA_SOURCE_MIME_TYPE
+                  ? baseUrl
+                  : `${baseUrl}?parentId=${parentId}`;
+
+              void router.push(url);
             }
           },
         }),

@@ -17,6 +17,7 @@ import {
   safeSubstring,
   sectionFullText,
 } from "@dust-tt/types";
+import { withRetries } from "@dust-tt/types";
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
@@ -29,7 +30,6 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
-import { withRetries } from "@connectors/lib/dust_front_api_helpers";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -91,9 +91,13 @@ export function getDustAPI(dataSourceConfig: DataSourceConfig) {
   );
 }
 
-export const upsertDataSourceDocument = withRetries(_upsertDataSourceDocument, {
-  retries: 3,
-});
+export const upsertDataSourceDocument = withRetries(
+  logger,
+  _upsertDataSourceDocument,
+  {
+    retries: 3,
+  }
+);
 
 async function _upsertDataSourceDocument({
   dataSourceConfig,
@@ -321,6 +325,7 @@ export async function deleteDataSourceDocument(
 }
 
 export const updateDataSourceDocumentParents = withRetries(
+  logger,
   _updateDataSourceDocumentParents,
   { retries: 3 }
 );
@@ -343,6 +348,7 @@ async function _updateDataSourceDocumentParents({
 }
 
 export const updateDataSourceTableParents = withRetries(
+  logger,
   _updateDataSourceTableParents,
   { retries: 3 }
 );
@@ -1123,7 +1129,7 @@ export async function deleteDataSourceTableRow({
   }
 }
 
-export const getDataSourceTable = withRetries(_getDataSourceTable, {
+export const getDataSourceTable = withRetries(logger, _getDataSourceTable, {
   retries: 3,
 });
 
@@ -1259,7 +1265,7 @@ export async function deleteDataSourceTable({
   }
 }
 
-export const getDataSourceFolder = withRetries(_getDataSourceFolder, {
+export const getDataSourceFolder = withRetries(logger, _getDataSourceFolder, {
   retries: 3,
 });
 
@@ -1299,9 +1305,13 @@ export async function _getDataSourceFolder({
   return dustRequestResult.data.folder;
 }
 
-export const upsertDataSourceFolder = withRetries(_upsertDataSourceFolder, {
-  retries: 3,
-});
+export const upsertDataSourceFolder = withRetries(
+  logger,
+  _upsertDataSourceFolder,
+  {
+    retries: 3,
+  }
+);
 
 export async function _upsertDataSourceFolder({
   dataSourceConfig,

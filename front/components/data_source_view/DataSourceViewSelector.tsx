@@ -39,6 +39,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
+  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -64,20 +65,24 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
-    const { nodes, isNodesLoading, isNodesError } = useContentNodes({
+    const {
+      nodes,
+      isNodesLoading,
+      isNodesError,
+      totalNodesCountIsAccurate,
+      totalNodesCount,
+    } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
     });
     return {
-      resources: nodes.map((n) => ({
-        ...n,
-        preventSelection:
-          n.preventSelection || (viewType === "table" && n.type !== "table"),
-      })),
+      resources: nodes,
+      totalResourceCount: totalNodesCount,
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
+      isResourcesTruncated: !totalNodesCountIsAccurate,
     };
   };
 
@@ -136,6 +141,7 @@ export function DataSourceViewsSelector({
   >();
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
@@ -149,13 +155,16 @@ export function DataSourceViewsSelector({
 
   useEffect(() => {
     if (searchFeatureFlag) {
+      setIsDebouncing(true);
       const timeout = setTimeout(() => {
         setDebouncedSearch(
           searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
         );
+        setIsDebouncing(false);
       }, 300);
       return () => {
         clearTimeout(timeout);
+        setIsDebouncing(false);
       };
     }
   }, [searchSpaceText, searchFeatureFlag]);
@@ -232,7 +241,7 @@ export function DataSourceViewsSelector({
       (r) => r.internalId === item.internalId
     );
 
-    if (item.mimeType === "application/vnd.dust.datasource") {
+    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
       return {
         ...prevState,
         [dsv.sId]: {
@@ -281,7 +290,7 @@ export function DataSourceViewsSelector({
               setSearchSpaceText("");
             }
           }}
-          isLoading={isSearchLoading}
+          isLoading={isSearchLoading || isDebouncing}
           items={searchResultNodes}
           onItemSelect={(item) => {
             setSearchResult(item);
