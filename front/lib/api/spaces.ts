@@ -1,6 +1,7 @@
 import type {
   ContentNodesViewType,
   CoreAPIError,
+  CoreAPISearchScope,
   DataSourceViewContentNode,
   DataSourceWithAgentsUsageType,
   Result,
@@ -257,6 +258,33 @@ function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   }
 }
 
+function searchScopeForDsv({
+  dsv,
+  includeDataSources,
+  isSingleDsv,
+}: {
+  dsv: DataSourceViewResource;
+  includeDataSources: boolean;
+  isSingleDsv: boolean;
+}): CoreAPISearchScope {
+  // On a single datasource view, we never want to match the datasource name.
+  if (isSingleDsv) {
+    return "nodes_titles";
+  }
+
+  if (includeDataSources) {
+    // For webcrawler datasources, we want to search the only datasource
+    // title, not the nodes titles.
+    if (dsv.dataSource.connectorProvider === "webcrawler") {
+      return "data_source_name";
+    }
+
+    return "both";
+  }
+
+  return "nodes_titles";
+}
+
 export async function searchContenNodesInSpace(
   auth: Authenticator,
   space: SpaceResource,
@@ -290,15 +318,20 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  const isSingleDsv = dataSourceViews.length === 1;
   const searchRes = await coreAPI.searchNodes({
     query,
     filter: {
       data_source_views: dataSourceViews.map((dsv) => ({
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
+        search_scope: searchScopeForDsv({
+          dsv,
+          includeDataSources,
+          isSingleDsv,
+        }),
       })),
       excluded_node_mime_types: excludedNodeMimeTypes,
-      include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },
     options: {

@@ -249,10 +249,23 @@ export interface CoreAPISearchTagsResponse {
   };
 }
 
-export const CoreAPIDatasourceViewFilterSchema = t.type({
-  data_source_id: t.string,
-  view_filter: t.array(t.string),
-});
+export const CoreAPISearchScopeSchema = t.union([
+  t.literal("nodes_titles"),
+  t.literal("data_source_name"),
+  t.literal("both"),
+]);
+
+export type CoreAPISearchScope = t.TypeOf<typeof CoreAPISearchScopeSchema>;
+
+export const CoreAPIDatasourceViewFilterSchema = t.intersection([
+  t.type({
+    data_source_id: t.string,
+    view_filter: t.array(t.string),
+  }),
+  t.partial({
+    search_scope: CoreAPISearchScopeSchema,
+  }),
+]);
 
 export type CoreAPIDatasourceViewFilter = t.TypeOf<
   typeof CoreAPIDatasourceViewFilterSchema
@@ -267,7 +280,6 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
   }),
   t.partial({
     excluded_node_mime_types: t.union([t.readonlyArray(t.string), t.undefined]),
-    include_data_sources: t.boolean,
     node_ids: t.array(t.string),
     node_types: t.array(t.string),
     parent_id: t.string,
