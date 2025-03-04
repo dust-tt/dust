@@ -419,7 +419,7 @@ export const getCheckoutUrlForUpgrade = async (
     : PRO_PLAN_SEAT_29_CODE;
 
   const proPlan = await Plan.findOne({
-    where: { code: PRO_PLAN_SEAT_29_CODE },
+    where: { code: planCode },
   });
   if (!proPlan) {
     throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
