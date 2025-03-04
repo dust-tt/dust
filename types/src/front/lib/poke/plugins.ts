@@ -61,11 +61,18 @@ export interface PluginManifest<
   warning?: string;
 }
 
-export interface PluginWorkspaceResource {
-  resourceId: string;
+interface PluginResourceScope {
   resourceType: SupportedResourceType;
+}
+
+interface PluginWorkspaceResource extends PluginResourceScope {
+  resourceId: string;
   workspace: LightWorkspaceType;
 }
+
+export type PluginResourceTarget =
+  | PluginResourceScope
+  | PluginWorkspaceResource;
 
 export function createIoTsCodecFromArgs(
   args: PluginArgs

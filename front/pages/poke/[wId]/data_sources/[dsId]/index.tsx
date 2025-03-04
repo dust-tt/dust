@@ -404,7 +404,7 @@ const DataSourcePage = ({
       />
       <div className="mt-4 flex grow flex-col gap-y-4">
         <PluginList
-          workspaceResource={{
+          pluginResourceTarget={{
             resourceId: dataSource.sId,
             resourceType: "data_sources",
             workspace: owner,

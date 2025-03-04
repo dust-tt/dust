@@ -102,7 +102,7 @@ export default function AppPage({
       <ViewAppTable app={app} owner={owner} />
       <div className="mt-4 flex grow flex-col gap-y-4">
         <PluginList
-          workspaceResource={{
+          pluginResourceTarget={{
             resourceId: app.sId,
             resourceType: "apps",
             workspace: owner,

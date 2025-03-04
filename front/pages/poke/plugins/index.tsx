@@ -15,7 +15,11 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
 export default function ListPokePlugins() {
   return (
     <div className="mx-auto h-full flex-grow flex-col items-center justify-center p-8 pt-8">
-      <PluginList />
+      <PluginList
+        pluginResourceTarget={{
+          resourceType: "global",
+        }}
+      />
     </div>
   );
 }

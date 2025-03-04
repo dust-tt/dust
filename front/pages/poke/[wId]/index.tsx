@@ -225,7 +225,7 @@ const WorkspacePage = ({
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
-                  workspaceResource={{
+                  pluginResourceTarget={{
                     resourceId: owner.sId,
                     resourceType: "workspaces",
                     workspace: owner,

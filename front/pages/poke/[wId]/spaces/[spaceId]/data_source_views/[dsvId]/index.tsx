@@ -58,7 +58,7 @@ export default function DataSourceViewPage({
       <ViewDataSourceViewTable dataSourceView={dataSourceView} owner={owner} />
       <div className="mt-4 flex grow flex-col">
         <PluginList
-          workspaceResource={{
+          pluginResourceTarget={{
             resourceId: dataSourceView.sId,
             resourceType: "data_source_views",
             workspace: owner,

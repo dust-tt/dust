@@ -1,8 +1,5 @@
 import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
-import type {
-  PluginWorkspaceResource,
-  SupportedResourceType,
-} from "@dust-tt/types";
+import type { PluginResourceTarget } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
@@ -39,12 +36,12 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
 }
 
 interface PluginListProps {
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }
 
-export function PluginList({ workspaceResource }: PluginListProps) {
+export function PluginList({ pluginResourceTarget }: PluginListProps) {
   const { plugins } = usePokeListPluginForResourceType({
-    workspaceResource,
+    pluginResourceTarget,
   });
   const [selectedPlugin, setSelectedPlugin] = useState<PluginListItem | null>(
     null
@@ -93,7 +90,7 @@ export function PluginList({ workspaceResource }: PluginListProps) {
         <RunPluginDialog
           onClose={handleDialogClose}
           plugin={selectedPlugin}
-          workspaceResource={workspaceResource}
+          pluginResourceTarget={pluginResourceTarget}
         />
       )}
     </div>
