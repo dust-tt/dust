@@ -466,7 +466,7 @@ function SearchResultsTable({
         ...(node.expandable && {
           onClick: () => {
             if (node.expandable) {
-              const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}`;
+              const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category ?? node.dataSourceView.category}/data_source_views/${dataSourceView.sId}`;
               // If the node is a data source, we don't need to pass the parentId.
               const url =
                 node.mimeType === DATA_SOURCE_MIME_TYPE

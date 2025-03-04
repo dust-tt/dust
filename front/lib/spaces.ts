@@ -7,7 +7,12 @@ import {
   PlanetIcon,
   ServerIcon,
 } from "@dust-tt/sparkle";
-import type { PlanType, SpaceType, WorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewCategory,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import { groupBy } from "lodash";
 import type React from "react";
@@ -90,7 +95,7 @@ export const isPrivateSpacesLimitReached = (
     plan.limits.vaults.maxVaults;
 
 export const CATEGORY_DETAILS: {
-  [key: string]: {
+  [key in DataSourceViewCategory]: {
     label: string;
     icon: React.ComponentType<{
       className?: string;
