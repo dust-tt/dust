@@ -1,4 +1,10 @@
-import { Button, Checkbox, CollapsibleComponent, Input, Label } from "@dust-tt/sparkle";
+import {
+  Button,
+  Checkbox,
+  CollapsibleComponent,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
   BlockType,
@@ -45,7 +51,8 @@ export default function Browser({
   onBlockDelete: () => void;
   onBlockUp: () => void;
   onBlockDown: () => void;
-  onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;g
+  onBlockNew: (blockType: BlockType | "map_reduce" | "while_end") => void;
+  g;
 }>) {
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
     owner,
