@@ -52,6 +52,18 @@ pub enum TagsQueryType {
     Match,
 }
 
+// For each data source view, the scope of search can be:
+// - DataSourceName: only check if the datasource name matches the query;
+// - NodesTitles: check if any of the datasource's nodes titles match the query;
+// - Both: check if either the datasource name or any of its nodes titles match the query;
+#[derive(serde::Deserialize, Clone, Copy, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum SearchScopeType {
+    DataSourceName,
+    NodesTitles,
+    Both,
+}
+
 #[derive(serde::Deserialize, Debug)]
 pub struct SortSpec {
     pub field: String,
@@ -73,13 +85,18 @@ pub struct NodesSearchOptions {
 pub struct DatasourceViewFilter {
     data_source_id: String,
     view_filter: Vec<String>,
+    #[serde(default = "default_search_scope")]
+    search_scope: SearchScopeType,
+}
+
+fn default_search_scope() -> SearchScopeType {
+    SearchScopeType::NodesTitles
 }
 
 #[derive(serde::Deserialize, Debug)]
 pub struct NodesSearchFilter {
     data_source_views: Vec<DatasourceViewFilter>,
     excluded_node_mime_types: Option<Vec<String>>,
-    include_data_sources: Option<bool>,
     node_ids: Option<Vec<String>>,
     node_types: Option<Vec<NodeType>>,
     parent_id: Option<String>,
@@ -635,20 +652,19 @@ impl ElasticsearchSearchStore {
         // Add the outer bool query with should clause.
         counter.add(1);
 
-        // Starts with a data sources query if requested.
-        if filter.include_data_sources.unwrap_or(false) {
-            // Check if we have enough clauses for at least a basic data sources query.
-            if !counter.is_full() {
-                let data_sources_query = Query::bool()
-                    .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
-                    .filter(self.build_data_sources_content_query(
-                        &query,
-                        &filter,
-                        &mut counter,
-                    )?);
+        // Queries on DATA_SOURCE_INDEX_NAME are prioritized over queries on
+        // DATA_SOURCE_NODE_INDEX_NAME, if we run out of clauses.
+        if filter.data_source_views.iter().any(|f| {
+            matches!(
+                f.search_scope,
+                SearchScopeType::DataSourceName | SearchScopeType::Both
+            )
+        }) {
+            let data_sources_query = Query::bool()
+                .filter(Query::term("_index", DATA_SOURCE_INDEX_NAME))
+                .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
-                should_queries.push(data_sources_query);
-            }
+            should_queries.push(data_sources_query);
         }
 
         // Build nodes query only if we have clauses left.
@@ -670,10 +686,29 @@ impl ElasticsearchSearchStore {
         Ok((bool_query, warning_code))
     }
 
+    /// On the data source index, we only want to add a clause if the search scope is
+    /// DataSourceName or Both. On the data source node index, we only want to add a clause
+    /// if the search scope is NodesTitles or Both.
+    fn should_add_data_source_clause(
+        &self,
+        filter: &DatasourceViewFilter,
+        index_name: &str,
+    ) -> bool {
+        match (filter.search_scope, index_name) {
+            (SearchScopeType::DataSourceName | SearchScopeType::Both, DATA_SOURCE_INDEX_NAME) => {
+                true
+            }
+            (SearchScopeType::NodesTitles | SearchScopeType::Both, DATA_SOURCE_NODE_INDEX_NAME) => {
+                true
+            }
+            _ => false,
+        }
+    }
+
     fn build_shared_permission_filter(
         &self,
         filter: &NodesSearchFilter,
-        index_supports_parents: bool,
+        index_name: &str,
         counter: &mut QueryClauseCounter,
     ) -> BoolQuery {
         let filter_conditions: Vec<Query> = filter
@@ -681,9 +716,9 @@ impl ElasticsearchSearchStore {
             .clone()
             .into_iter()
             .filter_map(|f| {
-                if counter.is_full() {
-                    // Skip adding this data source view to the filter when we've reached the clause limit.
-                    // This effectively truncates the query without adding any new clauses.
+                // Skip adding this data source view to the filter when we've reached the clause limit.
+                // This effectively truncates the query without adding any new clauses.
+                if counter.is_full() || !self.should_add_data_source_clause(&f, index_name) {
                     return None;
                 }
 
@@ -692,7 +727,7 @@ impl ElasticsearchSearchStore {
                     Query::bool().filter(Query::term("data_source_id", f.data_source_id));
 
                 // Only add parents filter if the index supports it.
-                if index_supports_parents && !f.view_filter.is_empty() {
+                if index_name == DATA_SOURCE_NODE_INDEX_NAME && !f.view_filter.is_empty() {
                     counter.add(1);
                     bool_query = bool_query.filter(Query::terms("parents", f.view_filter));
                 }
@@ -743,7 +778,7 @@ impl ElasticsearchSearchStore {
     ) -> Result<BoolQuery> {
         let mut bool_query = Query::bool()
             // Data sources don't support parents.
-            .filter(self.build_shared_permission_filter(filter, false, counter));
+            .filter(self.build_shared_permission_filter(filter, DATA_SOURCE_INDEX_NAME, counter));
 
         // Add search term if present.
         if let Some(query_string) = query {
@@ -762,8 +797,11 @@ impl ElasticsearchSearchStore {
         filter: &NodesSearchFilter,
         counter: &mut QueryClauseCounter,
     ) -> Result<BoolQuery> {
-        let mut bool_query =
-            Query::bool().filter(self.build_shared_permission_filter(filter, true, counter));
+        let mut bool_query = Query::bool().filter(self.build_shared_permission_filter(
+            filter,
+            DATA_SOURCE_NODE_INDEX_NAME,
+            counter,
+        ));
 
         if let Some(node_ids) = &filter.node_ids {
             counter.add(1);

@@ -15,9 +15,20 @@ import type { Fetcher, KeyedMutator } from "swr";
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
-import { fetcher, fetcherWithBody, getErrorFromResponse, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetSpacesResponseBody, PostSpacesResponseBody } from "@app/pages/api/w/[wId]/spaces";
-import type { GetSpaceResponseBody, PatchSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import {
+  fetcher,
+  fetcherWithBody,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
+import type {
+  GetSpacesResponseBody,
+  PostSpacesResponseBody,
+} from "@app/pages/api/w/[wId]/spaces";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
