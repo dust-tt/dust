@@ -71,6 +71,7 @@ const getUseResourceHook =
       isNodesError,
       totalNodesCountIsAccurate,
       totalNodesCount,
+      loadNextPage,
     } = useContentNodes({
       owner,
       dataSourceView,
@@ -83,6 +84,7 @@ const getUseResourceHook =
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
       isResourcesTruncated: !totalNodesCountIsAccurate,
+      loadNextPage,
     };
   };
 
