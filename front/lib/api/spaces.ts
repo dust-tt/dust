@@ -262,11 +262,13 @@ export async function searchContenNodesInSpace(
   space: SpaceResource,
   dataSourceViews: DataSourceViewResource[],
   {
+    excludedNodeMimeTypes,
     includeDataSources,
     limit,
     query,
     viewType,
   }: {
+    excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
     limit: number;
     query: string;
@@ -295,6 +297,7 @@ export async function searchContenNodesInSpace(
         data_source_id: dsv.dataSource.dustAPIDataSourceId,
         view_filter: dsv.parentsIn ?? [],
       })),
+      excluded_node_mime_types: excludedNodeMimeTypes,
       include_data_sources: includeDataSources,
       node_types: getCoreViewTypeFilter(viewType),
     },

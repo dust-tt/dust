@@ -266,11 +266,12 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
     data_source_views: t.array(CoreAPIDatasourceViewFilterSchema),
   }),
   t.partial({
-    node_ids: t.array(t.string),
-    parent_id: t.string,
-    node_types: t.array(t.string),
-    query: t.string,
+    excluded_node_mime_types: t.union([t.readonlyArray(t.string), t.undefined]),
     include_data_sources: t.boolean,
+    node_ids: t.array(t.string),
+    node_types: t.array(t.string),
+    parent_id: t.string,
+    query: t.string,
   }),
 ]);
 
