@@ -1,11 +1,4 @@
-import {
-  cn,
-  MenuItem,
-  ScrollableDataTable,
-  SearchInput,
-  useHashParam,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { cn, MenuItem, ScrollableDataTable, SearchInput, useHashParam, useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   ContentNodesViewType,
@@ -162,7 +155,7 @@ interface FullBackendSearchProps extends BackendSearchProps {
   space: SpaceType;
 }
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 25;
 
 function BackendSearch({
   canReadInSpace,
@@ -327,6 +320,10 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
+          <div className="flex flex-col w-full gap-2">
+            <div className="text-muted-foreground text-sm text-end">
+              Showing {searchResults.length} of {totalNodesCount} results
+            </div>
           <SearchResultsTable
             searchResultNodes={searchResults}
             category={category}
@@ -338,6 +335,7 @@ function BackendSearch({
             onLoadMore={handleLoadMore}
             isLoading={isSearchLoading}
           />
+            </div>
         ) : (
           children
         )}
@@ -563,7 +561,8 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
-      maxHeight="h-[500px]"
+      // TODO(20250304 jules): take full page height instead
+      maxHeight="h-[800px]"
       onLoadMore={onLoadMore}
       isLoading={isLoading}
     />
