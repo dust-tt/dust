@@ -66,7 +66,7 @@ export interface CollapsibleTriggerProps
   extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
   label?: string;
-  defaultOpen?: boolean;
+  isOpen?: boolean;
 }
 
 const CollapsibleTrigger = React.forwardRef<
@@ -79,14 +79,12 @@ const CollapsibleTrigger = React.forwardRef<
       children,
       className,
       disabled = false,
-      defaultOpen = false,
+      isOpen = false,
       variant = "primary",
       ...props
     },
     ref
   ) => {
-    const [isOpen, setIsOpen] = React.useState(defaultOpen);
-
     return (
       <CollapsiblePrimitive.Trigger
         ref={ref}
@@ -96,7 +94,6 @@ const CollapsibleTrigger = React.forwardRef<
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}
-        onClick={() => setIsOpen((prev) => !prev)}
         {...props}
       >
         <span
@@ -178,7 +175,7 @@ const CollapsibleComponent = React.forwardRef<
         open={open}
         onOpenChange={(open) => setOpen(open)}
       >
-        <CollapsibleTrigger {...triggerProps} defaultOpen={open}>
+        <CollapsibleTrigger {...triggerProps} isOpen={open}>
           {triggerChildren}
         </CollapsibleTrigger>
         <CollapsibleContent {...contentProps}>
