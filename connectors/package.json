@@ -1,5 +1,8 @@
 {
   "name": "connectors",
+  "overrides": {
+    "@octokit/request": "8.1.6"
+  },
   "version": "0.1.0",
   "scripts": {
     "format": "prettier --write .",
