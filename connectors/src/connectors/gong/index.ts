@@ -1,6 +1,10 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/types";
 
+import {
+  launchGongSyncWorkflow,
+  stopGongSyncWorkflow,
+} from "@connectors/connectors/gong/temporal/client";
 import type {
   ConnectorManagerError,
   CreateConnectorErrorCode,
@@ -31,6 +35,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
+    const result = await launchGongSyncWorkflow(connector.id);
+    if (result.isErr()) {
+      logger.error(
+        { connectorId: connector.id, error: result.error },
+        "[Gong] Error launching Gong sync workflow"
+      );
+      throw result.error;
+    }
+
     return new Ok(connector.id.toString());
   }
 
@@ -41,15 +54,45 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "Gong connector not found.");
+      return new Err(new Error("Connector not found"));
+    }
+
+    // TODO(2025-03-04) - Implement the delete in the strategy.
+    const res = await connector.delete();
+    if (res.isErr()) {
+      logger.error(
+        { connectorId, error: res.error },
+        "Error cleaning up Gong connector."
+      );
+      return res;
+    }
+
+    return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const result = await stopGongSyncWorkflow(this.connectorId);
+    if (result.isErr()) {
+      return result;
+    }
+    return new Ok(undefined);
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    throw new Error("Method not implemented.");
+    const result = await launchGongSyncWorkflow(this.connectorId);
+    if (result.isErr()) {
+      logger.error(
+        { connectorId: this.connectorId, error: result.error },
+        "[Gong] Error launching Gong sync workflow"
+      );
+      throw result.error;
+    }
+
+    return new Ok(undefined);
   }
 
   async sync({
@@ -57,7 +100,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    const result = await launchGongSyncWorkflow(this.connectorId);
+    if (result.isErr()) {
+      logger.error(
+        { connectorId: this.connectorId, error: result.error },
+        "[Gong] Error launching Gong sync workflow"
+      );
+      throw result.error;
+    }
+    return new Ok(this.connectorId.toString());
   }
 
   async retrievePermissions(): Promise<
