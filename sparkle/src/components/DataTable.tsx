@@ -464,7 +464,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   id={row.id}
                   widthClassName={widthClassName}
                   onClick={row.original.onClick}
-                  className="s-absolute s-h-full s-w-full"
+                  className="s-absolute s-w-full"
                   style={{
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
