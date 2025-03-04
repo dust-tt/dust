@@ -15,20 +15,9 @@ import type { Fetcher, KeyedMutator } from "swr";
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
-import {
-  fetcher,
-  fetcherWithBody,
-  getErrorFromResponse,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
-import type {
-  GetSpacesResponseBody,
-  PostSpacesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces";
-import type {
-  GetSpaceResponseBody,
-  PatchSpaceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import { fetcher, fetcherWithBody, getErrorFromResponse, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetSpacesResponseBody, PostSpacesResponseBody } from "@app/pages/api/w/[wId]/spaces";
+import type { GetSpaceResponseBody, PatchSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
@@ -605,7 +594,6 @@ export function useSpaceSearch({
   dataSourceViews,
   disabled = false,
   includeDataSources = false,
-  limit = DEFAULT_SEARCH_LIMIT,
   owner,
   search,
   space,
@@ -615,7 +603,6 @@ export function useSpaceSearch({
   dataSourceViews: DataSourceViewType[];
   disabled?: boolean;
   includeDataSources: boolean;
-  limit?: number;
   owner: LightWorkspaceType;
   search: string;
   space: SpaceType;
@@ -643,7 +630,7 @@ export function useSpaceSearch({
   const body: PostSpaceSearchRequestBody = {
     dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     includeDataSources,
-    limit: pagination?.limit ?? limit,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     query: search,
     viewType,
   };
