@@ -29,3 +29,34 @@ GongConfigurationModel.init(
     relationship: "hasOne",
   }
 );
+
+export class GongTimestampCursorModel extends ConnectorBaseModel<GongTimestampCursorModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare timestampCursor: Date;
+}
+
+GongTimestampCursorModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    timestampCursor: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "gong_timestamp_cursors",
+    indexes: [{ fields: ["connectorId"], unique: true }],
+  }
+);
