@@ -15,7 +15,6 @@ import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
-import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 const [first, second, ...rest] = supportedResourceTypes;
@@ -120,21 +119,11 @@ async function handler(
         });
       }
 
-      // Consider saving plugin run in DB.
-      logger.info(
-        {
-          pluginId,
-          author: auth.getNonNullableUser().email,
-          args: pluginArgsValidation.right,
-        },
-        "Running Poke plugin."
-      );
-
       const pluginRun = await PluginRunResource.makeNew(
         plugin,
         pluginArgsValidation.right,
         auth.getNonNullableUser(),
-        workspaceId ? await auth.getNonNullableWorkspace() : null
+        workspaceId ? auth.getNonNullableWorkspace() : null
       );
 
       const runRes = await plugin.execute(

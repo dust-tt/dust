@@ -1,4 +1,8 @@
-import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
+import type {
+  PluginWorkspaceResource,
+  Result,
+  SupportedResourceType,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -83,12 +87,16 @@ export function usePokePluginManifest({
 
 export function useRunPokePlugin({
   pluginId,
+  resourceType,
   workspaceResource,
 }: {
   pluginId: string;
+  resourceType: SupportedResourceType;
   workspaceResource?: PluginWorkspaceResource;
 }) {
   const urlSearchParams = new URLSearchParams({});
+
+  urlSearchParams.append("resourceType", resourceType);
 
   if (workspaceResource) {
     urlSearchParams.append("resourceId", workspaceResource.resourceId);

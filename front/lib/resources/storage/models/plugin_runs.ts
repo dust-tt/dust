@@ -5,6 +5,8 @@ import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
+export const POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH = 4096;
+
 export class PluginRunModel extends WorkspaceAwareModel<PluginRunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -44,7 +46,7 @@ PluginRunModel.init(
       allowNull: false,
     },
     result: {
-      type: DataTypes.STRING,
+      type: new DataTypes.STRING(POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH),
       allowNull: true,
     },
     status: {
@@ -52,7 +54,7 @@ PluginRunModel.init(
       allowNull: false,
     },
     error: {
-      type: DataTypes.STRING,
+      type: new DataTypes.STRING(POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH),
       allowNull: true,
     },
   },

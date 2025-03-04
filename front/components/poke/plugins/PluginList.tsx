@@ -93,9 +93,10 @@ export function PluginList({
       </ScrollArea>
       {selectedPlugin && (
         <RunPluginDialog
-          plugin={selectedPlugin}
-          workspaceResource={workspaceResource}
           onClose={handleDialogClose}
+          plugin={selectedPlugin}
+          resourceType={resourceType}
+          workspaceResource={workspaceResource}
         />
       )}
     </div>

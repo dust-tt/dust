@@ -13,7 +13,10 @@ import type {
 } from "@app/lib/api/poke/types";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
+import {
+  PluginRunModel,
+  POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH,
+} from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 function redactPluginArgs(
@@ -21,6 +24,7 @@ function redactPluginArgs(
   args: InferPluginArgs<PluginArgs>
 ) {
   const sanitizedArgs: Record<string, unknown> = {};
+
   for (const [key, arg] of Object.entries(plugin.manifest.args)) {
     if (arg.redact) {
       sanitizedArgs[key] = "REDACTED";
@@ -30,6 +34,18 @@ function redactPluginArgs(
   }
 
   return sanitizedArgs;
+}
+
+function trimPluginRunResultOrError(result: PluginResponse | string) {
+  let stringResult: string;
+  if (typeof result === "string") {
+    stringResult = result;
+  } else {
+    stringResult = JSON.stringify(result.value);
+  }
+
+  // Trim to max size of the field in the DB.
+  return stringResult.slice(0, POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -69,7 +85,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     await this.model.update(
       {
         status: "error",
-        error,
+        error: trimPluginRunResultOrError(error),
       },
       {
         where: {
@@ -83,7 +99,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     await this.model.update(
       {
         status: "success",
-        result: JSON.stringify(result),
+        result: trimPluginRunResultOrError(result),
       },
       {
         where: {
@@ -110,27 +126,4 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       return new Err(err as Error);
     }
   }
-
-  // toJSON(): KeyType {
-  //   // We only display the full secret key for the first 10 minutes after creation.
-  //   const currentTime = new Date();
-  //   const createdAt = new Date(this.createdAt);
-  //   const timeDifference = Math.abs(
-  //     currentTime.getTime() - createdAt.getTime()
-  //   );
-  //   const differenceInMinutes = Math.ceil(timeDifference / (1000 * 60));
-  //   const secret =
-  //     differenceInMinutes > 10 ? redactString(this.secret, 4) : this.secret;
-
-  //   return {
-  //     id: this.id,
-  //     createdAt: this.createdAt.getTime(),
-  //     lastUsedAt: this.lastUsedAt?.getTime() ?? null,
-  //     creator: formatUserFullName(this.user),
-  //     name: this.name,
-  //     secret,
-  //     status: this.status,
-  //     groupId: this.groupId,
-  //   };
-  // }
 }

@@ -2,6 +2,7 @@ import type { SupportedResourceType } from "@dust-tt/types";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -29,7 +30,7 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       result = await AppResource.fetchById(auth, resourceId);
       break;
     case "workspaces":
-      result = auth.getNonNullableWorkspace();
+      result = await getWorkspaceInfos(resourceId);
       break;
     case "data_sources":
       result = await DataSourceResource.fetchById(auth, resourceId);

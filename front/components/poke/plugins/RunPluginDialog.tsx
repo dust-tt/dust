@@ -7,7 +7,10 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { PluginWorkspaceResource } from "@dust-tt/types";
+import type {
+  PluginWorkspaceResource,
+  SupportedResourceType,
+} from "@dust-tt/types";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -23,12 +26,14 @@ import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
 type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
+  resourceType: SupportedResourceType;
   workspaceResource?: PluginWorkspaceResource;
 };
 
 export function RunPluginDialog({
   onClose,
   plugin,
+  resourceType,
   workspaceResource,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,7 @@ export function RunPluginDialog({
 
   const { doRunPlugin } = useRunPokePlugin({
     pluginId: plugin.id,
+    resourceType,
     workspaceResource,
   });
 
