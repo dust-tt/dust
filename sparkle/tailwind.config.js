@@ -347,11 +347,11 @@ module.exports = {
           DEFAULT: colors.gray[100],
           night: colors.gray[900],
           dark: {
-            DEFAULT: colors.gray[200],
+            DEFAULT: colors.gray[150],
             night: colors.gray[700],
           },
           darker: {
-            DEFAULT: colors.gray[400],
+            DEFAULT: colors.gray[200],
             night: colors.gray[600],
           },
           focus: {
@@ -363,7 +363,7 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        separator: { DEFAULT: colors.gray[150], night: colors.gray[700] },
+        separator: { DEFAULT: colors.gray[100], night: colors.gray[700] },
         ring: {
           DEFAULT: colors.blue[200],
           night: colors.gray[700],
@@ -383,14 +383,14 @@ module.exports = {
           },
         },
         muted: {
-          DEFAULT: colors.gray[150],
+          DEFAULT: colors.gray[50],
           night: colors.gray[900],
           foreground: {
             DEFAULT: colors.gray[500],
             night: colors.gray[400],
           },
           background: {
-            DEFAULT: colors.gray[150],
+            DEFAULT: colors.gray[50],
             night: colors.gray[900],
           },
         },
