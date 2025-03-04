@@ -155,7 +155,7 @@ const CollapsibleContent = React.forwardRef<
 CollapsibleContent.displayName = "CollapsibleContent";
 
 export interface CollapsibleComponentProps {
-  rootProps?: Omit<CollapsibleProps, "children">;
+  rootProps?: Omit<CollapsibleProps, "children" | "open">;
   triggerProps?: Omit<CollapsibleTriggerProps, "children" | "defaultOpen">;
   triggerChildren?: React.ReactNode;
   contentProps?: Omit<CollapsibleContentProps, "children">;
@@ -170,12 +170,15 @@ const CollapsibleComponent = React.forwardRef<
     { rootProps, triggerProps, triggerChildren, contentProps, contentChildren },
     ref
   ) => {
+    const [open, setOpen] = React.useState(!!rootProps?.defaultOpen);
     return (
-      <Collapsible ref={ref} {...rootProps}>
-        <CollapsibleTrigger
-          {...triggerProps}
-          defaultOpen={rootProps?.defaultOpen ?? false}
-        >
+      <Collapsible
+        ref={ref}
+        {...rootProps}
+        open={open}
+        onOpenChange={(open) => setOpen(open)}
+      >
+        <CollapsibleTrigger {...triggerProps} defaultOpen={open}>
           {triggerChildren}
         </CollapsibleTrigger>
         <CollapsibleContent {...contentProps}>
