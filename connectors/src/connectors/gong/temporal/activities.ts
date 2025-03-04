@@ -71,7 +71,7 @@ export async function gongSaveTimestampCursorActivity(
 ) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error("[Zendesk] Connector not found.");
+    throw new Error("[Gong] Connector not found.");
   }
 
   // Initializing the timestamp cursor if it does not exist (initial sync), updating it otherwise.
