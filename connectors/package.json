@@ -1,5 +1,8 @@
 {
   "name": "connectors",
+  "overrides": {
+    "@octokit/plugin-paginate-rest": "11.4.4-cjs.2"
+  },
   "version": "0.1.0",
   "scripts": {
     "format": "prettier --write .",
