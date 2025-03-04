@@ -136,7 +136,8 @@ export async function getContentNodesForDataSourceView(
         parent_id,
       },
       options: {
-        // We limit the results to the remaining number of nodes we need to make sure we get a correct nextPageCursor.
+        // We limit the results to the remaining number of nodes
+        // we still need to make sure we get a correct nextPageCursor at the end of this loop.
         limit: limit - resultNodes.length,
         cursor: nextPageCursor ?? undefined,
       },
