@@ -34,7 +34,6 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -77,14 +76,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   >(props.dataSourceView ? [props.dataSourceView] : []);
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
-
-  const { owner } = props;
-
-  // Get feature flags.
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasSearchKnowledgeBuilderFF = featureFlags.includes(
-    "search_knowledge_builder"
-  );
 
   const router = useRouter();
 
@@ -131,7 +122,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
         targetDataSourceViews={targetDataSourceViews}
         searchContextValue={searchContextValue}
         viewType={viewType}
-        hasSearchKnowledgeBuilderFF={hasSearchKnowledgeBuilderFF}
       />
     );
   } else {
@@ -151,8 +141,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 }
 
 interface FullBackendSearchProps extends BackendSearchProps {
-  // TODO(20250228, search-kb): remove this once released.
-  hasSearchKnowledgeBuilderFF: boolean;
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
   searchTerm: string;
@@ -167,7 +155,6 @@ function BackendSearch({
   canWriteInSpace,
   category,
   children,
-  hasSearchKnowledgeBuilderFF,
   isSearchDisabled,
   owner,
   searchContextValue,
@@ -183,8 +170,7 @@ function BackendSearch({
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
 
   // Determine whether to show search results or children.
-  const shouldShowSearchResults =
-    hasSearchKnowledgeBuilderFF && debouncedSearch.length > 0;
+  const shouldShowSearchResults = debouncedSearch.length > 0;
 
   // Transition state.
   const [isChanging, setIsChanging] = React.useState(false);
@@ -193,17 +179,15 @@ function BackendSearch({
   // Debounce search term for backend search.
   React.useEffect(() => {
     const timeout = setTimeout(() => {
-      if (hasSearchKnowledgeBuilderFF) {
-        setDebouncedSearch(
-          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
-        );
-      }
+      setDebouncedSearch(
+        searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
+      );
     }, 300);
 
     return () => {
       clearTimeout(timeout);
     };
-  }, [searchTerm, hasSearchKnowledgeBuilderFF]);
+  }, [searchTerm]);
 
   // Use the space search hook for backend search.
   const {
@@ -213,7 +197,7 @@ function BackendSearch({
     total: totalNodesCount,
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
-    disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
+    disabled: !debouncedSearch,
     includeDataSources: true,
     owner,
     search: debouncedSearch,

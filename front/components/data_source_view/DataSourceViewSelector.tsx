@@ -52,7 +52,6 @@ import {
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const MIN_SEARCH_QUERY_SIZE = 3;
@@ -132,10 +131,6 @@ export function DataSourceViewsSelector({
   isRootSelectable,
   space,
 }: DataSourceViewsSelectorProps) {
-  // TODO(20250221, search-kb): remove this once the feature flag is enabled by default
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
-
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
   >();
@@ -145,7 +140,6 @@ export function DataSourceViewsSelector({
 
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
-    disabled: !searchFeatureFlag,
     includeDataSources: true,
     owner,
     search: debouncedSearch,
@@ -154,20 +148,18 @@ export function DataSourceViewsSelector({
   });
 
   useEffect(() => {
-    if (searchFeatureFlag) {
-      setIsDebouncing(true);
-      const timeout = setTimeout(() => {
-        setDebouncedSearch(
-          searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
-        );
-        setIsDebouncing(false);
-      }, 300);
-      return () => {
-        clearTimeout(timeout);
-        setIsDebouncing(false);
-      };
-    }
-  }, [searchSpaceText, searchFeatureFlag]);
+    setIsDebouncing(true);
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(
+        searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
+      );
+      setIsDebouncing(false);
+    }, 300);
+    return () => {
+      clearTimeout(timeout);
+      setIsDebouncing(false);
+    };
+  }, [searchSpaceText]);
 
   useEffect(() => {
     if (searchResult) {
@@ -279,59 +271,55 @@ export function DataSourceViewsSelector({
 
   return (
     <div>
-      {searchFeatureFlag && (
-        <SearchInputWithPopover
-          value={searchSpaceText}
-          onChange={setSearchSpaceText}
-          name="search-dsv"
-          open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSearchSpaceText("");
-            }
-          }}
-          isLoading={isSearchLoading || isDebouncing}
-          items={searchResultNodes}
-          onItemSelect={(item) => {
-            setSearchResult(item);
+      <SearchInputWithPopover
+        value={searchSpaceText}
+        onChange={setSearchSpaceText}
+        name="search-dsv"
+        open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
+        onOpenChange={(open) => {
+          if (!open) {
             setSearchSpaceText("");
-            setSelectionConfigurations((prevState) =>
-              updateSelection(item, prevState)
-            );
-          }}
-          contentMessage={contentMessage}
-          renderItem={(item, selected) => {
-            return (
-              <div
-                className={cn(
-                  "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                  selected && "bg-structure-50 dark:bg-structure-50-night"
-                )}
-                onClick={() => {
-                  setSearchResult(item);
-                  setSearchSpaceText("");
-                  setSelectionConfigurations((prevState) =>
-                    updateSelection(item, prevState)
-                  );
-                }}
-              >
-                {getVisualForDataSourceViewContentNode(item)({
-                  className: "min-w-4",
-                })}
-                <span className="flex-shrink truncate text-sm">
-                  {item.title}
-                </span>
-                {item.parentTitle && (
-                  <div className="ml-auto flex-none text-sm text-slate-500">
-                    {getLocationForDataSourceViewContentNode(item)}
-                  </div>
-                )}
-              </div>
-            );
-          }}
-          noResults="No results found"
-        />
-      )}
+          }
+        }}
+        isLoading={isSearchLoading || isDebouncing}
+        items={searchResultNodes}
+        onItemSelect={(item) => {
+          setSearchResult(item);
+          setSearchSpaceText("");
+          setSelectionConfigurations((prevState) =>
+            updateSelection(item, prevState)
+          );
+        }}
+        contentMessage={contentMessage}
+        renderItem={(item, selected) => {
+          return (
+            <div
+              className={cn(
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                selected && "bg-structure-50 dark:bg-structure-50-night"
+              )}
+              onClick={() => {
+                setSearchResult(item);
+                setSearchSpaceText("");
+                setSelectionConfigurations((prevState) =>
+                  updateSelection(item, prevState)
+                );
+              }}
+            >
+              {getVisualForDataSourceViewContentNode(item)({
+                className: "min-w-4",
+              })}
+              <span className="flex-shrink truncate text-sm">{item.title}</span>
+              {item.parentTitle && (
+                <div className="ml-auto flex-none text-sm text-slate-500">
+                  {getLocationForDataSourceViewContentNode(item)}
+                </div>
+              )}
+            </div>
+          );
+        }}
+        noResults="No results found"
+      />
       <Tree
         isLoading={false}
         key={`dataSourceViewsSelector-${searchResult ? searchResult.internalId : ""}`}
