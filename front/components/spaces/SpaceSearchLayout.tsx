@@ -163,7 +163,7 @@ interface FullBackendSearchProps extends BackendSearchProps {
   space: SpaceType;
 }
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 15;
 
 function BackendSearch({
   canReadInSpace,
@@ -184,7 +184,6 @@ function BackendSearch({
 }: FullBackendSearchProps) {
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
-  const [currentCursor, setCurrentCursor] = React.useState<string | null>(null);
   const [searchResults, setSearchResults] = React.useState<
     DataSourceViewContentNode[]
   >([]);
@@ -197,27 +196,36 @@ function BackendSearch({
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
 
-  // Debounce search term for backend search.
-  React.useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (hasSearchKnowledgeBuilderFF) {
-        setDebouncedSearch(
-          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
-        );
-      }
-    }, 300);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [searchTerm, hasSearchKnowledgeBuilderFF]);
-
   const {
     cursorPagination,
     resetPagination,
     handlePaginationChange,
     tablePagination,
   } = useCursorPaginationForDataTable(PAGE_SIZE);
+
+  // Debounce search term for backend search.
+  React.useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (hasSearchKnowledgeBuilderFF) {
+        const newSearchTerm =
+          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : "";
+        if (newSearchTerm !== debouncedSearch) {
+          // Reset pagination when search term changes
+          resetPagination();
+          setDebouncedSearch(newSearchTerm);
+        }
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [
+    searchTerm,
+    hasSearchKnowledgeBuilderFF,
+    debouncedSearch,
+    resetPagination,
+  ]);
 
   // Use the space search hook for backend search.
   const {
@@ -237,23 +245,33 @@ function BackendSearch({
     viewType,
   });
 
+  React.useEffect(() => {
+    if (tablePagination.pageIndex === 0) {
+      // Replace results on new search (first page)
+      setSearchResults(searchResultNodes);
+    } else if (searchResultNodes.length > 0) {
+      // Append results for subsequent pages
+      setSearchResults((prev) => [...prev, ...searchResultNodes]);
+    }
+  }, [searchResultNodes, tablePagination.pageIndex]);
+
   const handleLoadMore = React.useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
-      setCurrentCursor(nextPageCursor);
+      handlePaginationChange(
+        {
+          pageIndex: tablePagination.pageIndex + 1,
+          pageSize: PAGE_SIZE,
+        },
+        nextPageCursor
+      );
     }
-  }, [nextPageCursor, isSearchValidating]);
-
-  React.useEffect(() => {
-    if (searchResultNodes.length > 0) {
-      if (currentCursor) {
-        // Append new results
-        setSearchResults((prev) => [...prev, ...searchResultNodes]);
-      } else {
-        // Replace results on new search
-        setSearchResults(searchResultNodes);
-      }
-    }
-  }, [searchResultNodes, currentCursor]);
+  }, [
+    nextPageCursor,
+    isSearchValidating,
+    handlePaginationChange,
+    tablePagination.pageIndex,
+    PAGE_SIZE,
+  ]);
 
   // Handle transition when search state changes.
   React.useEffect(() => {
@@ -318,7 +336,7 @@ function BackendSearch({
               </div>
             ) : searchResultNodes.length > 0 ? (
               <SearchResultsTable
-                searchResultNodes={searchResultNodes}
+                searchResultNodes={searchResults}
                 category={category}
                 isSearchValidating={isSearchValidating}
                 owner={owner}
@@ -326,6 +344,7 @@ function BackendSearch({
                 canReadInSpace={canReadInSpace}
                 canWriteInSpace={canWriteInSpace}
                 onLoadMore={handleLoadMore}
+                isLoading={isSearchLoading}
               />
             ) : (
               <div className="py-4 text-muted-foreground">
@@ -406,6 +425,7 @@ interface SearchResultsTableProps {
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
   onLoadMore: () => void;
+  isLoading: boolean;
 }
 
 function SearchResultsTable({
@@ -417,6 +437,7 @@ function SearchResultsTable({
   searchResultNodes,
   totalNodesCount,
   onLoadMore,
+  isLoading,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -555,8 +576,9 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
-      maxHeight="h-[100px]"
+      maxHeight="h-[500px]"
       onLoadMore={onLoadMore}
+      isLoading={isLoading}
     />
   );
 }
