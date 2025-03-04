@@ -267,7 +267,7 @@ function searchScopeForDsv({
   includeDataSources: boolean;
   isSingleDsv: boolean;
 }): CoreAPISearchScope {
-  // On a single datasource view, we never want to match the datasource title.
+  // On a single datasource view, we never want to match the datasource name.
   if (isSingleDsv) {
     return "nodes_titles";
   }
