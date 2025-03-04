@@ -1,11 +1,18 @@
-import { Button, Checkbox, Collapsible, Input, Label } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Button,
+  Checkbox,
+  CollapsibleComponent,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
+  BlockType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 
 import { filterServiceProviders } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
@@ -176,9 +183,10 @@ export default function Browser({
           />
         </div>
 
-        <Collapsible defaultOpen={false}>
-          <Collapsible.Button label="Advanced" />
-          <Collapsible.Panel>
+        <CollapsibleComponent
+          rootProps={{ defaultOpen: false }}
+          triggerProps={{ label: "Advanced" }}
+          contentChildren={
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex items-center space-x-2">
                 <Label className="whitespace-nowrap">Error as output</Label>
@@ -225,8 +233,8 @@ export default function Browser({
                 />
               </div>
             </div>
-          </Collapsible.Panel>
-        </Collapsible>
+          }
+        />
       </div>
     </Block>
   );

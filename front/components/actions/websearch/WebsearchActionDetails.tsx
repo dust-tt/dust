@@ -1,5 +1,5 @@
 import {
-  Collapsible,
+  CollapsibleComponent,
   ContentMessage,
   GlobeAltIcon,
   InformationCircleIcon,
@@ -40,24 +40,27 @@ export function WebsearchActionDetails({
           </div>
         </div>
         <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: defaultOpen }}
+            triggerChildren={
               <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                 Results
               </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <PaginatedCitationsGrid items={resultsCitations} />
-              {formattedError && (
-                <ContentMessage
-                  title="Error searching the web"
-                  icon={InformationCircleIcon}
-                >
-                  {formattedError}
-                </ContentMessage>
-              )}
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+            contentChildren={
+              <>
+                <PaginatedCitationsGrid items={resultsCitations} />
+                {formattedError && (
+                  <ContentMessage
+                    title="Error searching the web"
+                    icon={InformationCircleIcon}
+                  >
+                    {formattedError}
+                  </ContentMessage>
+                )}
+              </>
+            }
+          />
         </div>
       </div>
     </ActionDetailsWrapper>

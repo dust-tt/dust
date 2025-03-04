@@ -1,7 +1,7 @@
 import {
   Chip,
   ClockIcon,
-  Collapsible,
+  CollapsibleComponent,
   MagnifyingGlassIcon,
   PaginatedCitationsGrid,
   Tooltip,
@@ -36,16 +36,17 @@ export function RetrievalActionDetails({
           </div>
         </div>
         <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen }}
+            triggerChildren={
               <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                 Results
               </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
+            }
+            contentChildren={
               <PaginatedCitationsGrid items={documentCitations} />
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+          />
         </div>
       </div>
     </ActionDetailsWrapper>

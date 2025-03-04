@@ -1,13 +1,20 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Checkbox, Chip, Collapsible, Input, Label } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import {
+  Checkbox,
+  Chip,
+  CollapsibleComponent,
+  Input,
+  Label,
+} from "@dust-tt/sparkle";
 import type {
   AppType,
+  BlockType,
+  RunType,
   SpecificationBlockType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
@@ -270,9 +277,10 @@ export default function DataSource({
         </div>
 
         <div className="w-full">
-          <Collapsible>
-            <Collapsible.Button label="Filters" />
-            <Collapsible.Panel>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerProps={{ label: "Filters" }}
+            contentChildren={
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
                   <CodeEditor
@@ -399,8 +407,8 @@ export default function DataSource({
                   </div>
                 </div>
               </div>
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+          />
         </div>
       </div>
     </Block>

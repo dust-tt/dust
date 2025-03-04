@@ -2,16 +2,16 @@ import {
   Citation,
   CitationIcons,
   CitationTitle,
-  Collapsible,
+  CodeBlock,
+  CollapsibleComponent,
+  ContentBlockWrapper,
   ContentMessage,
   Icon,
   InformationCircleIcon,
+  Markdown,
   TableIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { CodeBlock } from "@dust-tt/sparkle";
-import { ContentBlockWrapper } from "@dust-tt/sparkle";
-import { Markdown } from "@dust-tt/sparkle";
 import type { LightWorkspaceType, TablesQueryActionType } from "@dust-tt/types";
 import { getTablesQueryResultsFileTitle } from "@dust-tt/types";
 import { useCallback } from "react";
@@ -167,13 +167,14 @@ function QueryTablesResults({
         </Citation>
       </div>
 
-      <Collapsible defaultOpen={false}>
-        <Collapsible.Button>
+      <CollapsibleComponent
+        rootProps={{ defaultOpen: false }}
+        triggerChildren={
           <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Preview
           </span>
-        </Collapsible.Button>
-        <Collapsible.Panel>
+        }
+        contentChildren={
           <div className="py-2">
             <CodeBlock
               className="language-csv max-h-60 overflow-y-auto"
@@ -182,8 +183,8 @@ function QueryTablesResults({
               {action.resultsFileSnippet}
             </CodeBlock>
           </div>
-        </Collapsible.Panel>
-      </Collapsible>
+        }
+      />
     </div>
   );
 }
