@@ -61,6 +61,10 @@ PluginRunModel.init(
   {
     modelName: "plugin_run",
     sequelize: frontSequelize,
+    indexes: [
+      { fields: ["workspaceId"] },
+      { fields: ["resourceType", "resourceId"] },
+    ],
   }
 );
 
