@@ -56,6 +56,7 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const MIN_SEARCH_QUERY_SIZE = 3;
+const CONTENT_NODE_PAGE_SIZE = 25;
 
 const getUseResourceHook =
   (
@@ -77,6 +78,7 @@ const getUseResourceHook =
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
+      pagination: { cursor: null, limit: CONTENT_NODE_PAGE_SIZE },
     });
     return {
       resources: nodes,
