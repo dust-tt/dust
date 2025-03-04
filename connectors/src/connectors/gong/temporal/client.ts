@@ -86,6 +86,6 @@ export async function stopGongSyncWorkflow(
     return new Ok(undefined);
   } catch (error) {
     logger.error({ workflowId, error }, "Failed to stop Gong workflow.");
-    return new Err(e as Error);
+    return new Err(error as Error);
   }
 }
