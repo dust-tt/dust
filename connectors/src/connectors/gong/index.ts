@@ -121,14 +121,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not implemented.");
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
-  }
-
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
-  }
-
   async pause(): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
@@ -156,6 +148,14 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async configure(): Promise<Result<void, Error>> {
+    throw new Error("Method not implemented.");
+  }
+
+  async setConfigurationKey(): Promise<Result<void, Error>> {
+    throw new Error("Method not implemented.");
+  }
+
+  async getConfigurationKey(): Promise<Result<string | null, Error>> {
     throw new Error("Method not implemented.");
   }
 }
