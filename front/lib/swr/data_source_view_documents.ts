@@ -143,8 +143,8 @@ export function useCreateDataSourceViewDocument(
 
       sendNotification({
         type: "success",
-        title: "Document creation submitted",
-        description: "Document processing ongoing, it will appear shortly",
+        title: "Document processing",
+        description: "Your document will appear shortly",
       });
 
       const response: PostDocumentResponseBody = await res.json();
