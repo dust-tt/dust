@@ -8,8 +8,10 @@ import {
 import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
 import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+const logger = mainLogger.child({ provider: "gong" });
 
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
@@ -60,7 +62,6 @@ export async function createGongSyncSchedule(
     logger.error(
       {
         connectorId: connector.id,
-        provider: "gong",
         scheduleId,
         error,
       },
@@ -90,18 +91,17 @@ export async function deleteGongSyncSchedule(
     }
     // Delete the schedule.
     await scheduleHandle.delete();
-  } catch (e) {
-    if (!(e instanceof ScheduleNotFoundError)) {
+  } catch (error) {
+    if (!(error instanceof ScheduleNotFoundError)) {
       logger.error(
         {
           connectorId: connector.id,
-          provider: "gong",
           scheduleId,
-          error: e,
+          error,
         },
         "[Gong] Failed to delete schedule and terminate workflow."
       );
-      return new Err(e as Error);
+      return new Err(error as Error);
     }
   }
 
@@ -125,7 +125,6 @@ export async function startGongSync(
       logger.info(
         {
           connectorId: connector.id,
-          provider: "gong",
           scheduleId,
         },
         "[Gong] Resuming paused sync schedule."
@@ -140,7 +139,6 @@ export async function startGongSync(
       logger.error(
         {
           connectorId: connector.id,
-          provider: "gong",
           scheduleId,
           error,
         },
@@ -180,7 +178,6 @@ export async function stopGongSync(
       logger.error(
         {
           connectorId: connector.id,
-          provider: "gong",
           scheduleId,
           error,
         },
