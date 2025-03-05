@@ -67,6 +67,12 @@ const GongTranscriptMetadataCodec = t.intersection([
         id: t.string,
         url: t.string,
         primaryUserId: t.string,
+        direction: t.union([
+          t.literal("Inbound"),
+          t.literal("Outbound"),
+          t.literal("Conference"),
+          t.literal("Unknown"),
+        ]),
         scope: t.union([
           t.literal("Internal"),
           t.literal("External"),

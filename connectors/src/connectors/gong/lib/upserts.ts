@@ -115,6 +115,7 @@ export async function syncGongTranscript({
       language: transcriptMetadata.metaData.language,
       media: transcriptMetadata.metaData.media,
       scope: transcriptMetadata.metaData.scope,
+      direction: transcriptMetadata.metaData.direction,
       participants: participants.map((p) => p.email).join(", ") || "none",
     },
   });
@@ -133,6 +134,7 @@ export async function syncGongTranscript({
       `language:${transcriptMetadata.metaData.language}`, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
       `media:${transcriptMetadata.metaData.media}`,
       `scope:${transcriptMetadata.metaData.scope}`,
+      `direction:${transcriptMetadata.metaData.direction}`,
       ...participants.map((p) => p.email),
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
