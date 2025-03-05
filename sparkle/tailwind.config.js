@@ -31,10 +31,8 @@ const safeColorsArray = [
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
   (color) =>
-    typeof colors[color] === "object" && // Only get color objects (with shades)
-    !["lightBlue", "warmGray", "trueGray", "coolGray", "blueGray"].includes(
-      color
-    ) // Exclude deprecated colors
+    typeof colors[color] === "object" &&
+    !["transparent", "current", "inherit", "white", "black"].includes(color)
 );
 
 // Custom color definitions
@@ -208,7 +206,7 @@ module.exports = {
         ...theme("spacing"),
       }),
       backgroundImage: {
-        "rainbow-gradient": `linear-gradient(90deg, ${colors.purple[300]}, ${colors.purple[500]}, ${colors.green[300]}, ${colors.green[500]}, ${colors.blue[300]}, ${colors.blue[500]}, ${colors.rose[300]}, ${colors.rose[500]})`,
+        "rainbow-gradient": `linear-gradient(90deg, ${colors.blue[300]}, ${colors.blue[500]}, ${colors.purple[500]}, ${colors.blue[400]}, ${colors.blue[700]})`,
       },
       keyframes: {
         pulse: {
