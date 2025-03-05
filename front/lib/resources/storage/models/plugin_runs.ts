@@ -1,13 +1,14 @@
+import type { SupportedResourceType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 
 export const POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH = 4096;
 
-export class PluginRunModel extends WorkspaceAwareModel<PluginRunModel> {
+export class PluginRunModel extends BaseModel<PluginRunModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,7 +19,10 @@ export class PluginRunModel extends WorkspaceAwareModel<PluginRunModel> {
   declare result: string | null;
   declare status: "pending" | "success" | "error";
 
-  declare workspaceId: ForeignKey<Workspace["id"]>;
+  declare resourceType: SupportedResourceType;
+  declare resourceId: string | null;
+
+  declare workspaceId: ForeignKey<Workspace["id"]> | null;
 }
 
 PluginRunModel.init(
@@ -55,6 +59,14 @@ PluginRunModel.init(
     },
     error: {
       type: new DataTypes.STRING(POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH),
+      allowNull: true,
+    },
+    resourceType: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    resourceId: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

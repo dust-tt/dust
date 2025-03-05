@@ -13,10 +13,13 @@ CREATE TABLE
       "result" VARCHAR(4096),
       "status" VARCHAR(255) NOT NULL,
       "error" VARCHAR(4096),
-      "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+      "resourceType" VARCHAR(255) NOT NULL,
+      "resourceId" VARCHAR(255),
       "id" BIGSERIAL,
+      "workspaceId" BIGINT REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
       PRIMARY KEY ("id")
   );
 
 CREATE INDEX "plugin_runs_workspace_id" ON "plugin_runs" ("workspaceId");
+
 CREATE INDEX "plugin_runs_resource_type_resource_id" ON "plugin_runs" ("resourceType", "resourceId");

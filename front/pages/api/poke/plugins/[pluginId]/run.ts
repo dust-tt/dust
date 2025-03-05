@@ -27,6 +27,7 @@ const SupportedResourceTypeCodec = t.union([
 const RunPluginParamsCodec = t.union([
   t.type({
     pluginId: t.string,
+    resourceType: SupportedResourceTypeCodec,
   }),
   t.type({
     pluginId: t.string,
@@ -73,13 +74,12 @@ async function handler(
         });
       }
 
-      const { pluginId } = pluginRunValidation.right;
-      const { resourceId, resourceType, workspaceId } =
+      const { pluginId, resourceType } = pluginRunValidation.right;
+      const { resourceId, workspaceId } =
         "resourceId" in pluginRunValidation.right
           ? pluginRunValidation.right
           : {
               resourceId: undefined,
-              resourceType: undefined,
               workspaceId: undefined,
             };
 
@@ -99,7 +99,7 @@ async function handler(
         });
       }
 
-      const resource = resourceType
+      const resource = resourceId
         ? await fetchPluginResource(auth, resourceType, resourceId)
         : null;
 
@@ -123,7 +123,11 @@ async function handler(
         plugin,
         pluginArgsValidation.right,
         auth.getNonNullableUser(),
-        workspaceId ? auth.getNonNullableWorkspace() : null
+        workspaceId ? auth.getNonNullableWorkspace() : null,
+        {
+          resourceId: resourceId ?? undefined,
+          resourceType,
+        }
       );
 
       const runRes = await plugin.execute(

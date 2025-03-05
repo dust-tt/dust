@@ -1,7 +1,12 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { LightWorkspaceType, PluginArgs, UserType } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  PluginArgs,
+  PluginResourceTarget,
+  UserType,
+} from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
@@ -40,7 +45,7 @@ function redactPluginArgs(
 function trimPluginRunResultOrError(result: PluginResponse | string) {
   let stringResult: string;
   if (typeof result === "string") {
-    stringResult = result;
+    stringResult = JSON.stringify(result);
   } else {
     stringResult = JSON.stringify(result.value);
   }
@@ -67,7 +72,8 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     plugin: Plugin<PluginArgs>,
     args: InferPluginArgs<PluginArgs>,
     author: UserType,
-    workspace: LightWorkspaceType | null
+    workspace: LightWorkspaceType | null,
+    pluginResourceTarget: PluginResourceTarget
   ) {
     const sanitizedArgs = redactPluginArgs(plugin, args);
 
@@ -77,6 +83,11 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       pluginId: plugin.manifest.id,
       status: "pending",
       workspaceId: workspace?.id,
+      resourceType: pluginResourceTarget.resourceType,
+      resourceId:
+        "resourceId" in pluginResourceTarget
+          ? pluginResourceTarget.resourceId
+          : null,
     });
 
     return new this(PluginRunResource.model, pluginRun.get());
