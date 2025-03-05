@@ -60,8 +60,6 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-export type GongParticipant = t.TypeOf<typeof GongParticipantCodec>;
-
 const GongTranscriptMetadataCodec = t.intersection([
   t.type({
     metaData: t.intersection([
@@ -102,7 +100,7 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
       records: t.type({
         currentPageNumber: t.number,
         currentPageSize: t.number,
-        // Cursor only exists if there are more results.
+        // The cursor only exists if there are more results.
         cursor: t.union([t.string, t.undefined]),
         totalRecords: t.number,
       }),
