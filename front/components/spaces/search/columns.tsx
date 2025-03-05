@@ -1,5 +1,5 @@
 import type { MenuItem } from "@dust-tt/sparkle";
-import { DataTable } from "@dust-tt/sparkle";
+import { DataTable, Tooltip } from "@dust-tt/sparkle";
 import type { DataSourceViewContentNode } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
@@ -20,7 +20,10 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       enableSorting: false,
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
-          <span>{info.getValue()}</span>
+          <Tooltip
+            label={info.getValue()}
+            trigger={<span>{info.getValue()}</span>}
+          />
         </DataTable.CellContent>
       ),
       meta: {
