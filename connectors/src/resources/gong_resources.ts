@@ -250,6 +250,9 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       id: this.id,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      callId: this.callId,
+      title: this.title,
+      url: this.url,
     };
   }
 
