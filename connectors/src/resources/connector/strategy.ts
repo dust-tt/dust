@@ -23,6 +23,7 @@ import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
+import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
 import { IntercomConnectorStrategy } from "@connectors/resources/connector/intercom";
 import { MicrosoftConnectorStrategy } from "@connectors/resources/connector/microsoft";
