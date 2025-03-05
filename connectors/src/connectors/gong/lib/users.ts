@@ -36,11 +36,11 @@ export async function getGongUsers(
     return users;
   }
 
+  const gongClient = await getGongClient(connector);
+
   await concurrentExecutor(
     missingUsers,
     async (gongUserId) => {
-      const gongClient = await getGongClient(connector);
-
       // If the user does not exist yet, fetch it from the API and save it.
       const user = await gongClient.getUser({ userId: gongUserId });
       if (!user) {
