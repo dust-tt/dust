@@ -17,13 +17,8 @@ function makeGongSyncWorkflowId(connector: ConnectorResource): string {
 }
 
 export async function launchGongSyncWorkflow(
-  connectorId: ModelId
+  connector: ConnectorResource
 ): Promise<Result<string, Error>> {
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    throw new Error(`[Gong] Connector not found. ConnectorId: ${connectorId}`);
-  }
-
   const client = await getTemporalClient();
   const workflowId = makeGongSyncWorkflowId(connector);
 
@@ -62,7 +57,8 @@ export async function stopGongSyncWorkflow(
   const client = await getTemporalClient();
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
-    throw new Error(`[Gong] Connector not found. ConnectorId: ${connectorId}`);
+    logger.error({ connectorId }, "[Gong] Connector not found.");
+    throw new Error("[Gong] Connector not found.");
   }
 
   const workflowId = makeGongSyncWorkflowId(connector);

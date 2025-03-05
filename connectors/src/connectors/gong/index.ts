@@ -36,7 +36,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    const result = await launchGongSyncWorkflow(connector.id);
+    const result = await launchGongSyncWorkflow(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: connector.id, error: result.error },
@@ -58,7 +58,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      logger.error({ connectorId }, "Gong connector not found.");
+      logger.error({ connectorId }, "[Gong] Connector not found.");
       return new Err(new Error("Connector not found"));
     }
 
@@ -83,7 +83,14 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    const result = await launchGongSyncWorkflow(this.connectorId);
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error(
+        `[Gong] Connector not found. ConnectorId: ${this.connectorId}`
+      );
+    }
+
+    const result = await launchGongSyncWorkflow(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
@@ -120,7 +127,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await launchGongSyncWorkflow(this.connectorId);
+    const result = await launchGongSyncWorkflow(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
