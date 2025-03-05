@@ -240,6 +240,8 @@ export const SpaceDataSourceViewContentList = ({
     DEFAULT_VIEW_TYPE
   ) as [ContentNodesViewType, (viewType: ContentNodesViewType) => void];
   const router = useRouter();
+  const [action, setAction] = useHashParam("action");
+  const [documentId, setDocumentId] = useHashParam("documentId");
   const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { spaces } = useSpaces({
@@ -438,7 +440,8 @@ export const SpaceDataSourceViewContentList = ({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router
         ),
       })) || [],
     [
@@ -449,6 +452,7 @@ export const SpaceDataSourceViewContentList = ({
       dataSourceView,
       dataSourceViews,
       addToSpace,
+      router,
       onSelect,
     ]
   );

@@ -173,6 +173,7 @@ function BackendSearch({
   const [searchResults, setSearchResults] = React.useState<
     DataSourceViewContentNode[]
   >([]);
+  const [totalNodes, setTotalNodes] = React.useState<number | null>(null);
 
   // Determine whether to show search results or children.
   const shouldShowSearchResults = debouncedSearch.length > 0;
@@ -228,11 +229,12 @@ function BackendSearch({
     if (tablePagination.pageIndex === 0) {
       // Replace results on new search (first page)
       setSearchResults(searchResultNodes);
+      setTotalNodes(totalNodesCount);
     } else if (searchResultNodes.length > 0) {
       // Append results for subsequent pages
       setSearchResults((prev) => [...prev, ...searchResultNodes]);
     }
-  }, [searchResultNodes, tablePagination.pageIndex]);
+  }, [searchResultNodes, tablePagination.pageIndex, totalNodesCount]);
 
   const handleLoadMore = React.useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
@@ -517,9 +519,6 @@ function SearchResultsTable({
             }
           },
         }),
-        dropdownMenuProps: {
-          modal: false,
-        },
         location: getLocationForDataSourceViewContentNode(node),
         menuItems: getMenuItems(
           canReadInSpace,
@@ -529,7 +528,8 @@ function SearchResultsTable({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router
         ),
       };
     });
@@ -538,7 +538,6 @@ function SearchResultsTable({
     canReadInSpace,
     canWriteInSpace,
     category,
-    contentActionsRef,
     dataSourceViews,
     owner.sId,
     router,
