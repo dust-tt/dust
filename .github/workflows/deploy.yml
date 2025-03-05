@@ -1,4 +1,5 @@
 name: Deploy
+run-name: Deploy ${{ inputs.component }} to ${{ inputs.regions }}
 
 on:
   workflow_dispatch:
