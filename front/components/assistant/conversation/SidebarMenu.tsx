@@ -178,11 +178,12 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
     ? groupConversationsByDate(conversations)
     : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
-  const { setAnimate } = useContext(InputBarContext);
+  const { setAnimate, setSelectedAssistant } = useContext(InputBarContext);
 
-  const triggerInputAnimation = () => {
+  const newConversationAnimation = useCallback(() => {
     setAnimate(true);
-  };
+    setSelectedAssistant(null);
+  }, [setAnimate, setSelectedAssistant]);
 
   return (
     <>
@@ -237,15 +238,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
                   tooltip="Create a new conversation"
                   onClick={() => {
                     setSidebarOpen(false);
-                    const { cId } = router.query;
-                    const isNewConversation =
-                      router.pathname === "/w/[wId]/assistant/[cId]" &&
-                      typeof cId === "string" &&
-                      cId === "new";
-
-                    if (isNewConversation && triggerInputAnimation) {
-                      triggerInputAnimation();
-                    }
+                    newConversationAnimation();
                   }}
                 />
                 <DropdownMenu>

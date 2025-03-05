@@ -6,7 +6,15 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -16,6 +24,7 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -124,23 +133,54 @@ export function AssistantInputBar({
   const { animate, selectedAssistant } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (animate && !isAnimating) {
-      setIsAnimating(true);
+  const router = useRouter();
 
-      // Clear any existing timeout to ensure animations do not overlap.
-      if (animationTimeoutRef.current) {
-        clearTimeout(animationTimeoutRef.current);
+  const scrollAndAnimate = useCallback(
+    (url: string) => {
+      if (!isAnimating && url.endsWith("/new")) {
+        setIsAnimating(true);
+
+        // Scroll to the top of the conversation container when clicking on "new".
+        const mainTag = document.getElementById(
+          CONVERSATION_PARENT_SCROLL_DIV_ID["page"]
+        );
+
+        if (mainTag) {
+          mainTag.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+        }
+
+        // Clear any existing timeout to ensure animations do not overlap.
+        if (animationTimeoutRef.current) {
+          clearTimeout(animationTimeoutRef.current);
+        }
+
+        // Set timeout to set setIsAnimating to false after the duration.
+        animationTimeoutRef.current = setTimeout(() => {
+          setIsAnimating(false);
+          // Reset the ref after the timeout clears.
+          animationTimeoutRef.current = null;
+        }, 700);
+
+        return true;
       }
+      return false;
+    },
+    [isAnimating]
+  );
 
-      // Set timeout to set setIsAnimating to false after the duration.
-      animationTimeoutRef.current = setTimeout(() => {
-        setIsAnimating(false);
-        // Reset the ref after the timeout clears.
-        animationTimeoutRef.current = null;
-      }, 700);
+  useEffect(() => {
+    if (animate) {
+      if (!scrollAndAnimate(router.route)) {
+        router.events.on("routeChangeComplete", (url) => {
+          scrollAndAnimate(url);
+        });
+      }
     }
-  }, [animate, isAnimating]);
+
+    return () => {
+      router.events.off("routeChangeComplete", scrollAndAnimate);
+    };
+  }, [animate, scrollAndAnimate, router.events, router.route]);
 
   // Cleanup timeout on component unmount.
   useEffect(() => {

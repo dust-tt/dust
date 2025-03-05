@@ -1,7 +1,6 @@
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
-  LightAgentConfigurationType,
   MentionType,
   Result,
   SubscriptionType,
@@ -11,7 +10,7 @@ import type {
 } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { AssistantBrowserContainer } from "@app/components/assistant/conversation/AssistantBrowserContainer";
@@ -56,7 +55,6 @@ export function ConversationContainer({
   const { animate, setAnimate, setSelectedAssistant } =
     useContext(InputBarContext);
 
-  const assistantToMention = useRef<LightAgentConfigurationType | null>(null);
   const { scrollConversationsToTop } = useConversationsNavigation();
 
   const router = useRouter();
@@ -256,32 +254,6 @@ export function ConversationContainer({
     ]
   );
 
-  useEffect(() => {
-    const scrollContainerElement = document.getElementById(
-      "assistant-input-header"
-    );
-
-    if (scrollContainerElement) {
-      const observer = new IntersectionObserver(
-        () => {
-          if (assistantToMention.current) {
-            setInputbarMention(assistantToMention.current.sId);
-            assistantToMention.current = null;
-          }
-        },
-        { threshold: 0.8 }
-      );
-      observer.observe(scrollContainerElement);
-    }
-    const handleRouteChange = (url: string) => {
-      if (url.endsWith("/new")) {
-        setSelectedAssistant(null);
-        assistantToMention.current = null;
-      }
-    };
-    router.events.on("routeChangeComplete", handleRouteChange);
-  }, [setAnimate, setInputbarMention, router, setSelectedAssistant]);
-
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
@@ -333,9 +305,9 @@ export function ConversationContainer({
       {!activeConversationId && (
         <AssistantBrowserContainer
           onAgentConfigurationClick={setInputbarMention}
-          setAssistantToMention={(assistant) => {
-            assistantToMention.current = assistant;
-          }}
+          setAssistantToMention={(assistant) =>
+            setSelectedAssistant({ configurationId: assistant.sId })
+          }
           owner={owner}
           isBuilder={isBuilder}
         />

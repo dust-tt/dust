@@ -8,7 +8,6 @@ import { ConversationContainer } from "@app/components/assistant/conversation/Co
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import ConversationLayout from "@app/components/assistant/conversation/ConversationLayout";
 import { useConversationsNavigation } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 
@@ -84,15 +83,6 @@ export default function AssistantConversation({
     } else if (!activeConversationId) {
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
-
-      // Scroll to the top of the conversation container when clicking on "new".
-      const mainTag = document.getElementById(
-        CONVERSATION_PARENT_SCROLL_DIV_ID["page"]
-      );
-
-      if (mainTag) {
-        mainTag.scrollTo(0, 0);
-      }
     }
 
     const agentId = assistant ?? null;
