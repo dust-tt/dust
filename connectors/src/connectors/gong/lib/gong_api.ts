@@ -55,6 +55,7 @@ export const GongParticipantCodec = t.intersection([
   t.type({
     speakerId: t.union([t.string, t.null]),
     userId: t.union([t.string, t.undefined]),
+    emailAddress: t.string,
   }),
   CatchAllCodec,
 ]);

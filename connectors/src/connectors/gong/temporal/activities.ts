@@ -117,19 +117,19 @@ export async function gongSyncTranscriptsActivity({
             .map((p) => p.userId)
             .filter((id): id is string => Boolean(id)),
         });
-        const speakerToUserMap = Object.fromEntries(
+        const speakerToEmailMap = Object.fromEntries(
           transcriptMetadata.parties.map((party) => [
             party.speakerId,
             participants.find(
               (participant) => participant.gongId === party.userId
-            ),
+            )?.email || party.emailAddress,
           ])
         );
         await syncGongTranscript({
           transcript,
           transcriptMetadata,
           dataSourceConfig,
-          speakerToUserMap,
+          speakerToEmailMap,
           loggerArgs,
           participants,
           connector,

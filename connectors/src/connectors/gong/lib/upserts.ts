@@ -26,7 +26,7 @@ export async function syncGongTranscript({
   transcript,
   transcriptMetadata,
   participants,
-  speakerToUserMap,
+  speakerToEmailMap,
   connector,
   dataSourceConfig,
   loggerArgs,
@@ -35,7 +35,7 @@ export async function syncGongTranscript({
   transcript: GongCallTranscript;
   transcriptMetadata: GongTranscriptMetadata;
   participants: GongUserResource[];
-  speakerToUserMap: Record<string, GongUserResource>;
+  speakerToEmailMap: Record<string, string>;
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -95,7 +95,7 @@ export async function syncGongTranscript({
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        markdownContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}\n`;
+        markdownContent += `# ${speakerToEmailMap[monologue.speakerId] || "Unknown speaker"}\n`;
         lastSpeakerId = monologue.speakerId;
       }
       markdownContent += `${sentence.text}\n`;
