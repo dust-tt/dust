@@ -50,6 +50,7 @@ export * from "./front/dataset";
 export * from "./front/document";
 export * from "./front/dust_app_secret";
 export * from "./front/extension";
+export * from "./front/sheets";
 export * from "./front/files";
 export * from "./front/groups";
 export * from "./front/key";
