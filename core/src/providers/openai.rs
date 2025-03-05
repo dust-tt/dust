@@ -46,7 +46,7 @@ struct RateLimitDetails {
 
 lazy_static! {
     // Map of API key to rate limit details
-    static ref RATE_LIMITS: Mutex<HashMap<String, RateLimitDetails>> = Mutex::new(HashMap::new());
+    static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -540,24 +540,29 @@ pub async fn embed(
     min_remaining_tokens: Option<u64>,
 ) -> Result<Embeddings> {
     if let Some(min_remaining_tokens) = min_remaining_tokens {
-        let mut rate_limits = RATE_LIMITS.lock();
+        let now = utils::now();
 
         // Clean up expired rate limits
-        let now = utils::now();
-        rate_limits.retain(|_, details| details.reset_tokens > now);
+        {
+            let mut rate_limits = RATE_LIMITS.write();
+            rate_limits.retain(|_, details| details.reset_tokens > now);
+        }
 
-        // Check rate limit for this API key
-        if let Some(details) = rate_limits.get(&api_key) {
-            if details.reset_tokens > now && details.remaining_tokens < min_remaining_tokens {
-                Err(ModelError {
-                    request_id: None,
-                    message: "Rate limit exceeded".to_string(),
-                    retryable: Some(ModelErrorRetryOptions {
-                        sleep: Duration::from_millis(details.reset_tokens - now),
-                        factor: 2,
-                        retries: 3,
-                    }),
-                })?;
+        // First get read lock to check rate limits
+        {
+            let rate_limits = RATE_LIMITS.read();
+            if let Some(details) = rate_limits.get(&api_key) {
+                if details.remaining_tokens < min_remaining_tokens {
+                    Err(ModelError {
+                        request_id: None,
+                        message: "Rate limit exceeded".to_string(),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(details.reset_tokens - now),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                    })?;
+                }
             }
         }
     }
@@ -619,13 +624,15 @@ pub async fn embed(
     match (remaining_tokens, reset_tokens) {
         (Some(remaining_tokens), Some(reset_tokens)) => {
             let now = utils::now();
-            RATE_LIMITS.lock().insert(
-                api_key.clone(),
-                RateLimitDetails {
-                    remaining_tokens,
-                    reset_tokens: now + reset_tokens as u64,
-                },
-            );
+            if reset_tokens > 0 {
+                RATE_LIMITS.write().insert(
+                    api_key.clone(),
+                    RateLimitDetails {
+                        remaining_tokens,
+                        reset_tokens: now + reset_tokens as u64,
+                    },
+                );
+            }
         }
         _ => (),
     }
