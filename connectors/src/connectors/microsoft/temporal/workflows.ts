@@ -87,7 +87,10 @@ export async function fullSyncWorkflow({
   nodeIdsToSync = uniq(nodeIdsToSync);
   nodeIdsToDelete = uniq(nodeIdsToDelete);
 
-  await populateDeltas(connectorId, nodeIdsToSync);
+  if (totalCount === 0) {
+    // Only populate deltas if we're starting a full sync, not for continueAsNew
+    await populateDeltas(connectorId, nodeIdsToSync);
+  }
 
   let nextPageLink: string | undefined = undefined;
 
