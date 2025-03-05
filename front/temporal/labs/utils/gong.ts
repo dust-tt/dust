@@ -168,49 +168,70 @@ export async function retrieveGongTranscriptContent(
 
     if (!user) {
       localLogger.error(
-        {},
+        {
+          fileId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+        },
         "[retrieveGongTranscripts] User not found. Skipping."
       );
       return null;
     }
 
-    const gongUsers = await fetch(`https://api.gong.io/v2/users`, {
-      headers: {
-        Authorization: `Bearer ${gongAccessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const searchUserInPage = async (cursor?: string): Promise<any> => {
+      const url = cursor
+        ? `https://api.gong.io/v2/users?cursor=${encodeURIComponent(cursor)}`
+        : `https://api.gong.io/v2/users`;
 
-    if (!gongUsers.ok) {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${gongAccessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        localLogger.error(
+          {
+            fileId,
+            transcriptsConfigurationId: transcriptsConfiguration.id,
+            status: response.status,
+          },
+          "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
+        );
+        return null;
+      }
+
+      const data = await response.json();
+
+      const foundUser = data.users?.find(
+        (gongUser: { emailAddress: string }) =>
+          gongUser.emailAddress.toLowerCase() === user.email.toLowerCase()
+      );
+
+      if (foundUser) {
+        return foundUser;
+      }
+
+      if (data.records?.cursor) {
+        return searchUserInPage(data.records.cursor);
+      }
+
+      return null;
+    };
+
+    const gongUser = await searchUserInPage();
+
+    if (!gongUser) {
       localLogger.error(
         {
           fileId,
           transcriptsConfigurationId: transcriptsConfiguration.id,
-          status: gongUsers.status,
-          body: await gongUsers.text(),
+          userEmail: user.email,
         },
-        "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
+        "[retrieveGongTranscripts] Gong user not found. Skipping."
       );
       return null;
     }
-
-    const gongUsersData = await gongUsers.json();
-
-    if (!gongUsersData || gongUsersData.length === 0) {
-      localLogger.error(
-        {
-          fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.id,
-        },
-        "[retrieveGongTranscripts] No Gong users found. Skipping."
-      );
-      return null;
-    }
-
-    const gongUser = gongUsersData.users.find(
-      (gongUser: { emailAddress: string }) =>
-        gongUser.emailAddress === user.email
-    );
 
     return gongUser;
   };
