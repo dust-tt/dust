@@ -1,7 +1,6 @@
 import { MIME_TYPES } from "@dust-tt/types";
 
 import type {
-  GongAPIUser,
   GongCallTranscript,
   GongTranscriptMetadata,
 } from "@connectors/connectors/gong/lib/gong_api";
@@ -16,6 +15,7 @@ import {
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { GongUserResource } from "@connectors/resources/gong_resources";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -26,6 +26,7 @@ export async function syncGongTranscript({
   transcript,
   transcriptMetadata,
   participants,
+  speakerToUserMap,
   connector,
   dataSourceConfig,
   loggerArgs,
@@ -33,7 +34,8 @@ export async function syncGongTranscript({
 }: {
   transcript: GongCallTranscript;
   transcriptMetadata: GongTranscriptMetadata;
-  participants: Record<string, GongAPIUser>;
+  participants: GongUserResource[];
+  speakerToUserMap: Record<string, GongUserResource>;
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -91,13 +93,7 @@ export async function syncGongTranscript({
     transcriptMetadata.metaData.media,
     transcriptMetadata.metaData.isPrivate ? "private" : "public",
     transcriptMetadata.metaData.scope,
-    ...new Set(
-      transcript.transcript.map(
-        // TODO: this is a mock, the speakerId is not the correct key.
-        (monologue) =>
-          participants[monologue.speakerId]?.emailAddress || "Unknown speaker"
-      )
-    ),
+    ...participants.map((p) => p.email),
   ];
   let documentContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
 
@@ -106,7 +102,7 @@ export async function syncGongTranscript({
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        documentContent += `# ${participants[monologue.speakerId] || "Unknown speaker"}: `;
+        documentContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}: `;
         lastSpeakerId = monologue.speakerId;
       }
       documentContent += `${sentence.text}\n`;

@@ -1,7 +1,10 @@
 import type { ModelId } from "@dust-tt/types";
 
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
-import { getUserBlobFromGongAPI } from "@connectors/connectors/gong/lib/users";
+import {
+  getGongUsers,
+  getUserBlobFromGongAPI,
+} from "@connectors/connectors/gong/lib/users";
 import {
   fetchGongConfiguration,
   fetchGongConnector,
@@ -83,13 +86,26 @@ export async function gongSyncTranscriptsActivity({
           );
           return;
         }
+        const participants = await getGongUsers(connector, {
+          gongUserIds: transcriptMetadata.parties
+            .map((p) => p.userId)
+            .filter((id): id is string => Boolean(id)),
+        });
+        const speakerToUserMap = Object.fromEntries(
+          transcriptMetadata.parties.map((party) => [
+            party.speakerId,
+            participants.find(
+              (participant) => participant.gongId === party.userId
+            ),
+          ])
+        );
         await syncGongTranscript({
           transcript,
           transcriptMetadata,
           dataSourceConfig,
+          speakerToUserMap,
           loggerArgs,
-          // TODO: this is a mock, we have to fill this and make sure we have all the speakers.
-          participants: {},
+          participants,
           connector,
           forceResync,
         });
