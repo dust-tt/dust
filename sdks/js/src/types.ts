@@ -282,6 +282,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "zendesk"
   | "bigquery"
   | "salesforce"
+  | "gong"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
