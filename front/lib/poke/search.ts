@@ -3,7 +3,10 @@ import { ConnectorsAPI } from "@dust-tt/types";
 import type { PokeItemBase } from "@dust-tt/types/dist/front/lib/poke";
 
 import config from "@app/lib/api/config";
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import {
+  getWorkspaceInfos,
+  unsafeGetWorkspacesByModelId,
+} from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import {
   dataSourceToPokeJSON,
@@ -14,7 +17,58 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
-// TODO: Implement search on workspaces.
+async function searchPokeWorkspaces(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  const workspaceInfos = await getWorkspaceInfos(searchTerm);
+  if (workspaceInfos) {
+    return [
+      {
+        id: workspaceInfos.id,
+        name: `Workspace (${workspaceInfos.name})`,
+        link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+      },
+    ];
+  }
+
+  const workspaceModelId = parseInt(searchTerm);
+  if (!isNaN(workspaceModelId)) {
+    const workspaces = await unsafeGetWorkspacesByModelId([workspaceModelId]);
+    if (workspaces.length > 0) {
+      return workspaces.map((w) => ({
+        id: w.id,
+        name: `Workspace (${w.name})`,
+        link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+      }));
+    }
+  }
+
+  return [];
+}
+
+async function searchPokeConnectors(
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+  const cRes = await connectorsAPI.getConnector(searchTerm);
+  if (cRes.isOk()) {
+    const connector: ConnectorType = cRes.value;
+
+    return [
+      {
+        id: parseInt(connector.id),
+        name: "Connector",
+        link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 export async function searchPokeResources(
   auth: Authenticator,
   searchTerm: string
@@ -22,37 +76,17 @@ export async function searchPokeResources(
   const resourceInfo = getResourceNameAndIdFromSId(searchTerm);
   if (resourceInfo) {
     return searchPokeResourcesBySId(auth, resourceInfo);
-  } else {
-    // Fallback to handle resources without the cool sId format.
-    const workspaceInfos = await getWorkspaceInfos(searchTerm);
-    if (workspaceInfos) {
-      return [
-        {
-          id: workspaceInfos.id,
-          name: `Workspace (${workspaceInfos.name})`,
-          link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
-        },
-      ];
-    }
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const cRes = await connectorsAPI.getConnector(searchTerm);
-    if (cRes.isOk()) {
-      const connector: ConnectorType = cRes.value;
-
-      return [
-        {
-          id: parseInt(connector.id),
-          name: `Connector`,
-          link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
-        },
-      ];
-    }
   }
 
-  return [];
+  // Fallback to handle resources without the cool sId format.
+  const resources = (
+    await Promise.all([
+      searchPokeWorkspaces(searchTerm),
+      searchPokeConnectors(searchTerm),
+    ])
+  ).flat();
+
+  return resources;
 }
 
 async function searchPokeResourcesBySId(
