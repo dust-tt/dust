@@ -144,7 +144,7 @@ async function processSheet({
     return new Err(new Error("Worksheet has no id"));
   }
   const content = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetContent(client, worksheetInternalId)
+    getWorksheetContent(localLogger, client, worksheetInternalId)
   );
 
   const loggerArgs = {
@@ -294,7 +294,7 @@ export async function handleSpreadSheet({
 
   const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
     getAllPaginatedEntities((nextLink) =>
-      getWorksheets(client, documentId, nextLink)
+      getWorksheets(localLogger, client, documentId, nextLink)
     )
   );
 

@@ -1,3 +1,4 @@
+import type { LoggerInterface } from "@dust-tt/client";
 import type { ModelId } from "@dust-tt/types";
 import { cacheWithRedis, MIME_TYPES, removeNulls } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -46,7 +47,7 @@ import {
   updateDataSourceDocumentParents,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
@@ -77,6 +78,7 @@ export async function getRootNodesToSyncFromResources(
     throw new Error(`Connector with id ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
   const client = await getClient(connector.connectionId);
 
   // get root folders and drives and drill down site-root and sites to their
@@ -91,6 +93,7 @@ export async function getRootNodesToSyncFromResources(
         .map(async (resource) => {
           try {
             const item = await getItem(
+              logger,
               client,
               typeAndPathFromInternalId(resource.internalId).itemAPIPath
             );
@@ -127,7 +130,7 @@ export async function getRootNodesToSyncFromResources(
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
     const msSites = await getAllPaginatedEntities((nextLink) =>
-      getSites(client, nextLink)
+      getSites(logger, client, nextLink)
     );
     rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
   }
@@ -138,6 +141,7 @@ export async function getRootNodesToSyncFromResources(
       async (sitePath) => {
         const msDrives = await getAllPaginatedEntities((nextLink) =>
           getDrives(
+            logger,
             client,
             internalIdFromTypeAndPath({
               nodeType: "site",
@@ -185,6 +189,7 @@ export async function getRootNodesToSyncFromResources(
       !(
         node.nodeType === "folder" &&
         (await isParentAlreadyInNodes({
+          logger,
           client,
           nodes: allNodes,
           folder: node,
@@ -241,11 +246,12 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-
+  const logger = getActivityLogger(connector);
   const client = await getClient(connector.connectionId);
 
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
     const { deltaLink } = await getDeltaResults({
+      logger,
       client,
       parentInternalId: driveId,
       token: "latest",
@@ -267,16 +273,18 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
 }
 
 async function isParentAlreadyInNodes({
+  logger,
   client,
   nodes,
   folder,
 }: {
+  logger: LoggerInterface;
   client: Client;
   nodes: MicrosoftNode[];
   folder: MicrosoftNode;
 }) {
   const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
-  let driveItem: DriveItem = await getItem(client, itemAPIPath);
+  let driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
   // check if the list already contains the drive of this folder
   if (
@@ -304,7 +312,7 @@ async function isParentAlreadyInNodes({
       return true;
     }
 
-    driveItem = await getItem(client, parentAPIPath);
+    driveItem = await getItem(logger, client, parentAPIPath);
   }
   return false;
 }
@@ -372,6 +380,7 @@ export async function syncFiles({
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
+  const logger = getActivityLogger(connector);
 
   logger.info(
     {
@@ -384,6 +393,7 @@ export async function syncFiles({
 
   // TODO(pr): handle pagination
   const childrenResult = await getFilesAndFolders(
+    logger,
     client,
     parent.internalId,
     nextPageLink
@@ -549,6 +559,7 @@ export async function syncDeltaForRootNodesInDrive({
 
   const client = await getClient(connector.connectionId);
 
+  const logger = getActivityLogger(connector);
   logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
@@ -563,6 +574,7 @@ export async function syncDeltaForRootNodesInDrive({
   // If it ever becomes an issue, redis-caching the list and having activities
   // grabbing pages of it can be implemented
   const { results, deltaLink } = await getDeltaData({
+    logger,
     client,
     node,
   });
@@ -580,6 +592,7 @@ export async function syncDeltaForRootNodesInDrive({
       rootNodeIds,
       async (rootNodeId) =>
         getItem(
+          logger,
           client,
           typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
         ) as Promise<{ id: string }>,
@@ -638,6 +651,7 @@ export async function syncDeltaForRootNodesInDrive({
         const { item, type } = driveItem.root
           ? {
               item: await getItem(
+                logger,
                 client,
                 `/drives/${driveItem.parentReference.driveId}`
               ),
@@ -809,9 +823,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
 }
 
 async function getDeltaData({
+  logger,
   client,
   node,
 }: {
+  logger: LoggerInterface;
   client: Client;
   node: MicrosoftNodeResource;
 }) {
@@ -820,12 +836,17 @@ async function getDeltaData({
   }
 
   try {
-    return await getFullDeltaResults(client, node.internalId, node.deltaLink);
+    return await getFullDeltaResults(
+      logger,
+      client,
+      node.internalId,
+      node.deltaLink
+    );
   } catch (e) {
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults(client, node.internalId);
+      return await getFullDeltaResults(logger, client, node.internalId);
     }
     throw e;
   }
@@ -975,7 +996,7 @@ export async function microsoftGarbageCollectionActivity({
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-
+  const logger = getActivityLogger(connector);
   logger.info(
     { connectorId, idCursor },
     "Garbage collection activity for cursor"
@@ -1020,7 +1041,7 @@ export async function microsoftGarbageCollectionActivity({
   const chunkedRequests = _.chunk(requests, 20);
 
   for (const chunk of chunkedRequests) {
-    const batchRes = await clientApiPost(client, "/$batch", {
+    const batchRes = await clientApiPost(logger, client, "/$batch", {
       requests: chunk,
     });
     for (const res of batchRes.responses) {
@@ -1044,6 +1065,7 @@ export async function microsoftGarbageCollectionActivity({
               folder.deleted ||
               // isOutsideRootNodes
               (await isOutsideRootNodes({
+                logger,
                 client,
                 driveItem: folder,
                 rootNodeIds,
@@ -1065,6 +1087,7 @@ export async function microsoftGarbageCollectionActivity({
               file.deleted ||
               // isOutsideRootNodes
               (await isOutsideRootNodes({
+                logger,
                 client,
                 driveItem: file,
                 rootNodeIds,
@@ -1093,9 +1116,11 @@ export async function microsoftGarbageCollectionActivity({
 
 const cachedGetParentFromGraphAPI = cacheWithRedis(
   async ({
+    logger,
     client,
     parentInternalId,
   }: {
+    logger: LoggerInterface;
     client: Client;
     parentInternalId: string;
     startGarbageCollectionTs: number;
@@ -1107,7 +1132,7 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
       return null;
     }
 
-    const driveItem: DriveItem = await getItem(client, itemAPIPath);
+    const driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
 
     if (!driveItem.parentReference) {
       throw new Error("Unexpected: no parent reference for drive item");
@@ -1128,11 +1153,13 @@ const cachedGetParentFromGraphAPI = cacheWithRedis(
 );
 
 async function isOutsideRootNodes({
+  logger,
   client,
   driveItem,
   rootNodeIds,
   startGarbageCollectionTs,
 }: {
+  logger: LoggerInterface;
   client: Client;
   driveItem: DriveItem;
   rootNodeIds: string[];
@@ -1158,6 +1185,7 @@ async function isOutsideRootNodes({
       return false;
     }
     parentInternalId = await cachedGetParentFromGraphAPI({
+      logger,
       client,
       parentInternalId,
       startGarbageCollectionTs,
@@ -1205,7 +1233,7 @@ async function scrubRemovedFolders({
   );
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-
+  const logger = getActivityLogger(connector);
   logger.info(
     {
       connectorId: connector.id,

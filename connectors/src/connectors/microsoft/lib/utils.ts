@@ -102,16 +102,18 @@ export const getCachedListColumns = cacheWithRedis(
 );
 
 export async function _getListColumns({
+  logger,
   client,
   siteId,
   listId,
 }: {
+  logger: LoggerInterface;
   client: Client;
   siteId: string;
   listId: string;
 }): Promise<ColumnDefinition[]> {
   const endpoint = `/sites/${siteId}/lists/${listId}/columns`;
-  const res = await clientApiGet(client, endpoint);
+  const res = await clientApiGet(logger, client, endpoint);
   return res.value.filter(isCustomColumn);
 }
 
@@ -139,6 +141,7 @@ export const getColumnsFromListItem = async (
   }
   try {
     const columns = await getCachedListColumns({
+      logger,
       client,
       listId: file.sharepointIds.listId,
       siteId: file.sharepointIds.siteId,
