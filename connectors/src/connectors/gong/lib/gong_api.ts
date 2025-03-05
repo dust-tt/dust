@@ -36,7 +36,6 @@ const GongTranscriptSentenceCodec = t.type({
 
 const GongTranscriptMonologueCodec = t.type({
   speakerId: t.string,
-  topic: t.string,
   // A monologue is constituted of multiple sentences.
   sentences: t.array(GongTranscriptSentenceCodec),
 });
@@ -97,22 +96,14 @@ export class GongClient {
     private readonly connectorId: ModelId
   ) {}
 
-  private async postRequest<T>(
+  /**
+   * Handles response parsing and error handling for all API requests.
+   */
+  private async handleResponse<T>(
+    response: Response,
     endpoint: string,
-    body: unknown,
     codec: t.Type<T>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      // Timeout after 30 seconds.
-      signal: AbortSignal.timeout(30000),
-    });
-
     if (!response.ok) {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
@@ -134,13 +125,35 @@ export class GongClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
+      const pathErrors = reporter.formatValidationErrors(result.left);
+
       throw GongAPIError.fromValidationError({
         connectorId: this.connectorId,
         endpoint,
+        pathErrors,
       });
     }
 
     return result.right;
+  }
+
+  private async postRequest<T>(
+    endpoint: string,
+    body: unknown,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      // Timeout after 30 seconds.
+      signal: AbortSignal.timeout(30000),
+    });
+
+    return this.handleResponse(response, endpoint, codec);
   }
 
   private async getRequest<T>(
@@ -167,40 +180,7 @@ export class GongClient {
       }
     );
 
-    if (!response.ok) {
-      if (response.status === 403 && response.statusText === "Forbidden") {
-        throw new ExternalOAuthTokenError();
-      }
-
-      // Handle rate limiting
-      // https://gong.app.gong.io/settings/api/documentation#overview
-      if (response.status === 429) {
-        // TODO(2025-03-04) - Implement this, we can read the Retry-After header.
-      }
-
-      throw GongAPIError.fromAPIError(response, {
-        endpoint,
-        connectorId: this.connectorId,
-      });
-    }
-
-    const responseBody = await response.json();
-
-    console.log("responseBody", responseBody);
-
-    const result = codec.decode(responseBody);
-
-    if (isLeft(result)) {
-      const pathError = reporter.formatValidationErrors(result.left);
-      console.log("pathError", pathError);
-
-      throw GongAPIError.fromValidationError({
-        connectorId: this.connectorId,
-        endpoint,
-      });
-    }
-
-    return result.right;
+    return this.handleResponse(response, endpoint, codec);
   }
 
   async getTranscripts({
