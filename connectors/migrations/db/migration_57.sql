@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS "gong_configurations"
 (
     "createdAt"       TIMESTAMP WITH TIME ZONE NOT NULL,
     "updatedAt"       TIMESTAMP WITH TIME ZONE NOT NULL,
-    "timestampCursor" TIMESTAMP WITH TIME ZONE,
+    "timestampCursor" BIGINT,
     "connectorId"     BIGINT                   NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id"              BIGSERIAL,
     PRIMARY KEY ("id")

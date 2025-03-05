@@ -8,7 +8,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timestampCursor: Date;
+  declare timestampCursor: number | null;
 }
 
 GongConfigurationModel.init(
@@ -24,7 +24,7 @@ GongConfigurationModel.init(
       defaultValue: DataTypes.NOW,
     },
     timestampCursor: {
-      type: DataTypes.DATE,
+      type: DataTypes.BIGINT,
       allowNull: true,
     },
   },
