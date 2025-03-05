@@ -1,7 +1,3 @@
-import { Button, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import type { ReactElement } from "react";
-
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -14,9 +10,10 @@ import {
   getParticleShapeIndexByName,
   shapeNames,
 } from "@app/components/home/Particles";
-
 import { classNames } from "@app/lib/utils";
-import { Div3D, Hover3D } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import type { ReactElement } from "react";
 
 export async function getServerSideProps() {
   return {
