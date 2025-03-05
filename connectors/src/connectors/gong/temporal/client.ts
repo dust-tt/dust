@@ -19,6 +19,10 @@ function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
+// Starts the sync of Gong data for the given connector.
+// - Creates a new schedule if it doesn't exist.
+// - Resumes the schedule if paused.
+// - Triggers the schedule to start the sync workflow immediately.
 export async function launchGongSync(
   connector: ConnectorResource
 ): Promise<Result<string, Error>> {
@@ -82,6 +86,9 @@ export async function launchGongSync(
   return new Ok(scheduleId);
 }
 
+// Stops the sync of Gong data for the given connector.
+// - Pauses the schedule.
+// - Terminates any running workflows for the schedule.
 export async function stopGongSync(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
