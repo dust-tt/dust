@@ -120,6 +120,7 @@ export async function gongSyncTranscriptsActivity({
         const speakerToEmailMap = Object.fromEntries(
           transcriptMetadata.parties.map((party) => [
             party.speakerId,
+            // Use the table gong_users as the main ground truth, fallback to email address in the metadata.
             participants.find(
               (participant) => participant.gongId === party.userId
             )?.email || party.emailAddress,
