@@ -1,16 +1,18 @@
 import type { ContentNode, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
+import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
+import { fetchGongConnector } from "@connectors/connectors/gong/lib/utils";
 import {
   launchGongSyncWorkflow,
   stopGongSyncWorkflow,
 } from "@connectors/connectors/gong/temporal/client";
 import type {
-  ConnectorManagerError,
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -25,6 +27,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
+    const baseUrlRes = await baseUrlFromConnectionId(connectionId);
+    if (baseUrlRes.isErr()) {
+      throw new Error("Invalid Gong Access Token");
+    }
+
     const connector = await ConnectorResource.makeNew(
       "gong",
       {
@@ -33,7 +40,9 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      {}
+      {
+        baseUrl: baseUrlRes.value,
+      }
     );
 
     const result = await launchGongSyncWorkflow(connector);
@@ -48,10 +57,45 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
-  async update(): Promise<
-    Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
-  > {
-    throw new Error("Method not implemented.");
+  async update({
+    connectionId,
+  }: {
+    connectionId?: string | null;
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    if (connectionId) {
+      const oldConnectionId = connector.connectionId;
+      const newBaseUrlRes = await baseUrlFromConnectionId(connectionId);
+
+      if (newBaseUrlRes.isErr()) {
+        throw new Error("Invalid Gong Access Token");
+      }
+
+      if (newBaseUrlRes.value !== oldConnectionId) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Gong connector"
+          )
+        );
+      }
+
+      await connector.update({
+        connectionId,
+      });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+
+        await launchGongSyncWorkflow(connector);
+      }
+    }
+
+    return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
