@@ -20,7 +20,7 @@ function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
-export async function launchGongSyncWorkflow(
+export async function launchGongSync(
   connector: ConnectorResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -83,7 +83,7 @@ export async function launchGongSyncWorkflow(
   return new Ok(scheduleId);
 }
 
-export async function stopGongSyncWorkflow(
+export async function stopGongSync(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();

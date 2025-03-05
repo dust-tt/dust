@@ -3,8 +3,8 @@ import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import {
-  launchGongSyncWorkflow,
-  stopGongSyncWorkflow,
+  launchGongSync,
+  stopGongSync,
 } from "@connectors/connectors/gong/temporal/client";
 import type {
   ConnectorManagerError,
@@ -51,7 +51,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await launchGongSyncWorkflow(connector);
+    const result = await launchGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: connector.id, error: result.error },
@@ -96,7 +96,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       logger.error({ connectorId }, "[Gong] Connector not found.");
       throw new Error("[Gong] Connector not found.");
     }
-    const result = await stopGongSyncWorkflow(connector);
+    const result = await stopGongSync(connector);
     if (result.isErr()) {
       return result;
     }
@@ -111,7 +111,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await launchGongSyncWorkflow(connector);
+    const result = await launchGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
@@ -148,7 +148,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await launchGongSyncWorkflow(connector);
+    const result = await launchGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
