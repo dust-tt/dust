@@ -77,7 +77,10 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     const configuration = await GongConfigurationModel.findOne({
       where: { connectorId: connector.id },
     });
-    return configuration && new this(this.model, configuration.get());
+    if (!configuration) {
+      return null;
+    }
+    return new this(this.model, configuration.get());
   }
 
   async resetLastSyncTimestamp(): Promise<void> {
@@ -262,5 +265,21 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     return transcripts.map(
       (transcript) => new this(this.model, transcript.get())
     );
+  }
+
+  static async fetchByCallId(
+    callId: string,
+    connector: ConnectorResource
+  ): Promise<GongTranscriptResource | null> {
+    const transcript = await GongTranscriptModel.findOne({
+      where: {
+        callId,
+        connectorId: connector.id,
+      },
+    });
+    if (!transcript) {
+      return null;
+    }
+    return new this(this.model, transcript.get());
   }
 }

@@ -64,6 +64,8 @@ export const GongParticipantCodec = t.intersection([
   CatchAllCodec,
 ]);
 
+export type GongParticipant = t.TypeOf<typeof GongParticipantCodec>;
+
 const GongTranscriptMetadataCodec = t.intersection([
   t.type({
     metaData: t.intersection([
@@ -76,6 +78,9 @@ const GongTranscriptMetadataCodec = t.intersection([
           t.literal("External"),
           t.literal("Unknown"),
         ]),
+        started: t.string,
+        duration: t.number,
+        title: t.string,
         media: t.union([t.literal("Video"), t.literal("Audio")]),
         language: t.string,
         isPrivate: t.boolean,
@@ -87,6 +92,10 @@ const GongTranscriptMetadataCodec = t.intersection([
   }),
   CatchAllCodec,
 ]);
+
+export type GongTranscriptMetadata = t.TypeOf<
+  typeof GongTranscriptMetadataCodec
+>;
 
 // Generic codec for paginated results from Gong API.
 const GongPaginatedResults = <C extends t.Mixed, F extends string>(
