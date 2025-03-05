@@ -88,18 +88,35 @@ export async function syncGongTranscript({
   );
   const callDuration = `${hours} hours ${minutes < 10 ? "0" + minutes : minutes} minutes`;
 
-  let documentContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
+  let markdownContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
 
   // Rebuild the transcript content with [User]: [sentence].
   transcript.transcript.forEach((monologue) => {
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        documentContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}\n`;
+        markdownContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}\n`;
         lastSpeakerId = monologue.speakerId;
       }
-      documentContent += `${sentence.text}\n`;
+      markdownContent += `${sentence.text}\n`;
     });
+  });
+
+  const renderedContent = await renderMarkdownSection(
+    dataSourceConfig,
+    markdownContent
+  );
+  const documentContent = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title,
+    content: renderedContent,
+    createdAt: createdAtDate,
+    additionalPrefixes: {
+      language: transcriptMetadata.metaData.language,
+      media: transcriptMetadata.metaData.media,
+      scope: transcriptMetadata.metaData.scope,
+      participants: participants.map((p) => p.email).join(", ") || "none",
+    },
   });
 
   const documentId = makeGongTranscriptInternalId(connector, callId);
@@ -107,18 +124,7 @@ export async function syncGongTranscript({
   await upsertDataSourceDocument({
     dataSourceConfig,
     documentId,
-    documentContent: await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title,
-      content: await renderMarkdownSection(dataSourceConfig, documentContent),
-      createdAt: createdAtDate,
-      additionalPrefixes: {
-        language: transcriptMetadata.metaData.language,
-        media: transcriptMetadata.metaData.media,
-        scope: transcriptMetadata.metaData.scope,
-        participants: participants.map((p) => p.email).join(", ") || "none",
-      },
-    }),
+    documentContent,
     documentUrl,
     timestampMs: createdAtDate.getTime(),
     tags: [
