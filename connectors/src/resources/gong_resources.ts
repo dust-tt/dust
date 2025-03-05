@@ -130,7 +130,10 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       usersBlobs.map((user) => ({
         ...user,
         connectorId: connector.id,
-      }))
+      })),
+      {
+        updateOnDuplicate: ["firstName", "lastName", "email"],
+      }
     );
 
     return users.map((user) => new this(this.model, user.get()));
@@ -159,7 +162,6 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     return {
       createdAt: this.createdAt,
       email: this.email,
-      emailAliases: this.emailAliases,
       firstName: this.firstName,
       gongId: this.gongId,
       id: this.id,
@@ -168,28 +170,25 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     };
   }
 
-  static async listByConnector(
-    connector: ConnectorResource
+  static async fetchByGongUserIds(
+    connector: ConnectorResource,
+    { gongUserIds }: { gongUserIds: string[] }
   ): Promise<GongUserResource[]> {
     const users = await GongUserModel.findAll({
-      where: { connectorId: connector.id },
+      where: { connectorId: connector.id, gongId: gongUserIds },
     });
 
     return users.map((user) => new this(this.model, user.get()));
   }
 
-  static async fetchByGongId(
+  static async fetchByGongUserId(
     connector: ConnectorResource,
-    { gongId }: { gongId: string }
+    { gongUserId }: { gongUserId: string }
   ): Promise<GongUserResource | null> {
-    const user = await GongUserModel.findOne({
-      where: { connectorId: connector.id, gongId },
+    const [user] = await this.fetchByGongUserIds(connector, {
+      gongUserIds: [gongUserId],
     });
 
-    if (!user) {
-      return null;
-    }
-
-    return new this(this.model, user.get());
+    return user ?? null;
   }
 }
