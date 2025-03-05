@@ -139,8 +139,8 @@ export async function gongSyncTranscriptsActivity({
 
 // Users.
 export async function gongListAndSaveUsersActivity({
-                                                     connectorId,
-                                                   }: {
+  connectorId,
+}: {
   connectorId: ModelId;
 }) {
   const connector = await fetchGongConnector(connectorId);
@@ -160,4 +160,3 @@ export async function gongListAndSaveUsersActivity({
     pageCursor = nextPageCursor;
   } while (pageCursor);
 }
-

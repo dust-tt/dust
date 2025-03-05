@@ -15,11 +15,11 @@ const {
 export async function gongSyncWorkflow({
   connectorId,
   fromTs,
-                                         forceResync
+  forceResync,
 }: {
   connectorId: ModelId;
   fromTs: number | null;
-  forceResync: boolean
+  forceResync: boolean;
 }) {
   await gongSaveStartSyncActivity({ connectorId });
 
