@@ -20,7 +20,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -35,7 +35,7 @@ import {
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
 ): Promise<Date> {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -56,7 +56,7 @@ export async function setZendeskTimestampCursorActivity({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {

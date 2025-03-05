@@ -25,9 +25,9 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import {
-  IntercomConversation,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomConversationModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -41,9 +41,9 @@ export async function deleteTeamAndConversations({
 }: {
   connectorId: ModelId;
   dataSourceConfig: DataSourceConfig;
-  team: IntercomTeam;
+  team: IntercomTeamModel;
 }) {
-  const conversations = await IntercomConversation.findAll({
+  const conversations = await IntercomConversationModel.findAll({
     where: {
       connectorId,
       teamId: team.teamId,
@@ -85,7 +85,7 @@ export async function deleteConversation({
   );
   await Promise.all([
     deleteDataSourceDocument(dataSourceConfig, dsConversationId),
-    IntercomConversation.destroy({
+    IntercomConversationModel.destroy({
       where: {
         connectorId,
         conversationId,
@@ -150,7 +150,7 @@ export async function syncConversation({
   syncType: "incremental" | "batch";
   loggerArgs: Record<string, string | number | null>;
 }) {
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
     },
@@ -179,7 +179,7 @@ export async function syncConversation({
       );
       return;
     }
-    const team = await IntercomTeam.findOne({
+    const team = await IntercomTeamModel.findOne({
       where: {
         connectorId,
         teamId: conversationTeamId,
@@ -194,7 +194,7 @@ export async function syncConversation({
     }
   }
 
-  const conversationOnDB = await IntercomConversation.findOne({
+  const conversationOnDB = await IntercomConversationModel.findOne({
     where: {
       connectorId,
       conversationId: conversation.id,
@@ -205,7 +205,7 @@ export async function syncConversation({
   const updatedAtDate = new Date(conversation.updated_at * 1000);
 
   if (!conversationOnDB) {
-    await IntercomConversation.create({
+    await IntercomConversationModel.create({
       connectorId,
       conversationId: conversation.id,
       teamId: conversationTeamId,
