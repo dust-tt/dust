@@ -173,7 +173,7 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "dark:text-gray-400-night text-gray-400"
+              "text-gray-400 dark:text-gray-400-night"
             )}
           >
             <div className="ml-2 mr-2">
@@ -185,7 +185,7 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "dark:text-gray-400-night text-gray-400"
+              "text-gray-400 dark:text-gray-400-night"
             )}
           >
             <div role="status">
