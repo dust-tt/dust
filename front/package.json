@@ -21,7 +21,15 @@
   "dependencies": {
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.435",
+=======
+<<<<<<< HEAD
+    "@dust-tt/sparkle": "^0.2.434",
+=======
+    "@dust-tt/sparkle": "0.2.431-rc4",
+>>>>>>> 5557368b3 (new sparkle)
+>>>>>>> 913d2bb28 (new sparkle)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
