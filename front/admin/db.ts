@@ -48,6 +48,7 @@ import {
   AgentMessage,
   AgentMessageFeedback,
   Conversation,
+  ConversationHasMessage,
   ConversationParticipant,
   Mention,
   Message,
@@ -166,6 +167,7 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
+  await ConversationHasMessage.sync({ alter: true });
 
   await AgentRetrievalAction.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
