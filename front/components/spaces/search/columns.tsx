@@ -33,7 +33,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
       id: "location",
       enableSorting: false,
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.BasicCellContent label={info.getValue()} />
+        <DataTable.BasicCellContent label={info.getValue()} className="pr-2" />
       ),
       meta: {
         sizeRatio: 25,
