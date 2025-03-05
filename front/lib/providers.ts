@@ -117,7 +117,6 @@ export const serviceProviders: ServiceProvider[] = [
     built: true,
     enabled: false,
   },
-  { providerId: "gmail", name: "Gmail", built: false, enabled: false },
 ];
 
 export async function checkProvider(
