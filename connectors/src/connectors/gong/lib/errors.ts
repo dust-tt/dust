@@ -1,3 +1,5 @@
+import type { ModelId } from "@dust-tt/types";
+
 type GongAPIErrorType = "validation_error" | "http_response_error";
 
 export class GongAPIError extends Error {
@@ -5,6 +7,8 @@ export class GongAPIError extends Error {
   readonly status?: number;
   readonly requestId?: string;
   readonly errors?: string[];
+  readonly endpoint: string;
+  readonly connectorId: ModelId;
 
   constructor(
     message: string,
@@ -13,11 +17,15 @@ export class GongAPIError extends Error {
       status,
       requestId,
       errors,
+      endpoint,
+      connectorId,
     }: {
       type: GongAPIErrorType;
       status?: number;
       requestId?: string;
       errors?: string[];
+      endpoint: string;
+      connectorId: ModelId;
     }
   ) {
     super(message);
@@ -25,5 +33,7 @@ export class GongAPIError extends Error {
     this.status = status;
     this.requestId = requestId;
     this.errors = errors;
+    this.endpoint = endpoint;
+    this.connectorId = connectorId;
   }
 }

@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -89,7 +89,10 @@ export async function getGongAccessToken(
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
 
-  constructor(private readonly authToken: string) {}
+  constructor(
+    private readonly authToken: string,
+    private readonly connectorId: ModelId
+  ) {}
 
   private async request<T>(
     endpoint: string,
@@ -123,7 +126,8 @@ export class GongClient {
         {
           type: "http_response_error",
           status: response.status,
-          data: { endpoint, response },
+          endpoint,
+          connectorId: this.connectorId,
         }
       );
     }
@@ -134,7 +138,8 @@ export class GongClient {
     if (isLeft(result)) {
       throw new GongAPIError("Response validation failed", {
         type: "validation_error",
-        data: { endpoint },
+        connectorId: this.connectorId,
+        endpoint,
       });
     }
 
