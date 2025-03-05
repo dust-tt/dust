@@ -147,11 +147,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    throw new Error("Method not implemented.");
+    return new Ok([]);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async pause(): Promise<Result<undefined, Error>> {
@@ -177,18 +177,18 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async configure(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 }

@@ -758,8 +758,9 @@ export function ConnectorPermissionsModal({
     }
   }, [connector.type, isOpen]);
 
-  const OptionsComponent =
-    CONNECTOR_CONFIGURATIONS[connector.type].optionsComponent;
+  const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connector.type];
+
+  const OptionsComponent = connectorConfiguration.optionsComponent;
 
   return (
     <>
@@ -838,40 +839,41 @@ export function ConnectorPermissionsModal({
                   )}
 
                   <div className="p-1 text-xl font-bold">
-                    {CONNECTOR_CONFIGURATIONS[connector.type].selectLabel}
+                    {connectorConfiguration.selectLabel}
                   </div>
 
-                  <ContentNodeTree
-                    isSearchEnabled={
-                      CONNECTOR_CONFIGURATIONS[connector.type].isSearchEnabled
-                    }
-                    isRoundedBackground={true}
-                    useResourcesHook={useResourcesHook}
-                    selectedNodes={
-                      canUpdatePermissions ? selectedNodes : undefined
-                    }
-                    setSelectedNodes={
-                      canUpdatePermissions && !isResourcesLoading
-                        ? setSelectedNodes
-                        : undefined
-                    }
-                    showExpand={
-                      CONNECTOR_CONFIGURATIONS[connector.type]?.isNested
-                    }
-                  />
-                  <div className="flex justify-end gap-2 border-t pt-4">
-                    <Button
-                      label="Cancel"
-                      variant="outline"
-                      onClick={() => closeModal(false)}
-                    />
-                    <Button
-                      label={saving ? "Saving..." : "Save"}
-                      variant="primary"
-                      disabled={isUnchanged || saving}
-                      onClick={save}
-                    />
-                  </div>
+                  {!connectorConfiguration.isResourceSelectionDisabled && (
+                    <>
+                      <ContentNodeTree
+                        isSearchEnabled={connectorConfiguration.isSearchEnabled}
+                        isRoundedBackground={true}
+                        useResourcesHook={useResourcesHook}
+                        selectedNodes={
+                          canUpdatePermissions ? selectedNodes : undefined
+                        }
+                        setSelectedNodes={
+                          canUpdatePermissions && !isResourcesLoading
+                            ? setSelectedNodes
+                            : undefined
+                        }
+                        showExpand={connectorConfiguration?.isNested}
+                      />
+                      <div className="flex justify-end gap-2 border-t pt-4">
+                        <Button
+                          label="Cancel"
+                          variant="outline"
+                          onClick={() => closeModal(false)}
+                        />
+                        <Button
+                          label={saving ? "Saving..." : "Save"}
+                          variant="primary"
+                          disabled={isUnchanged || saving}
+                          onClick={save}
+                        />
+                      </div>
+                    </>
+                  )}
+
                   {advancedNotionManagement && (
                     <AdvancedNotionManagement
                       owner={owner}
@@ -894,9 +896,7 @@ export function ConnectorPermissionsModal({
               <CreateOrUpdateConnectionSnowflakeModal
                 key={`snowflake-${modalToShow}`}
                 owner={owner}
-                connectorProviderConfiguration={
-                  CONNECTOR_CONFIGURATIONS[c.type]
-                }
+                connectorProviderConfiguration={connectorConfiguration}
                 isOpen={modalToShow === "edition"}
                 onClose={() => closeModal(false)}
                 dataSourceToUpdate={dataSource}
@@ -910,9 +910,7 @@ export function ConnectorPermissionsModal({
               <CreateOrUpdateConnectionBigQueryModal
                 key={`bigquery-${modalToShow}`}
                 owner={owner}
-                connectorProviderConfiguration={
-                  CONNECTOR_CONFIGURATIONS[c.type]
-                }
+                connectorProviderConfiguration={connectorConfiguration}
                 isOpen={modalToShow === "edition"}
                 onClose={() => closeModal(false)}
                 dataSourceToUpdate={dataSource}
