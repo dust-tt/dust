@@ -114,6 +114,7 @@ export async function syncOneFile({
     "@microsoft.graph.downloadUrl" in file
       ? file["@microsoft.graph.downloadUrl"]
       : await getFileDownloadURL(
+          localLogger,
           await getClient(connector.connectionId),
           documentId
         );
