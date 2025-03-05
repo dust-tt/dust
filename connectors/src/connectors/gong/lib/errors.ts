@@ -3,23 +3,27 @@ type GongAPIErrorType = "validation_error" | "http_response_error";
 export class GongAPIError extends Error {
   readonly type: GongAPIErrorType;
   readonly status?: number;
-  readonly data?: object;
+  readonly requestId?: string;
+  readonly errors?: string[];
 
   constructor(
     message: string,
     {
       type,
       status,
-      data,
+      requestId,
+      errors,
     }: {
       type: GongAPIErrorType;
       status?: number;
-      data?: object;
+      requestId?: string;
+      errors?: string[];
     }
   ) {
     super(message);
     this.type = type;
     this.status = status;
-    this.data = data;
+    this.requestId = requestId;
+    this.errors = errors;
   }
 }
