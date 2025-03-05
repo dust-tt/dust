@@ -59,7 +59,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Gong] Connector not found.");
-      return new Err(new Error("Connector not found"));
+      return new Err(new Error("[Gong] Connector not found"));
     }
 
     const res = await connector.delete();

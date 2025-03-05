@@ -64,7 +64,7 @@ export async function stopGongSyncWorkflow(
       await handle.terminate();
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
-        throw e;
+        return new Err(e as Error);
       }
     }
     return new Ok(undefined);
