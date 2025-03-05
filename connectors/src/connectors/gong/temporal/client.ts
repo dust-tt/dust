@@ -23,7 +23,7 @@ function makeGongSyncScheduleId(connector: ConnectorResource): string {
 // - Creates a new schedule if it doesn't exist.
 // - Resumes the schedule if paused.
 // - Triggers the schedule to start the sync workflow immediately.
-export async function launchGongSync(
+export async function startGongSync(
   connector: ConnectorResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
@@ -40,10 +40,10 @@ export async function launchGongSync(
     taskQueue: QUEUE_NAME,
   };
 
+  const scheduleHandle = client.schedule.getHandle(
+    makeGongSyncScheduleId(connector)
+  );
   try {
-    const scheduleHandle = client.schedule.getHandle(
-      makeGongSyncScheduleId(connector)
-    );
     const scheduleDescription = await scheduleHandle.describe();
     if (scheduleDescription.state.paused) {
       logger.info(

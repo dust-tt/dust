@@ -3,7 +3,7 @@ import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import {
-  launchGongSync,
+  startGongSync,
   stopGongSync,
 } from "@connectors/connectors/gong/temporal/client";
 import type {
@@ -51,7 +51,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await launchGongSync(connector);
+    const result = await startGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: connector.id, error: result.error },
@@ -111,7 +111,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await launchGongSync(connector);
+    const result = await startGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
@@ -148,7 +148,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await launchGongSync(connector);
+    const result = await startGongSync(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
