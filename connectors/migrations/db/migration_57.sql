@@ -1,11 +1,11 @@
 -- Migration created on Mar 05, 2025
 CREATE TABLE IF NOT EXISTS "gong_configurations"
 (
-    "createdAt"   TIMESTAMP WITH TIME ZONE NOT NULL,
-    "updatedAt"   TIMESTAMP WITH TIME ZONE NOT NULL,
+    "createdAt"       TIMESTAMP WITH TIME ZONE NOT NULL,
+    "updatedAt"       TIMESTAMP WITH TIME ZONE NOT NULL,
     "timestampCursor" TIMESTAMP WITH TIME ZONE,
-    "connectorId" BIGINT                   NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    "id"          BIGSERIAL,
+    "connectorId"     BIGINT                   NOT NULL REFERENCES "connectors" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "id"              BIGSERIAL,
     PRIMARY KEY ("id")
 );
 
