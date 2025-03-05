@@ -60,10 +60,10 @@ export async function baseUrlFromConnectionId(connectionId: string) {
         errors: validationRes.error,
         rawJson: tokRes.value.scrubbed_raw_json,
       },
-      "Invalid Notion OAuth response"
+      "Invalid Gong OAuth response"
     );
 
-    return new Err(new Error("Invalid Notion OAuth response"));
+    return new Err(new Error("Invalid Gong OAuth response"));
   }
 
   return new Ok(validationRes.value.api_base_url_for_customer);
