@@ -206,7 +206,7 @@ export async function retrieveGongTranscriptContent(
 
       const foundUser = data.users?.find(
         (gongUser: { emailAddress: string }) =>
-          gongUser.emailAddress === user.email
+          gongUser.emailAddress.toLowerCase() === user.email.toLowerCase()
       );
 
       if (foundUser) {
