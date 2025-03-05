@@ -41,8 +41,9 @@ export async function launchGongSyncWorkflow(
         // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
         // Backfill scheduled action up to the previous day.
         catchupWindow: "1 day",
-        // We allow only one workflow at a time.
-        overlap: ScheduleOverlapPolicy.SKIP,
+        // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
+        // long-running workflow was running.
+        overlap: ScheduleOverlapPolicy.BUFFER_ONE,
       },
       spec: {
         intervals: [{ every: "1h" }],
