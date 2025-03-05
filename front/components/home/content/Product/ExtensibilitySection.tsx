@@ -25,6 +25,15 @@ export function ExtensibilitySection({ page = "default" }) {
                   </A>
                 </Link>
               )}
+              {page != "default" && (
+                <Link
+                  href="https://docs.dust.tt/reference/developer-platform-overview"
+                  shallow={true}
+                  target="_blank"
+                >
+                  <A variant="primary">See our documentation</A>
+                </Link>
+              )}
             </P>
           </div>
         </div>
