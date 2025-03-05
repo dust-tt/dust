@@ -25,7 +25,7 @@ export const userIdentityMergePlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const primaryUserId = args.primaryUserId.trim();
     const secondaryUserId = args.secondaryUserId.trim();
 

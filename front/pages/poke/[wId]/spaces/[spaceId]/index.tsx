@@ -80,10 +80,10 @@ export default function SpacePage({
       <div className="flex grow flex-col">
         <MembersDataTable members={members} owner={owner} readonly />
         <PluginList
-          resourceType="spaces"
-          workspaceResource={{
-            workspace: owner,
+          pluginResourceTarget={{
             resourceId: space.sId,
+            resourceType: "spaces",
+            workspace: owner,
           }}
         />
         <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />

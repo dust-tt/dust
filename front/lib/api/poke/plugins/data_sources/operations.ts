@@ -2,7 +2,6 @@ import { assertNever, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger, { auditLog } from "@app/logger/logger";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
@@ -46,12 +45,7 @@ export const connectorOperationsPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }

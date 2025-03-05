@@ -1,4 +1,4 @@
-import type { PluginWorkspaceResource, Result } from "@dust-tt/types";
+import type { PluginResourceTarget, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
@@ -14,22 +14,21 @@ import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[plu
 
 export function usePokeListPluginForResourceType({
   disabled,
-  resourceType,
-  workspaceResource,
+  pluginResourceTarget,
 }: {
   disabled?: boolean;
-  resourceType: string;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }) {
   const workspacesFetcher: Fetcher<PokeListPluginsForScopeResponseBody> =
     fetcher;
 
   const urlSearchParams = new URLSearchParams({
-    resourceType,
+    resourceType: pluginResourceTarget.resourceType,
   });
 
-  if (workspaceResource?.resourceId) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
   const { data, error } = useSWRWithDefaults(
@@ -50,24 +49,15 @@ export function usePokeListPluginForResourceType({
 export function usePokePluginManifest({
   disabled,
   pluginId,
-  workspaceResource,
 }: {
   disabled?: boolean;
   pluginId: string;
-  workspaceResource?: PluginWorkspaceResource;
 }) {
   const pluginManifestFetcher: Fetcher<PokeGetPluginDetailsResponseBody> =
     fetcher;
 
-  const urlSearchParams = new URLSearchParams({});
-
-  if (workspaceResource) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
-    urlSearchParams.append("workspaceId", workspaceResource.workspace.sId);
-  }
-
   const { data, error } = useSWRWithDefaults(
-    `/api/poke/plugins/${pluginId}/manifest?${urlSearchParams.toString()}`,
+    `/api/poke/plugins/${pluginId}/manifest`,
     pluginManifestFetcher,
     {
       disabled,
@@ -83,16 +73,21 @@ export function usePokePluginManifest({
 
 export function useRunPokePlugin({
   pluginId,
-  workspaceResource,
+  pluginResourceTarget,
 }: {
   pluginId: string;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }) {
   const urlSearchParams = new URLSearchParams({});
 
-  if (workspaceResource) {
-    urlSearchParams.append("resourceId", workspaceResource.resourceId);
-    urlSearchParams.append("workspaceId", workspaceResource.workspace.sId);
+  urlSearchParams.append(
+    "resourceType",
+    pluginResourceTarget.resourceType ?? "global"
+  );
+
+  if ("resourceId" in pluginResourceTarget) {
+    urlSearchParams.append("resourceId", pluginResourceTarget.resourceId);
+    urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
   const doRunPlugin = async (

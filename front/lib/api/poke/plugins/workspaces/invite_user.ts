@@ -24,7 +24,7 @@ export const inviteUser = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const subscription = auth.subscription();
     const plan = auth.plan();
     if (!subscription || !plan) {

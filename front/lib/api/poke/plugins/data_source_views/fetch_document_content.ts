@@ -2,7 +2,6 @@ import { CoreAPI, Err, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 
 export const fetchDocumentContentPlugin = createPlugin({
@@ -21,16 +20,7 @@ export const fetchDocumentContentPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, dataSourceViewId, args) => {
-    if (!dataSourceViewId) {
-      return new Err(new Error("Data source view not found."));
-    }
-
-    const dataSourceView = await DataSourceViewResource.fetchById(
-      auth,
-      dataSourceViewId
-    );
-
+  execute: async (auth, dataSourceView, args) => {
     if (!dataSourceView) {
       return new Err(new Error("Data source view not found."));
     }

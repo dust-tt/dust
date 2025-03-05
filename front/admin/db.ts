@@ -88,6 +88,7 @@ import {
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
+import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
   RunUsageModel,
@@ -190,6 +191,8 @@ async function main() {
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
   await LabsTranscriptsHistoryModel.sync({ alter: true });
+
+  await PluginRunModel.sync({ alter: true });
 
   process.exit(0);
 }

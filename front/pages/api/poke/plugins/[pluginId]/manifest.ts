@@ -1,6 +1,7 @@
 import type {
   PluginArgs,
   PluginManifest,
+  SupportedResourceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,7 +13,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 
 export interface PokeGetPluginDetailsResponseBody {
-  manifest: PluginManifest<PluginArgs>;
+  manifest: PluginManifest<PluginArgs, SupportedResourceType>;
 }
 
 async function handler(
@@ -44,7 +45,7 @@ async function handler(
         });
       }
 
-      const plugin = pluginManager.getPluginById(pluginId as string);
+      const plugin = pluginManager.getPluginById(pluginId);
       if (!plugin) {
         return apiError(req, res, {
           status_code: 404,

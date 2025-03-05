@@ -1,9 +1,11 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isSupportedResourceType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginListItem } from "@app/lib/api/poke/types";
+import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -33,7 +35,10 @@ async function handler(
   switch (req.method) {
     case "GET": {
       const { resourceType, resourceId } = req.query;
-      if (typeof resourceType !== "string") {
+      if (
+        typeof resourceType !== "string" ||
+        !isSupportedResourceType(resourceType)
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -55,12 +60,12 @@ async function handler(
 
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
-      const visiblePluginResults = await Promise.all(
-        plugins.map((p) => !resourceId || p.isVisible(auth, resourceId))
-      );
+      const resource = resourceId
+        ? await fetchPluginResource(auth, resourceType, resourceId)
+        : null;
 
       const pluginList = plugins
-        .filter((_, i) => visiblePluginResults[i])
+        .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
         .map((p) => ({
           id: p.manifest.id,
           name: p.manifest.name,

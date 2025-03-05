@@ -17,7 +17,7 @@ export const renameWorkspace = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const newName = args.newName.trim();
     if (newName.length < 5) {
       return new Err(

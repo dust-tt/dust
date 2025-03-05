@@ -3,8 +3,9 @@ import * as t from "io-ts";
 import { LightWorkspaceType } from "../../user";
 
 interface BaseArgDefinition {
-  label: string;
   description?: string;
+  label: string;
+  redact?: boolean;
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];
@@ -47,20 +48,31 @@ export type StrictPluginArgs = {
 
 export type PluginArgs = Record<string, PluginArgDefinition>;
 
-export interface PluginManifest<T extends PluginArgs> {
+export interface PluginManifest<
+  T extends PluginArgs,
+  R extends SupportedResourceType
+> {
   args: T;
   description: string;
   explanation?: string;
   id: string;
   name: string;
-  resourceTypes: string[];
+  resourceTypes: R[];
   warning?: string;
 }
 
-export interface PluginWorkspaceResource {
+interface PluginResourceScope {
+  resourceType: SupportedResourceType;
+}
+
+interface PluginWorkspaceResource extends PluginResourceScope {
   resourceId: string;
   workspace: LightWorkspaceType;
 }
+
+export type PluginResourceTarget =
+  | PluginResourceScope
+  | PluginWorkspaceResource;
 
 export function createIoTsCodecFromArgs(
   args: PluginArgs
@@ -96,4 +108,22 @@ export function createIoTsCodecFromArgs(
   }
 
   return t.type(codecProps);
+}
+
+export const supportedResourceTypes = [
+  "apps",
+  "data_source_views",
+  "data_sources",
+  "spaces",
+  "workspaces",
+  // Special case for global operations.
+  "global",
+] as const;
+
+export type SupportedResourceType = (typeof supportedResourceTypes)[number];
+
+export function isSupportedResourceType(
+  resourceType: string
+): resourceType is SupportedResourceType {
+  return supportedResourceTypes.includes(resourceType as SupportedResourceType);
 }

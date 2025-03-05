@@ -17,7 +17,7 @@ export const upgradeToBusinessPlan = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     if (!args.confirm) {
       return new Err(new Error("Please confirm the upgrade to business plan."));
     }

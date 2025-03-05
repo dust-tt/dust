@@ -3,8 +3,10 @@ import type {
   PluginArgs,
   PluginManifest,
   Result,
+  SupportedResourceType,
 } from "@dust-tt/types";
 
+import type { ResourceTypeMap } from "@app/lib/api/poke/utils";
 import type { Authenticator } from "@app/lib/auth";
 
 // Helper type to infer the correct TypeScript type from SupportedArgType.
@@ -23,7 +25,7 @@ type InferArgType<
           ? V
           : never;
 
-type InferPluginArgs<T extends PluginArgs> = {
+export type InferPluginArgs<T extends PluginArgs> = {
   [K in keyof T]: InferArgType<
     T[K]["type"],
     T[K] extends { values: readonly any[] } ? T[K]["values"][number] : never
@@ -34,35 +36,41 @@ export type PluginResponse =
   | { display: "text"; value: string }
   | { display: "json"; value: Record<string, unknown> };
 
-export interface Plugin<T extends PluginArgs> {
-  manifest: PluginManifest<T>;
+export interface Plugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType = SupportedResourceType,
+> {
+  manifest: PluginManifest<T, R>;
   execute: (
     auth: Authenticator,
-    resourceId: string | undefined,
+    resource: ResourceTypeMap[R] | null,
     args: InferPluginArgs<T>
   ) => Promise<Result<PluginResponse, Error>>;
-  isVisible: (
+  isApplicableTo: (
     auth: Authenticator,
-    resourceId: string | undefined
-  ) => Promise<boolean>;
+    resource: ResourceTypeMap[R] | null
+  ) => boolean;
 }
 
-export function createPlugin<T extends PluginArgs>({
+export function createPlugin<
+  T extends PluginArgs,
+  R extends SupportedResourceType,
+>({
   manifest,
   execute,
-  isVisible = () => Promise.resolve(true),
+  isApplicableTo = () => true,
 }: {
-  manifest: PluginManifest<T>;
-  execute: Plugin<T>["execute"];
-  isVisible?: (
+  manifest: PluginManifest<T, R>;
+  execute: Plugin<T, R>["execute"];
+  isApplicableTo?: (
     auth: Authenticator,
-    resourceId: string | undefined
-  ) => Promise<boolean>;
-}): Plugin<T> {
-  return { manifest, execute, isVisible };
+    resource: ResourceTypeMap[R] | null
+  ) => boolean;
+}): Plugin<T, R> {
+  return { manifest, execute, isApplicableTo };
 }
 
 export type PluginListItem = Pick<
-  PluginManifest<PluginArgs>,
+  PluginManifest<PluginArgs, SupportedResourceType>,
   "id" | "name" | "description"
 >;

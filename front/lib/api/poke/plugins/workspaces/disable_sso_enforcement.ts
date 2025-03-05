@@ -17,8 +17,7 @@ export const disableSSOPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, _, args) => {
-    const workspace = auth.workspace();
+  execute: async (auth, workspace, args) => {
     if (!workspace) {
       return new Err(new Error("Cannot find workspace."));
     }
