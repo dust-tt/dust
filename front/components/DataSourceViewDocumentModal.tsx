@@ -7,25 +7,33 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
-import { useMemo } from "react";
+import { DocumentViewRawContentKey } from "@dust-tt/types";
+import { useRouter } from "next/router";
+import { useEffect, useMemo, useState } from "react";
 
+import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
-
-interface DataSourceViewDocumentModalProps {
-  dataSourceView: DataSourceViewType | null;
-  documentId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
-  owner: LightWorkspaceType;
-}
 
 export default function DataSourceViewDocumentModal({
   dataSourceView,
-  documentId,
-  isOpen,
-  onClose,
   owner,
-}: DataSourceViewDocumentModalProps) {
+}: {
+  dataSourceView: DataSourceViewType | null;
+  owner: LightWorkspaceType;
+}) {
+  const router = useRouter();
+  const { isOpen, onOpenChange } = useURLSheet(DocumentViewRawContentKey);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+
+  // Get documentId from URL when sheet is open
+  useEffect(() => {
+    if (router.isReady && isOpen) {
+      setDocumentId(router.query.documentId as string);
+    } else if (!isOpen) {
+      setDocumentId(null);
+    }
+  }, [router.isReady, router.query, isOpen]);
+
   const { document, isDocumentLoading, isDocumentError } =
     useDataSourceViewDocument({
       documentId,
@@ -49,14 +57,7 @@ export default function DataSourceViewDocumentModal({
   }, [document, documentId]);
 
   return (
-    <Sheet
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Sheet open={isOpen} onOpenChange={onOpenChange}>
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>

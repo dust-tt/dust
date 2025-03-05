@@ -4,7 +4,6 @@ import {
   EyeIcon,
   PencilSquareIcon,
   TrashIcon,
-  useHashParam,
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewContentNode,
@@ -13,14 +12,11 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
+import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { capitalize } from "lodash";
+import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
+import React, { useCallback, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
@@ -33,6 +29,7 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import { setQueryParam } from "@app/lib/utils/router";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -41,8 +38,7 @@ export type UploadOrEditContentActionKey =
 export type ContentActionKey =
   | UploadOrEditContentActionKey
   | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog"
-  | "DocumentViewRawContent";
+  | "DocumentOrTableDeleteDialog";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -92,15 +88,6 @@ export const ContentActions = React.forwardRef<
         setCurrentAction({ action, contentNode });
       },
     }));
-
-    const [currentDocumentId, setCurrentDocumentId] =
-      useHashParam("documentId");
-
-    useEffect(() => {
-      if (currentAction.action === "DocumentViewRawContent") {
-        setCurrentDocumentId(currentAction.contentNode?.internalId ?? "");
-      }
-    }, [currentAction, setCurrentDocumentId]);
 
     const onClose = useCallback(
       (save: boolean) => {
@@ -160,12 +147,6 @@ export const ContentActions = React.forwardRef<
         <DataSourceViewDocumentModal
           owner={owner}
           dataSourceView={dataSourceView}
-          documentId={currentDocumentId ?? null}
-          isOpen={currentDocumentId !== undefined}
-          onClose={() => {
-            setCurrentDocumentId(undefined);
-            onClose(false);
-          }}
         />
       </>
     );
@@ -185,7 +166,8 @@ export const getMenuItems = (
   addDataToSpace: (
     contentNode: DataSourceViewContentNode,
     spaceSId: string
-  ) => void
+  ) => void,
+  router: NextRouter
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
@@ -197,7 +179,7 @@ export const getMenuItems = (
 
   if (canReadInSpace && contentNode.type === "document") {
     actions.push({
-      ...makeViewRawContentAction(contentNode, contentActionsRef),
+      ...makeViewRawContentAction(contentNode, router),
     });
   }
 
@@ -312,7 +294,7 @@ const makeViewSourceUrlContentAction = (
 
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
-  contentActionsRef: RefObject<ContentActionsRef>
+  router: NextRouter
 ): MenuItem => {
   return {
     kind: "item",
@@ -320,10 +302,8 @@ const makeViewRawContentAction = (
     icon: EyeIcon,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
-      contentActionsRef.current?.callAction(
-        "DocumentViewRawContent",
-        contentNode
-      );
+      setQueryParam(router, "documentId", contentNode.internalId);
+      setQueryParam(router, DocumentViewRawContentKey, "true");
     },
   };
 };
