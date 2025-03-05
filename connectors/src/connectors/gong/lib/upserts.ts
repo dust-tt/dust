@@ -56,19 +56,13 @@ export async function syncGongTranscript({
 }) {
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
+  const title = transcriptMetadata.metaData.title || "Untitled transcript";
+  const documentUrl = transcriptMetadata.metaData.url;
 
   const transcriptInDb = await GongTranscriptResource.fetchByCallId(
     callId,
     connector
   );
-
-  if (!transcriptInDb) {
-    await GongTranscriptResource.makeNew({
-      blob: { callId },
-    });
-  } else {
-    await transcriptInDb.update({});
-  }
 
   if (!forceResync && transcriptInDb) {
     logger.info(
@@ -79,6 +73,17 @@ export async function syncGongTranscript({
       "[Gong] Transcript already up to date, skipping sync."
     );
     return;
+  }
+
+  if (!transcriptInDb) {
+    await GongTranscriptResource.makeNew({
+      blob: {
+        connectorId: connector.id,
+        callId,
+        title,
+        url: documentUrl,
+      },
+    });
   }
 
   logger.info(
@@ -96,7 +101,6 @@ export async function syncGongTranscript({
   );
   const callDuration = `${hours} hours ${minutes < 10 ? "0" + minutes : minutes} minutes`;
 
-  const title = transcriptMetadata.metaData.title || "Untitled transcript";
   const tags = [
     transcriptMetadata.metaData.language,
     transcriptMetadata.metaData.media,
@@ -131,7 +135,7 @@ export async function syncGongTranscript({
         labels: tags.join(", ") || "none",
       },
     }),
-    documentUrl: transcriptMetadata.metaData.url,
+    documentUrl,
     timestampMs: createdAtDate.getTime(),
     tags: [`title:${title}`, `createdAt:${createdAtDate.getTime()}`, ...tags],
     parents: [documentId],
