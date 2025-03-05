@@ -121,23 +121,17 @@ export class GongClient {
         // TODO(2025-03-04) - Implement this, we can read the Retry-After header.
       }
 
-      throw new GongAPIError(
-        `Gong API responded with status: ${response.status}: ${this.baseUrl}${endpoint}`,
-        {
-          type: "http_response_error",
-          status: response.status,
-          endpoint,
-          connectorId: this.connectorId,
-        }
-      );
+      throw GongAPIError.fromAPIError(response, {
+        endpoint,
+        connectorId: this.connectorId,
+      });
     }
 
     const responseBody = await response.json();
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
-      throw new GongAPIError("Response validation failed", {
-        type: "validation_error",
+      throw GongAPIError.fromValidationError({
         connectorId: this.connectorId,
         endpoint,
       });

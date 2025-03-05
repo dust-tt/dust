@@ -36,4 +36,34 @@ export class GongAPIError extends Error {
     this.endpoint = endpoint;
     this.connectorId = connectorId;
   }
+
+  static fromAPIError(
+    response: Response,
+    { endpoint, connectorId }: { endpoint: string; connectorId: ModelId }
+  ) {
+    return new this(
+      `Gong API responded with status: ${response.status} on ${endpoint}`,
+      {
+        type: "http_response_error",
+        status: response.status,
+        endpoint,
+        connectorId,
+      }
+    );
+  }
+
+  static fromValidationError({
+    endpoint,
+    connectorId,
+  }: {
+    endpoint: string;
+    connectorId: ModelId;
+  }) {
+    // TODO(2025-03-05 aubin): Add more details on the fields that are left.
+    return new this("Response validation failed", {
+      type: "validation_error",
+      endpoint,
+      connectorId,
+    });
+  }
 }
