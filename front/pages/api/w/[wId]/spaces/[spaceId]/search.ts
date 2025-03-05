@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { NON_SEARCHABLE_NODES_MIME_TYPES } from "@app/lib/api/content_nodes";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { searchContenNodesInSpace } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
@@ -39,6 +40,7 @@ export type PostSpaceSearchResponseBody = {
   nodes: DataSourceViewContentNode[];
   total: number;
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 };
 
 async function handler(
@@ -80,7 +82,7 @@ async function handler(
     });
   }
 
-  const { dataSourceViewIds, includeDataSources, limit, query, viewType } =
+  const { dataSourceViewIds, includeDataSources, query, viewType } =
     bodyValidation.right;
 
   // If no data source views are provided, use all data source views in the space.
@@ -108,6 +110,16 @@ async function handler(
       },
     });
   }
+  const paginationRes = getCursorPaginationParams(req);
+  if (paginationRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_pagination_parameters",
+        message: "Invalid pagination parameters",
+      },
+    });
+  }
 
   const searchRes = await searchContenNodesInSpace(
     auth,
@@ -116,7 +128,10 @@ async function handler(
     {
       excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
       includeDataSources,
-      limit,
+      options: {
+        limit: paginationRes.value?.limit,
+        cursor: paginationRes.value?.cursor ?? undefined,
+      },
       query,
       viewType,
     }
@@ -136,6 +151,7 @@ async function handler(
     nodes: searchRes.value.nodes,
     total: searchRes.value.total,
     warningCode: searchRes.value.warningCode,
+    nextPageCursor: searchRes.value.nextPageCursor,
   });
 }
 

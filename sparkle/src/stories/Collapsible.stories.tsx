@@ -1,7 +1,13 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { Chip, Collapsible } from "../index_with_tw_base";
+import {
+  Chip,
+  Collapsible,
+  CollapsibleComponent,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Primitives/Collapsible",
@@ -13,49 +19,51 @@ export default meta;
 export const CollapsibleExample = () => (
   <div>
     <Collapsible>
-      <Collapsible.Button label="Click me" />
-      <Collapsible.Panel>
+      <CollapsibleTrigger label="Click me" />
+      <CollapsibleContent>
         <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
           Hello
         </div>
-      </Collapsible.Panel>
+      </CollapsibleContent>
     </Collapsible>
 
     <Collapsible>
-      <Collapsible.Button label="Click me" />
-      <Collapsible.Panel>
+      <CollapsibleTrigger label="Click me" />
+      <CollapsibleContent>
         <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
           Hello
         </div>
-      </Collapsible.Panel>
+      </CollapsibleContent>
     </Collapsible>
     <Collapsible>
-      <Collapsible.Button label="Click me" />
-      <Collapsible.Panel>
+      <CollapsibleTrigger label="Click me" />
+      <CollapsibleContent>
         <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
           Hello
         </div>
-      </Collapsible.Panel>
+      </CollapsibleContent>
     </Collapsible>
     <Collapsible>
-      <Collapsible.Button>
+      <CollapsibleTrigger>
         <Chip>Click me custom</Chip>
-      </Collapsible.Button>
-      <Collapsible.Panel>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
         <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
           Anything goes for the Collapsible button
         </div>
-      </Collapsible.Panel>
+      </CollapsibleContent>
     </Collapsible>
-    <Collapsible defaultOpen={true}>
-      <Collapsible.Button>
-        <Chip>Click me custom</Chip>
-      </Collapsible.Button>
-      <Collapsible.Panel>
-        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
-          This one is open by default
-        </div>
-      </Collapsible.Panel>
-    </Collapsible>
+    <div className="s-rounded-md s-border s-border-gray-200 s-p-4">
+      <h3 className="s-mb-2 s-font-medium">Default Open</h3>
+      <CollapsibleComponent
+        rootProps={{ defaultOpen: true }}
+        triggerProps={{ label: "Open by default" }}
+        contentChildren={
+          <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-slate-200">
+            This collapsible is open by default
+          </div>
+        }
+      />
+    </div>
   </div>
 );
