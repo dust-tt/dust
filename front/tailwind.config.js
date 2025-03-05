@@ -421,8 +421,12 @@ module.exports = {
           DEFAULT: colors.gray[100],
           night: colors.gray[900],
           dark: {
+            DEFAULT: colors.gray[100],
+            night: colors.gray[900],
+          },
+          darker: {
             DEFAULT: colors.gray[150],
-            night: colors.gray[700],
+            night: colors.gray[800],
           },
           focus: {
             DEFAULT: colors.blue[400],
