@@ -8,7 +8,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare timestampCursor: number | null;
+  declare lastSyncTimestamp: number | null;
 }
 
 GongConfigurationModel.init(
@@ -23,7 +23,7 @@ GongConfigurationModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    timestampCursor: {
+    lastSyncTimestamp: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
@@ -33,5 +33,59 @@ GongConfigurationModel.init(
     modelName: "gong_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
+  }
+);
+
+export class GongUserModel extends ConnectorBaseModel<GongUserModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  // Gong user properties.
+  declare email: string;
+  declare emailAliases: string[];
+  declare firstName: string | null;
+  declare gongId: string;
+  declare lastName: string | null;
+}
+
+GongUserModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    emailAliases: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: false,
+      defaultValue: [],
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    gongId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    indexes: [{ fields: ["connectorId", "gongId"], unique: true }],
+    modelName: "gong_users",
+    relationship: "hasMany",
+    sequelize: sequelizeConnection,
   }
 );

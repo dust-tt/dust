@@ -25,7 +25,11 @@ export async function launchGongSyncWorkflow(
   const action: ScheduleOptionsAction = {
     type: "startWorkflow",
     workflowType: gongSyncWorkflow,
-    args: [],
+    args: [
+      {
+        connectorId: connector.id,
+      },
+    ],
     taskQueue: QUEUE_NAME,
   };
 

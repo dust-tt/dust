@@ -4,9 +4,13 @@ import {
   getGongAccessToken,
   GongClient,
 } from "@connectors/connectors/gong/lib/gong_api";
+import { getUserBlobFromGongAPI } from "@connectors/connectors/gong/lib/users";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { GongConfigurationResource } from "@connectors/resources/gong_resources";
+import {
+  GongConfigurationResource,
+  GongUserResource,
+} from "@connectors/resources/gong_resources";
 
 async function fetchGongConnector(
   connectorId: ModelId
@@ -38,7 +42,11 @@ async function getGongClient(connector: ConnectorResource) {
   return new GongClient(accessTokenResult.value, connector.id);
 }
 
-export async function gongSaveStartSyncActivity(connectorId: ModelId) {
+export async function gongSaveStartSyncActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
   const connector = await fetchGongConnector(connectorId);
 
   const result = await syncStarted(connector.id);
@@ -47,7 +55,11 @@ export async function gongSaveStartSyncActivity(connectorId: ModelId) {
   }
 }
 
-export async function gongSaveSyncSuccessActivity(connectorId: ModelId) {
+export async function gongSaveSyncSuccessActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
   const connector = await fetchGongConnector(connectorId);
 
   const result = await syncSucceeded(connector.id);
@@ -56,7 +68,13 @@ export async function gongSaveSyncSuccessActivity(connectorId: ModelId) {
   }
 }
 
-export async function gongSyncTranscriptsActivity(connectorId: ModelId) {
+// Transcripts.
+
+export async function gongSyncTranscriptsActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
   const connector = await fetchGongConnector(connectorId);
   const configuration = await fetchGongConfiguration(connector);
   const syncStartTs = Date.now();
@@ -66,12 +84,37 @@ export async function gongSyncTranscriptsActivity(connectorId: ModelId) {
   let pageCursor = null;
   do {
     const transcripts = await gongClient.getTranscripts({
-      startTimestamp: configuration.timestampCursor,
+      startTimestamp: configuration.lastSyncTimestamp,
       pageCursor,
     });
     // TODO(2025-03-05) - Add upserts here.
     pageCursor = transcripts.nextPageCursor;
   } while (pageCursor);
 
-  await configuration.setCursor(syncStartTs);
+  await configuration.setLastSyncTimestamp(syncStartTs);
+}
+
+// Users.
+
+export async function gongListAndSaveUsersActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await fetchGongConnector(connectorId);
+  const gongClient = await getGongClient(connector);
+
+  let pageCursor = null;
+  do {
+    const { users, nextPageCursor } = await gongClient.getUsers({
+      pageCursor,
+    });
+
+    await GongUserResource.batchCreate(
+      connector,
+      users.map(getUserBlobFromGongAPI)
+    );
+
+    pageCursor = nextPageCursor;
+  } while (pageCursor);
 }
