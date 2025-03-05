@@ -1,8 +1,8 @@
 import { MIME_TYPES } from "@dust-tt/types";
 
 import type {
+  GongAPIUser,
   GongCallTranscript,
-  GongParticipant,
   GongTranscriptMetadata,
 } from "@connectors/connectors/gong/lib/gong_api";
 import {
@@ -33,7 +33,7 @@ export async function syncGongTranscript({
 }: {
   transcript: GongCallTranscript;
   transcriptMetadata: GongTranscriptMetadata;
-  participants: Record<string, GongParticipant>;
+  participants: Record<string, GongAPIUser>;
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -93,6 +93,7 @@ export async function syncGongTranscript({
     transcriptMetadata.metaData.scope,
     ...new Set(
       transcript.transcript.map(
+        // TODO: this is a mock, the speakerId is not the correct key.
         (monologue) =>
           participants[monologue.speakerId]?.emailAddress || "Unknown speaker"
       )
