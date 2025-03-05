@@ -18,7 +18,7 @@ export const checkSeatCountPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, { updateQuantity }) => {
+  execute: async (auth, _, { updateQuantity }) => {
     const workspace = auth.getNonNullableWorkspace();
 
     if (updateQuantity) {

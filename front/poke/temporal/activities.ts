@@ -50,6 +50,7 @@ import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
@@ -507,6 +508,16 @@ export async function deleteSpacesActivity({
       workspaceId,
     });
   }
+}
+
+export async function deletePluginRunsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  await PluginRunResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteWorkspaceActivity({

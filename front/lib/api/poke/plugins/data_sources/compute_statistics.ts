@@ -2,7 +2,7 @@ import { CoreAPI, Err, maxFileSizeToHumanReadable, Ok } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 
 async function computeStatistics(dataSource: DataSourceResource) {
@@ -21,12 +21,7 @@ export const computeStatsPlugin = createPlugin({
     resourceTypes: ["data_sources"],
     args: {},
   },
-  execute: async (auth, dataSourceId) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }

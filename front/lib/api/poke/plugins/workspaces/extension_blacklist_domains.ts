@@ -20,7 +20,7 @@ export const extensionBlacklistDomainsPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const domains = args.domains
       ? args.domains
           .split(",")
