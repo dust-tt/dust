@@ -114,7 +114,12 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   );
   if (externalMemberships.length > 0) {
     logger.error(
-      { users: externalMemberships.map((m) => m.user) },
+      {
+        existingMemberships: externalMemberships.map((m) => ({
+          userId: m.userId,
+          workspaceId: m.workspaceId,
+        })),
+      },
       "Some users have mutiple memberships"
     );
 
