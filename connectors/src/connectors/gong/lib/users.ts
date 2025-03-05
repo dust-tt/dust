@@ -16,7 +16,7 @@ export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob {
 export async function getGongUser(
   connector: ConnectorResource,
   { gongUserId }: { gongUserId: string }
-): Promise<GongUserResource> {
+): Promise<GongUserResource | null> {
   const user = await GongUserResource.fetchByGongUserId(connector, {
     gongUserId,
   });
@@ -26,6 +26,9 @@ export async function getGongUser(
     const gongClient = await getGongClient(connector);
 
     const user = await gongClient.getUser({ userId: gongUserId });
+    if (!user) {
+      return null;
+    }
 
     return GongUserResource.makeNew(connector, getUserBlobFromGongAPI(user));
   }
