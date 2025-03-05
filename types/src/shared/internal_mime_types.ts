@@ -136,6 +136,10 @@ export const MIME_TYPES = {
     provider: "salesforce",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
+  GONG: generateMimeTypes({
+    provider: "gong",
+    resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
+  }),
 };
 
 export type BigQueryMimeType =

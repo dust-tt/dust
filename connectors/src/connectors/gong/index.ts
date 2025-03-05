@@ -1,6 +1,7 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
+import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import {
   launchGongSyncWorkflow,
   stopGongSyncWorkflow,
@@ -12,10 +13,14 @@ import type {
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
 export class GongConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -35,6 +40,16 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
+
+    // Upsert a top-level folder that will contain all the transcripts (non selectable).
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: makeGongTranscriptFolderInternalId(connector),
+      parents: [makeGongTranscriptFolderInternalId(connector)],
+      parentId: null,
+      title: TRANSCRIPTS_FOLDER_TITLE,
+      mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
+    });
 
     const result = await launchGongSyncWorkflow(connector);
     if (result.isErr()) {
