@@ -10,7 +10,7 @@ import type {
 import {
   GongConfigurationModel,
   GongTranscriptModel,
-  GongUserModel
+  GongUserModel,
 } from "@connectors/lib/models/gong";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.

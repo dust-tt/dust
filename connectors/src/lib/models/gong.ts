@@ -133,4 +133,3 @@ GongTranscriptModel.init(
     ],
   }
 );
-
