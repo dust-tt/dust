@@ -10,5 +10,4 @@ CREATE TABLE IF NOT EXISTS "gong_transcripts"
     "id"          BIGSERIAL,
     PRIMARY KEY ("id")
 );
-CREATE INDEX "gong_transcripts_connector_id" ON "gong_transcripts" ("connectorId");
 CREATE UNIQUE INDEX "gong_transcripts_connector_id_call_id" ON "gong_transcripts" ("connectorId", "callId");

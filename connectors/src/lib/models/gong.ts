@@ -121,9 +121,6 @@ GongTranscriptModel.init(
   {
     sequelize: sequelizeConnection,
     modelName: "gong_transcripts",
-    indexes: [
-      { fields: ["connectorId"] },
-      { fields: ["connectorId", "callId"], unique: true },
-    ],
+    indexes: [{ fields: ["connectorId", "callId"], unique: true }],
   }
 );
