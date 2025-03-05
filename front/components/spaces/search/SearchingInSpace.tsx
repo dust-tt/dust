@@ -25,7 +25,7 @@ export function SearchLocation({
     }
 
     if (dataSourceViews.length > 1 && category) {
-      return `${space.name} / ${CATEGORY_DETAILS[category].label}`;
+      return `${space.name} › ${CATEGORY_DETAILS[category].label}`;
     }
 
     return `${space.name}`;
