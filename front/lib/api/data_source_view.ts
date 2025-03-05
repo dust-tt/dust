@@ -82,12 +82,15 @@ function makeCoreDataSourceViewFilter(
 
 const ROOT_PARENT_ID = "root";
 
-export async function getAllContentNodesForDataSourceView(
+export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
     viewType,
     pagination,
-  }: Pick<GetContentNodesForDataSourceViewParams, "viewType" | "pagination">
+  }: {
+    viewType: Exclude<ContentNodesViewType, "all">;
+    pagination?: CursorPaginationParams;
+  }
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
   const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
 
@@ -107,7 +110,7 @@ export async function getAllContentNodesForDataSourceView(
     return new Err(new Error(coreRes.error.message));
   }
 
-  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes.slice(0, limit);
+  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
   nextPageCursor = coreRes.value.next_page_cursor;
 
   const nodes = resultNodes.map((node) =>
