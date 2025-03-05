@@ -548,7 +548,7 @@ pub async fn embed(
             rate_limits.retain(|_, details| details.reset_tokens > now);
         }
 
-        // First get read lock to check rate limits
+        // Check rate limits
         {
             let rate_limits = RATE_LIMITS.read();
             if let Some(details) = rate_limits.get(&api_key) {
