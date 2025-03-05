@@ -259,8 +259,7 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+  const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -619,10 +618,6 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={dataSourceSearch}
-            filterColumn={
-              "title" // see todo above
-            }
             className="pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}
