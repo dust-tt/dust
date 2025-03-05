@@ -1002,6 +1002,7 @@ export enum GLOBAL_AGENTS_SID {
   CLAUDE_3_OPUS = "claude-3-opus",
   CLAUDE_3_SONNET = "claude-3-sonnet",
   CLAUDE_3_HAIKU = "claude-3-haiku",
+  CLAUDE_3_7_SONNET = "claude-3-7-sonnet",
   CLAUDE_2 = "claude-2",
   CLAUDE_INSTANT = "claude-instant-1",
   MISTRAL_LARGE = "mistral-large",
@@ -1025,6 +1026,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
     case GLOBAL_AGENTS_SID.CLAUDE_INSTANT:
     case GLOBAL_AGENTS_SID.CLAUDE_3_OPUS:
     case GLOBAL_AGENTS_SID.CLAUDE_3_SONNET:
+    case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
     case GLOBAL_AGENTS_SID.CLAUDE_2:
       return "Anthropic";
@@ -1053,6 +1055,7 @@ const CUSTOM_ORDER: string[] = [
   GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
   GLOBAL_AGENTS_SID.CLAUDE_3_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU,
+  GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
   GLOBAL_AGENTS_SID.CLAUDE_2,
   GLOBAL_AGENTS_SID.CLAUDE_INSTANT,
   GLOBAL_AGENTS_SID.MISTRAL_LARGE,

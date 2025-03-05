@@ -15,6 +15,7 @@ import type {
 } from "@dust-tt/types";
 import {
   CLAUDE_2_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
@@ -634,7 +635,50 @@ function _getClaude3GlobalAgent({
     version: 0,
     versionCreatedAt: null,
     versionAuthorId: null,
-    name: "claude-3",
+    name: "claude-3.5",
+    description: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.description,
+    instructions:
+      "Only use visualization if it is strictly necessary to visualize " +
+      "data or if it was explicitly requested by the user. " +
+      "Do not use visualization if markdown is sufficient.",
+    pictureUrl: "https://dust.tt/static/systemavatar/claude_avatar_full.png",
+    status,
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: DEFAULT_MAX_STEPS_USE_PER_RUN,
+    visualizationEnabled: true,
+    templateId: null,
+    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+    groupIds: [],
+    requestedGroupIds: [],
+  };
+}
+
+function _getClaude3_7GlobalAgent({
+  auth,
+  settings,
+}: {
+  auth: Authenticator;
+  settings: GlobalAgentSettings | null;
+}): AgentConfigurationType {
+  let status = settings?.status ?? "active";
+  if (!auth.isUpgraded()) {
+    status = "disabled_free_workspace";
+  }
+
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "claude-3.7",
     description: CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG.description,
     instructions:
       "Only use visualization if it is strictly necessary to visualize " +
@@ -1374,6 +1418,12 @@ function getGlobalAgent(
       break;
     case GLOBAL_AGENTS_SID.CLAUDE_3_HAIKU:
       agentConfiguration = _getClaude3HaikuGlobalAgent({
+        settings,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.CLAUDE_3_7_SONNET:
+      agentConfiguration = _getClaude3_7GlobalAgent({
+        auth,
         settings,
       });
       break;
