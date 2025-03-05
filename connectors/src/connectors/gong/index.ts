@@ -75,7 +75,13 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const result = await stopGongSyncWorkflow(this.connectorId);
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
+    if (!connector) {
+      logger.error({ connectorId }, "[Gong] Connector not found.");
+      throw new Error("[Gong] Connector not found.");
+    }
+    const result = await stopGongSyncWorkflow(connector);
     if (result.isErr()) {
       return result;
     }

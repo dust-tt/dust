@@ -1,4 +1,4 @@
-import type { ModelId, Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
 import {
@@ -10,7 +10,7 @@ import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
 import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 function makeGongSyncWorkflowId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
@@ -52,15 +52,9 @@ export async function launchGongSyncWorkflow(
 }
 
 export async function stopGongSyncWorkflow(
-  connectorId: ModelId
+  connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const connector = await ConnectorResource.fetchById(connectorId);
-  if (!connector) {
-    logger.error({ connectorId }, "[Gong] Connector not found.");
-    throw new Error("[Gong] Connector not found.");
-  }
-
   const workflowId = makeGongSyncWorkflowId(connector);
 
   try {
