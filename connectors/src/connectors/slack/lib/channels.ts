@@ -97,9 +97,14 @@ export async function updateSlackChannelInCoreDb(
     },
   });
   if (!channelOnDb) {
-    throw new Error(
-      `Could not find channel ${channelId} in connectors db for connector ${connectorId}`
+    logger.warn(
+      {
+        connectorId,
+        channelId,
+      },
+      "Could not find channel in connectors db, skipping for now."
     );
+    return;
   }
 
   const folderId = slackChannelInternalIdFromSlackChannelId(channelId);
