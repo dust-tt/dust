@@ -2,6 +2,7 @@ import type { ModelId, Result } from "@dust-tt/types";
 import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
 
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { apiConfig } from "@connectors/lib/api/config";
@@ -14,17 +15,18 @@ const CatchAllCodec = t.record(t.string, t.unknown);
 
 const GongUserCodec = t.intersection([
   t.type({
-    id: t.string,
-    emailAddress: t.string,
-    created: t.string,
     active: t.boolean,
+    created: t.string,
+    emailAddress: t.string,
+    emailAliases: t.array(t.string),
     firstName: t.string,
+    id: t.string,
     lastName: t.string,
-    title: t.string,
-    phoneNumber: t.string,
   }),
   CatchAllCodec,
 ]);
+
+export type GongAPIUser = t.TypeOf<typeof GongUserCodec>;
 
 const GongTranscriptSentenceCodec = t.type({
   start: t.number,
@@ -34,7 +36,6 @@ const GongTranscriptSentenceCodec = t.type({
 
 const GongTranscriptMonologueCodec = t.type({
   speakerId: t.string,
-  topic: t.string,
   // A monologue is constituted of multiple sentences.
   sentences: t.array(GongTranscriptSentenceCodec),
 });
@@ -54,10 +55,11 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
     t.type({
       requestId: t.string,
       records: t.type({
-        totalRecords: t.number,
-        currentPageSize: t.number,
         currentPageNumber: t.number,
-        cursor: t.string,
+        currentPageSize: t.number,
+        // Cursor only exists if there are more results.
+        cursor: t.union([t.string, t.undefined]),
+        totalRecords: t.number,
       }),
     }),
     t.type({
@@ -94,22 +96,14 @@ export class GongClient {
     private readonly connectorId: ModelId
   ) {}
 
-  private async request<T>(
+  /**
+   * Handles response parsing and error handling for all API requests.
+   */
+  private async handleResponse<T>(
+    response: Response,
     endpoint: string,
-    body: unknown,
     codec: t.Type<T>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.authToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-      // Timeout after 30 seconds.
-      signal: AbortSignal.timeout(30000),
-    });
-
     if (!response.ok) {
       if (response.status === 403 && response.statusText === "Forbidden") {
         throw new ExternalOAuthTokenError();
@@ -131,13 +125,62 @@ export class GongClient {
     const result = codec.decode(responseBody);
 
     if (isLeft(result)) {
+      const pathErrors = reporter.formatValidationErrors(result.left);
+
       throw GongAPIError.fromValidationError({
         connectorId: this.connectorId,
         endpoint,
+        pathErrors,
       });
     }
 
     return result.right;
+  }
+
+  private async postRequest<T>(
+    endpoint: string,
+    body: unknown,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.authToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      // Timeout after 30 seconds.
+      signal: AbortSignal.timeout(30000),
+    });
+
+    return this.handleResponse(response, endpoint, codec);
+  }
+
+  private async getRequest<T>(
+    endpoint: string,
+    searchParams: Record<string, string | number | boolean | undefined>,
+    codec: t.Type<T>
+  ): Promise<T> {
+    const urlSearchParams = new URLSearchParams(
+      Object.entries(searchParams)
+        .filter(([, value]) => value !== undefined)
+        .map(([key, value]) => [key, String(value)])
+    );
+
+    const response = await fetch(
+      `${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.authToken}`,
+          "Content-Type": "application/json",
+        },
+        // Timeout after 30 seconds.
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+
+    return this.handleResponse(response, endpoint, codec);
   }
 
   async getTranscripts({
@@ -148,7 +191,7 @@ export class GongClient {
     pageCursor: string | null;
   }) {
     try {
-      const transcripts = await this.request(
+      const transcripts = await this.postRequest(
         `/calls/transcript`,
         {
           cursor: pageCursor,
@@ -177,13 +220,12 @@ export class GongClient {
 
   async getUsers({ pageCursor }: { pageCursor: string | null }) {
     try {
-      const users = await this.request(
+      const users = await this.getRequest(
         `/users`,
-        {
-          cursor: pageCursor,
-        },
+        pageCursor ? { cursor: pageCursor } : {},
         GongPaginatedResults("users", GongUserCodec)
       );
+
       return {
         users: users.users,
         nextPageCursor: users.records.cursor,
@@ -195,6 +237,7 @@ export class GongClient {
           nextPageCursor: null,
         };
       }
+
       throw err;
     }
   }

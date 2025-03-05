@@ -9,45 +9,55 @@ export class GongAPIError extends Error {
   readonly errors?: string[];
   readonly endpoint: string;
   readonly connectorId: ModelId;
+  readonly pathErrors?: string[];
 
   constructor(
     message: string,
     {
-      type,
-      status,
-      requestId,
-      errors,
-      endpoint,
       connectorId,
+      endpoint,
+      errors,
+      pathErrors,
+      requestId,
+      status,
+      type,
     }: {
-      type: GongAPIErrorType;
-      status?: number;
-      requestId?: string;
-      errors?: string[];
-      endpoint: string;
       connectorId: ModelId;
+      endpoint: string;
+      errors?: string[];
+      pathErrors?: string[];
+      requestId?: string;
+      status?: number;
+      type: GongAPIErrorType;
     }
   ) {
     super(message);
     this.type = type;
-    this.status = status;
-    this.requestId = requestId;
-    this.errors = errors;
-    this.endpoint = endpoint;
+
     this.connectorId = connectorId;
+    this.endpoint = endpoint;
+    this.errors = errors;
+    this.pathErrors = pathErrors;
+    this.requestId = requestId;
+    this.status = status;
   }
 
   static fromAPIError(
     response: Response,
-    { endpoint, connectorId }: { endpoint: string; connectorId: ModelId }
+    {
+      connectorId,
+      endpoint,
+      pathErrors,
+    }: { connectorId: ModelId; endpoint: string; pathErrors?: string[] }
   ) {
     return new this(
       `Gong API responded with status: ${response.status} on ${endpoint}`,
       {
         type: "http_response_error",
-        status: response.status,
-        endpoint,
         connectorId,
+        endpoint,
+        pathErrors,
+        status: response.status,
       }
     );
   }
@@ -55,15 +65,17 @@ export class GongAPIError extends Error {
   static fromValidationError({
     endpoint,
     connectorId,
+    pathErrors,
   }: {
     endpoint: string;
     connectorId: ModelId;
+    pathErrors: string[];
   }) {
-    // TODO(2025-03-05 aubin): Add more details on the fields that are left.
     return new this("Response validation failed", {
       type: "validation_error",
       endpoint,
       connectorId,
+      pathErrors,
     });
   }
 }
