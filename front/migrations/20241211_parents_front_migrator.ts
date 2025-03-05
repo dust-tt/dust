@@ -50,7 +50,7 @@ export function getUpdatedConfluenceId(internalId: string): string {
 
 /// Migrator: oldParents => newParents idempotently
 /// we put null values if no migration is needed
-const migrators: Record<Partial<ConnectorProvider>, ProviderMigrator | null> = {
+const migrators: Partial<Record<ConnectorProvider, ProviderMigrator | null>> = {
   slack: (parents) =>
     parents.map(
       (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!

@@ -367,6 +367,10 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "none",
     },
     isDeletable: false,
+    // TODO(2025-03-05 aubin): check these two fields below.
+    limitations:
+      "Dust will index the content accessible to the authorized account only.",
+    mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
 };
 
