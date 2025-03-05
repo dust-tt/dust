@@ -12,7 +12,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-function makeGongSyncWorkflowId(connector: ConnectorResource): string {
+function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
@@ -20,7 +20,7 @@ export async function launchGongSyncWorkflow(
   connector: ConnectorResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeGongSyncWorkflowId(connector);
+  const workflowId = makeGongSyncScheduleId(connector);
 
   const action: ScheduleOptionsAction = {
     type: "startWorkflow",
@@ -36,7 +36,7 @@ export async function launchGongSyncWorkflow(
   try {
     await client.schedule.create({
       action,
-      scheduleId: makeGongSyncWorkflowId(connector),
+      scheduleId: makeGongSyncScheduleId(connector),
       policies: {
         // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
         // Backfill scheduled action up to the previous day.
@@ -63,7 +63,7 @@ export async function stopGongSyncWorkflow(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeGongSyncWorkflowId(connector);
+  const workflowId = makeGongSyncScheduleId(connector);
 
   try {
     const handle: WorkflowHandle<typeof gongSyncWorkflow> =
