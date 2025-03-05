@@ -21,7 +21,7 @@ async function handler(
   >,
   session: SessionWithUser
 ): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+  let auth = await Authenticator.fromSuperUserSession(session, null);
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -34,7 +34,7 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { resourceType, resourceId } = req.query;
+      const { resourceType, resourceId, workspaceId } = req.query;
       if (
         typeof resourceType !== "string" ||
         !isSupportedResourceType(resourceType)
@@ -56,6 +56,21 @@ async function handler(
             message: "Invalid resource id type.",
           },
         });
+      }
+
+      if (workspaceId && typeof workspaceId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid workspace id type.",
+          },
+        });
+      }
+
+      // If the run targets a specific workspace, use a workspace-scoped authenticator.
+      if (workspaceId) {
+        auth = await Authenticator.fromSuperUserSession(session, workspaceId);
       }
 
       const plugins = pluginManager.getPluginsForResourceType(resourceType);

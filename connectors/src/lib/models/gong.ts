@@ -42,7 +42,6 @@ export class GongUserModel extends ConnectorBaseModel<GongUserModel> {
 
   // Gong user properties.
   declare email: string;
-  declare emailAliases: string[];
   declare firstName: string | null;
   declare gongId: string;
   declare lastName: string | null;
@@ -63,11 +62,6 @@ GongUserModel.init(
     email: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    emailAliases: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
-      defaultValue: [],
     },
     firstName: {
       type: DataTypes.STRING,
