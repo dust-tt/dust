@@ -13,7 +13,10 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-function makeGongSyncWorkflowId(connector: ConnectorResource): string {
+// This function generates a connector-wise unique schedule ID for the Gong sync.
+// The IDs of the workflows spawned by this schedule will follow the pattern:
+//   gong-sync-${connectorId}-workflow-${isoFormatDate}
+function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
 }
 
@@ -21,7 +24,7 @@ export async function launchGongSyncWorkflow(
   connector: ConnectorResource
 ): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeGongSyncWorkflowId(connector);
+  const scheduleId = makeGongSyncScheduleId(connector);
 
   const action: ScheduleOptionsAction = {
     type: "startWorkflow",
@@ -36,7 +39,7 @@ export async function launchGongSyncWorkflow(
 
   try {
     const scheduleHandle = client.schedule.getHandle(
-      makeGongSyncWorkflowId(connector)
+      makeGongSyncScheduleId(connector)
     );
     const scheduleDescription = await scheduleHandle.describe();
     if (scheduleDescription.state.paused) {
@@ -44,7 +47,7 @@ export async function launchGongSyncWorkflow(
         {
           connectorId: connector.id,
           provider: "gong",
-          workflowId,
+          scheduleId,
         },
         "[Gong] Resuming paused sync schedule."
       );
@@ -57,7 +60,7 @@ export async function launchGongSyncWorkflow(
       // Create the schedule if it doesn't exist.
       await client.schedule.create({
         action,
-        scheduleId: makeGongSyncWorkflowId(connector),
+        scheduleId: makeGongSyncScheduleId(connector),
         policies: {
           // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
           // Backfill scheduled action up to the previous day.
@@ -77,19 +80,19 @@ export async function launchGongSyncWorkflow(
     return new Err(err as Error);
   }
 
-  return new Ok(workflowId);
+  return new Ok(scheduleId);
 }
 
 export async function stopGongSyncWorkflow(
   connector: ConnectorResource
 ): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const workflowId = makeGongSyncWorkflowId(connector);
+  const scheduleId = makeGongSyncScheduleId(connector);
 
   try {
     // Pause the schedule if running.
     const scheduleHandle = client.schedule.getHandle(
-      makeGongSyncWorkflowId(connector)
+      makeGongSyncScheduleId(connector)
     );
     try {
       await scheduleHandle.pause();
@@ -101,7 +104,7 @@ export async function stopGongSyncWorkflow(
 
     // Terminate the workflow if running.
     const workflowHandle: WorkflowHandle<typeof gongSyncWorkflow> =
-      client.workflow.getHandle(workflowId);
+      client.workflow.getHandle(scheduleId);
     try {
       await workflowHandle.terminate();
     } catch (e) {
@@ -115,7 +118,7 @@ export async function stopGongSyncWorkflow(
       {
         connectorId: connector.id,
         provider: "gong",
-        workflowId,
+        workflowId: scheduleId,
         error,
       },
       "[Gong] Failed to stop schedule and workflow."
