@@ -159,7 +159,6 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     return {
       createdAt: this.createdAt,
       email: this.email,
-      emailAliases: this.emailAliases,
       firstName: this.firstName,
       gongId: this.gongId,
       id: this.id,
@@ -178,12 +177,12 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     return users.map((user) => new this(this.model, user.get()));
   }
 
-  static async fetchByGongId(
+  static async fetchByGongUserId(
     connector: ConnectorResource,
-    { gongId }: { gongId: string }
+    { gongUserId }: { gongUserId: string }
   ): Promise<GongUserResource | null> {
     const user = await GongUserModel.findOne({
-      where: { connectorId: connector.id, gongId },
+      where: { connectorId: connector.id, gongId: gongUserId },
     });
 
     if (!user) {

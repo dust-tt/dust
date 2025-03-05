@@ -18,7 +18,6 @@ const GongUserCodec = t.intersection([
     active: t.boolean,
     created: t.string,
     emailAddress: t.string,
-    emailAliases: t.array(t.string),
     firstName: t.string,
     id: t.string,
     lastName: t.string,
@@ -240,5 +239,9 @@ export class GongClient {
 
       throw err;
     }
+  }
+
+  async getUser({ userId }: { userId: string }) {
+    return this.getRequest(`/users/${userId}`, {}, GongUserCodec);
   }
 }
