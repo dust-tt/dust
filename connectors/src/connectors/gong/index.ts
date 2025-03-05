@@ -3,6 +3,8 @@ import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import {
+  createGongSyncSchedule,
+  deleteGongSyncSchedule,
   startGongSync,
   stopGongSync,
 } from "@connectors/connectors/gong/temporal/client";
@@ -51,11 +53,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await startGongSync(connector);
+    const result = await createGongSyncSchedule(connector);
     if (result.isErr()) {
       logger.error(
         { connectorId: connector.id, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
+        "[Gong] Error creating schedule and launching Gong sync."
       );
       throw result.error;
     }
@@ -77,13 +79,29 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("[Gong] Connector not found"));
     }
 
-    const res = await connector.delete();
-    if (res.isErr()) {
+    const scheduleResult = await deleteGongSyncSchedule(connector);
+    if (scheduleResult.isErr()) {
       logger.error(
-        { connectorId, error: res.error },
-        "Error cleaning up Gong connector."
+        {
+          connectorId,
+          provider: "gong",
+          error: scheduleResult.error,
+        },
+        "[Gong] Failed to delete schedule and terminate workflow."
       );
-      return res;
+      return scheduleResult;
+    }
+    const connectorResult = await connector.delete();
+    if (connectorResult.isErr()) {
+      logger.error(
+        {
+          connectorId,
+          provider: "gong",
+          error: connectorResult.error,
+        },
+        "[Gong] Failed to delete connector."
+      );
+      return connectorResult;
     }
 
     return new Ok(undefined);
@@ -115,7 +133,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
+        "[Gong] Error launching Gong sync."
       );
       throw result.error;
     }
