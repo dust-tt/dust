@@ -1,7 +1,7 @@
 import type {
   ContentNodesViewType,
+  ContentNodeWithParent,
   CoreAPIContentNode,
-  DataSourceViewContentNode,
   DataSourceViewType,
 } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
@@ -84,10 +84,9 @@ function isExpandable(
 }
 
 export function getContentNodeFromCoreNode(
-  dataSourceView: DataSourceViewType,
   coreNode: CoreAPIContentNode,
   viewType: ContentNodesViewType
-): DataSourceViewContentNode {
+): ContentNodeWithParent {
   return {
     internalId: coreNode.node_id,
     parentInternalId: coreNode.parent_id ?? null,
@@ -108,6 +107,5 @@ export function getContentNodeFromCoreNode(
       FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
       (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
-    dataSourceView,
   };
 }
