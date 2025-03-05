@@ -82,6 +82,55 @@ function makeCoreDataSourceViewFilter(
 
 const ROOT_PARENT_ID = "root";
 
+export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  {
+    viewType,
+    pagination,
+  }: {
+    viewType: Exclude<ContentNodesViewType, "all">;
+    pagination?: CursorPaginationParams;
+  }
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
+
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_types: [viewType],
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
+  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
+  nextPageCursor = coreRes.value.next_page_cursor;
+
+  const nodes = resultNodes.map((node) =>
+    getContentNodeFromCoreNode(
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+      node,
+      viewType
+    )
+  );
+
+  return new Ok({
+    nodes,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
+    nextPageCursor: nextPageCursor,
+  });
+}
+
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
