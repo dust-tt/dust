@@ -81,14 +81,15 @@ export async function deleteGongSyncSchedule(
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
-    const scheduleDescription = await scheduleHandle.describe();
     // Terminate the running workflows.
+    const scheduleDescription = await scheduleHandle.describe();
     for (const action of scheduleDescription.info.runningActions) {
       const workflowHandle = client.workflow.getHandle(
         action.workflow.workflowId
       );
       await workflowHandle.terminate();
     }
+
     // Delete the schedule.
     await scheduleHandle.delete();
   } catch (error) {
@@ -109,8 +110,7 @@ export async function deleteGongSyncSchedule(
 }
 
 // Starts the sync of Gong data for the given connector.
-// - Creates a new schedule if it doesn't exist.
-// - Resumes the schedule if paused.
+// - Unpauses the schedule if paused.
 // - Triggers the schedule to start the sync workflow immediately.
 export async function startGongSync(
   connector: ConnectorResource
@@ -120,15 +120,9 @@ export async function startGongSync(
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
+    // Unpause the schedule if paused.
     const scheduleDescription = await scheduleHandle.describe();
     if (scheduleDescription.state.paused) {
-      logger.info(
-        {
-          connectorId: connector.id,
-          scheduleId,
-        },
-        "[Gong] Resuming paused sync schedule."
-      );
       await scheduleHandle.unpause();
     }
 
@@ -142,7 +136,7 @@ export async function startGongSync(
           scheduleId,
           error,
         },
-        "[Gong] Failed to resume and trigger schedule."
+        "[Gong] Failed to unpause and trigger schedule."
       );
       return new Err(error as Error);
     }
