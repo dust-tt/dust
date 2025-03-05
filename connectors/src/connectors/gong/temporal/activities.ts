@@ -4,10 +4,10 @@ import {
   getGongAccessToken,
   GongClient,
 } from "@connectors/connectors/gong/lib/gong_api";
-import { GongTimestampCursorModel } from "@connectors/lib/models/gong";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 
 const logger = mainLogger.child({
   provider: "gong",
@@ -57,12 +57,10 @@ export async function gongLoadTimestampCursorActivity(
   if (!connector) {
     throw new Error("[Gong] Connector not found.");
   }
-  // TODO(2025-03-04) add a Resource.
-  const cursor = await GongTimestampCursorModel.findOne({
-    where: { connectorId },
-  });
+  const configuration =
+    await GongConfigurationResource.fetchByConnector(connector);
 
-  return { cursor: cursor?.timestampCursor ?? null };
+  return { cursor: configuration?.timestampCursor ?? null };
 }
 
 export async function gongSaveTimestampCursorActivity(
@@ -74,20 +72,12 @@ export async function gongSaveTimestampCursorActivity(
     throw new Error("[Gong] Connector not found.");
   }
 
-  // Initializing the timestamp cursor if it does not exist (initial sync), updating it otherwise.
-  const cursor = await GongTimestampCursorModel.findOne({
-    where: { connectorId },
-  });
-  if (!cursor) {
-    await GongTimestampCursorModel.create({
-      connectorId,
-      timestampCursor: new Date(currentSyncDateMs),
-    });
-  } else {
-    await cursor.update({
-      timestampCursor: new Date(currentSyncDateMs),
-    });
+  const configuration =
+    await GongConfigurationResource.fetchByConnector(connector);
+  if (!configuration) {
+    throw new Error("[Gong] Configuration not found.");
   }
+  await configuration.update({ timestampCursor: currentSyncDateMs });
 }
 
 export async function getGongTranscriptsActivity(
