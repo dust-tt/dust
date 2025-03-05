@@ -20,6 +20,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
+
 export class GongConnectorManager extends BaseConnectorManager<null> {
   static async create({
     dataSourceConfig,
@@ -45,7 +47,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       folderId: makeGongTranscriptFolderInternalId(connector),
       parents: [makeGongTranscriptFolderInternalId(connector)],
       parentId: null,
-      title: "Transcripts",
+      title: TRANSCRIPTS_FOLDER_TITLE,
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
