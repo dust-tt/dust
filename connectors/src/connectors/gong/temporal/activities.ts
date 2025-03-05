@@ -122,7 +122,7 @@ export async function gongSyncTranscriptsActivity({
           dataSourceConfig,
           loggerArgs,
           // TODO: this is a mock, we have to fill this and make sure we have all the speakers.
-          speakers: {},
+          participants: {},
           connector,
           forceResync,
         });

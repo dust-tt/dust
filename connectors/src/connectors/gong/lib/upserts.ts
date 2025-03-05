@@ -25,7 +25,7 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 export async function syncGongTranscript({
   transcript,
   transcriptMetadata,
-  speakers,
+  participants,
   connector,
   dataSourceConfig,
   loggerArgs,
@@ -33,7 +33,7 @@ export async function syncGongTranscript({
 }: {
   transcript: GongCallTranscript;
   transcriptMetadata: GongTranscriptMetadata;
-  speakers: Record<string, GongParticipant>;
+  participants: Record<string, GongParticipant>;
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
@@ -94,7 +94,7 @@ export async function syncGongTranscript({
     ...new Set(
       transcript.transcript.map(
         (monologue) =>
-          speakers[monologue.speakerId]?.emailAddress || "Unknown speaker"
+          participants[monologue.speakerId]?.emailAddress || "Unknown speaker"
       )
     ),
   ];
@@ -105,7 +105,7 @@ export async function syncGongTranscript({
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        documentContent += `# ${speakers[monologue.speakerId] || "Unknown speaker"}: `;
+        documentContent += `# ${participants[monologue.speakerId] || "Unknown speaker"}: `;
         lastSpeakerId = monologue.speakerId;
       }
       documentContent += `${sentence.text}\n`;
