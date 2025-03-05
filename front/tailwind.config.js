@@ -114,9 +114,7 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `bg-${color}-50`,
   // Whitelist all bg colors from shade 100 to 900
   ...Array.from({ length: 9 }, (_, i) => `bg-${color}-${(i + 1) * 100}`),
-  // Include 950 shade
   `bg-${color}-950`,
-  // Add night mode variants
   `dark:bg-${color}-50-night`,
   ...Array.from(
     { length: 9 },
@@ -126,7 +124,6 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `border-${color}-100`,
   `border-${color}-200`,
   `border-${color}-300`,
-  // Add night mode variants
   `dark:border-${color}-100-night`,
   `dark:border-${color}-200-night`,
   `dark:border-${color}-300-night`,
@@ -134,7 +131,6 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
   `text-${color}-800`,
   `text-${color}-900`,
   `text-${color}-950`,
-  // Add night mode variants
   `dark:text-${color}-500-night`,
   `dark:text-${color}-800-night`,
   `dark:text-${color}-900-night`,
@@ -144,10 +140,8 @@ const safeColorlist = safeColorsArray.flatMap((color) => [
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
   (color) =>
-    typeof colors[color] === "object" && // Only get color objects (with shades)
-    !["lightBlue", "warmGray", "trueGray", "coolGray", "blueGray"].includes(
-      color
-    ) // Exclude deprecated colors
+    typeof colors[color] === "object" &&
+    !["transparent", "current", "inherit", "white", "black"].includes(color)
 );
 
 module.exports = {
@@ -345,7 +339,7 @@ module.exports = {
           colorNames.map((colorName) => [
             colorName,
             Object.fromEntries(
-              Object.entries(colors[colorName]).map(([shade, color]) => [
+              Object.entries(colors[colorName]).map(([shade]) => [
                 `${shade}-night`,
                 colors[colorName][Math.min(950, 1000 - parseInt(shade))],
               ])
