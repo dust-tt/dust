@@ -23,12 +23,12 @@ import {
   GoogleDriveSyncToken,
 } from "@connectors/lib/models/google_drive";
 import {
-  IntercomArticle,
-  IntercomCollection,
-  IntercomConversation,
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomArticleModel,
+  IntercomCollectionModel,
+  IntercomConversationModel,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import {
   MicrosoftConfigurationModel,
@@ -64,12 +64,12 @@ import {
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
 import {
-  ZendeskArticle,
-  ZendeskBrand,
-  ZendeskCategory,
-  ZendeskConfiguration,
-  ZendeskTicket,
-  ZendeskTimestampCursor,
+  ZendeskArticleModel,
+  ZendeskBrandModel,
+  ZendeskCategoryModel,
+  ZendeskConfigurationModel,
+  ZendeskTicketModel,
+  ZendeskTimestampCursorModel,
 } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
@@ -109,12 +109,12 @@ async function main(): Promise<void> {
   await NotionConnectorPageCacheEntry.sync({ alter: true });
   await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
   await GoogleDriveConfig.sync({ alter: true });
-  await IntercomWorkspace.sync({ alter: true });
-  await IntercomHelpCenter.sync({ alter: true });
-  await IntercomCollection.sync({ alter: true });
-  await IntercomArticle.sync({ alter: true });
-  await IntercomTeam.sync({ alter: true });
-  await IntercomConversation.sync({ alter: true });
+  await IntercomWorkspaceModel.sync({ alter: true });
+  await IntercomHelpCenterModel.sync({ alter: true });
+  await IntercomCollectionModel.sync({ alter: true });
+  await IntercomArticleModel.sync({ alter: true });
+  await IntercomTeamModel.sync({ alter: true });
+  await IntercomConversationModel.sync({ alter: true });
   await WebCrawlerConfigurationModel.sync({ alter: true });
   await WebCrawlerFolder.sync({ alter: true });
   await WebCrawlerPage.sync({ alter: true });
@@ -124,12 +124,12 @@ async function main(): Promise<void> {
   await RemoteDatabaseModel.sync({ alter: true });
   await RemoteSchemaModel.sync({ alter: true });
   await RemoteTableModel.sync({ alter: true });
-  await ZendeskTimestampCursor.sync({ alter: true });
-  await ZendeskConfiguration.sync({ alter: true });
-  await ZendeskBrand.sync({ alter: true });
-  await ZendeskCategory.sync({ alter: true });
-  await ZendeskArticle.sync({ alter: true });
-  await ZendeskTicket.sync({ alter: true });
+  await ZendeskTimestampCursorModel.sync({ alter: true });
+  await ZendeskConfigurationModel.sync({ alter: true });
+  await ZendeskBrandModel.sync({ alter: true });
+  await ZendeskCategoryModel.sync({ alter: true });
+  await ZendeskArticleModel.sync({ alter: true });
+  await ZendeskTicketModel.sync({ alter: true });
   await SalesforceConfigurationModel.sync({ alter: true });
 
   // enable the `unaccent` extension

@@ -5,7 +5,7 @@ import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class IntercomWorkspace extends ConnectorBaseModel<IntercomWorkspace> {
+export class IntercomWorkspaceModel extends ConnectorBaseModel<IntercomWorkspaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -17,7 +17,7 @@ export class IntercomWorkspace extends ConnectorBaseModel<IntercomWorkspace> {
   declare syncAllConversations: IntercomSyncAllConversationsStatus;
   declare shouldSyncNotes: boolean;
 }
-IntercomWorkspace.init(
+IntercomWorkspaceModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -71,7 +71,7 @@ IntercomWorkspace.init(
   }
 );
 
-export class IntercomHelpCenter extends ConnectorBaseModel<IntercomHelpCenter> {
+export class IntercomHelpCenterModel extends ConnectorBaseModel<IntercomHelpCenterModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -85,7 +85,7 @@ export class IntercomHelpCenter extends ConnectorBaseModel<IntercomHelpCenter> {
   declare lastUpsertedTs?: Date;
   declare permission: "read" | "none";
 }
-IntercomHelpCenter.init(
+IntercomHelpCenterModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -142,7 +142,7 @@ IntercomHelpCenter.init(
   }
 );
 
-export class IntercomCollection extends ConnectorBaseModel<IntercomCollection> {
+export class IntercomCollectionModel extends ConnectorBaseModel<IntercomCollectionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -160,7 +160,7 @@ export class IntercomCollection extends ConnectorBaseModel<IntercomCollection> {
   declare permission: "read" | "none";
 }
 
-IntercomCollection.init(
+IntercomCollectionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -224,7 +224,7 @@ IntercomCollection.init(
   }
 );
 
-export class IntercomArticle extends ConnectorBaseModel<IntercomArticle> {
+export class IntercomArticleModel extends ConnectorBaseModel<IntercomArticleModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -244,7 +244,7 @@ export class IntercomArticle extends ConnectorBaseModel<IntercomArticle> {
   declare permission: "read" | "none";
 }
 
-IntercomArticle.init(
+IntercomArticleModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -316,7 +316,7 @@ IntercomArticle.init(
   }
 );
 
-export class IntercomTeam extends ConnectorBaseModel<IntercomTeam> {
+export class IntercomTeamModel extends ConnectorBaseModel<IntercomTeamModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -327,7 +327,7 @@ export class IntercomTeam extends ConnectorBaseModel<IntercomTeam> {
   declare permission: "read" | "none";
 }
 
-IntercomTeam.init(
+IntercomTeamModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -369,7 +369,7 @@ IntercomTeam.init(
   }
 );
 
-export class IntercomConversation extends ConnectorBaseModel<IntercomConversation> {
+export class IntercomConversationModel extends ConnectorBaseModel<IntercomConversationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -380,7 +380,7 @@ export class IntercomConversation extends ConnectorBaseModel<IntercomConversatio
   declare lastUpsertedTs: Date;
 }
 
-IntercomConversation.init(
+IntercomConversationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,

@@ -48,7 +48,7 @@ import {
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -273,7 +273,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     // launching an incremental workflow taking the diff starting from the given timestamp
     if (fromTs) {
-      const cursors = await ZendeskTimestampCursor.findOne({
+      const cursors = await ZendeskTimestampCursorModel.findOne({
         where: { connectorId },
       });
       if (!cursors) {
@@ -285,7 +285,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const result = await launchZendeskSyncWorkflow(connector);
       return result.isErr() ? result : new Ok(connector.id.toString());
     } else {
-      await ZendeskTimestampCursor.destroy({ where: { connectorId } });
+      await ZendeskTimestampCursorModel.destroy({ where: { connectorId } });
     }
 
     // launching a full sync workflow otherwise

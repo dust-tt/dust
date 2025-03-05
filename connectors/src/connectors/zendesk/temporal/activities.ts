@@ -32,7 +32,7 @@ import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -57,7 +57,7 @@ export async function zendeskConnectorStartSync(
   if (res.isErr()) {
     throw res.error;
   }
-  const cursor = await ZendeskTimestampCursor.findOne({
+  const cursor = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
 
@@ -77,11 +77,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursor.create({
+    await ZendeskTimestampCursorModel.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
