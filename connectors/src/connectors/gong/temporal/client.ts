@@ -2,6 +2,7 @@ import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
 import {
+  ScheduleNotFoundError,
   ScheduleOverlapPolicy,
   WorkflowNotFoundError,
 } from "@temporalio/client";
@@ -34,25 +35,45 @@ export async function launchGongSyncWorkflow(
   };
 
   try {
-    await client.schedule.create({
-      action,
-      scheduleId: makeGongSyncWorkflowId(connector),
-      policies: {
-        // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
-        // Backfill scheduled action up to the previous day.
-        catchupWindow: "1 day",
-        // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
-        // long-running workflow was running.
-        overlap: ScheduleOverlapPolicy.BUFFER_ONE,
-      },
-      spec: {
-        // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
-        // that many new transcripts will be made available roughly on the top of the hour.
-        jitter: 30 * 60 * 1000, // 30 minutes
-        intervals: [{ every: "1h" }],
-      },
-    });
+    const scheduleHandle = client.schedule.getHandle(
+      makeGongSyncWorkflowId(connector)
+    );
+    const scheduleDescription = await scheduleHandle.describe();
+    if (scheduleDescription.state.paused) {
+      logger.info(
+        {
+          connectorId: connector.id,
+          workflowId,
+          provider: "gong",
+        },
+        "[Gong] Resuming paused sync schedule."
+      );
+      await scheduleHandle.unpause();
+    }
+    // Trigger the schedule to start the workflow immediately.
+    await scheduleHandle.trigger();
   } catch (err) {
+    if (err instanceof ScheduleNotFoundError) {
+      // Create the schedule if it doesn't exist.
+      await client.schedule.create({
+        action,
+        scheduleId: makeGongSyncWorkflowId(connector),
+        policies: {
+          // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
+          // Backfill scheduled action up to the previous day.
+          catchupWindow: "1 day",
+          // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
+          // long-running workflow was running.
+          overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+        },
+        spec: {
+          // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
+          // that many new transcripts will be made available roughly on the top of the hour.
+          jitter: 30 * 60 * 1000, // 30 minutes
+          intervals: [{ every: "1h" }],
+        },
+      });
+    }
     return new Err(err as Error);
   }
 
