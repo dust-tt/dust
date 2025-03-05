@@ -163,7 +163,6 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       firstName: this.firstName,
       gongId: this.gongId,
       id: this.id,
-      isActive: this.isActive,
       lastName: this.lastName,
       updatedAt: this.updatedAt,
     };

@@ -5,7 +5,6 @@ export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob {
   return {
     email: user.emailAddress,
     gongId: user.id,
-    isActive: user.active,
     firstName: user.firstName,
     emailAliases: user.emailAliases,
     lastName: user.lastName,
