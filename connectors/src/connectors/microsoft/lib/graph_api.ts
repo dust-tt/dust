@@ -212,7 +212,10 @@ export async function getDeltaResults({
   if (nextLink && token) {
     throw new Error("nextLink and token cannot be used together");
   }
-
+  logger.info(
+    { parentInternalId, itemAPIPath, nextLink, token },
+    "Getting delta"
+  );
   const deltaPath =
     (nodeType === "folder"
       ? `${itemAPIPath}/delta?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`

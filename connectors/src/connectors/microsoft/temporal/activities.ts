@@ -257,6 +257,8 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       token: "latest",
     });
 
+    logger.info({ nodeIds, deltaLink }, "Populating deltas");
+
     for (const nodeId of nodeIds) {
       const node = await MicrosoftNodeResource.fetchByInternalId(
         connectorId,
@@ -834,6 +836,11 @@ async function getDeltaData({
   if (!node.deltaLink) {
     throw new Error(`No delta link for root node ${node.internalId}`);
   }
+
+  logger.info(
+    { internalId: node.internalId, deltaLink: node.deltaLink },
+    "Getting delta"
+  );
 
   try {
     return await getFullDeltaResults(
