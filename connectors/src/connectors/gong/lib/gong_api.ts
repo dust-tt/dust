@@ -6,7 +6,11 @@ import * as reporter from "io-ts-reporters";
 
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
 import { apiConfig } from "@connectors/lib/api/config";
-import { ExternalOAuthTokenError } from "@connectors/lib/error";
+import {
+  ExternalOAuthTokenError,
+  HTTPError,
+  isNotFoundError,
+} from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -18,7 +22,6 @@ const GongUserCodec = t.intersection([
     active: t.boolean,
     created: t.string,
     emailAddress: t.string,
-    emailAliases: t.array(t.string),
     firstName: t.string,
     id: t.string,
     lastName: t.string,
@@ -113,6 +116,10 @@ export class GongClient {
       // https://gong.app.gong.io/settings/api/documentation#overview
       if (response.status === 429) {
         // TODO(2025-03-04) - Implement this, we can read the Retry-After header.
+      }
+
+      if (response.status === 404) {
+        throw new HTTPError(response.statusText, response.status);
       }
 
       throw GongAPIError.fromAPIError(response, {
@@ -236,6 +243,18 @@ export class GongClient {
           users: [],
           nextPageCursor: null,
         };
+      }
+
+      throw err;
+    }
+  }
+
+  async getUser({ userId }: { userId: string }) {
+    try {
+      return await this.getRequest(`/users/${userId}`, {}, GongUserCodec);
+    } catch (err) {
+      if (isNotFoundError(err)) {
+        return null;
       }
 
       throw err;
