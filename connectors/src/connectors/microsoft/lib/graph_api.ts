@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/types";
 import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {
@@ -23,11 +24,19 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import logger from "@connectors/logger/logger";
 
-export async function clientApiGet(client: Client, endpoint: string) {
+export async function clientApiGet(
+  logger: LoggerInterface,
+  client: Client,
+  endpoint: string
+) {
   try {
-    return await client.api(endpoint).get();
+    const start = new Date();
+    const res = await client.api(endpoint).get();
+    const end = new Date();
+    const duration = end.getTime() - start.getTime();
+    logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
+    return res;
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (
@@ -41,12 +50,18 @@ export async function clientApiGet(client: Client, endpoint: string) {
 }
 
 export async function clientApiPost(
+  logger: LoggerInterface,
   client: Client,
   endpoint: string,
   content: any // eslint-disable-line @typescript-eslint/no-explicit-any
 ) {
   try {
-    return await client.api(endpoint).post(content);
+    const start = new Date();
+    const res = await client.api(endpoint).post(content);
+    const end = new Date();
+    const duration = end.getTime() - start.getTime();
+    logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
+    return res;
   } catch (error) {
     logger.error({ error, endpoint }, `Graph API call threw an error`);
     if (
@@ -60,12 +75,13 @@ export async function clientApiPost(
 }
 
 export async function getSites(
+  logger: LoggerInterface,
   client: Client,
   nextLink?: string
 ): Promise<{ results: Site[]; nextLink?: string }> {
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, "/sites?search=*");
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, "/sites?search=*");
 
   const results = res.value.filter((site: Site) => site.root);
   if ("@odata.nextLink" in res) {
@@ -78,6 +94,7 @@ export async function getSites(
 }
 
 export async function getSubSites(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   nextLink?: string
@@ -92,8 +109,8 @@ export async function getSubSites(
   }
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, `${parentResourcePath}/sites`);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, `${parentResourcePath}/sites`);
   if ("@odata.nextLink" in res) {
     return {
       results: res.value,
@@ -104,6 +121,7 @@ export async function getSubSites(
 }
 
 export async function getDrives(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   nextLink?: string
@@ -118,8 +136,8 @@ export async function getDrives(
   }
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, `${parentResourcePath}/drives`);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, `${parentResourcePath}/drives`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -132,6 +150,7 @@ export async function getDrives(
 }
 
 export async function getFilesAndFolders(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   nextLink?: string
@@ -151,8 +170,8 @@ export async function getFilesAndFolders(
       : `${parentResourcePath}/children?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`;
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, endpoint);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, endpoint);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -169,11 +188,13 @@ export async function getFilesAndFolders(
  * result in initial delta call
  */
 export async function getDeltaResults({
+  logger,
   client,
   parentInternalId,
   nextLink,
   token,
 }: {
+  logger: LoggerInterface;
   client: Client;
   parentInternalId: string;
 } & (
@@ -199,8 +220,8 @@ export async function getDeltaResults({
     (token ? `&token=${token}` : "");
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, deltaPath);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, deltaPath);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -224,6 +245,7 @@ export async function getDeltaResults({
  * the deltalink)
  */
 export async function getFullDeltaResults(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   initialDeltaLink?: string
@@ -237,7 +259,7 @@ export async function getFullDeltaResults(
       results,
       nextLink: newNextLink,
       deltaLink: finalDeltaLink,
-    } = await getDeltaResults({ client, parentInternalId, nextLink });
+    } = await getDeltaResults({ logger, client, parentInternalId, nextLink });
     allItems = allItems.concat(results);
     nextLink = newNextLink;
     deltaLink = finalDeltaLink;
@@ -251,6 +273,7 @@ export async function getFullDeltaResults(
 }
 
 export async function getWorksheets(
+  logger: LoggerInterface,
   client: Client,
   internalId: string,
   nextLink?: string
@@ -268,8 +291,8 @@ export async function getWorksheets(
   }
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, `${itemApiPath}/workbook/worksheets`);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, `${itemApiPath}/workbook/worksheets`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -282,6 +305,7 @@ export async function getWorksheets(
 }
 
 export async function getWorksheetContent(
+  logger: LoggerInterface,
   client: Client,
   internalId: string
 ): Promise<WorkbookRange> {
@@ -294,6 +318,7 @@ export async function getWorksheetContent(
     );
   }
   const res = await clientApiGet(
+    logger,
     client,
     `${itemApiPath}/usedRange?$select=text`
   );
@@ -301,12 +326,13 @@ export async function getWorksheetContent(
 }
 
 export async function getTeams(
+  logger: LoggerInterface,
   client: Client,
   nextLink?: string
 ): Promise<{ results: Team[]; nextLink?: string }> {
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, "/me/joinedTeams");
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, "/me/joinedTeams");
 
   if ("@odata.nextLink" in res) {
     return {
@@ -319,6 +345,7 @@ export async function getTeams(
 }
 
 export async function getChannels(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   nextLink?: string
@@ -333,8 +360,8 @@ export async function getChannels(
   }
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, `${parentResourcePath}/channels`);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, `${parentResourcePath}/channels`);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -347,6 +374,7 @@ export async function getChannels(
 }
 
 export async function getMessages(
+  logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
   nextLink?: string
@@ -361,8 +389,8 @@ export async function getMessages(
   }
 
   const res = nextLink
-    ? await clientApiGet(client, nextLink)
-    : await clientApiGet(client, parentResourcePath);
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, parentResourcePath);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -396,21 +424,25 @@ export async function getAllPaginatedEntities<T extends Entity>(
 }
 
 export async function getItem(
+  logger: LoggerInterface,
   client: Client,
   itemApiPath: string
 ): Promise<Entity> {
-  GraphError;
-  return clientApiGet(client, itemApiPath);
+  return clientApiGet(logger, client, itemApiPath);
 }
 
-export async function getFileDownloadURL(client: Client, internalId: string) {
+export async function getFileDownloadURL(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string
+) {
   const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);
 
   if (nodeType !== "file") {
     throw new Error(`Invalid node type: ${nodeType} for getFileDownloadURL`);
   }
 
-  const res = await clientApiGet(client, `${itemAPIPath}`);
+  const res = await clientApiGet(logger, client, `${itemAPIPath}`);
 
   return res["@microsoft.graph.downloadUrl"];
 }
