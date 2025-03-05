@@ -110,10 +110,14 @@ Object.assign(colors, {
   blue: customColors.blue,
   gray: customColors.gray,
   rose: customColors.rose,
-  red: customColors.rose,
   golden: customColors.golden,
-  amber: customColors.golden, //For compatibility, to be removed after all "amber" ref are retired for golden
-  slate: customColors.gray, //For compatibility, to be removed after all "slate" ref are retired for gray
+  //For compatibility, to be removed after all direct color ref are edited for golden
+  slate: customColors.gray,
+  amber: customColors.golden,
+  emerald: customColors.green,
+  red: customColors.rose,
+  pink: customColors.rose,
+  sky: customColors.blue,
 });
 
 const safeColorlist = safeColorsArray.flatMap((color) => [
