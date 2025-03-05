@@ -44,15 +44,6 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     return new this(this.model, configuration.get());
   }
 
-  static async fetchByConnector(
-    connector: ConnectorResource
-  ): Promise<GongConfigurationResource | null> {
-    const configuration = await GongConfigurationModel.findOne({
-      where: { connectorId: connector.id },
-    });
-    return configuration && new this(this.model, configuration.get());
-  }
-
   async postFetchHook(): Promise<void> {
     return;
   }
@@ -74,5 +65,22 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       updatedAt: this.updatedAt,
       timestampCursor: this.timestampCursor,
     };
+  }
+
+  static async fetchByConnector(
+    connector: ConnectorResource
+  ): Promise<GongConfigurationResource | null> {
+    const configuration = await GongConfigurationModel.findOne({
+      where: { connectorId: connector.id },
+    });
+    return configuration && new this(this.model, configuration.get());
+  }
+
+  async resetCursor(): Promise<void> {
+    await this.update({ timestampCursor: null });
+  }
+
+  async setCursor(timestamp: number): Promise<void> {
+    await this.update({ timestampCursor: timestamp });
   }
 }
