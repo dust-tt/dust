@@ -56,8 +56,6 @@ export async function launchGongSync(
       );
       await scheduleHandle.unpause();
     }
-    // Trigger the schedule to start the workflow immediately.
-    await scheduleHandle.trigger();
   } catch (err) {
     if (err instanceof ScheduleNotFoundError) {
       // Create the schedule if it doesn't exist.
@@ -82,6 +80,8 @@ export async function launchGongSync(
     }
     return new Err(err as Error);
   }
+  // Trigger the schedule to start the workflow immediately.
+  await scheduleHandle.trigger();
 
   return new Ok(scheduleId);
 }
