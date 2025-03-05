@@ -5,6 +5,7 @@ import { hideBin } from "yargs/helpers";
 
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
+import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
@@ -40,7 +41,7 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   zendesk: runZendeskWorkers,
   bigquery: runBigQueryWorker,
   salesforce: runSalesforceWorker,
-  gong: async () => {},
+  gong: runGongWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
