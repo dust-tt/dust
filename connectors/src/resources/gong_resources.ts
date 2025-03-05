@@ -170,11 +170,12 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     };
   }
 
-  static async listByConnector(
-    connector: ConnectorResource
+  static async fetchByGongUserIds(
+    connector: ConnectorResource,
+    { gongUserIds }: { gongUserIds: string[] }
   ): Promise<GongUserResource[]> {
     const users = await GongUserModel.findAll({
-      where: { connectorId: connector.id },
+      where: { connectorId: connector.id, gongId: gongUserIds },
     });
 
     return users.map((user) => new this(this.model, user.get()));
@@ -184,14 +185,10 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     connector: ConnectorResource,
     { gongUserId }: { gongUserId: string }
   ): Promise<GongUserResource | null> {
-    const user = await GongUserModel.findOne({
-      where: { connectorId: connector.id, gongId: gongUserId },
+    const [user] = await this.fetchByGongUserIds(connector, {
+      gongUserIds: [gongUserId],
     });
 
-    if (!user) {
-      return null;
-    }
-
-    return new this(this.model, user.get());
+    return user ?? null;
   }
 }
