@@ -1037,8 +1037,13 @@ impl ElasticsearchSearchStore {
 
     fn build_relevance_sort(&self) -> Vec<Sort> {
         vec![
-            Sort::FieldSort(FieldSort::new("_score").order(SortOrder::Asc)),
-            Sort::FieldSort(FieldSort::new("node_id").order(SortOrder::Asc)),
+            Sort::FieldSort(FieldSort::new("_score").order(SortOrder::Desc)),
+            Sort::ScriptSort(
+                ScriptSort::ascending(Script::source(
+                    "doc['_index'].value.startsWith('data_source_nodes') ? doc['node_id'].value : doc['data_source_id'].value"
+                ))
+                .r#type(ScriptSortType::String)
+            ),
         ]
     }
 
