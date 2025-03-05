@@ -186,6 +186,8 @@ export async function retrieveGongTranscriptContent(
         {
           fileId,
           transcriptsConfigurationId: transcriptsConfiguration.id,
+          status: gongUsers.status,
+          body: await gongUsers.text(),
         },
         "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
       );
