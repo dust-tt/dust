@@ -109,11 +109,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     if (!configuration) {
       throw new Error("[Gong] Configuration not found.");
     }
-    if (fromTs) {
-      await configuration.setCursor(fromTs);
-    } else {
+    if (!fromTs) {
       // Resetting the cursor to run a full sync.
       await configuration.resetCursor();
+    } else {
+      // If fromTs is set, we ignore it and sync from the last cursor; we cannot miss transcripts if we assume that
+      // transcripts cannot be created in the past.
+      logger.warn(
+        `[Gong] Ignoring the fromTs, syncing from ${configuration.timestampCursor}`
+      );
     }
 
     const result = await launchGongSyncWorkflow(this.connectorId);
