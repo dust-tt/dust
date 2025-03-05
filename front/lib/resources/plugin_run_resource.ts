@@ -138,4 +138,12 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       return new Err(err as Error);
     }
   }
+
+  static async deleteAllForWorkspace(auth: Authenticator) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    await this.model.destroy({
+      where: { workspaceId: workspace.id },
+    });
+  }
 }
