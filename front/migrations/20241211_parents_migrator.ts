@@ -91,7 +91,7 @@ export function isOldGithuRepoId(internalId: string): boolean {
   return /^\d+$/.test(internalId);
 }
 
-const migrators: Record<Partial<ConnectorProvider>, ProviderMigrator | null> = {
+const migrators: Partial<Record<ConnectorProvider, ProviderMigrator | null>> = {
   slack: {
     transformer: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);
