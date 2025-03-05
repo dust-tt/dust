@@ -102,7 +102,7 @@ export async function syncGongTranscript({
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        documentContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}: `;
+        documentContent += `# ${speakerToUserMap[monologue.speakerId]?.email || "Unknown speaker"}\n`;
         lastSpeakerId = monologue.speakerId;
       }
       documentContent += `${sentence.text}\n`;
