@@ -43,7 +43,7 @@ export class GongTimestampCursorModel extends ConnectorBaseModel<GongTimestampCu
   declare timestampCursor: Date;
 }
 
-GongTimestampCursorModel.init(
+GongConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -62,7 +62,8 @@ GongTimestampCursorModel.init(
   },
   {
     sequelize: sequelizeConnection,
-    modelName: "gong_timestamp_cursors",
+    modelName: "gong_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
+    relationship: "hasOne",
   }
 );
