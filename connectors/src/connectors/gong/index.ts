@@ -62,7 +62,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    // TODO(2025-03-04) - Implement the delete in the strategy.
     const res = await connector.delete();
     if (res.isErr()) {
       logger.error(
