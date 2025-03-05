@@ -17,10 +17,12 @@ import type {
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
@@ -55,10 +57,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
     const result = await createGongSyncSchedule(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: connector.id, error: result.error },
-        "[Gong] Error creating schedule and launching Gong sync."
-      );
       throw result.error;
     }
 
@@ -81,14 +79,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
     const scheduleResult = await deleteGongSyncSchedule(connector);
     if (scheduleResult.isErr()) {
-      logger.error(
-        {
-          connectorId,
-          provider: "gong",
-          error: scheduleResult.error,
-        },
-        "[Gong] Failed to delete schedule and terminate workflow."
-      );
       return scheduleResult;
     }
     const connectorResult = await connector.delete();
@@ -96,7 +86,6 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       logger.error(
         {
           connectorId,
-          provider: "gong",
           error: connectorResult.error,
         },
         "[Gong] Failed to delete connector."
@@ -162,7 +151,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       // If fromTs is set, we ignore it and sync from the last cursor; we cannot miss transcripts if we assume that
       // transcripts cannot be created in the past.
       logger.warn(
-        `[Gong] Ignoring the fromTs, syncing from ${configuration.lastSyncTimestamp}`
+        `[Gong] Ignoring the fromTs, syncing from ${configuration.lastSyncTimestamp}.`
       );
     }
 
@@ -170,7 +159,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     if (result.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
+        "[Gong] Error launching Gong sync."
       );
       throw result.error;
     }

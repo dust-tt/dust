@@ -24,37 +24,50 @@ export async function createGongSyncSchedule(
   const client = await getTemporalClient();
   const scheduleId = makeGongSyncScheduleId(connector);
 
-  const scheduleHandle = await client.schedule.create({
-    action: {
-      type: "startWorkflow",
-      workflowType: gongSyncWorkflow,
-      args: [
-        {
-          connectorId: connector.id,
-          fromTs: null,
-          forceResync: false,
-        },
-      ],
-      taskQueue: QUEUE_NAME,
-    },
-    scheduleId,
-    policies: {
-      // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
-      // Backfill scheduled action up to the previous day.
-      catchupWindow: "1 day",
-      // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
-      // long-running workflow was running.
-      overlap: ScheduleOverlapPolicy.BUFFER_ONE,
-    },
-    spec: {
-      // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
-      // that many new transcripts will be made available roughly on the top of the hour.
-      jitter: 30 * 60 * 1000, // 30 minutes
-      intervals: [{ every: "1h" }],
-    },
-  });
-  // Trigger the schedule to start the workflow immediately.
-  await scheduleHandle.trigger();
+  try {
+    const scheduleHandle = await client.schedule.create({
+      action: {
+        type: "startWorkflow",
+        workflowType: gongSyncWorkflow,
+        args: [
+          {
+            connectorId: connector.id,
+            fromTs: null,
+            forceResync: false,
+          },
+        ],
+        taskQueue: QUEUE_NAME,
+      },
+      scheduleId,
+      policies: {
+        // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
+        // Backfill scheduled action up to the previous day.
+        catchupWindow: "1 day",
+        // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
+        // long-running workflow was running.
+        overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+      },
+      spec: {
+        // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
+        // that many new transcripts will be made available roughly on the top of the hour.
+        jitter: 30 * 60 * 1000, // 30 minutes
+        intervals: [{ every: "1h" }],
+      },
+    });
+    // Trigger the schedule to start the workflow immediately.
+    await scheduleHandle.trigger();
+  } catch (error) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        provider: "gong",
+        scheduleId,
+        error,
+      },
+      "[Gong] Failed to create schedule and launch Gong sync."
+    );
+    return new Err(error as Error);
+  }
 
   return new Ok(scheduleId);
 }
@@ -65,29 +78,34 @@ export async function deleteGongSyncSchedule(
   const client = await getTemporalClient();
   const scheduleId = makeGongSyncScheduleId(connector);
 
+  const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
-    const scheduleHandle = client.schedule.getHandle(scheduleId);
-    try {
-      const scheduleDescription = await scheduleHandle.describe();
-      // Terminate the running workflows.
-      for (const action of scheduleDescription.info.runningActions) {
-        const workflowHandle = client.workflow.getHandle(
-          action.workflow.workflowId
-        );
-        await workflowHandle.terminate();
-      }
-      // Delete the schedule.
-      await scheduleHandle.delete();
-    } catch (e) {
-      if (!(e instanceof ScheduleNotFoundError)) {
-        return new Err(e as Error);
-      }
+    const scheduleDescription = await scheduleHandle.describe();
+    // Terminate the running workflows.
+    for (const action of scheduleDescription.info.runningActions) {
+      const workflowHandle = client.workflow.getHandle(
+        action.workflow.workflowId
+      );
+      await workflowHandle.terminate();
     }
-
-    return new Ok(undefined);
-  } catch (error) {
-    return new Err(error as Error);
+    // Delete the schedule.
+    await scheduleHandle.delete();
+  } catch (e) {
+    if (!(e instanceof ScheduleNotFoundError)) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          provider: "gong",
+          scheduleId,
+          error: e,
+        },
+        "[Gong] Failed to delete schedule and terminate workflow."
+      );
+      return new Err(e as Error);
+    }
   }
+
+  return new Ok(undefined);
 }
 
 // Starts the sync of Gong data for the given connector.
@@ -114,13 +132,23 @@ export async function startGongSync(
       );
       await scheduleHandle.unpause();
     }
-  } catch (err) {
-    if (!(err instanceof ScheduleNotFoundError)) {
-      return new Err(err as Error);
+
+    // Trigger the schedule to start the workflow immediately.
+    await scheduleHandle.trigger();
+  } catch (error) {
+    if (!(error instanceof ScheduleNotFoundError)) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          provider: "gong",
+          scheduleId,
+          error,
+        },
+        "[Gong] Failed to resume and trigger schedule."
+      );
+      return new Err(error as Error);
     }
   }
-  // Trigger the schedule to start the workflow immediately.
-  await scheduleHandle.trigger();
 
   return new Ok(scheduleId);
 }
@@ -134,37 +162,33 @@ export async function stopGongSync(
   const client = await getTemporalClient();
   const scheduleId = makeGongSyncScheduleId(connector);
 
+  const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
     // Pause the schedule if running.
-    const scheduleHandle = client.schedule.getHandle(scheduleId);
-    try {
-      await scheduleHandle.pause();
-      const scheduleDescription = await scheduleHandle.describe();
+    await scheduleHandle.pause();
 
-      // Terminate the running workflows.
-      for (const action of scheduleDescription.info.runningActions) {
-        const workflowHandle = client.workflow.getHandle(
-          action.workflow.workflowId
-        );
-        await workflowHandle.terminate();
-      }
-    } catch (e) {
-      if (!(e instanceof ScheduleNotFoundError)) {
-        return new Err(e as Error);
-      }
+    // Terminate the running workflows.
+    const scheduleDescription = await scheduleHandle.describe();
+    for (const action of scheduleDescription.info.runningActions) {
+      const workflowHandle = client.workflow.getHandle(
+        action.workflow.workflowId
+      );
+      await workflowHandle.terminate();
     }
-
-    return new Ok(undefined);
   } catch (error) {
-    logger.error(
-      {
-        connectorId: connector.id,
-        provider: "gong",
-        scheduleId,
-        error,
-      },
-      "[Gong] Failed to stop schedule and terminate workflow."
-    );
-    return new Err(error as Error);
+    if (!(error instanceof ScheduleNotFoundError)) {
+      logger.error(
+        {
+          connectorId: connector.id,
+          provider: "gong",
+          scheduleId,
+          error,
+        },
+        "[Gong] Failed to stop schedule and terminate workflow."
+      );
+      return new Err(error as Error);
+    }
   }
+
+  return new Ok(undefined);
 }
