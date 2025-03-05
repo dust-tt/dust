@@ -48,7 +48,7 @@ export async function launchGongSyncWorkflow(
       spec: {
         // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
         // that many new transcripts will be made available roughly on the top of the hour.
-        jitter: 3600 * 1000, // 1 hour
+        jitter: 30 * 60 * 1000, // 30 minutes
         intervals: [{ every: "1h" }],
       },
     });
