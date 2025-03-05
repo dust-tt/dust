@@ -130,7 +130,10 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       usersBlobs.map((user) => ({
         ...user,
         connectorId: connector.id,
-      }))
+      })),
+      {
+        updateOnDuplicate: ["firstName", "lastName", "email"],
+      }
     );
 
     return users.map((user) => new this(this.model, user.get()));
