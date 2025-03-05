@@ -89,10 +89,9 @@ export async function syncGongTranscript({
   const callDuration = `${hours} hours ${minutes < 10 ? "0" + minutes : minutes} minutes`;
 
   const tags = [
-    transcriptMetadata.metaData.language,
-    transcriptMetadata.metaData.media,
-    transcriptMetadata.metaData.isPrivate ? "private" : "public",
-    transcriptMetadata.metaData.scope,
+    `language:${transcriptMetadata.metaData.language}`, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
+    `media:${transcriptMetadata.metaData.media}`,
+    `scope:${transcriptMetadata.metaData.scope}`,
     ...participants.map((p) => p.email),
   ];
   let documentContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;

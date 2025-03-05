@@ -77,7 +77,7 @@ const GongTranscriptMetadataCodec = t.intersection([
         duration: t.number,
         title: t.string,
         media: t.union([t.literal("Video"), t.literal("Audio")]),
-        language: t.string,
+        language: t.string, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
         isPrivate: t.boolean,
         meetingUrl: t.union([t.string, t.null]),
       }),
