@@ -15,9 +15,11 @@ const {
 export async function gongSyncWorkflow({
   connectorId,
   fromTs,
+  forceResync,
 }: {
   connectorId: ModelId;
   fromTs: number | null;
+  forceResync: boolean;
 }) {
   await gongSaveStartSyncActivity({ connectorId });
 
@@ -28,7 +30,7 @@ export async function gongSyncWorkflow({
   }
 
   // Then, we save the transcripts.
-  await gongSyncTranscriptsActivity({ connectorId });
+  await gongSyncTranscriptsActivity({ connectorId, forceResync });
 
   // Finally, we save the end of the sync.
   await gongSaveSyncSuccessActivity({ connectorId });

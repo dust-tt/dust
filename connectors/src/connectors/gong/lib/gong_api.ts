@@ -49,6 +49,52 @@ const GongCallTranscriptCodec = t.type({
   transcript: t.array(GongTranscriptMonologueCodec),
 });
 
+export type GongCallTranscript = t.TypeOf<typeof GongCallTranscriptCodec>;
+
+export const GongParticipantCodec = t.intersection([
+  t.type({
+    speakerId: t.union([t.string, t.null]),
+    userId: t.union([t.string, t.undefined]),
+    emailAddress: t.union([t.string, t.undefined]),
+  }),
+  CatchAllCodec,
+]);
+
+const GongTranscriptMetadataCodec = t.intersection([
+  t.type({
+    metaData: t.intersection([
+      t.type({
+        id: t.string,
+        url: t.string,
+        primaryUserId: t.string,
+        direction: t.union([
+          t.literal("Inbound"),
+          t.literal("Outbound"),
+          t.literal("Conference"),
+          t.literal("Unknown"),
+        ]),
+        scope: t.union([
+          t.literal("Internal"),
+          t.literal("External"),
+          t.literal("Unknown"),
+        ]),
+        started: t.string, // ISO-8601 date (e.g., '2018-02-18T02:30:00-07:00').
+        duration: t.number, // The duration of the call, in seconds.
+        title: t.string,
+        media: t.union([t.literal("Video"), t.literal("Audio")]),
+        language: t.string, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
+      }),
+      CatchAllCodec,
+    ]),
+    parties: t.array(GongParticipantCodec),
+  }),
+  CatchAllCodec,
+]);
+
+export type GongTranscriptMetadata = t.TypeOf<
+  typeof GongTranscriptMetadataCodec
+>;
+
 // Generic codec for paginated results from Gong API.
 const GongPaginatedResults = <C extends t.Mixed, F extends string>(
   fieldName: F,
@@ -60,7 +106,7 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
       records: t.type({
         currentPageNumber: t.number,
         currentPageSize: t.number,
-        // Cursor only exists if there are more results.
+        // The cursor only exists if there are more results.
         cursor: t.union([t.string, t.undefined]),
         totalRecords: t.number,
       }),
@@ -190,6 +236,7 @@ export class GongClient {
     return this.handleResponse(response, endpoint, codec);
   }
 
+  // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/transcript
   async getTranscripts({
     startTimestamp,
     pageCursor,
@@ -217,7 +264,7 @@ export class GongClient {
     } catch (err) {
       if (err instanceof GongAPIError && err.status === 404) {
         return {
-          pages: [],
+          transcripts: [],
           nextPageCursor: null,
         };
       }
@@ -225,6 +272,7 @@ export class GongClient {
     }
   }
 
+  // https://gong.app.gong.io/settings/api/documentation#get-/v2/users
   async getUsers({ pageCursor }: { pageCursor: string | null }) {
     try {
       const users = await this.getRequest(
@@ -257,6 +305,45 @@ export class GongClient {
         return null;
       }
 
+      throw err;
+    }
+  }
+
+  // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
+  async getCallsMetadata({
+    callIds,
+    pageCursor = null,
+  }: {
+    callIds: string[];
+    pageCursor?: string | null;
+  }) {
+    try {
+      const callsMetadata = await this.postRequest(
+        `/calls/extensive`,
+        {
+          cursor: pageCursor,
+          filter: {
+            callIds,
+          },
+          contentSelector: {
+            exposedFields: {
+              parties: true,
+            },
+          },
+        },
+        GongPaginatedResults("calls", GongTranscriptMetadataCodec)
+      );
+      return {
+        callsMetadata: callsMetadata.calls,
+        nextPageCursor: callsMetadata.records.cursor,
+      };
+    } catch (err) {
+      if (err instanceof GongAPIError && err.status === 404) {
+        return {
+          callsMetadata: [],
+          nextPageCursor: null,
+        };
+      }
       throw err;
     }
   }

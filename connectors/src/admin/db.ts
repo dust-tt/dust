@@ -17,6 +17,7 @@ import {
 } from "@connectors/lib/models/github";
 import {
   GongConfigurationModel,
+  GongTranscriptModel,
   GongUserModel,
 } from "@connectors/lib/models/gong";
 import {
@@ -136,6 +137,7 @@ async function main(): Promise<void> {
   await ZendeskTicketModel.sync({ alter: true });
   await SalesforceConfigurationModel.sync({ alter: true });
   await GongConfigurationModel.sync({ alter: true });
+  await GongTranscriptModel.sync({ alter: true });
   await GongUserModel.sync({ alter: true });
 
   // enable the `unaccent` extension
