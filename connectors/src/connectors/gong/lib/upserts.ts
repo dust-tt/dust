@@ -106,6 +106,12 @@ export async function syncGongTranscript({
     transcriptMetadata.metaData.media,
     transcriptMetadata.metaData.isPrivate ? "private" : "public",
     transcriptMetadata.metaData.scope,
+    ...new Set(
+      transcript.transcript.map(
+        (monologue) =>
+          speakers[monologue.speakerId]?.emailAddress || "Unknown speaker"
+      )
+    ),
   ];
   let documentContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
 
