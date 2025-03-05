@@ -2,7 +2,10 @@ import type { ContentNode, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
-import { fetchGongConnector } from "@connectors/connectors/gong/lib/utils";
+import {
+  fetchGongConfiguration,
+  fetchGongConnector,
+} from "@connectors/connectors/gong/lib/utils";
 import {
   launchGongSyncWorkflow,
   stopGongSyncWorkflow,
@@ -67,14 +70,16 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     });
 
     if (connectionId) {
-      const oldConnectionId = connector.connectionId;
+      const config = await fetchGongConfiguration(connector);
+
+      const { baseUrl } = config;
       const newBaseUrlRes = await baseUrlFromConnectionId(connectionId);
 
       if (newBaseUrlRes.isErr()) {
         throw new Error("Invalid Gong Access Token");
       }
 
-      if (newBaseUrlRes.value !== oldConnectionId) {
+      if (newBaseUrlRes.value !== baseUrl) {
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",

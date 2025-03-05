@@ -74,6 +74,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     const configuration = await GongConfigurationModel.findOne({
       where: { connectorId: connector.id },
     });
+
     return configuration && new this(this.model, configuration.get());
   }
 
