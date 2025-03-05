@@ -12,29 +12,19 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);
 
-const GongSpokenLanguageCodec = t.type({
-  language: t.string,
-  primary: t.boolean,
-});
-
-const GongUserCodec = t.type({
-  id: t.string,
-  emailAddress: t.string,
-  created: t.string,
-  active: t.boolean,
-  emailAliases: t.array(t.string),
-  trustedEmailAddress: t.string,
-  firstName: t.string,
-  lastName: t.string,
-  title: t.string,
-  phoneNumber: t.string,
-  extension: t.string,
-  personalMeetingUrls: t.array(t.string),
-  settings: CatchAllCodec,
-  managerId: t.string,
-  meetingConsentPageUrl: t.string,
-  spokenLanguages: t.array(GongSpokenLanguageCodec),
-});
+const GongUserCodec = t.intersection([
+  t.type({
+    id: t.string,
+    emailAddress: t.string,
+    created: t.string,
+    active: t.boolean,
+    firstName: t.string,
+    lastName: t.string,
+    title: t.string,
+    phoneNumber: t.string,
+  }),
+  CatchAllCodec,
+]);
 
 const GongTranscriptSentenceCodec = t.type({
   start: t.number,
