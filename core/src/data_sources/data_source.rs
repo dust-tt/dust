@@ -22,7 +22,7 @@ use qdrant_client::qdrant::vectors::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
@@ -98,13 +98,13 @@ pub struct Chunk {
 ///   corresponding table)
 ///
 /// For some sources, this is well emboodied by  the parent's external id,
-/// provided by the managed datasource’s API: the Notion id (notionPageId column
+/// provided by the managed datasource's API: the Notion id (notionPageId column
 /// in `notion_pages`) for Notion pages and databases, the Google drive id
 /// (driveFileId column in `google_drive_documents`).
 ///
 /// For other sources, such as github: github issues / discussions do not have a
 /// proper external id, so we use our computed document id. The repo is
-/// considered a parent, and has a proper external “repo id”, which is stored at
+/// considered a parent, and has a proper external "repo id", which is stored at
 /// 2nd place in the array
 ///
 /// Additional note: in cases where selection of elements to sync is done on
@@ -129,7 +129,7 @@ pub struct Chunk {
 ///
 /// The id of the document itself is stored at index 0 because the field is used
 /// in filtering search to search only parts of the hierarchy: it is natural
-/// that if the document’s id is selected as a parent filter, the document
+/// that if the document's id is selected as a parent filter, the document
 /// itself shows up in the search.
 ///
 ///
@@ -986,13 +986,16 @@ impl DataSource {
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
+        let mut extras = self.config.extras.clone().unwrap_or(json!({}));
+        extras["enforce_rate_limit_margin"] = json!(true);
+
         // Embed batched chunks sequentially.
         for chunk in chunked_splits {
             let r = EmbedderRequest::new(
                 embedder_config.provider_id.clone(),
                 &embedder_config.model_id,
                 chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
-                self.config.extras.clone(),
+                Some(extras.clone()),
             );
 
             let v = match r.execute(credentials.clone()).await {
