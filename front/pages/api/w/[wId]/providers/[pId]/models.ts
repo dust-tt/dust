@@ -145,26 +145,29 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((d) => d.model.startsWith("text-embedding"));
+              f = mList.filter((m) => m.model.startsWith("text-embedding"));
             } else {
-              f = mList.filter((d) => {
+              f = mList.filter((m) => {
                 return (
                   !(
-                    d.model.includes("search") ||
-                    d.model.includes("similarity") ||
-                    d.model.includes("edit") ||
-                    d.model.includes("insert") ||
-                    d.model.includes("audio") ||
-                    d.model.includes(":") ||
-                    d.model.includes("embedding")
+                    m.model.includes("search") ||
+                    m.model.includes("similarity") ||
+                    m.model.includes("edit") ||
+                    m.model.includes("insert") ||
+                    m.model.includes("audio") ||
+                    m.model.includes(":") ||
+                    m.model.includes("embedding")
                   ) &&
-                  (d.model.startsWith("text-") ||
-                    d.model.startsWith("code-") ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4")) &&
+                  (m.model.startsWith("text-") ||
+                    m.model.startsWith("code-") ||
+                    m.model.startsWith("o1-") ||
+                    m.model.startsWith("gpt-3.5-turbo") ||
+                    m.model.startsWith("gpt-4") ||
+                    m.model.startsWith("o3")) &&
                   (!chat ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4"))
+                    m.model.startsWith("o1-") ||
+                    m.model.startsWith("gpt-3.5-turbo") ||
+                    m.model.startsWith("gpt-4"))
                 );
               });
             }
