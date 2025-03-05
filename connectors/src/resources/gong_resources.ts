@@ -53,13 +53,6 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     return configuration && new this(this.model, configuration.get());
   }
 
-  static async deleteByConnectorId(
-    connectorId: number,
-    transaction: Transaction
-  ): Promise<void> {
-    await this.model.destroy({ where: { connectorId }, transaction });
-  }
-
   async postFetchHook(): Promise<void> {
     return;
   }

@@ -14,6 +14,7 @@ import type {
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
 export class GongConnectorManager extends BaseConnectorManager<null> {
@@ -100,6 +101,22 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      throw new Error("[Gong] Connector not found.");
+    }
+    const configuration =
+      await GongConfigurationResource.fetchByConnector(connector);
+    if (!configuration) {
+      throw new Error("[Gong] Configuration not found.");
+    }
+    if (fromTs) {
+      await configuration.update({ timestampCursor: fromTs });
+    } else {
+      // Resetting the cursor to run a full sync.
+      await configuration.update({ timestampCursor: null });
+    }
+
     const result = await launchGongSyncWorkflow(this.connectorId);
     if (result.isErr()) {
       logger.error(
