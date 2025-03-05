@@ -4,7 +4,7 @@ import {
   getGongAccessToken,
   GongClient,
 } from "@connectors/connectors/gong/lib/gong_api";
-import { getUserBlobFromGongAPI } from "@connectors/connectors/gong/lib/utils";
+import { getUserBlobFromGongAPI } from "@connectors/connectors/gong/lib/users";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
