@@ -7,8 +7,11 @@ import type {
   Transaction,
 } from "sequelize";
 
-import { GongUserModel } from "@connectors/lib/models/gong";
-import { GongConfigurationModel } from "@connectors/lib/models/gong";
+import {
+  GongConfigurationModel,
+  GongTranscriptModel,
+  GongUserModel
+} from "@connectors/lib/models/gong";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
@@ -191,5 +194,73 @@ export class GongUserResource extends BaseResource<GongUserModel> {
     }
 
     return new this(this.model, user.get());
+  }
+}
+
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface GongTranscriptResource
+  extends ReadonlyAttributesType<GongTranscriptModel> {}
+
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
+  static model: ModelStatic<GongTranscriptModel> = GongTranscriptModel;
+
+  constructor(
+    model: ModelStatic<GongTranscriptModel>,
+    blob: Attributes<GongTranscriptModel>
+  ) {
+    super(GongTranscriptModel, blob);
+  }
+
+  static async makeNew({
+    blob,
+    transaction,
+  }: {
+    blob: CreationAttributes<GongTranscriptModel>;
+    transaction?: Transaction;
+  }): Promise<GongTranscriptResource> {
+    const configuration = await GongTranscriptModel.create(
+      { ...blob },
+      transaction && { transaction }
+    );
+    return new this(this.model, configuration.get());
+  }
+
+  async postFetchHook(): Promise<void> {
+    return;
+  }
+
+  async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: this.connectorId,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
+  }
+
+  toJSON(): Record<string, unknown> {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
+  }
+
+  static async fetchByConnector(
+    connector: ConnectorResource
+  ): Promise<GongTranscriptResource[]> {
+    const transcripts = await GongTranscriptModel.findAll({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    return transcripts.map(
+      (transcript) => new this(this.model, transcript.get())
+    );
   }
 }

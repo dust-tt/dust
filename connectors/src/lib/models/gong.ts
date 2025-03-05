@@ -89,3 +89,29 @@ GongUserModel.init(
     sequelize: sequelizeConnection,
   }
 );
+
+export class GongTranscriptModel extends ConnectorBaseModel<GongTranscriptModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+}
+
+GongTranscriptModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize: sequelizeConnection,
+    modelName: "gong_transcripts",
+    indexes: [{ fields: ["connectorId"] }],
+  }
+);
+
