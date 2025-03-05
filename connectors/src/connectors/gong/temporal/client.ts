@@ -1,10 +1,9 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
-import type { ScheduleOptionsAction, WorkflowHandle } from "@temporalio/client";
+import type { ScheduleOptionsAction } from "@temporalio/client";
 import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
-  WorkflowNotFoundError,
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
@@ -96,29 +95,28 @@ export async function stopGongSync(
     );
     try {
       await scheduleHandle.pause();
+      const scheduleDescription = await scheduleHandle.describe();
+
+      // Terminate the running workflows.
+      for (const action of scheduleDescription.info.runningActions) {
+        const workflowHandle = client.workflow.getHandle(
+          action.workflow.workflowId
+        );
+        await workflowHandle.terminate();
+      }
     } catch (e) {
       if (!(e instanceof ScheduleNotFoundError)) {
         return new Err(e as Error);
       }
     }
 
-    // Terminate the workflow if running.
-    const workflowHandle: WorkflowHandle<typeof gongSyncWorkflow> =
-      client.workflow.getHandle(scheduleId);
-    try {
-      await workflowHandle.terminate();
-    } catch (e) {
-      if (!(e instanceof WorkflowNotFoundError)) {
-        return new Err(e as Error);
-      }
-    }
     return new Ok(undefined);
   } catch (error) {
     logger.error(
       {
         connectorId: connector.id,
         provider: "gong",
-        workflowId: scheduleId,
+        scheduleId,
         error,
       },
       "[Gong] Failed to stop schedule and workflow."
