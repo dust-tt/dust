@@ -1,5 +1,6 @@
 import type { ModelId } from "@dust-tt/types";
 
+import type { GongTranscriptMetadata } from "@connectors/connectors/gong/lib/gong_api";
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
 import {
   getGongUsers,
@@ -14,6 +15,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongUserResource } from "@connectors/resources/gong_resources";
 
 export async function gongSaveStartSyncActivity({
@@ -40,6 +42,30 @@ export async function gongSaveSyncSuccessActivity({
   if (result.isErr()) {
     throw result.error;
   }
+}
+
+async function getTranscriptsMetadata({
+  callIds,
+  connector,
+}: {
+  callIds: string[];
+  connector: ConnectorResource;
+}): Promise<GongTranscriptMetadata[]> {
+  const gongClient = await getGongClient(connector);
+
+  const metadata = [];
+  let cursor = null;
+  do {
+    const { callsMetadata, nextPageCursor } = await gongClient.getCallsMetadata(
+      {
+        callIds,
+      }
+    );
+    metadata.push(...callsMetadata);
+    cursor = nextPageCursor;
+  } while (cursor);
+
+  return metadata;
 }
 
 // Transcripts.
@@ -69,9 +95,9 @@ export async function gongSyncTranscriptsActivity({
       startTimestamp: configuration.lastSyncTimestamp,
       pageCursor,
     });
-    // TODO(2025-03-05): exhaust the cursor here instead of doing only 1 call.
-    const { callsMetadata } = await gongClient.getCallsMetadata({
+    const callsMetadata = await getTranscriptsMetadata({
       callIds: transcripts.map((t) => t.callId),
+      connector,
     });
     await concurrentExecutor(
       transcripts,
