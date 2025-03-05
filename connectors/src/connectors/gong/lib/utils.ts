@@ -9,6 +9,5 @@ export function getUserBlobFromGongAPI(user: GongAPIUser): GongUserBlob {
     firstName: user.firstName,
     emailAliases: user.emailAliases,
     lastName: user.lastName,
-    title: user.title,
   };
 }
