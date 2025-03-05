@@ -16,19 +16,8 @@ import {
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
-
-export function shouldSyncTranscript(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  transcript: GongCallTranscript,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  configuration: GongConfigurationResource
-): boolean {
-  // TODO(2025-03-05): Implement this function based on permissions logic.
-  return true;
-}
 
 /**
  * Syncs a transcript in the db and upserts it to the data sources.
@@ -46,7 +35,6 @@ export async function syncGongTranscript({
   transcriptMetadata: GongTranscriptMetadata;
   speakers: Record<string, GongParticipant>;
   connector: ConnectorResource;
-  configuration: GongConfigurationResource;
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number | null>;
   forceResync: boolean;

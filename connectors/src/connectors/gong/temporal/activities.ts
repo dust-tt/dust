@@ -124,7 +124,6 @@ export async function gongSyncTranscriptsActivity({
           // TODO: this is a mock, we have to fill this and make sure we have all the speakers.
           speakers: {},
           connector,
-          configuration,
           forceResync,
         });
       },
