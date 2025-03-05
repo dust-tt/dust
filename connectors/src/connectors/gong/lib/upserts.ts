@@ -6,6 +6,10 @@ import type {
   GongTranscriptMetadata,
 } from "@connectors/connectors/gong/lib/gong_api";
 import {
+  makeGongTranscriptFolderInternalId,
+  makeGongTranscriptInternalId,
+} from "@connectors/connectors/gong/lib/internal_ids";
+import {
   renderDocumentTitleAndContent,
   renderMarkdownSection,
   upsertDataSourceDocument,
@@ -24,13 +28,6 @@ export function shouldSyncTranscript(
 ): boolean {
   // TODO(2025-03-05): Implement this function based on permissions logic.
   return true;
-}
-
-function makeGongTranscriptInternalId(
-  connector: ConnectorResource,
-  callId: string
-) {
-  return `gong-transcript-${connector.id}-${callId}`;
 }
 
 /**
@@ -144,8 +141,8 @@ export async function syncGongTranscript({
     documentUrl,
     timestampMs: createdAtDate.getTime(),
     tags: [`title:${title}`, `createdAt:${createdAtDate.getTime()}`, ...tags],
-    parents: [documentId],
-    parentId: null,
+    parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
+    parentId: makeGongTranscriptFolderInternalId(connector),
     loggerArgs: { ...loggerArgs, callId },
     upsertContext: { sync_type: "batch" },
     title,

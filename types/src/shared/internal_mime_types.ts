@@ -138,7 +138,7 @@ export const MIME_TYPES = {
   }),
   GONG: generateMimeTypes({
     provider: "gong",
-    resourceTypes: ["TRANSCRIPT"],
+    resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
 };
 
