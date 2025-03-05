@@ -41,7 +41,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       {}
     );
 
-    // Upsert a top-level folder that will contain all the transcripts (non selectable).
+    // Upsert a top-level folder that will contain all the transcripts (non-selectable).
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: makeGongTranscriptFolderInternalId(connector),
