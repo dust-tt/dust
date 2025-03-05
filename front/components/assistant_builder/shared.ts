@@ -43,6 +43,7 @@ const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
   bigquery: { singular: "table", plural: "tables" },
   // TODO(salesforce): double check this
   salesforce: { singular: "record", plural: "records" },
+  gong: { singular: "transcript", plural: "transcripts" },
 };
 
 export const getConnectorProviderResourceName = (
@@ -312,6 +313,7 @@ export function getTableIdForContentNode(
     case "github":
     case "zendesk":
     case "webcrawler":
+    case "gong":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );

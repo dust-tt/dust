@@ -33,6 +33,7 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
       case "snowflake":
       case "bigquery":
       case "salesforce":
+      case "gong":
         return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
       case "webcrawler":
         return ds.name;

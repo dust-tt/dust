@@ -40,6 +40,7 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   zendesk: runZendeskWorkers,
   bigquery: runBigQueryWorker,
   salesforce: runSalesforceWorker,
+  gong: async () => {},
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];

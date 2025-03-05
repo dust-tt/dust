@@ -28,7 +28,8 @@ export type CitationIconType =
   | "image"
   | "snowflake"
   | "bigquery"
-  | "salesforce";
+  | "salesforce"
+  | "gong";
 
 export const citationIconMap: Record<
   CitationIconType,
