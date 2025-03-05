@@ -147,10 +147,10 @@ export class GongClient {
   }
 
   async getTranscripts({
-    fromDateTime,
+    startTimestamp,
     pageCursor,
   }: {
-    fromDateTime: Date;
+    startTimestamp: number | null;
     pageCursor: string | null;
   }) {
     try {
@@ -159,7 +159,9 @@ export class GongClient {
         {
           cursor: pageCursor,
           filter: {
-            fromDateTime: fromDateTime.toISOString(),
+            fromDateTime: startTimestamp
+              ? new Date(startTimestamp).toISOString()
+              : undefined,
           },
         },
         GongPaginatedResults("callTranscripts", GongCallTranscriptCodec)
