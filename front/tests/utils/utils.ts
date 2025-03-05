@@ -5,9 +5,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 
 export const itInTransaction = function (
   title: string,
-  fn: (t: Transaction) => Promise<void>
+  fn: (t: Transaction) => Promise<void>,
+  skip: boolean = false
 ) {
-  return it(title, async function () {
+  return it.skipIf(skip)(title, async function () {
     try {
       await frontSequelize.transaction(async (t) => {
         await fn(t);
