@@ -88,12 +88,6 @@ export async function syncGongTranscript({
   );
   const callDuration = `${hours} hours ${minutes < 10 ? "0" + minutes : minutes} minutes`;
 
-  const tags = [
-    `language:${transcriptMetadata.metaData.language}`, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
-    `media:${transcriptMetadata.metaData.media}`,
-    `scope:${transcriptMetadata.metaData.scope}`,
-    ...participants.map((p) => p.email),
-  ];
   let documentContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
 
   // Rebuild the transcript content with [User]: [sentence].
@@ -119,12 +113,22 @@ export async function syncGongTranscript({
       content: await renderMarkdownSection(dataSourceConfig, documentContent),
       createdAt: createdAtDate,
       additionalPrefixes: {
-        labels: tags.join(", ") || "none",
+        language: transcriptMetadata.metaData.language,
+        media: transcriptMetadata.metaData.media,
+        scope: transcriptMetadata.metaData.scope,
+        participants: participants.map((p) => p.email).join(", ") || "none",
       },
     }),
     documentUrl,
     timestampMs: createdAtDate.getTime(),
-    tags: [`title:${title}`, `createdAt:${createdAtDate.getTime()}`, ...tags],
+    tags: [
+      `title:${title}`,
+      `createdAt:${createdAtDate.getTime()}`,
+      `language:${transcriptMetadata.metaData.language}`, // The language codes (as defined by ISO-639-2B): eng, fre, spa, ger, and ita.
+      `media:${transcriptMetadata.metaData.media}`,
+      `scope:${transcriptMetadata.metaData.scope}`,
+      ...participants.map((p) => p.email),
+    ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),
     loggerArgs: { ...loggerArgs, callId },
