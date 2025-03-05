@@ -43,8 +43,8 @@ export async function launchGongSyncWorkflow(
       logger.info(
         {
           connectorId: connector.id,
-          workflowId,
           provider: "gong",
+          workflowId,
         },
         "[Gong] Resuming paused sync schedule."
       );
@@ -87,10 +87,23 @@ export async function stopGongSyncWorkflow(
   const workflowId = makeGongSyncWorkflowId(connector);
 
   try {
-    const handle: WorkflowHandle<typeof gongSyncWorkflow> =
+    // Pause the schedule if running.
+    const scheduleHandle = client.schedule.getHandle(
+      makeGongSyncWorkflowId(connector)
+    );
+    try {
+      await scheduleHandle.pause();
+    } catch (e) {
+      if (!(e instanceof ScheduleNotFoundError)) {
+        return new Err(e as Error);
+      }
+    }
+
+    // Terminate the workflow if running.
+    const workflowHandle: WorkflowHandle<typeof gongSyncWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await workflowHandle.terminate();
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         return new Err(e as Error);
@@ -98,7 +111,15 @@ export async function stopGongSyncWorkflow(
     }
     return new Ok(undefined);
   } catch (error) {
-    logger.error({ workflowId, error }, "Failed to stop Gong workflow.");
+    logger.error(
+      {
+        connectorId: connector.id,
+        provider: "gong",
+        workflowId,
+        error,
+      },
+      "[Gong] Failed to stop schedule and workflow."
+    );
     return new Err(error as Error);
   }
 }
