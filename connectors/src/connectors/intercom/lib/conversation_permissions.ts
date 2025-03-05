@@ -16,8 +16,8 @@ import {
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -30,8 +30,8 @@ export async function allowSyncTeam({
   connectorId: ModelId;
   connectionId: string;
   teamId: string;
-}): Promise<IntercomTeam> {
-  let team = await IntercomTeam.findOne({
+}): Promise<IntercomTeamModel> {
+  let team = await IntercomTeamModel.findOne({
     where: {
       connectorId,
       teamId,
@@ -46,7 +46,7 @@ export async function allowSyncTeam({
     const accessToken = await getIntercomAccessToken(connectionId);
     const teamOnIntercom = await fetchIntercomTeam({ accessToken, teamId });
     if (teamOnIntercom) {
-      team = await IntercomTeam.create({
+      team = await IntercomTeamModel.create({
         connectorId,
         teamId: teamOnIntercom.id,
         name: teamOnIntercom.name,
@@ -72,8 +72,8 @@ export async function revokeSyncTeam({
 }: {
   connectorId: ModelId;
   teamId: string;
-}): Promise<IntercomTeam | null> {
-  const team = await IntercomTeam.findOne({
+}): Promise<IntercomTeamModel | null> {
+  const team = await IntercomTeamModel.findOne({
     where: {
       connectorId,
       teamId: teamId,
@@ -103,7 +103,7 @@ export async function retrieveIntercomConversationsPermissions({
     throw new Error("Connector not found");
   }
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: { connectorId },
   });
   if (!intercomWorkspace) {
@@ -116,7 +116,7 @@ export async function retrieveIntercomConversationsPermissions({
   const allTeamsInternalId = getTeamsInternalId(connectorId);
   const nodes: ContentNode[] = [];
 
-  const teamsWithReadPermission = await IntercomTeam.findAll({
+  const teamsWithReadPermission = await IntercomTeamModel.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",

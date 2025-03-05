@@ -2,12 +2,12 @@ import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import {
-  IntercomArticle,
-  IntercomCollection,
-  IntercomConversation,
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomArticleModel,
+  IntercomCollectionModel,
+  IntercomConversationModel,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import type {
   ConnectorProviderConfigurationType,
@@ -22,10 +22,10 @@ export class IntercomConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<IntercomWorkspace>,
+    blob: WithCreationAttributes<IntercomWorkspaceModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["intercom"] | null> {
-    await IntercomWorkspace.create(
+    await IntercomWorkspaceModel.create(
       {
         ...blob,
         connectorId,
@@ -40,37 +40,37 @@ export class IntercomConnectorStrategy
     transaction: Transaction
   ): Promise<void> {
     await Promise.all([
-      IntercomWorkspace.destroy({
+      IntercomWorkspaceModel.destroy({
         where: {
           connectorId: connector.id,
         },
         transaction,
       }),
-      IntercomHelpCenter.destroy({
+      IntercomHelpCenterModel.destroy({
         where: {
           connectorId: connector.id,
         },
         transaction,
       }),
-      IntercomCollection.destroy({
+      IntercomCollectionModel.destroy({
         where: {
           connectorId: connector.id,
         },
         transaction,
       }),
-      IntercomArticle.destroy({
+      IntercomArticleModel.destroy({
         where: {
           connectorId: connector.id,
         },
         transaction,
       }),
-      IntercomTeam.destroy({
+      IntercomTeamModel.destroy({
         where: {
           connectorId: connector.id,
         },
         transaction,
       }),
-      IntercomConversation.destroy({
+      IntercomConversationModel.destroy({
         where: {
           connectorId: connector.id,
         },

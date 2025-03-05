@@ -8,9 +8,9 @@ import {
   getTeamsInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  IntercomCollection,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomCollectionModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -33,7 +33,7 @@ export async function retrieveSelectedNodes({
     throw new Error("Connector not found");
   }
 
-  const collections = await IntercomCollection.findAll({
+  const collections = await IntercomCollectionModel.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",
@@ -71,7 +71,7 @@ export async function retrieveSelectedNodes({
 
   const teamsNodes: ContentNode[] = [];
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: { connectorId },
   });
   if (
@@ -91,7 +91,7 @@ export async function retrieveSelectedNodes({
     });
   }
 
-  const teams = await IntercomTeam.findAll({
+  const teams = await IntercomTeamModel.findAll({
     where: {
       connectorId: connectorId,
       permission: "read",

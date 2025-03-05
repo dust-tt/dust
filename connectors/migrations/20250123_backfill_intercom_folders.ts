@@ -1,7 +1,7 @@
 import { makeScript } from "scripts/helpers";
 
 import { syncAllTeamsActivity } from "@connectors/connectors/intercom/temporal/activities";
-import { IntercomWorkspace } from "@connectors/lib/models/intercom";
+import { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -13,7 +13,7 @@ async function backfillConnector(
   const logger = parentLogger.child({ connectorId: connector.id });
   logger.info("MIGRATE");
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: { connectorId: connector.id },
   });
   if (!intercomWorkspace) {

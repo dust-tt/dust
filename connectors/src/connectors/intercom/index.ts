@@ -43,9 +43,9 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -125,7 +125,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       throw new Error(`Connector ${this.connectorId} not found`);
     }
 
-    const intercomWorkspace = await IntercomWorkspace.findOne({
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
       where: { connectorId: connector.id },
     });
 
@@ -161,7 +161,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
         await this.unpause();
       }
 
-      await IntercomWorkspace.update(
+      await IntercomWorkspaceModel.update(
         {
           intercomWorkspaceId: newIntercomWorkspace.id,
           name: newIntercomWorkspace.name,
@@ -271,13 +271,13 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const helpCentersIds = await IntercomHelpCenter.findAll({
+    const helpCentersIds = await IntercomHelpCenterModel.findAll({
       where: {
         connectorId: this.connectorId,
       },
       attributes: ["helpCenterId"],
     });
-    const teamsIds = await IntercomTeam.findAll({
+    const teamsIds = await IntercomTeamModel.findAll({
       where: {
         connectorId: this.connectorId,
       },
@@ -373,7 +373,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const intercomWorkspace = await IntercomWorkspace.findOne({
+    const intercomWorkspace = await IntercomWorkspaceModel.findOne({
       where: {
         connectorId: this.connectorId,
       },
@@ -534,7 +534,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "intercomConversationsNotesSyncEnabled": {
-        const connectorState = await IntercomWorkspace.findOne({
+        const connectorState = await IntercomWorkspaceModel.findOne({
           where: {
             connectorId: connector.id,
           },
@@ -551,7 +551,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
           shouldSyncNotes: configValue === "true",
         });
 
-        const teamsIds = await IntercomTeam.findAll({
+        const teamsIds = await IntercomTeamModel.findAll({
           where: {
             connectorId: this.connectorId,
           },
@@ -590,7 +590,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "intercomConversationsNotesSyncEnabled": {
-        const connectorState = await IntercomWorkspace.findOne({
+        const connectorState = await IntercomWorkspaceModel.findOne({
           where: {
             connectorId: connector.id,
           },
@@ -640,7 +640,7 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
     }
 
     await connector.markAsUnpaused();
-    const teamsIds = await IntercomTeam.findAll({
+    const teamsIds = await IntercomTeamModel.findAll({
       where: {
         connectorId: this.connectorId,
       },

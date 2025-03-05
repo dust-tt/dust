@@ -23,9 +23,9 @@ import {
   getHelpCenterInternalId,
 } from "@connectors/connectors/intercom/lib/utils";
 import {
-  IntercomArticle,
-  IntercomCollection,
-  IntercomHelpCenter,
+  IntercomArticleModel,
+  IntercomCollectionModel,
+  IntercomHelpCenterModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -54,8 +54,8 @@ export async function allowSyncHelpCenter({
   helpCenterId: string;
   region: string;
   withChildren?: boolean;
-}): Promise<IntercomHelpCenter> {
-  let helpCenter = await IntercomHelpCenter.findOne({
+}): Promise<IntercomHelpCenterModel> {
+  let helpCenter = await IntercomHelpCenterModel.findOne({
     where: {
       connectorId,
       helpCenterId,
@@ -73,7 +73,7 @@ export async function allowSyncHelpCenter({
       helpCenterId,
     });
     if (helpCenterOnIntercom) {
-      helpCenter = await IntercomHelpCenter.create({
+      helpCenter = await IntercomHelpCenterModel.create({
         connectorId: connectorId,
         helpCenterId: helpCenterOnIntercom.id,
         name: helpCenterOnIntercom.display_name || "Help Center",
@@ -121,8 +121,8 @@ export async function revokeSyncHelpCenter({
 }: {
   connectorId: ModelId;
   helpCenterId: string;
-}): Promise<IntercomHelpCenter | null> {
-  const helpCenter = await IntercomHelpCenter.findOne({
+}): Promise<IntercomHelpCenterModel | null> {
+  const helpCenter = await IntercomHelpCenterModel.findOne({
     where: {
       connectorId,
       helpCenterId,
@@ -137,7 +137,7 @@ export async function revokeSyncHelpCenter({
   }
 
   // Revoke permission for all collections (level 1, level 2 and level 3)
-  await IntercomCollection.update(
+  await IntercomCollectionModel.update(
     { permission: "none" },
     {
       where: {
@@ -147,7 +147,7 @@ export async function revokeSyncHelpCenter({
   );
 
   // Revoke permission for all articles
-  const level1Collections = await IntercomCollection.findAll({
+  const level1Collections = await IntercomCollectionModel.findAll({
     where: {
       helpCenterId: helpCenterId,
       parentId: null,
@@ -155,7 +155,7 @@ export async function revokeSyncHelpCenter({
   });
   await Promise.all(
     level1Collections.map(async (c1) => {
-      await IntercomArticle.update(
+      await IntercomArticleModel.update(
         { permission: "none" },
         {
           where: {
@@ -186,8 +186,8 @@ export async function allowSyncCollection({
   collectionId: string;
   helpCenterId?: string;
   region: string;
-}): Promise<IntercomCollection | null> {
-  let collection = await IntercomCollection.findOne({
+}): Promise<IntercomCollectionModel | null> {
+  let collection = await IntercomCollectionModel.findOne({
     where: {
       connectorId: connectorId,
       collectionId,
@@ -206,7 +206,7 @@ export async function allowSyncCollection({
     const hpId = helpCenterId || intercomCollection?.help_center_id;
 
     if (intercomCollection && hpId) {
-      collection = await IntercomCollection.create({
+      collection = await IntercomCollectionModel.create({
         connectorId,
         collectionId: intercomCollection.id,
         intercomWorkspaceId: intercomCollection.workspace_id,
@@ -250,9 +250,9 @@ export async function revokeSyncCollection({
 }: {
   connectorId: ModelId;
   collectionId: string;
-}): Promise<IntercomCollection | null> {
+}): Promise<IntercomCollectionModel | null> {
   // Revoke permission for this level 1 collection
-  const collection = await IntercomCollection.findOne({
+  const collection = await IntercomCollectionModel.findOne({
     where: {
       connectorId,
       collectionId,
@@ -279,14 +279,14 @@ export async function revokeSyncCollection({
   });
 
   // Revoke permission for all children collections (level 2 and level 3)
-  const level2Collections = await IntercomCollection.findAll({
+  const level2Collections = await IntercomCollectionModel.findAll({
     where: {
       parentId: collectionId,
     },
   });
   const updatelevel2CollPromises = level2Collections.map((c) =>
     Promise.all([
-      IntercomCollection.update(
+      IntercomCollectionModel.update(
         { permission: "none" },
         {
           where: {
@@ -300,7 +300,7 @@ export async function revokeSyncCollection({
   await Promise.all(updatelevel2CollPromises);
 
   // Revoke permission for all articles in this collection
-  await IntercomArticle.update(
+  await IntercomArticleModel.update(
     { permission: "none" },
     {
       where: {
@@ -312,7 +312,7 @@ export async function revokeSyncCollection({
   );
 
   // Revoke permission for Help Center if no more collections are allowed
-  const level1Collections = await IntercomCollection.findAll({
+  const level1Collections = await IntercomCollectionModel.findAll({
     where: {
       helpCenterId: collection.helpCenterId,
       parentId: null,
@@ -356,7 +356,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   // If isReadPermissionsOnly = false, we retrieve the list of Help Centers from Intercom
   if (isRootLevel) {
     if (isReadPermissionsOnly) {
-      const helpCentersFromDb = await IntercomHelpCenter.findAll({
+      const helpCentersFromDb = await IntercomHelpCenterModel.findAll({
         where: {
           connectorId: connectorId,
           permission: "read",
@@ -412,7 +412,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   // If isReadPermissionsOnly = true, we retrieve the list of Collections from DB that have permission = "read" & no parent
   // If isReadPermissionsOnly = false, we retrieve the list of Help Centers + Articles from Intercom that have no parents
   if (helpCenterParentId) {
-    const collectionsInDb = await IntercomCollection.findAll({
+    const collectionsInDb = await IntercomCollectionModel.findAll({
       where: {
         connectorId: connectorId,
         helpCenterId: helpCenterParentId,
@@ -479,7 +479,7 @@ export async function retrieveIntercomHelpCentersPermissions({
   // If isReadPermissionsOnly = false, we retrieve the list of Collections from Intercom that have this parent
   if (collectionParentId) {
     if (isReadPermissionsOnly) {
-      const collectionsInDb = await IntercomCollection.findAll({
+      const collectionsInDb = await IntercomCollectionModel.findAll({
         where: {
           connectorId: connectorId,
           parentId,
@@ -508,7 +508,7 @@ export async function retrieveIntercomHelpCentersPermissions({
         })
       );
 
-      const articlesInDb = await IntercomArticle.findAll({
+      const articlesInDb = await IntercomArticleModel.findAll({
         where: {
           connectorId: connectorId,
           parentId,

@@ -4,7 +4,10 @@ import { Op } from "sequelize";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
-import { ZendeskArticle, ZendeskTicket } from "@connectors/lib/models/zendesk";
+import {
+  ZendeskArticleModel,
+  ZendeskTicketModel,
+} from "@connectors/lib/models/zendesk";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -17,9 +20,9 @@ async function cleanTickets(
   execute: boolean
 ) {
   let idCursor: number = 0;
-  let tickets: ZendeskTicket[] = [];
+  let tickets: ZendeskTicketModel[] = [];
   do {
-    tickets = await ZendeskTicket.findAll({
+    tickets = await ZendeskTicketModel.findAll({
       where: {
         connectorId: connector.id,
         id: { [Op.gt]: idCursor },
@@ -64,9 +67,9 @@ async function cleanArticles(
   execute: boolean
 ) {
   let idCursor: number = 0;
-  let articles: ZendeskArticle[] = [];
+  let articles: ZendeskArticleModel[] = [];
   do {
-    articles = await ZendeskArticle.findAll({
+    articles = await ZendeskArticleModel.findAll({
       where: {
         connectorId: connector.id,
         id: { [Op.gt]: idCursor },

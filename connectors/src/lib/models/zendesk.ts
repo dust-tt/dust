@@ -10,7 +10,7 @@ function throwOnUnsafeInteger(value: number | null) {
   }
 }
 
-export class ZendeskTimestampCursor extends ConnectorBaseModel<ZendeskTimestampCursor> {
+export class ZendeskTimestampCursorModel extends ConnectorBaseModel<ZendeskTimestampCursorModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -18,7 +18,7 @@ export class ZendeskTimestampCursor extends ConnectorBaseModel<ZendeskTimestampC
   declare timestampCursor: Date;
 }
 
-ZendeskTimestampCursor.init(
+ZendeskTimestampCursorModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -42,7 +42,7 @@ ZendeskTimestampCursor.init(
   }
 );
 
-export class ZendeskConfiguration extends ConnectorBaseModel<ZendeskConfiguration> {
+export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -51,7 +51,7 @@ export class ZendeskConfiguration extends ConnectorBaseModel<ZendeskConfiguratio
   declare syncUnresolvedTickets: boolean;
 }
 
-ZendeskConfiguration.init(
+ZendeskConfigurationModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -86,7 +86,7 @@ ZendeskConfiguration.init(
   }
 );
 
-export class ZendeskBrand extends ConnectorBaseModel<ZendeskBrand> {
+export class ZendeskBrandModel extends ConnectorBaseModel<ZendeskBrandModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -101,7 +101,7 @@ export class ZendeskBrand extends ConnectorBaseModel<ZendeskBrand> {
   declare lastUpsertedTs?: Date;
 }
 
-ZendeskBrand.init(
+ZendeskBrandModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -157,7 +157,7 @@ ZendeskBrand.init(
   }
 );
 
-export class ZendeskCategory extends ConnectorBaseModel<ZendeskCategory> {
+export class ZendeskCategoryModel extends ConnectorBaseModel<ZendeskCategoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -172,7 +172,7 @@ export class ZendeskCategory extends ConnectorBaseModel<ZendeskCategory> {
   declare lastUpsertedTs?: Date;
 }
 
-ZendeskCategory.init(
+ZendeskCategoryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -233,7 +233,7 @@ ZendeskCategory.init(
   }
 );
 
-export class ZendeskArticle extends ConnectorBaseModel<ZendeskArticle> {
+export class ZendeskArticleModel extends ConnectorBaseModel<ZendeskArticleModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -248,7 +248,7 @@ export class ZendeskArticle extends ConnectorBaseModel<ZendeskArticle> {
   declare lastUpsertedTs: Date | null;
 }
 
-ZendeskArticle.init(
+ZendeskArticleModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -314,7 +314,7 @@ ZendeskArticle.init(
   }
 );
 
-export class ZendeskTicket extends ConnectorBaseModel<ZendeskTicket> {
+export class ZendeskTicketModel extends ConnectorBaseModel<ZendeskTicketModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -329,7 +329,7 @@ export class ZendeskTicket extends ConnectorBaseModel<ZendeskTicket> {
   declare lastUpsertedTs: Date;
 }
 
-ZendeskTicket.init(
+ZendeskTicketModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,

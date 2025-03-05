@@ -3,7 +3,7 @@ import { makeScript } from "scripts/helpers";
 import { getHelpCenterInternalId } from "@connectors/connectors/intercom/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { deleteDataSourceFolder } from "@connectors/lib/data_sources";
-import { IntercomHelpCenter } from "@connectors/lib/models/intercom";
+import { IntercomHelpCenterModel } from "@connectors/lib/models/intercom";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
@@ -17,7 +17,7 @@ async function cleanupConnector(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const helpCenters = await IntercomHelpCenter.findAll({
+  const helpCenters = await IntercomHelpCenterModel.findAll({
     where: { connectorId: connector.id },
   });
 

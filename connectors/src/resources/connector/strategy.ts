@@ -11,14 +11,14 @@ import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery
 import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
 import type { GithubConnectorState } from "@connectors/lib/models/github";
 import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
-import type { IntercomWorkspace } from "@connectors/lib/models/intercom";
+import type { IntercomWorkspaceModel } from "@connectors/lib/models/intercom";
 import type { MicrosoftConfigurationModel } from "@connectors/lib/models/microsoft";
 import type { NotionConnectorState } from "@connectors/lib/models/notion";
 import type { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
 import type { SlackConfigurationModel } from "@connectors/lib/models/slack";
 import type { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
-import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
+import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
@@ -44,13 +44,13 @@ export interface ConnectorProviderModelM {
   confluence: ConfluenceConfiguration;
   github: GithubConnectorState;
   google_drive: GoogleDriveConfig;
-  intercom: IntercomWorkspace;
+  intercom: IntercomWorkspaceModel;
   microsoft: MicrosoftConfigurationModel;
   notion: NotionConnectorState;
   slack: SlackConfigurationModel;
   webcrawler: WebCrawlerConfigurationModel;
   snowflake: SnowflakeConfigurationModel;
-  zendesk: ZendeskConfiguration;
+  zendesk: ZendeskConfigurationModel;
   bigquery: BigQueryConfigurationModel;
   salesforce: SalesforceConfigurationModel;
 }
