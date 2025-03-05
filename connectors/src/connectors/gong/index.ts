@@ -123,13 +123,13 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       throw new Error("[Gong] Configuration not found.");
     }
     if (!fromTs) {
-      // Resetting the cursor to run a full sync.
-      await configuration.resetCursor();
+      // Resetting the last sync timestamp to run a full sync.
+      await configuration.resetLastSyncTimestamp();
     } else {
       // If fromTs is set, we ignore it and sync from the last cursor; we cannot miss transcripts if we assume that
       // transcripts cannot be created in the past.
       logger.warn(
-        `[Gong] Ignoring the fromTs, syncing from ${configuration.timestampCursor}`
+        `[Gong] Ignoring the fromTs, syncing from ${configuration.lastSyncTimestamp}`
       );
     }
 

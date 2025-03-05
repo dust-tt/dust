@@ -14,17 +14,20 @@ const CatchAllCodec = t.record(t.string, t.unknown);
 
 const GongUserCodec = t.intersection([
   t.type({
-    id: t.string,
-    emailAddress: t.string,
-    created: t.string,
     active: t.boolean,
+    created: t.string,
+    emailAddress: t.string,
+    emailAliases: t.array(t.string),
     firstName: t.string,
+    id: t.string,
     lastName: t.string,
-    title: t.string,
     phoneNumber: t.string,
+    title: t.string,
   }),
   CatchAllCodec,
 ]);
+
+export type GongAPIUser = t.TypeOf<typeof GongUserCodec>;
 
 const GongTranscriptSentenceCodec = t.type({
   start: t.number,
@@ -184,6 +187,7 @@ export class GongClient {
         },
         GongPaginatedResults("users", GongUserCodec)
       );
+
       return {
         users: users.users,
         nextPageCursor: users.records.cursor,
@@ -195,6 +199,7 @@ export class GongClient {
           nextPageCursor: null,
         };
       }
+
       throw err;
     }
   }
