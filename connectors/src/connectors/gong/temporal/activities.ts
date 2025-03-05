@@ -59,6 +59,7 @@ export async function gongSaveSyncSuccessActivity(connectorId: ModelId) {
 export async function gongSyncTranscriptsActivity(connectorId: ModelId) {
   const connector = await fetchGongConnector(connectorId);
   const configuration = await fetchGongConfiguration(connector);
+  const syncStartTs = Date.now();
 
   const gongClient = await getGongClient(connector);
 
@@ -71,4 +72,6 @@ export async function gongSyncTranscriptsActivity(connectorId: ModelId) {
     // TODO(2025-03-05) - Add upserts here.
     pageCursor = transcripts.nextPageCursor;
   } while (pageCursor);
+
+  await configuration.setCursor(syncStartTs);
 }
