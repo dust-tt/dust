@@ -308,9 +308,9 @@ export class GongClient {
 
   // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
   async getCallsMetadata({
-     callIds,
-     pageCursor = null,
-   }: {
+    callIds,
+    pageCursor = null,
+  }: {
     callIds: string[];
     pageCursor?: string | null;
   }) {
