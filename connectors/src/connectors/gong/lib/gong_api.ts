@@ -262,7 +262,7 @@ export class GongClient {
     } catch (err) {
       if (err instanceof GongAPIError && err.status === 404) {
         return {
-          pages: [],
+          transcripts: [],
           nextPageCursor: null,
         };
       }
@@ -298,10 +298,10 @@ export class GongClient {
   // https://gong.app.gong.io/settings/api/documentation#post-/v2/calls/extensive
   async getCallsMetadata({
     callIds,
-    pageCursor,
+    pageCursor = null,
   }: {
     callIds: string[];
-    pageCursor: string | null;
+    pageCursor?: string | null;
   }) {
     try {
       const callsMetadata = await this.postRequest(

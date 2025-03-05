@@ -26,7 +26,7 @@ export function shouldSyncTranscript(
   return true;
 }
 
-function makeTranscriptInternalId(
+function makeGongTranscriptInternalId(
   connector: ConnectorResource,
   callId: string
 ) {
@@ -36,22 +36,24 @@ function makeTranscriptInternalId(
 /**
  * Syncs a transcript in the db and upserts it to the data sources.
  */
-export async function syncTranscript(
-  connector: ConnectorResource,
-  configuration: GongConfigurationResource,
-  transcript: GongCallTranscript,
-  transcriptMetadata: GongTranscriptMetadata,
-  speakers: Record<string, GongParticipant>,
-  {
-    dataSourceConfig,
-    loggerArgs,
-    forceResync,
-  }: {
-    dataSourceConfig: DataSourceConfig;
-    loggerArgs: Record<string, string | number | null>;
-    forceResync: boolean;
-  }
-) {
+export async function syncGongTranscript({
+  transcript,
+  transcriptMetadata,
+  speakers,
+  connector,
+  dataSourceConfig,
+  loggerArgs,
+  forceResync,
+}: {
+  transcript: GongCallTranscript;
+  transcriptMetadata: GongTranscriptMetadata;
+  speakers: Record<string, GongParticipant>;
+  connector: ConnectorResource;
+  configuration: GongConfigurationResource;
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs: Record<string, string | number | null>;
+  forceResync: boolean;
+}) {
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
 
@@ -115,7 +117,7 @@ export async function syncTranscript(
     });
   });
 
-  const documentId = makeTranscriptInternalId(connector, callId);
+  const documentId = makeGongTranscriptInternalId(connector, callId);
 
   await upsertDataSourceDocument({
     dataSourceConfig,
