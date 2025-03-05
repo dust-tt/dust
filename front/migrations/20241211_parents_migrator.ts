@@ -4,8 +4,8 @@ import {
   CoreAPI,
   isConnectorProvider,
   Ok,
+  withRetries,
 } from "@dust-tt/types";
-import { withRetries } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
@@ -91,7 +91,7 @@ export function isOldGithuRepoId(internalId: string): boolean {
   return /^\d+$/.test(internalId);
 }
 
-const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
+const migrators: Record<Partial<ConnectorProvider>, ProviderMigrator | null> = {
   slack: {
     transformer: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);

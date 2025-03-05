@@ -6,6 +6,7 @@ import {
   GithubLogo,
   GithubWhiteLogo,
   GlobeAltIcon,
+  GongLogo,
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
@@ -348,6 +349,25 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isDeletable: true,
     guideLink: "https://docs.dust.tt/docs/salesforce-connection",
   },
+  gong: {
+    name: "Gong",
+    connectorProvider: "gong",
+    status: "rolling_out",
+    rollingOutFlag: "gong_feature",
+    hide: false,
+    description: "Authorize access to Gong for indexing call transcripts.",
+    guideLink: "https://docs.dust.tt/docs/gong-connection",
+    getLogoComponent: () => {
+      return GongLogo;
+    },
+    isNested: true,
+    isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
+  },
 };
 
 const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
@@ -410,6 +430,8 @@ export const isConnectorProviderAllowedForPlan = (
       return true;
     case "salesforce":
       return true;
+    case "gong":
+      return true;
     default:
       assertNever(provider);
   }
@@ -427,13 +449,13 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "intercom":
     case "microsoft":
     case "zendesk":
+    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "snowflake":
     case "bigquery":
     case "webcrawler":
-      return false;
     case "salesforce":
       return false;
     default:
@@ -456,6 +478,7 @@ export const isConnectionIdRequiredForProvider = (
     case "snowflake":
     case "bigquery":
     case "salesforce":
+    case "gong":
       return true;
     case "webcrawler":
       return false;

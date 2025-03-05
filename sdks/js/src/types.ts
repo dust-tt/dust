@@ -282,6 +282,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "zendesk"
   | "bigquery"
   | "salesforce"
+  | "gong"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
@@ -791,6 +792,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_github_actions"
   | "deepseek_r1_global_agent_feature"
   | "salesforce_feature"
+  | "gong_feature"
   | "advanced_notion_management"
   | "search_knowledge_builder"
   | "attach_from_datasources"

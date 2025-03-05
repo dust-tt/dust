@@ -10,6 +10,7 @@ import { assertNever } from "@dust-tt/types";
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
+import { GongConnectorManager } from "@connectors/connectors/gong";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
 import { IntercomConnectorManager } from "@connectors/connectors/intercom";
 import type {
@@ -69,6 +70,8 @@ export function getConnectorManager({
     // TODO(salesforce): implement this
     case "salesforce":
       return new SalesforceConnectorManager(connectorId);
+    case "gong":
+      return new GongConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -130,6 +133,8 @@ export function createConnector({
     // TODO(salesforce): implement this
     case "salesforce":
       return SalesforceConnectorManager.create(params);
+    case "gong":
+      return GongConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

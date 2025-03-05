@@ -15,6 +15,7 @@ import {
   GithubDiscussion,
   GithubIssue,
 } from "@connectors/lib/models/github";
+import { GongConfigurationModel } from "@connectors/lib/models/gong";
 import {
   GoogleDriveConfig,
   GoogleDriveFiles,
@@ -131,6 +132,7 @@ async function main(): Promise<void> {
   await ZendeskArticleModel.sync({ alter: true });
   await ZendeskTicketModel.sync({ alter: true });
   await SalesforceConfigurationModel.sync({ alter: true });
+  await GongConfigurationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
   await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");

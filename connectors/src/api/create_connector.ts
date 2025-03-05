@@ -17,8 +17,10 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { createConnector } from "@connectors/connectors";
-import type { CreateConnectorErrorCode } from "@connectors/connectors/interface";
-import type { ConnectorManagerError } from "@connectors/connectors/interface";
+import type {
+  ConnectorManagerError,
+  CreateConnectorErrorCode,
+} from "@connectors/connectors/interface";
 import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
@@ -135,7 +137,8 @@ const _createConnectorAPIHandler = async (
       case "bigquery":
       case "zendesk":
       case "microsoft":
-      case "salesforce": {
+      case "salesforce":
+      case "gong": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {

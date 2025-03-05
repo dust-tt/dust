@@ -15,6 +15,7 @@ export const CONNECTOR_PROVIDERS = [
   "zendesk",
   "bigquery",
   "salesforce",
+  "gong",
 ] as const;
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];

@@ -399,6 +399,7 @@ export const AddConnectionMenu = ({
             case "zendesk":
             case "salesforce":
             case "webcrawler":
+            case "gong":
               return (
                 <CreateConnectionConfirmationModal
                   key={`${c}-${isOpen}`}
