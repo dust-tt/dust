@@ -19,6 +19,10 @@ import type { GongUserResource } from "@connectors/resources/gong_resources";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+function formatDateNicely(date: Date) {
+  return date.toISOString().split("T")[0];
+}
+
 /**
  * Syncs a transcript in the db and upserts it to the data sources.
  */
@@ -43,7 +47,7 @@ export async function syncGongTranscript({
 }) {
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
-  const title = transcriptMetadata.metaData.title || "Untitled transcript";
+  const title = `${formatDateNicely(createdAtDate)}: ${transcriptMetadata.metaData.title || "Untitled transcript"}`;
   const documentUrl = transcriptMetadata.metaData.url;
 
   const transcriptInDb = await GongTranscriptResource.fetchByCallId(
