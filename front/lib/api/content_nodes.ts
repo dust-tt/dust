@@ -34,7 +34,6 @@ export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
 
 export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
   MIME_TYPES.NOTION.SYNCING_FOLDER,
-  MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
 ] as readonly string[];
 
 export function getContentNodeInternalIdFromTableId(
