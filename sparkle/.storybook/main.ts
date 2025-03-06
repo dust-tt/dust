@@ -20,7 +20,7 @@ const config: StorybookConfig = {
       },
     },
     "@storybook/addon-webpack5-compiler-babel",
-    "@chromatic-com/storybook"
+    "@chromatic-com/storybook",
   ],
 
   webpackFinal: async (config, { configType }) => {
@@ -48,7 +48,7 @@ const config: StorybookConfig = {
   docs: {},
 
   typescript: {
-    reactDocgen: "react-docgen-typescript"
-  }
+    reactDocgen: "react-docgen-typescript",
+  },
 };
 export default config;
