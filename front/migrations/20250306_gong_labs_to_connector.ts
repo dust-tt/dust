@@ -174,6 +174,9 @@ async function createDataSourceAndConnector({
     // Rollback the data source creation.
     await dataSource.delete(auth, { hardDelete: true });
 
+    // Delete the dangling system key.
+    await systemAPIKeyRes.value.delete();
+
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProject.value.project.project_id.toString(),
       dataSourceId: dustDataSource.value.data_source.data_source_id,
