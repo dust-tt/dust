@@ -28,9 +28,11 @@ async function terminateWorkflowsForSchedule(
   client: Client
 ) {
   const scheduleDescription = await scheduleHandle.describe();
-  for (const action of scheduleDescription.info.runningActions) {
+  // Terminate all the recent actions of the schedule,
+  // the running workflows are not available under scheduleDescription.info.runningActions.
+  for (const action of scheduleDescription.info.recentActions) {
     const workflowHandle = client.workflow.getHandle(
-      action.workflow.workflowId
+      action.action.workflow.workflowId
     );
     await workflowHandle.terminate();
   }
