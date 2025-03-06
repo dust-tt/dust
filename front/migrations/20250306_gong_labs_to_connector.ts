@@ -1,12 +1,30 @@
-import type { ConnectorProvider, WorkspaceType } from "@dust-tt/types";
-import type { DataSourceType } from "@dust-tt/types/src";
+import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
+  EMBEDDING_CONFIGS,
+} from "@dust-tt/types";
 
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import config from "@app/lib/api/config";
+import {
+  Authenticator,
+  getFeatureFlags,
+  getOrCreateSystemApiKey,
+} from "@app/lib/auth";
+import {
+  getDefaultDataSourceDescription,
+  getDefaultDataSourceName,
+  isConnectorProviderAssistantDefaultSelected,
+} from "@app/lib/connector_providers";
 import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type Logger from "@app/logger/logger";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import { makeScript } from "@app/scripts/helpers";
 
 const PROVIDER = "gong";
@@ -44,37 +62,129 @@ async function getAuthsForWorkspacesWithGong(): Promise<
   return authsAndConnectionId;
 }
 
-async function postDataSource({
-  owner,
+async function createDataSourceAndConnector({
+  auth,
   systemSpace,
   provider,
   connectionId,
+  logger,
 }: {
-  owner: WorkspaceType;
+  auth: Authenticator;
   systemSpace: SpaceResource;
   provider: ConnectorProvider;
   connectionId: string;
+  logger: typeof Logger;
 }): Promise<DataSourceType> {
-  const response = await fetch(
-    `/api/w/${owner.sId}/spaces/${systemSpace.sId}/data_sources`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        provider,
-        connectionId,
-        name: undefined,
-        configuration: null,
-      } satisfies PostDataSourceRequestBody),
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to create data source for workspace ${owner.sId}`);
+  const owner = auth.getNonNullableWorkspace();
+
+  const dataSourceName = getDefaultDataSourceName(provider, null);
+  const dataSourceDescription = getDefaultDataSourceDescription(provider, null);
+
+  const systemAPIKeyRes = await getOrCreateSystemApiKey(owner);
+  if (systemAPIKeyRes.isErr()) {
+    throw systemAPIKeyRes.error;
   }
-  const data = await response.json();
-  return data.dataSource;
+
+  const dataSourceEmbedder =
+    owner.defaultEmbeddingProvider ?? DEFAULT_EMBEDDING_PROVIDER_ID;
+  const embedderConfig = EMBEDDING_CONFIGS[dataSourceEmbedder];
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const dustProject = await coreAPI.createProject();
+  if (dustProject.isErr()) {
+    throw dustProject.error;
+  }
+
+  const dustDataSource = await coreAPI.createDataSource({
+    projectId: dustProject.value.project.project_id.toString(),
+    config: {
+      embedder_config: {
+        embedder: embedderConfig,
+      },
+      qdrant_config: {
+        cluster: DEFAULT_QDRANT_CLUSTER,
+        shadow_write_cluster: null,
+      },
+    },
+    credentials: dustManagedCredentials(),
+    name: dataSourceName,
+  });
+
+  if (dustDataSource.isErr()) {
+    throw dustDataSource.error;
+  }
+
+  // Check if there's already a data source with the same name
+  const existingDataSource = await DataSourceResource.fetchByNameOrId(
+    auth,
+    dataSourceName
+  );
+  if (existingDataSource) {
+    throw new Error("A data source with the same name already exists.");
+  }
+
+  const dataSourceView =
+    await DataSourceViewResource.createDataSourceAndDefaultView(
+      {
+        assistantDefaultSelected:
+          isConnectorProviderAssistantDefaultSelected(provider),
+        connectorProvider: provider,
+        description: dataSourceDescription,
+        dustAPIProjectId: dustProject.value.project.project_id.toString(),
+        dustAPIDataSourceId: dustDataSource.value.data_source.data_source_id,
+        name: dataSourceName,
+        workspaceId: owner.id,
+      },
+      systemSpace,
+      auth.user()
+    );
+
+  const { dataSource } = dataSourceView;
+
+  const connectorsAPI = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    logger
+  );
+
+  const connectorsRes = await connectorsAPI.createConnector({
+    provider,
+    workspaceId: owner.sId,
+    workspaceAPIKey: systemAPIKeyRes.value.secret,
+    dataSourceId: dataSource.sId,
+    connectionId: connectionId ?? "none",
+    configuration: null,
+  });
+
+  if (connectorsRes.isErr()) {
+    logger.error(
+      {
+        error: connectorsRes.error,
+      },
+      "Failed to create the connector"
+    );
+
+    // Rollback the data source creation.
+    await dataSource.delete(auth, { hardDelete: true });
+
+    const deleteRes = await coreAPI.deleteDataSource({
+      projectId: dustProject.value.project.project_id.toString(),
+      dataSourceId: dustDataSource.value.data_source.data_source_id,
+    });
+    if (deleteRes.isErr()) {
+      logger.error(
+        {
+          error: deleteRes.error,
+        },
+        "Failed to delete the data source"
+      );
+    }
+
+    throw connectorsRes.error;
+  }
+
+  await dataSource.setConnectorId(connectorsRes.value.id);
+
+  return dataSource.toJSON();
 }
 
 async function createAllGongConnectors({
@@ -102,11 +212,12 @@ async function createAllGongConnectors({
     }
 
     if (execute) {
-      const dataSource = await postDataSource({
-        owner,
+      const dataSource = await createDataSourceAndConnector({
+        auth,
         systemSpace,
         provider: PROVIDER,
         connectionId,
+        logger,
       });
       logger.info(
         { dataSourceId: dataSource.sId, connectorId: dataSource.connectorId },
