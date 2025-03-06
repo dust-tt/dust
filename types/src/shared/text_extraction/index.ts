@@ -151,7 +151,11 @@ export class TextExtraction {
           },
           body: Readable.toWeb(fileStream),
           duplex: "half",
-        } as RequestInitWithDuplex)
+        } as RequestInitWithDuplex),
+      {
+        retries: 3,
+        delayBetweenRetriesMs: 1000,
+      }
     )({
       url: this.url,
       additionalHeaders: this.getAdditionalHeaders(),
@@ -220,7 +224,11 @@ export class TextExtraction {
               ...additionalHeaders,
             },
             body: fileBuffer,
-          })
+          }),
+        {
+          retries: 3,
+          delayBetweenRetriesMs: 1000,
+        }
       )({
         url: this.url,
         additionalHeaders: this.getAdditionalHeaders(),
