@@ -349,11 +349,11 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           id: -1,
           sId: generateRandomModelSId(),
           type: "search_labels_configuration",
-          // TODO: Why do we need this.
           name: DEFAULT_SEARCH_LABELS_ACTION_NAME,
           dataSourceViewIds: this.actionConfiguration.dataSources.map(
             (ds) => ds.dataSourceViewId
           ),
+          parentTool: this.actionConfiguration.name,
         },
       ];
     }

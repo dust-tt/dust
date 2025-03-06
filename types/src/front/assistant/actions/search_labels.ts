@@ -12,6 +12,8 @@ export type SearchLabelsConfigurationType = {
 
   // Used to scope the search results to a specific set of data sources.
   dataSourceViewIds: string[];
+
+  parentTool: string;
 };
 
 export interface SearchLabelsResultType {

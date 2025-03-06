@@ -15,6 +15,7 @@ export class AgentSearchLabelsAction extends WorkspaceAwareModel<AgentSearchLabe
   declare functionCallId: string | null;
   declare functionCallName: string | null;
   declare output: SearchLabelsActionOutputType | null;
+  declare parentTool: string;
   declare searchText: string;
   declare step: number;
 }
@@ -48,6 +49,11 @@ AgentSearchLabelsAction.init(
     output: {
       type: DataTypes.JSONB,
       allowNull: true,
+    },
+
+    parentTool: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
 
     searchText: {

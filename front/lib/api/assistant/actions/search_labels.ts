@@ -32,6 +32,7 @@ interface SearchLabelsActionBlob {
   functionCallName: string | null;
   id: ModelId; // AgentSearchLabelsAction
   output: SearchLabelsActionOutputType | null;
+  parentTool: string;
   searchText: string;
   step: number;
 }
@@ -41,6 +42,7 @@ export class SearchLabelsAction extends BaseAction {
   readonly functionCallId: string | null;
   readonly functionCallName: string;
   readonly output: SearchLabelsActionOutputType | null;
+  readonly parentTool: string;
   readonly searchText: string;
   readonly step: number;
 
@@ -50,11 +52,12 @@ export class SearchLabelsAction extends BaseAction {
     super(blob.id, "search_labels_action");
 
     this.agentMessageId = blob.agentMessageId;
-    this.searchText = blob.searchText;
     this.output = blob.output;
     this.functionCallId = blob.functionCallId;
     this.functionCallName =
       blob.functionCallName ?? DEFAULT_SEARCH_LABELS_ACTION_NAME;
+    this.parentTool = blob.parentTool;
+    this.searchText = blob.searchText;
     this.step = blob.step;
   }
 
@@ -93,19 +96,28 @@ export class SearchLabelsAction extends BaseAction {
 export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurationServerRunner<SearchLabelsConfigurationType> {
   async buildSpecification(
     auth: Authenticator,
-    { name, description }: { name: string; description: string | null }
+    {
+      description,
+      name,
+    }: {
+      description: string | null;
+      name: string;
+    }
   ): Promise<Result<AgentActionSpecification, Error>> {
     return new Ok({
       name,
       description:
         description ||
-        "Find exact matching labels before filtering. Label-based filtering succeeds only with existing labels. " +
+        `Find exact matching labels before using them in the tool ${this.actionConfiguration.parentTool}. ` +
+          "Restricting or excluding content succeeds only with existing labels. " +
           "Searching without verifying labels first typically returns no results.",
       inputs: [
         {
           name: "searchText",
           description:
-            "The text to search for in existing labels. Returns all matching labels that can be used for content filtering.",
+            "The text to search for in existing labels. " +
+            "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
+            "based on the user request and conversation context.",
           type: "string",
         },
       ],
@@ -165,6 +177,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       agentMessageId: agentMessage.agentMessageId,
       functionCallId,
       output: null,
+      parentTool: actionConfiguration.parentTool,
       searchText,
       step,
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -181,6 +194,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         functionCallName: action.functionCallName,
         id: action.id,
         output: null,
+        parentTool: actionConfiguration.parentTool,
         searchText,
         step: action.step,
       }),
@@ -224,6 +238,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         functionCallName: action.functionCallName,
         id: action.id,
         output: action.output,
+        parentTool: actionConfiguration.parentTool,
         searchText: action.searchText,
         step: action.step,
       }),
@@ -254,6 +269,7 @@ export async function searchLabelsActionTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       id: action.id,
       output: action.output,
+      parentTool: action.parentTool,
       searchText: action.searchText,
       step: action.step,
     });
