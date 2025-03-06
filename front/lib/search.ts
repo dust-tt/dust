@@ -98,7 +98,7 @@ export function getSearchFilterFromDataSourceViews(
   const entries = [...groupedPerDataSource.entries()];
 
   if (entries.length === 0) {
-    return new Err(new DustError("data_source_error", "No datasources found."));
+    throw new Error("Must have at least one datasource");
   }
 
   if (entries.length > 1024) {
@@ -112,7 +112,7 @@ export function getSearchFilterFromDataSourceViews(
     entries.splice(1024);
   }
 
-  return new Ok({
+  return {
     data_source_views: entries.map(([data_source_id, entry]) => ({
       data_source_id,
       view_filter: entry.parentsIn ? [...new Set(entry.parentsIn)] : [],
@@ -124,5 +124,5 @@ export function getSearchFilterFromDataSourceViews(
     })),
     excluded_node_mime_types: excludedNodeMimeTypes,
     node_types: getCoreViewTypeFilter(viewType),
-  });
+  };
 }

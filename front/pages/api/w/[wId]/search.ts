@@ -76,6 +76,9 @@ async function handler(
     });
   }
 
+  const { query, includeDataSources, viewType, limit, spaceIds } =
+    bodyValidation.right;
+
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   if (!spaces.length) {
     return apiError(req, res, {
@@ -86,26 +89,19 @@ async function handler(
       },
     });
   }
-
-  if (
-    bodyValidation.right.spaceIds &&
-    bodyValidation.right.spaceIds.some(
-      (sId) => !spaces.some((s) => s.sId === sId)
-    )
-  ) {
+  const availableSpaceIds = new Set(spaces.map((s) => s.sId));
+  if (spaceIds && spaceIds.some((sId) => !availableSpaceIds.has(sId))) {
     return apiError(req, res, {
-      status_code: 400,
+      status_code: 404,
       api_error: {
-        type: "invalid_request_error",
+        type: "space_not_found",
         message: "Invalid space ids.",
       },
     });
   }
 
   const spacesToSearch = spaces.filter(
-    (s) =>
-      !bodyValidation.right.spaceIds ||
-      bodyValidation.right.spaceIds.includes(s.sId)
+    (s) => !spaceIds || spaceIds.includes(s.sId)
   );
 
   const allDatasourceViews = await DataSourceViewResource.listBySpaces(
@@ -123,8 +119,6 @@ async function handler(
     });
   }
 
-  const { query, includeDataSources, viewType, limit } = bodyValidation.right;
-
   const searchFilterResult = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     allDatasourceViews,
@@ -135,20 +129,10 @@ async function handler(
     }
   );
 
-  if (searchFilterResult.isErr()) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: searchFilterResult.error.message,
-      },
-    });
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: searchFilterResult.value,
+    filter: searchFilterResult,
     options: {
       limit,
     },
