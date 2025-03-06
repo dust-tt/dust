@@ -286,7 +286,7 @@ export class GongClient {
         nextPageCursor: users.records.cursor,
       };
     } catch (err) {
-      if (err instanceof GongAPIError && err.status === 404) {
+      if (isNotFoundError(err)) {
         return {
           users: [],
           nextPageCursor: null,

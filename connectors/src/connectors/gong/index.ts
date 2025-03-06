@@ -2,16 +2,21 @@ import type { ContentNode, Result } from "@dust-tt/types";
 import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
+import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
+import {
+  fetchGongConfiguration,
+  fetchGongConnector,
+} from "@connectors/connectors/gong/lib/utils";
 import {
   launchGongSyncWorkflow,
   stopGongSyncWorkflow,
 } from "@connectors/connectors/gong/temporal/client";
 import type {
-  ConnectorManagerError,
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
@@ -30,6 +35,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;
   }): Promise<Result<string, ConnectorManagerError<CreateConnectorErrorCode>>> {
+    const baseUrlRes = await baseUrlFromConnectionId(connectionId);
+    if (baseUrlRes.isErr()) {
+      throw new Error("Invalid Gong Access Token");
+    }
+
     const connector = await ConnectorResource.makeNew(
       "gong",
       {
@@ -38,7 +48,9 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         workspaceId: dataSourceConfig.workspaceId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      {}
+      {
+        baseUrl: baseUrlRes.value,
+      }
     );
 
     // Upsert a top-level folder that will contain all the transcripts (non selectable).
@@ -63,10 +75,47 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
-  async update(): Promise<
-    Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>
-  > {
-    throw new Error("Method not implemented.");
+  async update({
+    connectionId,
+  }: {
+    connectionId?: string | null;
+  }): Promise<Result<string, ConnectorManagerError<UpdateConnectorErrorCode>>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    if (connectionId) {
+      const config = await fetchGongConfiguration(connector);
+
+      const { baseUrl } = config;
+      const newBaseUrlRes = await baseUrlFromConnectionId(connectionId);
+
+      if (newBaseUrlRes.isErr()) {
+        throw new Error("Invalid Gong Access Token");
+      }
+
+      if (newBaseUrlRes.value !== baseUrl) {
+        return new Err(
+          new ConnectorManagerError(
+            "CONNECTOR_OAUTH_TARGET_MISMATCH",
+            "Cannot change workspace of a Gong connector"
+          )
+        );
+      }
+
+      await connector.update({
+        connectionId,
+      });
+
+      // If connector was previously paused, unpause it.
+      if (connector.isPaused()) {
+        await this.unpause();
+
+        await launchGongSyncWorkflow(connector);
+      }
+    }
+
+    return new Ok(connector.id.toString());
   }
 
   async clean(): Promise<Result<undefined, Error>> {
@@ -162,11 +211,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
-    throw new Error("Method not implemented.");
+    return new Ok([]);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async pause(): Promise<Result<undefined, Error>> {
@@ -192,18 +241,18 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async garbageCollect(): Promise<Result<string, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async configure(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 
   async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not implemented.");
+    throw new Error("Method not supported.");
   }
 }

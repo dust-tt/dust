@@ -80,6 +80,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     if (!configuration) {
       return null;
     }
+
     return new this(this.model, configuration.get());
   }
 

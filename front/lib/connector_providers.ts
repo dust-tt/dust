@@ -28,6 +28,7 @@ import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
@@ -57,6 +58,7 @@ export type ConnectorProviderConfiguration = {
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
   isSearchEnabled: boolean;
+  isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
     unselected: ConnectorPermission;
@@ -353,6 +355,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     name: "Gong",
     connectorProvider: "gong",
     status: "rolling_out",
+    isResourceSelectionDisabled: true,
+    optionsComponent: GongOptionComponent,
     rollingOutFlag: "gong_feature",
     hide: false,
     description: "Authorize access to Gong for indexing call transcripts.",
@@ -428,11 +432,8 @@ export const isConnectorProviderAllowedForPlan = (
       // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
       return true;
     case "zendesk":
-      return true;
     case "bigquery":
-      return true;
     case "salesforce":
-      return true;
     case "gong":
       return true;
     default:
