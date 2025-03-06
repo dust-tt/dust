@@ -442,10 +442,15 @@ impl SalesforceRemoteDatabase {
                     })
                     .transpose()?;
 
+                let relationship_note = field["relationshipName"]
+                    .as_str()
+                    .map(|rel| format!("relationship: {}", rel));
+
                 Ok(TableSchemaColumn {
                     name,
                     value_type,
                     possible_values: possible_values,
+                    additional_note: relationship_note,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
