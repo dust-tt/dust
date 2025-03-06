@@ -1,5 +1,6 @@
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
+import type { Client, ScheduleHandle } from "@temporalio/client";
 import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
@@ -18,6 +19,21 @@ const logger = mainLogger.child({ provider: "gong" });
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
 function makeGongSyncScheduleId(connector: ConnectorResource): string {
   return `gong-sync-${connector.id}`;
+}
+
+// Terminates running workflows spawned by the given schedule.
+// Throw a `ScheduleNotFoundError` if the schedule does not exist.
+async function terminateWorkflowsForSchedule(
+  scheduleHandle: ScheduleHandle,
+  client: Client
+) {
+  const scheduleDescription = await scheduleHandle.describe();
+  for (const action of scheduleDescription.info.runningActions) {
+    const workflowHandle = client.workflow.getHandle(
+      action.workflow.workflowId
+    );
+    await workflowHandle.terminate();
+  }
 }
 
 export async function createGongSyncSchedule(
@@ -56,6 +72,7 @@ export async function createGongSyncSchedule(
         intervals: [{ every: "1h" }],
       },
     });
+
     // Trigger the schedule to start the workflow immediately.
     await scheduleHandle.trigger();
   } catch (error) {
@@ -82,13 +99,7 @@ export async function deleteGongSyncSchedule(
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
     // Terminate the running workflows.
-    const scheduleDescription = await scheduleHandle.describe();
-    for (const action of scheduleDescription.info.runningActions) {
-      const workflowHandle = client.workflow.getHandle(
-        action.workflow.workflowId
-      );
-      await workflowHandle.terminate();
-    }
+    await terminateWorkflowsForSchedule(scheduleHandle, client);
 
     // Delete the schedule.
     await scheduleHandle.delete();
@@ -160,13 +171,7 @@ export async function stopGongSync(
     await scheduleHandle.pause();
 
     // Terminate the running workflows.
-    const scheduleDescription = await scheduleHandle.describe();
-    for (const action of scheduleDescription.info.runningActions) {
-      const workflowHandle = client.workflow.getHandle(
-        action.workflow.workflowId
-      );
-      await workflowHandle.terminate();
-    }
+    await terminateWorkflowsForSchedule(scheduleHandle, client);
   } catch (error) {
     if (!(error instanceof ScheduleNotFoundError)) {
       logger.error(
