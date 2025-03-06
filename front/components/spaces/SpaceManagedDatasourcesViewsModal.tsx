@@ -46,6 +46,7 @@ interface SpaceManagedDataSourcesViewsModalProps {
   owner: WorkspaceType;
   systemSpaceDataSourceViews: DataSourceViewType[];
   space: SpaceType;
+  systemSpace: SpaceType;
 }
 
 export default function SpaceManagedDataSourcesViewsModal({
@@ -56,6 +57,7 @@ export default function SpaceManagedDataSourcesViewsModal({
   owner,
   systemSpaceDataSourceViews,
   space,
+  systemSpace,
 }: SpaceManagedDataSourcesViewsModalProps) {
   const defaultSelectedDataSources = useStabilizedValue(
     initialSelectedDataSources,
@@ -158,7 +160,7 @@ export default function SpaceManagedDataSourcesViewsModal({
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType="all"
               isRootSelectable={true}
-              space={space}
+              space={systemSpace}
             />
           </div>
         </SheetContainer>
