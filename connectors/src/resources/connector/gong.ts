@@ -1,7 +1,11 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
-import { GongConfigurationModel } from "@connectors/lib/models/gong";
+import {
+  GongConfigurationModel,
+  GongTranscriptModel,
+  GongUserModel,
+} from "@connectors/lib/models/gong";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
@@ -32,6 +36,14 @@ export class GongConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
+    await GongUserModel.destroy({
+      where: { connectorId: connector.id },
+      transaction,
+    });
+    await GongTranscriptModel.destroy({
+      where: { connectorId: connector.id },
+      transaction,
+    });
     await GongConfigurationModel.destroy({
       where: {
         connectorId: connector.id,

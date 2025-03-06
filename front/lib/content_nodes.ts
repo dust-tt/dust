@@ -128,5 +128,5 @@ export function getLocationForDataSourceViewContentNode(
     return providerName;
   }
 
-  return `${providerName}/../${node.parentTitle}`;
+  return `${providerName} › ... › ${node.parentTitle}`;
 }
