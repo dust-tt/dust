@@ -113,15 +113,13 @@ export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
   const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
   nextPageCursor = coreRes.value.next_page_cursor;
 
-  const nodes = resultNodes.map((node) =>
-    getContentNodeFromCoreNode(
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
       dataSourceView instanceof DataSourceViewResource
         ? dataSourceView.toJSON()
         : dataSourceView,
-      node,
-      viewType
-    )
-  );
+  }));
 
   return new Ok({
     nodes,
@@ -207,15 +205,13 @@ export async function getContentNodesForDataSourceView(
     nextPageCursor = coreRes.value.next_page_cursor;
   } while (resultNodes.length < limit && nextPageCursor);
 
-  const nodes = resultNodes.map((node) =>
-    getContentNodeFromCoreNode(
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
       dataSourceView instanceof DataSourceViewResource
         ? dataSourceView.toJSON()
         : dataSourceView,
-      node,
-      viewType
-    )
-  );
+  }));
   const sortedNodes = !internalIds
     ? nodes
     : internalIds.flatMap((id) =>

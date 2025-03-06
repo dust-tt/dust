@@ -101,6 +101,11 @@ export interface ContentNode {
   type: ContentNodeType;
 }
 
+export interface ContentNodeWithParent extends ContentNode {
+  parentInternalIds: string[] | null;
+  parentTitle?: string;
+}
+
 type GetContentNodesReturnType<Key extends string> = ConnectorsAPIResponse<{
   [K in Key]: ContentNode[];
 }>;

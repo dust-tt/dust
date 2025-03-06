@@ -6,7 +6,7 @@ import {
   DataSourceWithAgentsUsageType,
   EditedByUser,
 } from "./data_source";
-import { ContentNode } from "./lib/connectors_api";
+import { ContentNodeWithParent } from "./lib/connectors_api";
 
 export interface DataSourceViewType {
   category: DataSourceViewCategory;
@@ -26,10 +26,8 @@ export type DataSourceViewsWithDetails = DataSourceViewType & {
   usage: DataSourceWithAgentsUsageType;
 };
 
-export type DataSourceViewContentNode = ContentNode & {
+export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSourceView: DataSourceViewType;
-  parentInternalIds: string[] | null;
-  parentTitle?: string;
 };
 
 export type DataSourceViewSelectionConfiguration = {
