@@ -50,7 +50,7 @@ export async function syncGongTranscript({
 }) {
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
-  const title = `${formatDateNicely(createdAtDate)}: ${transcriptMetadata.metaData.title || "Untitled transcript"}`;
+  const title = `${formatDateNicely(createdAtDate)} - ${transcriptMetadata.metaData.title || "Untitled transcript"}`;
   const documentUrl = transcriptMetadata.metaData.url;
 
   const transcriptInDb = await GongTranscriptResource.fetchByCallId(
