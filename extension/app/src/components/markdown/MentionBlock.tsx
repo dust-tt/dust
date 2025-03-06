@@ -5,8 +5,8 @@ export function MentionBlock({ agentName }: { agentName: string }) {
   return (
     <span
       className={classNames(
-        "inline-block cursor-default font-medium text-brand",
-        "dark:text-brand-night"
+        "inline-block cursor-default font-medium text-highlight",
+        "dark:text-highlight-night"
       )}
     >
       @{agentName}
