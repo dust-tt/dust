@@ -47,7 +47,11 @@ export async function getGongUsers(
         return null;
       }
 
-      return GongUserResource.makeNew(connector, getUserBlobFromGongAPI(user));
+      const newUser = await GongUserResource.makeNew(
+        connector,
+        getUserBlobFromGongAPI(user)
+      );
+      users.push(newUser);
     },
     { concurrency: 10 }
   );
