@@ -177,7 +177,7 @@ export async function gongListAndSaveUsersActivity({
   } while (pageCursor);
 }
 
-export async function deleteOutdatedTranscripts({
+export async function gongDeleteOutdatedTranscriptsActivity({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -195,6 +195,8 @@ export async function deleteOutdatedTranscripts({
         limit: GARBAGE_COLLECT_BATCH_SIZE,
       }
     );
+
+    // Delete the data from core.
     for (const transcript of outdatedTranscripts) {
       await deleteDataSourceDocument(
         dataSourceConfig,
@@ -208,6 +210,7 @@ export async function deleteOutdatedTranscripts({
       );
     }
 
+    // Delete the data from connectors.
     await GongTranscriptResource.batchDelete(connector, outdatedTranscripts);
   } while (outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE);
 }

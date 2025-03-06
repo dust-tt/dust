@@ -8,6 +8,7 @@ const {
   gongSaveStartSyncActivity,
   gongSaveSyncSuccessActivity,
   gongSyncTranscriptsActivity,
+  gongDeleteOutdatedTranscriptsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -34,4 +35,12 @@ export async function gongSyncWorkflow({
 
   // Finally, we save the end of the sync.
   await gongSaveSyncSuccessActivity({ connectorId });
+}
+
+export async function gongGarbageCollectWorkflow({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  await gongDeleteOutdatedTranscriptsActivity({ connectorId });
 }
