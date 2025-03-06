@@ -4,6 +4,7 @@ import type {
   ConversationIncludeFileConfigurationType,
   DustAppRunConfigurationType,
   GithubCreateIssueConfigurationType,
+  GithubCreatePullRequestReviewConfigurationType,
   GithubGetPullRequestConfigurationType,
   ProcessConfigurationType,
   ReasoningConfigurationType,
@@ -26,6 +27,7 @@ import type {
 } from "@app/lib/api/assistant/actions/types";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
+import { GithubCreatePullRequestReviewConfigurationServerRunner } from "./github";
 import {
   GithubCreateIssueConfigurationServerRunner,
   GithubGetPullRequestConfigurationServerRunner,
@@ -41,6 +43,7 @@ interface ActionToConfigTypeMap {
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
   github_create_issue_configuration: GithubCreateIssueConfigurationType;
+  github_create_pull_request_review_configuration: GithubCreatePullRequestReviewConfigurationType;
   reasoning_configuration: ReasoningConfigurationType;
 }
 
@@ -54,6 +57,7 @@ interface ActionTypeToClassMap {
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
   github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner;
+  github_create_pull_request_review_configuration: GithubCreatePullRequestReviewConfigurationServerRunner;
   reasoning_configuration: ReasoningConfigurationServerRunner;
 }
 
@@ -102,6 +106,8 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   github_get_pull_request_configuration:
     GithubGetPullRequestConfigurationServerRunner,
   github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
+  github_create_pull_request_review_configuration:
+    GithubCreatePullRequestReviewConfigurationServerRunner,
   reasoning_configuration: ReasoningConfigurationServerRunner,
 } as const;
 

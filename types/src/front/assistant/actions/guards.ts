@@ -12,6 +12,7 @@ import {
 } from "../../../front/assistant/actions/dust_app_run";
 import {
   GithubCreateIssueConfigurationType,
+  GithubCreatePullRequestReviewConfigurationType,
   GithubGetPullRequestConfigurationType,
 } from "../../../front/assistant/actions/github";
 import { BaseAction } from "../../../front/assistant/actions/index";
@@ -189,6 +190,17 @@ export function isGithubCreateIssueActionType(
   arg: AgentActionType
 ): arg is BrowseActionType {
   return arg.type === "github_create_issue_action";
+}
+
+export function isGithubCreatePullRequestReviewConfigurationType(
+  arg: unknown
+): arg is GithubCreatePullRequestReviewConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "github_create_pull_request_review_configuration"
+  );
 }
 
 export function isConversationIncludeFileConfiguration(

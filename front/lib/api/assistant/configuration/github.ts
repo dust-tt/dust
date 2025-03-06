@@ -1,5 +1,6 @@
 import type {
   GithubCreateIssueConfigurationType,
+  GithubCreatePullRequestReviewConfigurationType,
   GithubGetPullRequestConfigurationType,
   ModelId,
 } from "@dust-tt/types";
@@ -8,6 +9,7 @@ import { Op } from "sequelize";
 
 import {
   DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
+  DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
   DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
@@ -24,6 +26,7 @@ export async function fetchGithubActionConfigurations({
     (
       | GithubGetPullRequestConfigurationType
       | GithubCreateIssueConfigurationType
+      | GithubCreatePullRequestReviewConfigurationType
     )[]
   >
 > {
@@ -68,6 +71,16 @@ export async function fetchGithubActionConfigurations({
               description,
             });
             break;
+          case "github_create_pull_request_review_action":
+            actions.push({
+              id,
+              sId,
+              type: "github_create_pull_request_review_configuration",
+              name:
+                name || DEFAULT_GITHUB_CREATE_PULL_REQUEST_REVIEW_ACTION_NAME,
+              description,
+            });
+            break;
           default:
             assertNever(actionType);
         }
@@ -79,6 +92,7 @@ export async function fetchGithubActionConfigurations({
       (
         | GithubGetPullRequestConfigurationType
         | GithubCreateIssueConfigurationType
+        | GithubCreatePullRequestReviewConfigurationType
       )[]
     >()
   );
