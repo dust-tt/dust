@@ -406,7 +406,10 @@ impl SalesforceRemoteDatabase {
                 })?;
 
                 let value_type = match soap_type.to_lowercase().as_str() {
-                    "tns:id" => TableSchemaFieldType::Text,
+                    "tns:id" => match field["relationshipName"].as_str() {
+                        Some(rel_name) => TableSchemaFieldType::Reference(rel_name.to_string()),
+                        None => TableSchemaFieldType::Text,
+                    },
                     "xsd:string" => TableSchemaFieldType::Text,
                     "xsd:boolean" => TableSchemaFieldType::Bool,
                     "xsd:integer" | "xsd:int" => TableSchemaFieldType::Int,
@@ -442,15 +445,10 @@ impl SalesforceRemoteDatabase {
                     })
                     .transpose()?;
 
-                let relationship_note = field["relationshipName"]
-                    .as_str()
-                    .map(|rel| format!("relationship: {}", rel));
-
                 Ok(TableSchemaColumn {
                     name,
                     value_type,
                     possible_values: possible_values,
-                    additional_note: relationship_note,
                 })
             })
             .collect::<Result<Vec<_>>>()?;

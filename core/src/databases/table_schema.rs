@@ -19,6 +19,7 @@ pub enum TableSchemaFieldType {
     Text,
     Bool,
     DateTime,
+    Reference(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,6 +55,7 @@ impl std::fmt::Display for TableSchemaFieldType {
             TableSchemaFieldType::Text => write!(f, "text"),
             TableSchemaFieldType::Bool => write!(f, "boolean"),
             TableSchemaFieldType::DateTime => write!(f, "timestamp"),
+            TableSchemaFieldType::Reference(rel_name) => write!(f, "reference: {}", rel_name),
         }
     }
 }
@@ -66,7 +68,6 @@ pub struct TableSchemaColumn {
     pub name: String,
     pub value_type: TableSchemaFieldType,
     pub possible_values: Option<Vec<String>>,
-    pub additional_note: Option<String>,
 }
 
 impl TableSchemaColumn {
@@ -75,7 +76,6 @@ impl TableSchemaColumn {
             name: name.to_string(),
             value_type: field_type,
             possible_values: None,
-            additional_note: None,
         }
     }
 
@@ -87,9 +87,6 @@ impl TableSchemaColumn {
                 dbml.push_str(&possible_values.join(", "));
                 dbml.push_str("']");
             }
-        }
-        if let Some(additional_note) = &self.additional_note {
-            dbml.push_str(&format!(" [note: '{}']", additional_note));
         }
         dbml
     }
@@ -222,7 +219,6 @@ impl TableSchema {
                             name: k.clone(),
                             value_type,
                             possible_values: Some(vec![]),
-                            additional_note: None,
                         };
                         Self::accumulate_value(&mut column, v);
                         schema_map.insert(k.clone(), column);
@@ -255,6 +251,7 @@ impl TableSchema {
                         TableSchemaFieldType::Text => "TEXT",
                         TableSchemaFieldType::Bool => "BOOLEAN",
                         TableSchemaFieldType::DateTime => "TEXT",
+                        TableSchemaFieldType::Reference(_) => "REFERENCE",
                     };
                     format!("\"{}\" {}", column.name, sql_type)
                 })
@@ -475,31 +472,26 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: Some(vec!["1".to_string(), "2".to_string()]),
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: Some(vec!["1.2".to_string(), "2.4".to_string()]),
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: Some(vec!["TRUE".to_string(), "FALSE".to_string()]),
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field5".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: Some(vec!["\"not null anymore\"".to_string()]),
-                additional_note: None,
             },
         ]);
 
@@ -681,25 +673,21 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: None,
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: None,
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
-                additional_note: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: None,
-                additional_note: None,
             },
         ])
     }
@@ -885,7 +873,6 @@ mod tests {
                 "2000-01-01 00:00:00".to_string(),
                 "2000-01-02 00:00:00".to_string(),
             ]),
-            additional_note: None,
         }]);
 
         assert_eq!(schema, expected_schema);
@@ -938,7 +925,6 @@ mod tests {
             name: name.to_string(),
             value_type,
             possible_values: Some(possible_values),
-            additional_note: None,
         }
     }
 }
