@@ -8,10 +8,9 @@ import {
 } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { DocumentViewRawContentKey } from "@dust-tt/types";
-import { useRouter } from "next/router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
 
 export default function DataSourceViewDocumentModal({
@@ -21,29 +20,20 @@ export default function DataSourceViewDocumentModal({
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
 }) {
-  const router = useRouter();
-  const { isOpen, onOpenChange } = useURLSheet(DocumentViewRawContentKey);
-  const [documentId, setDocumentId] = useState<string | null>(null);
-
-  // Get documentId from URL when sheet is open
-  useEffect(() => {
-    if (router.isReady && isOpen) {
-      setDocumentId(router.query.documentId as string);
-    } else if (!isOpen) {
-      setDocumentId(null);
-    }
-  }, [router.isReady, router.query, isOpen]);
+  const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
+  const isOpen = params[DocumentViewRawContentKey].value === "true";
 
   const { document, isDocumentLoading, isDocumentError } =
     useDataSourceViewDocument({
-      documentId,
+      documentId: params.documentId.value ?? null,
       dataSourceView,
       owner,
+      disabled: !params.documentId.value,
     });
 
   const { title, text } = useMemo(() => {
     if (!document) {
-      return { title: documentId ?? undefined, text: undefined };
+      return { title: params.documentId.value ?? undefined, text: undefined };
     }
 
     const titleTag = document.tags.find((tag: string) =>
@@ -54,10 +44,24 @@ export default function DataSourceViewDocumentModal({
       title: titleTag ? titleTag.split("title:")[1] : undefined,
       text: document.text,
     };
-  }, [document, documentId]);
+  }, [document, params.documentId.value]);
+
+  const onClose = () => {
+    params.setParams({
+      documentId: undefined,
+      [DocumentViewRawContentKey]: undefined,
+    });
+  };
 
   return (
-    <Sheet open={isOpen} onOpenChange={onOpenChange}>
+    <Sheet
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>

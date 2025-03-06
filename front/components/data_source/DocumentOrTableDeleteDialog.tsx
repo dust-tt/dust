@@ -32,7 +32,7 @@ export const DocumentOrTableDeleteDialog = ({
     "viewType",
     DocumentDeletionKey,
   ]);
-  const isOpen = params[DocumentDeletionKey]?.value === "true";
+  const isOpen = params[DocumentDeletionKey].value === "true";
 
   const sendNotification = useSendNotification();
 
