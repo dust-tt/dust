@@ -11,6 +11,7 @@ const {
   gongDeleteOutdatedTranscriptsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "180 minutes",
+  heartbeatTimeout: "15 minutes",
 });
 
 export async function gongSyncWorkflow({

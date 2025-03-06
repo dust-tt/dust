@@ -16,6 +16,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -157,6 +158,8 @@ export async function gongSyncTranscriptsActivity({
     );
 
     pageCursor = nextPageCursor;
+
+    await heartbeat();
   } while (pageCursor);
 
   await configuration.setLastSyncTimestamp(syncStartTs);
