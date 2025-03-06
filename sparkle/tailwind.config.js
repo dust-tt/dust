@@ -438,7 +438,7 @@ module.exports = {
           },
           focus: {
             DEFAULT: colors.blue[400],
-            night: colors.gray[500],
+            night: colors.blue[600],
           },
           warning: {
             DEFAULT: colors.rose[300],
@@ -497,6 +497,7 @@ module.exports = {
         },
         highlight: {
           DEFAULT: colors.blue[500],
+          night: colors.blue[500],
           light: { DEFAULT: colors.blue[400], night: colors.blue[600] },
           dark: { DEFAULT: colors.blue[600], night: colors.blue[400] },
           muted: { DEFAULT: "#8EB2D3", night: "#8EB2D3" },
