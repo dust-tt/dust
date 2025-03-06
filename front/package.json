@@ -22,18 +22,32 @@
     "@auth0/nextjs-auth0": "^3.5.0",
     "@dust-tt/client": "file:../sdks/js",
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.437",
 =======
+=======
+>>>>>>> cf92d8a9f (tweak)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.435",
 =======
+=======
+>>>>>>> b0b366edc (tweak)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.434",
 =======
     "@dust-tt/sparkle": "0.2.431-rc4",
 >>>>>>> 5557368b3 (new sparkle)
+<<<<<<< HEAD
 >>>>>>> 913d2bb28 (new sparkle)
+<<<<<<< HEAD
 >>>>>>> 5242534f1 (new sparkle)
+=======
+=======
+=======
+    "@dust-tt/sparkle": "0.2.434-rc",
+>>>>>>> ab72926d2 (tweak)
+>>>>>>> b0b366edc (tweak)
+>>>>>>> cf92d8a9f (tweak)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
