@@ -19,6 +19,13 @@ import type { GongUserResource } from "@connectors/resources/gong_resources";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
+function formatDateNicely(date: Date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}/${mm}/${dd}`;
+}
+
 /**
  * Syncs a transcript in the db and upserts it to the data sources.
  */
@@ -43,7 +50,7 @@ export async function syncGongTranscript({
 }) {
   const { callId } = transcript;
   const createdAtDate = new Date(transcriptMetadata.metaData.started);
-  const title = transcriptMetadata.metaData.title || "Untitled transcript";
+  const title = `${formatDateNicely(createdAtDate)} - ${transcriptMetadata.metaData.title || "Untitled transcript"}`;
   const documentUrl = transcriptMetadata.metaData.url;
 
   const transcriptInDb = await GongTranscriptResource.fetchByCallId(
@@ -135,7 +142,7 @@ export async function syncGongTranscript({
       `media:${transcriptMetadata.metaData.media}`,
       `scope:${transcriptMetadata.metaData.scope}`,
       `direction:${transcriptMetadata.metaData.direction}`,
-      ...participants.map((p) => p.email),
+      ...participants.map((p) => `participant:${p.email}`),
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),
