@@ -71,7 +71,11 @@ async function handler(
   const result = await coreAPI.searchTags({
     query,
     queryType,
-    dataSources,
+    // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
+    blobDataSourceViews: dataSources.map((dataSource) => ({
+      data_source_id: dataSource,
+      view_filter: [],
+    })),
   });
 
   if (result.isErr()) {

@@ -163,14 +163,9 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       "Unauthorized attempt to read data source view in `search_labels` action"
     );
 
-    // Get the dustAPIDataSourceIds from the data source views.
-    const dustAPIDataSourceIds = dataSourceViews.map(
-      (dsv) => dsv.dataSource.dustAPIDataSourceId
-    );
-
     assert(
-      dustAPIDataSourceIds.length > 0,
-      "No data sources found for `search_labels` action"
+      dataSourceViews.length > 0,
+      "No data source views found for `search_labels` action"
     );
 
     const action = await AgentSearchLabelsAction.create({
@@ -204,7 +199,11 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
     const result = await coreAPI.searchTags({
       query: searchText,
       queryType: "match",
-      dataSources: dustAPIDataSourceIds,
+      // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
+      blobDataSourceViews: dataSourceViews.map((dsv) => ({
+        data_source_id: dsv.dataSource.dustAPIDataSourceId,
+        view_filter: dsv.parentsIn ?? [],
+      })),
       limit: DEFAULT_SEARCH_LABELS_LIMIT,
     });
 
