@@ -354,10 +354,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   gong: {
     name: "Gong",
     connectorProvider: "gong",
-    status: "rolling_out",
+    status: "built",
     isResourceSelectionDisabled: true,
     optionsComponent: GongOptionComponent,
-    rollingOutFlag: "gong_feature",
     hide: false,
     description: "Authorize access to Gong for indexing call transcripts.",
     guideLink: "https://docs.dust.tt/docs/gong-connection",
