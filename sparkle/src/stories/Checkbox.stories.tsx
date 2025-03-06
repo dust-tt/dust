@@ -49,9 +49,6 @@ const meta = {
     disabled: {
       description: "Whether the checkbox is disabled",
       control: "boolean",
-      table: {
-        defaultValue: { summary: false },
-      },
     },
     className: {
       description: "Additional CSS classes to apply",
