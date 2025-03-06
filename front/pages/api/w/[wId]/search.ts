@@ -23,6 +23,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 
 const SearchRequestBody = t.type({
   query: t.string,
@@ -35,7 +36,6 @@ const SearchRequestBody = t.type({
   ]),
   spaceIds: t.union([t.array(t.string), t.undefined]),
   includeDataSources: t.boolean,
-  limit: t.number,
 });
 
 type DataSourceContentNode = ContentNodeWithParent & {
@@ -76,7 +76,7 @@ async function handler(
     });
   }
 
-  const { query, includeDataSources, viewType, limit, spaceIds } =
+  const { query, includeDataSources, viewType, spaceIds } =
     bodyValidation.right;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -128,13 +128,24 @@ async function handler(
       viewType,
     }
   );
+  const paginationRes = getCursorPaginationParams(req);
+  if (paginationRes.isErr()) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_pagination_parameters",
+        message: "Invalid pagination parameters",
+      },
+    });
+  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchRes = await coreAPI.searchNodes({
     query,
     filter: searchFilterResult,
     options: {
-      limit,
+      limit: paginationRes.value?.limit,
+      cursor: paginationRes.value?.cursor ?? undefined,
     },
   });
 
