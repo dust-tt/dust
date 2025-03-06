@@ -132,7 +132,7 @@ export async function deleteSchedule({
 /**
  * Unpauses the schedule if paused and triggers the schedule to start the workflow immediately.
  */
-export async function unpauseSchedule({
+export async function triggerSchedule({
   scheduleId,
   connector,
 }: {
