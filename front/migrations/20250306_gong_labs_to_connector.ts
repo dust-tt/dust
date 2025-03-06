@@ -49,11 +49,18 @@ async function getAuthsForWorkspacesWithGong(): Promise<
     });
 
   const authsAndConnectionId = [];
+  const seenWorkspaceIds = new Set();
   for (const config of transcriptsConfigurations) {
     const auth = await Authenticator.internalAdminForWorkspace(
       config.workspace.sId
     );
     const workspace = auth.getNonNullableWorkspace();
+
+    // We can have multiple configurations for the same workspace (different users), skip the ones we've already seen.
+    if (seenWorkspaceIds.has(workspace.id)) {
+      continue;
+    }
+    seenWorkspaceIds.add(workspace.id);
 
     const flags = await getFeatureFlags(workspace);
     if (flags.includes(LABS_STORAGE_FEATURE_FLAG)) {
