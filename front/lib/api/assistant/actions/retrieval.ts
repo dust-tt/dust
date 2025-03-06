@@ -349,7 +349,8 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
           id: -1,
           sId: generateRandomModelSId(),
           type: "search_labels_configuration",
-          name: DEFAULT_SEARCH_LABELS_ACTION_NAME,
+          // Tool name must be unique. We use the parent tool name to make it unique.
+          name: `${DEFAULT_SEARCH_LABELS_ACTION_NAME}_${this.actionConfiguration.name}`,
           dataSourceViewIds: this.actionConfiguration.dataSources.map(
             (ds) => ds.dataSourceViewId
           ),
