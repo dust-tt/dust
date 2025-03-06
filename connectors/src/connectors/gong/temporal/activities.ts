@@ -1,6 +1,7 @@
 import type { ModelId } from "@dust-tt/types";
 
 import type { GongTranscriptMetadata } from "@connectors/connectors/gong/lib/gong_api";
+import { makeGongTranscriptInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
 import {
   getGongUsers,
@@ -13,10 +14,16 @@ import {
 } from "@connectors/connectors/gong/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { deleteDataSourceDocument } from "@connectors/lib/data_sources";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { GongUserResource } from "@connectors/resources/gong_resources";
+import {
+  GongTranscriptResource,
+  GongUserResource,
+} from "@connectors/resources/gong_resources";
+
+const GARBAGE_COLLECT_BATCH_SIZE = 100;
 
 export async function gongSaveStartSyncActivity({
   connectorId,
@@ -193,4 +200,39 @@ export async function gongListAndSaveUsersActivity({
 
     pageCursor = nextPageCursor;
   } while (pageCursor);
+}
+
+export async function deleteOutdatedTranscripts({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}) {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+  const dataSourceConfig = dataSourceConfigFromConnector(connector);
+
+  let outdatedTranscripts;
+  do {
+    outdatedTranscripts = await GongTranscriptResource.fetchOutdated(
+      connector,
+      configuration,
+      {
+        limit: GARBAGE_COLLECT_BATCH_SIZE,
+      }
+    );
+    for (const transcript of outdatedTranscripts) {
+      await deleteDataSourceDocument(
+        dataSourceConfig,
+        makeGongTranscriptInternalId(connector, transcript.callId),
+        {
+          workspaceId: dataSourceConfig.workspaceId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          provider: "gong",
+          callId: transcript.callId,
+        }
+      );
+    }
+
+    await GongTranscriptResource.batchDelete(connector, outdatedTranscripts);
+  } while (outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE);
 }

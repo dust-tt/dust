@@ -6,6 +6,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   GongConfigurationModel,
@@ -281,5 +282,36 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     }
 
     return new this(this.model, transcript.get());
+  }
+
+  static async fetchOutdated(
+    connector: ConnectorResource,
+    configuration: GongConfigurationResource,
+    { limit }: { limit: number }
+  ): Promise<GongTranscriptResource[]> {
+    const retentionPeriodStart =
+      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000;
+    const transcripts = await GongTranscriptModel.findAll({
+      where: {
+        connectorId: connector.id,
+        createdAt: {
+          [Op.lt]: retentionPeriodStart,
+        },
+      },
+      limit,
+    });
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
+  static async batchDelete(
+    connector: ConnectorResource,
+    transcripts: GongTranscriptResource[]
+  ): Promise<void> {
+    await GongTranscriptModel.destroy({
+      where: {
+        callId: transcripts.map((t) => t.callId),
+        connectorId: connector.id,
+      },
+    });
   }
 }
