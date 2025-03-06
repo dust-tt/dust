@@ -72,7 +72,8 @@
     "yargs": "^17.7.2"
   },
   "overrides": {
-    "@octokit/request": "9.2.2"
+    "@octokit/request": "9.2.2",
+    "@octokit/request-error": "6.1.7"
   },
   "devDependencies": {
     "@types/eslint": "^8.56.10",
