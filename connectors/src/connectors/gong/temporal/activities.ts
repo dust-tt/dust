@@ -99,7 +99,7 @@ export async function gongSyncTranscriptsActivity({
   let pageCursor = null;
   do {
     const { transcripts, nextPageCursor } = await gongClient.getTranscripts({
-      startTimestamp: configuration.lastSyncTimestamp,
+      startTimestamp: configuration.getSyncStartTimestamp(),
       pageCursor,
     });
     const callsMetadata = await getTranscriptsMetadata({
