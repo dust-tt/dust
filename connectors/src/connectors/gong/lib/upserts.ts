@@ -72,6 +72,7 @@ export async function syncGongTranscript({
     await GongTranscriptResource.makeNew({
       blob: {
         connectorId: connector.id,
+        callDate: createdAtDate.getTime(),
         callId,
         title,
         url: documentUrl,
