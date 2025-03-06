@@ -1,12 +1,8 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { MIME_TYPES, Ok } from "@dust-tt/types";
+import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
-import {
-  fetchGongConfiguration,
-  fetchGongConnector,
-} from "@connectors/connectors/gong/lib/utils";
 import {
   fetchGongConfiguration,
   fetchGongConnector,
@@ -22,8 +18,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import mainLogger from "@connectors/logger/logger";
@@ -114,7 +112,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       if (connector.isPaused()) {
         await this.unpause();
 
-        await launchGongSyncWorkflow(connector);
+        await startGongSync(connector);
       }
     }
 
