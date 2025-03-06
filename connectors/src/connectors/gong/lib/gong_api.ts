@@ -237,7 +237,7 @@ export class GongClient {
         nextPageCursor: transcripts.records.cursor,
       };
     } catch (err) {
-      if (err instanceof GongAPIError && err.status === 404) {
+      if (err instanceof HTTPError && err.statusCode === 404) {
         return {
           transcripts: [],
           nextPageCursor: null,
@@ -313,7 +313,7 @@ export class GongClient {
         nextPageCursor: callsMetadata.records.cursor,
       };
     } catch (err) {
-      if (err instanceof GongAPIError && err.status === 404) {
+      if (err instanceof HTTPError && err.statusCode === 404) {
         return {
           callsMetadata: [],
           nextPageCursor: null,
