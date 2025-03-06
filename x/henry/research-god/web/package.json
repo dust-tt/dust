@@ -3,9 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "overrides": {
-    "esbuild": "0.25.0"
-  },
   "scripts": {
     "dev": "vite",
     "api": "bun run src/server.ts",
