@@ -68,6 +68,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       {
         baseUrl: baseUrlRes.value,
+        retentionPeriodDays: 180, // TODO(2025-03-06): find a default value that makes sense.
       }
     );
 
