@@ -8,12 +8,6 @@ import {
   isGoogleSheetContentNodeInternalId,
 } from "@dust-tt/types";
 
-export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
-export type FilteringMode = (typeof FILTERING_MODES)[number];
-export const FILTERING_MODE_TO_LABEL: Record<FilteringMode, string> = {
-  SEARCH: "Search",
-  TIMEFRAME: "Timeframe",
-};
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",
   day: "day(s)",
