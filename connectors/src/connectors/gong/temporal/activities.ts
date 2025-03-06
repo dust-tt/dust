@@ -105,7 +105,7 @@ export async function gongSyncTranscriptsActivity({
   const gongClient = await getGongClient(connector);
 
   const { transcripts, nextPageCursor } = await gongClient.getTranscripts({
-    startTimestamp: configuration.lastSyncTimestamp,
+    startTimestamp: configuration.getSyncStartTimestamp(),
     pageCursor,
   });
 
