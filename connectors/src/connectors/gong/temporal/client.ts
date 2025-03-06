@@ -4,6 +4,7 @@ import type { Client, ScheduleHandle } from "@temporalio/client";
 import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
 } from "@temporalio/client";
 
 import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
@@ -31,10 +32,16 @@ async function terminateWorkflowsForSchedule(
   // Terminate all the recent actions of the schedule,
   // the running workflows are not available under scheduleDescription.info.runningActions.
   for (const action of scheduleDescription.info.recentActions) {
-    const workflowHandle = client.workflow.getHandle(
-      action.action.workflow.workflowId
-    );
-    await workflowHandle.terminate();
+    try {
+      const workflowHandle = client.workflow.getHandle(
+        action.action.workflow.workflowId
+      );
+      await workflowHandle.terminate();
+    } catch (error) {
+      if (!(error instanceof WorkflowNotFoundError)) {
+        throw error;
+      }
+    }
   }
 }
 
