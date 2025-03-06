@@ -289,12 +289,10 @@ export async function searchContenNodesInSpace(
       viewType,
     }
   );
-  if (searchFilterResult.isErr()) {
-    return searchFilterResult;
-  }
+
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: searchFilterResult.value,
+    filter: searchFilterResult,
     options,
   });
 
