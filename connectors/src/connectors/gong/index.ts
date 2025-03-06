@@ -111,19 +111,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
-      throw new Error(
-        `[Gong] Connector not found. ConnectorId: ${this.connectorId}`
-      );
+      logger.error({ connectorId }, "[Gong] Connector not found.");
+      throw new Error("[Gong] Connector not found.");
     }
 
     const result = await startGongSync(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync."
-      );
       throw result.error;
     }
 
@@ -135,15 +131,20 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
+    const { connectorId } = this;
+    const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
+      logger.error({ connectorId }, "[Gong] Connector not found.");
       throw new Error("[Gong] Connector not found.");
     }
+
     const configuration =
       await GongConfigurationResource.fetchByConnector(connector);
     if (!configuration) {
+      logger.error({ connectorId }, "[Gong] Configuration not found.");
       throw new Error("[Gong] Configuration not found.");
     }
+
     if (!fromTs) {
       // Resetting the last sync timestamp to run a full sync.
       await configuration.resetLastSyncTimestamp();
@@ -157,13 +158,9 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
 
     const result = await startGongSync(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync."
-      );
       throw result.error;
     }
-    return new Ok(this.connectorId.toString());
+    return new Ok(connectorId.toString());
   }
 
   async retrievePermissions(): Promise<
