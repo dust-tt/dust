@@ -2,9 +2,6 @@
   "name": "cli",
   "version": "0.0.1",
   "description": "Dust command-line client",
-  "overrides": {
-    "cross-spawn": "8.0.0"
-  },
   "bin": {
     "dust": "dist/index.js"
   },
