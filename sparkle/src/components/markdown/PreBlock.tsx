@@ -4,7 +4,7 @@ import React from "react";
 export const preBlockVariants = cva(
   [
     "s-my-2 s-w-full s-break-all s-rounded-2xl s-border",
-    "s-border-border-dark dark:s-border-border-dark-night",
+    "s-border-border dark:s-border-border-night",
   ],
   {
     variants: {

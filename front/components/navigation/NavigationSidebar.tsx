@@ -63,13 +63,7 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div
-      ref={ref}
-      className={classNames(
-        "flex min-w-0 grow flex-col",
-        "bg-structure-50 dark:bg-structure-50-night"
-      )}
-    >
+    <div ref={ref} className="flex min-w-0 grow flex-col">
       <div className="flex flex-col">
         <AppStatusBanner />
         {subscription.endDate && (

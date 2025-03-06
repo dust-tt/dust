@@ -53,7 +53,7 @@ export function Tree({
       className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
         isBoxed &&
-          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
+          "s-rounded-xl s-border s-border-border s-bg-muted-background s-p-4 dark:s-border-border-night dark:s-bg-muted-background-night",
         className
       )}
     >
@@ -67,12 +67,12 @@ const treeItemStyleClasses = {
   isNavigatableBase:
     "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
-    "s-bg-structure-150/0 dark:s-bg-structure-150-night/0",
-    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+    "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
+    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-structure-150 dark:s-bg-structure-150-night"
+    "s-bg-primary-100 dark:s-bg-primary-100-night"
   ),
 };
 
@@ -115,7 +115,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s-text-element-800 dark:s-text-element-800-night",
+      tailwindIconTextColor = "s-text-foreground dark:s-text-foreground-night",
       visual,
       checkbox,
       onChevronClick,

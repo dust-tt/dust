@@ -2,7 +2,7 @@ import { visit } from "unist-util-visit";
 
 export function MentionBlock({ agentName }: { agentName: string }) {
   return (
-    <span className="inline-block cursor-default font-medium text-brand">
+    <span className="inline-block cursor-default font-medium text-highlight-500">
       @{agentName}
     </span>
   );
