@@ -135,7 +135,7 @@ export async function syncGongTranscript({
       `media:${transcriptMetadata.metaData.media}`,
       `scope:${transcriptMetadata.metaData.scope}`,
       `direction:${transcriptMetadata.metaData.direction}`,
-      ...participants.map((p) => p.email),
+      ...participants.map((p) => `participant:${p.email}`),
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),
