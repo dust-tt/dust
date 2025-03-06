@@ -2,13 +2,12 @@ import type {
   ContentNodesViewType,
   CoreAPIError,
   CoreAPISearchOptions,
-  CoreAPISearchScope,
   DataSourceViewContentNode,
   DataSourceWithAgentsUsageType,
   Result,
   SearchWarningCode,
 } from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
@@ -25,6 +24,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
@@ -246,46 +246,6 @@ export async function createRegularSpaceAndGroup(
   return new Ok(space);
 }
 
-function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
-  switch (viewType) {
-    case "document":
-      return ["folder", "document"];
-    case "table":
-      return ["folder", "table"];
-    case "all":
-      return ["folder", "table", "document"];
-    default:
-      assertNever(viewType);
-  }
-}
-
-function searchScopeForDsv({
-  dsv,
-  includeDataSources,
-  isSingleDsv,
-}: {
-  dsv: DataSourceViewResource;
-  includeDataSources: boolean;
-  isSingleDsv: boolean;
-}): CoreAPISearchScope {
-  // On a single datasource view, we never want to match the datasource name.
-  if (isSingleDsv) {
-    return "nodes_titles";
-  }
-
-  if (includeDataSources) {
-    // For webcrawler datasources, we want to search the only datasource
-    // title, not the nodes titles.
-    if (dsv.dataSource.connectorProvider === "webcrawler") {
-      return "data_source_name";
-    }
-
-    return "both";
-  }
-
-  return "nodes_titles";
-}
-
 export async function searchContenNodesInSpace(
   auth: Authenticator,
   space: SpaceResource,
@@ -320,22 +280,19 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const isSingleDsv = dataSourceViews.length === 1;
+  const searchFilterResult = getSearchFilterFromDataSourceViews(
+    auth.getNonNullableWorkspace(),
+    dataSourceViews,
+    {
+      excludedNodeMimeTypes,
+      includeDataSources,
+      viewType,
+    }
+  );
+
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: {
-      data_source_views: dataSourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-        search_scope: searchScopeForDsv({
-          dsv,
-          includeDataSources,
-          isSingleDsv,
-        }),
-      })),
-      excluded_node_mime_types: excludedNodeMimeTypes,
-      node_types: getCoreViewTypeFilter(viewType),
-    },
+    filter: searchFilterResult,
     options,
   });
 
@@ -361,8 +318,10 @@ export async function searchContenNodesInSpace(
 
       return [];
     }
-
-    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
+    return {
+      ...getContentNodeFromCoreNode(node, viewType),
+      dataSourceView: dataSourceView.toJSON(),
+    };
   });
 
   return new Ok({
