@@ -239,14 +239,11 @@ export interface CoreAPISearchNodesResponse {
 }
 
 export interface CoreAPISearchTagsResponse {
-  error: string | null;
-  response: {
-    tags: {
-      tag: string;
-      match_count: number;
-      data_sources: string[];
-    }[];
-  };
+  tags: {
+    tag: string;
+    match_count: number;
+    data_sources: string[];
+  }[];
 }
 
 export const CoreAPISearchScopeSchema = t.union([
@@ -1903,10 +1900,12 @@ export class CoreAPI {
     query,
     queryType,
     dataSources,
+    limit,
   }: {
     query?: string;
     queryType?: string;
     dataSources: string[];
+    limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
     const response = await this._fetchWithError(`${this._url}/tags/search`, {
       method: "POST",
@@ -1920,6 +1919,7 @@ export class CoreAPI {
         })),
         query,
         query_type: queryType,
+        limit,
       }),
     });
 

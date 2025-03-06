@@ -8,8 +8,8 @@ export function ConversationIncludeFileActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<ConversationIncludeFileActionType>) {
-  console.log(action);
   const { fileTitle } = action;
+
   return (
     <ActionDetailsWrapper
       actionName="Read conversation file"

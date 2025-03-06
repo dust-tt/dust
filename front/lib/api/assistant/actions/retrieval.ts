@@ -20,7 +20,10 @@ import assert from "assert";
 import _ from "lodash";
 
 import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import {
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_SEARCH_LABELS_ACTION_NAME,
+} from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import {
@@ -35,6 +38,7 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 /**
@@ -332,6 +336,29 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     });
 
     return new Ok(spec);
+  }
+
+  getSupportingActions(): ActionConfigurationType[] {
+    const hasAutoTags = this.actionConfiguration.dataSources.some(
+      (ds) => ds.filter.tags?.mode === "auto"
+    );
+
+    if (hasAutoTags) {
+      return [
+        {
+          id: -1,
+          sId: generateRandomModelSId(),
+          type: "search_labels_configuration",
+          // TODO: Why do we need this.
+          name: DEFAULT_SEARCH_LABELS_ACTION_NAME,
+          dataSourceViewIds: this.actionConfiguration.dataSources.map(
+            (ds) => ds.dataSourceViewId
+          ),
+        },
+      ];
+    }
+
+    return [];
   }
 
   // This method is in charge of running the retrieval and creating an AgentRetrievalAction object

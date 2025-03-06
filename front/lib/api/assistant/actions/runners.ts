@@ -8,6 +8,7 @@ import type {
   ProcessConfigurationType,
   ReasoningConfigurationType,
   RetrievalConfigurationType,
+  SearchLabelsConfigurationType,
   TablesQueryConfigurationType,
   WebsearchConfigurationType,
 } from "@dust-tt/types";
@@ -18,6 +19,7 @@ import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/acti
 import { ProcessConfigurationServerRunner } from "@app/lib/api/assistant/actions/process";
 import { ReasoningConfigurationServerRunner } from "@app/lib/api/assistant/actions/reasoning";
 import { RetrievalConfigurationServerRunner } from "@app/lib/api/assistant/actions/retrieval";
+import { SearchLabelsConfigurationServerRunner } from "@app/lib/api/assistant/actions/search_labels";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/api/assistant/actions/tables_query";
 import type {
   BaseActionConfigurationServerRunner,
@@ -32,29 +34,31 @@ import {
 } from "./github";
 
 interface ActionToConfigTypeMap {
-  dust_app_run_configuration: DustAppRunConfigurationType;
-  process_configuration: ProcessConfigurationType;
-  retrieval_configuration: RetrievalConfigurationType;
-  tables_query_configuration: TablesQueryConfigurationType;
-  websearch_configuration: WebsearchConfigurationType;
   browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
-  github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
+  dust_app_run_configuration: DustAppRunConfigurationType;
   github_create_issue_configuration: GithubCreateIssueConfigurationType;
+  github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
+  process_configuration: ProcessConfigurationType;
   reasoning_configuration: ReasoningConfigurationType;
+  retrieval_configuration: RetrievalConfigurationType;
+  search_labels_configuration: SearchLabelsConfigurationType;
+  tables_query_configuration: TablesQueryConfigurationType;
+  websearch_configuration: WebsearchConfigurationType;
 }
 
 interface ActionTypeToClassMap {
-  dust_app_run_configuration: DustAppRunConfigurationServerRunner;
-  process_configuration: ProcessConfigurationServerRunner;
-  retrieval_configuration: RetrievalConfigurationServerRunner;
-  tables_query_configuration: TablesQueryConfigurationServerRunner;
-  websearch_configuration: WebsearchConfigurationServerRunner;
   browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
-  github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
+  dust_app_run_configuration: DustAppRunConfigurationServerRunner;
   github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner;
+  github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
+  process_configuration: ProcessConfigurationServerRunner;
   reasoning_configuration: ReasoningConfigurationServerRunner;
+  retrieval_configuration: RetrievalConfigurationServerRunner;
+  search_labels_configuration: SearchLabelsConfigurationServerRunner;
+  tables_query_configuration: TablesQueryConfigurationServerRunner;
+  websearch_configuration: WebsearchConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
@@ -91,18 +95,19 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
       CombinedMap[K]["configType"]
     >;
 } = {
-  process_configuration: ProcessConfigurationServerRunner,
-  dust_app_run_configuration: DustAppRunConfigurationServerRunner,
-  tables_query_configuration: TablesQueryConfigurationServerRunner,
-  websearch_configuration: WebsearchConfigurationServerRunner,
   browse_configuration: BrowseConfigurationServerRunner,
-  retrieval_configuration: RetrievalConfigurationServerRunner,
   conversation_include_file_configuration:
     ConversationIncludeFileConfigurationServerRunner,
+  dust_app_run_configuration: DustAppRunConfigurationServerRunner,
+  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
   github_get_pull_request_configuration:
     GithubGetPullRequestConfigurationServerRunner,
-  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
+  process_configuration: ProcessConfigurationServerRunner,
   reasoning_configuration: ReasoningConfigurationServerRunner,
+  retrieval_configuration: RetrievalConfigurationServerRunner,
+  search_labels_configuration: SearchLabelsConfigurationServerRunner,
+  tables_query_configuration: TablesQueryConfigurationServerRunner,
+  websearch_configuration: WebsearchConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

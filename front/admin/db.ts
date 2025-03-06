@@ -29,6 +29,7 @@ import {
   RetrievalDocument,
   RetrievalDocumentChunk,
 } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
@@ -168,17 +169,18 @@ async function main() {
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
 
-  await AgentRetrievalAction.sync({ alter: true });
-  await AgentTablesQueryAction.sync({ alter: true });
-  await AgentDustAppRunAction.sync({ alter: true });
-  await AgentProcessAction.sync({ alter: true });
-  await AgentWebsearchAction.sync({ alter: true });
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
-  await AgentMessageContent.sync({ alter: true });
-  await AgentGithubGetPullRequestAction.sync({ alter: true });
+  await AgentDustAppRunAction.sync({ alter: true });
   await AgentGithubCreateIssueAction.sync({ alter: true });
+  await AgentGithubGetPullRequestAction.sync({ alter: true });
+  await AgentMessageContent.sync({ alter: true });
+  await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
+  await AgentRetrievalAction.sync({ alter: true });
+  await AgentSearchLabelsAction.sync({ alter: true });
+  await AgentTablesQueryAction.sync({ alter: true });
+  await AgentWebsearchAction.sync({ alter: true });
 
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });

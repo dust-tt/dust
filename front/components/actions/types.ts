@@ -9,6 +9,7 @@ import { GithubGetPullRequestActionDetails } from "@app/components/actions/githu
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
+import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
 
@@ -75,6 +76,10 @@ const actionsSpecification: ActionSpecifications = {
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
+  },
+  search_labels_action: {
+    detailsComponent: SearchLabelsActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.search_labels_action,
   },
 };
 
