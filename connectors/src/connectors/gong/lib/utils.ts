@@ -14,6 +14,7 @@ export async function fetchGongConnector({
 }): Promise<ConnectorResource> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
+    logger.error({ connectorId }, "[Gong] Connector not found.");
     throw new Error("[Gong] Connector not found.");
   }
   return connector;
@@ -25,6 +26,10 @@ export async function fetchGongConfiguration(
   const configuration =
     await GongConfigurationResource.fetchByConnector(connector);
   if (!configuration) {
+    logger.error(
+      { connectorId: connector.id },
+      "[Gong] Configuration not found."
+    );
     throw new Error("[Gong] Configuration not found.");
   }
   return configuration;
