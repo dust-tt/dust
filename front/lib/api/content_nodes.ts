@@ -92,11 +92,7 @@ export function getContentNodeFromCoreNode(
   return {
     internalId: coreNode.node_id,
     parentInternalId: coreNode.parent_id ?? null,
-    // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
-    title:
-      coreNode.title === "Untitled document"
-        ? coreNode.node_id
-        : coreNode.title,
+    title: coreNode.title,
     sourceUrl: coreNode.source_url ?? null,
     permission: "read",
     lastUpdatedAt: coreNode.timestamp,
