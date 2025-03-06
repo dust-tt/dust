@@ -1,7 +1,4 @@
 {
-  "overrides": {
-    "esbuild": "0.25.0"
-  },
   "scripts": {
     "format": "prettier --write .",
     "format:check": "prettier --check .",
