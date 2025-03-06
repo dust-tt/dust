@@ -115,7 +115,8 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         {
           name: "searchText",
           description:
-            "The text to search for in existing labels. " +
+            "The text to search for in existing labels using edge ngram matching (case-insensitive). " +
+            "Matches labels that start with any word in the search text. " +
             "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
             "based on the user request and conversation context.",
           type: "string",
