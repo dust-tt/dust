@@ -9,7 +9,7 @@ export function ValuePropSection() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <H2 from="from-amber-200" to="to-amber-400">
+        <H2 className="text-brand-sunshine-golden">
           Amplify your team’s performance
         </H2>
         {/* <P size="lg">
