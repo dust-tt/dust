@@ -85,7 +85,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     if (connectorResult.isErr()) {
       logger.error(
         {
-          connectorId,
+          connectorId: connector.id,
           error: connectorResult.error,
         },
         "[Gong] Failed to delete connector."
@@ -143,7 +143,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     if (result.isErr()) {
       throw result.error;
     }
-    return new Ok(connectorId.toString());
+    return new Ok(connector.id.toString());
   }
 
   async retrievePermissions(): Promise<
