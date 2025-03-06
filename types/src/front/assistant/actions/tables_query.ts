@@ -66,7 +66,7 @@ export function getTablesQueryResultsFileAttachments({
   if (searchableFileId) {
     searchableFileAttachment =
       `\n<file ` +
-      `id="${searchableFileId}" type="text/vnd.dust.attachment.searchable.text" title="${fileTitle} (Results optimized for search)" />`;
+      `id="${searchableFileId}" type="text/vnd.dust.section-structured" title="${fileTitle} (Results optimized for search)" />`;
   }
 
   return `${resultsFileAttachment}${searchableFileAttachment}`;

@@ -293,7 +293,7 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
-    case "text/vnd.dust.attachment.searchable.text":
+    case "text/vnd.dust.section-structured":
       if (useCase === "tool_output") {
         return upsertDocumentToDatasource;
       } else {
