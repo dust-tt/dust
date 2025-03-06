@@ -31,9 +31,9 @@ const safeColorsArray = [
 // Custom color definitions
 const customColors = {
   gray: {
-    950: "#090F18",
-    900: "#19212D",
-    800: "#27303F",
+    950: "#111823",
+    900: "#1D2532",
+    800: "#273140",
     700: "#364153",
     600: "#5A6372",
     500: "#7B818D",
@@ -446,11 +446,10 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.gray[900] },
+        background: { DEFAULT: colors.white, night: colors.black },
         foreground: {
           DEFAULT: colors.gray[950],
-          night: colors.white,
-          dark: { DEFAULT: colors.white, night: colors.black },
+          night: colors.gray[50],
           warning: {
             DEFAULT: colors.rose[500],
             night: colors.rose[500],
@@ -458,14 +457,14 @@ module.exports = {
         },
         muted: {
           DEFAULT: colors.gray[50],
-          night: colors.gray[900],
+          night: colors.gray[950],
           foreground: {
-            DEFAULT: colors.gray[500],
+            DEFAULT: colors.gray[600],
             night: colors.gray[400],
           },
           background: {
             DEFAULT: colors.gray[50],
-            night: colors.gray[900],
+            night: colors.gray[950],
           },
         },
         // Semantic Palette
