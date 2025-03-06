@@ -647,4 +647,22 @@
  *           type: number
  *           nullable: true
  *           example: 150
+ *     Section:
+ *       type: object
+ *       properties:
+ *         prefix:
+ *           type: string
+ *           nullable: true
+ *           description: Optional prefix text for this section.
+ *           example: "Chapter 1:"
+ *         content:
+ *           type: string
+ *           nullable: true
+ *           description: Optional content text for this section.
+ *           example: "This is the main content of the section."
+ *         sections:
+ *           type: array
+ *           description: Nested subsections within this section.
+ *           items:
+ *             $ref: '#/components/schemas/Section'
  */
