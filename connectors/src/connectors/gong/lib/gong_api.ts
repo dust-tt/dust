@@ -34,7 +34,7 @@ const GongTranscriptSentenceCodec = t.type({
 });
 
 const GongTranscriptMonologueCodec = t.type({
-  speakerId: t.string,
+  speakerId: t.union([t.string, t.null]),
   // A monologue is constituted of multiple sentences.
   sentences: t.array(GongTranscriptSentenceCodec),
 });
