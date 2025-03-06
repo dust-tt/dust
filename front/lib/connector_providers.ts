@@ -424,12 +424,10 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isGoogleDriveAllowed;
     case "intercom":
       return plan.limits.connections.isIntercomAllowed;
-    case "microsoft":
-      return true;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "microsoft":
     case "snowflake":
-      return true;
     case "zendesk":
     case "bigquery":
     case "salesforce":
