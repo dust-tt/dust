@@ -85,11 +85,20 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   }
 
   async resetLastSyncTimestamp(): Promise<void> {
-    await this.update({ lastSyncTimestamp: null });
+    await this.update({
+      lastSyncTimestamp:
+        Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000,
+    });
   }
 
   async setLastSyncTimestamp(timestamp: number): Promise<void> {
-    await this.update({ lastSyncTimestamp: timestamp });
+    await this.update({
+      // Can't set a timestamp older than what is enforced by the retention period.
+      lastSyncTimestamp: Math.max(
+        timestamp,
+        Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000
+      ),
+    });
   }
 }
 

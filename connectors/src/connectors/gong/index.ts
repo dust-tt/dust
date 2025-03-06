@@ -31,6 +31,8 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
+// TODO(2025-03-06): find a default value that makes sense.
+const DEFAULT_RETENTION_PERIOD_DAYS = 180;
 
 export class GongConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -55,7 +57,9 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       },
       {
         baseUrl: baseUrlRes.value,
-        retentionPeriodDays: 180, // TODO(2025-03-06): find a default value that makes sense.
+        retentionPeriodDays: DEFAULT_RETENTION_PERIOD_DAYS,
+        lastSyncTimestamp:
+          Date.now() - DEFAULT_RETENTION_PERIOD_DAYS * 24 * 60 * 60 * 1000,
       }
     );
 
