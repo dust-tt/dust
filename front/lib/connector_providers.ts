@@ -429,7 +429,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
     case "snowflake":
-      // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
       return true;
     case "zendesk":
     case "bigquery":
