@@ -23,15 +23,20 @@
     "@dust-tt/client": "file:../sdks/js",
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.437",
 =======
 =======
 >>>>>>> cf92d8a9f (tweak)
+=======
+>>>>>>> 7933ab1d3 (updating sparkle)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.435",
 =======
 =======
 >>>>>>> b0b366edc (tweak)
+=======
+>>>>>>> 875357f0a (updating sparkle)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.434",
 =======
@@ -46,8 +51,17 @@
 =======
     "@dust-tt/sparkle": "0.2.434-rc",
 >>>>>>> ab72926d2 (tweak)
+<<<<<<< HEAD
 >>>>>>> b0b366edc (tweak)
+<<<<<<< HEAD
 >>>>>>> cf92d8a9f (tweak)
+=======
+=======
+=======
+    "@dust-tt/sparkle": "0.2.434-rc2",
+>>>>>>> 31ce788e8 (updating sparkle)
+>>>>>>> 875357f0a (updating sparkle)
+>>>>>>> 7933ab1d3 (updating sparkle)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
