@@ -1,5 +1,5 @@
 import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import { Err, normalizeError, Ok } from "@dust-tt/types";
 import type { Client, ScheduleHandle } from "@temporalio/client";
 import {
   ScheduleNotFoundError,
@@ -94,7 +94,7 @@ export async function createGongSyncSchedule(
       },
       "[Gong] Failed to create schedule and launch Gong sync."
     );
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 
   return new Ok(scheduleId);
@@ -123,7 +123,7 @@ export async function deleteGongSyncSchedule(
         },
         "[Gong] Failed to delete schedule and terminate workflow."
       );
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
@@ -159,7 +159,7 @@ export async function startGongSync(
         },
         "[Gong] Failed to unpause and trigger schedule."
       );
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
@@ -192,7 +192,7 @@ export async function stopGongSync(
         },
         "[Gong] Failed to stop schedule and terminate workflow."
       );
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 
