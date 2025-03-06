@@ -445,7 +445,7 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        separator: { DEFAULT: colors.gray[100], night: colors.gray[700] },
+        separator: { DEFAULT: colors.gray[100], night: colors.gray[800] },
         ring: {
           DEFAULT: colors.blue[200],
           night: colors.gray[700],
