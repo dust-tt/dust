@@ -101,7 +101,7 @@ export async function syncGongTranscript({
     let lastSpeakerId: string | null = null;
     monologue.sentences.forEach((sentence) => {
       if (monologue.speakerId !== lastSpeakerId) {
-        markdownContent += `# ${speakerToEmailMap[monologue.speakerId] || "Unknown speaker"}\n`;
+        markdownContent += `# ${monologue.speakerId ? speakerToEmailMap[monologue.speakerId] || "Unknown speaker" : "Unknown speaker"}\n`;
         lastSpeakerId = monologue.speakerId;
       }
       markdownContent += `${sentence.text}\n`;
