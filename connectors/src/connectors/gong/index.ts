@@ -38,6 +38,8 @@ const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
+const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
+
 // This function generates a connector-wise unique schedule ID for the Gong sync.
 // The IDs of the workflows spawned by this schedule will follow the pattern:
 //   gong-sync-${connectorId}-workflow-${isoFormatDate}
@@ -281,11 +283,56 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     throw new Error("Method not supported.");
   }
 
-  async setConfigurationKey(): Promise<Result<void, Error>> {
-    throw new Error("Method not supported.");
+  async getConfigurationKey({
+    configKey,
+  }: {
+    configKey: string;
+  }): Promise<Result<string | null, Error>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    switch (configKey) {
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const configuration = await fetchGongConfiguration(connector);
+
+        return new Ok(configuration.retentionPeriodDays?.toString() || null);
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 
-  async getConfigurationKey(): Promise<Result<string | null, Error>> {
-    throw new Error("Method not supported.");
+  async setConfigurationKey({
+    configKey,
+    configValue,
+  }: {
+    configKey: string;
+    configValue: string;
+  }): Promise<Result<void, Error>> {
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+
+    switch (configKey) {
+      case RETENTION_PERIOD_CONFIG_KEY: {
+        const configuration = await fetchGongConfiguration(connector);
+        const retentionPeriodDays = configValue
+          ? parseInt(configValue, 10)
+          : null;
+        logger.info(
+          {
+            connectorId: connector.id,
+            retentionPeriodDays,
+          },
+          "[Gong] Update retention period."
+        );
+        await configuration.setRetentionPeriodDays(retentionPeriodDays);
+
+        return new Ok(undefined);
+      }
+      default:
+        return new Err(new Error(`Invalid config key ${configKey}`));
+    }
   }
 }
