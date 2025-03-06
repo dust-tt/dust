@@ -1,5 +1,5 @@
 import type { ContentNode, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import { MIME_TYPES, Ok } from "@dust-tt/types";
 
 import { makeGongTranscriptFolderInternalId } from "@connectors/connectors/gong/lib/internal_ids";
 import { baseUrlFromConnectionId } from "@connectors/connectors/gong/lib/oauth";
@@ -8,8 +8,14 @@ import {
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
 import {
-  launchGongSyncWorkflow,
-  stopGongSyncWorkflow,
+  fetchGongConfiguration,
+  fetchGongConnector,
+} from "@connectors/connectors/gong/lib/utils";
+import {
+  createGongSyncSchedule,
+  deleteGongSyncSchedule,
+  startGongSync,
+  stopGongSync,
 } from "@connectors/connectors/gong/temporal/client";
 import type {
   CreateConnectorErrorCode,
@@ -20,10 +26,11 @@ import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { BaseConnectorManager } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import logger from "@connectors/logger/logger";
+import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
 
@@ -53,7 +60,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       }
     );
 
-    // Upsert a top-level folder that will contain all the transcripts (non selectable).
+    // Upsert a top-level folder that will contain all the transcripts (non-selectable).
     await upsertDataSourceFolder({
       dataSourceConfig: dataSourceConfigFromConnector(connector),
       folderId: makeGongTranscriptFolderInternalId(connector),
@@ -63,12 +70,8 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await launchGongSyncWorkflow(connector);
+    const result = await createGongSyncSchedule(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: connector.id, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
-      );
       throw result.error;
     }
 
@@ -119,33 +122,34 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async clean(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Gong] Connector not found.");
-      return new Err(new Error("[Gong] Connector not found"));
-    }
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
 
-    const res = await connector.delete();
-    if (res.isErr()) {
+    const scheduleResult = await deleteGongSyncSchedule(connector);
+    if (scheduleResult.isErr()) {
+      return scheduleResult;
+    }
+    const connectorResult = await connector.delete();
+    if (connectorResult.isErr()) {
       logger.error(
-        { connectorId, error: res.error },
-        "Error cleaning up Gong connector."
+        {
+          connectorId: connector.id,
+          error: connectorResult.error,
+        },
+        "[Gong] Failed to delete connector."
       );
-      return res;
+      return connectorResult;
     }
 
     return new Ok(undefined);
   }
 
   async stop(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Gong] Connector not found.");
-      throw new Error("[Gong] Connector not found.");
-    }
-    const result = await stopGongSyncWorkflow(connector);
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+    const result = await stopGongSync(connector);
     if (result.isErr()) {
       return result;
     }
@@ -153,22 +157,13 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async resume(): Promise<Result<undefined, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error(
-        `[Gong] Connector not found. ConnectorId: ${this.connectorId}`
-      );
-    }
-
-    const result = await launchGongSyncWorkflow(connector);
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+    const result = await startGongSync(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
-      );
       throw result.error;
     }
-
     return new Ok(undefined);
   }
 
@@ -177,15 +172,11 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      throw new Error("[Gong] Connector not found.");
-    }
-    const configuration =
-      await GongConfigurationResource.fetchByConnector(connector);
-    if (!configuration) {
-      throw new Error("[Gong] Configuration not found.");
-    }
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
+    const configuration = await fetchGongConfiguration(connector);
+
     if (!fromTs) {
       // Resetting the last sync timestamp to run a full sync.
       await configuration.resetLastSyncTimestamp();
@@ -193,19 +184,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       // If fromTs is set, we ignore it and sync from the last cursor; we cannot miss transcripts if we assume that
       // transcripts cannot be created in the past.
       logger.warn(
-        `[Gong] Ignoring the fromTs, syncing from ${configuration.lastSyncTimestamp}`
+        `[Gong] Ignoring the fromTs, syncing from ${configuration.lastSyncTimestamp}.`
       );
     }
 
-    const result = await launchGongSyncWorkflow(connector);
+    const result = await startGongSync(connector);
     if (result.isErr()) {
-      logger.error(
-        { connectorId: this.connectorId, error: result.error },
-        "[Gong] Error launching Gong sync workflow"
-      );
       throw result.error;
     }
-    return new Ok(this.connectorId.toString());
+    return new Ok(connector.id.toString());
   }
 
   async retrievePermissions(): Promise<
@@ -219,23 +206,17 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Gong] Connector not found.");
-      throw new Error("[Gong] Connector not found.");
-    }
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
     await connector.markAsPaused();
     return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    const { connectorId } = this;
-    const connector = await ConnectorResource.fetchById(connectorId);
-    if (!connector) {
-      logger.error({ connectorId }, "[Gong] Connector not found.");
-      throw new Error("[Gong] Connector not found.");
-    }
+    const connector = await fetchGongConnector({
+      connectorId: this.connectorId,
+    });
     await connector.markAsUnpaused();
     return this.resume();
   }

@@ -1,7 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
+import type { ModelId, Result } from "@dust-tt/types";
+import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
 
 import { GongClient } from "@connectors/connectors/gong/lib/gong_api";
-import { getGongAccessToken } from "@connectors/connectors/gong/lib/gong_api";
+import { apiConfig } from "@connectors/lib/api/config";
+import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongConfigurationResource } from "@connectors/resources/gong_resources";
 
@@ -12,6 +14,7 @@ export async function fetchGongConnector({
 }): Promise<ConnectorResource> {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
+    logger.error({ connectorId }, "[Gong] Connector not found.");
     throw new Error("[Gong] Connector not found.");
   }
   return connector;
@@ -23,9 +26,34 @@ export async function fetchGongConfiguration(
   const configuration =
     await GongConfigurationResource.fetchByConnector(connector);
   if (!configuration) {
+    logger.error(
+      { connectorId: connector.id },
+      "[Gong] Configuration not found."
+    );
     throw new Error("[Gong] Configuration not found.");
   }
   return configuration;
+}
+
+async function getGongAccessToken(
+  connector: ConnectorResource
+): Promise<Result<string, Error>> {
+  const tokenResult = await getOAuthConnectionAccessToken({
+    config: apiConfig.getOAuthAPIConfig(),
+    logger,
+    provider: "gong",
+    connectionId: connector.connectionId,
+  });
+  if (tokenResult.isErr()) {
+    logger.error(
+      { connectionId: connector.connectionId, error: tokenResult.error },
+      "Error retrieving Gong access token."
+    );
+
+    return new Err(new Error(tokenResult.error.message));
+  }
+
+  return new Ok(tokenResult.value.access_token);
 }
 
 export async function getGongClient(connector: ConnectorResource) {

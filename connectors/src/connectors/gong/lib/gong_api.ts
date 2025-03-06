@@ -1,18 +1,14 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import type { ModelId } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { GongAPIError } from "@connectors/connectors/gong/lib/errors";
-import { apiConfig } from "@connectors/lib/api/config";
 import {
   ExternalOAuthTokenError,
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
-import logger from "@connectors/logger/logger";
-import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);
@@ -115,27 +111,6 @@ const GongPaginatedResults = <C extends t.Mixed, F extends string>(
       [fieldName]: t.array(codec),
     } as Record<F, t.ArrayC<C>>),
   ]);
-
-export async function getGongAccessToken(
-  connector: ConnectorResource
-): Promise<Result<string, Error>> {
-  const tokenResult = await getOAuthConnectionAccessToken({
-    config: apiConfig.getOAuthAPIConfig(),
-    logger,
-    provider: "gong",
-    connectionId: connector.connectionId,
-  });
-  if (tokenResult.isErr()) {
-    logger.error(
-      { connectionId: connector.connectionId, error: tokenResult.error },
-      "Error retrieving Gong access token."
-    );
-
-    return new Err(new Error(tokenResult.error.message));
-  }
-
-  return new Ok(tokenResult.value.access_token);
-}
 
 export class GongClient {
   private readonly baseUrl = "https://api.gong.io/v2";
