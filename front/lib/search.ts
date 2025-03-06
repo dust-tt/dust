@@ -3,9 +3,8 @@ import type {
   CoreAPISearchScope,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/types";
 
-import { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
