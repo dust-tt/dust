@@ -10,43 +10,52 @@ import {
   SearchInputWithPopover,
   Separator,
 } from "@dust-tt/sparkle";
+import type { DataSourceViewContentNode } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import type { WorkspaceType } from "@dust-tt/client";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 
 interface InputBarAttachmentsProps {
+  owner: WorkspaceType;
   fileUploaderService: FileUploaderService;
-  onConnectedFileSelect: (fileId: string) => void;
+  onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
 }
 
-// TODO(attach from input bar): use component with spaces wide search
 export const InputBarAttachments = ({
+  owner,
   fileUploaderService,
-  onConnectedFileSelect,
+  onNodeSelect,
   isLoading = false,
 }: InputBarAttachmentsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
-  const items = Array.from({ length: 50 }).map((_, i) => ({
-    id: `${i}`,
-    title: `Document ${i + 1}`,
-    path: "Github",
-  }));
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => item.title.includes(debouncedSearch));
-  }, [debouncedSearch, items]);
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType: "all",
+    disabled: isSpacesLoading,
+    spaceIds: spaces.map((s) => s.sId),
+  });
 
   useEffect(() => {
+    setIsDebouncing(true);
     const timeout = setTimeout(() => {
       setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
+      setIsDebouncing(false);
     }, 300);
     return () => {
       clearTimeout(timeout);
+      setIsDebouncing(false);
     };
   }, [search]);
 
@@ -54,7 +63,7 @@ export const InputBarAttachments = ({
     <PopoverRoot>
       <PopoverTrigger asChild>
         <Button
-          variant="ghost"
+          variant="ghost-secondary"
           icon={PlusIcon}
           size="xs"
           disabled={isLoading}
@@ -100,27 +109,38 @@ export const InputBarAttachments = ({
                 placeholder="Search connected files"
                 value={search}
                 onChange={setSearch}
+                isLoading={isSearchLoading || isDebouncing}
                 open={search.length >= MIN_SEARCH_QUERY_SIZE}
-                onOpenChange={() => {}}
-                items={filteredItems}
-                renderItem={(item, selected) => (
-                  <div
-                    className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-lg px-1 py-2 hover:bg-structure-50",
-                      selected && "bg-structure-50"
-                    )}
-                    onClick={() => {
-                      onConnectedFileSelect(item.id);
-                      setSearch("");
-                    }}
-                  >
-                    <Icon visual={AttachmentIcon} size="xs" />
-                    <span className="text-sm">{item.title}</span>
-                    <span className="ml-auto text-sm text-slate-500">
-                      {item.path}
-                    </span>
-                  </div>
-                )}
+                onOpenChange={() => {
+                  setSearch("");
+                }}
+                items={searchResultNodes}
+                renderItem={(item, selected) => {
+                  return (
+                    <div
+                      className={cn(
+                        "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                        selected && "bg-structure-50 dark:bg-structure-50-night"
+                      )}
+                      onClick={() => {
+                        setSearch("");
+                        onNodeSelect(item);
+                      }}
+                    >
+                      {getVisualForDataSourceViewContentNode(item)({
+                        className: "min-w-4",
+                      })}
+                      <span className="flex-shrink truncate text-sm">
+                        {item.title}
+                      </span>
+                      {item.parentTitle && (
+                        <div className="ml-auto flex-none text-sm text-slate-500">
+                          {/*{getLocationForDataSourceViewContentNode(item)}*/}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }}
                 noResults="No results found"
                 disabled={isLoading}
               />

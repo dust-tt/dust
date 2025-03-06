@@ -17,13 +17,13 @@ import {
   getContentNodeFromCoreNode,
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import { getCursorPaginationParams } from "@app/lib/api/pagination";
 
 const SearchRequestBody = t.type({
   query: t.string,

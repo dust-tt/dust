@@ -22,6 +22,8 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -58,6 +60,7 @@ const InputBarContainer = ({
   fileUploaderService,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
@@ -138,15 +141,26 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              <Button
-                variant="ghost-secondary"
-                icon={AttachmentIcon}
-                size="xs"
-                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              />
+              {featureFlags.includes("attach_from_datasources") ? (
+                <InputBarAttachments
+                  fileUploaderService={fileUploaderService}
+                  onConnectedFileSelect={(fileId: string) =>
+                    console.log(`Uploading ${fileId}`)
+                  }
+                  owner={owner}
+                  isLoading={false}
+                />
+              ) : (
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size="xs"
+                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+              )}
             </>
           )}
           {(actions.includes("assistants-list") ||
