@@ -49,10 +49,10 @@ const sizeVariants: Record<CardSizeType, string> = {
 const interactiveClasses = cn(
   "s-cursor-pointer",
   "s-transition s-duration-200",
-  "hover:s-bg-primary-150 dark:hover:s-bg-primary-150-night",
-  "active:s-bg-primary-200 dark:active:s-bg-primary-200-night",
+  "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+  "active:s-bg-primary-150 dark:active:s-bg-primary-150-night",
   "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",
-  "disabled:s-border-structure-100 dark:disabled:s-border-structure-100-night",
+  "disabled:s-border-border dark:disabled:s-border-border-night",
   "disabled:s-pointer-events-none"
 );
 
