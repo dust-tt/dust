@@ -15,7 +15,6 @@ import {
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { GongUserResource } from "@connectors/resources/gong_resources";
 import { GongTranscriptResource } from "@connectors/resources/gong_resources";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
 
@@ -32,7 +31,7 @@ function formatDateNicely(date: Date) {
 export async function syncGongTranscript({
   transcript,
   transcriptMetadata,
-  participants,
+  participantEmails,
   speakerToEmailMap,
   connector,
   dataSourceConfig,
@@ -41,7 +40,7 @@ export async function syncGongTranscript({
 }: {
   transcript: GongCallTranscript;
   transcriptMetadata: GongTranscriptMetadata;
-  participants: GongUserResource[];
+  participantEmails: string[];
   speakerToEmailMap: Record<string, string>;
   connector: ConnectorResource;
   dataSourceConfig: DataSourceConfig;
@@ -123,7 +122,7 @@ export async function syncGongTranscript({
       media: transcriptMetadata.metaData.media,
       scope: transcriptMetadata.metaData.scope,
       direction: transcriptMetadata.metaData.direction,
-      participants: participants.map((p) => p.email).join(", ") || "none",
+      participants: participantEmails.join(", ") || "none",
     },
   });
 
@@ -142,7 +141,7 @@ export async function syncGongTranscript({
       `media:${transcriptMetadata.metaData.media}`,
       `scope:${transcriptMetadata.metaData.scope}`,
       `direction:${transcriptMetadata.metaData.direction}`,
-      ...participants.map((p) => `participant:${p.email}`),
+      ...participantEmails.map((email) => `participant:${email}`),
     ],
     parents: [documentId, makeGongTranscriptFolderInternalId(connector)],
     parentId: makeGongTranscriptFolderInternalId(connector),
