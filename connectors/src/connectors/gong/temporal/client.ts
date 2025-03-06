@@ -39,6 +39,7 @@ async function terminateWorkflowsForSchedule(
       await workflowHandle.terminate();
     } catch (error) {
       if (!(error instanceof WorkflowNotFoundError)) {
+        logger.error({ error }, "[Gong] Failed to terminate workflow.");
         throw error;
       }
     }
