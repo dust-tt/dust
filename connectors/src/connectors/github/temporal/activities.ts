@@ -43,6 +43,7 @@ import {
   deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
+  sectionLength,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -61,6 +62,9 @@ import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
+
+// Only allow documents up to 5mb to be processed.
+const MAX_DOCUMENT_TXT_LEN = 5000000;
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
@@ -284,6 +288,11 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
+  if (sectionLength(renderedIssue) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Issue is too large to upsert.");
+    return;
+  }
+
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
@@ -471,6 +480,11 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber,
     logger
   );
+
+  if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Discussion is too large to upsert.");
+    return;
+  }
 
   const documentId = getDiscussionInternalId(
     repoId.toString(),
@@ -1157,6 +1171,13 @@ export async function githubCodeSyncActivity({
           }
           repoUpdatedAt = codeSyncStartedAt;
 
+          const renderedCode = formatCodeContentForUpsert(f.sourceUrl, content);
+
+          if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
+            logger.info("Code file is too large to upsert.");
+            return;
+          }
+
           const tags = [
             `title:${f.fileName}`,
             `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
@@ -1171,7 +1192,7 @@ export async function githubCodeSyncActivity({
           await upsertDataSourceDocument({
             dataSourceConfig,
             documentId: f.documentId,
-            documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
+            documentContent: renderedCode,
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,

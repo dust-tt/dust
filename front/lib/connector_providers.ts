@@ -184,7 +184,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
-    selectLabel: "Synchronized content",
+    selectLabel: "Authorized content",
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? GithubWhiteLogo : GithubLogo;
     },
