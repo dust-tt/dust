@@ -1,13 +1,11 @@
 import {
   Citation,
-  CitationDescription,
   CitationIcons,
   CitationTitle,
   CodeBlock,
   CollapsibleComponent,
   ContentBlockWrapper,
   ContentMessage,
-  DocumentTextIcon,
   Icon,
   InformationCircleIcon,
   Markdown,
@@ -112,14 +110,10 @@ function QueryTablesResults({
   const { output } = action;
   const title = getTablesQueryResultsFileTitle({ output });
 
-  const handleDownload = useCallback(
-    (fileId: string | null) => {
-      if (!fileId) {
-        return;
-      }
-
+  const handleDownload = useCallback(() => {
+    if (action.resultsFileId) {
       try {
-        const downloadUrl = `/api/w/${owner.sId}/files/${fileId}?action=download`;
+        const downloadUrl = `/api/w/${owner.sId}/files/${action.resultsFileId}?action=download`;
         // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
         // to cloud storage.
         window.open(downloadUrl, "_blank");
@@ -131,9 +125,14 @@ function QueryTablesResults({
           description: "An error occurred while opening the download link.",
         });
       }
-    },
-    [sendNotification, owner.sId]
-  );
+    } else {
+      sendNotification({
+        title: "No Results Available",
+        type: "error",
+        description: "There are no results available to download.",
+      });
+    }
+  }, [action.resultsFileId, sendNotification, owner.sId]);
 
   if (!action.resultsFileId!) {
     if (typeof output?.error === "string") {
@@ -154,33 +153,18 @@ function QueryTablesResults({
       <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
         Results
       </span>
-      <div className="flex flex-row gap-2">
-        {action.resultsFileId && (
-          <Citation
-            className="w-48 min-w-48 max-w-48"
-            containerClassName="my-2"
-            onClick={() => handleDownload(action.resultsFileId)}
-          >
-            <CitationIcons>
-              <Icon visual={TableIcon} />
-            </CitationIcons>
-            <CitationTitle>{title}</CitationTitle>
-            <CitationDescription>(CSV)</CitationDescription>
-          </Citation>
-        )}
-        {action.searchableFileId && (
-          <Citation
-            className="w-48 min-w-48 max-w-48"
-            containerClassName="my-2"
-            onClick={() => handleDownload(action.searchableFileId)}
-          >
-            <CitationIcons>
-              <Icon visual={DocumentTextIcon} />
-            </CitationIcons>
-            <CitationTitle>{title}</CitationTitle>
-            <CitationDescription>(JSONL)</CitationDescription>
-          </Citation>
-        )}
+      <div>
+        <Citation
+          className="w-48 min-w-48 max-w-48"
+          containerClassName="my-2"
+          onClick={handleDownload}
+          tooltip={title}
+        >
+          <CitationIcons>
+            <Icon visual={TableIcon} />
+          </CitationIcons>
+          <CitationTitle>{title}</CitationTitle>
+        </Citation>
       </div>
 
       <CollapsibleComponent

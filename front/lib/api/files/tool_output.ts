@@ -107,7 +107,7 @@ export async function internalCreateSearchableTextFile(
   const file = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
-    contentType: "text/vnd.dust.attachment.searchable.text",
+    contentType: "text/vnd.dust.section-structured",
     fileName: title,
     fileSize: Buffer.byteLength(content),
     useCase: "tool_output",
@@ -145,7 +145,7 @@ export async function internalCreateSearchableTextFile(
       mime_type: file.contentType,
       section: {
         prefix: file.fileName,
-        content: "", // No content on main section, it's all in the children section: 1 per row.
+        content: null, // No content on main section, it's all in the children section: 1 per row.
         sections,
       },
     };
