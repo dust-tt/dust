@@ -9,7 +9,7 @@ import { classNames } from "@app/lib/utils";
 
 export function FooterNavigation() {
   return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-slate-800 bg-slate-900 pb-16 pt-12">
+    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-primary-900 bg-black pb-16 pt-12">
       <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className={classNames("opacity-70", "col-span-12")}>
@@ -29,7 +29,7 @@ export function FooterNavigation() {
                   {item.title}
                 </FooterLink>
               ) : (
-                <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-100 no-underline outline-none">
+                <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-primary-100 no-underline outline-none">
                   {item.title}
                 </div>
               )}
@@ -41,7 +41,7 @@ export function FooterNavigation() {
                         {item.title}
                       </FooterLink>
                     ) : (
-                      <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
+                      <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-primary-400 no-underline outline-none">
                         {item.title}
                       </div>
                     )}
