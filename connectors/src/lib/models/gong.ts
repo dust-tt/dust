@@ -8,9 +8,9 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare lastSyncTimestamp: number;
+  declare lastSyncTimestamp: number | null;
   declare baseUrl: string;
-  declare retentionPeriodDays: number;
+  declare retentionPeriodDays: number | null;
 }
 
 GongConfigurationModel.init(
@@ -27,7 +27,7 @@ GongConfigurationModel.init(
     },
     lastSyncTimestamp: {
       type: DataTypes.BIGINT,
-      allowNull: false,
+      allowNull: true,
     },
     baseUrl: {
       type: DataTypes.STRING,
@@ -35,7 +35,7 @@ GongConfigurationModel.init(
     },
     retentionPeriodDays: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
   },
   {

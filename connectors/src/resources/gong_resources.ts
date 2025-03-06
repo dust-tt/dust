@@ -87,18 +87,21 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
 
   async resetLastSyncTimestamp(): Promise<void> {
     await this.update({
-      lastSyncTimestamp:
-        Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000,
+      lastSyncTimestamp: this.retentionPeriodDays
+        ? Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000
+        : null,
     });
   }
 
   async setLastSyncTimestamp(timestamp: number): Promise<void> {
     await this.update({
       // Can't set a timestamp older than what is enforced by the retention period.
-      lastSyncTimestamp: Math.max(
-        timestamp,
-        Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000
-      ),
+      lastSyncTimestamp: this.retentionPeriodDays
+        ? Math.max(
+            timestamp,
+            Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000
+          )
+        : timestamp,
     });
   }
 }
@@ -289,6 +292,11 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     configuration: GongConfigurationResource,
     { limit }: { limit: number }
   ): Promise<GongTranscriptResource[]> {
+    // If the retention period is not defined, we keep all transcripts.
+    if (configuration.retentionPeriodDays === null) {
+      return [];
+    }
+
     const retentionPeriodStart =
       Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000;
     const transcripts = await GongTranscriptModel.findAll({
