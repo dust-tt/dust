@@ -9,39 +9,57 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
+import { DocumentDeletionKey } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useState } from "react";
 
+import { useQueryParams } from "@app/hooks/useQueryParams";
+
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType;
-  isOpen: boolean;
-  onClose: (save: boolean) => void;
   owner: LightWorkspaceType;
-  contentNode: LightContentNode;
 }
 
 export const DocumentOrTableDeleteDialog = ({
   dataSourceView,
-  isOpen,
-  onClose,
   owner,
-  contentNode,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const params = useQueryParams([
+    "contentNodeId",
+    "contentNodeName",
+    "viewType",
+    DocumentDeletionKey,
+  ]);
+  const isOpen = params[DocumentDeletionKey]?.value === "true";
+
   const sendNotification = useSendNotification();
 
-  const isTable = contentNode.type === "table";
+  const isTable = params && params.viewType.value === "table";
   const itemType = isTable ? "table" : "document";
 
+  const openDialog = () => {
+    params.setParams({
+      [DocumentDeletionKey]: "true",
+    });
+  };
+
+  const closeDialog = () => {
+    params.setParams({
+      contentNodeId: undefined,
+      contentNodeName: undefined,
+      [DocumentDeletionKey]: undefined,
+    });
+  };
+
   const handleDelete = async () => {
+    if (!params.contentNodeId.value) {
+      return;
+    }
     try {
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
+      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(params.contentNodeId.value)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
@@ -51,9 +69,9 @@ export const DocumentOrTableDeleteDialog = ({
       sendNotification({
         type: "success",
         title: `${_.capitalize(itemType)} deletion submitted`,
-        description: `Deletion of ${itemType} ${contentNode.title} ongoing, it will complete shortly.`,
+        description: `Deletion of ${itemType} ${params.contentNodeName.value} ongoing, it will complete shortly.`,
       });
-      onClose(true);
+      closeDialog();
     } catch (error) {
       sendNotification({
         type: "error",
@@ -70,7 +88,9 @@ export const DocumentOrTableDeleteDialog = ({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose(false);
+          closeDialog();
+        } else {
+          openDialog();
         }
       }}
     >
@@ -79,7 +99,7 @@ export const DocumentOrTableDeleteDialog = ({
           <DialogTitle>Confirm deletion</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete {isTable ? "table" : "document"} '
-            {contentNode.title}'?
+            {params.contentNodeName.value}?
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (

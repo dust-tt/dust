@@ -1,5 +1,6 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  DocumentDuplicateIcon,
   ExternalLinkIcon,
   EyeIcon,
   PencilSquareIcon,
@@ -12,7 +13,7 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { DocumentViewRawContentKey } from "@dust-tt/types";
+import { DocumentDeletionKey, DocumentViewRawContentKey } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -37,8 +38,7 @@ export type UploadOrEditContentActionKey =
 
 export type ContentActionKey =
   | UploadOrEditContentActionKey
-  | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog";
+  | "MultipleDocumentsUpload";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -135,15 +135,10 @@ export const ContentActions = React.forwardRef<
           totalNodesCount={totalNodesCount}
           plan={plan}
         />
-        {currentAction.contentNode && (
-          <DocumentOrTableDeleteDialog
-            dataSourceView={dataSourceView}
-            isOpen={currentAction.action === "DocumentOrTableDeleteDialog"}
-            onClose={onClose}
-            owner={owner}
-            contentNode={currentAction.contentNode}
-          />
-        )}
+        <DocumentOrTableDeleteDialog
+          dataSourceView={dataSourceView}
+          owner={owner}
+        />
         <DataSourceViewDocumentModal
           owner={owner}
           dataSourceView={dataSourceView}
@@ -204,10 +199,9 @@ export const getMenuItems = (
       icon: TrashIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current?.callAction(
-          "DocumentOrTableDeleteDialog",
-          contentNode
-        );
+        setQueryParam(router, DocumentDeletionKey, "true");
+        setQueryParam(router, "contentNodeId", contentNode.internalId);
+        setQueryParam(router, "contentNodeName", contentNode.title);
       },
       variant: "warning",
     });
@@ -257,7 +251,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: PencilSquareIcon,
+      icon: DocumentDuplicateIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);
