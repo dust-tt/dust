@@ -8,11 +8,11 @@ import {
   fetchGongConnector,
 } from "@connectors/connectors/gong/lib/utils";
 import {
-  createGongSyncSchedule,
-  deleteGongSyncSchedule,
-  startGongSync,
-  stopGongSync,
-} from "@connectors/connectors/gong/temporal/client";
+  QUEUE_NAME,
+  SCHEDULE_POLICIES,
+  SCHEDULE_SPEC,
+} from "@connectors/connectors/gong/temporal/config";
+import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
@@ -24,6 +24,12 @@ import {
 } from "@connectors/connectors/interface";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  createSchedule,
+  deleteSchedule,
+  pauseSchedule,
+  triggerSchedule,
+} from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types/data_source_config";
@@ -31,6 +37,13 @@ import type { DataSourceConfig } from "@connectors/types/data_source_config";
 const logger = mainLogger.child({ provider: "gong" });
 
 const TRANSCRIPTS_FOLDER_TITLE = "Transcripts";
+
+// This function generates a connector-wise unique schedule ID for the Gong sync.
+// The IDs of the workflows spawned by this schedule will follow the pattern:
+//   gong-sync-${connectorId}-workflow-${isoFormatDate}
+function makeGongSyncScheduleId(connector: ConnectorResource): string {
+  return `gong-sync-${connector.id}`;
+}
 
 export class GongConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -68,7 +81,24 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await createGongSyncSchedule(connector);
+    const result = await createSchedule({
+      connector,
+      action: {
+        type: "startWorkflow",
+        workflowType: gongSyncWorkflow,
+        args: [
+          {
+            connectorId: connector.id,
+            fromTs: null,
+            forceResync: false,
+          },
+        ],
+        taskQueue: QUEUE_NAME,
+      },
+      scheduleId: makeGongSyncScheduleId(connector),
+      policies: SCHEDULE_POLICIES,
+      spec: SCHEDULE_SPEC,
+    });
     if (result.isErr()) {
       throw result.error;
     }
@@ -112,7 +142,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       if (connector.isPaused()) {
         await this.unpause();
 
-        await startGongSync(connector);
+        await triggerSchedule({
+          connector,
+          scheduleId: makeGongSyncScheduleId(connector),
+        });
       }
     }
 
@@ -124,7 +157,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       connectorId: this.connectorId,
     });
 
-    const scheduleResult = await deleteGongSyncSchedule(connector);
+    const scheduleResult = await deleteSchedule({
+      connector,
+      scheduleId: makeGongSyncScheduleId(connector),
+    });
     if (scheduleResult.isErr()) {
       return scheduleResult;
     }
@@ -147,7 +183,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
-    const result = await stopGongSync(connector);
+    const result = await pauseSchedule({
+      connector,
+      scheduleId: makeGongSyncScheduleId(connector),
+    });
     if (result.isErr()) {
       return result;
     }
@@ -158,7 +197,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     const connector = await fetchGongConnector({
       connectorId: this.connectorId,
     });
-    const result = await startGongSync(connector);
+    const result = await triggerSchedule({
+      connector,
+      scheduleId: makeGongSyncScheduleId(connector),
+    });
     if (result.isErr()) {
       throw result.error;
     }
@@ -186,7 +228,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const result = await startGongSync(connector);
+    const result = await triggerSchedule({
+      connector,
+      scheduleId: makeGongSyncScheduleId(connector),
+    });
     if (result.isErr()) {
       throw result.error;
     }

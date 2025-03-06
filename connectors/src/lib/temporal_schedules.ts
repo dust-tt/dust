@@ -1,29 +1,26 @@
 import type { Result } from "@dust-tt/types";
 import { Err, normalizeError, Ok } from "@dust-tt/types";
-import type { Client, ScheduleHandle } from "@temporalio/client";
+import type {
+  Client,
+  ScheduleHandle,
+  ScheduleOptionsAction,
+  ScheduleSpec,
+} from "@temporalio/client";
 import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
   WorkflowNotFoundError,
 } from "@temporalio/client";
+import type { Duration } from "@temporalio/common";
 
-import { QUEUE_NAME } from "@connectors/connectors/gong/temporal/config";
-import { gongSyncWorkflow } from "@connectors/connectors/gong/temporal/workflows";
 import { getTemporalClient } from "@connectors/lib/temporal";
-import mainLogger from "@connectors/logger/logger";
+import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
-const logger = mainLogger.child({ provider: "gong" });
-
-// This function generates a connector-wise unique schedule ID for the Gong sync.
-// The IDs of the workflows spawned by this schedule will follow the pattern:
-//   gong-sync-${connectorId}-workflow-${isoFormatDate}
-function makeGongSyncScheduleId(connector: ConnectorResource): string {
-  return `gong-sync-${connector.id}`;
-}
-
-// Terminates running workflows spawned by the given schedule.
-// Throw a `ScheduleNotFoundError` if the schedule does not exist.
+/**
+ * Terminates running workflows spawned by the given schedule.
+ * Throw a `ScheduleNotFoundError` if the schedule does not exist.
+ */
 async function terminateWorkflowsForSchedule(
   scheduleHandle: ScheduleHandle,
   client: Client
@@ -39,48 +36,44 @@ async function terminateWorkflowsForSchedule(
       await workflowHandle.terminate();
     } catch (error) {
       if (!(error instanceof WorkflowNotFoundError)) {
-        logger.error({ error }, "[Gong] Failed to terminate workflow.");
+        logger.error({ error }, "Failed to terminate workflow.");
         throw error;
       }
     }
   }
 }
 
-export async function createGongSyncSchedule(
-  connector: ConnectorResource
-): Promise<Result<string, Error>> {
+/**
+ * Creates a schedule for the given connector.
+ */
+export async function createSchedule({
+  scheduleId,
+  connector,
+  action,
+  policies = {
+    overlap: ScheduleOverlapPolicy.BUFFER_ONE,
+    catchupWindow: "1 day",
+  },
+  spec,
+}: {
+  scheduleId: string;
+  connector: ConnectorResource;
+  action: ScheduleOptionsAction;
+  policies: {
+    overlap?: ScheduleOverlapPolicy;
+    catchupWindow?: Duration;
+    pauseOnFailure?: boolean;
+  };
+  spec: ScheduleSpec;
+}): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const scheduleId = makeGongSyncScheduleId(connector);
 
   try {
     const scheduleHandle = await client.schedule.create({
-      action: {
-        type: "startWorkflow",
-        workflowType: gongSyncWorkflow,
-        args: [
-          {
-            connectorId: connector.id,
-            fromTs: null,
-            forceResync: false,
-          },
-        ],
-        taskQueue: QUEUE_NAME,
-      },
+      action,
       scheduleId,
-      policies: {
-        // If Temporal Server is down or unavailable at the time when a Schedule should take an Action.
-        // Backfill scheduled action up to the previous day.
-        catchupWindow: "1 day",
-        // We buffer up to one workflow to make sure triggering a sync ensures having up-to-date data even if a very
-        // long-running workflow was running.
-        overlap: ScheduleOverlapPolicy.BUFFER_ONE,
-      },
-      spec: {
-        // Adding a random offset to avoid all workflows starting at the same time and to take into account the fact
-        // that many new transcripts will be made available roughly on the top of the hour.
-        jitter: 30 * 60 * 1000, // 30 minutes
-        intervals: [{ every: "1h" }],
-      },
+      policies,
+      spec,
     });
 
     // Trigger the schedule to start the workflow immediately.
@@ -92,7 +85,7 @@ export async function createGongSyncSchedule(
         scheduleId,
         error,
       },
-      "[Gong] Failed to create schedule and launch Gong sync."
+      "Failed to create and trigger schedule."
     );
     return new Err(normalizeError(error));
   }
@@ -100,11 +93,17 @@ export async function createGongSyncSchedule(
   return new Ok(scheduleId);
 }
 
-export async function deleteGongSyncSchedule(
-  connector: ConnectorResource
-): Promise<Result<void, Error>> {
+/**
+ * Deletes the schedule and terminates the running workflows.
+ */
+export async function deleteSchedule({
+  scheduleId,
+  connector,
+}: {
+  scheduleId: string;
+  connector: ConnectorResource;
+}): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const scheduleId = makeGongSyncScheduleId(connector);
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
@@ -121,7 +120,7 @@ export async function deleteGongSyncSchedule(
           scheduleId,
           error,
         },
-        "[Gong] Failed to delete schedule and terminate workflow."
+        "Failed to delete schedule and terminate workflow."
       );
       return new Err(normalizeError(error));
     }
@@ -130,14 +129,17 @@ export async function deleteGongSyncSchedule(
   return new Ok(undefined);
 }
 
-// Starts the sync of Gong data for the given connector.
-// - Unpauses the schedule if paused.
-// - Triggers the schedule to start the sync workflow immediately.
-export async function startGongSync(
-  connector: ConnectorResource
-): Promise<Result<string, Error>> {
+/**
+ * Unpauses the schedule if paused and triggers the schedule to start the workflow immediately.
+ */
+export async function triggerSchedule({
+  scheduleId,
+  connector,
+}: {
+  scheduleId: string;
+  connector: ConnectorResource;
+}): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
-  const scheduleId = makeGongSyncScheduleId(connector);
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
@@ -157,7 +159,7 @@ export async function startGongSync(
           scheduleId,
           error,
         },
-        "[Gong] Failed to unpause and trigger schedule."
+        "Failed to unpause and trigger schedule."
       );
       return new Err(normalizeError(error));
     }
@@ -166,14 +168,17 @@ export async function startGongSync(
   return new Ok(scheduleId);
 }
 
-// Stops the sync of Gong data for the given connector.
-// - Pauses the schedule.
-// - Terminates any running workflows for the schedule.
-export async function stopGongSync(
-  connector: ConnectorResource
-): Promise<Result<void, Error>> {
+/**
+ * Pauses the schedule if running and terminates the running workflows.
+ */
+export async function pauseSchedule({
+  scheduleId,
+  connector,
+}: {
+  scheduleId: string;
+  connector: ConnectorResource;
+}): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
-  const scheduleId = makeGongSyncScheduleId(connector);
 
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
@@ -190,7 +195,7 @@ export async function stopGongSync(
           scheduleId,
           error,
         },
-        "[Gong] Failed to stop schedule and terminate workflow."
+        "Failed to stop schedule and terminate workflow."
       );
       return new Err(normalizeError(error));
     }
