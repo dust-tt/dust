@@ -40,7 +40,7 @@ const customColors = {
     400: "#969CA5",
     300: "#B2B6BD",
     200: "#D3D5D9",
-    150: "#E0E2E4",
+    150: "#DFE0E2",
     100: "#E9EAEB",
     50: "#F7F7F7",
   },
