@@ -13,7 +13,7 @@ import type {
 } from "@dust-tt/types";
 import { isString } from "@dust-tt/types";
 import { BaseAction, CoreAPI, Ok } from "@dust-tt/types";
-import { assert } from "console";
+import assert from "assert";
 
 import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
@@ -121,7 +121,9 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
   > {
     const { actionConfiguration } = this;
 
-    if (!isString(rawInputs.searchText)) {
+    const { searchText } = rawInputs;
+
+    if (!isString(searchText)) {
       yield {
         type: "search_labels_error",
         created: Date.now(),
@@ -159,7 +161,30 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       "No data sources found for `search_labels` action"
     );
 
-    const searchText = rawInputs.searchText;
+    const action = await AgentSearchLabelsAction.create({
+      agentMessageId: agentMessage.agentMessageId,
+      functionCallId,
+      output: null,
+      searchText,
+      step,
+      workspaceId: auth.getNonNullableWorkspace().id,
+    });
+
+    yield {
+      type: "search_labels_params",
+      created: Date.now(),
+      configurationId: actionConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: new SearchLabelsAction({
+        agentMessageId: action.agentMessageId,
+        functionCallId: action.functionCallId,
+        functionCallName: action.functionCallName,
+        id: action.id,
+        output: null,
+        searchText,
+        step: action.step,
+      }),
+    };
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const result = await coreAPI.searchTags({
@@ -168,8 +193,6 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       dataSources: dustAPIDataSourceIds,
       limit: DEFAULT_SEARCH_LABELS_LIMIT,
     });
-
-    console.log(">> Search Result", JSON.stringify(result, null, 2));
 
     if (result.isErr()) {
       yield {
@@ -186,17 +209,9 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       return;
     }
 
-    const action = await AgentSearchLabelsAction.create({
-      agentMessageId: agentMessage.agentMessageId,
-      functionCallId,
+    await action.update({
       output: result.value,
-      searchText,
-      step,
-      workspaceId: auth.getNonNullableWorkspace().id,
     });
-
-    // Log the created action to verify output was saved
-    console.log(">> Created action:", action.toJSON());
 
     yield {
       type: "search_labels_success",
