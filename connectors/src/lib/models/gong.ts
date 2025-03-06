@@ -98,6 +98,7 @@ export class GongTranscriptModel extends ConnectorBaseModel<GongTranscriptModel>
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
+  declare callDate: number;
   declare callId: string;
   declare title: string;
   declare url: string;
@@ -114,6 +115,10 @@ GongTranscriptModel.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    callDate: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
     },
     callId: {
       type: DataTypes.TEXT,
