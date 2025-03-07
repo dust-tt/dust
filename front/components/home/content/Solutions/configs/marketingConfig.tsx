@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Create compelling social media copy",
     "Monitor industry and competitor news",
   ],
-  image: "/static/landing/marketing/crossMedia.png",
+  image: "/static/landing/marketing/crossmedia.png",
 };
 
 export const Hero: HeroProps = {
@@ -135,19 +135,19 @@ export const UseCases: UseCaseProps = {
       title: "Content optimization",
       content:
         "Transform raw content into polished, SEO-optimized pieces that align with brand guidelines.",
-      images: ["/static/landing/marketing/contentOptimizer.png"],
+      images: ["/static/landing/marketing/contentoptimizer.png"],
     },
     {
       title: "Social media cross-posting",
       content:
         "Create engaging UX and social media content that consistently reflects your brand identity.",
-      images: ["/static/landing/marketing/crossMedia.png"],
+      images: ["/static/landing/marketing/crossmedia.png"],
     },
     {
       title: "Market intelligence",
       content:
         "Monitor market movements and competitor activities to inform your content strategy and battle cards.",
-      images: ["/static/landing/marketing/aiNewsletter.png"],
+      images: ["/static/landing/marketing/ainewsletter.png"],
     },
   ],
 };

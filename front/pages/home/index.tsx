@@ -1,16 +1,11 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
-import React from "react";
 
 import { BlogSection } from "@app/components/home/content/Product/BlogSection";
-// import { CapabilitySection } from "@app/components/home/content/Product/CapabilitySection";
-// import { DifferentiationSection } from "@app/components/home/content/Product/DifferentiationSection";
 import { FutureSection } from "@app/components/home/content/Product/FutureSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import { VerticalSection } from "@app/components/home/content/Product/VerticalSection";
-// import { SecuritySection } from "@app/components/home/content/Product/SecuritySection";
-// import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
@@ -45,8 +40,6 @@ export function Landing() {
       />
       <VerticalSection />
       <FutureSection />
-      {/* <DifferentiationSection /> */}
-      {/* <CapabilitySection /> */}
       <DemoVideoSection
         demoVideo={DemoVideo}
         fromColor="from-sky-200"

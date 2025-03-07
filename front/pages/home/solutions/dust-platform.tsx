@@ -1,10 +1,12 @@
-import { Button, Div3D, Hover3D } from "@dust-tt/sparkle";
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import type { ReactElement } from "react";
 
-import {
-  HeaderContentBlock,
-  ImgBlock,
-} from "@app/components/home/ContentBlocks";
+import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
+import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
+import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
+import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -23,56 +25,31 @@ export async function getServerSideProps() {
   };
 }
 
+export const DemoVideo: DemoVideoProps = {
+  sectionTitle: "Dust in motion",
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/3ej9a2ruip?web_component=true&seo=true",
+};
+
 export default function DustPlatform() {
   return (
     <>
-      <HeaderContentBlock
-        uptitle="Dust Platform"
-        title={<>For Developers</>}
-        from="from-amber-200"
-        to="to-amber-400"
-        subtitle={
-          <>
-            Build custom actions and&nbsp;application orchestration to&nbsp;fit
-            your team's exact&nbsp;needs.
-            <br />
-            <Button
-              variant="primary"
-              label="Go to Documentation"
-              size="md"
-              className="mt-8"
-              href="https://docs.dust.tt"
-              target="_blank"
-            />
-          </>
-        }
-      />
+      <PlatformIntroSection />
       <Grid>
         <div
           className={classNames(
             "col-span-12 grid grid-cols-1 gap-8",
-            "md:grid-cols-2",
-            "lg:col-span-10 lg:col-start-2"
+            "md:grid-cols-2"
+            // "lg:col-span-10 lg:col-start-1"
           )}
         >
           <ImgBlock
-            title={
-              <>
-                Dust Apps:
-                <br />
-                Expands your&nbsp;agents' capabilities
-              </>
-            }
+            title={<>Dust Apps: Expand your agents' capabilities</>}
             content={[
               <>
-                Orchestrate complex workflows and&nbsp;specific tasks
-                by&nbsp;calling models, reaching APIs, executing code,
-                or&nbsp;consulting Data&nbsp;Sources.
-              </>,
-              <>
-                Go beyond simple prompt/response interactions by&nbsp;enabling
-                a&nbsp;broader set of&nbsp;actions, chaining multiple models,
-                or&nbsp;even calling into&nbsp;your&nbsp;own infrastructure.
+                Orchestrate complex workflows by calling models, APIs, executing
+                code, or consulting data sources. Build custom actions, chain
+                models, or even call into your own infrastructure.
               </>,
             ]}
           >
@@ -96,22 +73,12 @@ export default function DustPlatform() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={
-              <>
-                Dust API:
-                <br />
-                Use Dust and&nbsp;manage your&nbsp;Data programmatically
-              </>
-            }
+            title={<>Dust API: Integrate Dust across your tools</>}
             content={[
               <>
-                Dust's API enables programmatic interactions with all
-                of&nbsp;Dust including Data Sources and&nbsp;agents
-                for&nbsp;advanced use&nbsp;cases.
-              </>,
-              <>
-                Use Dust on&nbsp;your&nbsp;terms and&nbsp;on the&nbsp;product
-                surfaces of&nbsp;your&nbsp;choice.
+                Access Dust's capabilities through a developer API to manage
+                agents and data sources programmatically. Use Dust on your terms
+                and on the product surfaces of your choice.
               </>,
             ]}
           >
@@ -133,6 +100,40 @@ export default function DustPlatform() {
           </ImgBlock>
         </div>
       </Grid>
+      <ExtensibilitySection page="platform" />
+      <DemoVideoSection
+        demoVideo={DemoVideo}
+        fromColor="from-sky-200"
+        toColor="to-sky-500"
+      />
+      <QuoteSection
+        quote="Dust functions as a 'meta-platform.' Its aggregation approach offers flexibility, allowing us to leverage multiple data sources across tools and avoid being locked into specific tools or vertical ecosystems."
+        name="Charles Gorintin"
+        title="CTO at Alan"
+        logo="/static/landing/logos/alan.png"
+      />
+      <div
+        className={classNames(
+          "col-span-12 flex flex-col items-center",
+          "lg:col-span-12 lg:col-start-1",
+          "xl:col-span-10 xl:col-start-2"
+        )}
+      >
+        <div className="mt-4 flex justify-center gap-4">
+          <Link href="home/contact" shallow={true}>
+            <Button variant="outline" size="md" label="Request a demo" />
+          </Link>
+
+          <Link href="home/pricing" shallow={true}>
+            <Button
+              variant="highlight"
+              size="md"
+              label="Try Dust now"
+              icon={RocketIcon}
+            />
+          </Link>
+        </div>
+      </div>
     </>
   );
 }
