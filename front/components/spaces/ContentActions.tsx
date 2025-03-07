@@ -203,6 +203,9 @@ export const getMenuItems = (
         setQueryParam(router, DocumentDeletionKey, "true");
         setQueryParam(router, "contentNodeId", contentNode.internalId);
         setQueryParam(router, "contentNodeName", contentNode.title);
+        if (onOpenDocument) {
+          onOpenDocument(contentNode);
+        }
       },
       variant: "warning",
     });

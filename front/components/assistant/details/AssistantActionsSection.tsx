@@ -55,8 +55,14 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { canBeExpanded, getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { useDataSourceViewContentNodes, useDataSourceViews } from "@app/lib/swr/data_source_views";
+import {
+  canBeExpanded,
+  getDisplayNameForDataSource,
+} from "@app/lib/data_sources";
+import {
+  useDataSourceViewContentNodes,
+  useDataSourceViews,
+} from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 
