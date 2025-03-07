@@ -138,7 +138,7 @@ export async function updateAllParentsFields(
 
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
-  const pageIdsToUpdate = await getPagesToUpdate(
+  const pageAndDatabaseIdsToUpdate = await getPagesAndDatabasesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
     connectorId,
@@ -148,9 +148,9 @@ export async function updateAllParentsFields(
   logger.info(
     {
       connectorId,
-      pageIdsToUpdateCount: pageIdsToUpdate.size,
+      pageIdsToUpdateCount: pageAndDatabaseIdsToUpdate.size,
     },
-    "Updating parents field for pages"
+    "Updating parents field for pages and databases"
   );
 
   // Update everybody's parents field. Use of a memoization key to control
@@ -158,12 +158,12 @@ export async function updateAllParentsFields(
   // can be desired or not depending on the use case
   const q = new PQueue({ concurrency: 16 });
   const promises: Promise<void>[] = [];
-  for (const pageId of pageIdsToUpdate) {
+  for (const pageOrDbId of pageAndDatabaseIdsToUpdate) {
     promises.push(
       q.add(async () => {
         const pageOrDbIds = await getParents(
           connectorId,
-          pageId,
+          pageOrDbId,
           [],
           false,
           memoizationKey
@@ -171,15 +171,26 @@ export async function updateAllParentsFields(
 
         const parents = pageOrDbIds.map((id) => nodeIdFromNotionId(id));
         if (parents.length === 1) {
-          const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
+          const page = await getNotionPageFromConnectorsDb(
+            connectorId,
+            pageOrDbId
+          );
+          const database = await getNotionDatabaseFromConnectorsDb(
+            connectorId,
+            pageOrDbId
+          );
           logger.warn(
-            { parents, parentType: page?.parentType, parentId: page?.parentId },
-            "notionUpdateAllParentsFields: Page has no parent."
+            {
+              parents,
+              parentType: page?.parentType ?? database?.parentType,
+              parentId: page?.parentId ?? database?.parentId,
+            },
+            "notionUpdateAllParentsFields: Page or database has no parent."
           );
         }
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
-          documentId: nodeIdFromNotionId(pageId),
+          documentId: nodeIdFromNotionId(pageOrDbId),
           parents,
           parentId: parents[1] || null,
         });
@@ -191,28 +202,26 @@ export async function updateAllParentsFields(
   }
 
   await Promise.all(promises);
-  return pageIdsToUpdate.size;
+  return pageAndDatabaseIdsToUpdate.size;
 }
 
-/**  Get ids of all pages whose parents field should be updated: initial pages in
- * pageOrDbs, and all the descendants of pageOrDbs that are pages (including
+/**  Get ids of all pages & databases whose parents field should be updated: initial pages in
+ * pageOrDbs, and all the descendants of pageOrDbs that are pages or databases (including
  * children of databases)
- *
- * Note: databases are not stored in the Datasource, so they don't need to be
- * updated
  */
-async function getPagesToUpdate(
+async function getPagesAndDatabasesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
   connectorId: ModelId,
   onProgress?: () => Promise<void>
 ): Promise<Set<string>> {
-  const pageIdsToUpdate: Set<string> = new Set([
+  const pageAndDataBaseIdsToUpdate: Set<string> = new Set([
     ...createdOrMovedNotionPageIds,
+    ...createdOrMovedNotionDatabaseIds,
   ]);
 
   // we need to look at all descendants of these objects, and add
-  // those that are pages to pageIdsToUpdate
+  // those that are pages to pageAndDataBaseIdsToUpdate
   const toProcess = new Set([
     ...createdOrMovedNotionPageIds,
     ...createdOrMovedNotionDatabaseIds,
@@ -233,33 +242,23 @@ async function getPagesToUpdate(
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 
-    const pageChildren = await getPageChildrenOf(
-      connectorId,
-      pageOrDbIdToProcess
-    );
+    const [pageChildren, databaseChildren] = await Promise.all([
+      getPageChildrenOf(connectorId, pageOrDbIdToProcess),
+      getDatabaseChildrenOf(connectorId, pageOrDbIdToProcess),
+    ]);
 
-    // add page children to pageIdsToUpdate
-    for (const child of pageChildren) {
-      const childId = notionPageOrDbId(child);
-      pageIdsToUpdate.add(childId);
-    }
-
-    const databaseChildren = await getDatabaseChildrenOf(
-      connectorId,
-      pageOrDbIdToProcess
-    );
-
-    // add all page and DB children to toProcess
+    // add all page and DB children to pageIdsToUpdate & toProcess
     for (const child of [...pageChildren, ...databaseChildren]) {
       if (visited.has(notionPageOrDbId(child))) {
         continue;
       }
       const childId = notionPageOrDbId(child);
+      pageAndDataBaseIdsToUpdate.add(childId);
       toProcess.add(childId);
     }
   }
 
-  return pageIdsToUpdate;
+  return pageAndDataBaseIdsToUpdate;
 }
 
 function notionPageOrDbId(pageOrDb: NotionPage | NotionDatabase): string {
