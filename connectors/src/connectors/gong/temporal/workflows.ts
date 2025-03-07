@@ -63,7 +63,7 @@ export async function gongSyncWorkflow({
   });
 }
 
-async function gongSyncTranscriptsWorkflow({
+export async function gongSyncTranscriptsWorkflow({
   connectorId,
   forceResync,
 }: {
