@@ -1,5 +1,4 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
@@ -43,13 +42,13 @@ export function FutureSection() {
               className={classNames("relative")}
             >
               <Div3D depth={20}>
-                <img src="/static/landing/connect/connect1.png" />
+                <img src="/static/landing/connect/cloud1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
+                <img src="/static/landing/connect/cloud2.png" />
               </Div3D>
               <Div3D depth={-20} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
+                <img src="/static/landing/connect/cloud3.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
