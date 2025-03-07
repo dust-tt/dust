@@ -29,7 +29,7 @@ export const syncAppsPlugin = createPlugin({
 
     return new Ok({
       display: "json",
-      value: { importedApp: result.value },
+      value: result.value,
     });
   },
 });
