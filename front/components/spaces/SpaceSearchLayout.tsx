@@ -180,6 +180,7 @@ function BackendSearch({
   // Transition state.
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
+  const [searchHitCount, setSearchHitCount] = React.useState(0);
 
   const {
     cursorPagination,
@@ -264,6 +265,16 @@ function BackendSearch({
     }
   }, [shouldShowSearchResults, showSearch]);
 
+  React.useEffect(() => {
+    if (
+      totalNodesCount !== undefined &&
+      !isSearchValidating &&
+      !isSearchLoading
+    ) {
+      setSearchHitCount(totalNodesCount);
+    }
+  }, [isSearchLoading, isSearchValidating, totalNodesCount]);
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
@@ -308,14 +319,14 @@ function BackendSearch({
         {showSearch ? (
           <div className="flex w-full flex-col gap-2">
             <div className="text-end text-sm text-muted-foreground">
-              Showing {searchResults.length} of {totalNodesCount} results
+              Showing {searchResults.length} of {searchHitCount} results
             </div>
             <SearchResultsTable
               searchResultNodes={searchResults}
               category={category}
               isSearchValidating={isSearchValidating}
               owner={owner}
-              totalNodesCount={totalNodesCount}
+              totalNodesCount={searchHitCount}
               canReadInSpace={canReadInSpace}
               canWriteInSpace={canWriteInSpace}
               onLoadMore={handleLoadMore}
