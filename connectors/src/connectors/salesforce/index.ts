@@ -214,8 +214,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    logger.info({ fromTs }, "To be implemented");
-    throw new Error("Method sync not implemented.");
+    return launchSalesforceSyncWorkflow(this.connectorId);
   }
 
   /**
