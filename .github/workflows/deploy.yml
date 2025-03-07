@@ -17,6 +17,7 @@ on:
         description: "Name of the component to deploy"
         required: true
         type: choice
+        default:
         options:
           - connectors
           - core
