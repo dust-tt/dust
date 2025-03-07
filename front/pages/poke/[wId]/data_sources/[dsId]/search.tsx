@@ -264,6 +264,13 @@ export default function DataSourceView({
   );
 }
 
-DataSourceView.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+DataSourceView.getLayout = (
+  page: ReactElement,
+  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+) => {
+  return (
+    <PokeLayout title={`${owner.name} - Search ${dataSource.name}`}>
+      {page}
+    </PokeLayout>
+  );
 };

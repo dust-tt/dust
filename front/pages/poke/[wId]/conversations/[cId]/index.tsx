@@ -3,6 +3,7 @@ import type {
   ContentFragmentType,
   PokeAgentMessageType,
   UserMessageType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
@@ -17,6 +18,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeConversation } from "@app/poke/swr";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
+  workspace: WorkspaceType;
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
@@ -56,6 +58,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       conversationId: cId,
       conversationDataSourceId: conversationDataSource?.sId ?? null,
       multiActionsApp,
+      workspace: auth.getNonNullableWorkspace(),
     },
   };
 });
@@ -171,6 +174,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
 
 const ConversationPage = ({
   workspaceId,
+  workspace,
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
@@ -181,6 +185,12 @@ const ConversationPage = ({
     <>
       {conversation && (
         <div className="mx-auto max-w-4xl pt-8">
+          <h3 className="text-xl font-bold">
+            Conversation of workspace:{" "}
+            <a href={`/poke/${workspaceId}`} className="text-action-500">
+              {workspace.name}
+            </a>
+          </h3>
           <Page.Vertical align="stretch">
             <div className="flex space-x-2">
               <Button
@@ -243,8 +253,13 @@ const ConversationPage = ({
   );
 };
 
-ConversationPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+ConversationPage.getLayout = (
+  page: ReactElement,
+  { workspace }: { workspace: WorkspaceType }
+) => {
+  return (
+    <PokeLayout title={`${workspace.name} - Conversation`}>{page}</PokeLayout>
+  );
 };
 
 export default ConversationPage;

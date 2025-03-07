@@ -2,6 +2,7 @@ import type {
   LightWorkspaceType,
   PokeSpaceType,
   UserTypeWithWorkspaces,
+  WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -75,23 +76,36 @@ export default function SpacePage({
   space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="flex flex-row gap-x-6">
-      <ViewSpaceViewTable space={space} />
-      <div className="flex grow flex-col">
-        <MembersDataTable members={members} owner={owner} readonly />
-        <PluginList
-          pluginResourceTarget={{
-            resourceId: space.sId,
-            resourceType: "spaces",
-            workspace: owner,
-          }}
-        />
-        <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
+    <>
+      <h3 className="text-xl font-bold">
+        Space: {space.name} ({space.kind}) of workspace:{" "}
+        <a href={`/poke/${owner.sId}`} className="text-action-500">
+          {owner.name}
+        </a>
+      </h3>
+      <div className="flex flex-row gap-x-6">
+        <ViewSpaceViewTable space={space} />
+        <div className="flex grow flex-col">
+          <MembersDataTable members={members} owner={owner} readonly />
+          <PluginList
+            pluginResourceTarget={{
+              resourceId: space.sId,
+              resourceType: "spaces",
+              workspace: owner,
+            }}
+          />
+          <DataSourceViewsDataTable owner={owner} spaceId={space.sId} />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
-SpacePage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+SpacePage.getLayout = (
+  page: ReactElement,
+  { owner, space }: { owner: WorkspaceType; space: PokeSpaceType }
+) => {
+  return (
+    <PokeLayout title={`${owner.name} - ${space.name}`}>{page}</PokeLayout>
+  );
 };

@@ -127,5 +127,5 @@ export default function DataSourceUpsert({
 }
 
 DataSourceUpsert.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="View Document">{page}</PokeLayout>;
 };

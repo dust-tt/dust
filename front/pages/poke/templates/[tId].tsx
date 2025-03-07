@@ -759,8 +759,11 @@ function TemplatesPage({
   );
 }
 
-TemplatesPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+TemplatesPage.getLayout = (
+  page: ReactElement,
+  { templateId }: { templateId: string }
+) => {
+  return <PokeLayout title={`Templates ${templateId}`}>{page}</PokeLayout>;
 };
 
 export default TemplatesPage;
