@@ -49,9 +49,6 @@ export function UbiquitySection() {
               <Div3D depth={15} className="absolute top-0">
                 <img src="/static/landing/extension/extension3.png" />
               </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/extension/extension4.png" />
-              </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
@@ -86,7 +83,7 @@ export function UbiquitySection() {
             title={<>Add to workflows</>}
             content={
               <>
-                Trigger AI actions via Zapier, Make or Slack workflows to
+                Trigger AI actions via Zapier, Make, n8n or Slack workflows to
                 automate tasks end-to-end.
               </>
             }
@@ -97,52 +94,10 @@ export function UbiquitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/sales/sales1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/sales/sales2.png" />
-              </Div3D>
-              <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/sales/sales3.png" />
-              </Div3D>
-              <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/sales/sales4.png" />
+                <img src="/static/landing/zapier/zapier.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
-          {/* <ImgBlock
-            title={<>A modular, extensible&nbsp;platform.</>}
-            content={
-              <>
-                Developer friendly&nbsp;platform designed to&nbsp;build custom
-                actions and&nbsp;application orchestration to&nbsp;fit your
-                team’s&nbsp;exact&nbsp;needs.{" "}
-                <Link href="/home/solutions/dust-platform" shallow={true}>
-                  <A variant="primary">More about Dust's&nbsp;Developer Platform</A>
-                </Link>
-                .
-              </>
-            }
-          >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
-              </Div3D>
-            </Hover3D>
-          </ImgBlock> */}
         </div>
       </Grid>
     </>
