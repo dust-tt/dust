@@ -20,7 +20,7 @@ export default function DataSourceViewDocumentModal({
 }: {
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
-  onClose: () => void;
+  onClose?: () => void;
 }) {
   const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
   const isOpen = params[DocumentViewRawContentKey].value === "true";
@@ -30,7 +30,7 @@ export default function DataSourceViewDocumentModal({
       documentId: params.documentId.value ?? null,
       dataSourceView,
       owner,
-      disabled: !params.documentId.value,
+      disabled: !params.documentId.value || !dataSourceView,
     });
 
   const { title, text } = useMemo(() => {

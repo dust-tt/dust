@@ -1,11 +1,5 @@
 import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  cn,
-  ScrollableDataTable,
-  SearchInput,
-  useHashParam,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { cn, ScrollableDataTable, SearchInput, useHashParam, useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   ContentNodesViewType,
@@ -15,13 +9,11 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import {
-  DocumentViewRawContentKey,
-  MIN_SEARCH_QUERY_SIZE,
-} from "@dust-tt/types";
+import { DocumentViewRawContentKey, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
@@ -38,7 +30,6 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
-import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 
 const DEFAULT_VIEW_TYPE = "all";
 
