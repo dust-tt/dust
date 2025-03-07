@@ -3727,13 +3727,14 @@ async fn databases_query_run(
                         "Failed to run query",
                         Some(e.into()),
                     ),
-                    Ok((results, schema)) => (
+                    Ok((results, schema, query)) => (
                         StatusCode::OK,
                         Json(APIResponse {
                             error: None,
                             response: Some(json!({
                                 "schema": schema,
                                 "results": results,
+                                "query": query,
                             })),
                         }),
                     ),

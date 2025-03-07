@@ -190,7 +190,7 @@ impl SalesforceRemoteDatabase {
     async fn execute_query(
         &self,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let mut all_records = Vec::new();
         let mut next_url = None;
         let mut query_result_rows = 0;
@@ -282,7 +282,7 @@ impl SalesforceRemoteDatabase {
         // For now, return an empty schema since Salesforce's schema is dynamic
         let schema = TableSchema::empty();
 
-        Ok((all_records, schema))
+        Ok((all_records, schema, query.to_string()))
     }
 
     /// Describes a Salesforce object and returns its schema
@@ -630,7 +630,7 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Parse the JSON query
         let parsed_query = serde_json::from_str::<StructuredQuery>(query).map_err(|e| {
             QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e))

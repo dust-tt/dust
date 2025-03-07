@@ -222,7 +222,7 @@ impl SnowflakeRemoteDatabase {
         &self,
         session: &SnowflakeSession,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
             Err(snowflake_connector_rs::Error::TimedOut) => Err(
@@ -271,7 +271,7 @@ impl SnowflakeRemoteDatabase {
 
         let schema = TableSchema::empty();
 
-        Ok((all_rows, schema))
+        Ok((all_rows, schema, query.to_string()))
     }
 
     async fn get_query_plan(
@@ -280,7 +280,7 @@ impl SnowflakeRemoteDatabase {
         query: &str,
     ) -> Result<Vec<SnowflakeQueryPlanEntry>, QueryDatabaseError> {
         let plan_query = format!("EXPLAIN {}", query);
-        let (res, _) = self.execute_query(session, &plan_query).await?;
+        let (res, _, _) = self.execute_query(session, &plan_query).await?;
 
         Ok(res
             .into_iter()
@@ -351,7 +351,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let session = self.get_session().await?;
 
         // Authorize the query based on allowed tables, query plan,
@@ -382,7 +382,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         results
             .into_iter()
             .zip(opaque_ids.into_iter())
-            .map(|((rows, _), opaque_id)| {
+            .map(|((rows, _, _), opaque_id)| {
                 let raw_columns = match rows.len() {
                     0 => Err(anyhow!("No rows returned for table {}", opaque_id)),
                     _ => Ok(rows),
