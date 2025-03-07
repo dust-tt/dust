@@ -29,7 +29,7 @@ pub trait RemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError>;
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError>;
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<TableSchema>>;
 }
 

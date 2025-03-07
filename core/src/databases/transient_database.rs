@@ -68,7 +68,7 @@ pub async fn execute_query_on_transient_database(
     tables: &Vec<LocalTable>,
     store: Box<dyn Store + Sync + Send>,
     query: &str,
-) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
     let table_ids_hash = tables
         .iter()
         .map(|lt| lt.table.unique_id())
@@ -121,7 +121,7 @@ pub async fn execute_query_on_transient_database(
         ))?,
     };
 
-    Ok((result_rows, table_schema))
+    Ok((result_rows, table_schema, query.to_string()))
 }
 
 pub fn get_transient_database_unique_table_names(
