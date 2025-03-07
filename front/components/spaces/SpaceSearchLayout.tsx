@@ -15,7 +15,10 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import {
+  DocumentViewRawContentKey,
+  MIN_SEARCH_QUERY_SIZE,
+} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -35,6 +38,7 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -159,6 +163,30 @@ function BackendSearch({
 }: FullBackendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
+  const { setParams } = useQueryParams([
+    DocumentViewRawContentKey,
+    "documentId",
+  ]);
+
+  const [searchResultDataSourceView, setSearchResultDataSourceView] =
+    React.useState<DataSourceViewType | null>(null);
+  const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
+
+  // Handler to open document from search results
+  const handleOpenDocument = React.useCallback(
+    (node: DataSourceViewContentNode) => {
+      setSearchResultDataSourceView(node.dataSourceView);
+      setParams({
+        documentId: node.internalId,
+        [DocumentViewRawContentKey]: "true",
+      });
+    },
+    [setParams]
+  );
+  // Clear search result dataSourceView when modal closes
+  const handleCloseModal = React.useCallback(() => {
+    setSearchResultDataSourceView(null);
+  }, []);
 
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
@@ -325,12 +353,18 @@ function BackendSearch({
               canWriteInSpace={canWriteInSpace}
               onLoadMore={handleLoadMore}
               isLoading={isSearchLoading}
+              onOpenDocument={handleOpenDocument}
             />
           </div>
         ) : (
           children
         )}
       </div>
+      <DataSourceViewDocumentModal
+        owner={owner}
+        dataSourceView={effectiveDataSourceView}
+        onClose={handleCloseModal}
+      />
     </SpaceSearchContext.Provider>
   );
 }
@@ -400,6 +434,7 @@ interface SearchResultsTableProps {
   totalNodesCount: number;
   onLoadMore: () => void;
   isLoading: boolean;
+  onOpenDocument?: (node: DataSourceViewContentNode) => void;
 }
 
 function SearchResultsTable({
@@ -412,6 +447,7 @@ function SearchResultsTable({
   totalNodesCount,
   onLoadMore,
   isLoading,
+  onOpenDocument,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -520,7 +556,8 @@ function SearchResultsTable({
           spaces,
           dataSourceViews,
           addToSpace,
-          router
+          router,
+          onOpenDocument
         ),
       };
     });
@@ -530,6 +567,7 @@ function SearchResultsTable({
     canWriteInSpace,
     category,
     dataSourceViews,
+    onOpenDocument,
     owner.sId,
     router,
     searchResultNodes,

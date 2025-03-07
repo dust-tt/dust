@@ -16,9 +16,11 @@ import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documen
 export default function DataSourceViewDocumentModal({
   dataSourceView,
   owner,
+  onClose,
 }: {
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
+  onClose: () => void;
 }) {
   const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
   const isOpen = params[DocumentViewRawContentKey].value === "true";
@@ -46,11 +48,14 @@ export default function DataSourceViewDocumentModal({
     };
   }, [document, params.documentId.value]);
 
-  const onClose = () => {
+  const onSheetClose = () => {
     params.setParams({
       documentId: undefined,
       [DocumentViewRawContentKey]: undefined,
     });
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (
@@ -58,7 +63,7 @@ export default function DataSourceViewDocumentModal({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          onSheetClose();
         }
       }}
     >
