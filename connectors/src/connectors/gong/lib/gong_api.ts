@@ -238,7 +238,7 @@ export class GongClient {
       );
       return {
         transcripts: transcripts.callTranscripts,
-        nextPageCursor: transcripts.records.cursor,
+        nextPageCursor: transcripts.records.cursor ?? null,
       };
     } catch (err) {
       if (isNotFoundError(err)) {
