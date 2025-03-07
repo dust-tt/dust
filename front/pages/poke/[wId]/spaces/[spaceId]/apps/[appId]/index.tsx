@@ -4,6 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ScrollArea,
 } from "@dust-tt/sparkle";
 import type {
   AppType,
@@ -186,25 +187,27 @@ function AppSpecification({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Current"
-                  onClick={() => {
-                    void router.push(`${pathname}?hash=`);
-                  }}
-                />
-                {specificationHashes.map((hash) => (
+                <ScrollArea className="h-96">
                   <DropdownMenuItem
-                    label={
-                      registryApp?.app?.appHash === hash
-                        ? `${hash} [registry]`
-                        : hash
-                    }
-                    key={hash}
+                    label="Current"
                     onClick={() => {
-                      void router.push(`${pathname}?hash=${hash}`);
+                      void router.push(`${pathname}?hash=`);
                     }}
                   />
-                ))}
+                  {specificationHashes.map((hash) => (
+                    <DropdownMenuItem
+                      label={
+                        registryApp?.app?.appHash === hash
+                          ? `${hash} [registry]`
+                          : hash
+                      }
+                      key={hash}
+                      onClick={() => {
+                        void router.push(`${pathname}?hash=${hash}`);
+                      }}
+                    />
+                  ))}
+                </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
