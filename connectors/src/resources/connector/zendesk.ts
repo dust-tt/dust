@@ -1,8 +1,8 @@
 import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
-import type { ZendeskConfiguration } from "@connectors/lib/models/zendesk";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import type {
   ConnectorProviderConfigurationType,
   ConnectorProviderModelResourceMapping,
@@ -23,7 +23,7 @@ export class ZendeskConnectorStrategy
 {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<ZendeskConfiguration>,
+    blob: WithCreationAttributes<ZendeskConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["zendesk"] | null> {
     await ZendeskConfigurationResource.makeNew({
@@ -45,7 +45,7 @@ export class ZendeskConnectorStrategy
       transaction
     );
     await ZendeskBrandResource.deleteByConnectorId(connector.id, transaction);
-    await ZendeskTimestampCursor.destroy({
+    await ZendeskTimestampCursorModel.destroy({
       where: { connectorId: connector.id },
       transaction,
     });

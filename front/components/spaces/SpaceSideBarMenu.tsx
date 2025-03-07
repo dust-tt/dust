@@ -43,10 +43,6 @@ import {
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
 
-// TODO(nodes-core): remove this upon project cleanup
-// copied from lib/api/data_source_view.ts
-const DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT = 10_000;
-
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
   isAdmin: boolean;
@@ -453,16 +449,17 @@ const SpaceDataSourceViewItem = ({
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const { isNodesLoading, nodes } = useDataSourceViewContentNodes({
-    dataSourceView: item,
-    owner,
-    parentId: node?.internalId,
-    viewType: "all",
-    disabled: !isExpanded,
-    swrOptions: {
-      revalidateOnFocus: false,
-    },
-  });
+  const { isNodesLoading, nodes, totalNodesCountIsAccurate, totalNodesCount } =
+    useDataSourceViewContentNodes({
+      dataSourceView: item,
+      owner,
+      parentId: node?.internalId,
+      viewType: "all",
+      disabled: !isExpanded,
+      swrOptions: {
+        revalidateOnFocus: false,
+      },
+    });
 
   const basePath = `/w/${owner.sId}/spaces/${space.sId}/categories/${item.category}/data_source_views/${item.sId}`;
 
@@ -504,18 +501,7 @@ const SpaceDataSourceViewItem = ({
 
   const isEmpty = isExpanded && !isNodesLoading && nodes.length === 0;
   const expandableNodes = nodes.filter((node) => node.expandable);
-  const notExpandableNodes = nodes.filter((node) => !node.expandable);
-  const notExpandableNodesLabel =
-    notExpandableNodes.length === 1 ? "item" : "items";
-
-  // TODO(nodes-core): remove this upon project cleanup
-  // if looking at a static datasource view with more than the pagination limit,
-  // show a ">" to indicate that there are more items
-  const staticDsPlusIfMoreThanLimit =
-    item.category === "folder" &&
-    nodes.length >= DEFAULT_STATIC_DATA_SOURCE_PAGINATION_LIMIT
-      ? "+"
-      : "";
+  const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
 
   return (
     <Tree.Item
@@ -543,13 +529,9 @@ const SpaceDataSourceViewItem = ({
               node={node}
             />
           ))}
-          {notExpandableNodes.length > 0 && (
+          {hiddenNodesCount > 0 && (
             <Tree.Empty
-              label={
-                expandableNodes.length
-                  ? `and ${notExpandableNodes.length} ${notExpandableNodesLabel}`
-                  : `${notExpandableNodes.length}${staticDsPlusIfMoreThanLimit} ${notExpandableNodesLabel}`
-              }
+              label={`${expandableNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${totalNodesCountIsAccurate ? "" : "+"} item${hiddenNodesCount > 1 ? "s" : ""}`}
               onItemClick={async () => {
                 await setNavigationSelection({ lastSpaceId: space.sId });
                 void router.push(dataSourceViewPath);

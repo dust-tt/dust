@@ -1,23 +1,17 @@
 use crate::{
     oauth::{
+        client::OauthClient,
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
         },
+        credential::CredentialProvider,
         providers::utils::execute_request,
     },
     utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use lazy_static::lazy_static;
 use serde_json::json;
-use std::env;
-
-lazy_static! {
-    static ref OAUTH_SALESFORCE_CLIENT_ID: String = env::var("OAUTH_SALESFORCE_CLIENT_ID").unwrap();
-    static ref OAUTH_SALESFORCE_CLIENT_SECRET: String =
-        env::var("OAUTH_SALESFORCE_CLIENT_SECRET").unwrap();
-}
 
 pub struct SalesforceConnectionProvider {}
 
@@ -25,11 +19,42 @@ impl SalesforceConnectionProvider {
     pub fn new() -> Self {
         SalesforceConnectionProvider {}
     }
+
     pub fn get_instance_url(metadata: &serde_json::Value) -> Result<String> {
         match metadata["instance_url"].as_str() {
             Some(url) => Ok(url.to_string()),
             None => Err(anyhow!("Salesforce instance URL is missing")),
         }
+    }
+
+    /// Gets the Salesforce credentials (client_id and client_secret) from the related credential
+    pub async fn get_credentials(connection: &Connection) -> Result<(String, String)> {
+        // Get credential ID from connection
+        let credential_id = connection
+            .related_credential_id()
+            .ok_or_else(|| anyhow!("Missing related_credential_id for Salesforce connection"))?;
+
+        // Fetch credential
+        let (provider, content) = OauthClient::get_credential(&credential_id).await?;
+        if provider != CredentialProvider::Salesforce {
+            return Err(anyhow!(
+                "Invalid credential provider: {:?}, expected Salesforce",
+                provider
+            ));
+        }
+
+        // Extract client ID and secret
+        let client_id = content
+            .get("client_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_id in Salesforce credential"))?;
+
+        let client_secret = content
+            .get("client_secret")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_secret in Salesforce credential"))?;
+
+        Ok((client_id.to_string(), client_secret.to_string()))
     }
 }
 
@@ -51,10 +76,13 @@ impl Provider for SalesforceConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `code_verifier` in Salesforce connection"))?;
 
+        // Get Salesforce client_id and client_secret using the helper
+        let (client_id, client_secret) = Self::get_credentials(connection).await?;
+
         let body = json!({
             "grant_type": "authorization_code",
-            "client_id": *OAUTH_SALESFORCE_CLIENT_ID,
-            "client_secret": *OAUTH_SALESFORCE_CLIENT_SECRET,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "code": code,
             "redirect_uri": redirect_uri,
             "code_verifier": code_verifier,
@@ -94,10 +122,12 @@ impl Provider for SalesforceConnectionProvider {
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Salesforce connection"))?;
 
+        let (client_id, client_secret) = Self::get_credentials(connection).await?;
+
         let body = json!({
             "grant_type": "refresh_token",
-            "client_id": *OAUTH_SALESFORCE_CLIENT_ID,
-            "client_secret": *OAUTH_SALESFORCE_CLIENT_SECRET,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "refresh_token": refresh_token,
         });
 

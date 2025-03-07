@@ -82,6 +82,53 @@ function makeCoreDataSourceViewFilter(
 
 const ROOT_PARENT_ID = "root";
 
+export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  {
+    viewType,
+    pagination,
+  }: {
+    viewType: Exclude<ContentNodesViewType, "all">;
+    pagination?: CursorPaginationParams;
+  }
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
+
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_types: [viewType],
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
+  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
+  nextPageCursor = coreRes.value.next_page_cursor;
+
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+  }));
+
+  return new Ok({
+    nodes,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
+    nextPageCursor: nextPageCursor,
+  });
+}
+
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
@@ -124,35 +171,47 @@ export async function getContentNodesForDataSourceView(
   let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
   let resultNodes: CoreAPIContentNode[] = [];
-  const coreRes = await coreAPI.searchNodes({
-    filter: {
-      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
-      node_ids,
-      parent_id,
-    },
-    options: { limit, cursor: nextPageCursor ?? undefined },
-  });
+  let hitCount;
+  let hiddenNodesCount = 0;
+  let totalIsAccurate;
 
-  if (coreRes.isErr()) {
-    return new Err(new Error(coreRes.error.message));
-  }
+  do {
+    const coreRes = await coreAPI.searchNodes({
+      filter: {
+        data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+        node_ids,
+        parent_id,
+      },
+      options: {
+        // We limit the results to the remaining number of nodes
+        // we still need to make sure we get a correct nextPageCursor at the end of this loop.
+        limit: limit - resultNodes.length,
+        cursor: nextPageCursor ?? undefined,
+      },
+    });
 
-  const filteredNodes = removeCatchAllFoldersIfEmpty(
-    filterNodesByViewType(coreRes.value.nodes, viewType)
-  );
+    if (coreRes.isErr()) {
+      return new Err(new Error(coreRes.error.message));
+    }
 
-  resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
-  nextPageCursor = coreRes.value.next_page_cursor;
+    hitCount = coreRes.value.hit_count;
+    totalIsAccurate = coreRes.value.hit_count_is_accurate;
+    const filteredNodes = removeCatchAllFoldersIfEmpty(
+      filterNodesByViewType(coreRes.value.nodes, viewType)
+    );
+    hiddenNodesCount += coreRes.value.nodes.length - filteredNodes.length;
 
-  const nodes = resultNodes.map((node) =>
-    getContentNodeFromCoreNode(
+    resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
+    nextPageCursor = coreRes.value.next_page_cursor;
+  } while (resultNodes.length < limit && nextPageCursor);
+
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
       dataSourceView instanceof DataSourceViewResource
         ? dataSourceView.toJSON()
         : dataSourceView,
-      node,
-      viewType
-    )
-  );
+  }));
   const sortedNodes = !internalIds
     ? nodes
     : internalIds.flatMap((id) =>
@@ -161,8 +220,8 @@ export async function getContentNodesForDataSourceView(
 
   return new Ok({
     nodes: sortedNodes,
-    total: coreRes.value.hit_count,
-    totalIsAccurate: coreRes.value.hit_count_is_accurate,
+    total: hitCount - hiddenNodesCount, // Deducing the number of folders we hid from the total count.
+    totalIsAccurate,
     nextPageCursor: nextPageCursor,
   });
 }

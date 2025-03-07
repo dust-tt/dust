@@ -58,15 +58,30 @@ export class OAuthAPI {
     provider,
     metadata,
     migratedCredentials,
+    relatedCredential,
   }: {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
     migratedCredentials?: MigratedCredentialsType;
+    relatedCredential?: {
+      content: Record<string, unknown>;
+      metadata: {
+        workspace_id: string;
+        user_id: string;
+      };
+    };
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
     const body: {
       provider: OAuthProvider;
       metadata: Record<string, unknown> | null;
       migrated_credentials?: MigratedCredentialsType;
+      related_credential?: {
+        content: Record<string, unknown>;
+        metadata: {
+          workspace_id: string;
+          user_id: string;
+        };
+      };
     } = {
       provider,
       metadata,
@@ -74,6 +89,10 @@ export class OAuthAPI {
 
     if (migratedCredentials) {
       body.migrated_credentials = migratedCredentials;
+    }
+
+    if (relatedCredential) {
+      body.related_credential = relatedCredential;
     }
 
     const response = await this._fetchWithError(`${this._url}/connections`, {

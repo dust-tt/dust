@@ -23,6 +23,7 @@ import type {
 import {
   assertNever,
   defaultSelectionConfiguration,
+  MIN_SEARCH_QUERY_SIZE,
   removeNulls,
 } from "@dust-tt/types";
 import _ from "lodash";
@@ -38,6 +39,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
+  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -51,10 +53,8 @@ import {
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
-const MIN_SEARCH_QUERY_SIZE = 3;
 
 const getUseResourceHook =
   (
@@ -64,20 +64,24 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
-    const { nodes, isNodesLoading, isNodesError } = useContentNodes({
+    const {
+      nodes,
+      isNodesLoading,
+      isNodesError,
+      totalNodesCountIsAccurate,
+      totalNodesCount,
+    } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
     });
     return {
-      resources: nodes.map((n) => ({
-        ...n,
-        preventSelection:
-          n.preventSelection || (viewType === "table" && n.type !== "table"),
-      })),
+      resources: nodes,
+      totalResourceCount: totalNodesCount,
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
+      isResourcesTruncated: !totalNodesCountIsAccurate,
     };
   };
 
@@ -127,19 +131,15 @@ export function DataSourceViewsSelector({
   isRootSelectable,
   space,
 }: DataSourceViewsSelectorProps) {
-  // TODO(20250221, search-kb): remove this once the feature flag is enabled by default
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const searchFeatureFlag = featureFlags.includes("search_knowledge_builder");
-
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
   >();
   const [searchSpaceText, setSearchSpaceText] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
-    disabled: !searchFeatureFlag,
     includeDataSources: true,
     owner,
     search: debouncedSearch,
@@ -148,17 +148,18 @@ export function DataSourceViewsSelector({
   });
 
   useEffect(() => {
-    if (searchFeatureFlag) {
-      const timeout = setTimeout(() => {
-        setDebouncedSearch(
-          searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
-        );
-      }, 300);
-      return () => {
-        clearTimeout(timeout);
-      };
-    }
-  }, [searchSpaceText, searchFeatureFlag]);
+    setIsDebouncing(true);
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(
+        searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
+      );
+      setIsDebouncing(false);
+    }, 300);
+    return () => {
+      clearTimeout(timeout);
+      setIsDebouncing(false);
+    };
+  }, [searchSpaceText]);
 
   useEffect(() => {
     if (searchResult) {
@@ -232,7 +233,7 @@ export function DataSourceViewsSelector({
       (r) => r.internalId === item.internalId
     );
 
-    if (item.mimeType === "application/vnd.dust.datasource") {
+    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
       return {
         ...prevState,
         [dsv.sId]: {
@@ -270,59 +271,55 @@ export function DataSourceViewsSelector({
 
   return (
     <div>
-      {searchFeatureFlag && (
-        <SearchInputWithPopover
-          value={searchSpaceText}
-          onChange={setSearchSpaceText}
-          name="search-dsv"
-          open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSearchSpaceText("");
-            }
-          }}
-          isLoading={isSearchLoading}
-          items={searchResultNodes}
-          onItemSelect={(item) => {
-            setSearchResult(item);
+      <SearchInputWithPopover
+        value={searchSpaceText}
+        onChange={setSearchSpaceText}
+        name="search-dsv"
+        open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
+        onOpenChange={(open) => {
+          if (!open) {
             setSearchSpaceText("");
-            setSelectionConfigurations((prevState) =>
-              updateSelection(item, prevState)
-            );
-          }}
-          contentMessage={contentMessage}
-          renderItem={(item, selected) => {
-            return (
-              <div
-                className={cn(
-                  "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                  selected && "bg-structure-50 dark:bg-structure-50-night"
-                )}
-                onClick={() => {
-                  setSearchResult(item);
-                  setSearchSpaceText("");
-                  setSelectionConfigurations((prevState) =>
-                    updateSelection(item, prevState)
-                  );
-                }}
-              >
-                {getVisualForDataSourceViewContentNode(item)({
-                  className: "min-w-4",
-                })}
-                <span className="flex-shrink truncate text-sm">
-                  {item.title}
-                </span>
-                {item.parentTitle && (
-                  <div className="ml-auto flex-none text-sm text-slate-500">
-                    {getLocationForDataSourceViewContentNode(item)}
-                  </div>
-                )}
-              </div>
-            );
-          }}
-          noResults="No results found"
-        />
-      )}
+          }
+        }}
+        isLoading={isSearchLoading || isDebouncing}
+        items={searchResultNodes}
+        onItemSelect={(item) => {
+          setSearchResult(item);
+          setSearchSpaceText("");
+          setSelectionConfigurations((prevState) =>
+            updateSelection(item, prevState)
+          );
+        }}
+        contentMessage={contentMessage}
+        renderItem={(item, selected) => {
+          return (
+            <div
+              className={cn(
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                selected && "bg-structure-50 dark:bg-structure-50-night"
+              )}
+              onClick={() => {
+                setSearchResult(item);
+                setSearchSpaceText("");
+                setSelectionConfigurations((prevState) =>
+                  updateSelection(item, prevState)
+                );
+              }}
+            >
+              {getVisualForDataSourceViewContentNode(item)({
+                className: "min-w-4",
+              })}
+              <span className="flex-shrink truncate text-sm">{item.title}</span>
+              {item.parentTitle && (
+                <div className="ml-auto flex-none text-sm text-slate-500">
+                  {getLocationForDataSourceViewContentNode(item)}
+                </div>
+              )}
+            </div>
+          );
+        }}
+        noResults="No results found"
+      />
       <Tree
         isLoading={false}
         key={`dataSourceViewsSelector-${searchResult ? searchResult.internalId : ""}`}

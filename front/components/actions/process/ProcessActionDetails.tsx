@@ -1,7 +1,12 @@
 import type { GetContentToDownloadFunction } from "@dust-tt/sparkle";
-import { Chip, Collapsible, ScanIcon, Tooltip } from "@dust-tt/sparkle";
-import { CodeBlock } from "@dust-tt/sparkle";
-import { ContentBlockWrapper } from "@dust-tt/sparkle";
+import {
+  Chip,
+  CodeBlock,
+  CollapsibleComponent,
+  ContentBlockWrapper,
+  ScanIcon,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { ProcessActionType } from "@dust-tt/types";
 import { PROCESS_ACTION_TOP_K } from "@dust-tt/types";
 import { useMemo } from "react";
@@ -27,16 +32,16 @@ export function ProcessActionDetails({
           <ProcessActionQuery action={action} />
         </div>
         <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen }}
+            triggerProps={{}}
+            triggerChildren={
               <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 Results
               </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <ProcessActionOutputDetails action={action} />
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+            contentChildren={<ProcessActionOutputDetails action={action} />}
+          />
         </div>
       </div>
     </ActionDetailsWrapper>

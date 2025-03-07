@@ -19,9 +19,7 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "salesforce_feature",
   "advanced_notion_management",
-  "search_knowledge_builder",
   "attach_from_datasources",
-  "hybrid_events",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(

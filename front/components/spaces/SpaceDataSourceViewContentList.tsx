@@ -259,8 +259,7 @@ export const SpaceDataSourceViewContentList = ({
     [resetPagination, setViewType, viewType]
   );
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    useContext(SpaceSearchContext);
+  const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
   const columns = useMemo(
     () => getTableColumns(showSpaceUsage),
@@ -548,18 +547,16 @@ export const SpaceDataSourceViewContentList = ({
           dataSourceView={dataSourceView}
         />
       )}
-      {isManaged(dataSourceView.dataSource) &&
-        space.kind !== "system" &&
-        !isEmpty && (
-          <EditSpaceManagedDataSourcesViews
-            owner={owner}
-            space={space}
-            systemSpace={systemSpace}
-            isAdmin={isAdmin}
-            dataSourceView={dataSourceView}
-            onSelectedDataUpdated={onSelectedDataUpdated}
-          />
-        )}
+      {isManaged(dataSourceView.dataSource) && space.kind !== "system" && (
+        <EditSpaceManagedDataSourcesViews
+          owner={owner}
+          space={space}
+          systemSpace={systemSpace}
+          isAdmin={isAdmin}
+          dataSourceView={dataSourceView}
+          onSelectedDataUpdated={onSelectedDataUpdated}
+        />
+      )}
       {isManaged(dataSourceView.dataSource) &&
         connector &&
         !parentId &&
@@ -621,10 +618,6 @@ export const SpaceDataSourceViewContentList = ({
           <DataTable
             data={rows}
             columns={columns}
-            filter={dataSourceSearch}
-            filterColumn={
-              "title" // see todo above
-            }
             className="pb-4"
             totalRowCount={totalNodesCount}
             rowCountIsCapped={!totalNodesCountIsAccurate}

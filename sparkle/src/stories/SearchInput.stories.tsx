@@ -56,6 +56,7 @@ export const ExampleSearchInput: Story = {
     placeholder: "Search...",
     value: "",
     disabled: false,
+    onChange: () => console.log("hey"),
   },
   render: (args) => {
     const [value, setValue] = React.useState(args.value);

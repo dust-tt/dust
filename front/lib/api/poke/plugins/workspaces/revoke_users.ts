@@ -1,5 +1,4 @@
 import { concurrentExecutor, Err, Ok } from "@dust-tt/types";
-import assert from "assert";
 
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
@@ -20,9 +19,7 @@ export const revokeUsersPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, workspaceId, args) => {
-    assert(workspaceId, "workspaceId is required");
-
+  execute: async (auth, workspace, args) => {
     const userIds = args.userIds.trim();
     if (!userIds) {
       return new Err(new Error("userIds is required"));
@@ -72,7 +69,7 @@ export const revokeUsersPlugin = createPlugin({
 
     return new Ok({
       display: "text",
-      value: `Revoked ${userIdsArray.length} users from workspace ${workspaceId}.`,
+      value: `Revoked ${userIdsArray.length} users from workspace ${workspace?.sId}.`,
     });
   },
 });

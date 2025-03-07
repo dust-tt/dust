@@ -5,7 +5,7 @@ import type {
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -47,13 +47,14 @@ async function handler(
 
       const pagination = paginationRes.value;
 
-      const contentNodes = await getContentNodesForDataSourceView(
-        dataSourceView,
-        {
-          viewType: "table",
-          pagination,
-        }
-      );
+      const contentNodes =
+        await getFlattenedContentNodesOfViewTypeForDataSourceView(
+          dataSourceView,
+          {
+            viewType: "table",
+            pagination,
+          }
+        );
 
       if (contentNodes.isErr()) {
         return apiError(req, res, {

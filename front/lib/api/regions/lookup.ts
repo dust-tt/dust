@@ -3,9 +3,11 @@ import { Err, isAPIErrorResponse, Ok } from "@dust-tt/types";
 
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
+import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { getPendingMembershipInvitationWithWorkspaceForEmail } from "@app/lib/iam/invitations";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { Workspace } from "@app/lib/models/workspace";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
   UserLookupResponse,
@@ -41,6 +43,17 @@ export async function handleLookupWorkspace(workspaceLookup: {
   const workspace = await Workspace.findOne({
     where: { sId: workspaceLookup.workspace },
   });
+
+  // If workspace is done relocating, return null so users get created in new region.
+  if (
+    workspace &&
+    isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))
+  ) {
+    return {
+      workspace: null,
+    };
+  }
+
   return {
     workspace: workspace?.sId ? { sId: workspace.sId } : null,
   };

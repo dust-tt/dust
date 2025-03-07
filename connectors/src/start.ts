@@ -3,6 +3,7 @@ import minimist from "minimist";
 import { startServer } from "@connectors/api_server";
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
+import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
@@ -64,4 +65,7 @@ runBigQueryWorker().catch((err) =>
 );
 runSalesforceWorker().catch((err) =>
   logger.error(errorFromAny(err), "Error running salesforce worker")
+);
+runGongWorker().catch((err) =>
+  logger.error(errorFromAny(err), "Error running gong worker")
 );

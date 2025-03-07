@@ -1,12 +1,13 @@
 import type {
   ContentNodesViewType,
   CoreAPIError,
+  CoreAPISearchOptions,
   DataSourceViewContentNode,
   DataSourceWithAgentsUsageType,
   Result,
   SearchWarningCode,
 } from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
@@ -23,6 +24,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
@@ -244,31 +246,20 @@ export async function createRegularSpaceAndGroup(
   return new Ok(space);
 }
 
-function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
-  switch (viewType) {
-    case "document":
-      return ["folder", "document"];
-    case "table":
-      return ["folder", "table"];
-    case "all":
-      return ["folder", "table", "document"];
-    default:
-      assertNever(viewType);
-  }
-}
-
 export async function searchContenNodesInSpace(
   auth: Authenticator,
   space: SpaceResource,
   dataSourceViews: DataSourceViewResource[],
   {
+    excludedNodeMimeTypes,
     includeDataSources,
-    limit,
+    options,
     query,
     viewType,
   }: {
+    excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
-    limit: number;
+    options: CoreAPISearchOptions;
     query: string;
     viewType: ContentNodesViewType;
   }
@@ -278,29 +269,31 @@ export async function searchContenNodesInSpace(
       nodes: DataSourceViewContentNode[];
       total: number;
       warningCode: SearchWarningCode | null;
+      nextPageCursor: string | null;
     },
     DustError | CoreAPIError
   >
 > {
-  if (!space.canRead(auth)) {
+  if (!space.canReadOrAdministrate(auth)) {
     return new Err(new DustError("unauthorized", "Unauthorized"));
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
+  const searchFilterResult = getSearchFilterFromDataSourceViews(
+    auth.getNonNullableWorkspace(),
+    dataSourceViews,
+    {
+      excludedNodeMimeTypes,
+      includeDataSources,
+      viewType,
+    }
+  );
+
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: {
-      data_source_views: dataSourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-      })),
-      include_data_sources: includeDataSources,
-      node_types: getCoreViewTypeFilter(viewType),
-    },
-    options: {
-      limit,
-    },
+    filter: searchFilterResult,
+    options,
   });
 
   if (searchRes.isErr()) {
@@ -325,13 +318,16 @@ export async function searchContenNodesInSpace(
 
       return [];
     }
-
-    return getContentNodeFromCoreNode(dataSourceView.toJSON(), node, viewType);
+    return {
+      ...getContentNodeFromCoreNode(node, viewType),
+      dataSourceView: dataSourceView.toJSON(),
+    };
   });
 
   return new Ok({
     nodes,
     total: searchRes.value.hit_count,
     warningCode: searchRes.value.warning_code,
+    nextPageCursor: searchRes.value.next_page_cursor,
   });
 }

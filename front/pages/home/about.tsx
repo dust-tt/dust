@@ -199,6 +199,13 @@ const PEOPLE: Record<
     github: "https://github.com/k7vin",
     linkedIn: "https://www.linkedin.com/in/kevinstraszburger/",
   },
+  frank: {
+    name: "Frank Aloia",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/201725577",
+    github: "https://github.com/frankaloia",
+    linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

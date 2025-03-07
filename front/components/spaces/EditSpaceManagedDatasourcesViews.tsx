@@ -313,6 +313,7 @@ export function EditSpaceManagedDataSourcesViews({
     <>
       <SpaceManagedDatasourcesViewsModal
         space={space}
+        systemSpace={systemSpace}
         isOpen={showDataSourcesModal}
         onClose={() => {
           setShowDataSourcesModal(false);

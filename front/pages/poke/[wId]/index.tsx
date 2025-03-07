@@ -225,10 +225,10 @@ const WorkspacePage = ({
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
-                  resourceType="workspaces"
-                  workspaceResource={{
-                    workspace: owner,
+                  pluginResourceTarget={{
                     resourceId: owner.sId,
+                    resourceType: "workspaces",
+                    workspace: owner,
                   }}
                 />
                 <ActiveSubscriptionTable

@@ -17,9 +17,9 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  IntercomArticle,
-  IntercomConversation,
-  IntercomTeam,
+  IntercomArticleModel,
+  IntercomConversationModel,
+  IntercomTeamModel,
 } from "@connectors/lib/models/intercom";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -53,7 +53,7 @@ export const intercom = async ({
         throw new Error("[Admin] Need to pass --force=true to force resync");
       }
       logger.info("[Admin] Forcing resync of articles");
-      const updated = await IntercomArticle.update(
+      const updated = await IntercomArticleModel.update(
         { lastUpsertedTs: null },
         { where: {} } // Targets all records
       );
@@ -82,7 +82,7 @@ export const intercom = async ({
           ? conversationOnIntercom.team_assignee_id.toString()
           : undefined;
 
-      const conversationOnDB = await IntercomConversation.findOne({
+      const conversationOnDB = await IntercomConversationModel.findOne({
         where: {
           conversationId,
           connectorId: connector.id,
@@ -180,7 +180,7 @@ export const intercom = async ({
       } while (cursor);
 
       // Fetch all conversations for the day from DB
-      const convosOnDB = await IntercomConversation.findAll({
+      const convosOnDB = await IntercomConversationModel.findAll({
         where: {
           connectorId: connector.id,
           conversationCreatedAt: {
@@ -212,7 +212,7 @@ export const intercom = async ({
       logger.info("[Admin] Checking teams");
       const accessToken = await getIntercomAccessToken(connector.connectionId);
       const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
-      const teamsOnDb = await IntercomTeam.findAll({
+      const teamsOnDb = await IntercomTeamModel.findAll({
         where: {
           connectorId: connector.id,
         },

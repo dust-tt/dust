@@ -1,9 +1,11 @@
 import type {
-  DataSourceViewContentNode,
+  ContentNodeWithParent,
+  DataSourceType,
+  DataSourceViewType,
   SearchWarningCode,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
-import { CoreAPI, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import { CoreAPI, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,10 +13,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
-import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
+import {
+  getContentNodeFromCoreNode,
+  NON_SEARCHABLE_NODES_MIME_TYPES,
+} from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
@@ -27,11 +33,18 @@ const SearchRequestBody = t.type({
     t.literal("document"),
     t.literal("all"),
   ]),
+  spaceIds: t.union([t.array(t.string), t.undefined]),
+  includeDataSources: t.boolean,
   limit: t.number,
 });
 
+type DataSourceContentNode = ContentNodeWithParent & {
+  dataSource: DataSourceType;
+  dataSourceViews: DataSourceViewType[];
+};
+
 export type PostWorkspaceSearchResponseBody = {
-  nodes: DataSourceViewContentNode[];
+  nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
 };
 
@@ -63,6 +76,9 @@ async function handler(
     });
   }
 
+  const { query, includeDataSources, viewType, limit, spaceIds } =
+    bodyValidation.right;
+
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   if (!spaces.length) {
     return apiError(req, res, {
@@ -73,10 +89,24 @@ async function handler(
       },
     });
   }
+  const availableSpaceIds = new Set(spaces.map((s) => s.sId));
+  if (spaceIds && spaceIds.some((sId) => !availableSpaceIds.has(sId))) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "space_not_found",
+        message: "Invalid space ids.",
+      },
+    });
+  }
+
+  const spacesToSearch = spaces.filter(
+    (s) => !spaceIds || spaceIds.includes(s.sId)
+  );
 
   const allDatasourceViews = await DataSourceViewResource.listBySpaces(
     auth,
-    spaces
+    spacesToSearch
   );
 
   if (!allDatasourceViews.length) {
@@ -89,81 +119,20 @@ async function handler(
     });
   }
 
-  const { query, viewType, limit } = bodyValidation.right;
-
-  if (query.length < MIN_SEARCH_QUERY_SIZE) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
-      },
-    });
-  }
-
-  const dataSources = allDatasourceViews.reduce(
-    (acc, dsv) => {
-      const dataSourceId = dsv.dataSource.dustAPIDataSourceId;
-
-      if (!acc.has(dataSourceId)) {
-        acc.set(dataSourceId, { dataSourceViews: [], parentsIn: [] });
-      }
-      const entry = acc.get(dataSourceId);
-
-      if (entry) {
-        entry.dataSourceViews.push(dsv);
-        if (dsv.parentsIn && entry.parentsIn !== null) {
-          entry.parentsIn?.push(...dsv.parentsIn);
-        } else {
-          entry.parentsIn = null;
-        }
-      }
-
-      return acc;
-    },
-    new Map<
-      string,
-      {
-        dataSourceViews: DataSourceViewResource[];
-        parentsIn: string[] | null;
-      }
-    >()
+  const searchFilterResult = getSearchFilterFromDataSourceViews(
+    auth.getNonNullableWorkspace(),
+    allDatasourceViews,
+    {
+      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
+      includeDataSources,
+      viewType,
+    }
   );
 
-  const filter = [...dataSources.entries()].map(([data_source_id, entry]) => ({
-    data_source_id,
-    view_filter: entry.parentsIn ? [...new Set(entry.parentsIn)] : [],
-  }));
-
-  if (filter.length === 0) {
-    return apiError(req, res, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `User does not have access to any datasource.`,
-      },
-    });
-  }
-
-  if (filter.length > 1024) {
-    const workspace = auth.getNonNullableWorkspace();
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        filterLength: filter.length,
-      },
-      "Filter length is greater than 1024, truncating"
-    );
-    filter.splice(1024);
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: {
-      data_source_views: filter,
-    },
+    filter: searchFilterResult,
     options: {
       limit,
     },
@@ -179,39 +148,28 @@ async function handler(
     });
   }
 
-  const nodes = searchRes.value.nodes.flatMap((node) => {
-    const dataSource = dataSources.get(node.data_source_id);
-
-    const matchingViews = dataSource
-      ? dataSource.dataSourceViews.filter(
-          (dsv) =>
-            dsv.parentsIn &&
+  const nodes = removeNulls(
+    searchRes.value.nodes.map((node) => {
+      const matchingViews = allDatasourceViews.filter(
+        (dsv) =>
+          dsv.dataSource.dustAPIDataSourceId === node.data_source_id &&
+          (!dsv.parentsIn ||
             node.parents?.some(
               (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
-            )
-        )
-      : [];
-
-    if (matchingViews.length === 0) {
-      logger.error(
-        {
-          nodeId: node.node_id,
-          expectedDataSourceId: node.data_source_id,
-          availableDataSourceIds: Array.from(dataSources.keys()),
-        },
-        "DataSourceView lookup failed for node"
+            ))
       );
-      return [];
-    }
 
-    return getContentNodeFromCoreNode(
-      // TODO(keyword-search): Create proper type for content nodes with multiple views.
-      // matchingViews.map((dsv) => dsv.toJSON()),
-      matchingViews[0].toJSON(),
-      node,
-      viewType
-    );
-  });
+      if (matchingViews.length === 0) {
+        return null;
+      }
+
+      return {
+        ...getContentNodeFromCoreNode(node, viewType),
+        dataSource: matchingViews[0].dataSource.toJSON(),
+        dataSourceViews: matchingViews.map((dsv) => dsv.toJSON()),
+      };
+    })
+  );
 
   return res
     .status(200)

@@ -1,9 +1,8 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
-  DataTable,
+  ScrollableDataTable,
   SearchInput,
-  Spinner,
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
@@ -27,13 +26,14 @@ import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
 import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
+import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import {
+  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -76,14 +76,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   >(props.dataSourceView ? [props.dataSourceView] : []);
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
-
-  const { owner } = props;
-
-  // Get feature flags.
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasSearchKnowledgeBuilderFF = featureFlags.includes(
-    "search_knowledge_builder"
-  );
 
   const router = useRouter();
 
@@ -130,7 +122,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
         targetDataSourceViews={targetDataSourceViews}
         searchContextValue={searchContextValue}
         viewType={viewType}
-        hasSearchKnowledgeBuilderFF={hasSearchKnowledgeBuilderFF}
       />
     );
   } else {
@@ -150,8 +141,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 }
 
 interface FullBackendSearchProps extends BackendSearchProps {
-  // TODO(20250228, search-kb): remove this once released.
-  hasSearchKnowledgeBuilderFF: boolean;
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
   searchTerm: string;
@@ -161,12 +150,13 @@ interface FullBackendSearchProps extends BackendSearchProps {
   space: SpaceType;
 }
 
+const PAGE_SIZE = 25;
+
 function BackendSearch({
   canReadInSpace,
   canWriteInSpace,
   category,
   children,
-  hasSearchKnowledgeBuilderFF,
   isSearchDisabled,
   owner,
   searchContextValue,
@@ -180,29 +170,40 @@ function BackendSearch({
 }: FullBackendSearchProps) {
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
+  const [searchResults, setSearchResults] = React.useState<
+    DataSourceViewContentNode[]
+  >([]);
 
   // Determine whether to show search results or children.
-  const shouldShowSearchResults =
-    hasSearchKnowledgeBuilderFF && debouncedSearch.length > 0;
+  const shouldShowSearchResults = debouncedSearch.length > 0;
 
   // Transition state.
   const [isChanging, setIsChanging] = React.useState(false);
   const [showSearch, setShowSearch] = React.useState(shouldShowSearchResults);
 
+  const {
+    cursorPagination,
+    resetPagination,
+    handlePaginationChange,
+    tablePagination,
+  } = useCursorPaginationForDataTable(PAGE_SIZE);
+
   // Debounce search term for backend search.
   React.useEffect(() => {
     const timeout = setTimeout(() => {
-      if (hasSearchKnowledgeBuilderFF) {
-        setDebouncedSearch(
-          searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : ""
-        );
+      const newSearchTerm =
+        searchTerm.length >= MIN_SEARCH_QUERY_SIZE ? searchTerm : "";
+      if (newSearchTerm !== debouncedSearch) {
+        // Reset pagination when search term changes
+        resetPagination();
+        setDebouncedSearch(newSearchTerm);
       }
     }, 300);
 
     return () => {
       clearTimeout(timeout);
     };
-  }, [searchTerm, hasSearchKnowledgeBuilderFF]);
+  }, [searchTerm, debouncedSearch, resetPagination]);
 
   // Use the space search hook for backend search.
   const {
@@ -210,15 +211,44 @@ function BackendSearch({
     isSearchValidating,
     searchResultNodes,
     total: totalNodesCount,
+    nextPageCursor,
   } = useSpaceSearch({
     dataSourceViews: targetDataSourceViews,
-    disabled: !hasSearchKnowledgeBuilderFF || !debouncedSearch,
-    includeDataSources: false,
+    disabled: !debouncedSearch,
+    includeDataSources: true,
+    pagination: { cursor: cursorPagination.cursor, limit: PAGE_SIZE },
     owner,
     search: debouncedSearch,
     space,
     viewType,
   });
+
+  React.useEffect(() => {
+    if (tablePagination.pageIndex === 0) {
+      // Replace results on new search (first page)
+      setSearchResults(searchResultNodes);
+    } else if (searchResultNodes.length > 0) {
+      // Append results for subsequent pages
+      setSearchResults((prev) => [...prev, ...searchResultNodes]);
+    }
+  }, [searchResultNodes, tablePagination.pageIndex]);
+
+  const handleLoadMore = React.useCallback(() => {
+    if (nextPageCursor && !isSearchValidating) {
+      handlePaginationChange(
+        {
+          pageIndex: tablePagination.pageIndex + 1,
+          pageSize: PAGE_SIZE,
+        },
+        nextPageCursor
+      );
+    }
+  }, [
+    nextPageCursor,
+    isSearchValidating,
+    handlePaginationChange,
+    tablePagination.pageIndex,
+  ]);
 
   // Handle transition when search state changes.
   React.useEffect(() => {
@@ -276,26 +306,21 @@ function BackendSearch({
         )}
       >
         {showSearch ? (
-          <div>
-            {isSearchLoading ? (
-              <div className="flex justify-center py-4">
-                <Spinner />
-              </div>
-            ) : searchResultNodes.length > 0 ? (
-              <SearchResultsTable
-                searchResultNodes={searchResultNodes}
-                category={category}
-                isSearchValidating={isSearchValidating}
-                owner={owner}
-                totalNodesCount={totalNodesCount}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-              />
-            ) : (
-              <div className="py-4 text-muted-foreground">
-                No results found for "{debouncedSearch}"
-              </div>
-            )}
+          <div className="flex w-full flex-col gap-2">
+            <div className="text-end text-sm text-muted-foreground">
+              Showing {searchResults.length} of {totalNodesCount} results
+            </div>
+            <SearchResultsTable
+              searchResultNodes={searchResults}
+              category={category}
+              isSearchValidating={isSearchValidating}
+              owner={owner}
+              totalNodesCount={totalNodesCount}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              onLoadMore={handleLoadMore}
+              isLoading={isSearchLoading}
+            />
           </div>
         ) : (
           children
@@ -369,6 +394,8 @@ interface SearchResultsTableProps {
   owner: LightWorkspaceType;
   searchResultNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
+  onLoadMore: () => void;
+  isLoading: boolean;
 }
 
 function SearchResultsTable({
@@ -379,6 +406,8 @@ function SearchResultsTable({
   owner,
   searchResultNodes,
   totalNodesCount,
+  onLoadMore,
+  isLoading,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -461,13 +490,19 @@ function SearchResultsTable({
 
       return {
         ...node,
+        id: node.internalId,
         icon: getVisualForDataSourceViewContentNode(node),
         ...(node.expandable && {
           onClick: () => {
             if (node.expandable) {
-              void router.push(
-                `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
-              );
+              const baseUrl = `/w/${owner.sId}/spaces/${node.dataSourceView.spaceId}/categories/${category ?? node.dataSourceView.category}/data_source_views/${dataSourceView.sId}`;
+              // If the node is a data source, we don't need to pass the parentId.
+              const url =
+                node.mimeType === DATA_SOURCE_MIME_TYPE
+                  ? baseUrl
+                  : `${baseUrl}?parentId=${parentId}`;
+
+              void router.push(url);
             }
           },
         }),
@@ -501,7 +536,7 @@ function SearchResultsTable({
   ]);
 
   return (
-    <DataTable
+    <ScrollableDataTable
       data={rows}
       columns={makeColumnsForSearchResults()}
       className={cn(
@@ -512,6 +547,10 @@ function SearchResultsTable({
       totalRowCount={totalNodesCount}
       rowCountIsCapped={totalNodesCount === ROWS_COUNT_CAPPED}
       columnsBreakpoints={columnsBreakpoints}
+      // TODO(20250304 jules): take full page height instead
+      maxHeight="h-[800px]"
+      onLoadMore={onLoadMore}
+      isLoading={isLoading}
     />
   );
 }

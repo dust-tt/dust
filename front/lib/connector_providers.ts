@@ -6,6 +6,7 @@ import {
   GithubLogo,
   GithubWhiteLogo,
   GlobeAltIcon,
+  GongLogo,
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
@@ -27,6 +28,7 @@ import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
@@ -56,6 +58,7 @@ export type ConnectorProviderConfiguration = {
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
   isSearchEnabled: boolean;
+  isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
     unselected: ConnectorPermission;
@@ -181,7 +184,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
-    selectLabel: "Synchronized content",
+    selectLabel: "Authorized content",
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? GithubWhiteLogo : GithubLogo;
     },
@@ -348,6 +351,29 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     isDeletable: true,
     guideLink: "https://docs.dust.tt/docs/salesforce-connection",
   },
+  gong: {
+    name: "Gong",
+    connectorProvider: "gong",
+    status: "built",
+    isResourceSelectionDisabled: true,
+    optionsComponent: GongOptionComponent,
+    hide: false,
+    description: "Authorize access to Gong for indexing call transcripts.",
+    guideLink: "https://docs.dust.tt/docs/gong-connection",
+    getLogoComponent: () => {
+      return GongLogo;
+    },
+    isNested: true,
+    isSearchEnabled: false,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
+    limitations:
+      "Dust will index the content accessible to the authorized account only. All transcripts will be synchronized with Dust.",
+    mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
+  },
 };
 
 const WEBHOOK_BASED_CONNECTORS: ConnectorProvider[] = ["slack", "github"];
@@ -397,18 +423,14 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isGoogleDriveAllowed;
     case "intercom":
       return plan.limits.connections.isIntercomAllowed;
-    case "microsoft":
-      return true;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "microsoft":
     case "snowflake":
-      // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
-      return true;
     case "zendesk":
-      return true;
     case "bigquery":
-      return true;
     case "salesforce":
+    case "gong":
       return true;
     default:
       assertNever(provider);
@@ -427,13 +449,13 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "intercom":
     case "microsoft":
     case "zendesk":
+    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "snowflake":
     case "bigquery":
     case "webcrawler":
-      return false;
     case "salesforce":
       return false;
     default:
@@ -456,6 +478,7 @@ export const isConnectionIdRequiredForProvider = (
     case "snowflake":
     case "bigquery":
     case "salesforce":
+    case "gong":
       return true;
     case "webcrawler":
       return false;
