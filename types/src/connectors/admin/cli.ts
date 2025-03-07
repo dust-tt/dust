@@ -97,6 +97,7 @@ export const NotionCommandSchema = t.type({
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
+    t.literal("clear-parents-last-updated-at"),
   ]),
   args: t.record(
     t.string,
