@@ -135,19 +135,19 @@ export const UseCases: UseCaseProps = {
       title: "Content optimization",
       content:
         "Transform raw content into polished, SEO-optimized pieces that align with brand guidelines.",
-      images: ["/static/landing/marketing/contentoptimizer.png"],
+      images: ["/static/landing/marketing/contentOptimizer.png"],
     },
     {
       title: "Social media cross-posting",
       content:
         "Create engaging UX and social media content that consistently reflects your brand identity.",
-      images: ["/static/landing/marketing/crossmedia.png"],
+      images: ["/static/landing/marketing/crossMedia.png"],
     },
     {
       title: "Market intelligence",
       content:
         "Monitor market movements and competitor activities to inform your content strategy and battle cards.",
-      images: ["/static/landing/marketing/ainewsletter.png"],
+      images: ["/static/landing/marketing/ainNewsletter.png"],
     },
   ],
 };
