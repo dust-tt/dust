@@ -1,8 +1,8 @@
 import {
   Button,
+  DustLogoSquare,
   Icon,
   LoginIcon,
-  LogoSquareColorLogo,
   Page,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
@@ -198,7 +198,7 @@ export default function LoginError({
       <main className="z-10 mx-6">
         <div className="flex h-full flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={LogoSquareColorLogo} size="lg" />
+            <Icon visual={DustLogoSquare} size="lg" />
             <div className="flex flex-col items-center gap-6">
               {errorMessage}
             </div>
