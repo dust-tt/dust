@@ -1,5 +1,6 @@
 import { ModelId } from "../shared/model_id";
 import { Err, Ok, Result } from "../shared/result";
+import { DataSourceViewType } from "./data_source_view";
 import { ConnectorType } from "./lib/connectors_api";
 
 export const CONNECTOR_PROVIDERS = [
@@ -81,7 +82,7 @@ export function isDataSourceNameValid(name: string): Result<void, string> {
 export type TagSearchParams = {
   query: string;
   queryType: string;
-  dataSources: string[];
+  dataSourceViews: DataSourceViewType[];
 };
 
 export type DataSourceTag = {

@@ -11,13 +11,14 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export const PostTagSearchBodySchema = t.type({
   query: t.string,
   queryType: t.string,
-  dataSources: t.array(t.string),
+  dataSourceViewIds: t.array(t.string),
 });
 
 export type PostTagSearchBody = t.TypeOf<typeof PostTagSearchBodySchema>;
@@ -65,17 +66,27 @@ async function handler(
     });
   }
 
-  const { query, queryType, dataSources } = bodyValidation.right;
+  const { dataSourceViewIds, query, queryType } = bodyValidation.right;
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceViewIds
+  );
+  if (dataSourceViews.some((dsv) => !dsv.canRead(auth))) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message: "You are not authorized to fetch tags.",
+      },
+    });
+  }
 
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const result = await coreAPI.searchTags({
     query,
     queryType,
-    // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
-    blobDataSourceViews: dataSources.map((dataSource) => ({
-      data_source_id: dataSource,
-      view_filter: [],
-    })),
+    dataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
   });
 
   if (result.isErr()) {

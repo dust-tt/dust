@@ -30,6 +30,7 @@ import {
 import { LightWorkspaceType } from "../../front/user";
 import { LoggerInterface } from "../../shared/logger";
 import { Err, Ok, Result } from "../../shared/result";
+import { DataSourceViewType } from "../data_source_view";
 import { ProviderVisibility } from "./connectors_api";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -287,7 +288,6 @@ export const CoreAPINodesSearchFilterSchema = t.intersection([
 export type CoreAPINodesSearchFilter = t.TypeOf<
   typeof CoreAPINodesSearchFilterSchema
 >;
-
 export interface CoreAPIDataSourceStatsResponse {
   data_source: {
     data_source_id: string;
@@ -1899,25 +1899,27 @@ export class CoreAPI {
   async searchTags({
     query,
     queryType,
-    blobDataSourceViews,
+    dataSourceViews,
     limit,
   }: {
     query?: string;
     queryType?: string;
-    // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
-    blobDataSourceViews: {
-      data_source_id: string;
-      view_filter: string[];
-    }[];
+    dataSourceViews: DataSourceViewType[];
     limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
+    const dataSourceViewsFilter: CoreAPIDatasourceViewFilter[] =
+      dataSourceViews.map((dsv) => ({
+        data_source_id: dsv.dataSource.dustAPIDataSourceId,
+        view_filter: dsv.parentsIn ?? [],
+      }));
+
     const response = await this._fetchWithError(`${this._url}/tags/search`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        data_source_views: blobDataSourceViews,
+        data_source_views: dataSourceViewsFilter,
         query,
         query_type: queryType,
         limit,
