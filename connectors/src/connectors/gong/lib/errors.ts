@@ -71,6 +71,7 @@ export class GongAPIError extends Error {
       pathErrors?: string[];
     }
   ) {
+    // Attempt to parse the body as JSON.
     const bodyParsedRes = safeParseJSON(body);
     let errors: string[] = [];
     let requestId: string | undefined;
@@ -82,6 +83,8 @@ export class GongAPIError extends Error {
     } else if (isGongAPIErrorBody(bodyParsedRes.value)) {
       errors = bodyParsedRes.value.errors;
       requestId = bodyParsedRes.value.requestId;
+    } else {
+      errors = [body];
     }
 
     return new this(

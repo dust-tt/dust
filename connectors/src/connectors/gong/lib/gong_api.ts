@@ -143,6 +143,7 @@ export class GongClient {
         throw new HTTPError(response.statusText, response.status);
       }
 
+      // Don't attempt to parse the body in JSON.
       const body = await response.text();
 
       throw GongAPIError.fromAPIError(response, {
@@ -240,7 +241,7 @@ export class GongClient {
         nextPageCursor: transcripts.records.cursor,
       };
     } catch (err) {
-      if (err instanceof HTTPError && err.statusCode === 404) {
+      if (isNotFoundError(err)) {
         return {
           transcripts: [],
           nextPageCursor: null,
@@ -316,7 +317,7 @@ export class GongClient {
         nextPageCursor: callsMetadata.records.cursor,
       };
     } catch (err) {
-      if (err instanceof HTTPError && err.statusCode === 404) {
+      if (isNotFoundError(err)) {
         return {
           callsMetadata: [],
           nextPageCursor: null,
