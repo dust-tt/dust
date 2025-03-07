@@ -1,3 +1,4 @@
+import Head from "next/head";
 import React from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -11,11 +12,16 @@ export interface PokeLayoutProps {
 
 export default function PokeLayout({
   children,
+  title,
 }: {
   children: React.ReactNode;
+  title: string;
 }) {
   return (
     <ThemeProvider>
+      <Head>
+        <title>{"Poke - " + title}</title>
+      </Head>
       <PokeLayoutContent>{children}</PokeLayoutContent>
     </ThemeProvider>
   );

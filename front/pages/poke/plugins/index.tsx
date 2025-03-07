@@ -25,5 +25,5 @@ export default function ListPokePlugins() {
 }
 
 ListPokePlugins.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Plugins">{page}</PokeLayout>;
 };

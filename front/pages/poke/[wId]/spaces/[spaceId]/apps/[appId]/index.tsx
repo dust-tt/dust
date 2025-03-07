@@ -9,6 +9,7 @@ import type {
   AppType,
   LightWorkspaceType,
   SpecificationType,
+  WorkspaceType,
 } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
@@ -232,6 +233,9 @@ function AppSpecification({
   );
 }
 
-AppPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+AppPage.getLayout = (
+  page: ReactElement,
+  { owner, app }: { owner: WorkspaceType; app: AppType }
+) => {
+  return <PokeLayout title={`${owner.name} - ${app.name}`}>{page}</PokeLayout>;
 };

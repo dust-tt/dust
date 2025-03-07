@@ -79,6 +79,9 @@ export default function TrackerDetailPage({
   );
 }
 
-TrackerDetailPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+TrackerDetailPage.getLayout = (
+  page: ReactElement,
+  { owner, trackerId }: { owner: WorkspaceType; trackerId: string }
+) => {
+  return <PokeLayout title={`${owner.name} - ${trackerId}`}>{page}</PokeLayout>;
 };

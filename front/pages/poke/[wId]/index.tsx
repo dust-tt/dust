@@ -405,8 +405,11 @@ export function DeleteWorkspaceModal({
   );
 }
 
-WorkspacePage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+WorkspacePage.getLayout = (
+  page: ReactElement,
+  { owner }: { owner: WorkspaceType }
+) => {
+  return <PokeLayout title={`${owner.name}`}>{page}</PokeLayout>;
 };
 
 export default WorkspacePage;

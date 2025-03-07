@@ -211,7 +211,7 @@ const PlansPage = () => {
 };
 
 PlansPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Plans">{page}</PokeLayout>;
 };
 
 export default PlansPage;

@@ -43,7 +43,7 @@ export async function dataSourceViewToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
-    name: `Data Source (${dataSourceView.dataSource.name})`,
+    name: `Data Source View (${dataSourceView.dataSource.name})`,
     space: spaceToPokeJSON(dataSourceView.space),
   };
 }

@@ -160,7 +160,7 @@ const Dashboard = () => {
 };
 
 Dashboard.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Home">{page}</PokeLayout>;
 };
 
 export default Dashboard;
