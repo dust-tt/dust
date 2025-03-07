@@ -171,9 +171,7 @@ export function AssistantInputBar({
   useEffect(() => {
     if (animate) {
       if (!scrollAndAnimate(router.route)) {
-        router.events.on("routeChangeComplete", (url) => {
-          scrollAndAnimate(url);
-        });
+        router.events.on("routeChangeComplete", scrollAndAnimate);
       }
     }
 
