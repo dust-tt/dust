@@ -1,4 +1,10 @@
-import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  Button,
+  FullscreenExitIcon,
+  FullscreenIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentMention,
   DataSourceViewContentNode,

@@ -21,7 +21,7 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import {
+import type {
   DataSourceContentNode,
   PostWorkspaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/search";
