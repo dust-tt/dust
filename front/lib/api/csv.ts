@@ -1,5 +1,6 @@
 import { parse } from "csv-parse/sync";
-import { stringify } from "csv-stringify/sync";
+import { stringify } from "csv-stringify";
+import { stringify as stringifySync } from "csv-stringify/sync";
 
 const POSSIBLE_VALUES_MAX_LEN = 32;
 const POSSIBLE_VALUES_MAX_COUNT = 16;
@@ -12,6 +13,25 @@ interface ColumnTypeInfo {
 export interface CSVRow {
   [key: string]: string;
 }
+
+export type CSVRecord = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+
+export const toCsv = (
+  records: Array<CSVRecord>,
+  options: { header: boolean } = { header: true }
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    stringify(records, options, (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      resolve(data);
+    });
+  });
+};
 
 /**
  * Detect the type of a column based on its values.
@@ -105,11 +125,9 @@ export function analyzeCSVColumns(
 export function generateCSVSnippet({
   content,
   totalRecords,
-  hasSearchableFile,
 }: {
   content: string;
   totalRecords: number;
-  hasSearchableFile: boolean;
 }): string {
   // Max number of characters in the snippet.
   const MAX_SNIPPET_CHARS = 16384;
@@ -129,18 +147,12 @@ export function generateCSVSnippet({
   let currentCharCount = snippetOutput.length;
   let linesIncluded = 0;
 
-  const searchableTextMention = hasSearchableFile
-    ? " - Full results in separate file available in the conversation."
-    : "";
-
-  const truncationString = `(...truncated${searchableTextMention})`;
+  const truncationString = `(...truncated)`;
   const endOfSnippetString = (omitted: number) =>
-    omitted > 0
-      ? `\n(${omitted} lines omitted)\n`
-      : `\n(end of file${searchableTextMention})\n`;
+    omitted > 0 ? `\n(${omitted} lines omitted)\n` : `\n(end of file)\n`;
 
   // Process header
-  const header = stringify([records[0]], { header: true }).split("\n")[0];
+  const header = stringifySync([records[0]], { header: true }).split("\n")[0];
   if (currentCharCount + header.length + 1 <= MAX_SNIPPET_CHARS) {
     snippetOutput += header + "\n";
     currentCharCount += header.length + 1;
@@ -156,7 +168,7 @@ export function generateCSVSnippet({
 
   // Process data rows
   for (const row of records) {
-    const rowCsv = stringify([row], { header: false });
+    const rowCsv = stringifySync([row], { header: false });
     const trimmedRowCsv = rowCsv.trim(); // Remove trailing newline
     if (currentCharCount + trimmedRowCsv.length + 1 <= MAX_SNIPPET_CHARS) {
       snippetOutput += trimmedRowCsv + "\n";

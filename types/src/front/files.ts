@@ -106,7 +106,7 @@ const FILE_FORMATS = {
   },
 
   // Custom for searchable text files generated from tables query results.
-  "text/vnd.dust.section-structured": {
+  "application/vnd.dust.section-structured": {
     cat: "data",
     exts: [".json"],
   },

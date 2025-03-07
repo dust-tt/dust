@@ -83,6 +83,55 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+// Upload seachable document to dataSource: section is required from upsertArgs.
+const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
+  auth,
+  { file, dataSource, upsertArgs }
+) => {
+  if (!upsertArgs || !("section" in upsertArgs)) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Invalid upsert args: section is required.",
+    });
+  }
+  const documentId = upsertArgs.document_id;
+  const title = upsertArgs.title;
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
+    });
+  }
+
+  const upsertDocumentRes = await upsertDocument({
+    auth,
+    dataSource,
+    document_id: documentId,
+    source_url: file.getPrivateUrl(auth),
+    parents: [documentId],
+    title,
+    section: upsertArgs.section,
+    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
+    light_document_output: true,
+    mime_type: file.contentType,
+  });
+
+  if (upsertDocumentRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+      data_source_error: upsertDocumentRes.error,
+    });
+  }
+
+  return new Ok(undefined);
+};
+
 const updateUseCaseMetadata = async (
   file: FileResource,
   tableIds: string[]
@@ -293,9 +342,9 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
-    case "text/vnd.dust.section-structured":
+    case "application/vnd.dust.section-structured":
       if (useCase === "tool_output") {
-        return upsertDocumentToDatasource;
+        return upsertSearchableDocumentToDatasource;
       } else {
         return undefined;
       }

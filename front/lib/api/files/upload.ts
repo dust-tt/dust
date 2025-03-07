@@ -289,7 +289,7 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-    case "text/vnd.dust.section-structured":
+    case "application/vnd.dust.section-structured":
       if (useCase === "tool_output") {
         return storeRawText;
       }
