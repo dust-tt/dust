@@ -31,7 +31,7 @@ const safeColorsArray = [
 // Custom color definitions
 const customColors = {
   gray: {
-    950: "#181C21",
+    950: "#0E1219",
     900: "#232932",
     800: "#2D3543",
     700: "#364153",
