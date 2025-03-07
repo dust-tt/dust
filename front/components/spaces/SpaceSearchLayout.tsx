@@ -1,5 +1,11 @@
 import type { MenuItem } from "@dust-tt/sparkle";
-import { cn, ScrollableDataTable, SearchInput, useHashParam, useSendNotification } from "@dust-tt/sparkle";
+import {
+  cn,
+  ScrollableDataTable,
+  SearchInput,
+  useHashParam,
+  useSendNotification,
+} from "@dust-tt/sparkle";
 import type {
   APIError,
   ContentNodesViewType,

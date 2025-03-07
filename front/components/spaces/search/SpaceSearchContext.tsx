@@ -6,6 +6,10 @@ import { createContext } from "react";
 // TODO(20250226, search-kb): remove this once the keyword search is implemented.
 // Create a context with both search state and action buttons
 export interface SpaceSearchContextType {
+  // Search state.
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
+
   isSearchDisabled: boolean;
   setIsSearchDisabled: (value: boolean) => void;
 
@@ -15,6 +19,9 @@ export interface SpaceSearchContextType {
 }
 
 export const SpaceSearchContext = createContext<SpaceSearchContextType>({
+  searchTerm: "",
+  setSearchTerm: () => {},
+
   isSearchDisabled: false,
   setIsSearchDisabled: () => {},
 

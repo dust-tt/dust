@@ -32,7 +32,8 @@ export const DocumentOrTableDeleteDialog = ({
     "viewType",
     DocumentDeletionKey,
   ]);
-  const isOpen = params[DocumentDeletionKey].value === "true" && dataSourceView;
+  const isOpen =
+    params[DocumentDeletionKey].value === "true" && !!dataSourceView;
 
   const sendNotification = useSendNotification();
 
