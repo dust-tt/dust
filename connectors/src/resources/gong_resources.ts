@@ -270,6 +270,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     if (!transcript) {
       return null;
     }
+
     return new this(this.model, transcript.get());
   }
 }
