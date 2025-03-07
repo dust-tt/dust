@@ -5,13 +5,13 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import {
-  type ContentNodesViewType,
-  type DataSourceViewSelectionConfigurations,
-  type DataSourceViewType,
-  DocumentViewRawContentKey,
-  type LightWorkspaceType,
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
+import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
