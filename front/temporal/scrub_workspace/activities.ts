@@ -25,7 +25,6 @@ import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -34,6 +33,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
 export async function sendDataDeletionEmail({
   remainingDays,
@@ -246,7 +246,7 @@ async function cleanupCustomerio(auth: Authenticator) {
   );
 
   // Finally, fetch all the subscriptions for the workspaces.
-  const subscriptionsByWorkspaceSid = await subscriptionForWorkspaces(
+  const subscriptionsByWorkspaceSid = await SubscriptionResource.fetchByWorkspaces(
     Object.values(workspaceById)
   );
 

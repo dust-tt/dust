@@ -40,7 +40,6 @@ import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -49,6 +48,7 @@ import {
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -178,7 +178,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
       ]);
     }
 
@@ -232,7 +232,7 @@ export class Authenticator {
         user?.isDustSuperUser
           ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
           : [],
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
       ]);
     }
 
@@ -279,7 +279,7 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
       ]);
     }
 
@@ -355,7 +355,7 @@ export class Authenticator {
         user,
         workspace: renderLightWorkspaceType({ workspace }),
       }),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
     return new Ok(
@@ -418,7 +418,7 @@ export class Authenticator {
     }
 
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace }));
+      SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace }));
 
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
@@ -539,7 +539,7 @@ export class Authenticator {
 
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
     return new Authenticator({
@@ -575,7 +575,7 @@ export class Authenticator {
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchByWorkspace(renderLightWorkspaceType({ workspace })),
     ]);
 
     return new Authenticator({

@@ -3,7 +3,6 @@ import * as _ from "lodash";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -11,6 +10,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await UserModel.findAll();
@@ -44,7 +44,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       (ws) => ws.id.toString()
     );
 
-    const subscriptionByWorkspaceSid = await subscriptionForWorkspaces(
+    const subscriptionByWorkspaceSid = await SubscriptionResource.fetchByWorkspaces(
       Object.values(workspaceById).map((w) =>
         renderLightWorkspaceType({ workspace: w })
       )

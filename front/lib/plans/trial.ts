@@ -1,6 +1,6 @@
 import type { SubscriptionType } from "@dust-tt/types";
 
-import type { Plan, Subscription } from "@app/lib/models/plan";
+import type { Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 
 // These limits are applied to all plans during the trial period.
@@ -9,10 +9,9 @@ const TRIAL_LIMITS: Partial<PlanAttributes> = {
   maxMessages: 100,
   maxMessagesTimeframe: "day",
 };
-
-export function getTrialVersionForPlan(plan: Plan): PlanAttributes {
+export function getTrialVersionForPlan(plan: PlanAttributes): PlanAttributes {
   return {
-    ...plan.get(),
+    ...plan,
     ...TRIAL_LIMITS,
   };
 }

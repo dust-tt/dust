@@ -12,8 +12,8 @@ import type {
 import * as _ from "lodash";
 
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspaces } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
 
@@ -25,7 +25,7 @@ export class ServerSideTracking {
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
-      const subscriptionByWorkspaceId = await subscriptionForWorkspaces(
+      const subscriptionByWorkspaceId = await SubscriptionResource.fetchByWorkspaces(
         user.workspaces
       );
 
