@@ -7,7 +7,6 @@ import { assertNever } from "@dust-tt/types";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import logger from "@app/logger/logger";
 
 export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   switch (viewType) {
@@ -98,17 +97,6 @@ export function getSearchFilterFromDataSourceViews(
 
   if (entries.length === 0) {
     throw new Error("Must have at least one datasource");
-  }
-
-  if (entries.length > 1024) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        filterLength: entries.length,
-      },
-      "Filter length is greater than 1024, truncating"
-    );
-    entries.splice(1024);
   }
 
   return {
