@@ -210,6 +210,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
