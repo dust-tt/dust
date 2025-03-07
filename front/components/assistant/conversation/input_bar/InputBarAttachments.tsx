@@ -10,17 +10,19 @@ import {
   SearchInputWithPopover,
   Separator,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewContentNode } from "@dust-tt/types";
+import type {
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useEffect, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import type { WorkspaceType } from "@dust-tt/client";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 
 interface InputBarAttachmentsProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
@@ -69,7 +71,7 @@ export const InputBarAttachments = ({
           disabled={isLoading}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-[400px]" fullWidth align="start">
+      <PopoverContent className="w-96" fullWidth align="start">
         <div className="flex flex-col gap-4">
           <div className="px-4 pt-4">
             <h2 className="text-lg font-semibold">Local file</h2>
@@ -111,9 +113,7 @@ export const InputBarAttachments = ({
                 onChange={setSearch}
                 isLoading={isSearchLoading || isDebouncing}
                 open={search.length >= MIN_SEARCH_QUERY_SIZE}
-                onOpenChange={() => {
-                  setSearch("");
-                }}
+                onOpenChange={() => {}}
                 items={searchResultNodes}
                 renderItem={(item, selected) => {
                   return (

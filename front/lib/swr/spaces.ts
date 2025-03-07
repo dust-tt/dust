@@ -21,6 +21,7 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { PostWorkspaceSearchResponseBody } from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -36,7 +37,6 @@ import type {
   PostSpaceSearchRequestBody,
   PostSpaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
-import { PostWorkspaceSearchResponseBody } from "@app/pages/api/w/[wId]/search";
 
 export function useSpaces({
   workspaceId,
