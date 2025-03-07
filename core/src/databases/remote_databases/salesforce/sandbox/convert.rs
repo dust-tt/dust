@@ -539,7 +539,7 @@ mod tests {
             "fields": ["Id", "Name"],
             "relationships": [
                 {
-                    "relationship_name": "Contacts",
+                    "relationshipName": "Contacts",
                     "fields": ["Id", "FirstName", "LastName", "Email"],
                     "where": {
                         "condition": "AND",
@@ -893,12 +893,12 @@ mod tests {
             "fields": ["Id", "Name"],
             "relationships": [
                 {
-                    "relationship_name": "Contacts",
+                    "relationshipName": "Contacts",
                     "fields": ["Id", "Name"],
                     "limit": 5
                 },
                 {
-                    "relationship_name": "Opportunities",
+                    "relationshipName": "Opportunities",
                     "fields": ["Id", "Name", "Amount"],
                     "where": {
                         "condition": "AND",
