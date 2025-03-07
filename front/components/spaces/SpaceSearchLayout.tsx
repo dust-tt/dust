@@ -27,6 +27,7 @@ import type { SpaceSearchContextType } from "@app/components/spaces/search/Space
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
@@ -34,7 +35,6 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
-import { useQueryParams } from "@app/hooks/useQueryParams";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -69,7 +69,6 @@ function isBackendSearch(
 
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Common code for both backend and frontend search.
-  const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [isSearchDisabled, setIsSearchDisabled] =
     React.useState<boolean>(false);
   const [targetDataSourceViews, setTargetDataSourceViews] = React.useState<
@@ -82,7 +81,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 
   // Reset the search term when the URL changes.
   React.useEffect(() => {
-    setSearchTerm("");
     setTargetDataSourceViews(
       props.dataSourceView ? [props.dataSourceView] : []
     );
@@ -96,8 +94,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Create the context value.
   const searchContextValue = React.useMemo(
     () => ({
-      searchTerm,
-      setSearchTerm,
       isSearchDisabled,
       setIsSearchDisabled,
       targetDataSourceViews,
@@ -105,7 +101,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       setActionButtons,
       actionButtons,
     }),
-    [searchTerm, isSearchDisabled, targetDataSourceViews, actionButtons]
+    [isSearchDisabled, targetDataSourceViews, actionButtons]
   );
 
   // Use the type guard to narrow the type.
@@ -129,8 +125,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       <>
         <FrontendSearch
           {...props}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           isSearchDisabled={isSearchDisabled}
           searchContextValue={searchContextValue}
         />
@@ -344,29 +338,28 @@ function BackendSearch({
 interface FullFrontendSearchProps extends FrontendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
 }
 
 function FrontendSearch({
   children,
   isSearchDisabled,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   space,
   category,
   owner,
   dataSourceView,
   parentId,
 }: FullFrontendSearchProps) {
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
         placeholder="Search (Name)"
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={searchParam.setParam}
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">
