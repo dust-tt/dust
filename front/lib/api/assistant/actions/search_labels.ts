@@ -200,11 +200,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
     const result = await coreAPI.searchTags({
       query: searchText,
       queryType: "match",
-      // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
-      blobDataSourceViews: dataSourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-      })),
+      blobDataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
       limit: DEFAULT_SEARCH_LABELS_LIMIT,
     });
 

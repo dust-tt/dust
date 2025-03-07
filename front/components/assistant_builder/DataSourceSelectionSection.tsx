@@ -14,7 +14,7 @@ import type {
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceTagsFilterDropdown";
+import { DataSourceViewTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceViewTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -111,7 +111,7 @@ export default function DataSourceSelectionSection({
                   className="whitespace-nowrap"
                   actions={
                     onSave && (
-                      <DataSourceTagsFilterDropdown
+                      <DataSourceViewTagsFilterDropdown
                         owner={owner}
                         dataSourceConfigurations={dataSourceConfigurations}
                         currentDataSourceConfiguration={dsConfig}

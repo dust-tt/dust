@@ -32,39 +32,6 @@ export function useDataSourceUsage({
   };
 }
 
-export function useTagSearchEndpoint({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}): {
-  searchTags: (
-    params: TagSearchParams
-  ) => Promise<PostTagSearchResponseBody["tags"]>;
-} {
-  // TODO: This should be refactored to use proper hook logic like `useSpaceSearch().
-  const searchTags = async (
-    params: TagSearchParams
-  ): Promise<PostTagSearchResponseBody["tags"]> => {
-    const res = await fetch(`/api/w/${owner.sId}/data_sources/tags`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to search tags");
-    }
-
-    const data = (await res.json()) as PostTagSearchResponseBody;
-
-    return data.tags;
-  };
-
-  return { searchTags };
-}
-
 export function useNotionLastSyncedUrls({
   owner,
   dataSource,
