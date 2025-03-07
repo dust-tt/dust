@@ -1,8 +1,8 @@
 import {
   BarHeader,
   Button,
+  DustLogoSquare,
   Icon,
-  LogoSquareColorLogo,
   Page,
 } from "@dust-tt/sparkle";
 import type { UserTypeWithWorkspaces } from "@dust-tt/types";
@@ -144,7 +144,7 @@ export default function NoWorkspace({
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
         <div className="flex flex-col gap-2">
           <div className="items-left justify-left flex flex-row">
-            <Icon visual={LogoSquareColorLogo} size="md" />
+            <Icon visual={DustLogoSquare} size="md" />
           </div>
           <span className="text-2xl font-bold text-foreground dark:text-foreground-night">
             Hello {userFirstName}!

@@ -1,7 +1,7 @@
 import {
   Button,
+  DustLogoSquare,
   Input,
-  LogoSquareColorLogo,
   Page,
   RadioGroup,
   RadioGroupItem,
@@ -133,7 +133,7 @@ export default function Welcome({
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello ${firstName}!`}
-          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <p className="text-element-800">Let's check a few things.</p>
         {!isAdmin && (
