@@ -13,15 +13,17 @@ import { useMemo } from "react";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
 
+interface DataSourceViewDocumentModalProps {
+  dataSourceView: DataSourceViewType | null;
+  owner: LightWorkspaceType;
+  onClose?: () => void;
+}
+
 export default function DataSourceViewDocumentModal({
   dataSourceView,
   owner,
   onClose,
-}: {
-  dataSourceView: DataSourceViewType | null;
-  owner: LightWorkspaceType;
-  onClose?: () => void;
-}) {
+}: DataSourceViewDocumentModalProps) {
   const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
   const isOpen = params[DocumentViewRawContentKey].value === "true";
 

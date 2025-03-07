@@ -138,6 +138,7 @@ export const ContentActions = React.forwardRef<
         <DocumentOrTableDeleteDialog
           dataSourceView={dataSourceView}
           owner={owner}
+          contentNode={contentNode ?? null}
         />
         <DataSourceViewDocumentModal
           owner={owner}
@@ -163,7 +164,8 @@ export const getMenuItems = (
     spaceSId: string
   ) => void,
   router: NextRouter,
-  onOpenDocument?: (node: DataSourceViewContentNode) => void
+  onOpenDocument?: (node: DataSourceViewContentNode) => void,
+  setEffectiveContentNode?: (node: DataSourceViewContentNode) => void
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
@@ -201,8 +203,9 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         setQueryParam(router, DocumentDeletionKey, "true");
-        setQueryParam(router, "contentNodeId", contentNode.internalId);
-        setQueryParam(router, "contentNodeName", contentNode.title);
+        if (setEffectiveContentNode) {
+          setEffectiveContentNode(contentNode);
+        }
         if (onOpenDocument) {
           onOpenDocument(contentNode);
         }

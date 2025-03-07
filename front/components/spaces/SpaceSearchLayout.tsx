@@ -12,6 +12,7 @@ import type {
   DataSourceViewCategory,
   DataSourceViewContentNode,
   DataSourceViewType,
+  LightContentNode,
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
@@ -164,6 +165,8 @@ function BackendSearch({
 
   const [searchResultDataSourceView, setSearchResultDataSourceView] =
     React.useState<DataSourceViewType | null>(null);
+  const [effectiveContentNode, setEffectiveContentNode] =
+    React.useState<LightContentNode | null>(null);
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
 
   const handleOpenDocument = React.useCallback(
@@ -174,6 +177,7 @@ function BackendSearch({
   );
   const handleCloseModal = React.useCallback(() => {
     setSearchResultDataSourceView(null);
+    setEffectiveContentNode(null);
   }, []);
 
   // For backend search, we need to debounce the search term.
@@ -331,6 +335,7 @@ function BackendSearch({
               onLoadMore={handleLoadMore}
               isLoading={isSearchLoading}
               onOpenDocument={handleOpenDocument}
+              setEffectiveContentNode={setEffectiveContentNode}
             />
           </div>
         ) : (
@@ -344,6 +349,7 @@ function BackendSearch({
       />
       <DocumentOrTableDeleteDialog
         dataSourceView={effectiveDataSourceView}
+        contentNode={effectiveContentNode}
         owner={owner}
       />
     </SpaceSearchContext.Provider>
@@ -416,6 +422,7 @@ interface SearchResultsTableProps {
   onLoadMore: () => void;
   isLoading: boolean;
   onOpenDocument?: (node: DataSourceViewContentNode) => void;
+  setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
 }
 
 function SearchResultsTable({
@@ -429,6 +436,7 @@ function SearchResultsTable({
   onLoadMore,
   isLoading,
   onOpenDocument,
+  setEffectiveContentNode,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -538,7 +546,8 @@ function SearchResultsTable({
           dataSourceViews,
           addToSpace,
           router,
-          onOpenDocument
+          onOpenDocument,
+          setEffectiveContentNode
         ),
       };
     });
