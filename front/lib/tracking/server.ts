@@ -25,9 +25,8 @@ export class ServerSideTracking {
 
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
-      const subscriptionByWorkspaceId = await SubscriptionResource.fetchByWorkspaces(
-        user.workspaces
-      );
+      const subscriptionByWorkspaceId =
+        await SubscriptionResource.fetchByWorkspaces(user.workspaces);
 
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(

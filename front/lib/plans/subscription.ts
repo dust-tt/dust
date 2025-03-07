@@ -38,7 +38,6 @@ import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 
-
 /**
  * Internal function to subscribe to the FREE_NO_PLAN.
  * This is the only plan without a database entry: no need to create a subscription, we just end the active one if any.

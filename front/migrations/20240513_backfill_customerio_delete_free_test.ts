@@ -44,11 +44,12 @@ const backfillCustomerIo = async (execute: boolean) => {
       (ws) => ws.id.toString()
     );
 
-    const subscriptionByWorkspaceSid = await SubscriptionResource.fetchByWorkspaces(
-      Object.values(workspaceById).map((w) =>
-        renderLightWorkspaceType({ workspace: w })
-      )
-    );
+    const subscriptionByWorkspaceSid =
+      await SubscriptionResource.fetchByWorkspaces(
+        Object.values(workspaceById).map((w) =>
+          renderLightWorkspaceType({ workspace: w })
+        )
+      );
 
     const promises: Promise<unknown>[] = [];
     for (const u of c) {
