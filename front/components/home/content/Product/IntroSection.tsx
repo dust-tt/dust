@@ -45,15 +45,13 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">
-              Accelerate your entire organization with AI
-            </H1>
+            <H1 className="text-red-400">Transform how work gets done</H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Build your team of AI agents: secure, connected to your data and
-              customizable to your needs.
+              Build custom AI agents: secure, connected to your company
+              knowledge, and powered by the best AI models.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
