@@ -198,10 +198,10 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const result = await coreAPI.searchTags({
+      dataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
+      limit: DEFAULT_SEARCH_LABELS_LIMIT,
       query: searchText,
       queryType: "match",
-      blobDataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
-      limit: DEFAULT_SEARCH_LABELS_LIMIT,
     });
 
     if (result.isErr()) {

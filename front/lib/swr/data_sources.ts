@@ -2,14 +2,12 @@ import type {
   DataSourceType,
   GetPostNotionSyncResponseBody,
   LightWorkspaceType,
-  TagSearchParams,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
-import type { PostTagSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/tags";
 
 export function useDataSourceUsage({
   owner,
