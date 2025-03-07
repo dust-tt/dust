@@ -1,10 +1,4 @@
-import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  Button,
-  FullscreenExitIcon,
-  FullscreenIcon,
-} from "@dust-tt/sparkle";
+import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   DataSourceViewContentNode,
@@ -20,11 +14,11 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { classNames } from "@app/lib/utils";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
+import { classNames } from "@app/lib/utils";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
