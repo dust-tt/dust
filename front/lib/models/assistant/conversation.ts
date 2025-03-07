@@ -630,3 +630,65 @@ Message.hasMany(Mention, {
 Mention.belongsTo(Message, {
   foreignKey: { name: "messageId", allowNull: false },
 });
+
+export class ConversationHasMessage extends WorkspaceAwareModel<ConversationHasMessage> {
+  declare createdAt: CreationOptional<Date>;
+
+  declare conversationId: ForeignKey<Conversation["id"]>;
+  declare messageId: ForeignKey<Message["id"]>;
+  declare thread: number;
+  declare rank: number;
+  declare conversation: NonAttribute<Conversation>;
+  declare message: NonAttribute<Message>;
+}
+
+ConversationHasMessage.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    rank: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    thread: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+  },
+  {
+    modelName: "conversation_has_message",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["conversationId", "messageId"],
+        unique: true,
+      },
+      {
+        fields: ["conversationId", "thread", "createdAt"],
+      },
+      {
+        fields: ["conversationId", "thread", "rank"],
+      },
+    ],
+  }
+);
+
+Message.hasOne(ConversationHasMessage, {
+  foreignKey: { name: "messageId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+ConversationHasMessage.belongsTo(Message, {
+  foreignKey: { name: "messageId", allowNull: false },
+});
+
+Conversation.hasMany(ConversationHasMessage, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+ConversationHasMessage.belongsTo(Conversation, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
