@@ -38,17 +38,17 @@ const colorNames = Object.keys(colors).filter(
 // Custom color definitions
 const customColors = {
   gray: {
-    950: "#111823",
-    900: "#1D2532",
-    800: "#273140",
+    950: "#181C21",
+    900: "#232932",
+    800: "#2D3543",
     700: "#364153",
-    600: "#5A6372",
+    600: "#586170",
     500: "#7B818D",
     400: "#969CA5",
     300: "#B2B6BD",
     200: "#D3D5D9",
     150: "#DFE0E2",
-    100: "#E9EAEB",
+    100: "#EEEEEF",
     50: "#F7F7F7",
   },
   golden: {
