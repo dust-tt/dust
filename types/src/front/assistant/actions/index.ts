@@ -24,14 +24,15 @@ export type ConversationBaseActionType =
   | "conversation_include_file_action";
 
 export type BaseActionType =
-  | "dust_app_run_action"
-  | "tables_query_action"
-  | "retrieval_action"
-  | "process_action"
-  | "websearch_action"
   | "browse_action"
-  | "visualization_action"
+  | "dust_app_run_action"
+  | "process_action"
   | "reasoning_action"
+  | "retrieval_action"
+  | "search_labels_action"
+  | "tables_query_action"
+  | "visualization_action"
+  | "websearch_action"
   | ConversationBaseActionType
   | GithubBaseActionType;
 

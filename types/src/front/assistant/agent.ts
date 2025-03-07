@@ -47,6 +47,10 @@ import {
   ReasoningThinkingEvent,
   ReasoningTokensEvent,
 } from "./actions/reasoning";
+import {
+  SearchLabelsConfigurationType,
+  SearchLabelsParamsEvent,
+} from "./actions/search_labels";
 
 /**
  * Agent Action configuration
@@ -57,21 +61,24 @@ type GithubAgentActionConfigurationType =
   | GithubCreateIssueConfigurationType;
 
 export type AgentActionConfigurationType =
-  | TablesQueryConfigurationType
-  | RetrievalConfigurationType
-  | DustAppRunConfigurationType
-  | ProcessConfigurationType
-  | WebsearchConfigurationType
   | BrowseConfigurationType
+  | DustAppRunConfigurationType
   | GithubAgentActionConfigurationType
-  | ReasoningConfigurationType;
+  | ProcessConfigurationType
+  | ReasoningConfigurationType
+  | RetrievalConfigurationType
+  | TablesQueryConfigurationType
+  | WebsearchConfigurationType;
 
 type ConversationAgentActionConfigurationType =
   ConversationIncludeFileConfigurationType;
 
+type SearchLabelsAgentActionConfigurationType = SearchLabelsConfigurationType;
+
 export type ActionConfigurationType =
   | AgentActionConfigurationType
-  | ConversationAgentActionConfigurationType;
+  | ConversationAgentActionConfigurationType
+  | SearchLabelsAgentActionConfigurationType;
 
 type UnsavedConfiguration<T> = Omit<T, "id" | "sId">;
 
@@ -320,21 +327,22 @@ export type AgentDisabledErrorEvent = {
 
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
-  | RetrievalParamsEvent
-  | DustAppRunParamsEvent
-  | DustAppRunBlockEvent
-  | TablesQueryStartedEvent
-  | TablesQueryModelOutputEvent
-  | TablesQueryOutputEvent
-  | ProcessParamsEvent
-  | WebsearchParamsEvent
   | BrowseParamsEvent
   | ConversationIncludeFileParamsEvent
-  | GithubGetPullRequestParamsEvent
+  | DustAppRunBlockEvent
+  | DustAppRunParamsEvent
   | GithubCreateIssueParamsEvent
+  | GithubGetPullRequestParamsEvent
+  | ProcessParamsEvent
   | ReasoningStartedEvent
   | ReasoningThinkingEvent
-  | ReasoningTokensEvent;
+  | ReasoningTokensEvent
+  | RetrievalParamsEvent
+  | SearchLabelsParamsEvent
+  | TablesQueryModelOutputEvent
+  | TablesQueryOutputEvent
+  | TablesQueryStartedEvent
+  | WebsearchParamsEvent;
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {

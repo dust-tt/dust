@@ -3,13 +3,13 @@ import type {
   GetPostNotionSyncResponseBody,
   LightWorkspaceType,
   TagSearchParams,
-  TagSearchResult,
 } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
+import type { PostTagSearchResponseBody } from "@app/pages/api/w/[wId]/data_sources/tags";
 
 export function useDataSourceUsage({
   owner,
@@ -37,11 +37,14 @@ export function useTagSearchEndpoint({
 }: {
   owner: LightWorkspaceType;
 }): {
-  searchTags: (params: TagSearchParams) => Promise<TagSearchResult[]>;
+  searchTags: (
+    params: TagSearchParams
+  ) => Promise<PostTagSearchResponseBody["tags"]>;
 } {
+  // TODO: This should be refactored to use proper hook logic like `useSpaceSearch().
   const searchTags = async (
     params: TagSearchParams
-  ): Promise<TagSearchResult[]> => {
+  ): Promise<PostTagSearchResponseBody["tags"]> => {
     const res = await fetch(`/api/w/${owner.sId}/data_sources/tags`, {
       method: "POST",
       headers: {
@@ -54,7 +57,8 @@ export function useTagSearchEndpoint({
       throw new Error("Failed to search tags");
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as PostTagSearchResponseBody;
+
     return data.tags;
   };
 

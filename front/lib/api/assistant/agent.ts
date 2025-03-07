@@ -29,6 +29,7 @@ import {
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
   isTablesQueryConfiguration,
   isTextContent,
   isUserMessageTypeModel,
@@ -364,6 +365,7 @@ async function* runMultiActionsAgent(
   }
 
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    availableActions,
     agentMessage,
     conversation,
   });
@@ -428,7 +430,7 @@ async function* runMultiActionsAgent(
       auth,
       {
         name: a.name,
-        description: a.description,
+        description: a.description ?? null,
       }
     );
 
@@ -1361,6 +1363,55 @@ async function* runAction(
           };
           agentMessage.actions.push(event.action);
           break;
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isSearchLabelsConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "search_labels_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+
+        case "search_labels_params":
+          yield event;
+          break;
+
+        case "search_labels_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
         default:
           assertNever(event);
       }

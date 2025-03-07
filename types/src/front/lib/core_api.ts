@@ -239,14 +239,11 @@ export interface CoreAPISearchNodesResponse {
 }
 
 export interface CoreAPISearchTagsResponse {
-  error: string | null;
-  response: {
-    tags: {
-      tag: string;
-      match_count: number;
-      data_sources: string[];
-    }[];
-  };
+  tags: {
+    tag: string;
+    match_count: number;
+    data_sources: string[];
+  }[];
 }
 
 export const CoreAPISearchScopeSchema = t.union([
@@ -1902,11 +1899,17 @@ export class CoreAPI {
   async searchTags({
     query,
     queryType,
-    dataSources,
+    blobDataSourceViews,
+    limit,
   }: {
     query?: string;
     queryType?: string;
-    dataSources: string[];
+    // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
+    blobDataSourceViews: {
+      data_source_id: string;
+      view_filter: string[];
+    }[];
+    limit?: number;
   }): Promise<CoreAPIResponse<CoreAPISearchTagsResponse>> {
     const response = await this._fetchWithError(`${this._url}/tags/search`, {
       method: "POST",
@@ -1914,12 +1917,10 @@ export class CoreAPI {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        data_source_views: dataSources.map((dataSource) => ({
-          data_source_id: dataSource,
-          view_filter: [],
-        })),
+        data_source_views: blobDataSourceViews,
         query,
         query_type: queryType,
+        limit,
       }),
     });
 

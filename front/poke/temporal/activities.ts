@@ -24,6 +24,7 @@ import {
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,

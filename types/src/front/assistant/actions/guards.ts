@@ -37,6 +37,7 @@ import {
   TemplateAgentConfigurationType,
 } from "../../../front/assistant/agent";
 import { AgentActionType } from "../../../front/assistant/conversation";
+import { SearchLabelsConfigurationType } from "./search_labels";
 
 export function isTablesQueryConfiguration(
   arg: unknown
@@ -120,6 +121,17 @@ export function isWebsearchConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "websearch_configuration"
+  );
+}
+
+export function isSearchLabelsConfiguration(
+  arg: unknown
+): arg is SearchLabelsConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "search_labels_configuration"
   );
 }
 

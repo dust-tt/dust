@@ -18,6 +18,8 @@ export const DEFAULT_TABLES_QUERY_ACTION_NAME = "query_tables";
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME =
   "list_conversation_files";
 
+export const DEFAULT_SEARCH_LABELS_ACTION_NAME = "search_labels";
+
 export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME =
   "include_conversation_file";
 export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION = `Retrieve and read an 'includable' conversation file as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``;

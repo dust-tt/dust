@@ -15,6 +15,7 @@ import { LightAgentConfigurationType } from "../../front/assistant/agent";
 import { UserType, WorkspaceType } from "../../front/user";
 import { ModelId } from "../../shared/model_id";
 import { ContentFragmentType } from "../content_fragment";
+import { SearchLabelsActionType } from "./actions/search_labels";
 
 /**
  * Mentions
@@ -131,7 +132,8 @@ export type GithubAgentActionType =
 export type AgentActionType =
   | ConfigurableAgentActionType
   | ConversationAgentActionType
-  | GithubAgentActionType;
+  | GithubAgentActionType
+  | SearchLabelsActionType;
 
 export type AgentMessageStatus =
   | "created"
@@ -140,17 +142,18 @@ export type AgentMessageStatus =
   | "cancelled";
 
 export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
+  browse_action: "Browsing page",
+  conversation_include_file_action: "Reading file",
+  conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
+  github_create_issue_action: "Creating issue",
+  github_get_pull_request_action: "Retrieving pull request",
   process_action: "Extracting data",
+  reasoning_action: "Reasoning",
   retrieval_action: "Searching data",
+  search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  browse_action: "Browsing page",
-  conversation_list_files_action: "Listing files",
-  conversation_include_file_action: "Reading file",
-  github_get_pull_request_action: "Retrieving pull request",
-  github_create_issue_action: "Creating issue",
-  reasoning_action: "Reasoning",
 };
 
 /**

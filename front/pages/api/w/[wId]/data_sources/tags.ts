@@ -1,3 +1,7 @@
+import type {
+  CoreAPISearchTagsResponse,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
@@ -18,9 +22,11 @@ export const PostTagSearchBodySchema = t.type({
 
 export type PostTagSearchBody = t.TypeOf<typeof PostTagSearchBodySchema>;
 
+export type PostTagSearchResponseBody = CoreAPISearchTagsResponse;
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse,
+  res: NextApiResponse<WithAPIErrorResponse<PostTagSearchResponseBody>>,
   auth: Authenticator
 ) {
   const user = auth.getNonNullableUser();
@@ -65,7 +71,11 @@ async function handler(
   const result = await coreAPI.searchTags({
     query,
     queryType,
-    dataSources,
+    // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
+    blobDataSourceViews: dataSources.map((dataSource) => ({
+      data_source_id: dataSource,
+      view_filter: [],
+    })),
   });
 
   if (result.isErr()) {

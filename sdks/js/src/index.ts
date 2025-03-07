@@ -718,14 +718,15 @@ export class DustAPI {
                 pendingEvents.push(data as AgentMessageSuccessEvent);
                 break;
               }
-              case "retrieval_params":
-              case "dust_app_run_params":
-              case "dust_app_run_block":
-              case "tables_query_params":
-              case "tables_query_output":
-              case "process_params":
-              case "websearch_params":
               case "browse_params":
+              case "dust_app_run_block":
+              case "dust_app_run_params":
+              case "process_params":
+              case "retrieval_params":
+              case "search_labels_params":
+              case "tables_query_output":
+              case "tables_query_params":
+              case "websearch_params":
                 pendingEvents.push(data as AgentActionSpecificEvent);
                 break;
             }
