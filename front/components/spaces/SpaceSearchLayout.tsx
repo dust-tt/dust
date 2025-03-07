@@ -9,10 +9,11 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
-import { DocumentViewRawContentKey, MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
@@ -154,27 +155,17 @@ function BackendSearch({
 }: FullBackendSearchProps) {
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
-  const { setParams } = useQueryParams([
-    DocumentViewRawContentKey,
-    "documentId",
-  ]);
 
   const [searchResultDataSourceView, setSearchResultDataSourceView] =
     React.useState<DataSourceViewType | null>(null);
   const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
 
-  // Handler to open document from search results
   const handleOpenDocument = React.useCallback(
     (node: DataSourceViewContentNode) => {
       setSearchResultDataSourceView(node.dataSourceView);
-      setParams({
-        documentId: node.internalId,
-        [DocumentViewRawContentKey]: "true",
-      });
     },
-    [setParams]
+    []
   );
-  // Clear search result dataSourceView when modal closes
   const handleCloseModal = React.useCallback(() => {
     setSearchResultDataSourceView(null);
   }, []);
@@ -355,6 +346,10 @@ function BackendSearch({
         owner={owner}
         dataSourceView={effectiveDataSourceView}
         onClose={handleCloseModal}
+      />
+      <DocumentOrTableDeleteDialog
+        dataSourceView={effectiveDataSourceView}
+        owner={owner}
       />
     </SpaceSearchContext.Provider>
   );

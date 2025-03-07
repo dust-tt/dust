@@ -1,4 +1,10 @@
-import { BracesIcon, Button, ExternalLinkIcon, IconButton, Tree } from "@dust-tt/sparkle";
+import {
+  BracesIcon,
+  Button,
+  ExternalLinkIcon,
+  IconButton,
+  Tree,
+} from "@dust-tt/sparkle";
 import {
   type ContentNodesViewType,
   type DataSourceViewSelectionConfigurations,
@@ -18,7 +24,10 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
-import { canBeExpanded, getDisplayNameForDataSource } from "@app/lib/data_sources";
+import {
+  canBeExpanded,
+  getDisplayNameForDataSource,
+} from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 

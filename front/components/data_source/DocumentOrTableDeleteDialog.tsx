@@ -17,7 +17,7 @@ import { useState } from "react";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 
 interface DocumentOrTableDeleteDialogProps {
-  dataSourceView: DataSourceViewType;
+  dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
 }
 
@@ -32,7 +32,7 @@ export const DocumentOrTableDeleteDialog = ({
     "viewType",
     DocumentDeletionKey,
   ]);
-  const isOpen = params[DocumentDeletionKey].value === "true";
+  const isOpen = params[DocumentDeletionKey].value === "true" && dataSourceView;
 
   const sendNotification = useSendNotification();
 
@@ -54,7 +54,7 @@ export const DocumentOrTableDeleteDialog = ({
   };
 
   const handleDelete = async () => {
-    if (!params.contentNodeId.value) {
+    if (!params.contentNodeId.value || !dataSourceView) {
       return;
     }
     try {
