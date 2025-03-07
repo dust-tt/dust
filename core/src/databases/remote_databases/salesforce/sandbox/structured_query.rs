@@ -133,6 +133,7 @@ pub enum NullsPosition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relationship {
     /// The name of the relationship.
+    #[serde(rename = "relationshipName")]
     pub relationship_name: String,
 
     /// The fields to retrieve from the related object.

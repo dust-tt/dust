@@ -19,6 +19,7 @@ pub enum TableSchemaFieldType {
     Text,
     Bool,
     DateTime,
+    Reference(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,6 +55,7 @@ impl std::fmt::Display for TableSchemaFieldType {
             TableSchemaFieldType::Text => write!(f, "text"),
             TableSchemaFieldType::Bool => write!(f, "boolean"),
             TableSchemaFieldType::DateTime => write!(f, "timestamp"),
+            TableSchemaFieldType::Reference(rel_name) => write!(f, "reference: {}", rel_name),
         }
     }
 }
@@ -78,18 +80,15 @@ impl TableSchemaColumn {
     }
 
     pub fn render_dbml(&self) -> String {
-        match &self.possible_values {
-            Some(possible_values) if !possible_values.is_empty() => {
-                let mut note = format!(
-                    "{} {} [note: 'possible values: ",
-                    self.name, self.value_type
-                );
-                note.push_str(&possible_values.join(", "));
-                note.push_str("']");
-                note
+        let mut dbml = format!("{} {}", self.name, self.value_type);
+        if let Some(possible_values) = &self.possible_values {
+            if !possible_values.is_empty() {
+                dbml.push_str(" [note: 'possible values: ");
+                dbml.push_str(&possible_values.join(", "));
+                dbml.push_str("']");
             }
-            _ => format!("{} {}", self.name, self.value_type),
         }
+        dbml
     }
 }
 
@@ -252,6 +251,7 @@ impl TableSchema {
                         TableSchemaFieldType::Text => "TEXT",
                         TableSchemaFieldType::Bool => "BOOLEAN",
                         TableSchemaFieldType::DateTime => "TEXT",
+                        TableSchemaFieldType::Reference(_) => "REFERENCE",
                     };
                     format!("\"{}\" {}", column.name, sql_type)
                 })
