@@ -22,10 +22,13 @@ on:
           - core
           - front
           - front-edge
+          - front-qa
           - prodbox
           - oauth
           - viz
           - alerting-temporal
+          - nginx
+          - dante
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
