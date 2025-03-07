@@ -373,7 +373,6 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
-            r
           </div>
         </div>
 
