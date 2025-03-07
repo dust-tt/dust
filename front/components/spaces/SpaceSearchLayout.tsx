@@ -34,6 +34,7 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -116,8 +117,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
     return (
       <BackendSearch
         {...props}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
         isSearchDisabled={isSearchDisabled}
         targetDataSourceViews={targetDataSourceViews}
         searchContextValue={searchContextValue}
@@ -143,8 +142,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 interface FullBackendSearchProps extends BackendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
   targetDataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
   space: SpaceType;
@@ -160,14 +157,15 @@ function BackendSearch({
   isSearchDisabled,
   owner,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   targetDataSourceViews,
   viewType,
   space,
   dataSourceView,
   parentId,
 }: FullBackendSearchProps) {
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
+
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
   const [searchResults, setSearchResults] = React.useState<
@@ -283,7 +281,7 @@ function BackendSearch({
         name="search"
         placeholder="Search (Name)"
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={searchParam.setParam}
         disabled={isSearchDisabled}
       />
 
