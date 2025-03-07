@@ -143,9 +143,12 @@ export class GongClient {
         throw new HTTPError(response.statusText, response.status);
       }
 
+      const body = await response.text();
+
       throw GongAPIError.fromAPIError(response, {
         endpoint,
         connectorId: this.connectorId,
+        body,
       });
     }
 

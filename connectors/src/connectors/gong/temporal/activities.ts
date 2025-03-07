@@ -80,9 +80,10 @@ export async function gongSyncTranscriptsActivity({
   const configuration = await fetchGongConfiguration(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
-    workspaceId: dataSourceConfig.workspaceId,
     dataSourceId: dataSourceConfig.dataSourceId,
     provider: "gong",
+    startTimestamp: configuration.lastSyncTimestamp,
+    workspaceId: dataSourceConfig.workspaceId,
   };
 
   const syncStartTs = Date.now();
@@ -95,6 +96,15 @@ export async function gongSyncTranscriptsActivity({
       startTimestamp: configuration.lastSyncTimestamp,
       pageCursor,
     });
+
+    if (transcripts.length === 0) {
+      logger.info(
+        { ...loggerArgs, pageCursor },
+        "[Gong] No more transcripts found."
+      );
+      break;
+    }
+
     const callsMetadata = await getTranscriptsMetadata({
       callIds: transcripts.map((t) => t.callId),
       connector,
