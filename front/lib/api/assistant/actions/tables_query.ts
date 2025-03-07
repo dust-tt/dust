@@ -22,16 +22,22 @@ import {
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import {
+  generateCSVFileAndSnippet,
+  generateSearchableFile,
+  generateSearchableSection,
+  uploadFileToConversationDataSource,
+} from "@app/lib/api/assistant/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import type { CSVRecord } from "@app/lib/api/assistant/actions/result_file_helpers";
-import { getToolResultOutputFilesAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -40,6 +46,7 @@ import logger from "@app/logger/logger";
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
+const TABLES_QUERY_SEARCHABLE_FILE_MIN_COLUMN_LENGTH = 500;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -592,14 +599,20 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { csvFile, searchableFile, csvSnippet } =
-        await getToolResultOutputFilesAndSnippet(auth, {
-          title: queryTitle,
-          conversationId: conversation.sId,
-          results,
-          generateSearchableFile: true,
-        });
+      // Generate the CSV file.
+      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+        title: queryTitle,
+        conversationId: conversation.sId,
+        results,
+      });
 
+      // Upload the CSV file to the conversation data source.
+      await uploadFileToConversationDataSource({
+        auth,
+        file: csvFile,
+      });
+
+      //  Save ref to the generated csv file to be yielded later.
       generatedResultFile = {
         fileId: csvFile.sId,
         title: queryTitle,
@@ -607,12 +620,57 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         snippet: csvFile.snippet,
       };
 
-      if (searchableFile) {
+      // Check if we should generate a searchable file.
+      const shouldGenerateSearchableFile = results.some((result) => {
+        for (const value of Object.values(result)) {
+          if (
+            typeof value === "string" &&
+            value.length > TABLES_QUERY_SEARCHABLE_FILE_MIN_COLUMN_LENGTH
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      let searchableFile: FileResource | null = null;
+      if (shouldGenerateSearchableFile) {
+        // Generate the searchable file.
+        searchableFile = await generateSearchableFile(auth, {
+          title: queryTitle,
+          conversationId: conversation.sId,
+          results,
+        });
+
+        // Generate the searchable section so we can upload it to the conversation data source.
+        // First we fetch the connector provider for the data source, cause the chunking
+        // strategy of the searchable file depends on it: Since all tables are from the same
+        // data source, we can just take the first table's data source view id.
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          actionConfiguration.tables[0].dataSourceViewId
+        );
+        const connectorProvider =
+          dataSourceView?.dataSource?.connectorProvider ?? null;
+        const section = await generateSearchableSection({
+          title: queryTitle,
+          results,
+          connectorProvider,
+        });
+
+        // Upload the searchable file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: searchableFile,
+          section,
+        });
+
+        // Save ref to the generated searchable file to be yielded later.
         generatedSearchableFile = {
           fileId: searchableFile.sId,
           title: `${queryTitle} (Rich Text)`,
           contentType: searchableFile.contentType,
-          snippet: searchableFile.snippet,
+          snippet: null,
         };
       }
 
