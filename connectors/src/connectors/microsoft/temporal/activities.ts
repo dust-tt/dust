@@ -289,7 +289,16 @@ async function isParentAlreadyInNodes({
   folder: MicrosoftNode;
 }) {
   const { itemAPIPath } = typeAndPathFromInternalId(folder.internalId);
-  let driveItem: DriveItem = await getItem(logger, client, itemAPIPath);
+
+  let driveItem: DriveItem;
+  try {
+    driveItem = await getItem(logger, client, itemAPIPath);
+  } catch (error) {
+    if (error instanceof GraphError && error.statusCode === 404) {
+      return false;
+    }
+    throw error;
+  }
 
   // check if the list already contains the drive of this folder
   if (
@@ -317,7 +326,14 @@ async function isParentAlreadyInNodes({
       return true;
     }
 
-    driveItem = await getItem(logger, client, parentAPIPath);
+    try {
+      driveItem = await getItem(logger, client, parentAPIPath);
+    } catch (error) {
+      if (error instanceof GraphError && error.statusCode === 404) {
+        continue;
+      }
+      throw error;
+    }
   }
   return false;
 }
