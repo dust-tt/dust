@@ -1,3 +1,7 @@
+import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
+import type { ReactElement } from "react";
+
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
 import { PlatformIntroSection } from "@app/components/home/content/Product/PlatformIntroSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -11,9 +15,6 @@ import {
   shapeNames,
 } from "@app/components/home/Particles";
 import { classNames } from "@app/lib/utils";
-import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
-import type { ReactElement } from "react";
 
 export async function getServerSideProps() {
   return {
@@ -43,13 +44,12 @@ export default function DustPlatform() {
           )}
         >
           <ImgBlock
-            title={<>Dust Apps: Expand your&nbsp;agents' capabilities</>}
+            title={<>Dust Apps: Expand your agents' capabilities</>}
             content={[
               <>
-                Orchestrate complex workflows by calling models, APIs, executing
-                code, or consulting data sources. Build custom actions, chain
-                models, or&nbsp;even call into&nbsp;your&nbsp;own
-                infrastructure.
+                Orchestrate complex workflows by calling models, APIs, executing
+                code, or consulting data sources. Build custom actions, chain
+                models, or even call into your own infrastructure.
               </>,
             ]}
           >
