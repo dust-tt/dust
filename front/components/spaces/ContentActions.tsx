@@ -162,7 +162,8 @@ export const getMenuItems = (
     contentNode: DataSourceViewContentNode,
     spaceSId: string
   ) => void,
-  router: NextRouter
+  router: NextRouter,
+  onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
@@ -174,7 +175,7 @@ export const getMenuItems = (
 
   if (canReadInSpace && contentNode.type === "document") {
     actions.push({
-      ...makeViewRawContentAction(contentNode, router),
+      ...makeViewRawContentAction(contentNode, router, onOpenDocument),
     });
   }
 
@@ -288,7 +289,8 @@ const makeViewSourceUrlContentAction = (
 
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
-  router: NextRouter
+  router: NextRouter,
+  onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem => {
   return {
     kind: "item",
@@ -298,6 +300,9 @@ const makeViewRawContentAction = (
       e.stopPropagation();
       setQueryParam(router, "documentId", contentNode.internalId);
       setQueryParam(router, DocumentViewRawContentKey, "true");
+      if (onOpenDocument) {
+        onOpenDocument(contentNode);
+      }
     },
   };
 };
