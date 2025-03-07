@@ -22,6 +22,10 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/search";
+import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces";
@@ -673,6 +677,82 @@ export function useSpaceSearch({
   return {
     searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
     total: data?.total ?? 0,
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    mutate,
+    isSearchValidating: isValidating,
+    warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useSpacesSearch({
+  disabled = false,
+  includeDataSources = false,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pagination,
+}: {
+  disabled?: boolean;
+  includeDataSources: boolean;
+  owner: LightWorkspaceType;
+  search: string;
+  spaceIds?: string[];
+  viewType: ContentNodesViewType;
+  pagination?: CursorPaginationParams;
+}): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  mutate: KeyedMutator<PostWorkspaceSearchResponseBody>;
+  searchResultNodes: DataSourceContentNode[];
+  warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
+} {
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
+  const body = {
+    query: search,
+    viewType,
+    spaceIds,
+    includeDataSources,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
+  };
+
+  // Only perform a query if we have a valid search
+  const url =
+    search.length >= MIN_SEARCH_QUERY_SIZE
+      ? `/api/w/${owner.sId}/search?${params}`
+      : null;
+
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return null;
+      }
+
+      return fetcherWithBody([url, body, "POST"]);
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      disabled,
+    }
+  );
+
+  return {
+    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,

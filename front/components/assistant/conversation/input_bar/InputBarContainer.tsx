@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
+  DataSourceViewContentNode,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -19,8 +20,10 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 
 export const INPUT_BAR_ACTIONS = [
@@ -58,6 +61,7 @@ const InputBarContainer = ({
   fileUploaderService,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
@@ -138,15 +142,26 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              <Button
-                variant="ghost-secondary"
-                icon={AttachmentIcon}
-                size="xs"
-                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              />
+              {featureFlags.includes("attach_from_datasources") ? (
+                <InputBarAttachments
+                  fileUploaderService={fileUploaderService}
+                  onNodeSelect={(node: DataSourceViewContentNode) =>
+                    console.log(`Uploading ${node.title}`)
+                  }
+                  owner={owner}
+                  isLoading={false}
+                />
+              ) : (
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size="xs"
+                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+              )}
             </>
           )}
           {(actions.includes("assistants-list") ||
