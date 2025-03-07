@@ -12,3 +12,9 @@ export function makeGongTranscriptInternalId(
 ) {
   return `gong-transcript-${connector.id}-${callId}`;
 }
+
+export function makeGongSyncTranscriptsWorkflowIdFromParentId(
+  workflowId: string
+): string | undefined {
+  return `${workflowId}-transcripts`;
+}
