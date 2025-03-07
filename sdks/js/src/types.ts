@@ -519,6 +519,28 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const SearchLabelsActionOutputSchema = z.object({
+  tags: z.array(
+    z.object({
+      tag: z.string(),
+      match_count: z.number(),
+      data_sources: z.array(z.string()),
+    })
+  ),
+});
+
+const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  output: SearchLabelsActionOutputSchema.nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("search_labels_action"),
+});
+type SearchLabelsActionPublicType = z.infer<
+  typeof SearchLabelsActionTypeSchema
+>;
+
 const ReasoningActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   output: z.string().nullable(),
@@ -1028,6 +1050,7 @@ const AgentActionTypeSchema = z.union([
   GithubGetPullRequestActionSchema,
   GithubCreateIssueActionSchema,
   ReasoningActionTypeSchema,
+  SearchLabelsActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1257,6 +1280,14 @@ const ReasoningTokensEventSchema = z.object({
   classification: TokensClassificationSchema,
 });
 
+const SearchLabelsParamsEventSchema = z.object({
+  type: z.literal("search_labels_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: SearchLabelsActionTypeSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1270,21 +1301,22 @@ const AgentErrorEventSchema = z.object({
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
-  RetrievalParamsEventSchema,
-  DustAppRunParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  TablesQueryStartedEventSchema,
-  TablesQueryModelOutputEventSchema,
-  TablesQueryOutputEventSchema,
-  ProcessParamsEventSchema,
-  WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
-  GithubGetPullRequestParamsEventSchema,
+  DustAppRunBlockEventSchema,
+  DustAppRunParamsEventSchema,
   GithubCreateIssueParamsEventSchema,
+  GithubGetPullRequestParamsEventSchema,
+  ProcessParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,
+  RetrievalParamsEventSchema,
+  SearchLabelsParamsEventSchema,
+  TablesQueryModelOutputEventSchema,
+  TablesQueryOutputEventSchema,
+  TablesQueryStartedEventSchema,
+  WebsearchParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2496,6 +2528,12 @@ export function isReasoningActionType(
   action: AgentActionPublicType
 ): action is ReasoningActionPublicType {
   return action.type === "reasoning_action";
+}
+
+export function isSearchLabelsActionType(
+  action: AgentActionPublicType
+): action is SearchLabelsActionPublicType {
+  return action.type === "search_labels_action";
 }
 
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {

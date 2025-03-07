@@ -11,6 +11,7 @@ import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_ap
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -61,6 +62,9 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     where: { agentMessageId: agentMessageIds },
   });
   await AgentBrowseAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentSearchLabelsAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentConversationIncludeFileAction.destroy({

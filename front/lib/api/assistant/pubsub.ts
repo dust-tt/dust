@@ -204,26 +204,27 @@ async function handleUserMessageEvents(
               }
               break;
             }
-            case "retrieval_params":
-            case "dust_app_run_params":
-            case "dust_app_run_block":
-            case "tables_query_started":
-            case "tables_query_model_output":
-            case "tables_query_output":
-            case "process_params":
-            case "websearch_params":
+            case "agent_action_success":
+            case "agent_error":
+            case "agent_generation_cancelled":
+            case "agent_message_success":
             case "browse_params":
             case "conversation_include_file_params":
-            case "github_get_pull_request_params":
+            case "dust_app_run_block":
+            case "dust_app_run_params":
+            case "generation_tokens":
             case "github_create_issue_params":
+            case "github_get_pull_request_params":
+            case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
             case "reasoning_tokens":
-            case "agent_error":
-            case "agent_action_success":
-            case "generation_tokens":
-            case "agent_generation_cancelled":
-            case "agent_message_success": {
+            case "retrieval_params":
+            case "search_labels_params":
+            case "tables_query_model_output":
+            case "tables_query_output":
+            case "tables_query_started":
+            case "websearch_params": {
               const pubsubChannel = getMessageChannelId(event.messageId);
 
               await publishEvent(auth, {
@@ -373,26 +374,27 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
-              case "retrieval_params":
-              case "dust_app_run_params":
-              case "dust_app_run_block":
-              case "tables_query_started":
-              case "tables_query_model_output":
-              case "tables_query_output":
-              case "process_params":
-              case "websearch_params":
+              case "agent_action_success":
+              case "agent_error":
+              case "agent_generation_cancelled":
+              case "agent_message_success":
               case "browse_params":
               case "conversation_include_file_params":
-              case "github_get_pull_request_params":
+              case "dust_app_run_block":
+              case "dust_app_run_params":
+              case "generation_tokens":
               case "github_create_issue_params":
+              case "github_get_pull_request_params":
+              case "process_params":
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":
-              case "agent_error":
-              case "agent_action_success":
-              case "generation_tokens":
-              case "agent_generation_cancelled":
-              case "agent_message_success": {
+              case "retrieval_params":
+              case "search_labels_params":
+              case "tables_query_model_output":
+              case "tables_query_output":
+              case "tables_query_started":
+              case "websearch_params": {
                 const pubsubChannel = getMessageChannelId(event.messageId);
                 await publishEvent(auth, {
                   redis,

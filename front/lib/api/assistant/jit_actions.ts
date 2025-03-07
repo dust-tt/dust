@@ -18,6 +18,7 @@ import {
 } from "@app/lib/api/assistant/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
+import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -27,11 +28,25 @@ import logger from "@app/logger/logger";
 async function getJITActions(
   auth: Authenticator,
   {
+    availableActions,
     conversation,
     files,
-  }: { conversation: ConversationType; files: ConversationFileType[] }
+  }: {
+    availableActions: ActionConfigurationType[];
+    conversation: ConversationType;
+    files: ConversationFileType[];
+  }
 ): Promise<ActionConfigurationType[]> {
   const actions: ActionConfigurationType[] = [];
+
+  // Get supporting actions from available actions.
+  const supportingActions = availableActions.flatMap((action) => {
+    const runner = getRunnerForActionConfiguration(action);
+    return runner.getSupportingActions?.() ?? [];
+  });
+
+  // Add supporting actions first.
+  actions.push(...supportingActions);
 
   if (files.length > 0) {
     // Check tables for the table query action.
@@ -121,8 +136,13 @@ export async function getEmulatedAndJITActions(
   auth: Authenticator,
   {
     agentMessage,
+    availableActions,
     conversation,
-  }: { agentMessage: AgentMessageType; conversation: ConversationType }
+  }: {
+    agentMessage: AgentMessageType;
+    availableActions: ActionConfigurationType[];
+    conversation: ConversationType;
+  }
 ): Promise<{
   emulatedActions: AgentActionType[];
   jitActions: ActionConfigurationType[];
@@ -140,12 +160,17 @@ export async function getEmulatedAndJITActions(
     emulatedActions.push(a);
   }
 
-  jitActions = await getJITActions(auth, { conversation, files });
+  jitActions = await getJITActions(auth, {
+    conversation,
+    files,
+    availableActions,
+  });
 
   // We ensure that all emulated actions are injected with step -1.
   assert(
     emulatedActions.every((a) => a.step === -1),
     "Emulated actions must have step -1"
   );
+
   return { emulatedActions, jitActions };
 }

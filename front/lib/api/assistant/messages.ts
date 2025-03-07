@@ -16,6 +16,7 @@ import { Op, Sequelize } from "sequelize";
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
 import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/reasoning";
+import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/search_labels";
 import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
 import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
 import {
@@ -133,6 +134,7 @@ async function batchRenderAgentMessages(
     agentGithubGetPullRequestActions,
     agentGithubCreateIssueActions,
     agentReasoningActions,
+    agentSearchLabelsActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -169,6 +171,7 @@ async function batchRenderAgentMessages(
     (async () =>
       githubCreateIssueActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   if (!agentConfigurations) {
@@ -190,16 +193,17 @@ async function batchRenderAgentMessages(
         const agentMessage = message.agentMessage;
 
         const actions: AgentActionType[] = [
-          agentRetrievalActions,
-          agentDustAppRunActions,
-          agentTablesQueryActions,
-          agentProcessActions,
-          agentWebsearchActions,
           agentBrowseActions,
           agentConversationIncludeFileActions,
-          agentGithubGetPullRequestActions,
+          agentDustAppRunActions,
           agentGithubCreateIssueActions,
+          agentGithubGetPullRequestActions,
+          agentProcessActions,
           agentReasoningActions,
+          agentRetrievalActions,
+          agentSearchLabelsActions,
+          agentTablesQueryActions,
+          agentWebsearchActions,
         ]
           .flat()
           .filter((a) => a.agentMessageId === agentMessage.id)
