@@ -29,5 +29,5 @@ export default function ListTemplates({
 }
 
 ListTemplates.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Templates">{page}</PokeLayout>;
 };

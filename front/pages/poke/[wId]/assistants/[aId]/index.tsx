@@ -1,5 +1,5 @@
 import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
-import type { AgentConfigurationType } from "@dust-tt/types";
+import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
@@ -12,6 +12,7 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
+  workspace: WorkspaceType;
 }>(async (context, auth) => {
   const aId = context.params?.aId;
   if (!aId || typeof aId !== "string") {
@@ -29,16 +30,24 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       agentConfigurations,
+      workspace: auth.getNonNullableWorkspace(),
     },
   };
 });
 
 const AssistantDetailsPage = ({
   agentConfigurations,
+  workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
   return (
     <div className="mx-auto max-w-4xl pt-8">
+      <h3 className="text-xl font-bold">
+        Assistant of workspace:{" "}
+        <a href={`/poke/${workspace.sId}`} className="text-action-500">
+          {workspace.name}
+        </a>
+      </h3>
       <Page.Vertical align="stretch">
         <ContextItem.List>
           {agentConfigurations.map((a) => (
@@ -108,8 +117,13 @@ const AssistantDetailsPage = ({
   );
 };
 
-AssistantDetailsPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+AssistantDetailsPage.getLayout = (
+  page: ReactElement,
+  { workspace }: { workspace: WorkspaceType }
+) => {
+  return (
+    <PokeLayout title={`${workspace.name} - Assistants`}>{page}</PokeLayout>
+  );
 };
 
 export default AssistantDetailsPage;
