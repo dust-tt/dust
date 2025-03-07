@@ -10,25 +10,25 @@ import { TagSearchInput } from "@app/components/assistant_builder/tags/TagSearch
 import { useDataSourceViewSearchTags } from "@app/lib/swr/data_source_views";
 
 interface TagSearchSectionProps {
-  label: string;
   dataSourceViews: DataSourceViewType[];
+  label: string;
+  onTagAdd: (tag: DataSourceTag) => void;
+  onTagRemove: (tag: DataSourceTag) => void;
+  operation: "in" | "not";
   owner: LightWorkspaceType;
   selectedTagsIn: DataSourceTag[];
   selectedTagsNot: DataSourceTag[];
-  onTagAdd: (tag: DataSourceTag) => void;
-  onTagRemove: (tag: DataSourceTag) => void;
-  tagChipColor?: "slate" | "red";
 }
 
 export function TagSearchSection({
-  label,
   dataSourceViews,
+  label,
+  onTagAdd,
+  onTagRemove,
+  operation,
   owner,
   selectedTagsIn,
   selectedTagsNot,
-  onTagAdd,
-  onTagRemove,
-  tagChipColor = "slate",
 }: TagSearchSectionProps) {
   const [searchInputValue, setSearchInputValue] = useState<string>("");
   const [debouncedQuery, setDebouncedQuery] = useState<string>("");
@@ -89,6 +89,12 @@ export function TagSearchSection({
     }
   };
 
+  // Map operation to the appropriate tag color.
+  const tagChipColor = operation === "in" ? "slate" : "red";
+
+  // Select the appropriate tags based on operation.
+  const selectedTags = operation === "in" ? selectedTagsIn : selectedTagsNot;
+
   return (
     <div className="flex flex-col gap-2">
       <Label>{label}</Label>
@@ -96,9 +102,7 @@ export function TagSearchSection({
         searchInputValue={searchInputValue}
         setSearchInputValue={handleSearchInputChange}
         availableTags={availableTags}
-        selectedTags={
-          tagChipColor === "slate" ? selectedTagsIn : selectedTagsNot
-        }
+        selectedTags={selectedTags}
         onTagAdd={onTagAdd}
         onTagRemove={onTagRemove}
         tagChipColor={tagChipColor}

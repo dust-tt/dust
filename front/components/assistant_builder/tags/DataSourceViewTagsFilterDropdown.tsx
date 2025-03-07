@@ -11,11 +11,9 @@ import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { cloneDeep } from "lodash";
-import { useState } from "react";
 
 import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
 import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
@@ -106,14 +104,7 @@ export function DataSourceViewTagsFilterDropdown({
   }
 
   return (
-    <PopoverRoot
-      onOpenChange={(open) => {
-        if (!open) {
-          // No need to reset search input values as they're now managed by the TagSearchSection
-        }
-      }}
-      modal={true}
-    >
+    <PopoverRoot modal={true}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -141,7 +132,7 @@ export function DataSourceViewTagsFilterDropdown({
             selectedTagsNot={selectedTagsNot}
             onTagAdd={(tag) => handleTagOperation(tag, "in", "add")}
             onTagRemove={(tag) => handleTagOperation(tag, "in", "remove")}
-            tagChipColor="slate"
+            operation="in"
           />
 
           <TagSearchSection
@@ -152,7 +143,7 @@ export function DataSourceViewTagsFilterDropdown({
             selectedTagsNot={selectedTagsNot}
             onTagAdd={(tag) => handleTagOperation(tag, "not", "add")}
             onTagRemove={(tag) => handleTagOperation(tag, "not", "remove")}
-            tagChipColor="red"
+            operation="not"
           />
 
           <div className="flex flex-col gap-2">
