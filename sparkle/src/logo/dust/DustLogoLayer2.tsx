@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 import * as React from "react";
-const SvgLogoHorizontalColorLayer2 = (props: SVGProps<SVGSVGElement>) => (
+const SvgDustLogoLayer2 = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="1em"
@@ -9,8 +9,8 @@ const SvgLogoHorizontalColorLayer2 = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 96 24"
     {...props}
   >
-    <path fill="#10B981" d="M12 0H0v24h12V0Z" />
-    <path fill="#F87171" d="M48 0H24v12h24V0Z" />
+    <path fill="#418B5C" d="M12 0H0v24h12V0Z" />
+    <path fill="#E14322" d="M48 0H24v12h24V0Z" />
     <path
       fill="#3B82F6"
       fillRule="evenodd"
@@ -19,4 +19,4 @@ const SvgLogoHorizontalColorLayer2 = (props: SVGProps<SVGSVGElement>) => (
     />
   </svg>
 );
-export default SvgLogoHorizontalColorLayer2;
+export default SvgDustLogoLayer2;

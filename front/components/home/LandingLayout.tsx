@@ -1,11 +1,11 @@
 import {
   Button,
   Div3D,
+  DustLogo,
   Hover3D,
   LoginIcon,
   LogoHorizontalColorLayer1Logo,
   LogoHorizontalColorLayer2Logo,
-  LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
 import Head from "next/head";
 import Link from "next/link";
@@ -97,7 +97,7 @@ export default function LandingLayout({
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
+            <DustLogo className="h-[24px] w-[96px]" />
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">

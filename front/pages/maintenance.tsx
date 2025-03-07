@@ -1,4 +1,4 @@
-import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
+import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 import { isString } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -107,7 +107,7 @@ export default function MaintenancePage({
       <main className="z-10 mx-6">
         <div className="flex h-full flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={LogoSquareColorLogo} size="lg" />
+            <Icon visual={DustLogoSquare} size="lg" />
             <div className="mx-20 flex flex-col items-center gap-6">
               <Page.Header
                 title={

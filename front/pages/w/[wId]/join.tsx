@@ -1,4 +1,4 @@
-import { Button, LoginIcon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
+import { Button, DustLogoSquare, LoginIcon, Page } from "@dust-tt/sparkle";
 import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -160,7 +160,7 @@ export default function Join({
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello there!`}
-          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
