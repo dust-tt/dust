@@ -561,6 +561,7 @@ function SearchResultsTable({
     owner.sId,
     router,
     searchResultNodes,
+    setEffectiveContentNode,
     spaces,
   ]);
 
