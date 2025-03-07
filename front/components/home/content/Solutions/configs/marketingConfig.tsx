@@ -39,7 +39,7 @@ export const pageSettings: pageSettingsProps = {
     "Create compelling social media copy",
     "Monitor industry and competitor news",
   ],
-  image: "/static/landing/marketing/crossmedia.png",
+  image: "/static/landing/marketing/crossMedia.png",
 };
 
 export const Hero: HeroProps = {
