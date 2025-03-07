@@ -9,7 +9,11 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { DocumentDeletionKey } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useState } from "react";
@@ -19,21 +23,20 @@ import { useQueryParams } from "@app/hooks/useQueryParams";
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
+  contentNode: LightContentNode | null;
 }
 
 export const DocumentOrTableDeleteDialog = ({
   dataSourceView,
   owner,
+  contentNode,
 }: DocumentOrTableDeleteDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
-  const params = useQueryParams([
-    "contentNodeId",
-    "contentNodeName",
-    "viewType",
-    DocumentDeletionKey,
-  ]);
+  const params = useQueryParams(["viewType", DocumentDeletionKey]);
   const isOpen =
-    params[DocumentDeletionKey].value === "true" && !!dataSourceView;
+    params[DocumentDeletionKey].value === "true" &&
+    !!dataSourceView &&
+    !!contentNode;
 
   const sendNotification = useSendNotification();
 
@@ -55,12 +58,12 @@ export const DocumentOrTableDeleteDialog = ({
   };
 
   const handleDelete = async () => {
-    if (!params.contentNodeId.value || !dataSourceView) {
+    if (!contentNode || !dataSourceView) {
       return;
     }
     try {
       setIsLoading(true);
-      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(params.contentNodeId.value)}`;
+      const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${itemType}s/${encodeURIComponent(contentNode.internalId)}`;
 
       const res = await fetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
@@ -70,7 +73,7 @@ export const DocumentOrTableDeleteDialog = ({
       sendNotification({
         type: "success",
         title: `${_.capitalize(itemType)} deletion submitted`,
-        description: `Deletion of ${itemType} ${params.contentNodeName.value} ongoing, it will complete shortly.`,
+        description: `Deletion of ${itemType} ${contentNode.title} ongoing, it will complete shortly.`,
       });
       closeDialog();
     } catch (error) {
@@ -100,7 +103,7 @@ export const DocumentOrTableDeleteDialog = ({
           <DialogTitle>Confirm deletion</DialogTitle>
           <DialogDescription>
             Are you sure you want to delete {isTable ? "table" : "document"} '
-            {params.contentNodeName.value}?
+            {contentNode?.title}?
           </DialogDescription>
         </DialogHeader>
         {isLoading ? (
