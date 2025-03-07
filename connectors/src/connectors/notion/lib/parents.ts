@@ -138,7 +138,7 @@ export async function updateAllParentsFields(
 
   /* Computing all descendants, then updating, ensures the field is updated only
     once per page, limiting the load on the Datasource */
-  const pageIdsToUpdate = await getPagesToUpdate(
+  const pageIdsToUpdate = await getPagesAndDatabasesToUpdate(
     createdOrMovedNotionPageIds,
     createdOrMovedNotionDatabaseIds,
     connectorId,
@@ -194,14 +194,11 @@ export async function updateAllParentsFields(
   return pageIdsToUpdate.size;
 }
 
-/**  Get ids of all pages whose parents field should be updated: initial pages in
- * pageOrDbs, and all the descendants of pageOrDbs that are pages (including
+/**  Get ids of all pages & databases whose parents field should be updated: initial pages in
+ * pageOrDbs, and all the descendants of pageOrDbs that are pages or databases (including
  * children of databases)
- *
- * Note: databases are not stored in the Datasource, so they don't need to be
- * updated
  */
-async function getPagesToUpdate(
+async function getPagesAndDatabasesToUpdate(
   createdOrMovedNotionPageIds: string[],
   createdOrMovedNotionDatabaseIds: string[],
   connectorId: ModelId,
@@ -233,28 +230,18 @@ async function getPagesToUpdate(
     const pageOrDbIdToProcess = shift() as string; // guaranteed to be defined as toUpdate.size > 0
     visited.add(pageOrDbIdToProcess);
 
-    const pageChildren = await getPageChildrenOf(
-      connectorId,
-      pageOrDbIdToProcess
-    );
+    const [pageChildren, databaseChildren] = await Promise.all([
+      getPageChildrenOf(connectorId, pageOrDbIdToProcess),
+      getDatabaseChildrenOf(connectorId, pageOrDbIdToProcess),
+    ]);
 
-    // add page children to pageIdsToUpdate
-    for (const child of pageChildren) {
-      const childId = notionPageOrDbId(child);
-      pageIdsToUpdate.add(childId);
-    }
-
-    const databaseChildren = await getDatabaseChildrenOf(
-      connectorId,
-      pageOrDbIdToProcess
-    );
-
-    // add all page and DB children to toProcess
+    // add all page and DB children to pageIdsToUpdate & toProcess
     for (const child of [...pageChildren, ...databaseChildren]) {
       if (visited.has(notionPageOrDbId(child))) {
         continue;
       }
       const childId = notionPageOrDbId(child);
+      pageIdsToUpdate.add(childId);
       toProcess.add(childId);
     }
   }
