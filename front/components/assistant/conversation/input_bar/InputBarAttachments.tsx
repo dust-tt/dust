@@ -15,10 +15,13 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 
 interface InputBarAttachmentsProps {
@@ -61,6 +64,23 @@ export const InputBarAttachments = ({
     };
   }, [search]);
 
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
+    [spaces]
+  );
+
+  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
+    () =>
+      searchResultNodes.flatMap((node) => {
+        const { dataSourceViews, ...rest } = node;
+        return dataSourceViews.map((view) => ({
+          ...rest,
+          dataSourceView: view,
+        }));
+      }),
+    [searchResultNodes]
+  );
+
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
@@ -71,7 +91,7 @@ export const InputBarAttachments = ({
           disabled={isLoading}
         />
       </PopoverTrigger>
-      <PopoverContent className="w-96" fullWidth align="start">
+      <PopoverContent className="w-125" fullWidth align="start" side="left">
         <div className="flex flex-col gap-4">
           <div className="px-4 pt-4">
             <h2 className="text-lg font-semibold">Local file</h2>
@@ -89,7 +109,7 @@ export const InputBarAttachments = ({
                 multiple={true}
               />
               <button
-                className="flex w-fit items-center gap-2 rounded-lg border border-structure-200 px-4 py-2 text-sm hover:bg-structure-50"
+                className="flex w-fit items-center gap-2 rounded-lg border border-structure-200 px-4 py-2 text-sm text-primary-800 hover:bg-structure-50"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isLoading}
               >
@@ -114,7 +134,7 @@ export const InputBarAttachments = ({
                 isLoading={isSearchLoading || isDebouncing}
                 open={search.length >= MIN_SEARCH_QUERY_SIZE}
                 onOpenChange={() => {}}
-                items={searchResultNodes}
+                items={unfoldedNodes}
                 renderItem={(item, selected) => {
                   return (
                     <div
@@ -130,14 +150,17 @@ export const InputBarAttachments = ({
                       {getVisualForDataSourceViewContentNode(item)({
                         className: "min-w-4",
                       })}
-                      <span className="flex-shrink truncate text-sm">
-                        {item.title}
-                      </span>
-                      {item.parentTitle && (
-                        <div className="ml-auto flex-none text-sm text-slate-500">
-                          {/*{getLocationForDataSourceViewContentNode(item)}*/}
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-sm">{item.title}</span>
+                          <div className="flex-none text-sm text-slate-500">
+                            {spacesMap[item.dataSourceView.spaceId]}
+                          </div>
                         </div>
-                      )}
+                        <div className="truncate text-xs text-slate-400">
+                          {getLocationForDataSourceViewContentNode(item)}
+                        </div>
+                      </div>
                     </div>
                   );
                 }}

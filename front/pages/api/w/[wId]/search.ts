@@ -38,7 +38,7 @@ const SearchRequestBody = t.type({
   includeDataSources: t.boolean,
 });
 
-type DataSourceContentNode = ContentNodeWithParent & {
+export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];
 };

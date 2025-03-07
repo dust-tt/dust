@@ -21,7 +21,10 @@ import {
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { PostWorkspaceSearchResponseBody } from "@app/pages/api/w/[wId]/search";
+import {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -704,7 +707,7 @@ export function useSpacesSearch({
   isSearchError: boolean;
   isSearchValidating: boolean;
   mutate: KeyedMutator<PostWorkspaceSearchResponseBody>;
-  searchResultNodes: DataSourceViewContentNode[];
+  searchResultNodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
   nextPageCursor: string | null;
 } {

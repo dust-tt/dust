@@ -7,6 +7,7 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   AgentMention,
+  DataSourceViewContentNode,
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -144,8 +145,8 @@ const InputBarContainer = ({
               {featureFlags.includes("attach_from_datasources") ? (
                 <InputBarAttachments
                   fileUploaderService={fileUploaderService}
-                  onConnectedFileSelect={(fileId: string) =>
-                    console.log(`Uploading ${fileId}`)
+                  onNodeSelect={(node: DataSourceViewContentNode) =>
+                    console.log(`Uploading ${node.title}`)
                   }
                   owner={owner}
                   isLoading={false}
