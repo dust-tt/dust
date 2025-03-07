@@ -100,17 +100,6 @@ export function getSearchFilterFromDataSourceViews(
     throw new Error("Must have at least one datasource");
   }
 
-  if (entries.length > 1024) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        filterLength: entries.length,
-      },
-      "Filter length is greater than 1024, truncating"
-    );
-    entries.splice(1024);
-  }
-
   return {
     data_source_views: entries.map(([data_source_id, entry]) => ({
       data_source_id,
