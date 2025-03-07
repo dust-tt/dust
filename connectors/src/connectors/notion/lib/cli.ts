@@ -28,7 +28,11 @@ import {
   upsertPageWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/admins";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionConnectorState,
+  NotionDatabase,
+  NotionPage,
+} from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -504,12 +508,35 @@ export const notion = async ({
       };
     }
 
+    // To use when we have many nodes in "syncing" state for a connector that have a
+    // You can check with the following SQL query on core:
+    // SELECT count(*) FROM data_sources_nodes dsn JOIN data_sources ds ON (dsn.data_source = ds.id) WHERE 'notion-syncing' = ANY(parents)
+    // AND mime_type != 'application/vnd.dust.notion.syncing-folder' AND ds.data_source_id = 'XXX'
+    // Clearing the parentsLastUpdatedAt field will force a resync of all parents at the end of the next sync
+    case "clear-parents-last-updated-at": {
+      const connector = await getConnector(args);
+      const notionConnectorState = await NotionConnectorState.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!notionConnectorState) {
+        throw new Error("No notion connector state found");
+      }
+      await notionConnectorState.update({
+        parentsLastUpdatedAt: null,
+      });
+      return { success: true };
+    }
+
     case "update-core-parents": {
       const connector = await getConnector(args);
 
       // if no pageId or databaseId is provided, we update all parents fields for
       // all pages and databases for the connector
       if (args.all) {
+        // Note from seb: I am not sure the "all" case is working as expected without clearing the parentsLastUpdatedAt field first
+        // As updateParentsFields() only run on nodes moved or created after the last parentsLastUpdatedAt
         let cursors:
           | {
               pageCursor: string | null;

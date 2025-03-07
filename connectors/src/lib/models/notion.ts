@@ -12,7 +12,7 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare fullResyncStartTime?: CreationOptional<Date>;
 
   declare lastGarbageCollectionFinishTime?: Date;
-  declare parentsLastUpdatedAt?: Date;
+  declare parentsLastUpdatedAt?: Date | null;
 
   declare notionWorkspaceId: string;
 }
