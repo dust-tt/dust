@@ -107,6 +107,9 @@ export async function getRootNodesToSyncFromResources(
               name: `${node.name} (${extractPath(item)})`,
             };
           } catch (error) {
+            if (error instanceof GraphError && error.statusCode === 404) {
+              return null;
+            }
             logger.error(
               {
                 connectorId,
