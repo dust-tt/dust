@@ -147,7 +147,6 @@ export default function AppLayout({
         />
         <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-slate-950 dark:text-slate-50">
           <main
-            id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(
               "flex h-full w-full flex-col items-center overflow-y-auto",
               hasTopPadding ?? !titleChildren ? "lg:pt-8" : ""
@@ -167,7 +166,10 @@ export default function AppLayout({
               </div>
             </div>
 
-            <div className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8">
+            <div
+              id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
+              className="flex h-full w-full flex-col items-center overflow-y-auto px-4 sm:px-8"
+            >
               {isWideMode ? (
                 loaded && children
               ) : (
