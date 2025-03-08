@@ -1919,6 +1919,7 @@ export async function renderAndUpsertPageFromCache({
   }
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
+
   const renderedPageSection = await renderPageSection({
     dsConfig,
     blocksByParentId,
@@ -2052,6 +2053,15 @@ export async function renderAndUpsertPageFromCache({
 
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
+
+  // From seb, debugging logs for a page we don't upsert to core
+  if (pageId === "3630244c-446e-475d-9323-55a264364b9e") {
+    localLogger.info(
+      "notionRenderAndUpsertPageFromCache: debug.",
+      blocksByParentId,
+      parsedProperties
+    );
+  }
 
   if (documentLength === 0 && propertiesContentLength < 128) {
     localLogger.info(
