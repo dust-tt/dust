@@ -289,7 +289,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-
+    case "application/vnd.dust.section-structured":
+      if (useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
     default:
       assertNever(contentType);
   }

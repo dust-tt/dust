@@ -15,21 +15,29 @@ import type {
 } from "@dust-tt/types";
 import {
   BaseAction,
-  getTablesQueryResultsFileAttachment,
+  getTablesQueryResultsFileAttachments,
   getTablesQueryResultsFileTitle,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import {
+  generateCSVFileAndSnippet,
+  generateSearchableFile,
+  generateSearchableSection,
+  uploadFileToConversationDataSource,
+} from "@app/lib/api/assistant/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -38,6 +46,7 @@ import logger from "@app/logger/logger";
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
+const TABLES_QUERY_SEARCHABLE_FILE_MIN_COLUMN_LENGTH = 500;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -46,6 +55,7 @@ interface TablesQueryActionBlob {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  searchableFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -58,6 +68,7 @@ export class TablesQueryAction extends BaseAction {
   readonly output: Record<string, string | number | boolean> | null;
   readonly resultsFileId: string | null;
   readonly resultsFileSnippet: string | null;
+  readonly searchableFileId: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -74,6 +85,7 @@ export class TablesQueryAction extends BaseAction {
     this.step = blob.step;
     this.resultsFileId = blob.resultsFileId;
     this.resultsFileSnippet = blob.resultsFileSnippet;
+    this.searchableFileId = blob.searchableFileId;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -145,13 +157,13 @@ export class TablesQueryAction extends BaseAction {
     }
 
     if (hasResultsFile) {
-      const attachment = getTablesQueryResultsFileAttachment({
+      const attachments = getTablesQueryResultsFileAttachments({
         resultsFileId: this.resultsFileId,
         resultsFileSnippet: this.resultsFileSnippet,
+        searchableFileId: this.searchableFileId,
         output: this.output,
-        includeSnippet: true,
       });
-      if (!attachment) {
+      if (!attachments) {
         throw new Error(
           "Unexpected: No file attachment for tables query with results file."
         );
@@ -160,7 +172,7 @@ export class TablesQueryAction extends BaseAction {
       // We render it as an attachment.
       return {
         ...partialOutput,
-        content: attachment,
+        content: attachments,
       };
     }
 
@@ -193,24 +205,39 @@ export async function tableQueryTypesFromAgentMessageIds(
         model: FileModel,
         as: "resultsFile",
       },
+      {
+        model: FileModel,
+        as: "searchableFile",
+      },
     ],
   });
 
   return actions.map((action) => {
+    const title = getTablesQueryResultsFileTitle({
+      output: action.output as CSVRecord,
+    });
+
     const resultsFile: ActionGeneratedFileType | null = action.resultsFile
       ? {
           fileId: FileResource.modelIdToSId({
             id: action.resultsFile.id,
             workspaceId: owner.id,
           }),
-          title: getTablesQueryResultsFileTitle({
-            output: action.output as Record<
-              string,
-              string | number | boolean
-            > | null,
-          }),
+          title,
           contentType: action.resultsFile.contentType,
           snippet: action.resultsFile.snippet,
+        }
+      : null;
+
+    const searchableFile: ActionGeneratedFileType | null = action.searchableFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.searchableFile.id,
+            workspaceId: owner.id,
+          }),
+          title: `${title} (Searchable JSONL)`,
+          contentType: action.searchableFile.contentType,
+          snippet: action.searchableFile.snippet,
         }
       : null;
 
@@ -224,6 +251,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       step: action.step,
       resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
+      searchableFileId: searchableFile ? searchableFile.fileId : null,
       generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
@@ -328,6 +356,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        searchableFileId: null,
         generatedFiles: [],
       }),
     };
@@ -528,6 +557,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 step: action.step,
                 resultsFileId: null,
                 resultsFileSnippet: null,
+                searchableFileId: null,
                 generatedFiles: [],
               }),
             };
@@ -548,14 +578,17 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const updateParams: {
       resultsFileId: number | null;
       resultsFileSnippet: string | null;
+      searchableFileId: number | null;
       output: Record<string, unknown> | null;
     } = {
       resultsFileId: null,
       resultsFileSnippet: null,
+      searchableFileId: null,
       output: null,
     };
 
-    let resultFile: ActionGeneratedFileType | null = null;
+    let generatedResultFile: ActionGeneratedFileType | null = null;
+    let generatedSearchableFile: ActionGeneratedFileType | null = null;
 
     if (
       "results" in sanitizedOutput &&
@@ -566,25 +599,85 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+      // Generate the CSV file.
+      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+        title: queryTitle,
+        conversationId: conversation.sId,
+        results,
+      });
+
+      // Upload the CSV file to the conversation data source.
+      await uploadFileToConversationDataSource({
         auth,
-        {
+        file: csvFile,
+      });
+
+      //  Save ref to the generated csv file to be yielded later.
+      generatedResultFile = {
+        fileId: csvFile.sId,
+        title: queryTitle,
+        contentType: csvFile.contentType,
+        snippet: csvFile.snippet,
+      };
+
+      // Check if we should generate a searchable file.
+      const shouldGenerateSearchableFile = results.some((result) => {
+        for (const value of Object.values(result)) {
+          if (
+            typeof value === "string" &&
+            value.length > TABLES_QUERY_SEARCHABLE_FILE_MIN_COLUMN_LENGTH
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      let searchableFile: FileResource | null = null;
+      if (shouldGenerateSearchableFile) {
+        // Generate the searchable file.
+        searchableFile = await generateSearchableFile(auth, {
           title: queryTitle,
           conversationId: conversation.sId,
           results,
-        }
-      );
+        });
 
-      resultFile = {
-        fileId: file.sId,
-        title: queryTitle,
-        contentType: file.contentType,
-        snippet: file.snippet,
-      };
+        // Generate the searchable section so we can upload it to the conversation data source.
+        // First we fetch the connector provider for the data source, cause the chunking
+        // strategy of the searchable file depends on it: Since all tables are from the same
+        // data source, we can just take the first table's data source view id.
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          actionConfiguration.tables[0].dataSourceViewId
+        );
+        const connectorProvider =
+          dataSourceView?.dataSource?.connectorProvider ?? null;
+        const section = await generateSearchableSection({
+          title: queryTitle,
+          results,
+          connectorProvider,
+        });
+
+        // Upload the searchable file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: searchableFile,
+          section,
+        });
+
+        // Save ref to the generated searchable file to be yielded later.
+        generatedSearchableFile = {
+          fileId: searchableFile.sId,
+          title: `${queryTitle} (Rich Text)`,
+          contentType: searchableFile.contentType,
+          snippet: null,
+        };
+      }
 
       delete sanitizedOutput.results;
-      updateParams.resultsFileId = file.id;
-      updateParams.resultsFileSnippet = snippet;
+      updateParams.resultsFileId = csvFile.id;
+      updateParams.resultsFileSnippet = csvSnippet;
+      updateParams.searchableFileId = searchableFile?.id ?? null;
     }
 
     // Updating action
@@ -607,9 +700,13 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
-        resultsFileId: resultFile?.fileId ?? null,
+        resultsFileId: generatedResultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
-        generatedFiles: resultFile ? [resultFile] : [],
+        searchableFileId: generatedSearchableFile?.fileId ?? null,
+        generatedFiles: removeNulls([
+          generatedResultFile,
+          generatedSearchableFile,
+        ]),
       }),
     };
     return;

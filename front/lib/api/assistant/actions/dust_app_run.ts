@@ -26,11 +26,12 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@dust-tt/types";
 
-import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
 import {
-  getToolResultOutputCsvFileAndSnippet,
-  getToolResultOutputPlainTextFileAndSnippet,
-} from "@app/lib/api/assistant/actions/result_file_helpers";
+  generateCSVFileAndSnippet,
+  generatePlainTextFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/api/assistant/actions/action_file_helpers";
+import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
@@ -615,48 +616,58 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
           resultsFileContentType: "text/csv",
         });
 
-        const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+        // Generate the CSV file.
+        const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+          title: fileTitle,
+          conversationId: conversation.sId,
+          results: sanitizedOutput.__dust_file.content,
+        });
+
+        // Upload the CSV file to the conversation data source.
+        await uploadFileToConversationDataSource({
           auth,
-          {
-            title: fileTitle,
-            conversationId: conversation.sId,
-            results: sanitizedOutput.__dust_file.content,
-          }
-        );
+          file: csvFile,
+        });
 
         resultFile = {
-          fileId: file.sId,
+          fileId: csvFile.sId,
           title: fileTitle,
-          contentType: file.contentType,
-          snippet: file.snippet,
+          contentType: csvFile.contentType,
+          snippet: csvFile.snippet,
         };
 
         delete sanitizedOutput.__dust_file;
-        updateParams.resultsFileId = file.id;
-        updateParams.resultsFileSnippet = snippet;
+        updateParams.resultsFileId = csvFile.id;
+        updateParams.resultsFileSnippet = csvSnippet;
       } else if (containsValidDocumentOutput(sanitizedOutput)) {
         const fileTitle = getDustAppRunResultsFileTitle({
           appName: app.name,
           resultsFileContentType: "text/plain",
         });
 
-        const { file, snippet } =
-          await getToolResultOutputPlainTextFileAndSnippet(auth, {
-            title: fileTitle,
-            conversationId: conversation.sId,
-            content: sanitizedOutput.__dust_file.content,
-          });
+        // Generate the plain text file.
+        const plainTextFile = await generatePlainTextFile(auth, {
+          title: fileTitle,
+          conversationId: conversation.sId,
+          content: sanitizedOutput.__dust_file.content,
+        });
+
+        // Upload the plain text file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: plainTextFile,
+        });
 
         resultFile = {
-          fileId: file.sId,
+          fileId: plainTextFile.sId,
           title: fileTitle,
-          contentType: file.contentType,
-          snippet: file.snippet,
+          contentType: plainTextFile.contentType,
+          snippet: plainTextFile.snippet,
         };
 
         delete sanitizedOutput.__dust_file;
-        updateParams.resultsFileId = file.id;
-        updateParams.resultsFileSnippet = snippet;
+        updateParams.resultsFileId = plainTextFile.id;
+        updateParams.resultsFileSnippet = plainTextFile.snippet;
       }
     }
 
