@@ -330,7 +330,7 @@ async function isParentAlreadyInNodes({
       driveItem = await getItem(logger, client, parentAPIPath);
     } catch (error) {
       if (error instanceof GraphError && error.statusCode === 404) {
-        continue;
+        return false;
       }
       throw error;
     }
