@@ -1,7 +1,6 @@
 import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
 import { assertNever, MIME_TYPES } from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
-import axios from "axios";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
@@ -310,36 +309,24 @@ export async function githubUpsertIssueActivity(
     getIssuesInternalId(repoId),
     getRepositoryInternalId(repoId),
   ];
-
-  try {
-    // TODO: last commentor, last comment date, issue labels (as tags)
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentId,
-      documentContent: renderedIssue,
-      documentUrl: issue.url,
-      timestampMs: updatedAtTimestamp,
-      tags: tags,
-      parents,
-      parentId: parents[1],
-      loggerArgs: logger.bindings(),
-      upsertContext: {
-        sync_type: isBatchSync ? "batch" : "incremental",
-      },
-      title: issue.title,
-      mimeType: MIME_TYPES.GITHUB.ISSUE,
-      async: true,
-    });
-  } catch (e) {
-    if (axios.isAxiosError(e) && e.status === 403) {
-      // TODO be more precise about the error, check this
-      // https://app.datadoghq.eu/logs?query=%22Error%20uploading%20document%20to%20Dust%22&agg_m=count&agg_m_source=base&agg_t=count&clustering_pattern_field_path=message&cols=host,service&event=AwAAAZV1BxPNAr2TXgAAABhBWlYxQnlDbEFBREFBNnp6aUt3S0JnQlAAAAAkMDE5NTc1MDgtODU3Ny00NjM3LWFjN2MtNWExYzNlZTgxMTBkAAARjw&fromUser=true&messageDisplay=inline&storage=hot&stream_sort=desc&viz=stream&from_ts=1741424278000&to_ts=1741425178000&live=false
-      // For now, just skip because it's probably a rate limit error
-      logger.info("Skipping upserting GitHub issue due to doc size limit.");
-      return;
-    }
-    throw e;
-  }
+  // TODO: last commentor, last comment date, issue labels (as tags)
+  await upsertDataSourceDocument({
+    dataSourceConfig,
+    documentId,
+    documentContent: renderedIssue,
+    documentUrl: issue.url,
+    timestampMs: updatedAtTimestamp,
+    tags: tags,
+    parents,
+    parentId: parents[1],
+    loggerArgs: logger.bindings(),
+    upsertContext: {
+      sync_type: isBatchSync ? "batch" : "incremental",
+    },
+    title: issue.title,
+    mimeType: MIME_TYPES.GITHUB.ISSUE,
+    async: true,
+  });
 
   logger.info("Upserting GitHub issue in DB.");
   await GithubIssue.upsert({
