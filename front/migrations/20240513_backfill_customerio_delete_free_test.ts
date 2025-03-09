@@ -5,12 +5,12 @@ import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allUserModels = await UserModel.findAll();
@@ -45,7 +45,7 @@ const backfillCustomerIo = async (execute: boolean) => {
     );
 
     const subscriptionByWorkspaceSid =
-      await SubscriptionResource.fetchByWorkspaces(
+      await SubscriptionResource.fetchActiveByWorkspaces(
         Object.values(workspaceById).map((w) =>
           renderLightWorkspaceType({ workspace: w })
         )
@@ -61,7 +61,9 @@ const backfillCustomerIo = async (execute: boolean) => {
           workspaces.map((ws) => subscriptionByWorkspaceSid[ws.sId])
         ) ?? [];
 
-      if (!subscriptions.some((s) => s.plan.code !== FREE_TEST_PLAN_CODE)) {
+      if (
+        !subscriptions.some((s) => s.getPlan().code !== FREE_TEST_PLAN_CODE)
+      ) {
         logger.info(
           { userId: u.sId },
           "User does not have any real subscriptions, deleting from Customer.io"
@@ -91,7 +93,9 @@ const backfillCustomerIo = async (execute: boolean) => {
 
       const workspacesWithoutRealSubscriptions = workspaces.filter((ws) => {
         const subscription = subscriptionByWorkspaceSid[ws.sId];
-        return !subscription || subscription.plan.code === FREE_TEST_PLAN_CODE;
+        return (
+          !subscription || subscription.getPlan().code === FREE_TEST_PLAN_CODE
+        );
       });
       for (const ws of workspacesWithoutRealSubscriptions) {
         if (!deletedWorkspaceSids.has(ws.sId)) {

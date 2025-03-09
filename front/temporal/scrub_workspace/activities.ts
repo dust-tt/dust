@@ -247,7 +247,9 @@ async function cleanupCustomerio(auth: Authenticator) {
 
   // Finally, fetch all the subscriptions for the workspaces.
   const subscriptionsByWorkspaceSid =
-    await SubscriptionResource.fetchByWorkspaces(Object.values(workspaceById));
+    await SubscriptionResource.fetchActiveByWorkspaces(
+      Object.values(workspaceById)
+    );
 
   // Process the workspace users in chunks of 4.
   const chunks = _.chunk(users, 4);
@@ -270,7 +272,7 @@ async function cleanupCustomerio(auth: Authenticator) {
             return (
               subscription &&
               ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(
-                subscription.plan.code
+                subscription.getPlan().code
               )
             );
           })

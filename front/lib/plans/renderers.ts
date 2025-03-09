@@ -2,6 +2,7 @@ import type { PlanType, SubscriptionType } from "@dust-tt/types";
 
 import type { Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 
 // Helper function to render PlanType from PlanAttributes
 export function renderPlanFromModel({
@@ -65,6 +66,27 @@ export function renderSubscriptionFromModels({
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
     plan: renderPlanFromModel({ plan }),
+    requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
+  };
+}
+
+export function renderSubscriptionFromResource({
+  plan,
+  activeSubscription,
+}: {
+  plan: PlanType;
+  activeSubscription: SubscriptionResource;
+}): SubscriptionType {
+  return {
+    status: activeSubscription?.status ?? "active",
+    trialing: activeSubscription?.trialing === true,
+    sId: activeSubscription?.sId || null,
+    stripeSubscriptionId: activeSubscription?.stripeSubscriptionId || null,
+    startDate: activeSubscription?.startDate?.getTime() || null,
+    endDate: activeSubscription?.endDate?.getTime() || null,
+    paymentFailingSince:
+      activeSubscription?.paymentFailingSince?.getTime() || null,
+    plan: plan,
     requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
   };
 }

@@ -26,7 +26,7 @@ export class ServerSideTracking {
   static async trackGetUser({ user }: { user: UserTypeWithWorkspaces }) {
     try {
       const subscriptionByWorkspaceId =
-        await SubscriptionResource.fetchByWorkspaces(user.workspaces);
+        await SubscriptionResource.fetchActiveByWorkspaces(user.workspaces);
 
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
@@ -61,7 +61,7 @@ export class ServerSideTracking {
 
           return {
             ...ws,
-            planCode: subscriptionByWorkspaceId[ws.sId].plan.code,
+            planCode: subscriptionByWorkspaceId[ws.sId].getPlan().code,
             seats: seatsByWorkspaceId[ws.sId].seats,
             subscriptionStartAt,
             requestCancelAt,

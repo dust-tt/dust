@@ -25,6 +25,7 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
+import { renderSubscriptionFromResource } from "@app/lib/plans/renderers";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -270,12 +271,21 @@ async function handleRegularSignupFlow(
       );
     }
 
-    const workspaceSubscription = await SubscriptionResource.fetchByWorkspace(
-      renderLightWorkspaceType({ workspace: existingWorkspace })
-    );
+    const workspaceSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace: existingWorkspace })
+      );
+    if (!workspaceSubscription) {
+      throw new Error(
+        `Could not find subscription for workspace ${existingWorkspace.id}`
+      );
+    }
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
-      workspaceSubscription
+      renderSubscriptionFromResource({
+        activeSubscription: workspaceSubscription,
+        plan: workspaceSubscription.getPlan(),
+      })
     );
     // Redirect to existing workspace if no seats available, requiring an invite.
     if (

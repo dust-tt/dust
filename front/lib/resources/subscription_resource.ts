@@ -1,10 +1,6 @@
-import type {
-  LightWorkspaceType,
-  Result,
-  SubscriptionType,
-} from "@dust-tt/types";
+import type { LightWorkspaceType, PlanType, Result } from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
-import * as _ from "lodash";
+import _ from "lodash";
 import type {
   Attributes,
   CreationAttributes,
@@ -17,11 +13,13 @@ import { Subscription } from "@app/lib/models/plan";
 import { Plan } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
-import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import logger from "@app/logger/logger";
+
+const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -32,37 +30,32 @@ export interface SubscriptionResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<Subscription> {
   static model: ModelStatic<Subscription> = Subscription;
+  private readonly plan: PlanType;
 
   constructor(
     model: ModelStatic<Subscription>,
-    blob: Attributes<Subscription>
+    blob: Attributes<Subscription>,
+    plan: PlanType
   ) {
     super(Subscription, blob);
+    this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>) {
+  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
     const subscription = await Subscription.create({ ...blob });
-    return new SubscriptionResource(Subscription, subscription.get());
+    return new SubscriptionResource(Subscription, subscription.get(), plan);
   }
 
-  static async fetchByWorkspace(
+  static async fetchActiveByWorkspace(
     workspace: LightWorkspaceType
-  ): Promise<SubscriptionType> {
-    const res = await SubscriptionResource.fetchByWorkspaces([workspace]);
-
-    const subscription = res[workspace.sId];
-    if (!subscription) {
-      throw new Error(
-        `Could not find subscription for workspace ${workspace.sId}`
-      );
-    }
-
-    return subscription;
+  ): Promise<SubscriptionResource | null> {
+    const res = await SubscriptionResource.fetchActiveByWorkspaces([workspace]);
+    return res?.[workspace.sId] ?? null;
   }
 
-  static async fetchByWorkspaces(
+  static async fetchActiveByWorkspaces(
     workspaces: LightWorkspaceType[]
-  ): Promise<{ [key: string]: SubscriptionType }> {
+  ): Promise<{ [key: string]: SubscriptionResource }> {
     const workspaceModelBySid = _.keyBy(workspaces, "sId");
 
     const activeSubscriptionByWorkspaceId = _.keyBy(
@@ -93,15 +86,16 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       "workspaceId"
     );
 
-    const renderedSubscriptionByWorkspaceSid: Record<string, SubscriptionType> =
-      {};
+    const renderedSubscriptionByWorkspaceSid: Record<
+      string,
+      SubscriptionResource
+    > = {};
 
     for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      // Default values when no subscription
-      let plan: PlanAttributes = FREE_NO_PLAN_DATA;
+      let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
 
       if (activeSubscription) {
         // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
@@ -119,11 +113,11 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           );
         }
       }
-
-      renderedSubscriptionByWorkspaceSid[sId] = renderSubscriptionFromModels({
-        plan,
-        activeSubscription,
-      });
+      renderedSubscriptionByWorkspaceSid[sId] = new SubscriptionResource(
+        Subscription,
+        activeSubscription || { id: -1 },
+        renderPlanFromModel({ plan })
+      );
     }
 
     return renderedSubscriptionByWorkspaceSid;
@@ -140,5 +134,9 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       transaction,
     });
     return new Ok(undefined);
+  }
+
+  getPlan(): PlanType {
+    return this.plan;
   }
 }
