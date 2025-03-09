@@ -137,6 +137,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   getPlan(): PlanType {
-    return this.plan;
+    return { ...this.plan };
   }
 }
