@@ -50,7 +50,7 @@ export const InputBarAttachments = ({
     includeDataSources: true,
     owner,
     search: debouncedSearch,
-    viewType: "document",
+    viewType: "all",
     disabled: isSpacesLoading || !debouncedSearch,
     spaceIds: spaces.map((s) => s.sId),
   });
