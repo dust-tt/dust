@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
   ScrollArea,
@@ -86,8 +87,20 @@ export const InputBarAttachments = ({
   const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
   const showLocalFile = !showSearchResults;
 
+  const searchbarRef = (element: HTMLInputElement) => {
+    if (element) {
+      element.focus();
+    }
+  };
+
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (!open) {
+          setSearch("");
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost-secondary"
@@ -96,20 +109,18 @@ export const InputBarAttachments = ({
           disabled={isLoading}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-125" align="start" side="top">
-        <div className="items-end pb-2 pt-4">
+      <DropdownMenuContent className="w-125" side="bottom">
+        <div className="items-end pb-2">
           <DropdownMenuSearchbar
+            ref={searchbarRef}
             name="search-files"
             placeholder="Search knowledge or attach files"
             value={search}
             onChange={setSearch}
             disabled={isLoading}
           />
-
-          <ScrollArea
-            className="mt-2 flex max-h-[300px] flex-col"
-            hideScrollBar
-          >
+          <DropdownMenuSeparator />
+          <ScrollArea className="max-h-125 flex flex-col" hideScrollBar>
             {showLocalFile && (
               <div className="flex flex-col items-end gap-4 pr-1">
                 <Input
@@ -145,7 +156,7 @@ export const InputBarAttachments = ({
                           className: "min-w-4",
                         })
                       }
-                      description={`${spacesMap[item.dataSourceView.spaceId]} • ${getLocationForDataSourceViewContentNode(item)}`}
+                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                       onClick={() => {
                         setSearch("");
                         onNodeSelect(item);
