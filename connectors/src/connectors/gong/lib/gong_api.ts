@@ -82,7 +82,8 @@ const GongTranscriptMetadataCodec = t.intersection([
       }),
       CatchAllCodec,
     ]),
-    parties: t.array(GongParticipantCodec),
+    // Parties are not defined on imported calls.
+    parties: t.union([t.array(GongParticipantCodec), t.undefined]),
   }),
   CatchAllCodec,
 ]);
