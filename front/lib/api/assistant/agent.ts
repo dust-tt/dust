@@ -354,16 +354,6 @@ async function* runMultiActionsAgent(
     return;
   }
 
-  let fallbackPrompt = "You are a conversational agent";
-  if (
-    agentConfiguration.actions.length ||
-    agentConfiguration.visualizationEnabled
-  ) {
-    fallbackPrompt += " with access to tool use.";
-  } else {
-    fallbackPrompt += ".";
-  }
-
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
     availableActions,
     agentMessage,
@@ -372,6 +362,17 @@ async function* runMultiActionsAgent(
 
   if (!isLastGenerationIteration) {
     availableActions = availableActions.concat(jitActions);
+  }
+
+  let fallbackPrompt = "You are a conversational agent";
+  if (
+    agentConfiguration.actions.length ||
+    agentConfiguration.visualizationEnabled ||
+    availableActions.length > 0
+  ) {
+    fallbackPrompt += " with access to tool use.";
+  } else {
+    fallbackPrompt += ".";
   }
 
   const prompt = await constructPromptMultiActions(auth, {
