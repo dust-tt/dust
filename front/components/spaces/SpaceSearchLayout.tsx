@@ -244,7 +244,7 @@ function BackendSearch({
       // Append results for subsequent pages
       setSearchResults((prev) => [...prev, ...searchResultNodes]);
     }
-  }, [searchResultNodes, tablePagination.pageIndex, totalNodesCount]);
+  }, [searchResultNodes, tablePagination.pageIndex]);
 
   const handleLoadMore = React.useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
