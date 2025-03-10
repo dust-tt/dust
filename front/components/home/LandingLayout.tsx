@@ -120,7 +120,6 @@ export default function LandingLayout({
           </div>
         </div>
       </ScrollingHeader>
-      {/* Keeping the background dark */}
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
       <div className="fixed inset-0 -z-30 bg-slate-900/50" />
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">

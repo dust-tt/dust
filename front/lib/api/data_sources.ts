@@ -914,8 +914,7 @@ export async function createDataSourceWithoutProvider(
         conversationId: conversation?.id,
       },
       space,
-      auth.user(),
-      conversation
+      auth.user()
     );
 
   try {
@@ -1154,4 +1153,15 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   }
 
   return new Ok(res);
+}
+
+export async function computeDataSourceStatistics(
+  dataSource: DataSourceResource
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  return coreAPI.getDataSourceStats({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
+  });
 }

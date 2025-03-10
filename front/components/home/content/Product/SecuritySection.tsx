@@ -1,6 +1,5 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
 import Link from "next/link";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P } from "@app/components/home/ContentComponents";
@@ -17,7 +16,10 @@ export function SecuritySection() {
             </H2>
             <P size="lg">
               We've made security our core focus from day&nbsp;one to safeguard
-              your&nbsp;company&nbsp;data and workspace&nbsp;privacy.<br></br>{" "}
+              your&nbsp;company&nbsp;data and workspace&nbsp;privacy. Avoid
+              shadow IT and benefit from Enterprise-level privacy from model
+              providers. SOC2, HIPAA & GDPR compliant.
+              <br></br>
               <Link href="/home/security" shallow={true}>
                 <A variant="primary">More about Security</A>
               </Link>
@@ -28,7 +30,7 @@ export function SecuritySection() {
           className={classNames(
             "col-span-12 pt-8",
             "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "sm:grid-cols-3 md:gap-y-16"
           )}
         >
           <ImgBlock
@@ -63,8 +65,8 @@ export function SecuritySection() {
             title={<>Select trusted models only</>}
             content={
               <>
-                Control risk: only trusted providers, data is not retained by
-                providers or fed into training.
+                Pick from trusted providers with zero data retention nor model
+                training.
               </>
             }
           >

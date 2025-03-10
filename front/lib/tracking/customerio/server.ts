@@ -8,9 +8,9 @@ import * as _ from "lodash";
 
 import config from "@app/lib/api/config";
 import { Workspace } from "@app/lib/models/workspace";
-import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -194,9 +194,11 @@ export class CustomerioServerSideTracking {
     if (!config.getCustomerIoEnabled()) {
       return;
     }
-    const planCode =
-      workspace.planCode ??
-      (await subscriptionForWorkspace(workspace)).plan.code;
+
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspace(workspace);
+
+    const planCode = workspace.planCode ?? subscription.getPlan().code;
     const seats =
       workspace.seats ??
       (await countActiveSeatsInWorkspaceCached(workspace.sId));

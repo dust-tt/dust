@@ -1,133 +1,180 @@
 import {
   AttachmentIcon,
   Button,
-  cn,
-  Icon,
-  PlusIcon,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
-  SearchInputWithPopover,
-  Separator,
+  CloudArrowUpIcon,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Input,
+  ScrollArea,
+  ScrollBar,
+  Spinner,
 } from "@dust-tt/sparkle";
+import type {
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+} from "@dust-tt/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 
 interface InputBarAttachmentsProps {
+  owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
-  onConnectedFileSelect: (fileId: string) => void;
+  onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
 }
 
-// TODO(attach from input bar): use component with spaces wide search
 export const InputBarAttachments = ({
+  owner,
   fileUploaderService,
-  onConnectedFileSelect,
+  onNodeSelect,
   isLoading = false,
 }: InputBarAttachmentsProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [isDebouncing, setIsDebouncing] = useState(false);
 
-  const items = Array.from({ length: 50 }).map((_, i) => ({
-    id: `${i}`,
-    title: `Document ${i + 1}`,
-    path: "Github",
-  }));
-
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => item.title.includes(debouncedSearch));
-  }, [debouncedSearch, items]);
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType: "all",
+    disabled: isSpacesLoading || !debouncedSearch,
+    spaceIds: spaces.map((s) => s.sId),
+  });
 
   useEffect(() => {
+    setIsDebouncing(true);
     const timeout = setTimeout(() => {
       setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
+      setIsDebouncing(false);
     }, 300);
     return () => {
       clearTimeout(timeout);
+      setIsDebouncing(false);
     };
   }, [search]);
 
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
+    [spaces]
+  );
+
+  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
+    () =>
+      searchResultNodes.flatMap((node) => {
+        const { dataSourceViews, ...rest } = node;
+        return dataSourceViews.map((view) => ({
+          ...rest,
+          dataSourceView: view,
+        }));
+      }),
+    [searchResultNodes]
+  );
+
+  const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
+
+  const searchbarRef = (element: HTMLInputElement) => {
+    if (element) {
+      element.focus();
+    }
+  };
+
   return (
-    <PopoverRoot>
-      <PopoverTrigger asChild>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (!open) {
+          setSearch("");
+        }
+      }}
+    >
+      <DropdownMenuTrigger asChild>
         <Button
-          variant="ghost"
-          icon={PlusIcon}
+          variant="ghost-secondary"
+          icon={AttachmentIcon}
           size="xs"
           disabled={isLoading}
         />
-      </PopoverTrigger>
-      <PopoverContent className="w-[400px]" fullWidth align="start">
-        <div className="flex flex-col gap-4">
-          <div className="px-4 pt-4">
-            <h2 className="text-lg font-semibold">Local file</h2>
-            <div className="mt-2">
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: "none" }}
-                onChange={async (e) => {
-                  await fileUploaderService.handleFileChange(e);
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = "";
-                  }
-                }}
-                multiple={true}
-              />
-              <button
-                className="flex w-fit items-center gap-2 rounded-lg border border-structure-200 px-4 py-2 text-sm hover:bg-structure-50"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
-              >
-                <Icon
-                  visual={AttachmentIcon}
-                  size="xs"
-                  className="text-element-600"
-                />
-                Attach local file
-              </button>
-            </div>
-          </div>
-          <Separator />
-          <div className="px-4 pb-2">
-            <h2 className="text-lg font-semibold">From knowledge</h2>
-            <div className="mt-2">
-              <SearchInputWithPopover
-                name="search-files"
-                placeholder="Search connected files"
-                value={search}
-                onChange={setSearch}
-                open={search.length >= MIN_SEARCH_QUERY_SIZE}
-                onOpenChange={() => {}}
-                items={filteredItems}
-                renderItem={(item, selected) => (
-                  <div
-                    className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-lg px-1 py-2 hover:bg-structure-50",
-                      selected && "bg-structure-50"
-                    )}
-                    onClick={() => {
-                      onConnectedFileSelect(item.id);
-                      setSearch("");
-                    }}
-                  >
-                    <Icon visual={AttachmentIcon} size="xs" />
-                    <span className="text-sm">{item.title}</span>
-                    <span className="ml-auto text-sm text-slate-500">
-                      {item.path}
-                    </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-125" side="bottom">
+        <div className="items-end pb-2">
+          <DropdownMenuSearchbar
+            ref={searchbarRef}
+            name="search-files"
+            placeholder="Search knowledge or attach files"
+            value={search}
+            onChange={setSearch}
+            disabled={isLoading}
+          />
+          <DropdownMenuSeparator />
+          <ScrollArea className="max-h-125 flex flex-col" hideScrollBar>
+            {showSearchResults ? (
+              <div className="pt-2">
+                {unfoldedNodes.length > 0 ? (
+                  unfoldedNodes.map((item, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      label={item.title}
+                      icon={() =>
+                        getVisualForDataSourceViewContentNode(item)({
+                          className: "min-w-4",
+                        })
+                      }
+                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
+                      onClick={() => {
+                        setSearch("");
+                        onNodeSelect(item);
+                      }}
+                    />
+                  ))
+                ) : isSearchLoading || isDebouncing ? (
+                  <div className="flex justify-center py-4">
+                    <Spinner variant="dark" size="sm" />
+                  </div>
+                ) : (
+                  <div className="p-2 text-sm text-gray-500">
+                    No results found
                   </div>
                 )}
-                noResults="No results found"
-                disabled={isLoading}
-              />
-            </div>
-          </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end gap-4 pr-1">
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    await fileUploaderService.handleFileChange(e);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                  }}
+                  multiple={true}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  icon={CloudArrowUpIcon}
+                  label="Upload file"
+                />
+              </div>
+            )}
+            <ScrollBar className="py-0" />
+          </ScrollArea>
         </div>
-      </PopoverContent>
-    </PopoverRoot>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 };

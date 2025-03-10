@@ -198,14 +198,10 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
 
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const result = await coreAPI.searchTags({
+      dataSourceViews: dataSourceViews.map((dsv) => dsv.toJSON()),
+      limit: DEFAULT_SEARCH_LABELS_LIMIT,
       query: searchText,
       queryType: "match",
-      // TODO(2025-03-06 flav): Use `DataSourceViewType` once Assistant Builder is fixed.
-      blobDataSourceViews: dataSourceViews.map((dsv) => ({
-        data_source_id: dsv.dataSource.dustAPIDataSourceId,
-        view_filter: dsv.parentsIn ?? [],
-      })),
-      limit: DEFAULT_SEARCH_LABELS_LIMIT,
     });
 
     if (result.isErr()) {

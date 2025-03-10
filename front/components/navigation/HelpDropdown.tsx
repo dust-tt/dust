@@ -127,7 +127,7 @@ export function HelpDropdown({
         <DropdownMenuItem
           label="Join the Slack Community"
           icon={SlackLogo}
-          href="https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA"
+          href="https://dust-community.tightknit.community/join"
           target="_blank"
         />
         <DropdownMenuLabel label="Ask questions" />

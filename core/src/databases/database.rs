@@ -56,7 +56,7 @@ pub async fn execute_query(
     tables: Vec<Table>,
     query: &str,
     store: Box<dyn Store + Sync + Send>,
-) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
     match get_table_type_for_tables(tables.iter().collect()) {
         Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
             "Failed to get table type for tables: {}",

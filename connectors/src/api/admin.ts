@@ -33,6 +33,10 @@ const whitelistedCommands = [
     command: "upsert-database",
   },
   {
+    majorCommand: "notion",
+    command: "clear-parents-last-updated-at",
+  },
+  {
     majorCommand: "slack",
     command: "whitelist-bot",
   },

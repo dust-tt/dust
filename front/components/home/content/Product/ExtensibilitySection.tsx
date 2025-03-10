@@ -5,7 +5,7 @@ import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { A, Grid, H2, P } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-export function ExtensibilitySection() {
+export function ExtensibilitySection({ page = "default" }) {
   return (
     <>
       <Grid>
@@ -18,11 +18,22 @@ export function ExtensibilitySection() {
               Developer friendly&nbsp;platform designed to&nbsp;build custom
               actions and&nbsp;application orchestration to&nbsp;fit your
               team’s&nbsp;exact&nbsp;needs.{" "}
-              <Link href="/home/solutions/dust-platform" shallow={true}>
-                <A variant="primary">
-                  More about Dust's&nbsp;Developer Platform
-                </A>
-              </Link>
+              {page == "default" && (
+                <Link href="/home/solutions/dust-platform" shallow={true}>
+                  <A variant="primary">
+                    More about Dust's&nbsp;Developer Platform
+                  </A>
+                </Link>
+              )}
+              {page != "default" && (
+                <Link
+                  href="https://docs.dust.tt/reference/developer-platform-overview"
+                  shallow={true}
+                  target="_blank"
+                >
+                  <A variant="primary">See our documentation</A>
+                </Link>
+              )}
             </P>
           </div>
         </div>
@@ -34,11 +45,11 @@ export function ExtensibilitySection() {
           )}
         >
           <ImgBlock
-            title={<>Build your own agentic tools</>}
+            title={<>Build custom agentic tools</>}
             content={
               <>
                 Develop advanced or agentic capabilities, from document
-                auto-updates, triggered actions, or external API access.
+                auto-updates, triggered actions, or leveraging external APIs.
               </>
             }
           >
@@ -47,22 +58,13 @@ export function ExtensibilitySection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
+              <Div3D depth={-40}>
+                <img src="/static/landing/apps/ticketgeneration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own connections</>}
+            title={<>Build custom connections</>}
             content={
               <>
                 No ceiling on data connections. Leverage the API to import in
@@ -76,22 +78,13 @@ export function ExtensibilitySection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
-                <img src="/static/landing/support/support1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/support/support2.png" />
-              </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/support/support3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/support/support4.png" />
+              <Div3D depth={-40}>
+                <img src="/static/landing/api/connections.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Build your own integrations</>}
+            title={<>Build custom integrations</>}
             content={
               <>
                 Use our API to embed agents in your apps or websites, unlocking
@@ -105,10 +98,7 @@ export function ExtensibilitySection() {
               className={classNames("relative")}
             >
               <Div3D depth={-40}>
-                <img src="/static/landing/crm/crm1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/crm/crm2.png" />
+                <img src="/static/landing/api/integration.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>

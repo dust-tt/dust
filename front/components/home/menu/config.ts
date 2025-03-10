@@ -144,7 +144,7 @@ const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {
-      title: "Dust Apps & API",
+      title: "Developer Platform",
       href: "/home/solutions/dust-platform",
     },
     {
@@ -288,7 +288,7 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: SolutionsMenuConfig.title,

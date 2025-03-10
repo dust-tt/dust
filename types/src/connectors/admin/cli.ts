@@ -97,6 +97,7 @@ export const NotionCommandSchema = t.type({
     t.literal("me"),
     t.literal("stop-all-garbage-collectors"),
     t.literal("update-parents-fields"),
+    t.literal("clear-parents-last-updated-at"),
   ]),
   args: t.record(
     t.string,
@@ -110,6 +111,7 @@ export const GoogleDriveCommandSchema = t.type({
   majorCommand: t.literal("google_drive"),
   command: t.union([
     t.literal("garbage-collect-all"),
+    t.literal("get-file"),
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),

@@ -94,7 +94,7 @@ impl BigQueryRemoteDatabase {
     pub async fn execute_query(
         &self,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let job = Job {
             configuration: Some(JobConfiguration {
                 query: Some(JobConfigurationQuery {
@@ -226,7 +226,7 @@ impl BigQueryRemoteDatabase {
             })
             .collect::<Result<Vec<QueryResult>>>()?;
 
-        Ok((parsed_rows, schema))
+        Ok((parsed_rows, schema, query.to_string()))
     }
 
     pub async fn get_query_plan(
@@ -307,7 +307,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Ensure that query is a SELECT query and only uses tables that are allowed.
         let plan = self.get_query_plan(query).await?;
 
