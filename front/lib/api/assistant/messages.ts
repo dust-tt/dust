@@ -39,10 +39,6 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { UserResource } from "@app/lib/resources/user_resource";
 
 import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
-import {
-  githubCreateIssueActionTypesFromAgentMessageIds,
-  githubGetPullRequestActionTypesFromAgentMessageIds,
-} from "./actions/github";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";
 import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
@@ -131,8 +127,6 @@ async function batchRenderAgentMessages(
     agentWebsearchActions,
     agentBrowseActions,
     agentConversationIncludeFileActions,
-    agentGithubGetPullRequestActions,
-    agentGithubCreateIssueActions,
     agentReasoningActions,
     agentSearchLabelsActions,
   ] = await Promise.all([
@@ -166,10 +160,6 @@ async function batchRenderAgentMessages(
     (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () =>
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () =>
-      githubGetPullRequestActionTypesFromAgentMessageIds(agentMessageIds))(),
-    (async () =>
-      githubCreateIssueActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
@@ -196,8 +186,6 @@ async function batchRenderAgentMessages(
           agentBrowseActions,
           agentConversationIncludeFileActions,
           agentDustAppRunActions,
-          agentGithubCreateIssueActions,
-          agentGithubGetPullRequestActions,
           agentProcessActions,
           agentReasoningActions,
           agentRetrievalActions,
