@@ -732,6 +732,10 @@ export class Authenticator {
     return subscription;
   }
 
+  subscriptionResource(): SubscriptionResource | null {
+    return this._subscription;
+  }
+
   plan(): PlanType | null {
     return this._subscription ? this._subscription.getPlan() : null;
   }

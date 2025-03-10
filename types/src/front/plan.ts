@@ -118,3 +118,8 @@ export const EnterpriseUpgradeFormSchema = t.type({
 export type EnterpriseUpgradeFormType = t.TypeOf<
   typeof EnterpriseUpgradeFormSchema
 >;
+
+export type CheckoutUrlResult = {
+  checkoutUrl: string;
+  plan: PlanType;
+};

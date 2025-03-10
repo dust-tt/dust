@@ -1,7 +1,7 @@
 import { QueryTypes, Sequelize } from "sequelize";
 
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -43,7 +43,7 @@ makeScript({}, async ({ execute }) => {
 
           if (execute) {
             // This will create a new Subscription object for the FREE_TEST_PLAN.
-            await internalSubscribeWorkspaceToFreePlan({
+            await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
               workspaceId: w.sId,
               planCode: FREE_TEST_PLAN_CODE,
             });
