@@ -1,3 +1,3 @@
-export const DocumentViewRawContentKey = "viewRawContent"
+export const DocumentViewRawContentKey = "viewRawContent";
 
-export const DocumentDeletionKey = "deleteDocumentOrTable"
+export const DocumentDeletionKey = "deleteDocumentOrTable";
