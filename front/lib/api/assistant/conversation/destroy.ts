@@ -28,7 +28,6 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
-import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -235,10 +234,6 @@ export async function destroyConversation(
   }
 
   await ConversationParticipant.destroy({
-    where: { conversationId: conversation.id },
-  });
-
-  await DataSourceViewForConversation.destroy({
     where: { conversationId: conversation.id },
   });
 

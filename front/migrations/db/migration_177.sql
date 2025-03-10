@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS "data_source_view_for_conversations";
