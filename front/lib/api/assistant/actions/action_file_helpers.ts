@@ -107,16 +107,37 @@ export async function generateSearchableFile(
     title,
     conversationId,
     results,
+    connectorProvider,
   }: {
     title: string;
     conversationId: string;
     results: Array<CSVRecord>;
+    connectorProvider: ConnectorProvider | null;
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  const content = JSON.stringify(results);
+  // We loop through the results to generate the section of the searchable file.
+  // The content of the file is the JSON representation of the section.
+  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
+  for (const row of results) {
+    const prefix = getSearchableSectionRowPrefix(connectorProvider, row);
+    const rowContent = JSON.stringify(row);
+    const section: CoreAPIDataSourceDocumentSection = {
+      prefix,
+      content: rowContent,
+      sections: [],
+    };
+    sections.push(section);
+  }
+  const section = {
+    prefix: title,
+    content: null,
+    sections,
+  };
+  const content = JSON.stringify(section);
+
   const searchableFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
@@ -135,41 +156,6 @@ export async function generateSearchableFile(
   });
 
   return searchableFile;
-}
-
-/**
- * Generate a CoreAPIDataSourceDocumentSection from a list of CSV records.
- * This section can be used to upload a searchable file to a conversation data source.
- */
-export async function generateSearchableSection({
-  title,
-  results,
-  connectorProvider,
-}: {
-  title: string;
-  results: Array<CSVRecord>;
-  connectorProvider: ConnectorProvider | null;
-}): Promise<CoreAPIDataSourceDocumentSection> {
-  const sections: Array<CoreAPIDataSourceDocumentSection> = [];
-
-  // We loop through the results to generate the section and the content of the file.
-  for (const row of results) {
-    const prefix = getSearchableSectionRowPrefix(connectorProvider, row);
-    const rowContent = JSON.stringify(row);
-    const section: CoreAPIDataSourceDocumentSection = {
-      prefix,
-      content: rowContent,
-      sections: [],
-    };
-    sections.push(section);
-  }
-  const section = {
-    prefix: title,
-    content: null,
-    sections,
-  };
-
-  return section;
 }
 
 /**
@@ -197,11 +183,9 @@ function getSearchableSectionRowPrefix(
 export async function uploadFileToConversationDataSource({
   auth,
   file,
-  section,
 }: {
   auth: Authenticator;
   file: FileResource;
-  section?: CoreAPIDataSourceDocumentSection;
 }) {
   const jitDataSource = await getOrCreateConversationDataSourceFromFile(
     auth,
@@ -216,18 +200,13 @@ export async function uploadFileToConversationDataSource({
       "Failed to get or create JIT data source"
     );
   } else {
-    const upsertArgs: UpsertDocumentArgs | undefined =
-      section !== undefined
-        ? {
-            auth,
-            dataSource: jitDataSource.value,
-            document_id: file.sId,
-            title: file.fileName,
-            mime_type: file.contentType,
-            section,
-          }
-        : undefined;
-
+    const upsertArgs: UpsertDocumentArgs = {
+      auth,
+      dataSource: jitDataSource.value,
+      document_id: file.sId,
+      title: file.fileName,
+      mime_type: file.contentType,
+    };
     const r = await processAndUpsertToDataSource(auth, jitDataSource.value, {
       file,
       upsertArgs,

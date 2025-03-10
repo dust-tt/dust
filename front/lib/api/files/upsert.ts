@@ -1,5 +1,6 @@
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 import type {
+  CoreAPIDataSourceDocumentSection,
   FileUseCase,
   Result,
   SupportedFileContentType,
@@ -83,20 +84,28 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
-// Upload seachable document to dataSource: section is required from upsertArgs.
+// Upload seachable document to dataSource
+// We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
 const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
-  if (!upsertArgs || !("section" in upsertArgs)) {
+  if (!upsertArgs || !("document_id" in upsertArgs)) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Invalid upsert args: section is required.",
+      message: "Upsert args are required for searchable documents.",
     });
   }
-  const documentId = upsertArgs.document_id;
-  const title = upsertArgs.title;
+  if (upsertArgs.section) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Section is not allowed for searchable documents.",
+    });
+  }
+
+  // Get the content of the file.
   const content = await getFileContent(auth, file);
   if (!content) {
     return new Err({
@@ -107,6 +116,21 @@ const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
     });
   }
 
+  // Parse the content of the file to get the section.
+  let section: CoreAPIDataSourceDocumentSection | null = null;
+  try {
+    section = JSON.parse(content);
+  } catch (e) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+    });
+  }
+
+  const documentId = upsertArgs.document_id;
+  const title = upsertArgs.title;
+
   const upsertDocumentRes = await upsertDocument({
     auth,
     dataSource,
@@ -114,7 +138,7 @@ const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
     source_url: file.getPrivateUrl(auth),
     parents: [documentId],
     title,
-    section: upsertArgs.section,
+    section,
     tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     mime_type: file.contentType,
@@ -447,6 +471,19 @@ export async function processAndUpsertToDataSource(
       code: "invalid_request_error",
       message: "File is not supported for upsert.",
     });
+  }
+
+  // When we upsert a file we don't want to be able to pass section in Upsert Args
+  // We want to return an Error in the future but we start by logging the error to see if there are
+  // places that are using it and need to be updated. first
+  if (upsertArgs && "section" in upsertArgs) {
+    logger.error(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      "We should not pass section in Upsert Args anymore when upserting a file."
+    );
   }
 
   const [processingRes, snippetRes] = await Promise.all([

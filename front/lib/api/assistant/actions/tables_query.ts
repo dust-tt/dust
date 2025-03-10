@@ -25,7 +25,6 @@ import { runActionStreamed } from "@app/lib/actions/server";
 import {
   generateCSVFileAndSnippet,
   generateSearchableFile,
-  generateSearchableSection,
   uploadFileToConversationDataSource,
 } from "@app/lib/api/assistant/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
@@ -635,14 +634,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
       let searchableFile: FileResource | null = null;
       if (shouldGenerateSearchableFile) {
-        // Generate the searchable file.
-        searchableFile = await generateSearchableFile(auth, {
-          title: queryTitle,
-          conversationId: conversation.sId,
-          results,
-        });
-
-        // Generate the searchable section so we can upload it to the conversation data source.
         // First we fetch the connector provider for the data source, cause the chunking
         // strategy of the searchable file depends on it: Since all tables are from the same
         // data source, we can just take the first table's data source view id.
@@ -652,8 +643,11 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         );
         const connectorProvider =
           dataSourceView?.dataSource?.connectorProvider ?? null;
-        const section = await generateSearchableSection({
+
+        // Generate the searchable file.
+        searchableFile = await generateSearchableFile(auth, {
           title: queryTitle,
+          conversationId: conversation.sId,
           results,
           connectorProvider,
         });
@@ -662,7 +656,6 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         await uploadFileToConversationDataSource({
           auth,
           file: searchableFile,
-          section,
         });
 
         // Save ref to the generated searchable file to be yielded later.
