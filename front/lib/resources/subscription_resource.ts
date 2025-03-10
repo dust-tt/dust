@@ -1,4 +1,9 @@
-import type { LightWorkspaceType, PlanType, Result } from "@dust-tt/types";
+import type {
+  LightWorkspaceType,
+  PlanType,
+  Result,
+  SubscriptionType,
+} from "@dust-tt/types";
 import { Ok } from "@dust-tt/types";
 import _ from "lodash";
 import type {
@@ -17,9 +22,11 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
+const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -48,9 +55,9 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
   static async fetchActiveByWorkspace(
     workspace: LightWorkspaceType
-  ): Promise<SubscriptionResource | null> {
+  ): Promise<SubscriptionResource> {
     const res = await SubscriptionResource.fetchActiveByWorkspaces([workspace]);
-    return res?.[workspace.sId] ?? null;
+    return res[workspace.sId];
   }
 
   static async fetchActiveByWorkspaces(
@@ -86,7 +93,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       "workspaceId"
     );
 
-    const renderedSubscriptionByWorkspaceSid: Record<
+    const subscriptionResourceByWorkspaceSid: Record<
       string,
       SubscriptionResource
     > = {};
@@ -113,14 +120,14 @@ export class SubscriptionResource extends BaseResource<Subscription> {
           );
         }
       }
-      renderedSubscriptionByWorkspaceSid[sId] = new SubscriptionResource(
+      subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
-        activeSubscription || { id: -1 },
+        activeSubscription || this.createFreeNoPlanSubscription(workspace.id),
         renderPlanFromModel({ plan })
       );
     }
 
-    return renderedSubscriptionByWorkspaceSid;
+    return subscriptionResourceByWorkspaceSid;
   }
 
   async delete(
@@ -137,6 +144,41 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   getPlan(): PlanType {
-    return { ...this.plan };
+    return Object.freeze({ ...this.plan });
+  }
+
+  toJSON(): SubscriptionType {
+    return {
+      status: this.status ?? "active",
+      trialing: this.trialing === true,
+      sId: this.sId || null,
+      stripeSubscriptionId: this.stripeSubscriptionId || null,
+      startDate: this.startDate?.getTime() || null,
+      endDate: this.endDate?.getTime() || null,
+      paymentFailingSince: this.paymentFailingSince?.getTime() || null,
+      plan: this.getPlan(),
+      requestCancelAt: this.requestCancelAt?.getTime() ?? null,
+    };
+  }
+
+  private static createFreeNoPlanSubscription(
+    workspaceId: number
+  ): Attributes<Subscription> {
+    const now = new Date();
+    return {
+      id: FREE_NO_PLAN_SUBSCRIPTION_ID,
+      sId: generateRandomModelSId(),
+      status: "ended",
+      workspaceId: workspaceId,
+      createdAt: now,
+      updatedAt: now,
+      startDate: now,
+      endDate: now,
+      trialing: false,
+      paymentFailingSince: null,
+      planId: -1,
+      stripeSubscriptionId: null,
+      requestCancelAt: null,
+    };
   }
 }

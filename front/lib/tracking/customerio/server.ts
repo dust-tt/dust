@@ -197,11 +197,6 @@ export class CustomerioServerSideTracking {
 
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspace(workspace);
-    if (!subscription) {
-      throw new Error(
-        `Could not find subscription for workspace ${workspace.sId}`
-      );
-    }
 
     const planCode = workspace.planCode ?? subscription.getPlan().code;
     const seats =

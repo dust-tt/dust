@@ -40,7 +40,6 @@ import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { renderSubscriptionFromResource } from "@app/lib/plans/renderers";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -718,12 +717,7 @@ export class Authenticator {
   }
 
   subscription(): SubscriptionType | null {
-    return this._subscription === null
-      ? null
-      : renderSubscriptionFromResource({
-          activeSubscription: this._subscription,
-          plan: this._subscription.getPlan(),
-        });
+    return this._subscription === null ? null : this._subscription.toJSON();
   }
 
   getNonNullableSubscription(): SubscriptionType {
