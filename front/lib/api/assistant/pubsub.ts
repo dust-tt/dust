@@ -201,8 +201,6 @@ async function handleUserMessageEvents({
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
-            case "github_create_issue_params":
-            case "github_get_pull_request_params":
             case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
@@ -367,8 +365,6 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_block":
               case "dust_app_run_params":
               case "generation_tokens":
-              case "github_create_issue_params":
-              case "github_get_pull_request_params":
               case "process_params":
               case "reasoning_started":
               case "reasoning_thinking":
