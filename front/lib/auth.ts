@@ -40,7 +40,6 @@ import { isValidSession } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { Workspace } from "@app/lib/models/workspace";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -49,6 +48,7 @@ import {
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -73,7 +73,7 @@ export const getAuthType = (token: string): PublicAPIAuthMethod => {
 export class Authenticator {
   _key?: KeyAuthType;
   _role: RoleType;
-  _subscription: SubscriptionType | null;
+  _subscription: SubscriptionResource | null;
   _user: UserResource | null;
   _groups: GroupResource[];
   _workspace: Workspace | null;
@@ -91,7 +91,7 @@ export class Authenticator {
     user?: UserResource | null;
     role: RoleType;
     groups: GroupResource[];
-    subscription?: SubscriptionType | null;
+    subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
     this._workspace = workspace || null;
@@ -166,7 +166,7 @@ export class Authenticator {
 
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
+    let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
@@ -178,7 +178,9 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace })
+        ),
       ]);
     }
 
@@ -225,14 +227,16 @@ export class Authenticator {
     ]);
 
     let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
+    let subscription: SubscriptionResource | null = null;
 
     if (workspace) {
       [groups, subscription] = await Promise.all([
         user?.isDustSuperUser
           ? GroupResource.internalFetchAllWorkspaceGroups(workspace.id)
           : [],
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace })
+        ),
       ]);
     }
 
@@ -267,7 +271,7 @@ export class Authenticator {
 
     let role: RoleType = "none";
     let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
+    let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
       [role, groups, subscription] = await Promise.all([
@@ -279,7 +283,9 @@ export class Authenticator {
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
-        subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+        SubscriptionResource.fetchActiveByWorkspace(
+          renderLightWorkspaceType({ workspace })
+        ),
       ]);
     }
 
@@ -344,7 +350,7 @@ export class Authenticator {
 
     let role = "none" as RoleType;
     let groups: GroupResource[] = [];
-    let subscription: SubscriptionType | null = null;
+    let subscription: SubscriptionResource | null = null;
 
     [role, groups, subscription] = await Promise.all([
       MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -355,7 +361,9 @@ export class Authenticator {
         user,
         workspace: renderLightWorkspaceType({ workspace }),
       }),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
     ]);
 
     return new Ok(
@@ -418,12 +426,14 @@ export class Authenticator {
     }
 
     const getSubscriptionForWorkspace = (workspace: Workspace) =>
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace }));
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      );
 
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
-    let workspaceSubscription: SubscriptionType | null = null;
-    let keySubscription: SubscriptionType | null = null;
+    let workspaceSubscription: SubscriptionResource | null = null;
+    let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
       [keyGroups, requestedGroups, keySubscription, workspaceSubscription] =
@@ -535,11 +545,13 @@ export class Authenticator {
     }
 
     let globalGroup: GroupResource | null = null;
-    let subscription: SubscriptionType | null = null;
+    let subscription: SubscriptionResource | null = null;
 
     [globalGroup, subscription] = await Promise.all([
       GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
     ]);
 
     return new Authenticator({
@@ -575,7 +587,9 @@ export class Authenticator {
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      subscriptionForWorkspace(renderLightWorkspaceType({ workspace })),
+      SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace })
+      ),
     ]);
 
     return new Authenticator({
@@ -703,7 +717,7 @@ export class Authenticator {
   }
 
   subscription(): SubscriptionType | null {
-    return this._subscription;
+    return this._subscription === null ? null : this._subscription.toJSON();
   }
 
   getNonNullableSubscription(): SubscriptionType {
@@ -719,7 +733,7 @@ export class Authenticator {
   }
 
   plan(): PlanType | null {
-    return this._subscription ? this._subscription.plan : null;
+    return this._subscription ? this._subscription.getPlan() : null;
   }
 
   getNonNullablePlan(): PlanType {
