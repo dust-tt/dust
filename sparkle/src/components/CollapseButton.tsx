@@ -6,8 +6,8 @@ import collapseBar from "@sparkle/lottie/collapseBar";
 // Custom color definitions
 const customColors = {
   gray: {
-    300: "#B2B6BD",
-    700: "#364153",
+    200: "#D3D5D9",
+    800: "#2A3241",
   },
 };
 
@@ -30,8 +30,8 @@ const colors: Record<
   NonNullable<CollapseButtonProps["variant"]>,
   LottieColorType
 > = {
-  light: hexToRgba(customColors.gray[300]),
-  dark: hexToRgba(customColors.gray[700]),
+  light: hexToRgba(customColors.gray[200]),
+  dark: hexToRgba(customColors.gray[800]),
 };
 
 // Helper to check if array is a color array
