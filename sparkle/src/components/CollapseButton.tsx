@@ -138,13 +138,13 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
     const timeoutId = setTimeout(initializeAnimation, 100);
 
     return () => clearTimeout(timeoutId);
-  }, []);
+  }, [direction]);
 
   return (
     <div
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ width: `24px`, height: `36px` }}
+      style={{ width: `24px`, height: `30px` }}
       className="s-cursor-pointer"
     >
       <Lottie
