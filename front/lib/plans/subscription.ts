@@ -1,13 +1,11 @@
 import type {
   BillingPeriod,
   EnterpriseUpgradeFormType,
-  LightWorkspaceType,
   PlanType,
   SubscriptionType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { sendUserOperationMessage } from "@dust-tt/types";
-import * as _ from "lodash";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -32,7 +30,6 @@ import {
   getProPlanStripeProductId,
   getStripeSubscription,
 } from "@app/lib/plans/stripe";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -40,100 +37,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
-
-/**
- * Construct the SubscriptionType for the provided workspace.
- * @param w WorkspaceType the workspace to get the plan for
- * @returns SubscriptionType
- */
-export async function subscriptionForWorkspace(
-  workspace: LightWorkspaceType
-): Promise<SubscriptionType> {
-  const res = await subscriptionForWorkspaces([workspace]);
-
-  const subscription = res[workspace.sId];
-  if (!subscription) {
-    throw new Error(
-      `Could not find subscription for workspace ${workspace.sId}`
-    );
-  }
-
-  return subscription;
-}
-
-/**
- * Construct the SubscriptionType for the provided workspaces.
- * @param w WorkspaceType the workspace to get the plan for
- * @returns SubscriptionType
- */
-export async function subscriptionForWorkspaces(
-  workspaces: LightWorkspaceType[]
-): Promise<{ [key: string]: SubscriptionType }> {
-  const workspaceModelBySid = _.keyBy(workspaces, "sId");
-
-  const activeSubscriptionByWorkspaceId = _.keyBy(
-    await Subscription.findAll({
-      attributes: [
-        "endDate",
-        "id",
-        "paymentFailingSince",
-        "sId",
-        "startDate",
-        "status",
-        "stripeSubscriptionId",
-        "trialing",
-        "workspaceId",
-      ],
-      where: {
-        workspaceId: Object.values(workspaceModelBySid).map((w) => w.id),
-        status: "active",
-      },
-      include: [
-        {
-          model: Plan,
-          as: "plan",
-          required: true,
-        },
-      ],
-    }),
-    "workspaceId"
-  );
-
-  const renderedSubscriptionByWorkspaceSid: Record<string, SubscriptionType> =
-    {};
-
-  for (const [sId, workspace] of Object.entries(workspaceModelBySid)) {
-    const activeSubscription =
-      activeSubscriptionByWorkspaceId[workspace.id.toString()];
-
-    // Default values when no subscription
-    let plan: PlanAttributes = FREE_NO_PLAN_DATA;
-
-    if (activeSubscription) {
-      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-      if (isTrial(activeSubscription)) {
-        plan = getTrialVersionForPlan(activeSubscription.plan);
-      } else if (activeSubscription.plan) {
-        plan = activeSubscription.plan;
-      } else {
-        logger.error(
-          {
-            workspaceId: sId,
-            activeSubscription,
-          },
-          "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-        );
-      }
-    }
-
-    renderedSubscriptionByWorkspaceSid[sId] = renderSubscriptionFromModels({
-      plan,
-      activeSubscription,
-    });
-  }
-
-  return renderedSubscriptionByWorkspaceSid;
-}
 
 /**
  * Internal function to subscribe to the FREE_NO_PLAN.
