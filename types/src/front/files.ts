@@ -105,8 +105,8 @@ const FILE_FORMATS = {
     exts: [".xlsx"],
   },
 
-  // Custom for searchable text files generated from tables query results.
-  "application/vnd.dust.section-structured": {
+  // Custom for section json files generated from tables query results.
+  "application/vnd.dust.section.json": {
     cat: "data",
     exts: [".json"],
   },

@@ -23,7 +23,7 @@ export interface TablesQueryActionType extends BaseAction {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
-  searchableFileId: string | null;
+  sectionFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   agentMessageId: ModelId;
@@ -44,12 +44,12 @@ export function getTablesQueryResultsFileTitle({
 export function getTablesQueryResultsFileAttachments({
   resultsFileId,
   resultsFileSnippet,
-  searchableFileId,
+  sectionFileId,
   output,
 }: {
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
-  searchableFileId: string | null;
+  sectionFileId: string | null;
   output: Record<string, unknown> | null;
 }): string | null {
   if (!resultsFileId || !resultsFileSnippet) {
@@ -62,14 +62,14 @@ export function getTablesQueryResultsFileAttachments({
     `<file ` +
     `id="${resultsFileId}" type="text/csv" title="${fileTitle}">\n${resultsFileSnippet}\n</file>`;
 
-  let searchableFileAttachment = "";
-  if (searchableFileId) {
-    searchableFileAttachment =
+  let sectionFileAttachment = "";
+  if (sectionFileId) {
+    sectionFileAttachment =
       `\n<file ` +
-      `id="${searchableFileId}" type="application/vnd.dust.section-structured" title="${fileTitle} (Results optimized for search)" />`;
+      `id="${sectionFileId}" type="application/vnd.dust.section.json" title="${fileTitle} (Results optimized for search)" />`;
   }
 
-  return `${resultsFileAttachment}${searchableFileAttachment}`;
+  return `${resultsFileAttachment}${sectionFileAttachment}`;
 }
 
 /**

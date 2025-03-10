@@ -1,7 +1,4 @@
-import type {
-  ConnectorProvider,
-  CoreAPIDataSourceDocumentSection,
-} from "@dust-tt/types";
+import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
@@ -97,32 +94,37 @@ export async function generateCSVFileAndSnippet(
 }
 
 /**
- * Generate a searchable text file. This type of file is used to store the results of a
- * tool call coming up from a csv in a way that can be searched.
+ * Generate a json file representing a table as a section.
+ * This type of file is used to store the results of a tool call coming up from a csv in a way that can be searched.
  * Save it to the database and return it.
  */
-export async function generateSearchableFile(
+export async function generateSectionFile(
   auth: Authenticator,
   {
     title,
     conversationId,
     results,
-    connectorProvider,
+    sectionColumnsPrefix,
   }: {
     title: string;
     conversationId: string;
     results: Array<CSVRecord>;
-    connectorProvider: ConnectorProvider | null;
+    sectionColumnsPrefix: string[] | null;
   }
 ): Promise<FileResource> {
   const workspace = auth.getNonNullableWorkspace();
   const user = auth.user();
 
-  // We loop through the results to generate the section of the searchable file.
+  // We loop through the results to represent each row as a section.
   // The content of the file is the JSON representation of the section.
   const sections: Array<CoreAPIDataSourceDocumentSection> = [];
   for (const row of results) {
-    const prefix = getSearchableSectionRowPrefix(connectorProvider, row);
+    const prefix = sectionColumnsPrefix
+      ? sectionColumnsPrefix
+          .map((c) => row[c] ?? "")
+          .join(" ")
+          .trim() || null
+      : null;
     const rowContent = JSON.stringify(row);
     const section: CoreAPIDataSourceDocumentSection = {
       prefix,
@@ -138,10 +140,10 @@ export async function generateSearchableFile(
   };
   const content = JSON.stringify(section);
 
-  const searchableFile = await FileResource.makeNew({
+  const sectionFile = await FileResource.makeNew({
     workspaceId: workspace.id,
     userId: user?.id ?? null,
-    contentType: "application/vnd.dust.section-structured",
+    contentType: "application/vnd.dust.section.json",
     fileName: title,
     fileSize: Buffer.byteLength(content),
     useCase: "tool_output",
@@ -151,29 +153,11 @@ export async function generateSearchableFile(
   });
 
   await processAndStoreFile(auth, {
-    file: searchableFile,
+    file: sectionFile,
     reqOrString: content,
   });
 
-  return searchableFile;
-}
-
-/**
- * Get the prefix for a row in a searchable section.
- * This prefix is used to identify the row in the searchable file.
- * We currently only support Salesforce since it's the only connector for which we can
- * generate a prefix.
- */
-function getSearchableSectionRowPrefix(
-  provider: ConnectorProvider | null,
-  row: CSVRecord
-): string | null {
-  if (provider === "salesforce") {
-    const rowId = typeof row["Id"] === "string" ? row["Id"] : "";
-    const rowName = typeof row["Name"] === "string" ? row["Name"] : "";
-    return `${rowId} ${rowName}`.trim();
-  }
-  return null;
+  return sectionFile;
 }
 
 /**

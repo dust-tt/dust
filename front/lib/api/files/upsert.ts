@@ -86,7 +86,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
 
 // Upload seachable document to dataSource
 // We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
-const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
+const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
@@ -94,14 +94,14 @@ const upsertSearchableDocumentToDatasource: ProcessingFunction = async (
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Upsert args are required for searchable documents.",
+      message: "Upsert args are required for section documents.",
     });
   }
   if (upsertArgs.section) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Section is not allowed for searchable documents.",
+      message: "Section is not allowed for section documents.",
     });
   }
 
@@ -366,9 +366,9 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
-    case "application/vnd.dust.section-structured":
+    case "application/vnd.dust.section.json":
       if (useCase === "tool_output") {
-        return upsertSearchableDocumentToDatasource;
+        return upsertSectionDocumentToDatasource;
       } else {
         return undefined;
       }
@@ -476,13 +476,13 @@ export async function processAndUpsertToDataSource(
   // When we upsert a file we don't want to be able to pass section in Upsert Args
   // We want to return an Error in the future but we start by logging the error to see if there are
   // places that are using it and need to be updated. first
-  if (upsertArgs && "section" in upsertArgs) {
+  if (upsertArgs && ("section" in upsertArgs || "text" in upsertArgs)) {
     logger.error(
       {
         workspaceId: auth.workspace()?.sId,
         fileId: file.sId,
       },
-      "We should not pass section in Upsert Args anymore when upserting a file."
+      "We should not pass section or text in Upsert Args anymore when upserting a file."
     );
   }
 
