@@ -1052,9 +1052,21 @@ impl ElasticsearchSearchStore {
         &self,
         item: SearchItem,
     ) -> Result<DataSourceESDocumentWithStats> {
-        match item {
-            SearchItem::DataSource(data_source) => {
-                let search = Search::new()
+        let data_source = match item {
+            SearchItem::DataSource(ds) => ds,
+            _ => {
+                return Err(anyhow::anyhow!(
+                    "Invalid search item type, expected a DataSource."
+                ));
+            }
+        };
+
+        // Build and execute the search query.
+        let response = self
+            .client
+            .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
+            .body(
+                Search::new()
                     .size(0)
                     .query(Query::bool().filter(Query::term(
                         "data_source_id",
@@ -1064,37 +1076,36 @@ impl ElasticsearchSearchStore {
                         "data_sources",
                         Aggregation::terms("data_source_id")
                             .aggregate("total_size", Aggregation::sum("text_size")),
-                    );
-                let response = self
-                    .client
-                    .search(SearchParts::Index(&[DATA_SOURCE_NODE_INDEX_NAME]))
-                    .body(search)
-                    .send()
-                    .await?;
+                    ),
+            )
+            .send()
+            .await?;
 
-                let response_body = response.json::<serde_json::Value>().await?;
-                let buckets = response_body["aggregations"]["data_sources"]["buckets"]
-                    .as_array()
-                    .unwrap();
+        // Parse the response.
+        let response_body = response.json::<serde_json::Value>().await?;
 
-                buckets
-                    .first()
-                    .map(|bucket| {
-                        Ok(DataSourceESDocumentWithStats::from((
-                            data_source,
-                            // We unwrap here because if we got a bucket, then it necessarily contains these fields.
-                            bucket["total_size"]["value"].as_f64().unwrap().round() as i64,
-                            bucket["doc_count"].as_i64().unwrap(),
-                        )))
-                    })
-                    .unwrap_or(Err(anyhow::anyhow!(
-                        "Data source stats computation failed."
-                    )))
-            }
-            _ => Err(anyhow::anyhow!(
-                "Invalid search item type, expected a DataSource."
-            )),
-        }
+        // Extract stats from the first bucket or default to zeros.
+        let (total_size, doc_count) = response_body["aggregations"]["data_sources"]["buckets"]
+            .as_array()
+            .and_then(|buckets| buckets.first())
+            .map(|bucket| {
+                let size = bucket["total_size"]["value"]
+                    .as_f64()
+                    .unwrap_or(0.0)
+                    .round() as i64;
+
+                let count = bucket["doc_count"].as_i64().unwrap_or(0);
+
+                (size, count)
+            })
+            .unwrap_or((0, 0));
+
+        // Create and return the document with stats.
+        Ok(DataSourceESDocumentWithStats::from((
+            data_source,
+            total_size,
+            doc_count,
+        )))
     }
 
     // Generic document methods.
