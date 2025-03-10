@@ -26,6 +26,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.435",
 =======
 =======
@@ -36,6 +37,8 @@
 >>>>>>> d4ce4c37f (Tweaks)
 =======
 >>>>>>> 8c5489f9f (New sparkle)
+=======
+>>>>>>> a053200e3 (Updating assets)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.434",
 =======
@@ -65,7 +68,13 @@
 =======
     "@dust-tt/sparkle": "0.2.434-rc4",
 >>>>>>> 1f8d22462 (New sparkle)
+<<<<<<< HEAD
 >>>>>>> 8c5489f9f (New sparkle)
+=======
+=======
+    "@dust-tt/sparkle": "0.2.434-rc5",
+>>>>>>> bac488c7d (Updating assets)
+>>>>>>> a053200e3 (Updating assets)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
