@@ -9,9 +9,21 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
+import {
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@dust-tt/types";
 import assert from "assert";
-import type { Attributes, CreationAttributes, ModelStatic, Transaction, WhereOptions } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
@@ -30,7 +42,11 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { getResourceIdFromSId, isResourceSId, makeSId } from "@app/lib/resources/string_ids";
+import {
+  getResourceIdFromSId,
+  isResourceSId,
+  makeSId,
+} from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 
