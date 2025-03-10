@@ -1,6 +1,5 @@
 import {
   Button,
-  ContextItem,
   DocumentIcon,
   MagicIcon,
   Page,
@@ -71,7 +70,7 @@ export default function CreateAssistant({
   const [templateSearchTerm, setTemplateSearchTerm] = useState<string | null>(
     null
   );
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     router.query.templateId ? (router.query.templateId as string) : null
   );
@@ -149,12 +148,11 @@ export default function CreateAssistant({
     filterTemplates(searchTerm);
   };
 
-  const handleTagClick = (tagName: string) => {
-    setSelectedTags(
-      (prevTags) =>
-        prevTags.includes(tagName)
-          ? prevTags.filter((tag) => tag !== tagName) // Remove tag if already selected
-          : [...prevTags, tagName] // Add tag if not selected
+  const handleTagClick = (tagName: TemplateTagCodeType) => {
+    setSelectedTags((prevTags) =>
+      prevTags.includes(tagName)
+        ? prevTags.filter((tag) => tag !== tagName)
+        : [...prevTags, tagName]
     );
   };
 
@@ -209,7 +207,7 @@ export default function CreateAssistant({
                     <Button
                       label={templateTagsMapping[tagName].label}
                       variant={
-                        selectedTags.includes(tagName) ? "highlight" : "outline"
+                        selectedTags.includes(tagName) ? "primary" : "outline"
                       }
                       key={tagName}
                       size="xs"
@@ -220,34 +218,12 @@ export default function CreateAssistant({
             </div>
             <Page.Separator />
             <div className="flex flex-col pb-56">
-              {templateSearchTerm?.length || selectedTags.length > 0 ? (
-                <>
-                  <TemplateGrid
-                    templates={filteredTemplates.templates}
-                    openTemplateModal={openTemplateModal}
-                  />
-                </>
-              ) : (
-                <>
-                  {filteredTemplates.tags.map((tagName) => {
-                    const templatesForTag = filteredTemplates.templates.filter(
-                      (item) => item.tags.includes(tagName)
-                    );
-                    return (
-                      <div key={tagName}>
-                        <ContextItem.SectionHeader
-                          title={templateTagsMapping[tagName].label}
-                          hasBorder={false}
-                        />
-                        <TemplateGrid
-                          templates={templatesForTag}
-                          openTemplateModal={openTemplateModal}
-                        />
-                      </div>
-                    );
-                  })}
-                </>
-              )}
+              <TemplateGrid
+                templates={filteredTemplates.templates}
+                openTemplateModal={openTemplateModal}
+                templateTagsMapping={templateTagsMapping}
+                selectedTags={selectedTags}
+              />
             </div>
           </div>
         </Page>
