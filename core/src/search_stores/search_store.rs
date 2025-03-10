@@ -1040,7 +1040,8 @@ impl ElasticsearchSearchStore {
             Sort::FieldSort(FieldSort::new("_score").order(SortOrder::Desc)),
             Sort::ScriptSort(
                 ScriptSort::ascending(Script::source(
-                    "doc['_index'].value.startsWith('data_source_nodes') ? doc['node_id'].value : doc['data_source_id'].value"
+                    format!("doc['_index'].value.startsWith('{}') ? doc['node_id'].value : doc['data_source_id'].value",
+                            DATA_SOURCE_NODE_INDEX_NAME)
                 ))
                 .r#type(ScriptSortType::String)
             ),
