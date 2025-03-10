@@ -2,10 +2,6 @@ import { BrowseActionType } from "../../front/assistant/actions/browse";
 import { ConversationIncludeFileActionType } from "../../front/assistant/actions/conversation/include_file";
 import { ConversationListFilesActionType } from "../../front/assistant/actions/conversation/list_files";
 import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
-import {
-  GithubCreateIssueActionType,
-  GithubGetPullRequestActionType,
-} from "../../front/assistant/actions/github";
 import { ProcessActionType } from "../../front/assistant/actions/process";
 import { ReasoningActionType } from "../../front/assistant/actions/reasoning";
 import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
@@ -125,14 +121,9 @@ export type ConversationAgentActionType =
   | ConversationListFilesActionType
   | ConversationIncludeFileActionType;
 
-export type GithubAgentActionType =
-  | GithubGetPullRequestActionType
-  | GithubCreateIssueActionType;
-
 export type AgentActionType =
   | ConfigurableAgentActionType
   | ConversationAgentActionType
-  | GithubAgentActionType
   | SearchLabelsActionType;
 
 export type AgentMessageStatus =
@@ -146,8 +137,6 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   conversation_include_file_action: "Reading file",
   conversation_list_files_action: "Listing files",
   dust_app_run_action: "Running App",
-  github_create_issue_action: "Creating issue",
-  github_get_pull_request_action: "Retrieving pull request",
   process_action: "Extracting data",
   reasoning_action: "Reasoning",
   retrieval_action: "Searching data",

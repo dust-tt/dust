@@ -26,7 +26,6 @@ export * from "./front/assistant/actions/browse";
 export * from "./front/assistant/actions/conversation/include_file";
 export * from "./front/assistant/actions/conversation/list_files";
 export * from "./front/assistant/actions/dust_app_run";
-export * from "./front/assistant/actions/github";
 export * from "./front/assistant/actions/guards";
 export * from "./front/assistant/actions/index";
 export * from "./front/assistant/actions/process";
