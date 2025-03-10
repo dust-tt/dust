@@ -3,9 +3,76 @@ import React, { useEffect, useRef } from "react";
 
 import collapseBar from "@sparkle/lottie/collapseBar";
 
+// Custom color definitions
+const customColors = {
+  gray: {
+    300: "#B2B6BD",
+    700: "#364153",
+  },
+};
+
 export interface CollapseButtonProps {
   direction: "left" | "right";
+  variant?: "light" | "dark";
 }
+
+type LottieColorType = [number, number, number, number];
+
+// Convert hex to RGB array [r, g, b, a]
+const hexToRgba = (hex: string): LottieColorType => {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  return [r, g, b, 1];
+};
+
+const colors: Record<
+  NonNullable<CollapseButtonProps["variant"]>,
+  LottieColorType
+> = {
+  light: hexToRgba(customColors.gray[300]),
+  dark: hexToRgba(customColors.gray[700]),
+};
+
+// Helper to check if array is a color array
+const isColorArray = (arr: unknown): arr is LottieColorType => {
+  return (
+    Array.isArray(arr) &&
+    arr.length === 4 &&
+    arr.every((n) => typeof n === "number")
+  );
+};
+
+interface LottieObject {
+  [key: string]: LottieInput;
+}
+
+type LottieInput =
+  | number
+  | string
+  | boolean
+  | LottieColorType
+  | LottieObject
+  | LottieInput[];
+
+// Replace colors in Lottie animation
+const replaceColors = (
+  obj: LottieInput,
+  newColor: LottieColorType
+): LottieInput => {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => replaceColors(item, newColor));
+  } else if (obj !== null && typeof obj === "object") {
+    for (const key in obj) {
+      if (isColorArray(obj[key])) {
+        obj[key] = newColor;
+      } else {
+        obj[key] = replaceColors(obj[key], newColor);
+      }
+    }
+  }
+  return obj;
+};
 
 // Constant to store frame numbers
 const FRAMES = {
@@ -15,7 +82,10 @@ const FRAMES = {
   RIGHT_END: 25,
 };
 
-const CollapseButton: React.FC<CollapseButtonProps> = ({ direction }) => {
+const CollapseButton: React.FC<CollapseButtonProps> = ({
+  direction,
+  variant = "light",
+}) => {
   const lottieRef = useRef<LottieRefCurrentProps | null>(null);
 
   // Function to handle hover event
@@ -79,7 +149,10 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({ direction }) => {
     >
       <Lottie
         lottieRef={lottieRef}
-        animationData={collapseBar}
+        animationData={replaceColors(
+          JSON.parse(JSON.stringify(collapseBar)),
+          colors[variant]
+        )}
         loop={false}
         autoplay={false}
       />
