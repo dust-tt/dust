@@ -85,7 +85,6 @@ export const InputBarAttachments = ({
   );
 
   const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
-  const showLocalFile = !showSearchResults;
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
@@ -121,30 +120,7 @@ export const InputBarAttachments = ({
           />
           <DropdownMenuSeparator />
           <ScrollArea className="max-h-125 flex flex-col" hideScrollBar>
-            {showLocalFile && (
-              <div className="flex flex-col items-end gap-4 pr-1">
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                  }}
-                  multiple={true}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  icon={CloudArrowUpIcon}
-                  label="Upload file"
-                />
-              </div>
-            )}
-
-            {showSearchResults && (
+            {showSearchResults ? (
               <div className="pt-2">
                 {unfoldedNodes.length > 0 ? (
                   unfoldedNodes.map((item, index) => (
@@ -172,6 +148,27 @@ export const InputBarAttachments = ({
                     No results found
                   </div>
                 )}
+              </div>
+            ) : (
+              <div className="flex flex-col items-end gap-4 pr-1">
+                <Input
+                  type="file"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    await fileUploaderService.handleFileChange(e);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                  }}
+                  multiple={true}
+                />
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading}
+                  icon={CloudArrowUpIcon}
+                  label="Upload file"
+                />
               </div>
             )}
             <ScrollBar className="py-0" />
