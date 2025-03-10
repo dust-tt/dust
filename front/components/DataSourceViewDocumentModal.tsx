@@ -7,35 +7,37 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
+import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { useMemo } from "react";
 
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;
-  documentId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
   owner: LightWorkspaceType;
+  onClose?: () => void;
 }
 
 export default function DataSourceViewDocumentModal({
   dataSourceView,
-  documentId,
-  isOpen,
-  onClose,
   owner,
+  onClose,
 }: DataSourceViewDocumentModalProps) {
+  const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
+  const isOpen = params[DocumentViewRawContentKey].value === "true";
+
   const { document, isDocumentLoading, isDocumentError } =
     useDataSourceViewDocument({
-      documentId,
+      documentId: params.documentId.value ?? null,
       dataSourceView,
       owner,
+      disabled: !params.documentId.value || !dataSourceView,
     });
 
   const { title, text } = useMemo(() => {
     if (!document) {
-      return { title: documentId ?? undefined, text: undefined };
+      return { title: params.documentId.value ?? undefined, text: undefined };
     }
 
     const titleTag = document.tags.find((tag: string) =>
@@ -46,14 +48,24 @@ export default function DataSourceViewDocumentModal({
       title: titleTag ? titleTag.split("title:")[1] : undefined,
       text: document.text,
     };
-  }, [document, documentId]);
+  }, [document, params.documentId.value]);
+
+  const onSheetClose = () => {
+    params.setParams({
+      documentId: undefined,
+      [DocumentViewRawContentKey]: undefined,
+    });
+    if (onClose) {
+      onClose();
+    }
+  };
 
   return (
     <Sheet
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          onSheetClose();
         }
       }}
     >

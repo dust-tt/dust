@@ -70,6 +70,7 @@ export * from "./front/project";
 export * from "./front/provider";
 export * from "./front/resource_permissions";
 export * from "./front/run";
+export * from "./front/sheets";
 export * from "./front/space";
 export * from "./front/tracker";
 export * from "./front/user";

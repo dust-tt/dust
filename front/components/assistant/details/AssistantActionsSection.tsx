@@ -33,6 +33,7 @@ import type {
 } from "@dust-tt/types";
 import {
   assertNever,
+  DocumentViewRawContentKey,
   GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
@@ -45,6 +46,7 @@ import {
   isWebsearchConfiguration,
 } from "@dust-tt/types";
 import _ from "lodash";
+import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -62,6 +64,7 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
 
 interface AssistantActionsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -356,10 +359,8 @@ function DataSourceViewsSection({
   dataSourceConfigurations,
   viewType,
 }: DataSourceViewsSectionProps) {
+  const router = useRouter();
   const { isDark } = useTheme();
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
@@ -368,9 +369,6 @@ function DataSourceViewsSection({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {
@@ -418,7 +416,8 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(documentId);
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
                   }}
                   viewType={viewType}
                 />
@@ -429,7 +428,10 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   dataSourceConfiguration={dsConfig}
                   setDataSourceViewToDisplay={setDataSourceViewToDisplay}
-                  setDocumentToDisplay={setDocumentToDisplay}
+                  setDocumentToDisplay={(documentId: string) => {
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
+                  }}
                   viewType={viewType}
                 />
               )}
