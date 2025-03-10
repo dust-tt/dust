@@ -1054,7 +1054,9 @@ impl ElasticsearchSearchStore {
     ) -> Result<DataSourceESDocumentWithStats> {
         let data_source = match item {
             SearchItem::DataSource(ds) => ds,
-            _ => return Err(anyhow::anyhow!("Invalid search item type, expected a DataSource.")),
+            _ => {
+                return Err(anyhow::anyhow!("Invalid search item type, expected a DataSource."));
+            }
         };
 
         // Build and execute the search query.
@@ -1090,9 +1092,7 @@ impl ElasticsearchSearchStore {
                     .unwrap_or(0.0)
                     .round() as i64;
 
-                let count = bucket["doc_count"]
-                    .as_i64()
-                    .unwrap_or(0);
+                let count = bucket["doc_count"].as_i64().unwrap_or(0);
 
                 (size, count)
             })
