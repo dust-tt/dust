@@ -1931,7 +1931,6 @@ export async function renderAndUpsertPageFromCache({
 
   // Adding notion properties to the page rendering
   // We skip the title as it is added separately as prefix to the top-level document section.
-  let propertiesContentLength = 0;
   const parsedProperties = parsePageProperties(
     JSON.parse(pageCacheEntry.pagePropertiesText)
   );
@@ -1941,7 +1940,6 @@ export async function renderAndUpsertPageFromCache({
     }
     const propertyValue = Array.isArray(p.value) ? p.value.join(", ") : p.value;
     const propertyContent = `$${p.key}: ${propertyValue}\n`;
-    propertiesContentLength += propertyContent.length;
     renderedPageSection.sections.unshift({
       prefix: null,
       content: propertyContent,
@@ -2054,21 +2052,7 @@ export async function renderAndUpsertPageFromCache({
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  // From seb, debugging logs for a page we don't upsert to core
-  if (pageId === "3630244c-446e-475d-9323-55a264364b9e") {
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: debug.",
-      blocksByParentId,
-      parsedProperties
-    );
-  }
-
-  if (documentLength === 0 && propertiesContentLength < 128) {
-    localLogger.info(
-      { propertiesContentLength },
-      "notionRenderAndUpsertPageFromCache: Not upserting page without body nor substantial properties."
-    );
-  } else if (!skipReason) {
+  if (!skipReason) {
     upsertTs = new Date().getTime();
     const documentId = `notion-${pageId}`;
     localLogger.info(
