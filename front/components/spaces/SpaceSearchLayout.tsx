@@ -12,6 +12,7 @@ import type {
   DataSourceViewCategory,
   DataSourceViewContentNode,
   DataSourceViewType,
+  LightContentNode,
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
@@ -19,6 +20,8 @@ import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
+import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { makeColumnsForSearchResults } from "@app/components/spaces/search/columns";
@@ -27,6 +30,7 @@ import type { SpaceSearchContextType } from "@app/components/spaces/search/Space
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
   DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
@@ -68,7 +72,6 @@ function isBackendSearch(
 
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Common code for both backend and frontend search.
-  const [searchTerm, setSearchTerm] = React.useState<string>("");
   const [isSearchDisabled, setIsSearchDisabled] =
     React.useState<boolean>(false);
   const [targetDataSourceViews, setTargetDataSourceViews] = React.useState<
@@ -81,7 +84,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 
   // Reset the search term when the URL changes.
   React.useEffect(() => {
-    setSearchTerm("");
     setTargetDataSourceViews(
       props.dataSourceView ? [props.dataSourceView] : []
     );
@@ -95,8 +97,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Create the context value.
   const searchContextValue = React.useMemo(
     () => ({
-      searchTerm,
-      setSearchTerm,
       isSearchDisabled,
       setIsSearchDisabled,
       targetDataSourceViews,
@@ -104,7 +104,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       setActionButtons,
       actionButtons,
     }),
-    [searchTerm, isSearchDisabled, targetDataSourceViews, actionButtons]
+    [isSearchDisabled, targetDataSourceViews, actionButtons]
   );
 
   // Use the type guard to narrow the type.
@@ -116,8 +116,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
     return (
       <BackendSearch
         {...props}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
         isSearchDisabled={isSearchDisabled}
         targetDataSourceViews={targetDataSourceViews}
         searchContextValue={searchContextValue}
@@ -130,8 +128,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
       <>
         <FrontendSearch
           {...props}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
           isSearchDisabled={isSearchDisabled}
           searchContextValue={searchContextValue}
         />
@@ -143,8 +139,6 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
 interface FullBackendSearchProps extends BackendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
   targetDataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
   space: SpaceType;
@@ -160,14 +154,32 @@ function BackendSearch({
   isSearchDisabled,
   owner,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   targetDataSourceViews,
   viewType,
   space,
   dataSourceView,
   parentId,
 }: FullBackendSearchProps) {
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
+
+  const [searchResultDataSourceView, setSearchResultDataSourceView] =
+    React.useState<DataSourceViewType | null>(null);
+  const [effectiveContentNode, setEffectiveContentNode] =
+    React.useState<LightContentNode | null>(null);
+  const effectiveDataSourceView = dataSourceView || searchResultDataSourceView;
+
+  const handleOpenDocument = React.useCallback(
+    (node: DataSourceViewContentNode) => {
+      setSearchResultDataSourceView(node.dataSourceView);
+    },
+    []
+  );
+  const handleCloseModal = React.useCallback(() => {
+    setSearchResultDataSourceView(null);
+    setEffectiveContentNode(null);
+  }, []);
+
   // For backend search, we need to debounce the search term.
   const [debouncedSearch, setDebouncedSearch] = React.useState<string>("");
   const [searchResults, setSearchResults] = React.useState<
@@ -281,7 +293,7 @@ function BackendSearch({
         name="search"
         placeholder="Search (Name)"
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={searchParam.setParam}
         disabled={isSearchDisabled}
       />
 
@@ -331,12 +343,24 @@ function BackendSearch({
               canWriteInSpace={canWriteInSpace}
               onLoadMore={handleLoadMore}
               isLoading={isSearchLoading}
+              onOpenDocument={handleOpenDocument}
+              setEffectiveContentNode={setEffectiveContentNode}
             />
           </div>
         ) : (
           children
         )}
       </div>
+      <DataSourceViewDocumentModal
+        owner={owner}
+        dataSourceView={effectiveDataSourceView}
+        onClose={handleCloseModal}
+      />
+      <DocumentOrTableDeleteDialog
+        dataSourceView={effectiveDataSourceView}
+        contentNode={effectiveContentNode}
+        owner={owner}
+      />
     </SpaceSearchContext.Provider>
   );
 }
@@ -344,29 +368,28 @@ function BackendSearch({
 interface FullFrontendSearchProps extends FrontendSearchProps {
   isSearchDisabled: boolean;
   searchContextValue: SpaceSearchContextType;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
 }
 
 function FrontendSearch({
   children,
   isSearchDisabled,
   searchContextValue,
-  searchTerm,
-  setSearchTerm,
   space,
   category,
   owner,
   dataSourceView,
   parentId,
 }: FullFrontendSearchProps) {
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
         placeholder="Search (Name)"
         value={searchTerm}
-        onChange={setSearchTerm}
+        onChange={searchParam.setParam}
         disabled={isSearchDisabled}
       />
       <div className="flex w-full justify-between gap-2">
@@ -407,6 +430,8 @@ interface SearchResultsTableProps {
   totalNodesCount: number;
   onLoadMore: () => void;
   isLoading: boolean;
+  onOpenDocument?: (node: DataSourceViewContentNode) => void;
+  setEffectiveContentNode: (node: DataSourceViewContentNode) => void;
 }
 
 function SearchResultsTable({
@@ -419,6 +444,8 @@ function SearchResultsTable({
   totalNodesCount,
   onLoadMore,
   isLoading,
+  onOpenDocument,
+  setEffectiveContentNode,
 }: SearchResultsTableProps) {
   const router = useRouter();
 
@@ -517,9 +544,6 @@ function SearchResultsTable({
             }
           },
         }),
-        dropdownMenuProps: {
-          modal: false,
-        },
         location: getLocationForDataSourceViewContentNode(node),
         menuItems: getMenuItems(
           canReadInSpace,
@@ -529,7 +553,10 @@ function SearchResultsTable({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router,
+          onOpenDocument,
+          setEffectiveContentNode
         ),
       };
     });
@@ -538,11 +565,12 @@ function SearchResultsTable({
     canReadInSpace,
     canWriteInSpace,
     category,
-    contentActionsRef,
     dataSourceViews,
+    onOpenDocument,
     owner.sId,
     router,
     searchResultNodes,
+    setEffectiveContentNode,
     spaces,
   ]);
 

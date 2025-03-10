@@ -7,8 +7,8 @@ import { createContext } from "react";
 // Create a context with both search state and action buttons
 export interface SpaceSearchContextType {
   // Search state.
-  searchTerm: string;
-  setSearchTerm: (value: string) => void;
+  searchTerm?: string;
+  setSearchTerm?: (value: string) => void;
 
   isSearchDisabled: boolean;
   setIsSearchDisabled: (value: boolean) => void;

@@ -438,7 +438,8 @@ export const SpaceDataSourceViewContentList = ({
           contentActionsRef,
           spaces,
           dataSourceViews,
-          addToSpace
+          addToSpace,
+          router
         ),
       })) || [],
     [
@@ -449,6 +450,7 @@ export const SpaceDataSourceViewContentList = ({
       dataSourceView,
       dataSourceViews,
       addToSpace,
+      router,
       onSelect,
     ]
   );
