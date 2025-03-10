@@ -1,7 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { ConversationWithoutContentPublicType } from "@dust-tt/client";
 import type {
   ConversationType,
   DataSourceViewCategory,
@@ -10,21 +9,9 @@ import type {
   Result,
   UserType,
 } from "@dust-tt/types";
-import {
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
-import type {
-  Attributes,
-  CreationAttributes,
-  ModelStatic,
-  Transaction,
-  WhereOptions,
-} from "sequelize";
+import type { Attributes, CreationAttributes, ModelStatic, Transaction, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
@@ -40,15 +27,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, isResourceSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 
@@ -106,7 +88,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const dataSourceView = await DataSourceViewResource.model.create(
@@ -125,20 +106,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space
     );
     dsv.ds = dataSource;
-
-    if (conversation) {
-      // dataSourceView attached to a conversation, we create an entry in the
-      // join table
-      await DataSourceViewForConversation.create(
-        {
-          conversationId: conversation.id,
-          dataSourceViewId: dataSourceView.id,
-          workspaceId: blob.workspaceId,
-        },
-        { transaction }
-      );
-    }
-
     return dsv;
   }
 
@@ -146,7 +113,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
@@ -160,7 +126,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         space,
         dataSource,
         editedByUser,
-        conversation,
         t
       );
     };
@@ -196,7 +161,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     editedByUser?: UserType | null,
-    conversation?: ConversationWithoutContentPublicType | null,
     transaction?: Transaction
   ) {
     return this.makeNew(
@@ -209,7 +173,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       space,
       dataSource,
       editedByUser,
-      conversation,
       transaction
     );
   }
@@ -641,12 +604,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       where: {
         dataSourceViewId: this.id,
       },
-    });
-    await DataSourceViewForConversation.destroy({
-      where: {
-        dataSourceViewId: this.id,
-      },
-      transaction,
     });
 
     const deletedCount = await DataSourceViewModel.destroy({

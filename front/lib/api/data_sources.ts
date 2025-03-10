@@ -1,7 +1,4 @@
-import type {
-  DataSourceSearchQuery,
-  DataSourceSearchResponseType,
-} from "@dust-tt/client";
+import type { DataSourceSearchQuery, DataSourceSearchResponseType } from "@dust-tt/client";
 import type {
   AdminCommandType,
   ConnectorProvider,
@@ -914,8 +911,7 @@ export async function createDataSourceWithoutProvider(
         conversationId: conversation?.id,
       },
       space,
-      auth.user(),
-      conversation
+      auth.user()
     );
 
   try {
