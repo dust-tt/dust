@@ -1,4 +1,4 @@
-import { LogoHorizontalWhiteLogo } from "@dust-tt/sparkle";
+import { DustLogoWhite } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
@@ -13,7 +13,7 @@ export function FooterNavigation() {
       <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className={classNames("opacity-70", "col-span-12")}>
-            <LogoHorizontalWhiteLogo className="h-6 w-24" />
+            <DustLogoWhite className="h-6 w-24" />
           </div>
           {menuConfig.footerNav.map((item, index) => (
             <div
