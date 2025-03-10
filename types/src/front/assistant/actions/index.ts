@@ -58,12 +58,3 @@ export abstract class BaseAction {
     model: ModelConfigurationType;
   }): Promise<FunctionMessageTypeModel>;
 }
-
-export const PlatformActionsProviders = ["github"] as const;
-export type PlatformActionsProviderType =
-  (typeof PlatformActionsProviders)[number];
-
-export type PlatformActionsConfigurationType = {
-  provider: PlatformActionsProviderType;
-  connectionId: string;
-};

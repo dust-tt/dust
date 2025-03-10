@@ -242,8 +242,6 @@ export function AgentMessage({
       case "conversation_include_file_params":
       case "dust_app_run_block":
       case "dust_app_run_params":
-      case "github_create_issue_params":
-      case "github_get_pull_request_params":
       case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":

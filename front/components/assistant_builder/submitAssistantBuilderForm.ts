@@ -20,10 +20,6 @@ import type {
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
@@ -213,24 +209,6 @@ export async function submitAssistantBuilderForm({
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
-          },
-        ];
-
-      case "GITHUB_GET_PULL_REQUEST":
-        return [
-          {
-            type: "github_get_pull_request_configuration",
-            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "GITHUB_CREATE_ISSUE":
-        return [
-          {
-            type: "github_create_issue_configuration",
-            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
           },
         ];
 
