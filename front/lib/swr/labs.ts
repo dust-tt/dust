@@ -50,3 +50,25 @@ export function useLabsTranscriptsDefaultConfiguration({
     mutateDefaultConfiguration: mutate,
   };
 }
+
+export function useLabsTranscriptsIsConnectorConnected({
+  owner,
+  provider,
+}: {
+  owner: WorkspaceType;
+  provider: string;
+}) {
+  const isConnectorConnectedFetcher: Fetcher<boolean> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/labs/transcripts/connector?provider=${provider}`,
+    isConnectorConnectedFetcher
+  );
+
+  return {
+    isConnectorConnected: data ?? false,
+    isConnectorConnectedLoading: !error && !data,
+    isConnectorConnectedError: error,
+    mutateIsConnectorConnected: mutate,
+  };
+}
