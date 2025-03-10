@@ -127,13 +127,16 @@ export async function gongSyncTranscriptsActivity({
         );
         return { nextPageCursor: null };
       }
+
+      const { parties = [] } = transcriptMetadata;
+
       const participants = await getGongUsers(connector, {
-        gongUserIds: transcriptMetadata.parties
+        gongUserIds: parties
           .map((p) => p.userId)
           .filter((id): id is string => Boolean(id)),
       });
 
-      const participantEmails = transcriptMetadata.parties
+      const participantEmails = parties
         .map(
           (party) =>
             participants.find((p) => party.userId === p.gongId)?.email ||
@@ -142,14 +145,15 @@ export async function gongSyncTranscriptsActivity({
         .filter((email): email is string => Boolean(email));
 
       const speakerToEmailMap = Object.fromEntries(
-        transcriptMetadata.parties.map((party) => [
+        parties.map((party) => [
           party.speakerId,
-          // Use the table gong_users as the main ground truth, fallback to email address in the metadata.
+          // Prefer gong_users table, fallback to metadata email
           participants.find(
             (participant) => participant.gongId === party.userId
           )?.email || party.emailAddress,
         ])
       );
+
       await syncGongTranscript({
         transcript,
         transcriptMetadata,
