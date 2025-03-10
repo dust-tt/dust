@@ -24,3 +24,17 @@ jobs:
         run: npm install && npm run build
       - working-directory: connectors
         run: npm install && npm run build && npm run lint && npm run format:check
+      - name: Run Tests
+        working-directory: connectors
+        env:
+          NODE_ENV: test
+        run: npm run test:ci
+      - name: Build Tests Report
+        if: always()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: "**/connectors/junit*.xml"
+          detailed_summary: true
+          flaky_summary: true
+          group_suite: true
+          check_name: Tests Report

@@ -60,6 +60,7 @@ import {
   renderDocumentTitleAndContent,
   renderPrefixSection,
   sectionLength,
+  truncateSection,
   updateDataSourceDocumentParents,
   updateDataSourceTableParents,
   upsertDataSourceDocument,
@@ -1920,11 +1921,28 @@ export async function renderAndUpsertPageFromCache({
 
   localLogger.info("notionRenderAndUpsertPageFromCache: Rendering page.");
 
-  const renderedPageSection = await renderPageSection({
+  let renderedPageSection = await renderPageSection({
     dsConfig,
     blocksByParentId,
   });
-  const documentLength = sectionLength(renderedPageSection);
+
+  const initialDocumentLength = sectionLength(renderedPageSection);
+  if (initialDocumentLength > MAX_DOCUMENT_TXT_LEN) {
+    localLogger.warn(
+      {
+        renderedPageLength: initialDocumentLength,
+        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
+      },
+      "notionRenderAndUpsertPageFromCache: Truncating page with too large body."
+    );
+
+    // Not skipping the page as we want to upsert the page to make sure that we preserve
+    // the node hierarchy. Instead, we truncate the page to the max length.
+    renderedPageSection = truncateSection(
+      renderedPageSection,
+      MAX_DOCUMENT_TXT_LEN
+    );
+  }
 
   // add a newline to separate the page from the metadata above (title, author...)
   renderedPageSection.content = "\n";
@@ -2035,87 +2053,72 @@ export async function renderAndUpsertPageFromCache({
     title = title.join(" ");
   }
 
-  let upsertTs: number | undefined = undefined;
-  let skipReason: string | null = null;
-
-  if (documentLength > MAX_DOCUMENT_TXT_LEN) {
-    localLogger.info(
-      {
-        renderedPageLength: documentLength,
-        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
-      },
-      "notionRenderAndUpsertPageFromCache: Skipping page with too large body."
-    );
-    skipReason = "body_too_large";
-  }
+  const upsertTs: number = new Date().getTime();
 
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
 
-  if (!skipReason) {
-    upsertTs = new Date().getTime();
-    const documentId = `notion-${pageId}`;
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Fetching resource parents."
+  const documentId = `notion-${pageId}`;
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Fetching resource parents."
+  );
+
+  const parentPageOrDbIds = await getParents(
+    connectorId,
+    pageId,
+    [],
+    true,
+    runTimestamp.toString()
+  );
+  await heartbeat();
+
+  const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
+  if (parentIds.length === 1) {
+    const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
+    localLogger.warn(
+      { parentIds, parentType: page?.parentType, parentId: page?.parentId },
+      "notionRenderAndUpsertPageFromCache: Page has no parent."
     );
+  }
 
-    const parentPageOrDbIds = await getParents(
-      connectorId,
-      pageId,
-      [],
-      true,
-      runTimestamp.toString()
-    );
-    await heartbeat();
+  const content = await renderDocumentTitleAndContent({
+    dataSourceConfig: dsConfig,
+    title: title ?? null,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
+    author,
+    lastEditor,
+    content: renderedPageSection,
+  });
 
-    const parentIds = parentPageOrDbIds.map((id) => `notion-${id}`);
-    if (parentIds.length === 1) {
-      const page = await getNotionPageFromConnectorsDb(connectorId, pageId);
-      localLogger.warn(
-        { parentIds, parentType: page?.parentType, parentId: page?.parentId },
-        "notionRenderAndUpsertPageFromCache: Page has no parent."
-      );
-    }
-
-    const content = await renderDocumentTitleAndContent({
-      dataSourceConfig: dsConfig,
-      title: title ?? null,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
+  localLogger.info(
+    "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
+  );
+  await upsertDataSourceDocument({
+    dataSourceConfig: dsConfig,
+    documentId,
+    documentContent: content,
+    documentUrl: pageCacheEntry.url,
+    timestampMs: updatedAt.getTime(),
+    tags: getTagsForPage({
+      title,
       author,
       lastEditor,
-      content: renderedPageSection,
-    });
-
-    localLogger.info(
-      "notionRenderAndUpsertPageFromCache: Upserting to Data Source."
-    );
-    await upsertDataSourceDocument({
-      dataSourceConfig: dsConfig,
-      documentId,
-      documentContent: content,
-      documentUrl: pageCacheEntry.url,
-      timestampMs: updatedAt.getTime(),
-      tags: getTagsForPage({
-        title,
-        author,
-        lastEditor,
-        createdTime: createdAt.getTime(),
-        updatedTime: updatedAt.getTime(),
-        parsedProperties,
-        logger: localLogger,
-      }),
-      parents: parentIds,
-      parentId: parentIds[1] || null,
-      loggerArgs,
-      upsertContext: {
-        sync_type: isFullSync ? "batch" : "incremental",
-      },
-      title: title ?? "",
-      mimeType: MIME_TYPES.NOTION.PAGE,
-      async: true,
-    });
-  }
+      createdTime: createdAt.getTime(),
+      updatedTime: updatedAt.getTime(),
+      parsedProperties,
+      logger: localLogger,
+    }),
+    parents: parentIds,
+    parentId: parentIds[1] || null,
+    loggerArgs,
+    upsertContext: {
+      sync_type: isFullSync ? "batch" : "incremental",
+    },
+    title: title ?? "",
+    mimeType: MIME_TYPES.NOTION.PAGE,
+    async: true,
+  });
 
   localLogger.info(
     "notionRenderAndUpsertPageFromCache: Saving page in connectors DB."
@@ -2129,7 +2132,7 @@ export async function renderAndUpsertPageFromCache({
     title,
     notionUrl: pageCacheEntry.url,
     lastUpsertedTs: upsertTs,
-    skipReason: skipReason ?? undefined,
+    skipReason: undefined,
     lastCreatedOrMovedRunTs: createdOrMoved ? runTimestamp : undefined,
   });
 

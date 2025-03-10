@@ -9,6 +9,8 @@
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "tsx ./src/start_server.ts -p 3002",
     "start:worker": "tsx ./src/start_worker.ts",
+    "test": "vitest",
+    "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh"
@@ -91,6 +93,8 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "prettier": "^3.0",
     "tsx": "^4.10.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.1.9"
   }
 }

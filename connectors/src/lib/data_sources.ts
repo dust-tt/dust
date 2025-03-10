@@ -638,6 +638,136 @@ export function sectionLength(
   );
 }
 
+// Truncate a CoreAPIDataSourceDocumentSection to a given length
+// Strategy:
+// - If there are children sections, start the very last leaf section
+// - Truncate the content until the total length is <= maxLength
+// - If the total length is still > maxLength, truncate the prefix until the total length is <= maxLength
+// - If the total length is still > maxLength, remove the last child section and try again
+export function truncateSection(
+  section: CoreAPIDataSourceDocumentSection,
+  maxLength: number
+): CoreAPIDataSourceDocumentSection {
+  // Calculate current length
+  const currentLength = sectionLength(section);
+
+  // If already within limit, return unchanged
+  if (currentLength <= maxLength) {
+    return section;
+  }
+
+  // Create a deep copy to avoid mutating the original
+  const result: CoreAPIDataSourceDocumentSection = {
+    prefix: section.prefix,
+    content: section.content,
+    sections: [...section.sections],
+  };
+
+  // If there are child sections, start with truncating from the last leaf
+  while (result.sections.length > 0) {
+    // Work on the last child section
+    const lastIndex = result.sections.length - 1;
+    const lastSection = result.sections[lastIndex];
+
+    if (!lastSection) {
+      throw new Error("Unreachable");
+    }
+
+    // If the last section has children, recursively truncate it
+    if (lastSection.sections.length > 0) {
+      const excessLength = sectionLength(result) - maxLength;
+      const truncated = truncateSection(
+        lastSection,
+        Math.max(0, sectionLength(lastSection) - excessLength)
+      );
+
+      // If the truncated section is empty (all content was removed), remove it entirely
+      if (
+        !truncated.prefix &&
+        !truncated.content &&
+        truncated.sections.length === 0
+      ) {
+        result.sections.pop();
+      } else {
+        result.sections[lastIndex] = truncated;
+      }
+    } else {
+      // This is a leaf section, truncate its content first
+      if (lastSection.content) {
+        const currentTotalLength = sectionLength(result);
+        const excess = currentTotalLength - maxLength;
+
+        if (excess > 0 && lastSection.content.length > 0) {
+          // Truncate content, but ensure we don't try to remove more characters than exist
+          const charsToRemove = Math.min(lastSection.content.length, excess);
+          lastSection.content = lastSection.content.slice(
+            0,
+            lastSection.content.length - charsToRemove
+          );
+        }
+      }
+
+      // If still exceeding after content truncation, truncate prefix
+      if (sectionLength(result) > maxLength && lastSection.prefix) {
+        const currentTotalLength = sectionLength(result);
+        const excess = currentTotalLength - maxLength;
+
+        if (excess > 0 && lastSection.prefix.length > 0) {
+          // Truncate prefix, but ensure we don't try to remove more characters than exist
+          const charsToRemove = Math.min(lastSection.prefix.length, excess);
+          lastSection.prefix = lastSection.prefix.slice(
+            0,
+            lastSection.prefix.length - charsToRemove
+          );
+        }
+      }
+
+      // If still exceeding after both truncations, remove this leaf section entirely
+      if (sectionLength(result) > maxLength) {
+        result.sections.pop();
+      } else {
+        // We're within limits, stop processing
+        break;
+      }
+    }
+
+    // If we've removed all sections or we're under the limit, stop
+    if (result.sections.length === 0 || sectionLength(result) <= maxLength) {
+      break;
+    }
+  }
+
+  // If we've removed all child sections but still exceed the limit,
+  // truncate this section's content and prefix
+  if (sectionLength(result) > maxLength) {
+    // Truncate content first
+    if (result.content) {
+      const excess = sectionLength(result) - maxLength;
+      if (excess > 0) {
+        const charsToRemove = Math.min(result.content.length, excess);
+        result.content = result.content.slice(
+          0,
+          result.content.length - charsToRemove
+        );
+      }
+    }
+
+    // If still exceeding, truncate prefix
+    if (sectionLength(result) > maxLength && result.prefix) {
+      const excess = sectionLength(result) - maxLength;
+      if (excess > 0) {
+        const charsToRemove = Math.min(result.prefix.length, excess);
+        result.prefix = result.prefix.slice(
+          0,
+          result.prefix.length - charsToRemove
+        );
+      }
+    }
+  }
+
+  return result;
+}
+
 export async function upsertDataSourceRemoteTable({
   dataSourceConfig,
   tableId,
