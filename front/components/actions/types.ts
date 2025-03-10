@@ -4,8 +4,6 @@ import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
-import { GithubCreateIssueActionDetails } from "@app/components/actions/github/GithubCreateIssueActionDetails";
-import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
@@ -64,14 +62,6 @@ const actionsSpecification: ActionSpecifications = {
   conversation_include_file_action: {
     detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
-  },
-  github_get_pull_request_action: {
-    detailsComponent: GithubGetPullRequestActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
-  },
-  github_create_issue_action: {
-    detailsComponent: GithubCreateIssueActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_create_issue_action,
   },
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,

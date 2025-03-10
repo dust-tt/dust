@@ -6,7 +6,6 @@ import {
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
-  GithubIcon,
   Icon,
   IconButton,
   Label,
@@ -37,8 +36,6 @@ import {
   GLOBAL_AGENTS_SID,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -304,24 +301,6 @@ function renderOtherAction(
     );
   } else if (isBrowseConfiguration(action)) {
     return null;
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can retrieve pull requests from Github.</div>
-        </div>
-      </ActionSection>
-    );
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can create issues on Github.</div>
-        </div>
-      </ActionSection>
-    );
   } else if (
     !isRetrievalConfiguration(action) &&
     !isTablesQueryConfiguration(action)

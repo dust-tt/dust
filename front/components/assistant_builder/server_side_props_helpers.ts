@@ -14,8 +14,6 @@ import {
   assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -113,10 +111,6 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubGetPullRequestActionConfiguration();
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else {
