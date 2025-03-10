@@ -44,9 +44,8 @@ impl SalesforceConnectionProvider {
         }
 
         // Extract client ID and secret
-        let client_id = content
-            .get("client_id")
-            .and_then(|v| v.as_str())
+        let client_id = connection.metadata()["client_id"]
+            .as_str()
             .ok_or_else(|| anyhow!("Missing client_id in Salesforce credential"))?;
 
         let client_secret = content

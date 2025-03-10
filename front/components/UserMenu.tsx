@@ -95,6 +95,12 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenuLabel label="Beta" />
+            <DropdownMenuItem
+              label="Salesforce"
+              icon={BookOpenIcon}
+              href={`/w/${owner.sId}/assistant/labs/salesforce`}
+            />
+
             {featureFlags.includes("labs_transcripts") && (
               <DropdownMenuItem
                 label="Meeting transcripts"

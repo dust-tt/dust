@@ -26,10 +26,12 @@ import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/act
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { getUserMetadata } from "@app/lib/api/user";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -382,12 +384,28 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const config = cloneBaseConfig(
       getDustProdAction("assistant-v2-query-tables").config
     );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByIds(auth, [
+      ...new Set(actionConfiguration.tables.map((t) => t.dataSourceViewId)),
+    ]);
+    const connectionIds: Record<string, string> = {};
+    for (const dataSourceView of dataSourceViews) {
+      const connectionId = await getUserMetadata(
+        auth.getNonNullableUser(),
+        `connection_id_${dataSourceView.dataSource.sId}`
+      );
+      if (connectionId && connectionId.value.length > 0) {
+        connectionIds[dataSourceView.sId] = connectionId.value;
+      }
+    }
+
     const tables = actionConfiguration.tables.map((t) => ({
       workspace_id: t.workspaceId,
       table_id: t.tableId,
       // Note: This value is passed to the registry for lookup. The registry will return the
       // associated data source's dustAPIDataSourceId.
       data_source_id: t.dataSourceViewId,
+      remote_database_secret_id: connectionIds[t.dataSourceViewId],
     }));
     if (tables.length === 0) {
       yield {

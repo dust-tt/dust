@@ -132,7 +132,7 @@ impl Credential {
                 ]
             }
             CredentialProvider::Salesforce => {
-                vec!["client_id", "client_secret"]
+                vec!["client_secret"]
             }
         };
 

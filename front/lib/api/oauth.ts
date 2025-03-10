@@ -362,7 +362,8 @@ const PROVIDER_STRATEGIES: Record<
       if (
         !extraConfig.instance_url ||
         !extraConfig.client_id ||
-        !extraConfig.client_secret
+        (!extraConfig.copy_related_credential_from_connection_id &&
+          !extraConfig.client_secret)
       ) {
         return false;
       }
@@ -376,12 +377,11 @@ const PROVIDER_STRATEGIES: Record<
       }
     },
     getRelatedCredential: (extraConfig, workspaceId, userId) => {
-      const { client_id, client_secret, ...restConfig } = extraConfig;
+      const { client_secret, ...restConfig } = extraConfig;
 
       return {
         credential: {
           content: {
-            client_id,
             client_secret,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
@@ -418,12 +418,16 @@ export async function createConnectionAndGetSetupUrl(
         metadata: { workspace_id: string; user_id: string };
       }
     | undefined = undefined;
-
+  let copyRelatedCredentialFromConnectionId: string | undefined;
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const userId = auth.getNonNullableUser().sId;
   const clientId: string | undefined = extraConfig.client_id;
 
-  if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
+  if (extraConfig.copy_related_credential_from_connection_id) {
+    copyRelatedCredentialFromConnectionId =
+      extraConfig.copy_related_credential_from_connection_id;
+    delete extraConfig.copy_related_credential_from_connection_id;
+  } else if (PROVIDER_STRATEGIES[provider].getRelatedCredential) {
     const result = PROVIDER_STRATEGIES[provider].getRelatedCredential!(
       extraConfig,
       workspaceId,
@@ -446,6 +450,7 @@ export async function createConnectionAndGetSetupUrl(
     provider,
     metadata,
     relatedCredential,
+    copyRelatedCredentialFromConnectionId,
   });
   if (cRes.isErr()) {
     logger.error({ provider, useCase }, "OAuth: Failed to create connection");
