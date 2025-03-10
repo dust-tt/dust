@@ -1155,3 +1155,14 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
 
   return new Ok(res);
 }
+
+export async function computeDataSourceStatistics(
+  dataSource: DataSourceResource
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  return coreAPI.getDataSourceStats({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
+  });
+}
