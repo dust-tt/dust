@@ -1,7 +1,7 @@
 import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { describe, expect, it } from "vitest";
 
-import { truncateSection } from "./data_sources";
+import { sectionLength, truncateSection } from "./data_sources";
 
 describe("truncateSection", () => {
   it("should return unchanged section if within length limit", () => {
@@ -12,6 +12,7 @@ describe("truncateSection", () => {
     };
     const result = truncateSection(section, 20);
     expect(result).toEqual(section);
+    expect(sectionLength(result)).toEqual(10);
   });
 
   it("should truncate content of a simple section", () => {
@@ -26,6 +27,7 @@ describe("truncateSection", () => {
       content: "Wor",
       sections: [],
     });
+    expect(sectionLength(result)).toEqual(8);
   });
 
   it("should truncate prefix if content truncation is not enough", () => {
@@ -40,6 +42,7 @@ describe("truncateSection", () => {
       content: "",
       sections: [],
     });
+    expect(sectionLength(result)).toEqual(3);
   });
 
   it("should handle nested sections", () => {
@@ -71,6 +74,7 @@ describe("truncateSection", () => {
         },
       ],
     });
+    expect(sectionLength(result)).toEqual(20);
   });
 
   it("should handle deeply nested sections", () => {
@@ -109,6 +113,7 @@ describe("truncateSection", () => {
         },
       ],
     });
+    expect(sectionLength(result)).toEqual(30);
   });
 
   it("should remove empty sections after truncation", () => {
@@ -140,6 +145,7 @@ describe("truncateSection", () => {
         },
       ],
     });
+    expect(sectionLength(result)).toEqual(15);
   });
 
   it("should handle sections with only prefixes", () => {
@@ -176,6 +182,7 @@ describe("truncateSection", () => {
         },
       ],
     });
+    expect(sectionLength(result)).toEqual(15);
   });
 
   it("should handle sections with only content", () => {
@@ -207,6 +214,7 @@ describe("truncateSection", () => {
         },
       ],
     });
+    expect(sectionLength(result)).toEqual(15);
   });
 
   it("should not mutate the original section", () => {
@@ -216,7 +224,9 @@ describe("truncateSection", () => {
       sections: [],
     };
     const originalSection = { ...section };
-    truncateSection(section, 8);
+    const result = truncateSection(section, 8);
     expect(section).toEqual(originalSection);
+    expect(sectionLength(section)).toEqual(10);
+    expect(sectionLength(result)).toEqual(8);
   });
 });
