@@ -195,7 +195,7 @@ export function HelpDrawer({
                 },
                 {
                   title: "Join the Slack community",
-                  href: "https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA",
+                  href: "https://dust-community.tightknit.community/join",
                   description: "Stuck? Ask your questions to the community",
                   icon: UserGroupIcon,
                 },
