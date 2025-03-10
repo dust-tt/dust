@@ -1926,24 +1926,6 @@ export async function renderAndUpsertPageFromCache({
     blocksByParentId,
   });
 
-  const initialDocumentLength = sectionLength(renderedPageSection);
-  if (initialDocumentLength > MAX_DOCUMENT_TXT_LEN) {
-    localLogger.warn(
-      {
-        renderedPageLength: initialDocumentLength,
-        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
-      },
-      "notionRenderAndUpsertPageFromCache: Truncating page with too large body."
-    );
-
-    // Not skipping the page as we want to upsert the page to make sure that we preserve
-    // the node hierarchy. Instead, we truncate the page to the max length.
-    renderedPageSection = truncateSection(
-      renderedPageSection,
-      MAX_DOCUMENT_TXT_LEN
-    );
-  }
-
   // add a newline to separate the page from the metadata above (title, author...)
   renderedPageSection.content = "\n";
 
@@ -2051,6 +2033,24 @@ export async function renderAndUpsertPageFromCache({
   let title = titleProperty?.value ?? undefined;
   if (Array.isArray(title)) {
     title = title.join(" ");
+  }
+
+  const initialDocumentLength = sectionLength(renderedPageSection);
+  if (initialDocumentLength > MAX_DOCUMENT_TXT_LEN) {
+    localLogger.warn(
+      {
+        renderedPageLength: initialDocumentLength,
+        maxDocumentTxtLength: MAX_DOCUMENT_TXT_LEN,
+      },
+      "notionRenderAndUpsertPageFromCache: Truncating page with too large body."
+    );
+
+    // Not skipping the page as we want to upsert the page to make sure that we preserve
+    // the node hierarchy. Instead, we truncate the page to the max length.
+    renderedPageSection = truncateSection(
+      renderedPageSection,
+      MAX_DOCUMENT_TXT_LEN
+    );
   }
 
   const upsertTs: number = new Date().getTime();
