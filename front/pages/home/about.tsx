@@ -206,6 +206,25 @@ const PEOPLE: Record<
     github: "https://github.com/frankaloia",
     linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
   },
+  adrsimon: {
+    name: "Adrien Simon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/99071153",
+    github: "https://github.com/adrsimon",
+    linkedIn: "https://www.linkedin.com/in/adrsimon/",
+  },
+  gina: {
+    name: "Gina Kabasakalis",
+    title: "Go To Market",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7RK45B-0d9a6f5b000d-512",
+    linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
+  },
+  apara: {
+    name: "Apara Sivaraman",
+    title: "Business Operations (US)",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7GNBM3-12d42049c6a8-512",
+    linkedIn: "https://www.linkedin.com/in/aparasivaraman/",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {
