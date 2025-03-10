@@ -657,4 +657,5 @@ module.exports = {
     "s-grid-rows-4",
     "s-grid-rows-5",
   ],
+  colors: customColors,
 };
