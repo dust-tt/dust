@@ -6,8 +6,8 @@ import collapseBar from "@sparkle/lottie/collapseBar";
 // Custom color definitions
 const customColors = {
   gray: {
-    200: "#D3D5D9",
-    800: "#2A3241",
+    300: "#B2B6BD",
+    700: "#364153",
   },
 };
 
@@ -30,8 +30,8 @@ const colors: Record<
   NonNullable<CollapseButtonProps["variant"]>,
   LottieColorType
 > = {
-  light: hexToRgba(customColors.gray[200]),
-  dark: hexToRgba(customColors.gray[800]),
+  light: hexToRgba(customColors.gray[300]),
+  dark: hexToRgba(customColors.gray[700]),
 };
 
 // Helper to check if array is a color array
@@ -138,13 +138,13 @@ const CollapseButton: React.FC<CollapseButtonProps> = ({
     const timeoutId = setTimeout(initializeAnimation, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [direction]);
+  }, []);
 
   return (
     <div
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{ width: `24px`, height: `30px` }}
+      style={{ width: `24px`, height: `36px` }}
       className="s-cursor-pointer"
     >
       <Lottie
