@@ -120,6 +120,23 @@ export const google_drive = async ({
       });
       return { status: res.status, content: res.data, type: typeof res.data };
     }
+    case "get-file": {
+      const connector = await getConnector(args);
+      if (!args.fileId) {
+        throw new Error("Missing --fileId argument");
+      }
+      const fileId = args.fileId;
+      const now = Date.now();
+      const authCredentials = await getAuthObject(connector.connectionId);
+      const driveObject = await getGoogleDriveObject({
+        authCredentials,
+        driveObjectId: getDriveFileId(fileId),
+        cacheKey: { connectorId: connector.id, ts: now },
+      });
+
+      logger.info({ driveObject }, "driveObject");
+      return { success: true };
+    }
     case "upsert-file": {
       const connector = await getConnector(args);
       if (!args.fileId) {
