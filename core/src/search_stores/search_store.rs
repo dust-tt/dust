@@ -1055,7 +1055,9 @@ impl ElasticsearchSearchStore {
         let data_source = match item {
             SearchItem::DataSource(ds) => ds,
             _ => {
-                return Err(anyhow::anyhow!("Invalid search item type, expected a DataSource."));
+                return Err(anyhow::anyhow!(
+                    "Invalid search item type, expected a DataSource."
+                ));
             }
         };
 
