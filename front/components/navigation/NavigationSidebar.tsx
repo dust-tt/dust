@@ -306,7 +306,7 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={direction} />
+      <CollapseButton direction={direction} variant="light" />
     </div>
   );
 });

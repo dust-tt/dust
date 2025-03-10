@@ -64,7 +64,7 @@ export function VerticalSection() {
     <div className="w-full">
       <Carousel className="w-full" isLooping={true} setApi={setApi}>
         <div>
-          <H2 className="text-brand-sky-blue mb-4">
+          <H2 className="mb-4 text-brand-sky-blue">
             Custom AI agents for every function
           </H2>
           <P>
