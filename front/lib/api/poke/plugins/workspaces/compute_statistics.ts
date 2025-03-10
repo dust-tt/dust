@@ -3,6 +3,7 @@ import {
   Err,
   maxFileSizeToHumanReadable,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import assert from "assert";
 
@@ -48,7 +49,9 @@ export const computeWorkspaceStatsPlugin = createPlugin({
     if (hasError) {
       return new Err(
         new Error("Error computing statistics.", {
-          cause: results.filter((r) => r.isErr()).map((r) => r.error),
+          cause: removeNulls(
+            results.map((r) => (r.isErr() ? r.error.message : null))
+          ),
         })
       );
     }
