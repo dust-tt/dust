@@ -206,13 +206,6 @@ const PEOPLE: Record<
     github: "https://github.com/frankaloia",
     linkedIn: "https://www.linkedin.com/in/frank-aloia-39907a12b/",
   },
-  adrsimon: {
-    name: "Adrien Simon",
-    title: "Software Engineer",
-    image: "https://avatars.githubusercontent.com/u/99071153",
-    github: "https://github.com/adrsimon",
-    linkedIn: "https://www.linkedin.com/in/adrsimon/",
-  },
   gina: {
     name: "Gina Kabasakalis",
     title: "Go To Market",
@@ -226,6 +219,13 @@ const PEOPLE: Record<
     image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7GNBM3-12d42049c6a8-512",
     linkedIn: "https://www.linkedin.com/in/aparasivaraman/",
     github: "https://github.com/apara-dust/",
+  },
+  adrsimon: {
+    name: "Adrien Simon",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/99071153",
+    github: "https://github.com/adrsimon",
+    linkedIn: "https://www.linkedin.com/in/adrsimon/",
   },
 };
 
