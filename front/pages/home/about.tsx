@@ -218,12 +218,14 @@ const PEOPLE: Record<
     title: "Go To Market",
     image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7RK45B-0d9a6f5b000d-512",
     linkedIn: "https://www.linkedin.com/in/ginakabasakalis/",
+    github: "https://github.com/gina-dust/",
   },
   apara: {
     name: "Apara Sivaraman",
     title: "Business Operations (US)",
     image: "https://ca.slack-edge.com/T050RH73H9P-U08FS7GNBM3-12d42049c6a8-512",
     linkedIn: "https://www.linkedin.com/in/aparasivaraman/",
+    github: "https://github.com/apara-dust/",
   },
 };
 
