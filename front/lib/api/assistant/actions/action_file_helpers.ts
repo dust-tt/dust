@@ -2,7 +2,6 @@ import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
-import type { UpsertDocumentArgs } from "@app/lib/api/data_sources";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
@@ -184,16 +183,8 @@ export async function uploadFileToConversationDataSource({
       "Failed to get or create JIT data source"
     );
   } else {
-    const upsertArgs: UpsertDocumentArgs = {
-      auth,
-      dataSource: jitDataSource.value,
-      document_id: file.sId,
-      title: file.fileName,
-      mime_type: file.contentType,
-    };
     const r = await processAndUpsertToDataSource(auth, jitDataSource.value, {
       file,
-      upsertArgs,
     });
     if (r.isErr()) {
       logger.error(

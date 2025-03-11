@@ -90,18 +90,11 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
-  if (!upsertArgs || !("document_id" in upsertArgs)) {
+  if (upsertArgs) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Upsert args are required for section documents.",
-    });
-  }
-  if (upsertArgs.section) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "Section is not allowed for section documents.",
+      message: "Upsert args are not allowed for section documents.",
     });
   }
 
@@ -128,20 +121,21 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
     });
   }
 
-  const documentId = upsertArgs.document_id;
-  const title = upsertArgs.title;
-
   const upsertDocumentRes = await upsertDocument({
     auth,
     dataSource,
-    document_id: documentId,
-    source_url: file.getPrivateUrl(auth),
-    parents: [documentId],
-    title,
-    section,
-    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
-    light_document_output: true,
+    title: file.fileName,
     mime_type: file.contentType,
+    document_id: file.sId,
+    source_url: file.getPrivateUrl(auth),
+    parents: [file.sId],
+    section,
+    tags: [
+      `title:${file.fileName}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+    ],
+    light_document_output: true,
   });
 
   if (upsertDocumentRes.isErr()) {
