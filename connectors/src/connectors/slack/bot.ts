@@ -873,15 +873,19 @@ async function makeContentFragments(
     });
 
     if (channel.error) {
-      return new Err(
-        new Error(`Could not retrieve channel name: ${channel.error}`)
-      );
+      throw new Error(`Could not retrieve channel name: ${channel.error}`);
     }
     if (!channel.channel || !channel.channel.name) {
-      return new Err(new Error("Could not retrieve channel name"));
+      if (channel.channel?.is_im || channel.channel?.is_mpim) {
+        channelName = "Direct Message";
+      } else {
+        throw new Error(
+          "Could not retrieve channel name while the response was successful"
+        );
+      }
+    } else {
+      channelName = channel.channel.name;
     }
-
-    channelName = channel.channel.name;
   } catch (e) {
     // We were missing the "im:read" scope, so we fallback to the "Unknown" channel name
     // because we would trigger an oauth error otherwise.
