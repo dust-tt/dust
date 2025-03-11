@@ -159,9 +159,11 @@ makeScript(
             return;
           }
 
-          // 2) Resume all connectors in the destination region.
-          const resumeDestConnectorsRes =
-            await resumeAllManagedDataSources(auth);
+          // 2) Resume all webcrawler connectors in the destination region.
+          const resumeDestConnectorsRes = await resumeAllManagedDataSources(
+            auth,
+            ["webcrawler"]
+          );
           if (resumeDestConnectorsRes.isErr()) {
             logger.error(
               `Failed to resume connectors: ${resumeDestConnectorsRes.error.message}`
