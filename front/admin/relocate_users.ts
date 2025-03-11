@@ -155,40 +155,43 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   return new Ok(undefined);
 }
 
-makeScript(
-  {
-    destinationRegion: {
-      type: "string",
-      required: true,
-      choices: SUPPORTED_REGIONS,
+// Only run the script if this file is being executed directly.
+if (require.main === module) {
+  makeScript(
+    {
+      destinationRegion: {
+        type: "string",
+        required: true,
+        choices: SUPPORTED_REGIONS,
+      },
+      workspaceId: {
+        type: "string",
+        required: true,
+      },
+      rateLimitThreshold: {
+        type: "number",
+        required: false,
+        default: 3,
+      },
     },
-    workspaceId: {
-      type: "string",
-      required: true,
-    },
-    rateLimitThreshold: {
-      type: "number",
-      required: false,
-      default: 3,
-    },
-  },
-  async (
-    { destinationRegion, workspaceId, rateLimitThreshold, execute },
-    logger
-  ) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    async (
+      { destinationRegion, workspaceId, rateLimitThreshold, execute },
+      logger
+    ) => {
+      const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
-    const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
-      execute,
-      newRegion: destinationRegion as RegionType,
-      rateLimitThreshold,
-    });
+      const res = await updateAllWorkspaceUsersRegionMetadata(auth, logger, {
+        execute,
+        newRegion: destinationRegion as RegionType,
+        rateLimitThreshold,
+      });
 
-    if (res.isErr()) {
-      logger.error(res.error.message);
-      return;
+      if (res.isErr()) {
+        logger.error(res.error.message);
+        return;
+      }
+
+      logger.info("Done");
     }
-
-    logger.info("Done");
-  }
-);
+  );
+}

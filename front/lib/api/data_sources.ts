@@ -1107,8 +1107,19 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(auth: Authenticator) {
+export async function resumeAllManagedDataSources(
+  auth: Authenticator,
+  providers?: ConnectorProvider[]
+) {
   const dataSources = await getAllManagedDataSources(auth);
+
+  const filteredDataSources = dataSources.filter(
+    // If no providers are provided, resume all data sources.
+    (ds) =>
+      !providers ||
+      (ds.connectorProvider !== null &&
+        providers.includes(ds.connectorProvider))
+  );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -1116,7 +1127,7 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   );
 
   const res = await concurrentExecutor(
-    dataSources,
+    filteredDataSources,
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
