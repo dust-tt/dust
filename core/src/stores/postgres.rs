@@ -2784,6 +2784,7 @@ impl Store for PostgresStore {
         data_source_id: &str,
         table_id: &str,
         schema: &TableSchema,
+        schema_stale_at: Option<u64>,
     ) -> Result<()> {
         let project_id = project.project_id();
         let data_source_id = data_source_id.to_string();
@@ -2808,14 +2809,15 @@ impl Store for PostgresStore {
         // Update the schema.
         let stmt = c
             .prepare(
-                "UPDATE tables SET schema = $1, schema_stale_at = NULL \
-                   WHERE data_source = $2 AND table_id = $3",
+                "UPDATE tables SET schema = $1, schema_stale_at = $2 \
+                   WHERE data_source = $3 AND table_id = $4",
             )
             .await?;
         c.query(
             &stmt,
             &[
                 &serde_json::to_string(schema)?,
+                &schema_stale_at.map(|t| t as i64),
                 &data_source_row_id,
                 &table_id,
             ],

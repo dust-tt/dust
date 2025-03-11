@@ -625,6 +625,9 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
     fn dialect(&self) -> SqlDialect {
         SqlDialect::SalesforceSoql
     }
+    fn schema_expiration_time(&self) -> u64 {
+        1000 * 60 * 60 * 24
+    }
 
     async fn authorize_and_execute_query(
         &self,

@@ -287,6 +287,7 @@ pub trait Store {
         data_source_id: &str,
         table_id: &str,
         schema: &TableSchema,
+        schema_stale_at: Option<u64>,
     ) -> Result<()>;
     async fn invalidate_data_source_table_schema(
         &self,

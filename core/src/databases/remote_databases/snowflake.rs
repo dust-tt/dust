@@ -347,6 +347,10 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         SqlDialect::Snowflake
     }
 
+    fn schema_expiration_time(&self) -> u64 {
+        1000 * 60 * 10
+    }
+
     async fn authorize_and_execute_query(
         &self,
         tables: &Vec<Table>,

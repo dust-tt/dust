@@ -23,6 +23,8 @@ use super::{
 pub trait RemoteDatabase {
     fn dialect(&self) -> SqlDialect;
 
+    fn schema_expiration_time(&self) -> u64;
+
     // Checks that the query only uses tables from the passed vector of tables and
     // then executes the query.
     async fn authorize_and_execute_query(

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
@@ -14,6 +16,7 @@ use crate::{
     },
     databases_store::store::DatabasesStore,
     stores::store::Store,
+    utils::now,
 };
 
 #[derive(Debug, Error)]
@@ -91,6 +94,104 @@ pub struct GetTableSchemaResult {
     pub head: Option<Vec<QueryResult>>,
 }
 
+async fn get_local_tables_schema(
+    tables: Vec<Table>,
+    store: Box<dyn Store + Sync + Send>,
+    databases_store: Box<dyn DatabasesStore + Sync + Send>,
+) -> Result<(SqlDialect, Vec<GetTableSchemaResult>)> {
+    let mut local_tables = tables
+        .into_iter()
+        .map(LocalTable::from_table)
+        .collect::<Result<Vec<_>>>()?;
+
+    // Load the schema for each table.
+    // If the schema cache is stale, this will update it in place.
+    try_join_all(
+        local_tables
+            .iter_mut()
+            .map(|t| t.schema(store.clone(), databases_store.clone())),
+    )
+    .await?;
+
+    let tables_info = get_transient_database_tables_info(&local_tables, store).await?;
+
+    Ok((
+        SqlDialect::DustSqlite,
+        local_tables
+            .into_iter()
+            .zip(tables_info)
+            .map(|(lt, ti)| GetTableSchemaResult {
+                schema: lt.table.schema_cached().cloned(),
+                dbml: lt.render_dbml(Some(&ti.unique_name)),
+                head: Some(ti.head),
+            })
+            .collect(),
+    ))
+}
+
+async fn get_remote_tables_schema(
+    tables: Vec<Table>,
+    store: Box<dyn Store + Sync + Send>,
+    credential_id: String,
+) -> Result<(SqlDialect, Vec<GetTableSchemaResult>)> {
+    let remote_db = get_remote_database(&credential_id).await?;
+    // Get schemas for tables that need updating
+    let uncached_tables: Vec<_> = tables
+        .clone()
+        .into_iter()
+        .filter(|t| {
+            t.schema_cached().is_none() || t.schema_stale_at().map_or(false, |ts| ts <= now())
+        })
+        .collect();
+
+    let remote_ids_to_fetch: Vec<_> = uncached_tables
+        .iter()
+        .filter_map(|t| t.remote_database_table_id())
+        .collect();
+
+    let fetched_schemas = if !remote_ids_to_fetch.is_empty() {
+        let schemas = remote_db.get_tables_schema(&remote_ids_to_fetch).await?;
+
+        try_join_all(uncached_tables.iter().zip(&schemas).map(|(table, schema)| {
+            store.update_data_source_table_schema(
+                table.project(),
+                table.data_source_id(),
+                table.table_id(),
+                schema,
+                Some(now() + remote_db.schema_expiration_time()),
+            )
+        }))
+        .await?;
+
+        // Map remote IDs to schemas
+        remote_ids_to_fetch
+            .iter()
+            .zip(&schemas)
+            .map(|(id, s)| (*id, s.clone()))
+            .collect()
+    } else {
+        HashMap::new()
+    };
+
+    Ok((
+        remote_db.dialect(),
+        tables
+            .into_iter()
+            .map(|table| GetTableSchemaResult {
+                schema: table
+                    .remote_database_table_id()
+                    .and_then(|id| fetched_schemas.get(&id).cloned())
+                    .or_else(|| table.schema_cached().cloned()),
+                dbml: table
+                    .schema_cached()
+                    .unwrap()
+                    .render_dbml(table.name(), table.description()),
+                head: None,
+            })
+            .collect(),
+    ))
+}
+
 pub async fn get_tables_schema(
     tables: Vec<Table>,
     store: Box<dyn Store + Sync + Send>,
@@ -98,75 +199,8 @@ pub async fn get_tables_schema(
 ) -> Result<(SqlDialect, Vec<GetTableSchemaResult>)> {
     match get_table_type_for_tables(tables.iter().collect::<Vec<_>>())? {
         TableType::Remote(credential_id) => {
-            let remote_db = get_remote_database(&credential_id).await?;
-            let remote_table_ids = tables
-                .iter()
-                .map(|t| {
-                    t.remote_database_table_id().ok_or(anyhow!(
-                        "Remote table unexpectedly missing remote database table ID."
-                    ))
-                })
-                .collect::<Result<Vec<_>>>()?;
-            let schemas = remote_db.get_tables_schema(&remote_table_ids).await?;
-
-            let dbmls = tables
-                .iter()
-                .zip(schemas.iter())
-                .map(|(table, schema)| {
-                    schema.render_dbml(table.table_id_for_dbml(), table.description())
-                })
-                .collect::<Vec<_>>();
-
-            Ok((
-                remote_db.dialect(),
-                schemas
-                    .into_iter()
-                    .zip(dbmls.into_iter())
-                    .map(|(schema, dbml)| GetTableSchemaResult {
-                        schema: Some(schema),
-                        dbml,
-                        head: None,
-                    })
-                    .collect::<Vec<_>>(),
-            ))
+            get_remote_tables_schema(tables, store, credential_id).await
         }
-        TableType::Local => {
-            let mut local_tables = tables
-                .into_iter()
-                .map(|t| LocalTable::from_table(t))
-                .collect::<Result<Vec<_>>>()?;
-
-            // Load the schema for each table.
-            // If the schema cache is stale, this will update it in place.
-            try_join_all(
-                local_tables
-                    .iter_mut()
-                    .map(|t| t.schema(store.clone(), databases_store.clone())),
-            )
-            .await?;
-
-            let tables_info =
-                get_transient_database_tables_info(&local_tables, store.clone()).await?;
-
-            Ok((
-                SqlDialect::DustSqlite,
-                local_tables
-                    .into_iter()
-                    .zip(tables_info.into_iter())
-                    .map(|(lt, ti)| {
-                        let unique_table_name = ti.unique_name;
-                        let head = ti.head;
-                        let schema = lt.table.schema_cached().map(|s| s.clone());
-                        let dbml = lt.render_dbml(Some(&unique_table_name));
-
-                        GetTableSchemaResult {
-                            schema,
-                            dbml,
-                            head: Some(head),
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-            ))
-        }
+        TableType::Local => get_local_tables_schema(tables, store, databases_store).await,
     }
 }

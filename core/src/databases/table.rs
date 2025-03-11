@@ -8,6 +8,7 @@ use serde_json::Value;
 use tracing::info;
 
 use crate::search_stores::search_store::NodeItem;
+use crate::utils::now;
 use crate::{
     data_sources::node::ProviderVisibility,
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
@@ -189,6 +190,9 @@ impl Table {
     }
     pub fn schema_cached(&self) -> Option<&TableSchema> {
         self.schema.as_ref()
+    }
+    pub fn schema_stale_at(&self) -> Option<u64> {
+        self.schema_stale_at
     }
     pub fn unique_id(&self) -> String {
         get_table_unique_id(&self.project, &self.data_source_id, &self.table_id)
@@ -417,6 +421,7 @@ impl LocalTable {
                 &self.table.data_source_id,
                 &self.table.table_id,
                 &new_table_schema,
+                None,
             )
             .await?;
         info!(
@@ -560,23 +565,23 @@ impl LocalTable {
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<Option<TableSchema>> {
-        match &self.table.schema_stale_at {
-            Some(_) => {
-                let schema = self.compute_schema(databases_store).await?;
+        if self.table.schema_stale_at.map_or(false, |ts| ts <= now()) {
+            let schema = self.compute_schema(databases_store).await?;
 
-                store
-                    .update_data_source_table_schema(
-                        &self.table.project,
-                        &self.table.data_source_id,
-                        &self.table.table_id,
-                        &schema,
-                    )
-                    .await?;
-                self.table.set_schema(schema.clone());
+            store
+                .update_data_source_table_schema(
+                    &self.table.project,
+                    &self.table.data_source_id,
+                    &self.table.table_id,
+                    &schema,
+                    None,
+                )
+                .await?;
+            self.table.set_schema(schema.clone());
 
-                Ok(Some(schema))
-            }
-            None => Ok(self.table.schema.clone()),
+            Ok(Some(schema))
+        } else {
+            Ok(self.table.schema.clone())
         }
     }
 
