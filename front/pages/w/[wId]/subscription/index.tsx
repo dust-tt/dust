@@ -319,17 +319,10 @@ export default function Subscription({
                   <Chip size="sm" color={chipColor} label={planLabel} />
                   {!subscription.trialing &&
                     subscription.stripeSubscriptionId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button icon={MoreIcon} variant="ghost" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Manage my subscription"
-                            onClick={handleGoToStripePortal}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        label="Manage my subscription"
+                        onClick={handleGoToStripePortal}
+                      />
                     )}
                 </Page.Horizontal>
               </>
