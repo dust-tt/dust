@@ -3,10 +3,7 @@ import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import {
-  hardDeleteDataSource,
-  softDeleteDataSourceAndLaunchScrubWorkflow,
-} from "@app/lib/api/data_sources";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
