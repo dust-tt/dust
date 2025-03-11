@@ -46,6 +46,7 @@ export interface InputBarContainerProps {
   disableAutoFocus: boolean;
   disableSendButton: boolean;
   fileUploaderService: FileUploaderService;
+  onNodeSelect?: (node: DataSourceViewContentNode) => void;
 }
 
 const InputBarContainer = ({
@@ -59,10 +60,10 @@ const InputBarContainer = ({
   disableAutoFocus,
   disableSendButton,
   fileUploaderService,
+  onNodeSelect,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const [isExpanded, setIsExpanded] = useState(false);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
@@ -145,11 +146,12 @@ const InputBarContainer = ({
               {featureFlags.includes("attach_from_datasources") ? (
                 <InputBarAttachments
                   fileUploaderService={fileUploaderService}
-                  onNodeSelect={(node: DataSourceViewContentNode) =>
-                    console.log(`Uploading ${node.title}`)
-                  }
                   owner={owner}
                   isLoading={false}
+                  onNodeSelect={
+                    onNodeSelect ||
+                    ((node) => console.log(`Selected ${node.title}`))
+                  }
                 />
               ) : (
                 <Button

@@ -119,7 +119,7 @@ export const InputBarAttachments = ({
             disabled={isLoading}
           />
           <DropdownMenuSeparator />
-          <ScrollArea className="max-h-125 flex flex-col" hideScrollBar>
+          <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
             {showSearchResults ? (
               <div className="pt-2">
                 {unfoldedNodes.length > 0 ? (
