@@ -17,15 +17,18 @@ on:
         description: "Name of the component to deploy"
         required: true
         type: choice
+        default:
         options:
           - connectors
           - core
           - front
           - front-edge
+          - front-qa
           - prodbox
           - oauth
           - viz
           - alerting-temporal
+          - dante
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
