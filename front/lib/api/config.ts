@@ -54,9 +54,6 @@ const config = {
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
   },
-  getDustDataSourcesBucket: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
-  },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
   },

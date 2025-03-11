@@ -47,6 +47,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { DustError } from "@app/lib/error";
+import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { Lock } from "@app/lib/lock";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -115,7 +116,34 @@ export async function hardDeleteDataSource(
 ) {
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
+  // Delete all files in the data source's bucket.
   const { dustAPIProjectId } = dataSource;
+
+  const files = await getDustDataSourcesBucket().getFiles({
+    prefix: dustAPIProjectId,
+  });
+
+  const chunkSize = 32;
+  const chunks = [];
+  for (let i = 0; i < files.length; i += chunkSize) {
+    chunks.push(files.slice(i, i + chunkSize));
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) {
+      continue;
+    }
+    await Promise.all(
+      chunk.map((f) => {
+        return (async () => {
+          await f.delete();
+        })();
+      })
+    );
+  }
+
+  // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
@@ -148,6 +176,7 @@ export async function hardDeleteDataSource(
     }
   }
 
+  // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
