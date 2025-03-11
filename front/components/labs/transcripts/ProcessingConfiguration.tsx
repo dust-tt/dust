@@ -4,22 +4,17 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
-import type { Dispatch, SetStateAction } from "react";
+import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
-import type { TranscriptsConfigurationState } from "@app/pages/w/[wId]/assistant/labs/transcripts";
 
 interface ProcessingConfigurationProps {
   owner: WorkspaceType;
   transcriptsConfiguration: LabsTranscriptsConfigurationResource;
-  transcriptsConfigurationState: TranscriptsConfigurationState;
-  setTranscriptsConfigurationState: Dispatch<
-    SetStateAction<TranscriptsConfigurationState>
-  >;
   agents: LightAgentConfigurationType[];
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
@@ -29,15 +24,24 @@ interface ProcessingConfigurationProps {
 export function ProcessingConfiguration({
   owner,
   transcriptsConfiguration,
-  transcriptsConfigurationState,
-  setTranscriptsConfigurationState,
   agents,
   mutateTranscriptsConfiguration,
 }: ProcessingConfigurationProps) {
+  const [assistantSelected, setAssistantSelected] =
+    useState<LightAgentConfigurationType | null>(
+      transcriptsConfiguration.agentConfigurationId
+        ? agents.find(
+            (agent) =>
+              agent.sId === transcriptsConfiguration.agentConfigurationId
+          ) ?? null
+        : null
+    );
   const sendNotification = useSendNotification();
 
   const workspaceId = owner.sId;
+
   const transcriptConfigurationId = transcriptsConfiguration.id;
+
   const makePatchRequest = async (
     data: Partial<PatchTranscriptsConfiguration>,
     successMessage: string
@@ -74,18 +78,16 @@ export function ProcessingConfiguration({
   const handleSelectAssistant = async (
     assistant: LightAgentConfigurationType
   ) => {
+    setAssistantSelected(assistant);
     await makePatchRequest(
       {
-        isActive: transcriptsConfigurationState.isActive,
+        isActive: transcriptsConfiguration.isActive,
         agentConfigurationId: assistant.sId,
       },
       `The agent that will help you summarize your transcripts has been set to @${assistant.name}`
     );
 
-    setTranscriptsConfigurationState((prev) => ({
-      ...prev,
-      assistantSelected: assistant,
-    }));
+    await mutateTranscriptsConfiguration();
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
@@ -96,13 +98,28 @@ export function ProcessingConfiguration({
         : "We will no longer summarize your meeting transcripts."
     );
 
-    setTranscriptsConfigurationState((prev) => ({
-      ...prev,
-      isActive,
-    }));
+    await makePatchRequest(
+      { isActive },
+      isActive
+        ? "We will start summarizing your meeting transcripts."
+        : "We will no longer summarize your meeting transcripts."
+    );
+
+    await mutateTranscriptsConfiguration();
   };
 
-  if (!transcriptsConfigurationState.provider) {
+  useEffect(() => {
+    setAssistantSelected(
+      transcriptsConfiguration.agentConfigurationId
+        ? agents.find(
+            (agent) =>
+              agent.sId === transcriptsConfiguration.agentConfigurationId
+          ) ?? null
+        : null
+    );
+  }, [agents, transcriptsConfiguration.agentConfigurationId]);
+
+  if (!transcriptsConfiguration.provider) {
     return null;
   }
 
@@ -122,22 +139,18 @@ export function ProcessingConfiguration({
               assistants={agents}
               showFooterButtons={false}
             />
-            {transcriptsConfigurationState.assistantSelected && (
+            {assistantSelected && (
               <div className="mt-2">
                 <Page.P>
-                  <strong>
-                    @{transcriptsConfigurationState.assistantSelected.name}
-                  </strong>
+                  <strong>@{assistantSelected.name}</strong>
                 </Page.P>
               </div>
             )}
             <div className="mt-2">
               <Page.P>
                 The agent that will process the transcripts received from{" "}
-                {transcriptsConfigurationState.provider
-                  ?.charAt(0)
-                  .toUpperCase() +
-                  transcriptsConfigurationState.provider.slice(1)}
+                {transcriptsConfiguration.provider?.charAt(0).toUpperCase() +
+                  transcriptsConfiguration.provider.slice(1)}
                 .
               </Page.P>
             </div>
@@ -146,11 +159,9 @@ export function ProcessingConfiguration({
       </Page.Layout>
       <Page.Layout direction="horizontal" gap="xl">
         <SliderToggle
-          selected={transcriptsConfigurationState.isActive}
-          onClick={() =>
-            handleSetIsActive(!transcriptsConfigurationState.isActive)
-          }
-          disabled={!transcriptsConfigurationState.assistantSelected}
+          selected={transcriptsConfiguration.isActive}
+          onClick={() => handleSetIsActive(!transcriptsConfiguration.isActive)}
+          disabled={!assistantSelected}
         />
         <Page.P>Enable transcripts email processing</Page.P>
       </Page.Layout>

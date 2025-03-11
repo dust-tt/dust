@@ -126,13 +126,6 @@ export default function LabsTranscriptsIndex({
 
   const sendNotification = useSendNotification();
 
-  // Gong checks for the actual connector connection.
-  const { isConnectorConnected: isGongConnectorConnected } =
-    useLabsTranscriptsIsConnectorConnected({
-      owner,
-      provider: "gong",
-    });
-
   const handleDisconnectProvider = async (
     transcriptConfigurationId: number | null
   ) => {
@@ -206,12 +199,11 @@ export default function LabsTranscriptsIndex({
             <ProviderSelection
               transcriptsConfiguration={transcriptsConfiguration}
               mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
-              isGongConnectorConnected={isGongConnectorConnected}
               setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
               owner={owner}
             />
 
-            {transcriptsConfiguration && isAnyTranscriptSourceConnected() && (
+            {transcriptsConfiguration && (
               <>
                 <StorageConfiguration
                   owner={owner}
@@ -242,13 +234,4 @@ export default function LabsTranscriptsIndex({
       </AppLayout>
     </ConversationsNavigationProvider>
   );
-
-  function isAnyTranscriptSourceConnected() {
-    return (
-      transcriptsConfiguration &&
-      (transcriptsConfigurationState.isGDriveConnected ||
-        transcriptsConfigurationState.isModjoConnected ||
-        isGongConnectorConnected)
-    );
-  }
 }

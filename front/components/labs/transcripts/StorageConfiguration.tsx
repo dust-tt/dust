@@ -11,7 +11,7 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
@@ -45,6 +45,10 @@ export function StorageConfiguration({
     useState<DataSourceViewSelectionConfigurations>({});
   const workspaceId = owner.sId;
   const transcriptConfigurationId = transcriptsConfiguration.id;
+
+  useEffect(() => {
+    setStoreInFolder(transcriptsConfiguration.dataSourceViewId !== null);
+  }, [transcriptsConfiguration.dataSourceViewId]);
 
   const makePatchRequest = async (
     data: Partial<PatchTranscriptsConfiguration>,

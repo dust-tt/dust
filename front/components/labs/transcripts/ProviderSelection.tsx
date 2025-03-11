@@ -14,12 +14,14 @@ import { setupOAuthConnection } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { useLabsTranscriptsDefaultConfiguration } from "@app/lib/swr/labs";
+import {
+  useLabsTranscriptsDefaultConfiguration,
+  useLabsTranscriptsIsConnectorConnected,
+} from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {
   transcriptsConfiguration: any;
-  isGongConnectorConnected: boolean;
   setIsDeleteProviderDialogOpened: (isOpen: boolean) => void;
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
@@ -29,13 +31,19 @@ interface ProviderSelectionProps {
 
 export function ProviderSelection({
   transcriptsConfiguration,
-  isGongConnectorConnected,
   setIsDeleteProviderDialogOpened,
   mutateTranscriptsConfiguration,
   owner,
 }: ProviderSelectionProps) {
   const sendNotification = useSendNotification();
   const [modjoApiKey, setModjoApiKey] = useState("");
+
+  // Gong checks for the actual connector connection.
+  const { isConnectorConnected: isGongConnectorConnected } =
+    useLabsTranscriptsIsConnectorConnected({
+      owner,
+      provider: "gong",
+    });
 
   const saveOAuthConnection = async (
     connectionId: string,
@@ -347,21 +355,18 @@ export function ProviderSelection({
     return (
       <Page.Layout direction="vertical">
         {isGongConnectorConnected ? (
-          <Page.Layout direction="horizontal">
+          <>
+            <Page.P>The Gong connection is active on your workspace.</Page.P>
+
             <Button
-              label="Gong connected"
+              label="Process my Gong transcripts"
               size="sm"
               icon={CloudArrowLeftRightIcon}
-              disabled={true}
+              onClick={() => {
+                console.log("Process my Gong transcripts");
+              }}
             />
-            <Button
-              label="Disconnect"
-              icon={XMarkIcon}
-              size="sm"
-              variant="outline"
-              onClick={() => setIsDeleteProviderDialogOpened(true)}
-            />
-          </Page.Layout>
+          </>
         ) : (
           <>
             <Page.P>
@@ -399,7 +404,7 @@ export function ProviderSelection({
               Connect to Modjo so Dust can access your meeting transcripts.
             </Page.P>
             <div className="flex gap-2">
-              {!transcriptsConfiguration.isDefaultFullStorage && (
+              {!transcriptsConfiguration?.isDefaultFullStorage && (
                 <Input
                   placeholder="Modjo API key"
                   value={modjoApiKey}
