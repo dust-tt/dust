@@ -122,7 +122,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       }
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
-        activeSubscription || this.createFreeNoPlanSubscription(workspace.id),
+        activeSubscription.get() ||
+          this.createFreeNoPlanSubscription(workspace.id),
         renderPlanFromModel({ plan })
       );
     }
