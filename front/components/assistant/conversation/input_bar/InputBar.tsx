@@ -49,7 +49,10 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: {
+      uploaded: UploadedContentFragment[];
+      contentNodes: DataSourceViewContentNode[];
+    }
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -199,16 +202,15 @@ export function AssistantInputBar({
       setLoading(true);
       setDisableSendButton(true);
 
-      const r = await onSubmit(
-        markdown,
-        mentions,
-        fileUploaderService.getFileBlobs().map((cf) => {
+      const r = await onSubmit(markdown, mentions, {
+        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
           return {
             title: cf.filename,
             fileId: cf.fileId,
           };
-        })
-      );
+        }),
+        contentNodes: attachedNodes,
+      });
 
       setLoading(false);
       setDisableSendButton(false);
@@ -217,16 +219,15 @@ export function AssistantInputBar({
         fileUploaderService.resetUpload();
       }
     } else {
-      void onSubmit(
-        markdown,
-        mentions,
-        fileUploaderService.getFileBlobs().map((cf) => {
+      void onSubmit(markdown, mentions, {
+        uploaded: fileUploaderService.getFileBlobs().map((cf) => {
           return {
             title: cf.filename,
             fileId: cf.fileId,
           };
-        })
-      );
+        }),
+        contentNodes: attachedNodes,
+      });
 
       resetEditorText();
       fileUploaderService.resetUpload();
@@ -378,7 +379,10 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: {
+      uploaded: UploadedContentFragment[];
+      contentNodes: DataSourceViewContentNode[];
+    }
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

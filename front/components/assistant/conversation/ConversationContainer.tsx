@@ -1,6 +1,7 @@
 import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
+  DataSourceViewContentNode,
   LightAgentConfigurationType,
   MentionType,
   Result,
@@ -99,7 +100,10 @@ export function ConversationContainer({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: {
+      uploaded: UploadedContentFragment[];
+      contentNodes: DataSourceViewContentNode[];
+    }
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
       return new Err({
@@ -192,7 +196,10 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: UploadedContentFragment[]
+      contentFragments: {
+        uploaded: UploadedContentFragment[];
+        contentNodes: DataSourceViewContentNode[];
+      }
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({

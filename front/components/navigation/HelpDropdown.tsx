@@ -73,7 +73,10 @@ export function HelpDropdown({
           messageData: {
             input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
             mentions: mentionsWithHelp,
-            contentFragments: [],
+            contentFragments: {
+              uploaded: [],
+              contentNodes: [],
+            },
           },
         });
         if (conversationRes.isErr()) {

@@ -2,6 +2,7 @@ import type { NotificationType } from "@dust-tt/sparkle";
 import type {
   ConversationType,
   ConversationVisibility,
+  DataSourceViewContentNode,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
@@ -80,14 +81,17 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: UploadedContentFragment[];
+    contentFragments: {
+      uploaded: UploadedContentFragment[];
+      contentNodes: DataSourceViewContentNode[];
+    };
   };
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
   // Create a new content fragment.
-  if (contentFragments.length > 0) {
+  if (contentFragments.uploaded.length > 0) {
     const contentFragmentsRes = await Promise.all(
-      contentFragments.map((contentFragment) => {
+      contentFragments.uploaded.map((contentFragment) => {
         return fetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
           {
@@ -204,7 +208,10 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: UploadedContentFragment[];
+    contentFragments: {
+      uploaded: UploadedContentFragment[];
+      contentNodes: DataSourceViewContentNode[];
+    };
   };
   visibility?: ConversationVisibility;
   title?: string;
@@ -222,7 +229,7 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragments: contentFragments.map((cf) => ({
+    contentFragments: contentFragments.uploaded.map((cf) => ({
       title: cf.title,
       context: {
         profilePictureUrl: user.image,
