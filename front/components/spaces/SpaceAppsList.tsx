@@ -21,12 +21,13 @@ import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
 import { useState } from "react";
+
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
-import { useQueryParams } from "@app/hooks/useQueryParams";
 
 type RowData = {
   app: AppType;
