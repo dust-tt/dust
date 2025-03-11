@@ -1,10 +1,14 @@
 import { Page, SliderToggle } from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 interface ProcessingConfigurationProps {
   owner: WorkspaceType;
@@ -15,11 +19,9 @@ interface ProcessingConfigurationProps {
     isActive: boolean;
   };
   agents: LightAgentConfigurationType[];
-  handleSelectAssistant: (
-    id: number,
-    assistant: LightAgentConfigurationType
-  ) => Promise<void>;
-  handleSetIsActive: (id: number, isActive: boolean) => Promise<void>;
+  mutateTranscriptsConfiguration:
+    | (() => Promise<void>)
+    | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
 }
 
 export function ProcessingConfiguration({
@@ -27,9 +29,66 @@ export function ProcessingConfiguration({
   transcriptsConfiguration,
   transcriptsConfigurationState,
   agents,
-  handleSelectAssistant,
-  handleSetIsActive,
+  mutateTranscriptsConfiguration,
 }: ProcessingConfigurationProps) {
+  const sendNotification = useSendNotification();
+
+  const workspaceId = owner.sId;
+  const transcriptConfigurationId = transcriptsConfiguration.id;
+  const makePatchRequest = async (
+    data: Partial<PatchTranscriptsConfiguration>,
+    successMessage: string
+  ) => {
+    const response = await fetch(
+      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the configuration. Please try again.",
+      });
+      return;
+    }
+
+    sendNotification({
+      type: "success",
+      title: "Success!",
+      description: successMessage,
+    });
+
+    await mutateTranscriptsConfiguration();
+  };
+
+  const handleSelectAssistant = async (
+    assistant: LightAgentConfigurationType
+  ) => {
+    await makePatchRequest(
+      {
+        isActive: transcriptsConfigurationState.isActive,
+        agentConfigurationId: assistant.sId,
+      },
+      `The agent that will help you summarize your transcripts has been set to @${assistant.name}`
+    );
+  };
+
+  const handleSetIsActive = async (isActive: boolean) => {
+    await makePatchRequest(
+      { isActive },
+      isActive
+        ? "We will start summarizing your meeting transcripts."
+        : "We will no longer summarize your meeting transcripts."
+    );
+  };
+
   return (
     <Page.Layout direction="vertical">
       <Page.SectionHeader
@@ -42,9 +101,7 @@ export function ProcessingConfiguration({
             <AssistantPicker
               owner={owner}
               size="sm"
-              onItemClick={(assistant) =>
-                handleSelectAssistant(transcriptsConfiguration.id, assistant)
-              }
+              onItemClick={(assistant) => handleSelectAssistant(assistant)}
               assistants={agents}
               showFooterButtons={false}
             />
@@ -74,10 +131,7 @@ export function ProcessingConfiguration({
         <SliderToggle
           selected={transcriptsConfigurationState.isActive}
           onClick={() =>
-            handleSetIsActive(
-              transcriptsConfiguration.id,
-              !transcriptsConfigurationState.isActive
-            )
+            handleSetIsActive(!transcriptsConfigurationState.isActive)
           }
           disabled={!transcriptsConfigurationState.assistantSelected}
         />

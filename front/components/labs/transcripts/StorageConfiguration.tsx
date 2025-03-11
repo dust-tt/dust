@@ -10,8 +10,10 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
+import type { KeyedMutator } from "react-query";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import { useTranscriptConfiguration } from "@app/lib/labs/transcripts/use_transcript_configuration";
 
 interface StorageConfigurationProps {
   owner: WorkspaceType;
@@ -20,11 +22,16 @@ interface StorageConfigurationProps {
   spaces: any[];
   isSpacesLoading: boolean;
   storeInFolder: boolean;
-  handleSetStoreInFolder: Dispatch<SetStateAction<boolean>>;
+  handleSetStoreInFolder:
+    | Dispatch<SetStateAction<boolean>>
+    | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   handleSetSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
+  onStateChange:
+    | (() => Promise<void>)
+    | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
 }
 
 export function StorageConfiguration({
@@ -37,7 +44,27 @@ export function StorageConfiguration({
   handleSetStoreInFolder,
   selectionConfigurations,
   handleSetSelectionConfigurations,
+  onStateChange,
 }: StorageConfigurationProps) {
+  const { makePatchRequest } = useTranscriptConfiguration({
+    workspaceId: owner.sId,
+    transcriptConfigurationId: transcriptsConfiguration.id,
+    mutateTranscriptsConfiguration: onStateChange,
+  });
+
+  const handleSetDataSource = async (
+    dataSourceView: DataSourceViewType | null
+  ) => {
+    await makePatchRequest(
+      {
+        dataSourceViewId: dataSourceView ? dataSourceView.sId : null,
+      },
+      dataSourceView
+        ? `The transcripts will be stored in the folder ${dataSourceView.dataSource.name}`
+        : "The transcripts will not be stored."
+    );
+  };
+
   return (
     <Page.Layout direction="vertical">
       <Page.SectionHeader
@@ -76,6 +103,7 @@ export function StorageConfiguration({
                 setSelectionConfigurations={handleSetSelectionConfigurations}
                 viewType="document"
                 isRootSelectable={true}
+                onDataSourceViewSelect={handleSetDataSource}
               />
             )}
           </div>

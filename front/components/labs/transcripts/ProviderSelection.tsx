@@ -5,17 +5,12 @@ import {
   Page,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LabsTranscriptsProviderType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { setupOAuthConnection } from "@dust-tt/types";
+import type { LabsTranscriptsProviderType } from "@dust-tt/types";
 
 interface ProviderSelectionProps {
-  owner: WorkspaceType;
   transcriptsConfiguration: any;
   transcriptsConfigurationState: {
-    provider: string;
+    provider: string | null;
     isGDriveConnected: boolean;
     isModjoConnected: boolean;
     credentialId: string | null;
@@ -30,7 +25,6 @@ interface ProviderSelectionProps {
 }
 
 export function ProviderSelection({
-  owner,
   transcriptsConfiguration,
   transcriptsConfigurationState,
   setTranscriptsConfigurationState,
