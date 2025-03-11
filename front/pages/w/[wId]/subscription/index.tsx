@@ -9,11 +9,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  MoreIcon,
   Page,
   ShapesIcon,
   Spinner,
@@ -322,6 +317,7 @@ export default function Subscription({
                       <Button
                         label="Manage my subscription"
                         onClick={handleGoToStripePortal}
+                        variant="outline"
                       />
                     )}
                 </Page.Horizontal>
