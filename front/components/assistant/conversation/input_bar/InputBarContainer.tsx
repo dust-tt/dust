@@ -20,7 +20,7 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
-import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
+import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -144,7 +144,7 @@ const InputBarContainer = ({
                 multiple={true}
               />
               {featureFlags.includes("attach_from_datasources") ? (
-                <InputBarAttachments
+                <InputBarAttachmentsPicker
                   fileUploaderService={fileUploaderService}
                   owner={owner}
                   isLoading={false}
