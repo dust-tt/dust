@@ -300,11 +300,8 @@ export const SpaceResourcesList = ({
     category,
   });
 
-  const {
-    searchTerm: dataSourceSearch,
-    setIsSearchDisabled,
-    setTargetDataSourceViews,
-  } = useContext(SpaceSearchContext);
+  const { setIsSearchDisabled, setTargetDataSourceViews } =
+    useContext(SpaceSearchContext);
 
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
@@ -536,8 +533,6 @@ export const SpaceResourcesList = ({
             isWebsite,
             space
           )}
-          filter={dataSourceSearch}
-          filterColumn="name"
           sorting={sorting}
           setSorting={setSorting}
           pagination={pagination}
