@@ -431,7 +431,7 @@ module.exports = {
         // Semantic Colors
         border: {
           DEFAULT: colors.gray[100],
-          night: colors.gray[900],
+          night: colors.gray[800],
           dark: {
             DEFAULT: colors.gray[150],
             night: colors.gray[700],

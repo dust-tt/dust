@@ -12,7 +12,7 @@ const safeColorsArray = [
   "success",
   "warning",
   "info",
-  "indigo",
+  "indigo", //To be cleaned after transition
   "lime",
   "orange",
   "pink",
@@ -25,7 +25,7 @@ const safeColorsArray = [
   "violet",
   "yellow",
   "action",
-  "slate", //To be cleaned after transition
+  "slate",
 ];
 
 // Custom color definitions
@@ -419,7 +419,7 @@ module.exports = {
         // Semantic Colors
         border: {
           DEFAULT: colors.gray[100],
-          night: colors.gray[900],
+          night: colors.gray[800],
           dark: {
             DEFAULT: colors.gray[100],
             night: colors.gray[900],
