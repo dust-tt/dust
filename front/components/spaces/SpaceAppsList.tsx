@@ -20,14 +20,13 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import * as React from "react";
-import { useContext, useState } from "react";
-
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { useState } from "react";
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 
 type RowData = {
   app: AppType;
@@ -156,7 +155,8 @@ export const SpaceAppsList = ({
   const router = useRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
-  const { searchTerm: appSearch } = useContext(SpaceSearchContext);
+  const { q: searchParam } = useQueryParams(["q"]);
+  const searchTerm = searchParam.value || "";
 
   const { apps, isAppsLoading } = useApps({ owner, space });
 
@@ -242,7 +242,7 @@ export const SpaceAppsList = ({
           data={rows}
           columns={columns}
           className="pb-4"
-          filter={appSearch}
+          filter={searchTerm}
           filterColumn="name"
           pagination={pagination}
           setPagination={setPagination}
