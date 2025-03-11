@@ -48,7 +48,25 @@ export function StorageConfiguration({
 
   useEffect(() => {
     setStoreInFolder(transcriptsConfiguration.dataSourceViewId !== null);
-  }, [transcriptsConfiguration.dataSourceViewId]);
+
+    if (transcriptsConfiguration.dataSourceViewId) {
+      const dataSourceView = dataSourcesViews.find(
+        (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
+      );
+      if (dataSourceView) {
+        setSelectionConfigurations({
+          [dataSourceView.sId]: {
+            dataSourceView,
+            selectedResources: [],
+            isSelectAll: true,
+            tagsFilter: null,
+          },
+        });
+      }
+    } else {
+      setSelectionConfigurations({});
+    }
+  }, [transcriptsConfiguration.dataSourceViewId, dataSourcesViews]);
 
   const makePatchRequest = async (
     data: Partial<PatchTranscriptsConfiguration>,
