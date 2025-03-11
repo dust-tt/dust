@@ -30,6 +30,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.437",
 =======
 =======
@@ -48,6 +49,8 @@
 >>>>>>> 9e05af3c5 (Updated Sparkle)
 =======
 >>>>>>> b6ec572eb (Updating Sparkle)
+=======
+>>>>>>> 66ed7b91d (Sparkle bump)
 <<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.435",
 =======
@@ -140,7 +143,13 @@
 =======
     "@dust-tt/sparkle": "^0.2.435-rc",
 >>>>>>> 25061c3ce (Updating Sparkle)
+<<<<<<< HEAD
 >>>>>>> b6ec572eb (Updating Sparkle)
+=======
+=======
+    "@dust-tt/sparkle": "^0.2.435-rc.2",
+>>>>>>> 9868bbbc4 (Sparkle bump)
+>>>>>>> 66ed7b91d (Sparkle bump)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
