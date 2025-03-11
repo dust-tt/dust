@@ -107,8 +107,7 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    React.useContext(SpaceSearchContext);
+  const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -210,8 +209,6 @@ export const SpaceCategoriesList = ({
           data={rows}
           columns={getTableColumns()}
           className="pb-4"
-          filter={dataSourceSearch}
-          filterColumn="name"
           columnsBreakpoints={{
             usage: "md",
           }}
