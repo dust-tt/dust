@@ -64,7 +64,7 @@ async function handler(
         controller.abort();
       });
 
-      const eventStream = getConversationEvents(auth, {
+      const eventStream = getConversationEvents({
         conversationId: conversation.sId,
         lastEventId,
         signal,
