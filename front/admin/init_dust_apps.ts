@@ -83,6 +83,12 @@ async function main() {
 
   console.log(`export DUST_APPS_WORKSPACE_ID=${w.sId}`);
   console.log(`export DUST_APPS_SPACE_ID=${space.sId}`);
+  console.log(`---`);
+  console.log(`- Restart front with the new env variables`);
+  console.log(
+    `- Navigate to: http://localhost:3000/poke/${w.sId}/spaces/${space.sId}`
+  );
+  console.log(`- Run the "Sync dust-apps" plugin`);
 }
 
 main()
