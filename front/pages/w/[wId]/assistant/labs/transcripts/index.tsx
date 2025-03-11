@@ -5,7 +5,6 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type {
-  DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   LabsTranscriptsProviderType,
   LightAgentConfigurationType,
@@ -14,7 +13,6 @@ import type {
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
@@ -30,14 +28,24 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  useLabsProviderConnections,
   useLabsTranscriptsConfiguration,
-  useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 
-const defaultTranscriptConfigurationState = {
+export type TranscriptsConfigurationState = {
+  provider: LabsTranscriptsProviderType | null;
+  isGDriveConnected: boolean;
+  isGongConnected: boolean;
+  isModjoConnected: boolean;
+  assistantSelected: LightAgentConfigurationType | null;
+  isActive: boolean;
+  dataSourceView: DataSourceViewType | null;
+  credentialId: string | null;
+  hasDefaultConfiguration: boolean;
+};
+
+const defaultTranscriptConfigurationState: TranscriptsConfigurationState = {
   provider: null,
   isGDriveConnected: false,
   isGongConnected: false,
@@ -99,7 +107,6 @@ export default function LabsTranscriptsIndex({
   subscription,
   dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const sendNotification = useSendNotification();
   const {
     transcriptsConfiguration,
     isTranscriptsConfigurationLoading,
@@ -107,9 +114,7 @@ export default function LabsTranscriptsIndex({
   } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
   const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
     useState(false);
-  const [selectionConfigurations, setSelectionConfigurations] =
-    useState<DataSourceViewSelectionConfigurations>({});
-  const [storeInFolder, setStoreInFolder] = useState(false);
+
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
   });
@@ -119,11 +124,7 @@ export default function LabsTranscriptsIndex({
     sort: "priority",
   });
 
-  const { defaultConfiguration: defaultModjoConfiguration } =
-    useLabsTranscriptsDefaultConfiguration({
-      owner,
-      provider: "modjo",
-    });
+  const sendNotification = useSendNotification();
 
   // Gong checks for the actual connector connection.
   const { isConnectorConnected: isGongConnectorConnected } =
@@ -132,196 +133,51 @@ export default function LabsTranscriptsIndex({
       provider: "gong",
     });
 
-  const {
-    handleConnectGoogleTranscriptsSource,
-    handleConnectModjoTranscriptsSource,
-    handleDisconnectProvider,
-  } = useLabsProviderConnections({
-    owner,
-    mutateTranscriptsConfiguration,
-  });
-
-  const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
-    newValue
+  const handleDisconnectProvider = async (
+    transcriptConfigurationId: number | null
   ) => {
-    if (!transcriptsConfiguration) {
+    if (!transcriptConfigurationId) {
       return;
     }
 
-    setStoreInFolder(newValue);
-
-    if (!newValue) {
-      // When disabling storage, clear the data source view
-      await handleSetDataSource(transcriptsConfiguration.id, null);
-      setSelectionConfigurations({});
-    } else if (transcriptsConfiguration.dataSourceViewId) {
-      // When enabling storage, restore the previous data source view if it exists
-      const dataSourceView = dataSourcesViews.find(
-        (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
-      );
-      if (dataSourceView) {
-        setSelectionConfigurations({
-          [dataSourceView.sId]: {
-            dataSourceView,
-            selectedResources: [],
-            isSelectAll: true,
-            tagsFilter: null,
-          },
-        });
+    const response = await fetch(
+      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "DELETE",
       }
-    }
-  };
-
-  const handleSetSelectionConfigurations: Dispatch<
-    SetStateAction<DataSourceViewSelectionConfigurations>
-  > = async (newValue) => {
-    if (!transcriptsConfiguration) {
-      return;
-    }
-
-    const newSelectionConfigurations =
-      typeof newValue === "function"
-        ? newValue(selectionConfigurations)
-        : newValue;
-
-    const keys = Object.keys(newSelectionConfigurations);
-
-    if (keys.length === 0) {
-      return;
-    }
-
-    const lastKey = keys[keys.length - 1];
-
-    // If there's no change in the selection, return early
-    if (
-      lastKey &&
-      JSON.stringify(selectionConfigurations[lastKey]) ===
-        JSON.stringify(newSelectionConfigurations[lastKey])
-    ) {
-      return;
-    }
-
-    setSelectionConfigurations(
-      lastKey ? { [lastKey]: newSelectionConfigurations[lastKey] } : {}
     );
 
-    if (lastKey) {
-      const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
-      await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
+    if (!response.ok) {
+      sendNotification({
+        type: "error",
+        title: "Failed to disconnect provider",
+        description:
+          "Could not disconnect from your transcripts provider. Please try again.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Provider disconnected",
+        description:
+          "Your transcripts provider has been disconnected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
     }
+
+    return response;
   };
 
   const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
-    useState<{
-      provider: LabsTranscriptsProviderType | null;
-      isGDriveConnected: boolean;
-      isModjoConnected: boolean;
-      assistantSelected: LightAgentConfigurationType | null;
-      isActive: boolean;
-      dataSourceView: DataSourceViewType | null;
-      credentialId: string | null;
-      hasDefaultConfiguration: boolean;
-    }>(defaultTranscriptConfigurationState);
-
-  useEffect(() => {
-    if (transcriptsConfiguration) {
-      if (transcriptsConfiguration.dataSourceViewId) {
-        const dataSourceView = dataSourcesViews.find(
-          (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
-        );
-        if (dataSourceView) {
-          setSelectionConfigurations({
-            [dataSourceView.sId]: {
-              dataSourceView,
-              selectedResources: [],
-              isSelectAll: true,
-              tagsFilter: null, // No tags filters for transcripts.
-            },
-          });
-        }
-      }
-      setStoreInFolder(!!transcriptsConfiguration.dataSourceViewId);
-      setTranscriptsConfigurationState((prev) => {
-        return {
-          ...prev,
-          provider: transcriptsConfiguration.provider || "",
-          isGongConnected:
-            transcriptsConfiguration.provider === "gong" || false,
-          isModjoConnected:
-            transcriptsConfiguration.provider === "modjo" || false,
-          isGDriveConnected:
-            transcriptsConfiguration.provider === "google_drive" || false,
-          assistantSelected:
-            agentConfigurations.find(
-              (a) => a.sId === transcriptsConfiguration.agentConfigurationId
-            ) || null,
-          isActive: transcriptsConfiguration.isActive || false,
-          dataSourceView:
-            dataSourcesViews.find(
-              (ds) => ds.id === transcriptsConfiguration.dataSourceViewId
-            ) || null,
-        };
-      });
-    } else {
-      setTranscriptsConfigurationState(() => {
-        return defaultTranscriptConfigurationState;
-      });
-    }
-  }, [transcriptsConfiguration, agentConfigurations, dataSourcesViews]);
+    useState<TranscriptsConfigurationState>(
+      defaultTranscriptConfigurationState
+    );
 
   if (isTranscriptsConfigurationLoading) {
     return <Spinner />;
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
-
-  const handleProviderChange = async (
-    provider: LabsTranscriptsProviderType
-  ) => {
-    let hasDefaultConfiguration = false;
-    if (provider === "modjo" && defaultModjoConfiguration) {
-      hasDefaultConfiguration = true;
-    }
-
-    setTranscriptsConfigurationState((prev) => {
-      return {
-        ...prev,
-        provider,
-        hasDefaultConfiguration,
-      };
-    });
-    await mutateTranscriptsConfiguration();
-  };
-
-  const handleSetDataSource = async (
-    transcriptConfigurationId: number,
-    dataSourceView: DataSourceViewType | null
-  ) => {
-    setTranscriptsConfigurationState((prev) => {
-      return {
-        ...prev,
-        dataSourceView,
-      };
-    });
-
-    let successMessage = "The transcripts will not be stored.";
-
-    if (dataSourceView) {
-      successMessage =
-        "The transcripts will be stored in the folder " +
-        dataSourceView.dataSource.name;
-    } else {
-      successMessage = "The transcripts will not be stored.";
-    }
-
-    await mutateTranscriptsConfiguration();
-
-    sendNotification({
-      title: "Updated successfully",
-      type: "success",
-      description: successMessage,
-    });
-  };
 
   return (
     <ConversationsNavigationProvider>
@@ -335,9 +191,9 @@ export default function LabsTranscriptsIndex({
           isOpen={isDeleteProviderDialogOpened}
           onClose={() => setIsDeleteProviderDialogOpened(false)}
           onConfirm={async () => {
-            if (transcriptsConfiguration) {
-              await handleDisconnectProvider(transcriptsConfiguration.id);
-            }
+            await handleDisconnectProvider(
+              transcriptsConfiguration?.id || null
+            );
           }}
         />
         <Page>
@@ -349,50 +205,32 @@ export default function LabsTranscriptsIndex({
           <Page.Layout direction="vertical">
             <ProviderSelection
               transcriptsConfiguration={transcriptsConfiguration}
-              transcriptsConfigurationState={transcriptsConfigurationState}
-              setTranscriptsConfigurationState={
-                setTranscriptsConfigurationState
-              }
+              mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
               isGongConnectorConnected={isGongConnectorConnected}
-              handleProviderChange={handleProviderChange}
-              handleConnectGoogleTranscriptsSource={() =>
-                handleConnectGoogleTranscriptsSource(
-                  transcriptsConfigurationState.provider
-                )
-              }
-              handleConnectModjoTranscriptsSource={() =>
-                handleConnectModjoTranscriptsSource({
-                  provider: transcriptsConfigurationState.provider,
-                  credentialId: transcriptsConfigurationState.credentialId,
-                  defaultModjoConfiguration,
-                })
-              }
               setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
+              owner={owner}
             />
 
-            {isAnyTranscriptSourceConnected() && transcriptsConfiguration && (
+            {transcriptsConfiguration && isAnyTranscriptSourceConnected() && (
               <>
                 <StorageConfiguration
                   owner={owner}
                   transcriptsConfiguration={transcriptsConfiguration}
-                  onStateChange={async () => {
-                    await mutateTranscriptsConfiguration();
-                  }}
+                  mutateTranscriptsConfiguration={
+                    mutateTranscriptsConfiguration
+                  }
                   dataSourcesViews={dataSourcesViews}
                   spaces={spaces}
                   isSpacesLoading={isSpacesLoading}
-                  storeInFolder={storeInFolder}
-                  handleSetStoreInFolder={handleSetStoreInFolder}
-                  selectionConfigurations={selectionConfigurations}
-                  handleSetSelectionConfigurations={
-                    handleSetSelectionConfigurations
-                  }
                 />
                 <ProcessingConfiguration
                   owner={owner}
+                  agents={agents}
                   transcriptsConfiguration={transcriptsConfiguration}
                   transcriptsConfigurationState={transcriptsConfigurationState}
-                  agents={agents}
+                  setTranscriptsConfigurationState={
+                    setTranscriptsConfigurationState
+                  }
                   mutateTranscriptsConfiguration={
                     mutateTranscriptsConfiguration
                   }

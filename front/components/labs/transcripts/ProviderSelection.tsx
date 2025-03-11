@@ -3,37 +3,244 @@ import {
   CloudArrowLeftRightIcon,
   Input,
   Page,
+  useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { LabsTranscriptsProviderType } from "@dust-tt/types";
+import type {
+  LabsTranscriptsProviderType,
+  WorkspaceType,
+} from "@dust-tt/types";
+import { setupOAuthConnection } from "@dust-tt/types";
+import { useState } from "react";
+import type { KeyedMutator } from "swr";
+
+import { useLabsTranscriptsDefaultConfiguration } from "@app/lib/swr/labs";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {
   transcriptsConfiguration: any;
-  transcriptsConfigurationState: {
-    provider: string | null;
-    isGDriveConnected: boolean;
-    isModjoConnected: boolean;
-    credentialId: string | null;
-    hasDefaultConfiguration: boolean;
-  };
-  setTranscriptsConfigurationState: (state: any) => void;
   isGongConnectorConnected: boolean;
-  handleProviderChange: (provider: LabsTranscriptsProviderType) => void;
-  handleConnectGoogleTranscriptsSource: () => Promise<void>;
-  handleConnectModjoTranscriptsSource: () => Promise<void>;
   setIsDeleteProviderDialogOpened: (isOpen: boolean) => void;
+  mutateTranscriptsConfiguration:
+    | (() => Promise<void>)
+    | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
+  owner: WorkspaceType;
 }
 
 export function ProviderSelection({
   transcriptsConfiguration,
-  transcriptsConfigurationState,
-  setTranscriptsConfigurationState,
   isGongConnectorConnected,
-  handleProviderChange,
-  handleConnectGoogleTranscriptsSource,
-  handleConnectModjoTranscriptsSource,
   setIsDeleteProviderDialogOpened,
+  mutateTranscriptsConfiguration,
+  owner,
 }: ProviderSelectionProps) {
+  const sendNotification = useSendNotification();
+  const [modjoApiKey, setModjoApiKey] = useState("");
+
+  const saveOAuthConnection = async (
+    connectionId: string,
+    provider: string
+  ) => {
+    try {
+      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          connectionId,
+          provider,
+        }),
+      });
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description:
+            "Could not connect to your transcripts provider. Please try again.",
+        });
+      } else {
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your transcripts provider has been connected successfully.",
+        });
+
+        await mutateTranscriptsConfiguration();
+      }
+      return response;
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect provider",
+        description:
+          "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+          error,
+      });
+    }
+  };
+
+  const handleConnectGoogleTranscriptsSource = async () => {
+    const cRes = await setupOAuthConnection({
+      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+      owner,
+      provider: "google_drive",
+      useCase: "labs_transcripts",
+      extraConfig: {},
+    });
+
+    if (cRes.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Google Drive",
+        description: cRes.error.message,
+      });
+      return;
+    }
+
+    await saveOAuthConnection(cRes.value.connection_id, "google_drive");
+  };
+
+  const saveApiConnection = async (apiKey: string, provider: string) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        apiKey,
+        provider,
+      }),
+    });
+
+    return response;
+  };
+
+  const handleConnectModjoTranscriptsSource = async ({
+    credentialId,
+    defaultModjoConfiguration,
+  }: {
+    credentialId: string | null;
+    defaultModjoConfiguration: any | null;
+  }) => {
+    try {
+      if (defaultModjoConfiguration) {
+        if (
+          defaultModjoConfiguration.provider !== "modjo" ||
+          !defaultModjoConfiguration.credentialId
+        ) {
+          sendNotification({
+            type: "error",
+            title: "Failed to connect Modjo",
+            description:
+              "Your workspace is already connected to another provider by default.",
+          });
+          return;
+        }
+
+        await saveApiConnection(
+          defaultModjoConfiguration.credentialId,
+          defaultModjoConfiguration.provider
+        );
+      } else {
+        if (!credentialId) {
+          sendNotification({
+            type: "error",
+            title: "Modjo API key is required",
+            description: "Please enter your Modjo API key.",
+          });
+          return;
+        }
+        await saveApiConnection(credentialId, "modjo");
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Modjo connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
+    } catch (error) {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Modjo",
+        description: "Could not connect to Modjo. Please try again.",
+      });
+    }
+  };
+
+  const { defaultConfiguration: defaultModjoConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "modjo",
+    });
+
+  const handleProviderChange = async (
+    provider: LabsTranscriptsProviderType
+  ) => {
+    setSelectedProvider(provider);
+    let hasDefaultConfiguration = false;
+    if (provider === "modjo" && defaultModjoConfiguration) {
+      hasDefaultConfiguration = true;
+    }
+
+    if (!transcriptsConfiguration) {
+      return;
+    }
+
+    const makePatchRequest = async (
+      data: {
+        provider: LabsTranscriptsProviderType;
+        hasDefaultConfiguration: boolean;
+      },
+      successMessage: string
+    ) => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update",
+          description: "Could not update the configuration. Please try again.",
+        });
+        return;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: successMessage,
+      });
+
+      await mutateTranscriptsConfiguration();
+    };
+
+    await makePatchRequest(
+      {
+        provider,
+        hasDefaultConfiguration,
+      },
+      "Your transcripts provider has been updated successfully."
+    );
+  };
+
+  const [selectedProvider, setSelectedProvider] =
+    useState<LabsTranscriptsProviderType | null>(
+      transcriptsConfiguration?.provider ?? null
+    );
+
   return (
     <Page.Layout direction="vertical">
       <Page.SectionHeader title="Connect your transcripts provider" />
@@ -41,7 +248,7 @@ export function ProviderSelection({
         <Page.Layout direction="horizontal" gap="xl">
           <div
             className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-              transcriptsConfigurationState.provider == "google_drive"
+              selectedProvider == "google_drive"
                 ? "border-gray-400"
                 : "border-gray-200"
             }`}
@@ -54,9 +261,7 @@ export function ProviderSelection({
           </div>
           <div
             className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-              transcriptsConfigurationState.provider == "gong"
-                ? "border-gray-400"
-                : "border-gray-200"
+              selectedProvider == "gong" ? "border-gray-400" : "border-gray-200"
             }`}
             onClick={() => handleProviderChange("gong")}
           >
@@ -67,7 +272,7 @@ export function ProviderSelection({
           </div>
           <div
             className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
-              transcriptsConfigurationState.provider == "modjo"
+              selectedProvider == "modjo"
                 ? "border-gray-400"
                 : "border-gray-200"
             }`}
@@ -87,7 +292,7 @@ export function ProviderSelection({
   );
 
   function renderProviderConnection() {
-    switch (transcriptsConfigurationState.provider) {
+    switch (selectedProvider) {
       case "google_drive":
         return renderGoogleDriveConnection();
       case "gong":
@@ -102,7 +307,7 @@ export function ProviderSelection({
   function renderGoogleDriveConnection() {
     return (
       <Page.Layout direction="vertical">
-        {transcriptsConfigurationState.isGDriveConnected ? (
+        {transcriptsConfiguration ? (
           <Page.Layout direction="horizontal">
             <Button
               label="Google connected"
@@ -129,7 +334,7 @@ export function ProviderSelection({
                 label="Connect Google"
                 size="sm"
                 icon={CloudArrowLeftRightIcon}
-                onClick={handleConnectGoogleTranscriptsSource}
+                onClick={() => handleConnectGoogleTranscriptsSource()}
               />
             </div>
           </>
@@ -172,7 +377,7 @@ export function ProviderSelection({
   function renderModjoConnection() {
     return (
       <Page.Layout direction="vertical">
-        {transcriptsConfigurationState.isModjoConnected ? (
+        {transcriptsConfiguration ? (
           <Page.Layout direction="horizontal">
             <Button
               label="Modjo connected"
@@ -194,23 +399,23 @@ export function ProviderSelection({
               Connect to Modjo so Dust can access your meeting transcripts.
             </Page.P>
             <div className="flex gap-2">
-              {!transcriptsConfigurationState.hasDefaultConfiguration && (
+              {!transcriptsConfiguration.isDefaultFullStorage && (
                 <Input
                   placeholder="Modjo API key"
-                  value={transcriptsConfigurationState.credentialId}
-                  onChange={(e) =>
-                    setTranscriptsConfigurationState({
-                      ...transcriptsConfigurationState,
-                      credentialId: e.target.value,
-                    })
-                  }
+                  value={modjoApiKey}
+                  onChange={(e) => setModjoApiKey(e.target.value)}
                 />
               )}
               <Button
                 label="Connect Modjo"
                 size="sm"
                 icon={CloudArrowLeftRightIcon}
-                onClick={handleConnectModjoTranscriptsSource}
+                onClick={() =>
+                  handleConnectModjoTranscriptsSource({
+                    credentialId: modjoApiKey,
+                    defaultModjoConfiguration: defaultModjoConfiguration,
+                  })
+                }
               />
             </div>
           </>

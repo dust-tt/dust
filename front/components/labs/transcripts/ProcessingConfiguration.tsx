@@ -4,20 +4,22 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@dust-tt/types";
+import type { Dispatch, SetStateAction } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import type { TranscriptsConfigurationState } from "@app/pages/w/[wId]/assistant/labs/transcripts";
 
 interface ProcessingConfigurationProps {
   owner: WorkspaceType;
-  transcriptsConfiguration: any;
-  transcriptsConfigurationState: {
-    provider: string;
-    assistantSelected: LightAgentConfigurationType | null;
-    isActive: boolean;
-  };
+  transcriptsConfiguration: LabsTranscriptsConfigurationResource;
+  transcriptsConfigurationState: TranscriptsConfigurationState;
+  setTranscriptsConfigurationState: Dispatch<
+    SetStateAction<TranscriptsConfigurationState>
+  >;
   agents: LightAgentConfigurationType[];
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
@@ -28,6 +30,7 @@ export function ProcessingConfiguration({
   owner,
   transcriptsConfiguration,
   transcriptsConfigurationState,
+  setTranscriptsConfigurationState,
   agents,
   mutateTranscriptsConfiguration,
 }: ProcessingConfigurationProps) {
@@ -78,6 +81,11 @@ export function ProcessingConfiguration({
       },
       `The agent that will help you summarize your transcripts has been set to @${assistant.name}`
     );
+
+    setTranscriptsConfigurationState((prev) => ({
+      ...prev,
+      assistantSelected: assistant,
+    }));
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
@@ -87,7 +95,16 @@ export function ProcessingConfiguration({
         ? "We will start summarizing your meeting transcripts."
         : "We will no longer summarize your meeting transcripts."
     );
+
+    setTranscriptsConfigurationState((prev) => ({
+      ...prev,
+      isActive,
+    }));
   };
+
+  if (!transcriptsConfigurationState.provider) {
+    return null;
+  }
 
   return (
     <Page.Layout direction="vertical">
@@ -118,7 +135,7 @@ export function ProcessingConfiguration({
               <Page.P>
                 The agent that will process the transcripts received from{" "}
                 {transcriptsConfigurationState.provider
-                  .charAt(0)
+                  ?.charAt(0)
                   .toUpperCase() +
                   transcriptsConfigurationState.provider.slice(1)}
                 .
