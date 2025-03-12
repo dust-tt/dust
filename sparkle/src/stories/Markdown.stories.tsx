@@ -179,20 +179,12 @@ function renderHeader(latitude, longitude) {
 \`\`\`bash
 # Define variables
 API_URL="https://api.example.com"
-AUTH_TOKEN="your_token_here"
 LATEST_TAG="v1.2.3"
 USERNAME="user123"
-PASSWORD="pass123"
 ENVIRONMENT="production"
 
 # Basic GET with variables
 curl "\${API_URL}/version/\${LATEST_TAG}"
-
-# POST with authentication token
-curl -X POST \
-  -H "Authorization: Bearer \${AUTH_TOKEN}" \
-  -H "Content-Type: application/json" \
-  "\${API_URL}/deploy"
 
 # POST with JSON payload using variables
 curl -X POST \
