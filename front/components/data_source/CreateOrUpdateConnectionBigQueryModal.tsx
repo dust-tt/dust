@@ -12,7 +12,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
   TextArea,
@@ -369,33 +368,33 @@ export function CreateOrUpdateConnectionBigQueryModal({
               </div>
             )}
           </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button label="Cancel" variant="outline" onClick={onClose} />
+
+            <Button
+              label={
+                isLoading
+                  ? "Connecting..."
+                  : dataSourceToUpdate
+                    ? "Update connection"
+                    : "Connect Tables"
+              }
+              icon={CloudArrowLeftRightIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.preventDefault();
+                dataSourceToUpdate
+                  ? void updateBigQueryConnection()
+                  : void createBigQueryConnection();
+              }}
+              disabled={
+                isLoading ||
+                isLocationsLoading ||
+                !credentialsState.valid ||
+                !selectedLocation
+              }
+            />
+          </div>
         </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update Connection"
-                : "Connect Tables",
-            icon: CloudArrowLeftRightIcon,
-            onClick: () => {
-              setIsLoading(true);
-              dataSourceToUpdate
-                ? void updateBigQueryConnection()
-                : void createBigQueryConnection();
-            },
-            disabled:
-              isLoading ||
-              isLocationsLoading ||
-              !credentialsState.valid ||
-              !selectedLocation,
-            size: "md",
-          }}
-        />
       </SheetContent>
     </Sheet>
   );

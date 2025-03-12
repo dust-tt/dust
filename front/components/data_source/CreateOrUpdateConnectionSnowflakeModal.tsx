@@ -8,7 +8,6 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
@@ -311,29 +310,28 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               />
             </div>
           </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button label="Cancel" variant="outline" onClick={onClose} />
+
+            <Button
+              label={
+                isLoading
+                  ? "Connecting..."
+                  : dataSourceToUpdate
+                    ? "Update connection"
+                    : "Connect and select tables"
+              }
+              icon={CloudArrowLeftRightIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.preventDefault();
+                dataSourceToUpdate
+                  ? void updateSnowflakeConnection()
+                  : void createSnowflakeConnection();
+              }}
+              disabled={isLoading || !areCredentialsValid()}
+            />
+          </div>
         </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-          }}
-          rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update connection"
-                : "Connect and select tables",
-            icon: CloudArrowLeftRightIcon,
-            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              dataSourceToUpdate
-                ? void updateSnowflakeConnection()
-                : void createSnowflakeConnection();
-            },
-            disabled: isLoading || !areCredentialsValid(),
-            size: "md",
-          }}
-        />
       </SheetContent>
     </Sheet>
   );
