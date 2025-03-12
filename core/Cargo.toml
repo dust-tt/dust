@@ -39,6 +39,10 @@ path = "bin/elasticsearch/backfill_folders_index.rs"
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
+[[bin]]
+name = "qdrant_shard_rebalance_suggestions"
+path = "bin/qdrant/qdrant_shard_rebalance_suggestions.rs"
+
 # [[bin]]
 # name = "qdrant_migrator"
 # path = "bin/qdrant/migrator.rs"
