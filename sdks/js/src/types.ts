@@ -819,6 +819,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "search_knowledge_builder"
   | "attach_from_datasources"
+  | "force_gdrive_labels_scope"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
