@@ -588,7 +588,7 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
 });
 
 const ConversationFileTypeSchema = z.object({
-  fileId: z.string(),
+  sId: z.string(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
 });
