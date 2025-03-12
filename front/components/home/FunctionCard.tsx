@@ -1,10 +1,16 @@
-import { Button } from "@dust-tt/sparkle";
-import { ChevronRightIcon } from "@dust-tt/sparkle";
+import { Button, ChevronRightIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import React from "react";
 
-import { H3 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
+
+interface FunctionCardProps {
+  title: string;
+  features: string[];
+  color: "green" | "blue" | "purple";
+  visualSrc: string;
+  href: string;
+}
 
 const colorVariants = {
   green: {
@@ -19,17 +25,9 @@ const colorVariants = {
     card: "bg-purple-600",
     visual: "bg-purple-100",
   },
-} as const;
+};
 
-interface FunctionCardProps {
-  title: string;
-  features: string[];
-  color: keyof typeof colorVariants;
-  visualSrc: string;
-  href: string;
-}
-
-function FunctionCard({
+export function FunctionCard({
   title,
   features,
   color,
@@ -40,15 +38,17 @@ function FunctionCard({
     <div className="flex h-full flex-col overflow-hidden rounded-3xl">
       <div
         className={classNames(
-          "flex h-60 w-full items-center justify-center overflow-hidden",
+          "h-60 w-full px-4 py-4",
           colorVariants[color].visual
         )}
       >
-        <img
-          src={visualSrc}
-          alt={`${title} visual`}
-          className="h-[440px] w-[440px] object-contain"
-        />
+        <div className="flex h-full w-full items-center justify-center">
+          <img
+            src={visualSrc}
+            alt={`${title} visual`}
+            className="h-full w-full object-contain"
+          />
+        </div>
       </div>
 
       <div
@@ -57,9 +57,9 @@ function FunctionCard({
           colorVariants[color].card
         )}
       >
-        <H3 className="font-objektiv text-2xl font-semibold text-white">
+        <h3 className="font-objektiv text-2xl font-semibold text-white">
           {title}
-        </H3>
+        </h3>
 
         <ul className="mt-4 flex-grow space-y-3 font-objektiv">
           {features.map((feature, i) => (
@@ -79,5 +79,3 @@ function FunctionCard({
     </div>
   );
 }
-
-export { FunctionCard };
