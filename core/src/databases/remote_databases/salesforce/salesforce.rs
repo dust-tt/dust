@@ -11,8 +11,6 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 use tracing::error;
 
-use crate::cache;
-
 use crate::databases::remote_databases::salesforce::sandbox::{
     convert::convert_to_soql, extract::extract_objects,
 };
@@ -290,29 +288,6 @@ impl SalesforceRemoteDatabase {
     /// Returns the raw JSON response which can be used for multiple purposes
     /// Uses Redis for caching if available, otherwise makes direct API calls
     async fn fetch_object_describe(&self, sobject: &str) -> Result<Value, QueryDatabaseError> {
-        // Extract instance identifier from the instance URL
-        // This helps namespace the cache keys by Salesforce instance
-        let instance_id = self
-            .instance_url
-            .trim_start_matches("https://")
-            .trim_start_matches("http://")
-            .split('.')
-            .next()
-            .ok_or_else(|| {
-                QueryDatabaseError::GenericError(anyhow!(
-                    "Failed to extract instance ID from Salesforce instance URL: {}",
-                    self.instance_url
-                ))
-            })?;
-
-        // Create a cache key based on instance identifier and sobject name
-        let cache_key = format!("salesforce:{}:object_describe:{}", instance_id, sobject);
-
-        // Try to get the object description from the cache
-        if let Ok(Some(cached_value)) = cache::get::<Value>(&cache_key).await {
-            return Ok(cached_value);
-        }
-
         // Cache miss or Redis unavailable; make the API call
         let url = format!(
             "{}/services/data/v63.0/sobjects/{}/describe",
@@ -348,11 +323,6 @@ impl SalesforceRemoteDatabase {
         let describe_result: Value = serde_json::from_str(&response_text).map_err(|e| {
             QueryDatabaseError::GenericError(anyhow!("Error parsing response: {}", e))
         })?;
-
-        // Store the result in Redis
-        if let Err(e) = cache::set(&cache_key, &describe_result, REDIS_CACHE_TTL_SECONDS).await {
-            error!("Failed to cache object description in Redis: {}", e);
-        }
 
         Ok(describe_result)
     }
