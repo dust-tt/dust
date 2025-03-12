@@ -10,6 +10,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewContentNode } from "@dust-tt/types";
+import { useMemo } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -18,7 +19,6 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { useMemo } from "react";
 
 type FileAttachment = {
   type: "file";

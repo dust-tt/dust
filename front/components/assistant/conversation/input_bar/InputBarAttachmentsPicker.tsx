@@ -44,6 +44,7 @@ export const InputBarAttachmentsPicker = ({
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const [isDebouncing, setIsDebouncing] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const { searchResultNodes, isSearchLoading } = useSpacesSearch({
@@ -94,6 +95,7 @@ export const InputBarAttachmentsPicker = ({
 
   return (
     <DropdownMenu
+      open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
           setSearch("");
@@ -106,9 +108,14 @@ export const InputBarAttachmentsPicker = ({
           icon={AttachmentIcon}
           size="xs"
           disabled={isLoading}
+          onClick={() => setIsOpen(!isOpen)}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-125" side="bottom">
+      <DropdownMenuContent
+        className="w-125"
+        side="bottom"
+        onInteractOutside={() => setIsOpen(false)}
+      >
         <div className="items-end pb-2">
           <DropdownMenuSearchbar
             ref={searchbarRef}
@@ -136,6 +143,7 @@ export const InputBarAttachmentsPicker = ({
                       onClick={() => {
                         setSearch("");
                         onNodeSelect(item);
+                        setIsOpen(false);
                       }}
                     />
                   ))
@@ -156,6 +164,7 @@ export const InputBarAttachmentsPicker = ({
                   ref={fileInputRef}
                   style={{ display: "none" }}
                   onChange={async (e) => {
+                    setIsOpen(false);
                     await fileUploaderService.handleFileChange(e);
                     if (fileInputRef.current) {
                       fileInputRef.current.value = "";
