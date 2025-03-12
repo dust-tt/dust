@@ -10,18 +10,14 @@ import type {
   LabsTranscriptsProviderType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { ConnectorsAPI, setupOAuthConnection } from "@dust-tt/types";
+import { setupOAuthConnection } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { default as config } from "@app/lib/api/config";
-import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
-import { isManaged } from "@app/lib/data_sources";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
-import logger from "@app/logger/logger";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {

@@ -10,6 +10,7 @@ import type {
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
