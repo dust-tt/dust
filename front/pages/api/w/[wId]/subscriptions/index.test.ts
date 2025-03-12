@@ -1,11 +1,26 @@
-import { describe, expect } from "vitest";
+import { beforeEach,describe, expect, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
+const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
+
+vi.mock("@app/lib/plans/stripe", async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+      actual,
+      createProPlanCheckoutSession: vi.fn().mockResolvedValue("https://checkout.stripe.com/test-session"),
+    };
+  });
+  
+
 describe("POST /api/w/[wId]/subscriptions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   itInTransaction("returns 400 on invalid request body", async () => {
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
@@ -38,7 +53,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
-      expect(data.checkoutUrl).toMatch(/^https:\/\/.+/); // Should be a valid URL
+      expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
       expect(data.plan).toEqual(
         expect.objectContaining({
           code: expect.any(String),
@@ -68,7 +83,7 @@ describe("POST /api/w/[wId]/subscriptions", () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = res._getJSONData();
-    expect(data.checkoutUrl).toMatch(/^https:\/\/.+/);
+    expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
     expect(data.plan).toBeDefined();
   });
 
