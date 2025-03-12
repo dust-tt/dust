@@ -322,6 +322,12 @@ export const isStandardObjectWhitelisted = (objectName: string) => {
     "Solution",
     "Swarm",
     "SwarmMember",
+    // Notes
+    "ContentNote",
+    "ContentDocument",
+    "ContentDocumentLink",
+    "ContentVersion",
+    "Note",
   ];
   return whitelist.includes(objectName);
 };
