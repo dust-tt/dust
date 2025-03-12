@@ -149,7 +149,7 @@ fn create_node_url(base_url: &str, node_number: &str) -> Result<String, Error> {
 
     // Create the node-specific URL
     let node_url = format!(
-        "https://node-{}-{}.{}.{}.cloud.qdrant.io:{}",
+        "https://node-{}-{}.{}.{}.cloud.qdrant.io{}",
         node_number, cluster_id, region, cloud_provider, QDRANT_HTTP_PORT
     );
 
@@ -211,7 +211,21 @@ async fn gather_cluster_data(
 ) -> Result<(Vec<PeerLoad>, Vec<ShardInfo>), Error> {
     let client = reqwest::Client::new();
 
-    let mut peer_load: HashMap<u64, PeerLoad> = HashMap::new();
+    // Initialize peer_load with all peers, even those with no shards
+    let mut peer_load: HashMap<u64, PeerLoad> = peer_uris
+        .keys()
+        .map(|&peer_id| {
+            (
+                peer_id,
+                PeerLoad {
+                    peer_id,
+                    shard_count: 0,
+                    point_count: 0,
+                },
+            )
+        })
+        .collect();
+
     let mut all_shards: Vec<ShardInfo> = Vec::new();
 
     for (_peer_id, peer_uri) in peer_uris {
@@ -248,7 +262,7 @@ async fn gather_cluster_data(
             let peer_id_from_response = cluster_info.result.peer_id;
 
             // Only local shards exposed points_count.
-            for shard in cluster_info.result.local_shards {
+            for shard in cluster_info.result.local_shards.iter() {
                 let points = shard.points_count;
 
                 // Aggregate peer stats.
