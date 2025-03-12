@@ -189,19 +189,6 @@ export async function retrieveGongTranscriptContent(
   transcriptContent: string;
   userParticipated: boolean;
 } | null> {
-  if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
-    localLogger.error(
-      {
-        fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
-      },
-      "[retrieveGongTranscripts] No connectionId found. Skipping."
-    );
-    throw new Error(
-      "No connectionId for transcriptsConfiguration found. Skipping."
-    );
-  }
-
   const gongConnector = await getGongConnectorFromAuth(auth, localLogger);
 
   if (!gongConnector?.connectionId) {
