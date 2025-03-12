@@ -94,9 +94,11 @@ async function handler(
       }
 
       try {
-        const { checkoutUrl, plan: newPlan } =
-          await SubscriptionResource.getCheckoutUrlForUpgrade(
-            auth,
+        const { checkoutUrl, plan: newPlan } = await auth
+          .getNonNullableSubscriptionResource()
+          .getCheckoutUrlForUpgrade(
+            auth.getNonNullableWorkspace(),
+            auth.getNonNullableUser(),
             bodyValidation.right.billingPeriod
           );
         return res.status(200).json({ checkoutUrl, plan: newPlan });

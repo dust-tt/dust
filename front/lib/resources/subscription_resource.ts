@@ -7,6 +7,7 @@ import type {
   Result,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@dust-tt/types";
 import { Ok, sendUserOperationMessage } from "@dust-tt/types";
@@ -20,6 +21,7 @@ import type {
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
+import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/models/plan";
 import { Plan } from "@app/lib/models/plan";
@@ -145,7 +147,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
         Subscription,
         activeSubscription?.get() ||
-          this.createFreeNoPlanSubscription(workspace.id),
+          this.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
       );
     }
@@ -156,10 +158,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   static async fetchByAuthenticator(
     auth: Authenticator
   ): Promise<SubscriptionResource[]> {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Cannot find workspace.");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     const subscriptions = await Subscription.findAll({
       where: { workspaceId: owner.id },
@@ -170,7 +169,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       (s) =>
         new SubscriptionResource(
           Subscription,
-          s,
+          s.get(),
           renderPlanFromModel({ plan: s.plan })
         )
     );
@@ -190,7 +189,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     return new SubscriptionResource(
       Subscription,
-      res,
+      res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
   }
@@ -209,11 +208,11 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
 
-    await this.endActiveSubscription(workspace.id);
+    await this.endActiveSubscription(workspace);
 
     return new SubscriptionResource(
       Subscription,
-      this.createFreeNoPlanSubscription(workspace.id),
+      this.createFreeNoPlanSubscription(workspace),
       renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
     );
   }
@@ -313,7 +312,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     return new SubscriptionResource(
       Subscription,
-      newSubscription,
+      newSubscription.get(),
       renderPlanFromModel({ plan: newPlan })
     );
   }
@@ -322,10 +321,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     auth: Authenticator,
     enterpriseDetails: EnterpriseUpgradeFormType
   ) {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Cannot find workspace.");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     if (!auth.isDustSuperUser()) {
       throw new Error("Cannot upgrade workspace to plan: not allowed.");
@@ -355,10 +351,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     auth: Authenticator,
     planCode: string
   ) {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Cannot find workspace}");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     if (!auth.isDustSuperUser()) {
       throw new Error("Cannot upgrade workspace to plan: not allowed.");
@@ -374,7 +367,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     // We search for an active subscription for this workspace
-    const activeSubscription = auth.subscription();
+    const activeSubscription = auth.subscriptionResource();
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: already subscribed.`
@@ -401,10 +394,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
 
-      const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(
-        owner,
-        activeSubscription
-      );
+      const isAlreadyOnProPlan =
+        await activeSubscription.isSubscriptionOnProPlan(owner);
 
       if (!isAlreadyOnProPlan) {
         throw new Error(
@@ -427,63 +418,6 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       workspaceId: owner.sId,
       planCode: newPlan.code,
     });
-  }
-
-  static async getCheckoutUrlForUpgrade(
-    auth: Authenticator,
-    billingPeriod: BillingPeriod
-  ): Promise<CheckoutUrlResult> {
-    const owner = auth.workspace();
-
-    if (!owner) {
-      throw new Error(
-        "Unauthorized `auth` data: cannot process to subscription of new Plan."
-      );
-    }
-
-    const planCode = owner.metadata?.isBusiness
-      ? PRO_PLAN_SEAT_39_CODE
-      : PRO_PLAN_SEAT_29_CODE;
-
-    const proPlan = await Plan.findOne({
-      where: { code: PRO_PLAN_SEAT_29_CODE },
-    });
-    if (!proPlan) {
-      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
-    }
-
-    const existingSubscription = auth.subscription();
-
-    // We verify that the workspace is not already subscribed to the Pro plan product.
-    if (existingSubscription) {
-      const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(
-        owner,
-        existingSubscription
-      );
-      if (isAlreadyOnProPlan) {
-        throw new Error(
-          `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
-        );
-      }
-    }
-
-    // We enter Stripe Checkout flow.
-    const checkoutUrl = await createProPlanCheckoutSession({
-      auth,
-      billingPeriod,
-      planCode,
-    });
-
-    if (!checkoutUrl) {
-      throw new Error(
-        `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
-      );
-    }
-
-    return {
-      checkoutUrl,
-      plan: renderPlanFromModel({ plan: proPlan }),
-    };
   }
 
   static async maybeCancelInactiveTrials(
@@ -532,7 +466,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       const firstAdmin = await getWorkspaceFirstAdmin(workspace);
       if (!firstAdmin) {
         logger.info(
-          { action: "cancelling-trial", workspaceId: workspace.sId },
+          { action: "cancelling-trial", workspaceId: auth.workspace()?.sId },
           "No first adming found -- skipping email."
         );
 
@@ -546,6 +480,50 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         message: `Trial for workspace ${workspace.sId} cancelled proactively!`,
       });
     }
+  }
+
+  async getCheckoutUrlForUpgrade(
+    owner: WorkspaceType,
+    user: UserType,
+    billingPeriod: BillingPeriod
+  ): Promise<CheckoutUrlResult> {
+    const planCode = owner.metadata?.isBusiness
+      ? PRO_PLAN_SEAT_39_CODE
+      : PRO_PLAN_SEAT_29_CODE;
+
+    const proPlan = await Plan.findOne({
+      where: { code: PRO_PLAN_SEAT_29_CODE },
+    });
+    if (!proPlan) {
+      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
+    }
+
+    // We verify that the workspace is not already subscribed to the Pro plan product.
+    const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(owner);
+    if (isAlreadyOnProPlan) {
+      throw new Error(
+        `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
+      );
+    }
+
+    // We enter Stripe Checkout flow.
+    const checkoutUrl = await createProPlanCheckoutSession({
+      owner,
+      user,
+      billingPeriod,
+      planCode,
+    });
+
+    if (!checkoutUrl) {
+      throw new Error(
+        `Cannot subscribe to plan ${planCode}: error while creating Stripe Checkout session (URL is null).`
+      );
+    }
+
+    return {
+      checkoutUrl,
+      plan: renderPlanFromModel({ plan: proPlan }),
+    };
   }
 
   async delete(
@@ -630,14 +608,14 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   private static createFreeNoPlanSubscription(
-    workspaceId: number
+    workspace: LightWorkspaceType
   ): Attributes<Subscription> {
     const now = new Date();
     return {
       id: FREE_NO_PLAN_SUBSCRIPTION_ID,
       sId: generateRandomModelSId(),
       status: "ended",
-      workspaceId: workspaceId,
+      workspaceId: workspace.id,
       createdAt: now,
       updatedAt: now,
       startDate: now,
@@ -662,29 +640,10 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     );
   }
 
-  private static async isSubscriptionOnProPlan(
-    owner: WorkspaceType,
-    subscription: SubscriptionType
-  ): Promise<boolean> {
-    if (!subscription.stripeSubscriptionId) {
-      return false;
-    }
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return false;
-    }
-
-    return this.isStripeSubscriptionOnProPlan(owner, stripeSubscription);
-  }
-
   private static async findWorkspaceOrThrow(
     workspaceId: string
-  ): Promise<Workspace> {
-    const workspace = await Workspace.findOne({
-      where: { sId: workspaceId },
-    });
+  ): Promise<LightWorkspaceType> {
+    const workspace = await getWorkspaceInfos(workspaceId);
 
     if (!workspace) {
       throw new Error(`Cannot find workspace ${workspaceId}`);
@@ -699,13 +658,13 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    * @returns The active subscription that was ended, or null if none existed
    */
   private static async endActiveSubscription(
-    workspaceId: number
+    workspace: LightWorkspaceType
   ): Promise<Subscription | null> {
     const now = new Date();
 
     // Find active subscription
     const activeSubscription = await Subscription.findOne({
-      where: { workspaceId, status: "active" },
+      where: { workspaceId: workspace.id, status: "active" },
     });
 
     if (activeSubscription) {
@@ -733,5 +692,24 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return activeSubscription;
+  }
+
+  private async isSubscriptionOnProPlan(
+    owner: WorkspaceType
+  ): Promise<boolean> {
+    if (!this.stripeSubscriptionId) {
+      return false;
+    }
+    const stripeSubscription = await getStripeSubscription(
+      this.stripeSubscriptionId
+    );
+    if (!stripeSubscription) {
+      return false;
+    }
+
+    return SubscriptionResource.isStripeSubscriptionOnProPlan(
+      owner,
+      stripeSubscription
+    );
   }
 }
