@@ -22,6 +22,8 @@ import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
+import _ from "lodash";
 
 async function getJITActions(
   auth: Authenticator,
@@ -64,18 +66,18 @@ async function getJITActions(
       );
 
       if (!dataSourceView) {
-        /*logger.warn(
+        logger.warn(
           {
             conversationId: conversation.sId,
             fileIds: _.uniq(
               filesUsableAsTableQuery
-                .map((f) => f.fileId)
-                .concat(filesUsableAsRetrievalQuery.map((f) => f.fileId))
+                .map((f) => f.sId)
+                .concat(filesUsableAsRetrievalQuery.map((f) => f.sId))
             ),
             workspaceId: conversation.owner.sId,
           },
           "No default datasource view found for conversation when trying to get JIT actions"
-        );*/
+        );
 
         return [];
       }
