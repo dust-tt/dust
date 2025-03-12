@@ -10,7 +10,6 @@ import { Err, Ok } from "@dust-tt/types";
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -59,12 +58,7 @@ export async function getUserMetadata(
   user: UserType,
   key: string
 ): Promise<UserMetadataType | null> {
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key,
-    },
-  });
+  const metadata = await UserResource.getMetadata(user.id, key);
 
   if (!metadata) {
     return null;
@@ -86,24 +80,7 @@ export async function setUserMetadata(
   user: UserType,
   update: UserMetadataType
 ): Promise<void> {
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key: update.key,
-    },
-  });
-
-  if (!metadata) {
-    await UserMetadataModel.create({
-      userId: user.id,
-      key: update.key,
-      value: update.value,
-    });
-    return;
-  }
-
-  metadata.value = update.value;
-  await metadata.save();
+  await UserResource.setMetadata(user.id, update.key, update.value);
 }
 
 export async function fetchRevokedWorkspace(
