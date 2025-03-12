@@ -178,6 +178,9 @@ export type ZendeskMimeType =
 export type SalesforceMimeType =
   (typeof MIME_TYPES.SALESFORCE)[keyof typeof MIME_TYPES.SALESFORCE];
 
+export type GongMimeType =
+  (typeof MIME_TYPES.GONG)[keyof typeof MIME_TYPES.GONG];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -190,4 +193,5 @@ export type DustMimeType =
   | SnowflakeMimeType
   | WebcrawlerMimeType
   | ZendeskMimeType
-  | SalesforceMimeType;
+  | SalesforceMimeType
+  | GongMimeType;

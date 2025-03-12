@@ -10,6 +10,7 @@ import type {
   AgentMessageType,
   AgentMessageWithRankType,
   ContentFragmentContextType,
+  ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
   ConversationTitleEvent,
@@ -1720,7 +1721,7 @@ export async function* retryAgentMessage(
 export async function postNewContentFragment(
   auth: Authenticator,
   conversation: ConversationType,
-  cf: ContentFragmentInputWithFileIdType,
+  cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();

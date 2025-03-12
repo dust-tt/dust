@@ -89,9 +89,12 @@ export async function submitMessage({
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
   // Create a new content fragment.
-  if (contentFragments.uploaded.length > 0) {
-    const contentFragmentsRes = await Promise.all(
-      contentFragments.uploaded.map((contentFragment) => {
+  if (
+    contentFragments.uploaded.length > 0 ||
+    contentFragments.contentNodes.length > 0
+  ) {
+    const contentFragmentsRes = await Promise.all([
+      ...contentFragments.uploaded.map((contentFragment) => {
         return fetch(
           `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
           {
@@ -110,8 +113,30 @@ export async function submitMessage({
             }),
           }
         );
-      })
-    );
+      }),
+      ...contentFragments.contentNodes.map((contentFragment) => {
+        return fetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/content_fragment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              title: contentFragment.title,
+              nodeId: contentFragment.internalId,
+              dataSourceViewId: contentFragment.dataSourceView.sId,
+              contentType: contentFragment.mimeType,
+              context: {
+                timezone:
+                  Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+                profilePictureUrl: user.image,
+              },
+            }),
+          }
+        );
+      }),
+    ]);
 
     for (const mcfRes of contentFragmentsRes) {
       if (!mcfRes.ok) {
@@ -229,13 +254,24 @@ export async function createConversationWithMessage({
       },
       mentions,
     },
-    contentFragments: contentFragments.uploaded.map((cf) => ({
-      title: cf.title,
-      context: {
-        profilePictureUrl: user.image,
-      },
-      fileId: cf.fileId,
-    })),
+    contentFragments: [
+      ...contentFragments.uploaded.map((cf) => ({
+        title: cf.title,
+        context: {
+          profilePictureUrl: user.image,
+        },
+        fileId: cf.fileId,
+      })),
+      ...contentFragments.contentNodes.map((cf) => ({
+        title: cf.title,
+        context: {
+          profilePictureUrl: user.image,
+        },
+        nodeId: cf.internalId,
+        contentType: cf.mimeType as any,
+        dataSourceViewId: cf.dataSourceView.sId,
+      })),
+    ],
   };
 
   // Create new conversation and post the initial message at the same time.

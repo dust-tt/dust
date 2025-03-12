@@ -1,3 +1,4 @@
+import { DustMimeType } from "../shared/internal_mime_types";
 import { ModelId } from "../shared/model_id";
 import { MessageType, MessageVisibility } from "./assistant/conversation";
 import { SupportedFileContentType } from "./files";
@@ -13,6 +14,7 @@ export type ContentFragmentVersion = "superseded" | "latest";
 
 export type SupportedContentFragmentType =
   | SupportedFileContentType
+  | DustMimeType
   | "dust-application/slack"; // Legacy
 
 export type ContentFragmentType = {
