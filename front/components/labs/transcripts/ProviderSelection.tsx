@@ -10,14 +10,18 @@ import type {
   LabsTranscriptsProviderType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { setupOAuthConnection } from "@dust-tt/types";
+import { ConnectorsAPI, setupOAuthConnection } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
+import { default as config } from "@app/lib/api/config";
+import { augmentDataSourceWithConnectorDetails } from "@app/lib/api/data_sources";
+import { isManaged } from "@app/lib/data_sources";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
+import logger from "@app/logger/logger";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {
@@ -38,7 +42,6 @@ export function ProviderSelection({
   const sendNotification = useSendNotification();
   const [modjoApiKey, setModjoApiKey] = useState("");
 
-  // Gong checks for the actual connector connection.
   const { isConnectorConnected: isGongConnectorConnected } =
     useLabsTranscriptsIsConnectorConnected({
       owner,
@@ -46,8 +49,9 @@ export function ProviderSelection({
     });
 
   const saveOAuthConnection = async (
-    connectionId: string,
-    provider: string
+    connectionId: string | null,
+    provider: string,
+    useConnectorConnection?: boolean
   ) => {
     try {
       const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
@@ -58,6 +62,7 @@ export function ProviderSelection({
         body: JSON.stringify({
           connectionId,
           provider,
+          useConnectorConnection,
         }),
       });
       if (!response.ok) {
@@ -125,6 +130,14 @@ export function ProviderSelection({
     return response;
   };
 
+  const saveConnectorConnection = async (provider: string) => {
+    const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+      method: "POST",
+      body: JSON.stringify({ provider, useConnectorConnection: true }),
+    });
+    return response;
+  };
+
   const handleConnectModjoTranscriptsSource = async ({
     credentialId,
     defaultModjoConfiguration,
@@ -186,64 +199,6 @@ export function ProviderSelection({
       provider: "modjo",
     });
 
-  const handleProviderChange = async (
-    provider: LabsTranscriptsProviderType
-  ) => {
-    setSelectedProvider(provider);
-    let hasDefaultConfiguration = false;
-    if (provider === "modjo" && defaultModjoConfiguration) {
-      hasDefaultConfiguration = true;
-    }
-
-    if (!transcriptsConfiguration) {
-      return;
-    }
-
-    const makePatchRequest = async (
-      data: {
-        provider: LabsTranscriptsProviderType;
-        hasDefaultConfiguration: boolean;
-      },
-      successMessage: string
-    ) => {
-      const response = await fetch(
-        `/api/w/${owner.sId}/labs/transcripts/${transcriptsConfiguration.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update",
-          description: "Could not update the configuration. Please try again.",
-        });
-        return;
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: successMessage,
-      });
-
-      await mutateTranscriptsConfiguration();
-    };
-
-    await makePatchRequest(
-      {
-        provider,
-        hasDefaultConfiguration,
-      },
-      "Your transcripts provider has been updated successfully."
-    );
-  };
-
   const [selectedProvider, setSelectedProvider] =
     useState<LabsTranscriptsProviderType | null>(
       transcriptsConfiguration?.provider ?? null
@@ -260,7 +215,7 @@ export function ProviderSelection({
                 ? "border-gray-400"
                 : "border-gray-200"
             }`}
-            onClick={() => handleProviderChange("google_drive")}
+            onClick={() => setSelectedProvider("google_drive")}
           >
             <img
               src="/static/labs/transcripts/google.png"
@@ -271,7 +226,7 @@ export function ProviderSelection({
             className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
               selectedProvider == "gong" ? "border-gray-400" : "border-gray-200"
             }`}
-            onClick={() => handleProviderChange("gong")}
+            onClick={() => setSelectedProvider("gong")}
           >
             <img
               src="/static/labs/transcripts/gong.jpeg"
@@ -284,7 +239,7 @@ export function ProviderSelection({
                 ? "border-gray-400"
                 : "border-gray-200"
             }`}
-            onClick={() => handleProviderChange("modjo")}
+            onClick={() => setSelectedProvider("modjo")}
           >
             <img
               src="/static/labs/transcripts/modjo.png"
@@ -356,16 +311,37 @@ export function ProviderSelection({
       <Page.Layout direction="vertical">
         {isGongConnectorConnected ? (
           <>
-            <Page.P>The Gong connection is active on your workspace.</Page.P>
-
-            <Button
-              label="Process my Gong transcripts"
-              size="sm"
-              icon={CloudArrowLeftRightIcon}
-              onClick={() => {
-                console.log("Process my Gong transcripts");
-              }}
-            />
+            {transcriptsConfiguration ? (
+              <Page.Layout direction="horizontal">
+                <Button
+                  label="Gong connected"
+                  size="sm"
+                  icon={CloudArrowLeftRightIcon}
+                  disabled={true}
+                />
+                <Button
+                  label="Disconnect"
+                  icon={XMarkIcon}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsDeleteProviderDialogOpened(true)}
+                />
+              </Page.Layout>
+            ) : (
+              <>
+                <Page.P>
+                  The Gong connection is active on your workspace.
+                </Page.P>
+                <div>
+                  <Button
+                    label="Process your Gong transcripts"
+                    size="sm"
+                    icon={CloudArrowLeftRightIcon}
+                    onClick={() => saveConnectorConnection("gong")}
+                  />
+                </div>
+              </>
+            )}
           </>
         ) : (
           <>

@@ -161,13 +161,19 @@ export default function LabsTranscriptsIndex({
     return response;
   };
 
-  const [transcriptsConfigurationState, setTranscriptsConfigurationState] =
-    useState<TranscriptsConfigurationState>(
-      defaultTranscriptConfigurationState
-    );
-
   if (isTranscriptsConfigurationLoading) {
-    return <Spinner />;
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <Spinner />
+      </div>
+    );
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
@@ -205,24 +211,22 @@ export default function LabsTranscriptsIndex({
 
             {transcriptsConfiguration && (
               <>
-                <StorageConfiguration
-                  owner={owner}
-                  transcriptsConfiguration={transcriptsConfiguration}
-                  mutateTranscriptsConfiguration={
-                    mutateTranscriptsConfiguration
-                  }
-                  dataSourcesViews={dataSourcesViews}
-                  spaces={spaces}
-                  isSpacesLoading={isSpacesLoading}
-                />
+                {!transcriptsConfiguration.useConnectorConnection && (
+                  <StorageConfiguration
+                    owner={owner}
+                    transcriptsConfiguration={transcriptsConfiguration}
+                    mutateTranscriptsConfiguration={
+                      mutateTranscriptsConfiguration
+                    }
+                    dataSourcesViews={dataSourcesViews}
+                    spaces={spaces}
+                    isSpacesLoading={isSpacesLoading}
+                  />
+                )}
                 <ProcessingConfiguration
                   owner={owner}
                   agents={agents}
                   transcriptsConfiguration={transcriptsConfiguration}
-                  transcriptsConfigurationState={transcriptsConfigurationState}
-                  setTranscriptsConfigurationState={
-                    setTranscriptsConfigurationState
-                  }
                   mutateTranscriptsConfiguration={
                     mutateTranscriptsConfiguration
                   }

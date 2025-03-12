@@ -23,6 +23,7 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
   declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare credentialId: string | null;
+  declare useConnectorConnection: boolean;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -67,6 +68,11 @@ LabsTranscriptsConfigurationModel.init(
     credentialId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    useConnectorConnection: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
