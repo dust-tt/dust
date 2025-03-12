@@ -166,6 +166,7 @@ async function handler(
                     m.model.startsWith("o3")) &&
                   (!chat ||
                     m.model.startsWith("o1-") ||
+                    m.model.startsWith("o3") ||
                     m.model.startsWith("gpt-3.5-turbo") ||
                     m.model.startsWith("gpt-4"))
                 );
