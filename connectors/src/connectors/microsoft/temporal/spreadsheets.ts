@@ -205,8 +205,13 @@ async function processSheet({
       })),
     ];
 
+    if (!spreadsheet.listItem?.fields) {
+      localLogger.warn("Unexpected missing fields for spreadsheet");
+    }
+
     const tags = await getColumnsFromListItem(
       spreadsheet,
+      spreadsheet.listItem?.fields,
       await getClient(connector.connectionId),
       localLogger
     );
