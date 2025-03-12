@@ -210,7 +210,7 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <div className="font-mono flex items-center gap-1 text-xs text-element-700">
+            <div className="flex items-center gap-1 font-mono text-xs text-element-700">
               <span className="shrink-0">API Key:</span>
               <div className="max-w-72 truncate">{formatApiKey(apiKey)}</div>
             </div>

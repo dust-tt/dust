@@ -256,7 +256,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
         </P>
       </div>
     </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
+    <div className="font-objektiv flex flex-col items-center rounded-4xl p-4 text-center text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
       &ldquo; {quote} &rdquo;
     </div>
   </div>

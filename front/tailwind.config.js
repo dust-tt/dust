@@ -49,8 +49,8 @@ module.exports = {
       "2xl": "1536px",
     },
     fontFamily: {
-      sans: ['var(--font-geist-sans)'],
-      mono: ['var(--font-geist-mono)'],
+      sans: ["var(--font-geist-sans)"],
+      mono: ["var(--font-geist-mono)"],
     },
     extend: {
       borderRadius: {
