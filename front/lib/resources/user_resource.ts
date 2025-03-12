@@ -212,7 +212,7 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async getMetadata(userId: ModelId, key: string) {
-    return await UserMetadataModel.findOne({
+    return UserMetadataModel.findOne({
       where: {
         userId,
         key
@@ -221,7 +221,7 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async getAllMetadata(users: ModelId[]) {
-    return await UserMetadataModel.findAll({
+    return UserMetadataModel.findAll({
       where: {
         userId: {
           [Op.in]: users,
@@ -253,7 +253,7 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async deleteMetadata(userId: ModelId) {
-    return await UserMetadataModel.destroy({
+    return UserMetadataModel.destroy({
       where: {
         userId,
       }
