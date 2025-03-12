@@ -207,6 +207,12 @@ const useCustomEditor = ({
         paragraph: false,
         strike: false,
       }),
+      // TODO(attach): uncomment for url detection
+      // URLDetectionExtension.configure({
+      //   onUrlDetected: (url) => {
+      //     console.log("URL detected", url);
+      //   }
+      // }),
       MentionStorageExtension,
       MentionWithPasteExtension.configure({
         HTMLAttributes: {
