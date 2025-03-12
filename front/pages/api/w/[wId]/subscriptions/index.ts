@@ -93,7 +93,6 @@ async function handler(
         });
       }
 
-      try {
         const { checkoutUrl, plan: newPlan } = await auth
           .getNonNullableSubscriptionResource()
           .getCheckoutUrlForUpgrade(
@@ -102,16 +101,6 @@ async function handler(
             bodyValidation.right.billingPeriod
           );
         return res.status(200).json({ checkoutUrl, plan: newPlan });
-      } catch (error) {
-        logger.error({ error }, "Error while subscribing workspace to plan");
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Error while subscribing workspace to plan",
-          },
-        });
-      }
     }
 
     case "PATCH": {

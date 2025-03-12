@@ -1,20 +1,25 @@
-import { beforeEach,describe, expect, vi } from "vitest";
+import type { Stripe } from "stripe";
+import { beforeEach, describe, expect, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
+import { upsertProPlans } from "@app/lib/plans/pro_plans";
 
 const TEST_CHECKOUT_URL = "https://checkout.stripe.com/test-session";
 
-vi.mock("@app/lib/plans/stripe", async (importOriginal) => {
-    const actual = await importOriginal();
-    return {
-      actual,
-      createProPlanCheckoutSession: vi.fn().mockResolvedValue("https://checkout.stripe.com/test-session"),
-    };
-  });
-  
+vi.mock("@app/lib/plans/stripe", async () => {
+  return {
+    createProPlanCheckoutSession: vi.fn().mockResolvedValue("https://checkout.stripe.com/test-session"),
+    getProPlanStripeProductId: vi.fn().mockResolvedValue("testProductID"),
+    getStripeSubscription: vi.fn().mockResolvedValue({
+      id: "sub_test123",
+      object: "subscription",
+      status: "active",
+    } as Stripe.Subscription),
+  };
+});
 
 describe("POST /api/w/[wId]/subscriptions", () => {
   beforeEach(() => {
@@ -49,10 +54,14 @@ describe("POST /api/w/[wId]/subscriptions", () => {
         billingPeriod: "monthly",
       };
 
+      // Seed plans in the database
+      await upsertProPlans();
+
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
       const data = res._getJSONData();
+      console.log(data.checkoutUrl);
       expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
       expect(data.plan).toEqual(
         expect.objectContaining({
@@ -78,6 +87,9 @@ describe("POST /api/w/[wId]/subscriptions", () => {
     req.body = {
       billingPeriod: "yearly",
     };
+
+    // Seed plans in the database
+    await upsertProPlans();
 
     await handler(req, res);
 
