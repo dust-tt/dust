@@ -74,7 +74,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
-        if: ${{ inputs.check_deployment_blocked }}
+        if: ${{ inputs.check_deployment_blocked == 'check' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:
