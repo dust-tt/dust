@@ -50,6 +50,8 @@ pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
 
 pub const GET_SESSION_MAX_TRIES: usize = 3;
 
+pub const SCHEMA_EXPIRATION_MILLIS: u64 = 1000 * 60 * 10; // 10 minutes
+
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
 
@@ -348,7 +350,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
     }
 
     fn schema_expiration_time(&self) -> u64 {
-        1000 * 60 * 10
+        SCHEMA_EXPIRATION_MILLIS
     }
 
     async fn authorize_and_execute_query(

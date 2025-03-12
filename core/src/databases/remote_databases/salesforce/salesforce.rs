@@ -31,7 +31,7 @@ use super::sandbox::structured_query::{StructuredQuery, Validator};
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const GET_SESSION_MAX_TRIES: usize = 3;
-pub const REDIS_CACHE_TTL_SECONDS: u64 = 60 * 60; // 1 hour
+pub const SCHEMA_EXPIRATION_MILLIS: u64 = 1000 * 60 * 60 * 24; // 1 day
 
 pub struct SalesforceRemoteDatabase {
     client: reqwest::Client,
@@ -596,7 +596,7 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         SqlDialect::SalesforceSoql
     }
     fn schema_expiration_time(&self) -> u64 {
-        1000 * 60 * 60 * 24
+        SCHEMA_EXPIRATION_MILLIS
     }
 
     async fn authorize_and_execute_query(

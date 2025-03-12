@@ -177,18 +177,22 @@ async fn get_remote_tables_schema(
         remote_db.dialect(),
         tables
             .into_iter()
-            .map(|table| GetTableSchemaResult {
-                schema: table
+            .map(|table| {
+                let schema = table
                     .remote_database_table_id()
                     .and_then(|id| fetched_schemas.get(&id).cloned())
-                    .or_else(|| table.schema_cached().cloned()),
-                dbml: table
-                    .schema_cached()
-                    .unwrap()
-                    .render_dbml(table.name(), table.description()),
-                head: None,
+                    .or_else(|| table.schema_cached().cloned())
+                    .ok_or_else(|| {
+                        QueryDatabaseError::GenericError(anyhow!("Failed to get remote schema"))
+                    })?;
+
+                Ok(GetTableSchemaResult {
+                    schema: Some(schema.clone()),
+                    dbml: schema.render_dbml(table.table_id_for_dbml(), table.description()),
+                    head: None,
+                })
             })
-            .collect(),
+            .collect::<Result<Vec<_>>>()?,
     ))
 }
 
