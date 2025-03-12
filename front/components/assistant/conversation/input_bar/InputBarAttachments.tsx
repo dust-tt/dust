@@ -1,180 +1,179 @@
 import {
-  AttachmentIcon,
-  Button,
-  CloudArrowUpIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  Input,
-  ScrollArea,
-  ScrollBar,
-  Spinner,
+  Citation,
+  CitationClose,
+  CitationDescription,
+  CitationIcons,
+  CitationTitle,
+  DocumentIcon,
+  Icon,
+  ImageIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { DataSourceViewContentNode } from "@dust-tt/types";
+import { useMemo } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 
-interface InputBarAttachmentsProps {
-  owner: LightWorkspaceType;
-  fileUploaderService: FileUploaderService;
-  onNodeSelect: (node: DataSourceViewContentNode) => void;
-  isLoading?: boolean;
+type FileAttachment = {
+  type: "file";
+  id: string;
+  title: string;
+  preview?: string;
+  isUploading: boolean;
+  onRemove: () => void;
+};
+
+type NodeAttachment = {
+  type: "node";
+  id: string;
+  title: string;
+  spaceName: string;
+  visual: React.ReactNode;
+  path: string;
+  onRemove: () => void;
+};
+
+type Attachment = FileAttachment | NodeAttachment;
+
+interface FileAttachmentsProps {
+  service: FileUploaderService;
 }
 
-export const InputBarAttachments = ({
-  owner,
-  fileUploaderService,
-  onNodeSelect,
-  isLoading = false,
-}: InputBarAttachmentsProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [isDebouncing, setIsDebouncing] = useState(false);
+interface NodeAttachmentsProps {
+  items: DataSourceViewContentNode[];
+  spacesMap: Record<string, string>;
+  onRemove: (node: DataSourceViewContentNode) => void;
+}
 
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    search: debouncedSearch,
-    viewType: "all",
-    disabled: isSpacesLoading || !debouncedSearch,
-    spaceIds: spaces.map((s) => s.sId),
-  });
+interface InputBarAttachmentsProps {
+  files?: FileAttachmentsProps;
+  nodes?: NodeAttachmentsProps;
+}
 
-  useEffect(() => {
-    setIsDebouncing(true);
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
-      setIsDebouncing(false);
-    }, 300);
-    return () => {
-      clearTimeout(timeout);
-      setIsDebouncing(false);
-    };
-  }, [search]);
+export function InputBarAttachments({
+  files,
+  nodes,
+}: InputBarAttachmentsProps) {
+  const fileAttachments: FileAttachment[] = useMemo(() => {
+    return (
+      files?.service.fileBlobs.map((blob) => ({
+        type: "file",
+        id: blob.id,
+        title: blob.id,
+        preview: blob.preview,
+        isUploading: blob.isUploading,
+        onRemove: () => files.service.removeFile(blob.id),
+      })) || []
+    );
+  }, [files?.service]);
 
-  const spacesMap = useMemo(
-    () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
-    [spaces]
-  );
+  const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    return (
+      nodes?.items.map((node) => {
+        const logo = getConnectorProviderLogoWithFallback({
+          provider: node.dataSourceView.dataSource.connectorProvider,
+        });
 
-  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
-    [searchResultNodes]
-  );
+        const nodeId = node.internalId ?? `node-${node.internalId}`;
+        const spaceName =
+          nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
+        const { dataSource } = node.dataSourceView;
 
-  const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
+        return {
+          type: "node",
+          id: nodeId,
+          title: node.title,
+          spaceName,
+          path: getLocationForDataSourceViewContentNode(node),
+          visual:
+            isWebsite(dataSource) || isFolder(dataSource) ? (
+              <Icon visual={logo} size="sm" />
+            ) : (
+              <>
+                {getVisualForDataSourceViewContentNode(node)({
+                  className: "h-5 w-5",
+                })}
+                <Icon visual={logo} size="sm" />
+              </>
+            ),
+          onRemove: () => nodes.onRemove(node),
+        };
+      }) || []
+    );
+  }, [nodes]);
 
-  const searchbarRef = (element: HTMLInputElement) => {
-    if (element) {
-      element.focus();
-    }
-  };
+  const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
+
+  if (allAttachments.length === 0) {
+    return null;
+  }
 
   return (
-    <DropdownMenu
-      onOpenChange={(open) => {
-        if (!open) {
-          setSearch("");
-        }
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost-secondary"
-          icon={AttachmentIcon}
-          size="xs"
-          disabled={isLoading}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-125" side="bottom">
-        <div className="items-end pb-2">
-          <DropdownMenuSearchbar
-            ref={searchbarRef}
-            name="search-files"
-            placeholder="Search knowledge or attach files"
-            value={search}
-            onChange={setSearch}
-            disabled={isLoading}
-          />
-          <DropdownMenuSeparator />
-          <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-            {showSearchResults ? (
-              <div className="pt-2">
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      label={item.title}
-                      icon={() =>
-                        getVisualForDataSourceViewContentNode(item)({
-                          className: "min-w-4",
-                        })
-                      }
-                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
-                      onClick={() => {
-                        setSearch("");
-                        onNodeSelect(item);
-                      }}
-                    />
-                  ))
-                ) : isSearchLoading || isDebouncing ? (
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
-                ) : (
-                  <div className="p-2 text-sm text-gray-500">
-                    No results found
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-end gap-4 pr-1">
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
+    <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
+      {allAttachments.map((attachment) => (
+        <Tooltip
+          key={`${attachment.type}-${attachment.id}`}
+          tooltipTriggerAsChild
+          trigger={
+            <Citation
+              className="w-40"
+              isLoading={attachment.type === "file" && attachment.isUploading}
+              action={
+                <CitationClose
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    attachment.onRemove();
                   }}
-                  multiple={true}
                 />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  icon={CloudArrowUpIcon}
-                  label="Upload file"
-                />
+              }
+            >
+              {attachment.type === "file" ? (
+                <>
+                  <CitationIcons>
+                    <Icon
+                      visual={attachment.preview ? ImageIcon : DocumentIcon}
+                    />
+                  </CitationIcons>
+                  <CitationTitle className="truncate">
+                    {attachment.title}
+                  </CitationTitle>
+                </>
+              ) : (
+                <>
+                  <CitationIcons>{attachment.visual}</CitationIcons>
+                  <CitationTitle className="truncate">
+                    {attachment.title}
+                  </CitationTitle>
+                  <CitationDescription className="truncate">
+                    {attachment.spaceName}
+                  </CitationDescription>
+                </>
+              )}
+            </Citation>
+          }
+          label={
+            attachment.type === "file" ? (
+              attachment.title
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="font-bold">{attachment.title}</div>
+                <div className="text-sm text-element-600">
+                  Path: {attachment.path}
+                </div>
+                <div className="text-sm text-element-600">
+                  Space: {attachment.spaceName}
+                </div>
               </div>
-            )}
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </div>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            )
+          }
+        />
+      ))}
+    </div>
   );
-};
+}
