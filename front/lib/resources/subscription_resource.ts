@@ -235,14 +235,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     stripeSubscriptionId?: string;
   }): Promise<SubscriptionResource> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
-
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-    });
-    if (!newPlan) {
-      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
-    }
-
+    const newPlan = await this.findPlanOrThrow(planCode);
     const now = new Date();
 
     // Find active subscription
@@ -327,14 +320,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       throw new Error("Cannot upgrade workspace to plan: not allowed.");
     }
 
-    const plan = await Plan.findOne({
-      where: {
-        code: enterpriseDetails.planCode,
-      },
-    });
-    if (!plan) {
-      throw new Error("The provided plan code does not exist.");
-    }
+    const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
 
     // End the current subscription if any.
     await this.internalSubscribeWorkspaceToFreePlan({
@@ -357,14 +343,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       throw new Error("Cannot upgrade workspace to plan: not allowed.");
     }
 
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-    });
-    if (!newPlan) {
-      throw new Error(
-        `Cannot upgrade workspace to plan ${planCode}: plan not found.`
-      );
-    }
+    const newPlan = await this.findPlanOrThrow(planCode);
 
     // We search for an active subscription for this workspace
     const activeSubscription = auth.subscriptionResource();
@@ -491,12 +470,9 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       ? PRO_PLAN_SEAT_39_CODE
       : PRO_PLAN_SEAT_29_CODE;
 
-    const proPlan = await Plan.findOne({
-      where: { code: PRO_PLAN_SEAT_29_CODE },
-    });
-    if (!proPlan) {
-      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
-    }
+    const proPlan = await SubscriptionResource.findPlanOrThrow(
+      PRO_PLAN_SEAT_29_CODE
+    );
 
     // We verify that the workspace is not already subscribed to the Pro plan product.
     const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(owner);
@@ -650,6 +626,17 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return workspace;
+  }
+
+  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
+    const newPlan = await Plan.findOne({
+      where: { code: planCode },
+    });
+    if (!newPlan) {
+      throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
+    }
+
+    return newPlan;
   }
 
   /**
