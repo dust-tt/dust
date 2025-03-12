@@ -232,11 +232,24 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async setMetadata(userId: ModelId, key: string, value: string) {
-    return await UserMetadataModel.upsert({
-      userId,
-      key,
-      value,
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId,
+        key,
+      },
     });
+
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId,
+        key,
+        value,
+      });
+      return;
+    }
+
+    metadata.value = value;
+    await metadata.save();
   }
 
   static async deleteMetadata(userId: ModelId) {
