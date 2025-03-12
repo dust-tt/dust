@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { getWorkspaceFirstAdmin, renderLightWorkspaceType } from "@app/lib/workspace";
+import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {

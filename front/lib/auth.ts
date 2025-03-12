@@ -740,12 +740,13 @@ export class Authenticator {
     const subscriptionResource = this.subscriptionResource();
 
     if (!subscriptionResource) {
-      throw new Error("Unexpected unauthenticated call to `getNonNullableSubscriptionResource`.");
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableSubscriptionResource`."
+      );
     }
 
     return subscriptionResource;
   }
-    
 
   plan(): PlanType | null {
     return this._subscription ? this._subscription.getPlan() : null;
