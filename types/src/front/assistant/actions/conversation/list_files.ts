@@ -6,7 +6,7 @@ import {
 import { ModelId } from "../../../../shared/model_id";
 
 export type ConversationFileType = {
-  fileId: string;
+  sId: string;
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
