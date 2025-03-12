@@ -90,14 +90,6 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
 ) => {
-  if (upsertArgs) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_request_error",
-      message: "Upsert args are not allowed for section documents.",
-    });
-  }
-
   // Get the content of the file.
   const content = await getFileContent(auth, file);
   if (!content) {
@@ -136,6 +128,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
       `fileName:${file.fileName}`,
     ],
     light_document_output: true,
+    ...upsertArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -467,7 +460,7 @@ export async function processAndUpsertToDataSource(
     });
   }
 
-  // When we upsert a file we don't want to be able to pass section in Upsert Args
+  // When we upsert a file we don't want to be able to pass section or text in Upsert Args
   // We want to return an Error in the future but we start by logging the error to see if there are
   // places that are using it and need to be updated. first
   if (upsertArgs && ("section" in upsertArgs || "text" in upsertArgs)) {
