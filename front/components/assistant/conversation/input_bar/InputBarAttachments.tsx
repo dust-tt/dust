@@ -18,6 +18,7 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
+import { useMemo } from "react";
 
 type FileAttachment = {
   type: "file";
@@ -59,47 +60,53 @@ export function InputBarAttachments({
   files,
   nodes,
 }: InputBarAttachmentsProps) {
-  const fileAttachments: FileAttachment[] =
-    files?.service.fileBlobs.map((blob) => ({
-      type: "file",
-      id: blob.id,
-      title: blob.id,
-      preview: blob.preview,
-      isUploading: blob.isUploading,
-      onRemove: () => files.service.removeFile(blob.id),
-    })) || [];
+  const fileAttachments: FileAttachment[] = useMemo(() => {
+    return (
+      files?.service.fileBlobs.map((blob) => ({
+        type: "file",
+        id: blob.id,
+        title: blob.id,
+        preview: blob.preview,
+        isUploading: blob.isUploading,
+        onRemove: () => files.service.removeFile(blob.id),
+      })) || []
+    );
+  }, [files?.service]);
 
-  const nodeAttachments: NodeAttachment[] =
-    nodes?.items.map((node) => {
-      const logo = getConnectorProviderLogoWithFallback({
-        provider: node.dataSourceView.dataSource.connectorProvider,
-      });
+  const nodeAttachments: NodeAttachment[] = useMemo(() => {
+    return (
+      nodes?.items.map((node) => {
+        const logo = getConnectorProviderLogoWithFallback({
+          provider: node.dataSourceView.dataSource.connectorProvider,
+        });
 
-      const nodeId = node.internalId ?? `node-${node.internalId}`;
-      const spaceName =
-        nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
-      const { dataSource } = node.dataSourceView;
+        const nodeId = node.internalId ?? `node-${node.internalId}`;
+        const spaceName =
+          nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
+        const { dataSource } = node.dataSourceView;
 
-      return {
-        type: "node",
-        id: nodeId,
-        title: node.title,
-        spaceName,
-        path: getLocationForDataSourceViewContentNode(node),
-        visual:
-          isWebsite(dataSource) || isFolder(dataSource) ? (
-            <Icon visual={logo} size="sm" />
-          ) : (
-            <>
-              {getVisualForDataSourceViewContentNode(node)({
-                className: "h-5 w-5",
-              })}
+        return {
+          type: "node",
+          id: nodeId,
+          title: node.title,
+          spaceName,
+          path: getLocationForDataSourceViewContentNode(node),
+          visual:
+            isWebsite(dataSource) || isFolder(dataSource) ? (
               <Icon visual={logo} size="sm" />
-            </>
-          ),
-        onRemove: () => nodes.onRemove(node),
-      };
-    }) || [];
+            ) : (
+              <>
+                {getVisualForDataSourceViewContentNode(node)({
+                  className: "h-5 w-5",
+                })}
+                <Icon visual={logo} size="sm" />
+              </>
+            ),
+          onRemove: () => nodes.onRemove(node),
+        };
+      }) || []
+    );
+  }, [nodes]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
