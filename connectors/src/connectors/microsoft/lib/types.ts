@@ -17,11 +17,12 @@ export type DriveItem = Pick<
   | "size"
   | "sharepointIds"
   | "listItem" // This must be expanded to get the fields
->;
+> & { "@microsoft.graph.downloadUrl": string | undefined };
 
 // This must match the type above and be used when using the graph API
+// Note: for some reason, $select do not work for @microsoft.graph.downloadUrl but select does.
 export const DRIVE_ITEM_EXPANDS_AND_SELECTS =
-  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields)";
+  "$select=id,name,parentReference,webUrl,file,folder,root,deleted,createdBy,lastModifiedBy,createdDateTime,lastModifiedDateTime,size,sharepointIds&$expand=listItem($expand=fields)&select=@microsoft.graph.downloadUrl";
 
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
