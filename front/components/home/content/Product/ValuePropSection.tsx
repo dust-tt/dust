@@ -22,9 +22,9 @@ export function ValuePropSection() {
           title={<>Answer any question, instantly</>}
           content={
             <>
-              Dust searches and synthesizes info from all your tools. Enjoy
-              summarization, targeted extractions, and crisp insights from
-              relevant docs.
+              Dust searches and synthesizes info from all your tools.&nbsp;
+              <br></br>Enjoy summarization, targeted extractions, and crisp
+              insights from relevant docs.
             </>
           }
         >

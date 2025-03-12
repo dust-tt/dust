@@ -18,7 +18,7 @@ function CardCarousel({ title, children }: CardCarouselProps) {
     <div className="w-full">
       <Carousel className="w-full">
         <div className="mb-6 flex items-end justify-between">
-          <div className="w-full max-w-6xl">{title}</div>
+          <div className="w-full max-w-5xl">{title}</div>
           <div className="flex gap-4">
             <CarouselPrevious />
             <CarouselNext />
