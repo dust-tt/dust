@@ -3,17 +3,21 @@ import {
   CitationClose,
   CitationDescription,
   CitationIcons,
-  CitationImage,
   CitationTitle,
   DocumentIcon,
   Icon,
   ImageIcon,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewContentNode } from "@dust-tt/types";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import {
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
+import { isFolder, isWebsite } from "@app/lib/data_sources";
 
 type FileAttachment = {
   type: "file";
@@ -30,6 +34,7 @@ type NodeAttachment = {
   title: string;
   spaceName: string;
   visual: React.ReactNode;
+  path: string;
   onRemove: () => void;
 };
 
@@ -73,20 +78,25 @@ export function InputBarAttachments({
       const nodeId = node.internalId ?? `node-${node.internalId}`;
       const spaceName =
         nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
+      const { dataSource } = node.dataSourceView;
 
       return {
         type: "node",
         id: nodeId,
         title: node.title,
         spaceName,
-        visual: (
-          <>
-            {getVisualForDataSourceViewContentNode(node)({
-              className: "h-5 w-5",
-            })}
+        path: getLocationForDataSourceViewContentNode(node),
+        visual:
+          isWebsite(dataSource) || isFolder(dataSource) ? (
             <Icon visual={logo} size="sm" />
-          </>
-        ),
+          ) : (
+            <>
+              {getVisualForDataSourceViewContentNode(node)({
+                className: "h-5 w-5",
+              })}
+              <Icon visual={logo} size="sm" />
+            </>
+          ),
         onRemove: () => nodes.onRemove(node),
       };
     }) || [];
@@ -100,44 +110,62 @@ export function InputBarAttachments({
   return (
     <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {allAttachments.map((attachment) => (
-        <Citation
+        <Tooltip
           key={`${attachment.type}-${attachment.id}`}
-          className="w-40"
-          isLoading={attachment.type === "file" && attachment.isUploading}
-          tooltip={attachment.type === "file" ? attachment.title : undefined}
-          action={
-            <CitationClose
-              onClick={(e) => {
-                e.stopPropagation();
-                attachment.onRemove();
-              }}
-            />
-          }
-        >
-          {attachment.type === "file" ? (
-            <>
-              {attachment.preview && (
-                <CitationImage imgSrc={attachment.preview} />
+          tooltipTriggerAsChild
+          trigger={
+            <Citation
+              className="w-40"
+              isLoading={attachment.type === "file" && attachment.isUploading}
+              action={
+                <CitationClose
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    attachment.onRemove();
+                  }}
+                />
+              }
+            >
+              {attachment.type === "file" ? (
+                <>
+                  <CitationIcons>
+                    <Icon
+                      visual={attachment.preview ? ImageIcon : DocumentIcon}
+                    />
+                  </CitationIcons>
+                  <CitationTitle className="truncate">
+                    {attachment.title}
+                  </CitationTitle>
+                </>
+              ) : (
+                <>
+                  <CitationIcons>{attachment.visual}</CitationIcons>
+                  <CitationTitle className="truncate">
+                    {attachment.title}
+                  </CitationTitle>
+                  <CitationDescription className="truncate">
+                    {attachment.spaceName}
+                  </CitationDescription>
+                </>
               )}
-              <CitationIcons>
-                <Icon visual={attachment.preview ? ImageIcon : DocumentIcon} />
-              </CitationIcons>
-              <CitationTitle className="truncate">
-                {attachment.title}
-              </CitationTitle>
-            </>
-          ) : (
-            <>
-              <CitationIcons>{attachment.visual}</CitationIcons>
-              <CitationTitle className="truncate">
-                {attachment.title}
-              </CitationTitle>
-              <CitationDescription className="truncate">
-                {attachment.spaceName}
-              </CitationDescription>
-            </>
-          )}
-        </Citation>
+            </Citation>
+          }
+          label={
+            attachment.type === "file" ? (
+              attachment.title
+            ) : (
+              <div className="flex flex-col gap-1">
+                <div className="font-bold">{attachment.title}</div>
+                <div className="text-sm text-element-600">
+                  Path: {attachment.path}
+                </div>
+                <div className="text-sm text-element-600">
+                  Space: {attachment.spaceName}
+                </div>
+              </div>
+            )
+          }
+        />
       ))}
     </div>
   );
