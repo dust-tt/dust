@@ -12,7 +12,10 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserMetadataModel, UserModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 export interface SearchMembersPaginationParams {
@@ -215,9 +218,9 @@ export class UserResource extends BaseResource<UserModel> {
     return UserMetadataModel.findOne({
       where: {
         userId,
-        key
-      }
-    })
+        key,
+      },
+    });
   }
 
   static async getAllMetadata(users: ModelId[]) {
@@ -225,10 +228,10 @@ export class UserResource extends BaseResource<UserModel> {
       where: {
         userId: {
           [Op.in]: users,
-        }
+        },
       },
       raw: true,
-    })
+    });
   }
 
   static async setMetadata(userId: ModelId, key: string, value: string) {
@@ -256,8 +259,8 @@ export class UserResource extends BaseResource<UserModel> {
     return UserMetadataModel.destroy({
       where: {
         userId,
-      }
-    })
+      },
+    });
   }
 
   fullName(): string {

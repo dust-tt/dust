@@ -65,7 +65,9 @@ export async function readCoreEntitiesFromSourceRegion({
   });
 
   // Fetch all associated users metadata of the workspace.
-  const userMetadata = await UserResource.getAllMetadata(memberships.map((m) => m.userId));
+  const userMetadata = await UserResource.getAllMetadata(
+    memberships.map((m) => m.userId)
+  );
 
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',
