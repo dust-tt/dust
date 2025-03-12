@@ -240,7 +240,9 @@ async function handler(
           });
           if (!rGoogleAIStudio.ok) {
             const err = await rGoogleAIStudio.json();
-            return res.status(400).json({ ok: false, error: err.error });
+            return res
+              .status(400)
+              .json({ ok: false, error: err.error?.message });
           }
           await rGoogleAIStudio.json();
           return res.status(200).json({ ok: true });

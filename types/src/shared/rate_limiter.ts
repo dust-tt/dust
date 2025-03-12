@@ -56,7 +56,7 @@ export async function rateLimiter({
 
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
-  const tags = [redisKey];
+  const tags: string[] = [];
 
   let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
   try {

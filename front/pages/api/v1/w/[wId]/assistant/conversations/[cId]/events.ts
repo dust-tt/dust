@@ -90,7 +90,7 @@ async function handler(
       });
 
       const eventStream: AsyncGenerator<ConversationEventType> =
-        getConversationEvents(auth, {
+        getConversationEvents({
           conversationId: conversation.sId,
           lastEventId: null,
           signal,

@@ -98,34 +98,6 @@ export async function scrubDataSourceActivity({
     throw new Error("Data source is not soft deleted.");
   }
 
-  const { dustAPIProjectId } = dataSource;
-
-  const storage = new Storage({ keyFilename: config.getServiceAccount() });
-
-  const [files] = await storage
-    .bucket(config.getDustDataSourcesBucket())
-    .getFiles({ prefix: dustAPIProjectId });
-
-  const chunkSize = 32;
-  const chunks = [];
-  for (let i = 0; i < files.length; i += chunkSize) {
-    chunks.push(files.slice(i, i + chunkSize));
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((f) => {
-        return (async () => {
-          await f.delete();
-        })();
-      })
-    );
-  }
-
   await hardDeleteDataSource(auth, dataSource);
 }
 

@@ -638,6 +638,122 @@ export function sectionLength(
   );
 }
 
+// Truncate a CoreAPIDataSourceDocumentSection to a given length
+// Strategy:
+// - If there are children sections, start the very last leaf section
+// - Truncate the content until the total length is <= maxLength
+// - If the total length is still > maxLength, truncate the prefix until the total length is <= maxLength
+// - If the total length is still > maxLength, remove the last child section and try again
+export function truncateSection(
+  section: CoreAPIDataSourceDocumentSection,
+  maxLength: number
+): CoreAPIDataSourceDocumentSection {
+  // Calculate current length
+  const currentLength = sectionLength(section);
+  const excessLength = currentLength - maxLength;
+
+  // If already within limit, return unchanged
+  if (excessLength <= 0) {
+    return section;
+  }
+  const [result] = truncateSectionHelper(section, excessLength);
+
+  return result;
+}
+
+function truncateSectionHelper(
+  section: CoreAPIDataSourceDocumentSection,
+  excessLength: number
+): [CoreAPIDataSourceDocumentSection, number] {
+  // Create a deep copy to avoid mutating the original
+  const result: CoreAPIDataSourceDocumentSection = {
+    prefix: section.prefix,
+    content: section.content,
+    sections: [...section.sections],
+  };
+  let currentExcessLength = excessLength;
+  let truncatedLength = 0;
+
+  // If there are child sections, start with truncating from the last leaf
+  while (result.sections.length > 0 && currentExcessLength > 0) {
+    // Work on the last child section
+    const lastIndex = result.sections.length - 1;
+    const lastSection = result.sections[lastIndex];
+
+    if (!lastSection) {
+      throw new Error("Unreachable");
+    }
+
+    // If the last section has children, recursively truncate it
+    if (lastSection.sections.length > 0) {
+      const [truncated, truncatedExcessLength] = truncateSectionHelper(
+        lastSection,
+        excessLength
+      );
+
+      truncatedLength += truncatedExcessLength;
+      currentExcessLength -= truncatedExcessLength;
+
+      // If the truncated section is empty (all content was removed), remove it entirely
+      if (
+        !truncated.prefix &&
+        !truncated.content &&
+        truncated.sections.length === 0
+      ) {
+        result.sections.pop();
+      } else {
+        result.sections[lastIndex] = truncated;
+      }
+    } else {
+      // This is a leaf section, truncate its content first
+      if (currentExcessLength > 0 && lastSection.content) {
+        const len = lastSection.content.length;
+        const toRemove = Math.min(len, currentExcessLength);
+        lastSection.content = lastSection.content.slice(0, len - toRemove);
+        truncatedLength += toRemove;
+        currentExcessLength -= toRemove;
+      }
+
+      // If still exceeding after content truncation, truncate prefix
+      if (currentExcessLength > 0 && lastSection.prefix) {
+        const len = lastSection.prefix.length;
+        const toRemove = Math.min(len, currentExcessLength);
+        lastSection.prefix = lastSection.prefix.slice(0, len - toRemove);
+        truncatedLength += toRemove;
+        currentExcessLength -= toRemove;
+      }
+
+      // If still exceeding after both truncations, remove this leaf section entirely
+      if (currentExcessLength > 0) {
+        result.sections.pop();
+      }
+    }
+  }
+
+  // If we've removed all child sections but still exceed the limit,
+  // truncate this section's content and prefix
+
+  // Truncate content first
+  if (currentExcessLength > 0 && result.content) {
+    const len = result.content.length;
+    const toRemove = Math.min(len, currentExcessLength);
+    result.content = result.content.slice(0, len - toRemove);
+    truncatedLength += toRemove;
+    currentExcessLength -= toRemove;
+  }
+
+  // If still exceeding, truncate prefix
+  if (currentExcessLength > 0 && result.prefix) {
+    const len = result.prefix.length;
+    const toRemove = Math.min(len, currentExcessLength);
+    result.prefix = result.prefix.slice(0, len - toRemove);
+    truncatedLength += toRemove;
+    currentExcessLength -= toRemove;
+  }
+
+  return [result, truncatedLength];
+}
+
 export async function upsertDataSourceRemoteTable({
   dataSourceConfig,
   tableId,

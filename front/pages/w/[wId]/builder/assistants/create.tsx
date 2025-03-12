@@ -82,43 +82,48 @@ export default function CreateAssistant({
     tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
+  const filterTemplates = useCallback(
+    (searchTerm = templateSearchTerm) => {
+      const templatesToDisplay = assistantTemplates.filter((template) => {
+        // Check if template has valid tags
+        if (!isTemplateTagCodeArray(template.tags)) {
+          return false;
+        }
+
+        // Filter by selected tags (show templates that match ANY selected tag)
+        if (
+          selectedTags.length > 0 &&
+          !selectedTags.some((tag) => template.tags.includes(tag))
+        ) {
+          return false;
+        }
+
+        // Filter by search term
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            template.handle.toLowerCase().includes(searchLower) ||
+            template.description?.toLowerCase().includes(searchLower) ||
+            false
+          );
+        }
+
+        return true;
+      });
+
+      setFilteredTemplates({
+        templates: templatesToDisplay,
+        tags: _.uniq(
+          assistantTemplates.map((template) => template.tags).flat()
+        ),
+      });
+    },
+    [assistantTemplates, selectedTags, templateSearchTerm]
+  );
+
   useEffect(() => {
     filterTemplates();
-  }, [assistantTemplates, selectedTags]);
-
-  const filterTemplates = (searchTerm = templateSearchTerm) => {
-    const templatesToDisplay = assistantTemplates.filter((template) => {
-      // Check if template has valid tags
-      if (!isTemplateTagCodeArray(template.tags)) {
-        return false;
-      }
-
-      // Filter by selected tags (show templates that match ANY selected tag)
-      if (
-        selectedTags.length > 0 &&
-        !selectedTags.some((tag) => template.tags.includes(tag))
-      ) {
-        return false;
-      }
-
-      // Filter by search term
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-          template.handle.toLowerCase().includes(searchLower) ||
-          template.description?.toLowerCase().includes(searchLower) ||
-          false
-        );
-      }
-
-      return true;
-    });
-
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(assistantTemplates.map((template) => template.tags).flat()),
-    });
-  };
+  }, [assistantTemplates, filterTemplates, selectedTags]);
 
   const openTemplateModal = useCallback(
     async (templateId: string) => {

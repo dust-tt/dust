@@ -175,18 +175,31 @@ export async function updateAllParentsFields(
             connectorId,
             pageOrDbId
           );
-          const database = await getNotionDatabaseFromConnectorsDb(
-            connectorId,
-            pageOrDbId
-          );
-          logger.warn(
-            {
-              parents,
-              parentType: page?.parentType ?? database?.parentType,
-              parentId: page?.parentId ?? database?.parentId,
-            },
-            "notionUpdateAllParentsFields: Page or database has no parent."
-          );
+          if (page && page.parentId !== "workspace") {
+            logger.warn(
+              {
+                parents,
+                parentType: page.parentType,
+                parentId: page.parentId,
+              },
+              "notionUpdateAllParentsFields: Page has no parent."
+            );
+          } else if (!page) {
+            const database = await getNotionDatabaseFromConnectorsDb(
+              connectorId,
+              pageOrDbId
+            );
+            if (database && database.parentId !== "workspace") {
+              logger.warn(
+                {
+                  parents,
+                  parentType: database?.parentType,
+                  parentId: database?.parentId,
+                },
+                "notionUpdateAllParentsFields: Database has no parent."
+              );
+            }
+          }
         }
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),
