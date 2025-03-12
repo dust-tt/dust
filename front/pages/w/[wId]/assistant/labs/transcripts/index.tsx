@@ -6,14 +6,12 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
-  LabsTranscriptsProviderType,
-  LightAgentConfigurationType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -27,35 +25,8 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import {
-  useLabsTranscriptsConfiguration,
-  useLabsTranscriptsIsConnectorConnected,
-} from "@app/lib/swr/labs";
+import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
-
-export type TranscriptsConfigurationState = {
-  provider: LabsTranscriptsProviderType | null;
-  isGDriveConnected: boolean;
-  isGongConnected: boolean;
-  isModjoConnected: boolean;
-  assistantSelected: LightAgentConfigurationType | null;
-  isActive: boolean;
-  dataSourceView: DataSourceViewType | null;
-  credentialId: string | null;
-  hasDefaultConfiguration: boolean;
-};
-
-const defaultTranscriptConfigurationState: TranscriptsConfigurationState = {
-  provider: null,
-  isGDriveConnected: false,
-  isGongConnected: false,
-  isModjoConnected: false,
-  assistantSelected: null,
-  isActive: false,
-  dataSourceView: null,
-  credentialId: null,
-  hasDefaultConfiguration: false,
-};
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
