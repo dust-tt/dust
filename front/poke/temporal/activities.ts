@@ -57,7 +57,6 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -514,11 +513,6 @@ export async function deleteWorkspaceActivity({
     },
   });
   await FeatureFlag.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-  await PlatformActionsConfigurationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

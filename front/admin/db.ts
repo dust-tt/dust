@@ -83,7 +83,6 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
@@ -179,8 +178,6 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
-
-  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });
