@@ -17,6 +17,8 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
 
+import type { UserResource } from "../resources/user_resource";
+
 export class ServerSideTracking {
   static trackSignup(args: { user: UserType }) {
     // Do nothing for now
@@ -102,7 +104,7 @@ export class ServerSideTracking {
   }
 
   static trackDataSourceCreated(args: {
-    user?: UserType;
+    user?: UserResource;
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
@@ -111,7 +113,7 @@ export class ServerSideTracking {
   }
 
   static trackDataSourceUpdated(args: {
-    user?: UserType;
+    user?: UserResource;
     workspace?: WorkspaceType;
     dataSource: DataSourceType;
   }) {
@@ -120,7 +122,7 @@ export class ServerSideTracking {
   }
 
   static trackAssistantCreated(args: {
-    user?: UserType;
+    user?: UserResource;
     workspace?: WorkspaceType;
     assistant: AgentConfigurationType;
   }) {

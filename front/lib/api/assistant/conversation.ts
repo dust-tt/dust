@@ -289,7 +289,7 @@ async function createOrUpdateParticipation({
   user,
   conversation,
 }: {
-  user: UserType | null;
+  user: UserResource | null;
   conversation: ConversationType;
 }) {
   if (user) {
@@ -818,7 +818,7 @@ export async function* postUserMessage(
         type: "user_message",
         visibility: "visible",
         version: 0,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context,
@@ -1291,7 +1291,7 @@ export async function* editUserMessage(
         type: "user_message",
         visibility: m.visibility,
         version: m.version,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context: message.context,

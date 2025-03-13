@@ -50,6 +50,8 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 
+import type { UserResource } from "./user_resource";
+
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
@@ -128,20 +130,20 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static async createDataSourceAndDefaultView(
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
-    editedByUser?: UserType | null,
+    editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         space,
         dataSource,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
     };
@@ -157,7 +159,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[],
-    editedByUser?: UserType | null
+    editedByUser?: UserResource | null
   ) {
     return this.makeNew(
       {
@@ -168,7 +170,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
-      editedByUser
+      editedByUser?.toJSON()
     );
   }
 

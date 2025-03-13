@@ -5,7 +5,6 @@ import type {
   LightWorkspaceType,
   PluginArgs,
   PluginResourceTarget,
-  UserType,
 } from "@dust-tt/types";
 import type { Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
@@ -23,6 +22,8 @@ import {
   POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH,
 } from "@app/lib/resources/storage/models/plugin_runs";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+
+import type { UserResource } from "./user_resource";
 
 function redactPluginArgs(
   plugin: Plugin<PluginArgs>,
@@ -71,7 +72,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   static async makeNew(
     plugin: Plugin<PluginArgs>,
     args: InferPluginArgs<PluginArgs>,
-    author: UserType,
+    author: UserResource,
     workspace: LightWorkspaceType | null,
     pluginResourceTarget: PluginResourceTarget
   ) {

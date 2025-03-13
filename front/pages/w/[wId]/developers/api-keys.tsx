@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
-  const user = auth.getNonNullableUser();
+  const user = auth.getNonNullableUser().toJSON();
   if (!auth.isAdmin()) {
     return {
       notFound: true,
