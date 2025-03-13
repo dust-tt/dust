@@ -22,7 +22,7 @@ import {
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {
-  transcriptsConfiguration: LabsTranscriptsConfigurationType;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType | null;
   setIsDeleteProviderDialogOpened: (isOpen: boolean) => void;
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
@@ -43,6 +43,12 @@ export function ProviderSelection({
     useLabsTranscriptsIsConnectorConnected({
       owner,
       provider: "gong",
+    });
+
+  const { defaultConfiguration: defaultModjoConfiguration } =
+    useLabsTranscriptsDefaultConfiguration({
+      owner,
+      provider: "modjo",
     });
 
   const saveOAuthConnection = async (
@@ -140,7 +146,7 @@ export function ProviderSelection({
     defaultModjoConfiguration,
   }: {
     credentialId: string | null;
-    defaultModjoConfiguration: any | null;
+    defaultModjoConfiguration: LabsTranscriptsConfigurationType | null;
   }) => {
     try {
       if (defaultModjoConfiguration) {
@@ -189,12 +195,6 @@ export function ProviderSelection({
       });
     }
   };
-
-  const { defaultConfiguration: defaultModjoConfiguration } =
-    useLabsTranscriptsDefaultConfiguration({
-      owner,
-      provider: "modjo",
-    });
 
   const [selectedProvider, setSelectedProvider] =
     useState<LabsTranscriptsProviderType | null>(
@@ -373,17 +373,31 @@ export function ProviderSelection({
           </Page.Layout>
         ) : (
           <>
-            <Page.P>
-              Connect to Modjo so Dust can access your meeting transcripts.
-            </Page.P>
             <div className="flex gap-2">
-              {!transcriptsConfiguration?.isDefaultFullStorage && (
-                <Input
-                  placeholder="Modjo API key"
-                  value={modjoApiKey}
-                  onChange={(e) => setModjoApiKey(e.target.value)}
-                />
+              {!defaultModjoConfiguration ? (
+                <Page.Layout direction="vertical">
+                  <div>
+                    <Page.P>
+                      Connect to Modjo so Dust can access your meeting
+                      transcripts.
+                    </Page.P>
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Modjo API key"
+                      value={modjoApiKey}
+                      onChange={(e) => setModjoApiKey(e.target.value)}
+                    />
+                  </div>
+                </Page.Layout>
+              ) : (
+                <Page.P>
+                  Modjo is already active on your workspace so you can go ahead
+                  and process your own calls transcripts.
+                </Page.P>
               )}
+            </div>
+            <div>
               <Button
                 label="Connect Modjo"
                 size="sm"

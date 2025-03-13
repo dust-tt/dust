@@ -1,7 +1,10 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type {
+  LabsTranscriptsConfigurationType,
+  WithAPIErrorResponse,
+} from "@dust-tt/types";
 import {
   isCredentialProvider,
-  isProviderWithWorkspaceConfiguration,
+  isProviderWithDefaultWorkspaceConfiguration,
   OAuthAPI,
 } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
@@ -18,7 +21,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
-  configuration: LabsTranscriptsConfigurationResource | null;
+  configuration: LabsTranscriptsConfigurationType | null;
 };
 
 // Define provider type separately for better reuse
@@ -107,11 +110,12 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const transcriptsConfiguration =
+      const transcriptsConfigurationRes =
         await LabsTranscriptsConfigurationResource.findByUserAndWorkspace({
           auth,
           userId: user.id,
         });
+      const transcriptsConfiguration = transcriptsConfigurationRes?.toJSON();
 
       if (!transcriptsConfiguration) {
         return res.status(200).json({
@@ -120,7 +124,7 @@ async function handler(
       }
 
       return res.status(200).json({
-        configuration: transcriptsConfiguration,
+        configuration: transcriptsConfiguration ?? null,
       });
 
     // Create.
@@ -214,7 +218,7 @@ async function handler(
 
       let isDefaultWorkspaceConfiguration = false;
 
-      if (isProviderWithWorkspaceConfiguration(provider)) {
+      if (isProviderWithDefaultWorkspaceConfiguration(provider)) {
         const currentDefaultConfiguration =
           await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider(
             {
@@ -240,9 +244,12 @@ async function handler(
           useConnectorConnection,
         });
 
+      const transcriptsConfigurationPost =
+        transcriptsConfigurationPostResource.toJSON() ?? null;
+
       return res
         .status(200)
-        .json({ configuration: transcriptsConfigurationPostResource });
+        .json({ configuration: transcriptsConfigurationPost });
 
     default:
       return apiError(req, res, {

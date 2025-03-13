@@ -6,10 +6,12 @@ import {
 } from "@dust-tt/sparkle";
 import type {
   DataSourceViewType,
+  ModelId,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
@@ -44,8 +46,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   ).map((dsv) => dsv.toJSON());
 
   const defaultStorageConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-      auth
+    await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+      auth.getNonNullableWorkspace()
     );
   const hasDefaultStorageConfiguration = !!defaultStorageConfiguration?.id;
 
@@ -98,7 +100,7 @@ export default function LabsTranscriptsIndex({
   const sendNotification = useSendNotification();
 
   const handleDisconnectProvider = async (
-    transcriptConfigurationId: number | null
+    transcriptConfigurationId: ModelId | null
   ) => {
     if (!transcriptConfigurationId) {
       return;
@@ -182,7 +184,10 @@ export default function LabsTranscriptsIndex({
 
             {transcriptsConfiguration && (
               <>
-                {!transcriptsConfiguration.useConnectorConnection && (
+                {(!isProviderWithDefaultWorkspaceConfiguration(
+                  transcriptsConfiguration.provider
+                ) ||
+                  transcriptsConfiguration.isDefaultWorkspaceConfiguration) && (
                   <StorageConfiguration
                     owner={owner}
                     transcriptsConfiguration={transcriptsConfiguration}

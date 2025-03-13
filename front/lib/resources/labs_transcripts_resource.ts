@@ -1,4 +1,10 @@
-import type { LabsTranscriptsProviderType, Result } from "@dust-tt/types";
+import type {
+  LabsTranscriptsConfigurationType,
+  LabsTranscriptsProviderType,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+} from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes } from "sequelize";
 import type {
@@ -37,13 +43,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   static async makeNew(
     blob: Omit<
       CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive" | "isDefaultFullStorage"
+      "isActive"
     >
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
       isActive: false,
-      isDefaultFullStorage: false,
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -137,15 +142,15 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ isActive });
   }
 
-  async setIsDefaultFullStorage(isDefaultFullStorage: boolean) {
-    if (this.isDefaultFullStorage === isDefaultFullStorage) {
+  async setIsDefault(isDefault: boolean) {
+    if (this.isDefaultWorkspaceConfiguration === isDefault) {
       return;
     }
 
     // Update all other configurations to be false.
-    if (isDefaultFullStorage) {
+    if (isDefault) {
       await LabsTranscriptsConfigurationModel.update(
-        { isDefaultFullStorage: false },
+        { isDefaultWorkspaceConfiguration: false },
         {
           where: {
             workspaceId: this.workspaceId,
@@ -154,40 +159,24 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       );
     }
 
-    return this.update({ isDefaultFullStorage });
+    return this.update({ isDefaultWorkspaceConfiguration: isDefault });
   }
 
-  async setDataSourceViewId(
-    auth: Authenticator,
-    dataSourceViewId: string | null
-  ) {
+  async setDataSourceViewId(dataSourceViewId: number | null) {
     if (dataSourceViewId === undefined) {
       return;
     }
 
-    if (dataSourceViewId === null) {
-      return this.update({ dataSourceViewId: null });
-    }
-
-    const dataSourceView = await DataSourceViewResource.fetchById(
-      auth,
-      dataSourceViewId
-    );
-
-    if (!dataSourceView || this.dataSourceViewId === dataSourceView.id) {
-      return;
-    }
-
-    return this.update({ dataSourceViewId: dataSourceView.id });
+    return this.update({ dataSourceViewId });
   }
 
-  static async fetchDefaultFullStorageConfigurationForWorkspace(
-    auth: Authenticator
+  static async fetchDefaultConfigurationForWorkspace(
+    workspace: LightWorkspaceType
   ): Promise<LabsTranscriptsConfigurationResource | null> {
     const configuration = await LabsTranscriptsConfigurationModel.findOne({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        isDefaultFullStorage: true,
+        workspaceId: workspace.id,
+        isDefaultWorkspaceConfiguration: true,
       },
     });
 
@@ -315,5 +304,20 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  toJSON(): LabsTranscriptsConfigurationType {
+    return {
+      id: this.id,
+      workspaceId: this.workspaceId,
+      connectionId: this.connectionId,
+      provider: this.provider,
+      agentConfigurationId: this.agentConfigurationId,
+      isActive: this.isActive,
+      isDefaultWorkspaceConfiguration: this.isDefaultWorkspaceConfiguration,
+      credentialId: this.credentialId,
+      dataSourceViewId: this.dataSourceViewId,
+      useConnectorConnection: this.useConnectorConnection,
+    };
   }
 }

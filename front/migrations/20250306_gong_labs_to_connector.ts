@@ -9,11 +9,7 @@ import {
 } from "@dust-tt/types";
 
 import config from "@app/lib/api/config";
-import {
-  Authenticator,
-  getFeatureFlags,
-  getOrCreateSystemApiKey,
-} from "@app/lib/auth";
+import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
 import {
   getDefaultDataSourceDescription,
   getDefaultDataSourceName,
@@ -62,10 +58,7 @@ async function getAuthsForWorkspacesWithGong(): Promise<
     }
     seenWorkspaceIds.add(workspace.id);
 
-    const flags = await getFeatureFlags(workspace);
-    if (flags.includes(LABS_STORAGE_FEATURE_FLAG)) {
-      authsAndConnectionId.push({ auth, connectionId: config.connectionId });
-    }
+    authsAndConnectionId.push({ auth, connectionId: config.connectionId });
   }
   return authsAndConnectionId;
 }

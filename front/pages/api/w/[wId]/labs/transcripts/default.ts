@@ -1,5 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isProviderWithWorkspaceConfiguration } from "@dust-tt/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -67,7 +67,7 @@ async function handler(
       }
 
       // Whitelist providers that allow workspace-wide configuration.
-      if (!isProviderWithWorkspaceConfiguration(provider)) {
+      if (!isProviderWithDefaultWorkspaceConfiguration(provider)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {

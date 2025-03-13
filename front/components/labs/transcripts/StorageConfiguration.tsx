@@ -8,21 +8,21 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
+  LabsTranscriptsConfigurationType,
   LightWorkspaceType,
   SpaceType,
 } from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 interface StorageConfigurationProps {
   owner: LightWorkspaceType;
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType;
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
     | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
@@ -40,12 +40,14 @@ export function StorageConfiguration({
   isSpacesLoading,
 }: StorageConfigurationProps) {
   const sendNotification = useSendNotification();
+  const updateTranscriptsConfiguration = useUpdateTranscriptsConfiguration({
+    workspaceId: owner.sId,
+    transcriptConfigurationId: transcriptsConfiguration.id,
+  });
 
   const [storeInFolder, setStoreInFolder] = useState(false);
   const [selectionConfigurations, setSelectionConfigurations] =
     useState<DataSourceViewSelectionConfigurations>({});
-  const workspaceId = owner.sId;
-  const transcriptConfigurationId = transcriptsConfiguration.id;
 
   useEffect(() => {
     setStoreInFolder(transcriptsConfiguration.dataSourceViewId !== null);
@@ -69,62 +71,33 @@ export function StorageConfiguration({
     }
   }, [transcriptsConfiguration.dataSourceViewId, dataSourcesViews]);
 
-  const makePatchRequest = useCallback(
-    async (
-      data: Partial<PatchTranscriptsConfiguration>,
-      successMessage: string
-    ) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
+  const handleSetTranscriptsStorageDataSourceView = async (
+    dataSourceView: DataSourceViewType | null
+  ) => {
+    if (!transcriptsConfiguration) {
+      return;
+    }
 
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update",
-          description: "Could not update the configuration. Please try again.",
-        });
-        return;
-      }
+    const success = await updateTranscriptsConfiguration({
+      dataSourceViewId: dataSourceView ? dataSourceView.id : null,
+    });
 
+    if (success) {
       sendNotification({
         type: "success",
         title: "Success!",
-        description: successMessage,
+        description: dataSourceView
+          ? "We will now store your meeting transcripts."
+          : "We will no longer store your meeting transcripts.",
       });
-    },
-    [workspaceId, transcriptConfigurationId, sendNotification]
-  );
-
-  const handleSetDataSource = async (
-    transcriptConfigurationId: number,
-    dataSourceView: DataSourceViewType | null
-  ) => {
-    let successMessage = "The transcripts will not be stored.";
-
-    if (dataSourceView) {
-      successMessage =
-        "The transcripts will be stored in the folder " +
-        dataSourceView.dataSource.name;
+      await mutateTranscriptsConfiguration();
     } else {
-      successMessage = "The transcripts will not be stored.";
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the configuration. Please try again.",
+      });
     }
-
-    await makePatchRequest(
-      {
-        dataSourceViewId: dataSourceView?.sId ?? null,
-      },
-      successMessage
-    );
-
-    await mutateTranscriptsConfiguration();
   };
 
   const handleSetStoreInFolder: Dispatch<SetStateAction<boolean>> = async (
@@ -138,7 +111,7 @@ export function StorageConfiguration({
 
     if (!newValue) {
       // When disabling storage, clear the data source view
-      await handleSetDataSource(transcriptsConfiguration.id, null);
+      await handleSetTranscriptsStorageDataSourceView(null);
       setSelectionConfigurations({});
     } else if (transcriptsConfiguration.dataSourceViewId) {
       // When enabling storage, restore the previous data source view if it exists
@@ -192,8 +165,9 @@ export function StorageConfiguration({
     );
 
     if (lastKey) {
-      const datasourceView = newSelectionConfigurations[lastKey].dataSourceView;
-      await handleSetDataSource(transcriptsConfiguration.id, datasourceView);
+      await handleSetTranscriptsStorageDataSourceView(
+        newSelectionConfigurations[lastKey].dataSourceView
+      );
     }
   };
 
@@ -203,7 +177,7 @@ export function StorageConfiguration({
         title="Store transcripts"
         description="After each transcribed meeting, store the full transcript in a Dust folder for later use."
       />
-      {transcriptsConfiguration.isDefaultFullStorage && (
+      {transcriptsConfiguration.isDefaultWorkspaceConfiguration && (
         <ContentMessage
           title="Default storage"
           variant="slate"

@@ -18,7 +18,6 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
   declare isActive: boolean;
 
   declare isDefaultWorkspaceConfiguration: boolean; // For default provider
-  declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
@@ -56,11 +55,6 @@ LabsTranscriptsConfigurationModel.init(
       defaultValue: false,
     },
     isDefaultWorkspaceConfiguration: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    isDefaultFullStorage: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

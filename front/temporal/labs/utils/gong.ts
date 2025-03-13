@@ -4,7 +4,6 @@ import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@dust-tt/types";
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 
@@ -106,12 +105,8 @@ export async function retrieveGongTranscripts(
     localLogger
   );
 
-  // TEMP: Get the last 2 weeks if labs_transcripts_full_storage FF is enabled.
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
-    ? 14
-    : 1;
-
+  // Only 1 day of history now as we don't need to store the calls anymore (native connector)
+  const daysOfHistory = 1;
   const fromDateTime = new Date(
     Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
   ).toISOString();

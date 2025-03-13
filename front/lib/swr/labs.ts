@@ -6,6 +6,7 @@ import type { Fetcher } from "swr";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -75,5 +76,28 @@ export function useLabsTranscriptsIsConnectorConnected({
     isConnectorConnectedLoading: !error && !data,
     isConnectorConnectedError: error,
     mutateIsConnectorConnected: mutate,
+  };
+}
+
+export function useUpdateTranscriptsConfiguration({
+  workspaceId,
+  transcriptConfigurationId,
+}: {
+  workspaceId: string;
+  transcriptConfigurationId: number;
+}) {
+  return async (data: Partial<PatchTranscriptsConfiguration>) => {
+    const response = await fetch(
+      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    return response.ok;
   };
 }

@@ -4,3 +4,7 @@ ALTER TABLE "public"."labs_transcripts_configurations" ADD COLUMN "useConnectorC
 UPDATE "public"."labs_transcripts_configurations"
 SET "useConnectorConnection" = true 
 WHERE "provider" = 'gong';
+
+UPDATE "public"."labs_transcripts_configurations" 
+SET "isDefaultWorkspaceConfiguration" = true 
+WHERE "isDefaultFullStorage" = true;

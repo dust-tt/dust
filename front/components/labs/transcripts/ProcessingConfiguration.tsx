@@ -5,12 +5,12 @@ import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@dust-tt/types";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 interface ProcessingConfigurationProps {
   owner: LightWorkspaceType;
@@ -36,69 +36,57 @@ export function ProcessingConfiguration({
           ) ?? null
         : null
     );
+
   const sendNotification = useSendNotification();
-
-  const workspaceId = owner.sId;
-
-  const transcriptConfigurationId = transcriptsConfiguration.id;
-
-  const makePatchRequest = useCallback(
-    async (
-      data: Partial<PatchTranscriptsConfiguration>,
-      successMessage: string
-    ) => {
-      const response = await fetch(
-        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (!response.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update",
-          description: "Could not update the configuration. Please try again.",
-        });
-        return;
-      }
-
-      sendNotification({
-        type: "success",
-        title: "Success!",
-        description: successMessage,
-      });
-    },
-    [workspaceId, transcriptConfigurationId, sendNotification]
-  );
+  const updateTranscriptsConfiguration = useUpdateTranscriptsConfiguration({
+    workspaceId: owner.sId,
+    transcriptConfigurationId: transcriptsConfiguration.id,
+  });
 
   const handleSelectAssistant = async (
     assistant: LightAgentConfigurationType
   ) => {
     setAssistantSelected(assistant);
-    await makePatchRequest(
-      {
-        isActive: transcriptsConfiguration.isActive,
-        agentConfigurationId: assistant.sId,
-      },
-      `The agent that will help you summarize your transcripts has been set to @${assistant.name}`
-    );
+    const success = await updateTranscriptsConfiguration({
+      isActive: transcriptsConfiguration.isActive,
+      agentConfigurationId: assistant.sId,
+    });
 
-    await mutateTranscriptsConfiguration();
+    if (success) {
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: `The agent that will help you summarize your transcripts has been set to @${assistant.name}`,
+      });
+      await mutateTranscriptsConfiguration();
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the configuration. Please try again.",
+      });
+    }
   };
 
   const handleSetIsActive = async (isActive: boolean) => {
-    await makePatchRequest(
-      { isActive },
-      isActive
-        ? "We will start summarizing your meeting transcripts."
-        : "We will no longer summarize your meeting transcripts."
-    );
-    await mutateTranscriptsConfiguration();
+    const success = await updateTranscriptsConfiguration({ isActive });
+
+    if (success) {
+      sendNotification({
+        type: "success",
+        title: "Success!",
+        description: isActive
+          ? "We will start summarizing your meeting transcripts."
+          : "We will no longer summarize your meeting transcripts.",
+      });
+      await mutateTranscriptsConfiguration();
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to update",
+        description: "Could not update the configuration. Please try again.",
+      });
+    }
   };
 
   useEffect(() => {

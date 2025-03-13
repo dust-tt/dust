@@ -1,13 +1,14 @@
+import { ModelId } from "../shared/model_id";
+
 export type LabsTranscriptsConfigurationType = {
-  id: string;
-  workspaceId: string;
+  id: ModelId;
+  workspaceId: ModelId;
   connectionId: string | null;
-  provider: string;
+  provider: "google_drive" | "gong" | "modjo";
   agentConfigurationId: string | null;
   isActive: boolean;
   isDefaultWorkspaceConfiguration: boolean;
-  isDefaultFullStorage: boolean;
   credentialId: string | null;
-  dataSourceViewId: string | null;
+  dataSourceViewId: ModelId | null;
   useConnectorConnection: boolean;
 };

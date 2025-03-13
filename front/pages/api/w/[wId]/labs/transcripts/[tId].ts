@@ -1,4 +1,5 @@
 import type { WithAPIErrorResponse } from "@dust-tt/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -22,7 +23,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
-  dataSourceViewId: t.union([t.string, t.null]),
+  dataSourceViewId: t.union([t.number, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -128,21 +129,19 @@ async function handler(
       }
 
       if (dataSourceViewId !== undefined) {
-        await transcriptsConfiguration.setDataSourceViewId(
-          auth,
-          dataSourceViewId
-        );
+        await transcriptsConfiguration.setDataSourceViewId(dataSourceViewId);
 
-        const flags = await getFeatureFlags(owner);
-        if (flags.includes("labs_transcripts_full_storage")) {
+        if (
+          isProviderWithDefaultWorkspaceConfiguration(
+            transcriptsConfiguration.provider
+          )
+        ) {
           const defaultFullStorageConfiguration =
-            await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-              auth
+            await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+              auth.getNonNullableWorkspace()
             );
           if (defaultFullStorageConfiguration === null) {
-            await transcriptsConfiguration.setIsDefaultFullStorage(
-              !!dataSourceViewId
-            );
+            await transcriptsConfiguration.setIsDefault(!!dataSourceViewId);
           }
         }
       }
