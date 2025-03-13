@@ -233,10 +233,10 @@ export async function getUserConversations(
   const owner = auth.workspace();
   const user = auth.user();
   if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
+    throw new Error("Unexpected `auth` without a `workspace`.");
   }
   if (!user) {
-    throw new Error("Unexpected `auth` without `workspace`.");
+    throw new Error("Unexpected `auth` without a `user`.");
   }
 
   const participations = await ConversationParticipant.findAll({
