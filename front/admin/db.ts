@@ -11,6 +11,11 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
+import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
@@ -151,6 +156,7 @@ async function main() {
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
+  await AgentMCPServerConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -172,7 +178,8 @@ async function main() {
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
-
+  await AgentMCPAction.sync({ alter: true });
+  await AgentMCPActionOutputItem.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 
