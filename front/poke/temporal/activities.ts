@@ -1,5 +1,4 @@
 import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import assert from "assert";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
@@ -24,7 +23,6 @@ import {
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
