@@ -3,6 +3,7 @@ import {
   CitationClose,
   CitationDescription,
   CitationIcons,
+  CitationImage,
   CitationTitle,
   DocumentIcon,
   Icon,
@@ -122,65 +123,72 @@ export function InputBarAttachments({
 
   return (
     <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
-      {allAttachments.map((attachment) => (
-        <Tooltip
-          key={`${attachment.type}-${attachment.id}`}
-          tooltipTriggerAsChild
-          trigger={
-            <Citation
-              className="w-40"
-              isLoading={attachment.type === "file" && attachment.isUploading}
-              action={
-                <CitationClose
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    attachment.onRemove();
-                  }}
-                />
-              }
-            >
-              {attachment.type === "file" ? (
-                <>
-                  <CitationIcons>
+      {allAttachments.map((attachment) => {
+        const isFile = attachment.type === "file";
+
+        return (
+          <Tooltip
+            key={`${attachment.type}-${attachment.id}`}
+            tooltipTriggerAsChild
+            trigger={
+              <Citation
+                className="w-40"
+                isLoading={attachment.type === "file" && attachment.isUploading}
+                action={
+                  <CitationClose
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      attachment.onRemove();
+                    }}
+                  />
+                }
+              >
+                {isFile && attachment.preview && (
+                  <CitationImage imgSrc={attachment.preview} />
+                )}
+
+                <CitationIcons>
+                  {isFile ? (
                     <Icon
                       visual={attachment.preview ? ImageIcon : DocumentIcon}
                     />
-                  </CitationIcons>
-                  <CitationTitle className="truncate">
-                    {attachment.title}
-                  </CitationTitle>
-                </>
-              ) : (
-                <>
-                  <CitationIcons>{attachment.visual}</CitationIcons>
-                  <CitationTitle className="truncate">
-                    {attachment.title}
-                  </CitationTitle>
-                  <CitationDescription className="truncate">
-                    {attachment.spaceName}
+                  ) : (
+                    attachment.visual
+                  )}
+                </CitationIcons>
+
+                <CitationTitle className="truncate text-ellipsis">
+                  {attachment.title}
+                </CitationTitle>
+
+                {!isFile && (
+                  <CitationDescription className="truncate text-ellipsis">
+                    <div className="flex items-center gap-1">
+                      <span>{attachment.spaceName}</span>
+                    </div>
                   </CitationDescription>
-                </>
-              )}
-            </Citation>
-          }
-          label={
-            attachment.type === "file" ? (
-              attachment.title
-            ) : (
-              <div className="flex flex-col gap-1">
-                <div className="font-bold">{attachment.title}</div>
-                <div className="flex gap-1 pt-1 text-sm">
-                  <Icon visual={attachment.spaceIcon} />
-                  <p>{attachment.spaceName}</p>
+                )}
+              </Citation>
+            }
+            label={
+              attachment.type === "file" ? (
+                attachment.title
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <div className="font-bold">{attachment.title}</div>
+                  <div className="flex gap-1 pt-1 text-sm">
+                    <Icon visual={attachment.spaceIcon} />
+                    <p>{attachment.spaceName}</p>
+                  </div>
+                  <div className="text-sm text-element-600">
+                    {attachment.path}
+                  </div>
                 </div>
-                <div className="text-sm text-element-600">
-                  {attachment.path}
-                </div>
-              </div>
-            )
-          }
-        />
-      ))}
+              )
+            }
+          />
+        );
+      })}
     </div>
   );
 }
