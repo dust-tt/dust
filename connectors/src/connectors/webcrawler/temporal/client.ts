@@ -10,7 +10,6 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
   scheduleExists,
-  scheduleExists,
   triggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
