@@ -19,7 +19,12 @@ async function handler(
 
   const cRes = await finalizeConnection(provider, req.query);
   if (!cRes.isOk()) {
-    res.status(400).end();
+    res.status(500).json({
+      error: {
+        type: "internal_server_error",
+        message: cRes.error.message,
+      },
+    });
     return;
   }
 
