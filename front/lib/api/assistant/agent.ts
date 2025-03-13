@@ -691,7 +691,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
-    if (typeof output.generation === "string") {
+    if (typeof output.generation === "string" && contentParser.getContent()) {
       yield {
         type: "agent_message_content",
         created: Date.now(),
