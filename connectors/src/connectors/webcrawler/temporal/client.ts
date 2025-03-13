@@ -10,6 +10,8 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
   scheduleExists,
+  scheduleExists,
+  triggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -112,17 +114,18 @@ export async function stopCrawlWebsiteWorkflow(
   }
 }
 
-export async function launchCrawlWebsiteSchedulerForWorkspace({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
-  const scheduleId = `webcrawler-scheduler-${workspaceId}`;
+export async function launchCrawlWebsiteScheduler() {
+  const scheduleId = `webcrawler-scheduler`;
 
   // Only create the schedule if it doesn't already exist.
-  const scheduleAlreadyExists = await scheduleExists({ scheduleId });
+  const scheduleAlreadyExists = await scheduleExists({
+    scheduleId,
+  });
+  // If the schedule already exists, trigger it.
   if (scheduleAlreadyExists) {
-    return;
+    return triggerSchedule({
+      scheduleId,
+    });
   }
 
   return createSchedule({
@@ -130,12 +133,12 @@ export async function launchCrawlWebsiteSchedulerForWorkspace({
     action: {
       type: "startWorkflow",
       workflowType: crawlWebsiteSchedulerWorkflow,
-      args: [workspaceId],
+      args: [],
       taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
     },
     spec: {
       intervals: [{ every: "1h" }],
-      jitter: "5m", // Add some randomness to avoid all workspaces syncing at the same time.
+      jitter: "5m", // Add some randomness to avoid syncing on the exact hour.
     },
     policies: {
       overlap: ScheduleOverlapPolicy.SKIP,

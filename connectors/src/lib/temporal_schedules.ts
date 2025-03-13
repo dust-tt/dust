@@ -137,7 +137,7 @@ export async function triggerSchedule({
   connector,
 }: {
   scheduleId: string;
-  connector: ConnectorResource;
+  connector?: ConnectorResource;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
@@ -155,7 +155,7 @@ export async function triggerSchedule({
     if (!(error instanceof ScheduleNotFoundError)) {
       logger.error(
         {
-          connectorId: connector.id,
+          connectorId: connector?.id,
           scheduleId,
           error,
         },
@@ -211,13 +211,13 @@ export async function scheduleExists({ scheduleId }: { scheduleId: string }) {
     const scheduleHandle = client.schedule.getHandle(scheduleId);
 
     // This will actually throw an error if the schedule does not exist.
-    await scheduleHandle.describe();
+    const scheduleDescription = await scheduleHandle.describe();
+
+    return true;
   } catch (error) {
     if (!(error instanceof ScheduleNotFoundError)) {
       throw error;
     }
     return false;
   }
-
-  return true;
 }

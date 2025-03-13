@@ -24,7 +24,6 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
-import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -150,11 +149,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     return c;
   }
 
-  static async getConnectorIdsForWebsitesToCrawl({
-    workspaceId,
-  }: {
-    workspaceId: string;
-  }) {
+  static async getConnectorIdsForWebsitesToCrawl() {
     const frequencyToSQLQuery: Record<CrawlingFrequency, string> = {
       never: "never",
       daily: "1 day",
@@ -170,13 +165,6 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       const sql = frequencyToSQLQuery[frequency];
       const websites = await this.model.findAll({
         attributes: ["connectorId"],
-        include: [
-          {
-            model: ConnectorModel,
-            where: { workspaceId },
-            required: true,
-          },
-        ],
         where: {
           lastCrawledAt: {
             [Op.lt]: literal(`NOW() - INTERVAL '${sql}'`),
