@@ -18,6 +18,7 @@ import {
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner,
@@ -807,13 +808,11 @@ export function ConnectorPermissionsModal({
                       </div>
                     </>
                   )}
-
-                  <div className="p-1 text-xl font-bold">
-                    {connectorConfiguration.selectLabel}
-                  </div>
-
                   {!connectorConfiguration.isResourceSelectionDisabled && (
                     <>
+                      <div className="p-1 text-xl font-bold">
+                        {connectorConfiguration.selectLabel}
+                      </div>
                       <ContentNodeTree
                         isSearchEnabled={connectorConfiguration.isSearchEnabled}
                         isRoundedBackground={true}
@@ -828,19 +827,6 @@ export function ConnectorPermissionsModal({
                         }
                         showExpand={connectorConfiguration?.isNested}
                       />
-                      <div className="flex justify-end gap-2 border-t pt-4">
-                        <Button
-                          label="Cancel"
-                          variant="outline"
-                          onClick={() => closeModal(false)}
-                        />
-                        <Button
-                          label={saving ? "Saving..." : "Save"}
-                          variant="primary"
-                          disabled={isUnchanged || saving}
-                          onClick={save}
-                        />
-                      </div>
                     </>
                   )}
 
@@ -853,6 +839,21 @@ export function ConnectorPermissionsModal({
                   )}
                 </div>
               </SheetContainer>
+              {!connectorConfiguration.isResourceSelectionDisabled && (
+                <SheetFooter
+                  leftButtonProps={{
+                    label: "Cancel",
+                    variant: "outline",
+                    onClick: () => closeModal(false),
+                  }}
+                  rightButtonProps={{
+                    label: saving ? "Saving..." : "Save",
+                    variant: "primary",
+                    disabled: isUnchanged || saving,
+                    onClick: save,
+                  }}
+                />
+              )}
             </>
           )}
         </SheetContent>
