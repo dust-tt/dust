@@ -104,7 +104,7 @@ export async function handleUpdatePermissions(
   if (connectionIdRes.isErr()) {
     sendNotification({
       type: "error",
-      title: "Failed to update the permissions of the Data Source",
+      title: "Failed to update the permissions",
       description: connectionIdRes.error.message,
     });
     return;
@@ -119,7 +119,7 @@ export async function handleUpdatePermissions(
   if (updateRes.error) {
     sendNotification({
       type: "error",
-      title: "Failed to update the permissions of the Data Source",
+      title: "Failed to update the permissions",
       description: updateRes.error,
     });
   } else {
