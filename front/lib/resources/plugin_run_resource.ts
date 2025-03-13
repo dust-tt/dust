@@ -80,7 +80,7 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
 
     const pluginRun = await this.model.create({
       args: JSON.stringify(sanitizedArgs),
-      author: author.toJSON().email,
+      author: author.email,
       pluginId: plugin.manifest.id,
       status: "pending",
       workspaceId: workspace?.id,

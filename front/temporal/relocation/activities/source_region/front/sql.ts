@@ -7,7 +7,10 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -18,7 +21,6 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import { UserResource } from "@app/lib/resources/user_resource";
 
 export async function readCoreEntitiesFromSourceRegion({
   destRegion,
@@ -54,11 +56,25 @@ export async function readCoreEntitiesFromSourceRegion({
   });
 
   // Fetch all associated users of the workspace.
-  const users = await UserResource.fetchByModelIds(
-    memberships.map((m) => m.userId)
-  );
+  const users = await UserModel.findAll({
+    where: {
+      id: {
+        [Op.in]: memberships.map((m) => m.userId),
+      },
+    },
+    // We need the raw SQL.
+    raw: true,
+  });
+
   // Fetch all associated users metadata of the workspace.
-  const userMetadata = users.map((user) => user.getAllMetadata());
+  const userMetadata = await UserMetadataModel.findAll({
+    where: {
+      userId: {
+        [Op.in]: memberships.map((m) => m.userId),
+      },
+    },
+    raw: true,
+  });
 
   const subscriptions = await frontSequelize.query<{ planId: ModelId }>(
     'SELECT * FROM subscriptions WHERE "workspaceId" = :workspaceId',

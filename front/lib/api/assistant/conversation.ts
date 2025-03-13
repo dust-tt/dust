@@ -311,7 +311,7 @@ async function createOrUpdateParticipation({
       const participant = await ConversationParticipant.findOne({
         where: {
           conversationId: conversation.id,
-          userId: user.toJSON().id,
+          userId: user.id,
         },
         transaction: t,
       });

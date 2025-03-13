@@ -183,6 +183,8 @@ export class UserResource extends BaseResource<UserModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
+    await this.deleteAllMetadata();
+
     try {
       await this.model.destroy({
         where: {

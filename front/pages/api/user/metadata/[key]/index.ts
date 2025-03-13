@@ -50,7 +50,7 @@ async function handler(
     });
   }
 
-  const key = req.query.key;
+  const { key } = req.query;
 
   if (typeof key !== "string") {
     return apiError(req, res, {

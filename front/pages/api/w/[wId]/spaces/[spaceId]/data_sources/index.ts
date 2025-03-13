@@ -412,7 +412,7 @@ const handleDataSourceWithProvider = async ({
         workspaceId: owner.id,
       },
       space,
-      auth.user()?.toJSON()
+      auth.user()
     );
 
   const { dataSource } = dataSourceView;
