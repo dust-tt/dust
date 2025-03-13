@@ -52,13 +52,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [
-    { spaces, dataSourceViews, dustApps },
-    configuration,
-  ] = await Promise.all([
-    getAccessibleSourcesAndApps(auth),
-    getAgentConfiguration(auth, context.params?.aId as string),
-  ]);
+  const [{ spaces, dataSourceViews, dustApps }, configuration] =
+    await Promise.all([
+      getAccessibleSourcesAndApps(auth),
+      getAgentConfiguration(auth, context.params?.aId as string),
+    ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
     return {
