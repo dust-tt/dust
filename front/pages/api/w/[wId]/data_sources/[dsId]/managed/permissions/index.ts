@@ -1,5 +1,6 @@
 import type {
   ConnectorPermission,
+  ContentNode,
   ContentNodeWithParent,
   DataSourceType,
   WithAPIErrorResponse,
@@ -35,8 +36,10 @@ const SetConnectorPermissionsRequestBodySchema = t.type({
   ),
 });
 
-export type GetDataSourcePermissionsResponseBody = {
-  resources: ContentNodeWithParent[];
+export type GetDataSourcePermissionsResponseBody<
+  T extends ConnectorPermission = ConnectorPermission,
+> = {
+  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
 };
 
 export type SetDataSourcePermissionsResponseBody = {

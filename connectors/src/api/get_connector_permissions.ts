@@ -1,5 +1,6 @@
 import type {
   ConnectorPermission,
+  ContentNode,
   ContentNodeWithParent,
   Result,
   WithConnectorsAPIErrorReponse,
@@ -18,13 +19,19 @@ import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
-type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
-  resources: ContentNodeWithParent[];
+type GetConnectorPermissionsRes<
+  T extends ConnectorPermission | null = ConnectorPermission,
+> = WithConnectorsAPIErrorReponse<{
+  resources: T extends "read" ? ContentNodeWithParent[] : ContentNode[];
 }>;
 
 const _getConnectorPermissions = async (
-  req: Request<{ connector_id: string }, GetConnectorPermissionsRes, undefined>,
-  res: Response<GetConnectorPermissionsRes>
+  req: Request<
+    { connector_id: string },
+    GetConnectorPermissionsRes<ConnectorPermission>,
+    undefined
+  >,
+  res: Response<GetConnectorPermissionsRes<ConnectorPermission>>
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
@@ -132,51 +139,57 @@ const _getConnectorPermissions = async (
   }
 
   // Augment the resources with their parent internal ids.
-  const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
-    await concurrentExecutor(
-      pRes.value,
-      async (resource) => {
-        const res = await getConnectorManager({
-          connectorProvider: connector.type,
-          connectorId: connector.id,
-        }).retrieveContentNodeParents({
-          internalId: resource.internalId,
-          memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
-        });
+  if (filterPermission === "read") {
+    const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
+      await concurrentExecutor(
+        pRes.value,
+        async (resource) => {
+          const res = await getConnectorManager({
+            connectorProvider: connector.type,
+            connectorId: connector.id,
+          }).retrieveContentNodeParents({
+            internalId: resource.internalId,
+            memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
+          });
 
-        if (res.isErr()) {
-          return new Err(res.error);
+          if (res.isErr()) {
+            return new Err(res.error);
+          }
+
+          return new Ok({
+            ...resource,
+            parentInternalIds: res.value,
+          });
+        },
+        {
+          concurrency: 10,
         }
+      );
 
-        return new Ok({
-          ...resource,
-          parentInternalIds: res.value,
-        });
-      },
-      {
-        concurrency: 10,
-      }
-    );
+    const hasErrors = resourcesWithParentsResults.some((r) => r.isErr());
+    if (hasErrors) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Error retrieving content node parents: ${removeNulls(
+            resourcesWithParentsResults.map((r) =>
+              r.isErr() ? r.error.message : null
+            )
+          ).join(", ")}`,
+        },
+      });
+    }
 
-  const hasErrors = resourcesWithParentsResults.some((r) => r.isErr());
-  if (hasErrors) {
-    return apiError(req, res, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Error retrieving content node parents: ${removeNulls(
-          resourcesWithParentsResults.map((r) =>
-            r.isErr() ? r.error.message : null
-          )
-        ).join(", ")}`,
-      },
+    return res.status(200).json({
+      resources: removeNulls(
+        resourcesWithParentsResults.map((r) => (r.isOk() ? r.value : null))
+      ),
     });
   }
 
   return res.status(200).json({
-    resources: removeNulls(
-      resourcesWithParentsResults.map((r) => (r.isOk() ? r.value : null))
-    ),
+    resources: pRes.value,
   });
 };
 

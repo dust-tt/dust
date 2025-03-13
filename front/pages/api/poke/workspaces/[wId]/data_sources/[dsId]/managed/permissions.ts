@@ -1,4 +1,4 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { ContentNode, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -12,7 +12,7 @@ import { getManagedDataSourcePermissionsHandler } from "@app/pages/api/w/[wId]/d
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
-    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody>
+    WithAPIErrorResponse<GetDataSourcePermissionsResponseBody<ContentNode>>
   >,
   session: SessionWithUser
 ): Promise<void> {
