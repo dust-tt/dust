@@ -25,10 +25,7 @@ import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 
-const SearchRequestBody = t.type({
-  query: t.string,
-  // should use ContentNodesViewTypeCodec, but the type system
-  // fails to infer the type correctly.
+const BaseSearchBody = t.type({
   viewType: t.union([
     t.literal("table"),
     t.literal("document"),
@@ -36,7 +33,30 @@ const SearchRequestBody = t.type({
   ]),
   spaceIds: t.union([t.array(t.string), t.undefined]),
   includeDataSources: t.boolean,
+  limit: t.number,
 });
+
+const TextSearchBody = t.intersection([
+  BaseSearchBody,
+  t.type({
+    query: t.string,
+  }),
+  t.partial({
+    nodeIds: t.undefined,
+  }),
+]);
+
+const NodeIdSearchBody = t.intersection([
+  BaseSearchBody,
+  t.type({
+    nodeIds: t.array(t.string),
+  }),
+  t.partial({
+    query: t.undefined,
+  }),
+]);
+
+const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -76,7 +96,7 @@ async function handler(
     });
   }
 
-  const { query, includeDataSources, viewType, spaceIds } =
+  const { query, includeDataSources, viewType, spaceIds, nodeIds } =
     bodyValidation.right;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -126,6 +146,7 @@ async function handler(
       excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
       includeDataSources,
       viewType,
+      nodeIds,
     }
   );
   const paginationRes = getCursorPaginationParams(req);
