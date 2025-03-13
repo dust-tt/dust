@@ -251,6 +251,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     let fileSid: string | null = null;
     let snippet: string | null = null;
     let generatedTables: string[] = [];
+    let nodeId: string | null = null;
+    let nodeDataSourceViewId: string | null = null;
 
     if (this.fileId) {
       const file = await FileResource.fetchByModelId(this.fileId);
@@ -261,11 +263,24 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       }
     }
 
+    if (this.nodeId) {
+      nodeId = this.nodeId;
+    }
+
+    if (this.nodeDataSourceViewId) {
+      nodeDataSourceViewId = DataSourceViewResource.modelIdToSId({
+        id: this.nodeDataSourceViewId,
+        workspaceId: owner.id,
+      });
+    }
+
     return {
       id: message.id,
       fileId: fileSid,
       snippet: snippet,
       generatedTables: generatedTables,
+      nodeId: nodeId,
+      nodeDataSourceViewId: nodeDataSourceViewId,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "content_fragment",

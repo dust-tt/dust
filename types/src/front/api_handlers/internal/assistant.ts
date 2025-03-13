@@ -1,6 +1,6 @@
 import * as t from "io-ts";
 
-import { MIME_TYPES } from "../../../shared/internal_mime_types";
+import { MIME_TYPES_VALUES } from "../../../shared/internal_mime_types";
 import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
@@ -32,9 +32,7 @@ export const getSupportedInlinedContentType = () => {
 };
 
 export const getSupportedContentNodeContentType = () => {
-  const [first, second, ...rest] = Object.values(MIME_TYPES).flatMap((value) =>
-    Object.values(value).map((v) => v)
-  );
+  const [first, second, ...rest] = MIME_TYPES_VALUES;
   return t.union([
     t.literal(first),
     t.literal(second),

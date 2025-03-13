@@ -21,6 +21,8 @@ export type ContentFragmentType = {
   id: ModelId;
   sId: string;
   fileId: string | null;
+  nodeId: string | null;
+  nodeDataSourceViewId: string | null;
   snippet: string | null;
   generatedTables: string[];
   created: number;

@@ -24,7 +24,7 @@ interface ContentFragmentBlob {
   contentType: DustMimeType | SupportedFileContentType;
   fileId: ModelId | null;
   nodeId: string | null;
-  dataSourceViewId: ModelId | null;
+  nodeDataSourceViewId: ModelId | null;
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
@@ -103,14 +103,14 @@ export async function getContentFragmentBlob(
       sourceUrl,
       textBytes: file.fileSize,
       nodeId: null,
-      dataSourceViewId: null,
+      nodeDataSourceViewId: null,
       title,
     });
   } else if (isContentFragmentInputWithContentNode(cf)) {
     return new Ok({
       contentType: cf.contentType,
       nodeId: cf.nodeId,
-      dataSourceViewId: getResourceIdFromSId(cf.dataSourceViewId),
+      nodeDataSourceViewId: getResourceIdFromSId(cf.dataSourceViewId),
       sourceUrl: null,
       textBytes: null,
       fileId: null,

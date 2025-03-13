@@ -49,6 +49,9 @@ async function getJITActions(
   actions.push(...supportingActions);
 
   if (files.length > 0) {
+    // conversation_include_file_action
+    actions.push(makeConversationIncludeFileConfiguration());
+
     // Check tables for the table query action.
     const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
 
@@ -124,9 +127,6 @@ async function getJITActions(
         actions.push(action);
       }
     }
-
-    // conversation_include_file_action
-    actions.push(makeConversationIncludeFileConfiguration());
   }
 
   return actions;

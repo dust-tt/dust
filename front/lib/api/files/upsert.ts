@@ -8,6 +8,7 @@ import type {
 import {
   assertNever,
   Err,
+  isDustMimeType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -378,6 +379,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedPlainTextContentType(contentType)) {
+    return undefined;
+  }
+
+  // Processing is assumed to be irrelevant for internal mime types.
+  if (isDustMimeType(contentType)) {
     return undefined;
   }
 
