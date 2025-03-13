@@ -3,7 +3,6 @@ import type {
   AppType,
   DataSourceViewType,
   PlanType,
-  PlatformActionsConfigurationType,
   SpaceType,
   SubscriptionType,
   WorkspaceType,
@@ -25,7 +24,6 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { PlatformActionsConfigurationResource } from "@app/lib/resources/platform_actions_configuration_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];
@@ -38,7 +36,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   plan: PlanType;
   spaces: SpaceType[];
   subscription: SubscriptionType;
-  platformActionsConfigurations: PlatformActionsConfigurationType[];
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const plan = auth.plan();
@@ -58,11 +55,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const [
     { spaces, dataSourceViews, dustApps },
     configuration,
-    platformActionsConfigurations,
   ] = await Promise.all([
     getAccessibleSourcesAndApps(auth),
     getAgentConfiguration(auth, context.params?.aId as string),
-    PlatformActionsConfigurationResource.listByWorkspace(auth),
   ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {
@@ -101,9 +96,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       plan,
       subscription,
       spaces: spaces.map((s) => s.toJSON()),
-      platformActionsConfigurations: platformActionsConfigurations.map((c) =>
-        c.toJSON()
-      ),
     },
   };
 });
@@ -119,7 +111,6 @@ export default function EditAssistant({
   owner,
   plan,
   subscription,
-  platformActionsConfigurations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   throwIfInvalidAgentConfiguration(agentConfiguration);
 
@@ -136,7 +127,6 @@ export default function EditAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
-      platformActionsConfigurations={platformActionsConfigurations}
     >
       <AssistantBuilder
         owner={owner}
