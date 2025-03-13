@@ -44,9 +44,11 @@ export async function crawlWebsiteWorkflow(
   connectorId: ModelId
 ): Promise<void> {
   const startedAtTs = Date.now();
+
   await CancellationScope.cancellable(
     crawlWebsiteByConnectorId.bind(null, connectorId)
   );
+
   await webCrawlerGarbageCollector(connectorId, startedAtTs);
 }
 
@@ -62,14 +64,6 @@ export async function crawlWebsiteSchedulerWorkflow({
   const connectorIds = await getConnectorIdsForWebsitesToCrawl({
     workspaceId,
   });
-
-  logger.info(
-    {
-      workspaceId,
-      connectorIds,
-    },
-    "Crawling websites"
-  );
 
   for (const connectorId of connectorIds) {
     // We mark the website as crawled before starting the workflow to avoid starting the same
