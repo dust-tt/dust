@@ -9,7 +9,7 @@ import {
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
 import { setupOAuthConnection } from "@dust-tt/types";
 import { useState } from "react";
@@ -27,7 +27,7 @@ interface ProviderSelectionProps {
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
     | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
 }
 
 export function ProviderSelection({
