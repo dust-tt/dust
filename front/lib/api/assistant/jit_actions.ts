@@ -82,7 +82,7 @@ async function getJITActions(
           "No default datasource view found for conversation when trying to get JIT actions"
         );
 
-        return [];
+        return actions;
       }
 
       if (filesUsableAsTableQuery.length > 0) {
