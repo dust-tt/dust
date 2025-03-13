@@ -439,6 +439,15 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setPermissions({
     permissions,
   }: {

@@ -31,6 +31,7 @@ import type {
   ConnectorProvider,
   ConnectorType,
   ContentNode,
+  ContentNodeWithParent,
   DataSourceType,
   DataSourceViewType,
   LightWorkspaceType,
@@ -603,7 +604,9 @@ export function ConnectorPermissionsModal({
 
   const initialTreeSelectionModel = useMemo(
     () =>
-      allSelectedResources.reduce<Record<string, ContentNodeTreeItemStatus>>(
+      allSelectedResources.reduce<
+        Record<string, ContentNodeTreeItemStatus<ContentNodeWithParent>>
+      >(
         (acc, r) => ({
           ...acc,
           [r.internalId]: {
@@ -611,7 +614,7 @@ export function ConnectorPermissionsModal({
             node: r,
             // content nodes are not synced yet so we cannot access their parents via permissions
             // this is not an issue for this component
-            parents: null,
+            parents: r.parentInternalIds ?? [],
           },
         }),
         {}

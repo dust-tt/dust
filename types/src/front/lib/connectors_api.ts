@@ -107,7 +107,7 @@ export interface ContentNodeWithParent extends ContentNode {
 }
 
 type GetContentNodesReturnType<Key extends string> = ConnectorsAPIResponse<{
-  [K in Key]: ContentNode[];
+  [K in Key]: ContentNodeWithParent[];
 }>;
 
 export type GoogleDriveFolderType = {

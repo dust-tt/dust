@@ -244,6 +244,15 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
     return new Ok([]);
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // Gong only let you select root nodes.
+    return new Ok([internalId]);
+  }
+
   async setPermissions(): Promise<Result<void, Error>> {
     throw new Error("Method not supported.");
   }

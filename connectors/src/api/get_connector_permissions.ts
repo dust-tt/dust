@@ -1,9 +1,16 @@
 import type {
   ConnectorPermission,
-  ContentNode,
+  ContentNodeWithParent,
+  Result,
   WithConnectorsAPIErrorReponse,
 } from "@dust-tt/types";
-import { assertNever, isValidContentNodesViewType } from "@dust-tt/types";
+import {
+  assertNever,
+  concurrentExecutor,
+  Err,
+  isValidContentNodesViewType,
+  Ok,
+} from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
@@ -11,7 +18,7 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
-  resources: ContentNode[];
+  resources: ContentNodeWithParent[];
 }>;
 
 const _getConnectorPermissions = async (
@@ -123,8 +130,50 @@ const _getConnectorPermissions = async (
     }
   }
 
+  const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
+    await concurrentExecutor(
+      pRes.value,
+      async (resource) => {
+        const res = await getConnectorManager({
+          connectorProvider: connector.type,
+          connectorId: connector.id,
+        }).retrieveContentNodeParents({
+          internalId: resource.internalId,
+          memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
+        });
+
+        if (res.isErr()) {
+          return new Err(res.error);
+        }
+
+        return new Ok({
+          ...resource,
+          parentInternalIds: res.value,
+        });
+      },
+      {
+        concurrency: 10,
+      }
+    );
+
+  const hasErrors = resourcesWithParentsResults.some((r) => r.isErr());
+  if (hasErrors) {
+    return apiError(req, res, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: `Error retrieving content node parents: ${resourcesWithParentsResults
+          .filter((r) => r.isErr())
+          .map((r) => r.error.message)
+          .join(", ")}`,
+      },
+    });
+  }
+
   return res.status(200).json({
-    resources: pRes.value,
+    resources: resourcesWithParentsResults
+      .filter((r) => r.isOk())
+      .map((r) => r.value),
   });
 };
 

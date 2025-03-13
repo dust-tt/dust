@@ -55,9 +55,9 @@ export type UseResourcesHook = (parentId: string | null) => {
   resourcesError?: APIError | null;
 };
 
-export type ContentNodeTreeItemStatus = {
+export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   isSelected: boolean;
-  node: ContentNode;
+  node: T;
   // when setting permissions on a connector, nodes that are to be selected /
   // unselected may not be synced yet so we cannot easily access their parents
   // In that case parents is null
