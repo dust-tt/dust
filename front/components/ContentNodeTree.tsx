@@ -55,14 +55,10 @@ export type UseResourcesHook = (parentId: string | null) => {
   resourcesError?: APIError | null;
 };
 
-export type ContentNodeTreeItemStatus = {
+export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   isSelected: boolean;
-  node: ContentNode;
-  // when setting permissions on a connector, nodes that are to be selected /
-  // unselected may not be synced yet so we cannot easily access their parents
-  // In that case parents is null
-  // It is not an issue for this component(see ConnectorPermissionsModal.tsx)
-  parents: string[] | null;
+  node: T;
+  parents: string[];
 };
 
 export type TreeSelectionModelUpdater = (

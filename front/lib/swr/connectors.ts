@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   APIError,
   ConnectorPermission,
+  ContentNode,
   ContentNodesViewType,
   DataSourceType,
   LightWorkspaceType,
@@ -19,14 +20,16 @@ import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sourc
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 
-interface UseConnectorPermissionsReturn {
-  resources: GetDataSourcePermissionsResponseBody["resources"];
+interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
+  resources: T extends ConnectorPermission
+    ? GetDataSourcePermissionsResponseBody<T>["resources"]
+    : ContentNode[];
   isResourcesLoading: boolean;
   isResourcesError: boolean;
   resourcesError: APIError | null;
 }
 
-export function useConnectorPermissions({
+export function useConnectorPermissions<T extends ConnectorPermission | null>({
   owner,
   dataSource,
   parentId,
@@ -37,15 +40,18 @@ export function useConnectorPermissions({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
   parentId: string | null;
-  filterPermission: ConnectorPermission | null;
+  filterPermission: T;
   disabled?: boolean;
   viewType?: ContentNodesViewType;
-}): UseConnectorPermissionsReturn {
+}): UseConnectorPermissionsReturn<T> {
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
-  const permissionsFetcher: Fetcher<GetDataSourcePermissionsResponseBody> =
-    fetcher;
+  const permissionsFetcher: Fetcher<
+    T extends ConnectorPermission
+      ? GetDataSourcePermissionsResponseBody<T>
+      : GetDataSourcePermissionsResponseBody
+  > = fetcher;
 
   let url = `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions?viewType=${viewType}`;
   if (parentId) {
@@ -74,7 +80,7 @@ export function useConnectorPermissions({
     isResourcesLoading: !error && !data,
     isResourcesError: error,
     resourcesError: error ? (error.error as APIError) : null,
-  };
+  } as UseConnectorPermissionsReturn<T>;
 }
 
 export function useConnectorConfig({

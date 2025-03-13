@@ -106,10 +106,6 @@ export interface ContentNodeWithParent extends ContentNode {
   parentTitle?: string;
 }
 
-type GetContentNodesReturnType<Key extends string> = ConnectorsAPIResponse<{
-  [K in Key]: ContentNode[];
-}>;
-
 export type GoogleDriveFolderType = {
   id: string;
   name: string;
@@ -299,17 +295,23 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async getConnectorPermissions({
+  async getConnectorPermissions<
+    T extends ConnectorPermission = ConnectorPermission
+  >({
     connectorId,
     filterPermission,
     parentId,
     viewType = "document",
   }: {
     connectorId: string;
-    filterPermission?: ConnectorPermission;
+    filterPermission?: T;
     parentId?: string;
     viewType?: ContentNodesViewType;
-  }): Promise<GetContentNodesReturnType<"resources">> {
+  }): Promise<
+    ConnectorsAPIResponse<{
+      resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
+    }>
+  > {
     const queryParams = new URLSearchParams();
 
     if (parentId) {
@@ -331,9 +333,7 @@ export class ConnectorsAPI {
       headers: this.getDefaultHeaders(),
     });
 
-    const response = await this._resultFromResponse(res);
-
-    return response as GetContentNodesReturnType<"resources">;
+    return this._resultFromResponse(res);
   }
 
   async setConnectorPermissions({

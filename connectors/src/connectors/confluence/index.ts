@@ -437,6 +437,15 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // Confluence only let you select spaces (root nodes).
+    return new Ok([internalId]);
+  }
+
   async setConfigurationKey(): Promise<Result<void, Error>> {
     throw new Error("Method not implemented.");
   }

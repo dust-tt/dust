@@ -21,6 +21,7 @@ import {
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
 import {
   folderHasChildren,
@@ -675,6 +676,55 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       default: {
         return new Err(new Error(`Invalid config key ${configKey}`));
       }
+    }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+    memoizationKey,
+  }: {
+    internalId: string;
+    memoizationKey: string;
+  }): Promise<Result<string[], Error>> {
+    try {
+      const connector = await ConnectorResource.fetchById(this.connectorId);
+      if (!connector) {
+        return new Err(
+          new Error(`Connector not found with id ${this.connectorId}`)
+        );
+      }
+
+      if (
+        internalId === getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+      ) {
+        return new Ok([]);
+      }
+
+      const authCredentials = await getAuthObject(connector.connectionId);
+
+      const driveObject = await getGoogleDriveObject({
+        authCredentials,
+        driveObjectId: getDriveFileId(internalId),
+        cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
+      });
+
+      if (!driveObject) {
+        return new Err(
+          new Error(`Drive object not found with id ${internalId}`)
+        );
+      }
+
+      const parents = await getFileParentsMemoized(
+        this.connectorId,
+        authCredentials,
+        driveObject,
+        memoizationKey,
+        { includeAllRemoteParents: true }
+      );
+
+      return new Ok(parents.map((p) => getInternalId(p)));
+    } catch (err) {
+      return new Err(err as Error);
     }
   }
 

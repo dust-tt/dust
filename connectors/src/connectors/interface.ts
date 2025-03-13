@@ -71,6 +71,15 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   >;
 
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
+  abstract retrieveContentNodeParents(params: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>>;
+
   abstract setPermissions(params: {
     permissions: Record<string, ConnectorPermission>;
   }): Promise<Result<void, Error>>;
