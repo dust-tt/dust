@@ -1,4 +1,10 @@
-import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  Button,
+  FullscreenExitIcon,
+  FullscreenIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentMention,
   DataSourceViewContentNode,
@@ -19,6 +25,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -59,6 +66,7 @@ const InputBarContainer = ({
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
+  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
   function handleExpansionToggle() {
     setIsExpanded((currentExpanded) => !currentExpanded);
     // Focus at the end of the document when toggling expansion.
@@ -70,7 +78,7 @@ const InputBarContainer = ({
   }
 
   const handleUrlDetected = (url: string, nodeId: string | null) => {
-    console.log("Detected URL:", url, "Node ID:", nodeId);
+    setNodeCandidate(nodeId);
   };
 
   const { editor, editorService } = useCustomEditor({
@@ -82,6 +90,33 @@ const InputBarContainer = ({
       onUrlDetected: handleUrlDetected,
     }),
   });
+
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+    includeDataSources: true,
+    owner,
+    viewType: "all",
+    nodeIds: nodeCandidate ? [nodeCandidate] : [],
+    disabled: isSpacesLoading || !nodeCandidate,
+    spaceIds: spaces.map((s) => s.sId),
+  });
+
+  useEffect(() => {
+    if (searchResultNodes.length > 0 && onNodeSelect) {
+      const n: DataSourceViewContentNode[] = searchResultNodes.flatMap(
+        (node) => {
+          const { dataSourceViews, ...rest } = node;
+          return dataSourceViews.map((view) => ({
+            ...rest,
+            dataSourceView: view,
+          }));
+        }
+      );
+      onNodeSelect(n[0]);
+      setNodeCandidate(null);
+    }
+  }, [onNodeSelect, searchResultNodes]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
   // the input bar), we grab it back.

@@ -5,25 +5,15 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import {
-  MarkdownStyleExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
-import {
-  MentionStorageExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
-import {
-  MentionWithPasteExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
-import {
-  ParagraphExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
+import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { isMobile } from "@app/lib/utils";
-import {
-  URLDetectionExtension,
-} from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
+import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 
 export interface EditorMention {
   id: string;
