@@ -64,7 +64,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const metadata = await u.getMetadata(req.query.key as string);
+      const metadata = await u.getMetadata(key);
 
       res.status(200).json({
         metadata,

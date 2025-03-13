@@ -428,7 +428,6 @@ export async function deleteMembersActivity({
 
       // If the user we're removing the membership of only has one membership, we delete the user.
       if (membershipsOfUser.length === 1) {
-        await user.deleteAllMetadata();
         hardDeleteLogger.info(
           {
             membershipId: membership.id,

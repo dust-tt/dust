@@ -225,14 +225,6 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async getAllMetadata() {
-    return UserMetadataModel.findAll({
-      where: {
-        userId: this.id,
-      },
-    });
-  }
-
   async setMetadata(key: string, value: string) {
     const metadata = await UserMetadataModel.findOne({
       where: {
