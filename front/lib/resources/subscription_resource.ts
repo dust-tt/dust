@@ -605,7 +605,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   }
 
   private static async isStripeSubscriptionOnProPlan(
-    owner: WorkspaceType,
+    owner: LightWorkspaceType,
     stripeSubscription: Stripe.Subscription
   ): Promise<boolean> {
     const { data: subscriptionItems } = stripeSubscription.items;
