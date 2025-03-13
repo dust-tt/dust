@@ -135,9 +135,15 @@ async function handler(
 
         const flags = await getFeatureFlags(owner);
         if (flags.includes("labs_transcripts_full_storage")) {
-          await transcriptsConfiguration.setIsDefaultFullStorage(
-            !!dataSourceViewId
-          );
+          const defaultFullStorageConfiguration =
+            await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
+              auth
+            );
+          if (defaultFullStorageConfiguration === null) {
+            await transcriptsConfiguration.setIsDefaultFullStorage(
+              !!dataSourceViewId
+            );
+          }
         }
       }
 
