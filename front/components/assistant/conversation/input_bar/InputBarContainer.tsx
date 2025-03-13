@@ -1,10 +1,4 @@
-import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  Button,
-  FullscreenExitIcon,
-  FullscreenIcon,
-} from "@dust-tt/sparkle";
+import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   DataSourceViewContentNode,
@@ -75,11 +69,18 @@ const InputBarContainer = ({
     setIsExpanded(false);
   }
 
+  const handleUrlDetected = (url: string, nodeId: string | null) => {
+    console.log("Detected URL:", url, "Node ID:", nodeId);
+  };
+
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
+    ...(featureFlags.includes("attach_from_datasources") && {
+      onUrlDetected: handleUrlDetected,
+    }),
   });
 
   // When input bar animation is requested it means the new button was clicked (removing focus from

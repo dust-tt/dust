@@ -5,14 +5,25 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
-import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
-import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
-import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
+import {
+  MarkdownStyleExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
+import {
+  MentionStorageExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
+import {
+  MentionWithPasteExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
+import {
+  ParagraphExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { isMobile } from "@app/lib/utils";
+import {
+  URLDetectionExtension,
+} from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 
 export interface EditorMention {
   id: string;
@@ -191,6 +202,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
+  onUrlDetected?: (url: string, nodeId: string | null) => void;
 }
 
 const useCustomEditor = ({
@@ -198,37 +210,42 @@ const useCustomEditor = ({
   resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
+  onUrlDetected,
 }: CustomEditorProps) => {
+  const extensions = [
+    StarterKit.configure({
+      hardBreak: false, // Disable the built-in Shift+Enter.
+      paragraph: false,
+      strike: false,
+    }),
+    MentionStorageExtension,
+    MentionWithPasteExtension.configure({
+      HTMLAttributes: {
+        class:
+          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
+      },
+      suggestion: makeGetAssistantSuggestions(),
+    }),
+    Placeholder.configure({
+      placeholder: "Ask a question or get some @help",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+    }),
+    MarkdownStyleExtension,
+    ParagraphExtension,
+  ];
+  if (onUrlDetected) {
+    extensions.push(
+      URLDetectionExtension.configure({
+        onUrlDetected: (url, nodeId) => {
+          onUrlDetected(url, nodeId ?? null);
+        },
+      })
+    );
+  }
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
-    extensions: [
-      StarterKit.configure({
-        hardBreak: false, // Disable the built-in Shift+Enter.
-        paragraph: false,
-        strike: false,
-      }),
-      // TODO(attach): uncomment for url detection
-      // URLDetectionExtension.configure({
-      //   onUrlDetected: (url) => {
-      //     console.log("URL detected", url);
-      //   }
-      // }),
-      MentionStorageExtension,
-      MentionWithPasteExtension.configure({
-        HTMLAttributes: {
-          class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
-        },
-        suggestion: makeGetAssistantSuggestions(),
-      }),
-      Placeholder.configure({
-        placeholder: "Ask a question or get some @help",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
-      }),
-      MarkdownStyleExtension,
-      ParagraphExtension,
-    ],
+    extensions,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.
