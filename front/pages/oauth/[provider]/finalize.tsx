@@ -33,10 +33,9 @@ export default function Finalize({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [error, setError] = useState<string | null>(null);
 
+  // Finalize the connection on component mount.
   useEffect(() => {
     async function finalizeOAuth() {
-      // When the component mounts, send a message `connection_finalized` to the window that opened
-      // this one.
       if (!window.opener) {
         setError(
           "This URL was unexpectedly visited outside of the Dust Connections setup flow. " +
@@ -55,6 +54,8 @@ export default function Finalize({
         const res = await fetch(
           `/api/oauth/${provider}/finalize?${params.toString()}`
         );
+        // Send a message `connection_finalized` to the window that opened
+        // this one, with either an error or the connection data.
         if (!res.ok) {
           window.opener.postMessage(
             {
