@@ -38,7 +38,7 @@ export async function setupOAuthConnection({
         const { error, connection } = event.data;
         if (error) {
           resolve(new Err(new Error(error)));
-        } else if (isOAuthConnectionType(connection)) {
+        } else if (connection && isOAuthConnectionType(connection)) {
           resolve(new Ok(connection));
         } else {
           resolve(
