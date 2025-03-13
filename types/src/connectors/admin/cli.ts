@@ -168,18 +168,11 @@ export const BatchCommandSchema = t.type({
 
 export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
 
-export const WebcrawlerCommandSchema = t.type({
-  majorCommand: t.literal("webcrawler"),
-  command: t.literal("start-scheduler"),
-});
-
 export const BatchAllResponseSchema = t.type({
   succeeded: t.number,
   failed: t.number,
 });
 export type BatchAllResponseType = t.TypeOf<typeof BatchAllResponseSchema>;
-
-export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
 
 export const TemporalCommandSchema = t.type({
   majorCommand: t.literal("temporal"),
@@ -366,7 +359,6 @@ export const AdminCommandSchema = t.union([
   NotionCommandSchema,
   SlackCommandSchema,
   TemporalCommandSchema,
-  WebcrawlerCommandSchema,
   ZendeskCommandSchema,
 ]);
 

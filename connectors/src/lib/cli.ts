@@ -10,7 +10,6 @@ import type {
   TemporalCheckQueueResponseType,
   TemporalCommandType,
   TemporalUnprocessedWorkflowsResponseType,
-  WebcrawlerCommandType,
 } from "@dust-tt/types";
 import { assertNever, isConnectorError } from "@dust-tt/types";
 import PQueue from "p-queue";
@@ -24,7 +23,6 @@ import { intercom } from "@connectors/connectors/intercom/lib/cli";
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
-import { launchCrawlWebsiteSchedulerWorkflow } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -48,8 +46,6 @@ export async function runCommand(adminCommand: AdminCommandType) {
       return google_drive(adminCommand);
     case "slack":
       return slack(adminCommand);
-    case "webcrawler":
-      return webcrawler(adminCommand);
     case "temporal":
       return temporal(adminCommand);
     case "intercom":
@@ -369,17 +365,6 @@ export const batch = async ({
 
     default:
       throw new Error("Unknown batch command: " + command);
-  }
-};
-
-export const webcrawler = async ({
-  command,
-}: WebcrawlerCommandType): Promise<AdminSuccessResponseType> => {
-  switch (command) {
-    case "start-scheduler": {
-      await throwOnError(launchCrawlWebsiteSchedulerWorkflow());
-      return { success: true };
-    }
   }
 };
 

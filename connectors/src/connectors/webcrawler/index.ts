@@ -14,6 +14,7 @@ import {
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@dust-tt/types";
+import assert from "assert";
 
 import type {
   CreateConnectorErrorCode,
@@ -40,6 +41,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import {
+  launchCrawlWebsiteScheduler,
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,
 } from "./temporal/client";
@@ -94,6 +96,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       `Launched crawl website workflow for connector`
     );
 
+    // Ensure the workspace scheduler already exists.
+    await launchCrawlWebsiteScheduler({ workspaceId: connector.workspaceId });
+
     return new Ok(connector.id.toString());
   }
 
@@ -125,6 +130,12 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
   }
 
   async sync(): Promise<Result<string, Error>> {
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    assert(connector, "Connector not found");
+
+    // Ensure the workspace scheduler already exists.
+    await launchCrawlWebsiteScheduler({ workspaceId: connector.workspaceId });
+
     return launchCrawlWebsiteWorkflow(this.connectorId);
   }
 
