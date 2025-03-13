@@ -206,7 +206,7 @@ export function ProviderSelection({
       {!transcriptsConfiguration && (
         <Page.Layout direction="horizontal" gap="xl">
           <div
-            className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
               selectedProvider == "google_drive"
                 ? "border-gray-400"
                 : "border-gray-200"
@@ -219,7 +219,7 @@ export function ProviderSelection({
             />
           </div>
           <div
-            className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
               selectedProvider == "gong" ? "border-gray-400" : "border-gray-200"
             }`}
             onClick={() => setSelectedProvider("gong")}
@@ -230,7 +230,7 @@ export function ProviderSelection({
             />
           </div>
           <div
-            className={`cursor-pointer rounded-md border p-4 hover:border-gray-400 ${
+            className={`cursor-pointer rounded-md border bg-white p-4 hover:border-gray-400 dark:bg-white ${
               selectedProvider == "modjo"
                 ? "border-gray-400"
                 : "border-gray-200"
