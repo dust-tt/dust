@@ -29,7 +29,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
-  renderFromFileId,
+  renderFromFragmentId,
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -100,7 +100,7 @@ export class ConversationIncludeFileAction extends BaseAction {
           });
         }
 
-        const r = await renderFromFileId(conversation.owner, {
+        const r = await renderFromFragmentId(conversation.owner, {
           contentType: f.contentType,
           excludeImages: true,
           sId: f.sId,

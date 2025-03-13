@@ -128,6 +128,8 @@ const FILE_FORMATS = {
     exts: [".ppt", ".pptx"],
   },
   "application/pdf": { cat: "data", exts: [".pdf"] },
+  "application/vnd.google-apps.document": { cat: "data", exts: [] },
+  "application/vnd.google-apps.presentation": { cat: "data", exts: [] },
 
   // Code
   "text/xml": { cat: "data", exts: [".xml"] },

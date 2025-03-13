@@ -1,7 +1,7 @@
 import * as t from "io-ts";
 
-import { getSupportedNonImageMimeTypes } from "../../files";
 import { MIME_TYPES } from "../../../shared/internal_mime_types";
+import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,

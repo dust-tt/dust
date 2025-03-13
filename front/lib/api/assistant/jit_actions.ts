@@ -8,6 +8,7 @@ import type {
   TablesQueryConfigurationType,
 } from "@dust-tt/types";
 import assert from "assert";
+import _ from "lodash";
 
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
@@ -23,7 +24,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import _ from "lodash";
 
 async function getJITActions(
   auth: Authenticator,

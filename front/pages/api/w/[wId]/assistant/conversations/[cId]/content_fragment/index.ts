@@ -1,7 +1,6 @@
 import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
 import { InternalPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
-import type * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 

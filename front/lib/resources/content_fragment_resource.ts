@@ -129,6 +129,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
+  static async fromSIdAndVersion(sId: string, version: ContentFragmentVersion) {
+    const contentFragment = await ContentFragmentModel.findOne({
+      where: { sId, version },
+    });
+    if (!contentFragment) {
+      throw new Error(
+        `Content fragment not found for sId ${sId} and version ${version}`
+      );
+    }
+    return new ContentFragmentResource(
+      ContentFragmentResource.model,
+      contentFragment.get()
+    );
+  }
+
   static async fromMessageId(id: ModelId) {
     const message = await Message.findByPk(id, {
       include: [{ model: ContentFragmentModel, as: "contentFragment" }],
@@ -340,7 +355,7 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-export async function renderFromFileId(
+export async function renderFromFragmentId(
   workspace: WorkspaceType,
   {
     contentType,
@@ -358,7 +373,10 @@ export async function renderFromFileId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const contentFragment = await ContentFragmentResource.fetchByModelId(sId);
+  const contentFragment = await ContentFragmentResource.fromSIdAndVersion(
+    sId,
+    contentFragmentVersion
+  );
   if (!contentFragment) {
     throw new Error(`Content fragment not found for sId ${sId}`);
   }
@@ -514,7 +532,9 @@ export async function renderLightContentFragmentForModel(
 ): Promise<ContentFragmentMessageTypeModel> {
   const { contentType, sId, title, contentFragmentVersion } = message;
 
-  const contentFragment = await ContentFragmentResource.fetchByModelId(sId);
+  const contentFragment = await ContentFragmentResource.fromMessageId(
+    message.id
+  );
   if (!contentFragment) {
     throw new Error(`Content fragment not found for sId ${sId}`);
   }
