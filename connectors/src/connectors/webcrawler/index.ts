@@ -250,6 +250,15 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     );
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // This isn't used for webcrawler.
+    return new Ok([internalId]);
+  }
+
   async pause(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {

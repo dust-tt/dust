@@ -341,6 +341,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   /**
    * Updates the permissions stored in db,
    * then launches a sync workflow with the signals

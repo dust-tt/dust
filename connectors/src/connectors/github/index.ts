@@ -465,6 +465,15 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setConfigurationKey({
     configKey,
     configValue,

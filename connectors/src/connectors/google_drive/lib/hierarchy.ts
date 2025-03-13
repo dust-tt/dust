@@ -20,7 +20,8 @@ async function getFileParents(
   connectorId: ModelId,
   authCredentials: OAuth2Client,
   driveFile: GoogleDriveObjectType,
-  startSyncTs: number
+  startSyncTs: number | string,
+  { includeAllRemoteParents }: { includeAllRemoteParents?: boolean } = {}
 ): Promise<string[]> {
   const logger = mainLogger.child({
     provider: "google_drive",
@@ -45,6 +46,10 @@ async function getFileParents(
     }
     parents.push(parent.id);
     currentObject = parent;
+  }
+
+  if (includeAllRemoteParents) {
+    return parents;
   }
 
   // Avoid inserting parents outside of what we sync by checking GoogleDriveFolder.
@@ -90,9 +95,10 @@ export const getFileParentsMemoized = cacheWithRedis(
     connectorId: ModelId,
     authCredentials: OAuth2Client,
     driveFile: GoogleDriveObjectType,
-    startSyncTs: number
+    startSyncTs: number | string,
+    { includeAllRemoteParents }: { includeAllRemoteParents?: boolean } = {}
   ) => {
-    const cacheKey = `gdrive-parents-${connectorId}-${startSyncTs}-${driveFile.id}`;
+    const cacheKey = `gdrive-parents-${connectorId}-${startSyncTs}-${driveFile.id}-${includeAllRemoteParents}`;
 
     return cacheKey;
   },

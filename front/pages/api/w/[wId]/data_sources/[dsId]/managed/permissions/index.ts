@@ -1,6 +1,7 @@
 import type {
   ConnectorPermission,
   ContentNode,
+  ContentNodeWithParent,
   DataSourceType,
   WithAPIErrorResponse,
 } from "@dust-tt/types";
@@ -35,8 +36,10 @@ const SetConnectorPermissionsRequestBodySchema = t.type({
   ),
 });
 
-export type GetDataSourcePermissionsResponseBody = {
-  resources: ContentNode[];
+export type GetDataSourcePermissionsResponseBody<
+  T extends ConnectorPermission = ConnectorPermission,
+> = {
+  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
 };
 
 export type SetDataSourcePermissionsResponseBody = {

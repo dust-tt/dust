@@ -551,6 +551,15 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     return new Ok(nodes.concat(folderNodes));
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setPermissions(): Promise<Result<void, Error>> {
     return new Err(
       new Error(`Setting Notion connector permissions is not implemented yet.`)

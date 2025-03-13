@@ -348,6 +348,19 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
+  /**
+   * Retrieves the parent IDs of a content node in hierarchical order.
+   * The first ID is the internal ID of the content node itself.
+   */
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+    memoizationKey?: string;
+  }): Promise<Result<string[], Error>> {
+    return new Ok([internalId]);
+  }
+
   async pause(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
