@@ -28,36 +28,21 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
     },
     ref
   ) => {
-    const hasDescription = React.useMemo(() => {
-      const childrenArray = React.Children.toArray(children);
-      return childrenArray.some(
-        (child) =>
-          React.isValidElement(child) && child.type === CitationDescription
-      );
-    }, [children]);
-
     // IMPORTANT: The order of elements is crucial for event handling.
     // The CitationDescription must always come after other elements to ensure
     // proper event propagation (especially for the close button's click events).
-    // If auto-inserting a description, it must be appended after children.
-    const contentWithDescription = (
-      <>
-        {children}
-        {!hasDescription && <CitationDescription>&nbsp;</CitationDescription>}
-      </>
-    );
     const cardButton = (
       <Card
         ref={ref}
         variant={variant}
         size="sm"
         className={cn(
-          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-justify-end s-overflow-hidden s-pt-[8%]",
+          "s-min-w-24 s-relative s-flex s-flex-none s-flex-col s-justify-start s-overflow-hidden s-pt-[8%]",
           className
         )}
         {...props}
       >
-        {contentWithDescription}
+        {children}
         {isLoading && <CitationLoading />}
       </Card>
     );
