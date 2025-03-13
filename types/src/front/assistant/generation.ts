@@ -2,6 +2,8 @@
  * Model rendering of conversations.
  */
 
+import { MCPToolResultContent } from "./actions/mcp";
+
 export interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment";
   name: string;
@@ -65,7 +67,7 @@ export interface FunctionMessageTypeModel {
   role: "function";
   name: string;
   function_call_id: string;
-  content: string;
+  content: string | MCPToolResultContent[];
 }
 
 export type ModelMessageTypeMultiActions =

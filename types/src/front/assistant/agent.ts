@@ -35,6 +35,7 @@ import {
 } from "../../front/assistant/conversation";
 import { ModelIdType, ModelProviderIdType } from "../../front/lib/assistant";
 import { ModelId } from "../../shared/model_id";
+import { MCPConfigurationType } from "./actions/mcp";
 import {
   ReasoningConfigurationType,
   ReasoningStartedEvent,
@@ -57,7 +58,8 @@ export type AgentActionConfigurationType =
   | ReasoningConfigurationType
   | RetrievalConfigurationType
   | TablesQueryConfigurationType
-  | WebsearchConfigurationType;
+  | WebsearchConfigurationType
+  | MCPConfigurationType;
 
 type ConversationAgentActionConfigurationType =
   ConversationIncludeFileConfigurationType;

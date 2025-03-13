@@ -1,18 +1,13 @@
+import type { MCPToolResultContent } from "@dust-tt/types";
 import { assertNever } from "@dust-tt/types";
-import type { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
-import type { z } from "zod";
 
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-
-type MCPToolResultContent = z.infer<
-  typeof CallToolResultSchema
->["content"][number];
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -122,6 +117,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied";
+
+  declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 }
 
 AgentMCPAction.init(
@@ -246,6 +243,7 @@ AgentMCPActionOutputItem.init(
 
 AgentMCPAction.hasMany(AgentMCPActionOutputItem, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
+  as: "outputItems",
   onDelete: "CASCADE",
 });
 
