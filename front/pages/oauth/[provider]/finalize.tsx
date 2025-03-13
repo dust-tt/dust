@@ -1,8 +1,10 @@
+import type { OAuthProvider } from "@dust-tt/types";
 import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useState } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { useFinalize } from "@app/lib/swr/oauth";
 
 // This endpoint is authenticated but cannot be workspace specific as it is hard-coded at each
 // provider as our callback URI.
@@ -10,7 +12,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "user",
 })<{
   queryParams: Record<string, string | string[] | undefined>;
-  provider: string;
+  provider: OAuthProvider;
 }>(async (context) => {
   const { provider, ...queryParams } = context.query;
 
@@ -32,7 +34,7 @@ export default function Finalize({
   provider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [error, setError] = useState<string | null>(null);
-
+  const doFinalize = useFinalize();
   // Finalize the connection on component mount.
   useEffect(() => {
     async function finalizeOAuth() {
@@ -42,18 +44,7 @@ export default function Finalize({
             "Please close this window and try again from Dust."
         );
       } else {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(queryParams)) {
-          if (Array.isArray(value)) {
-            value.forEach((v) => params.append(key, v));
-          } else if (value !== undefined) {
-            params.append(key, value);
-          }
-        }
-
-        const res = await fetch(
-          `/api/oauth/${provider}/finalize?${params.toString()}`
-        );
+        const res = await doFinalize(provider, queryParams);
         // Send a message `connection_finalized` to the window that opened
         // this one, with either an error or the connection data.
         if (!res.ok) {
