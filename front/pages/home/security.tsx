@@ -126,7 +126,7 @@ export default function Security() {
         </Grid>
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-slate-200" to="to-slate-400">
+            <H2 from="from-white" to="to-white">
               Ingest data on your terms
             </H2>
             <P size="lg" className="pb-6 text-slate-50">

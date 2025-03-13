@@ -10,15 +10,7 @@ import {
 import { BlogBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P } from "@app/components/home/ContentComponents";
 
-interface BlogSectionProps {
-  headerColorFrom?: string;
-  headerColorTo?: string;
-}
-
-export function BlogSection({
-  headerColorFrom = "from-green-200",
-  headerColorTo = "to-emerald-400",
-}: BlogSectionProps) {
+export function BlogSection() {
   return (
     <Grid gap="gap-8">
       <div className="col-span-12">
