@@ -211,7 +211,7 @@ export async function scheduleExists({ scheduleId }: { scheduleId: string }) {
     const scheduleHandle = client.schedule.getHandle(scheduleId);
 
     // This will actually throw an error if the schedule does not exist.
-    const scheduleDescription = await scheduleHandle.describe();
+    await scheduleHandle.describe();
 
     return true;
   } catch (error) {
