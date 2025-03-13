@@ -1,7 +1,5 @@
-import { Button, LogoutIcon } from "@dust-tt/sparkle";
 import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
