@@ -13,7 +13,6 @@ import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import { getUserMetadata } from "@app/lib/api/user";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 
@@ -38,10 +37,9 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
   const isAdmin = auth.isAdmin();
-  const expertise = await getUserMetadata(user, "expertise");
-  const adminInterest = isAdmin
-    ? await getUserMetadata(user, "interest")
-    : null;
+
+  const expertise = await user.getMetadata("expertise");
+  const adminInterest = isAdmin ? await user.getMetadata("interest") : null;
 
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.
@@ -50,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
   return {
     props: {
-      user,
+      user: user.toJSON(),
       owner,
       isAdmin,
       defaultExpertise: expertise?.value || "",

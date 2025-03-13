@@ -21,7 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
   }
 >(async (context, auth) => {
   const owner = auth.workspace();
-  const user = auth.user();
+  const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isUser() || !subscription) {

@@ -102,7 +102,7 @@ async function handler(
 
       const invitationRes = await handleMembershipInvitations(auth, {
         owner,
-        user,
+        user: user.toJSON(),
         subscription,
         invitationRequests: bodyValidation.right,
       });

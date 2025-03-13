@@ -7,6 +7,8 @@ import { getSession } from "@app/lib/auth";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
+import { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
@@ -23,8 +25,24 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   if (user && user.workspaces.length > 0) {
     let url = `/w/${user.workspaces[0].sId}`;
 
+    // We get the UserResource from the session userId.
+    // Temporary, as we'd need to refactor the getUserFromSession method
+    // to return the UserResource instead of a UserTypeWithWorkspace.
+    const u = await UserResource.fetchByModelId(user.id);
+
+    // Should never happen. If it does (would be weird), we redirect to the home page.
+    if (!u) {
+      logger.error({ userId: user.id }, "Unreachable: user not found.");
+      return {
+        redirect: {
+          destination: "/",
+          permanent: false,
+        },
+      };
+    }
+
     // Try to go to the last selected workspace.
-    const selection = await getPersistedNavigationSelection(user);
+    const selection = await getPersistedNavigationSelection(u);
     if (
       selection.lastWorkspaceId &&
       user.workspaces.find((w) => w.sId === selection.lastWorkspaceId)

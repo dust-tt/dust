@@ -60,7 +60,6 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -429,11 +428,6 @@ export async function deleteMembersActivity({
 
       // If the user we're removing the membership of only has one membership, we delete the user.
       if (membershipsOfUser.length === 1) {
-        await UserMetadataModel.destroy({
-          where: {
-            userId: user.id,
-          },
-        });
         hardDeleteLogger.info(
           {
             membershipId: membership.id,
