@@ -25,6 +25,7 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import { getSpaceIcon } from "@app/lib/spaces";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 
@@ -69,7 +70,15 @@ export function AssistantInputBar({
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
     () =>
-      Object.fromEntries(spaces?.map((space) => [space.sId, space.name]) || []),
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
     [spaces]
   );
 

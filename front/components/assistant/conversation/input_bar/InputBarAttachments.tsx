@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewContentNode } from "@dust-tt/types";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -34,6 +34,7 @@ type NodeAttachment = {
   id: string;
   title: string;
   spaceName: string;
+  spaceIcon: React.ComponentType;
   visual: React.ReactNode;
   path: string;
   onRemove: () => void;
@@ -47,7 +48,12 @@ interface FileAttachmentsProps {
 
 interface NodeAttachmentsProps {
   items: DataSourceViewContentNode[];
-  spacesMap: Record<string, string>;
+  spacesMap: {
+    [k: string]: {
+      name: string;
+      icon: React.ComponentType;
+    };
+  };
   onRemove: (node: DataSourceViewContentNode) => void;
 }
 
@@ -82,14 +88,14 @@ export function InputBarAttachments({
 
         const nodeId = node.internalId ?? `node-${node.internalId}`;
         const spaceName =
-          nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
+          nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
-
         return {
           type: "node",
           id: nodeId,
           title: node.title,
           spaceName,
+          spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual:
             isWebsite(dataSource) || isFolder(dataSource) ? (
@@ -163,11 +169,12 @@ export function InputBarAttachments({
             ) : (
               <div className="flex flex-col gap-1">
                 <div className="font-bold">{attachment.title}</div>
-                <div className="text-sm text-element-600">
-                  Path: {attachment.path}
+                <div className="flex gap-1 pt-1 text-sm">
+                  <Icon visual={attachment.spaceIcon} />
+                  <p>{attachment.spaceName}</p>
                 </div>
                 <div className="text-sm text-element-600">
-                  Space: {attachment.spaceName}
+                  {attachment.path}
                 </div>
               </div>
             )
