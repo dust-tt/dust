@@ -267,10 +267,13 @@ export interface ConversationParticipantsType {
   users: UserParticipant[];
 }
 
-export type ConversationErrorType =
-  | "conversation_not_found"
-  | "conversation_access_restricted"
-  | "conversation_with_unavailable_agent";
+export const CONVERSATION_ERROR_TYPES = [
+  "conversation_not_found",
+  "conversation_access_restricted",
+  "conversation_with_unavailable_agent",
+] as const;
+
+export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
 
 export class ConversationError extends Error {
   readonly type: ConversationErrorType;
