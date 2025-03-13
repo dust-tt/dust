@@ -35,8 +35,10 @@ export async function setupOAuthConnection({
 
       if (event.data.type === "connection_finalized") {
         authComplete = true;
-        const connection = event.data.connection;
-        if (isOAuthConnectionType(connection)) {
+        const { error, connection } = event.data;
+        if (error) {
+          resolve(new Err(new Error(error)));
+        } else if (connection && isOAuthConnectionType(connection)) {
           resolve(new Ok(connection));
         } else {
           resolve(
