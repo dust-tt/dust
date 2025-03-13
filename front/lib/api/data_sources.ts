@@ -949,7 +949,7 @@ export async function createDataSourceWithoutProvider(
   try {
     // Asynchronous tracking without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      user: auth.user()?.toJSON(),
+      user: auth.user(),
       workspace: owner,
       dataSource: dataSourceView.dataSource.toJSON(),
     });

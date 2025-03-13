@@ -489,7 +489,7 @@ const handleDataSourceWithProvider = async ({
     // Asynchronous tracking & operations without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
       dataSource: dataSource.toJSON(),
-      user: auth.getNonNullableUser().toJSON(),
+      user: auth.getNonNullableUser(),
       workspace: owner,
     });
 

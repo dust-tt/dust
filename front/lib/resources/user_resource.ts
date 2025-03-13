@@ -223,14 +223,11 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  static async getAllMetadata(users: ModelId[]) {
+  async getAllMetadata() {
     return UserMetadataModel.findAll({
       where: {
-        userId: {
-          [Op.in]: users,
-        },
+        userId: this.id,
       },
-      raw: true,
     });
   }
 
@@ -251,11 +248,10 @@ export class UserResource extends BaseResource<UserModel> {
       return;
     }
 
-    metadata.value = value;
-    await metadata.save();
+    await metadata.update({ value });
   }
 
-  async deleteMetadata() {
+  async deleteAllMetadata() {
     return UserMetadataModel.destroy({
       where: {
         userId: this.id,

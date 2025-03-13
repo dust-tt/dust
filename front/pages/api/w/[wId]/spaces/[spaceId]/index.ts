@@ -168,7 +168,7 @@ async function handler(
                 space,
                 dataSource,
                 dataSourceConfig.parentsIn,
-                auth.user()?.toJSON()
+                auth.user()
               );
             }
           }

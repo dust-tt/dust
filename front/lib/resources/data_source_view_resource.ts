@@ -50,6 +50,8 @@ import {
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
 
+import type { UserResource } from "./user_resource";
+
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
 ): DataSourceViewCategory => {
@@ -157,7 +159,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[],
-    editedByUser?: UserType | null
+    editedByUser?: UserResource | null
   ) {
     return this.makeNew(
       {
@@ -168,7 +170,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
-      editedByUser
+      editedByUser?.toJSON()
     );
   }
 

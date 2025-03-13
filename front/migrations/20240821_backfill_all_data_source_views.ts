@@ -38,7 +38,7 @@ async function backfillDefaultViewForDataSource(
     space,
     dataSource,
     [],
-    auth.user()?.toJSON()
+    auth.user()
   );
 
   logger.info(`View created for data source ${dataSource.id}.`);

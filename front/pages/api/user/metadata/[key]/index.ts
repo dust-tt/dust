@@ -50,7 +50,9 @@ async function handler(
     });
   }
 
-  if (typeof req.query.key != "string") {
+  const key = req.query.key;
+
+  if (typeof key !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -80,11 +82,11 @@ async function handler(
         });
       }
 
-      await u.setMetadata(req.query.key as string, req.body.value);
+      await u.setMetadata(key, req.body.value);
 
       res.status(200).json({
         metadata: {
-          key: req.query.key as string,
+          key,
           value: req.body.value,
         },
       });

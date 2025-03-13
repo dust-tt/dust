@@ -527,7 +527,7 @@ export async function createOrUpgradeAgentConfiguration({
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {
     void ServerSideTracking.trackAssistantCreated({
-      user: auth.user()?.toJSON() ?? undefined,
+      user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
       assistant: agentConfiguration,
     });
