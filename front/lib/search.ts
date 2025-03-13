@@ -55,10 +55,12 @@ export function getSearchFilterFromDataSourceViews(
     excludedNodeMimeTypes,
     includeDataSources,
     viewType,
+    nodeIds,
   }: {
     excludedNodeMimeTypes: readonly string[];
     includeDataSources: boolean;
     viewType: ContentNodesViewType;
+    nodeIds?: string[];
   }
 ) {
   const groupedPerDataSource = dataSourceViews.reduce(
@@ -111,5 +113,6 @@ export function getSearchFilterFromDataSourceViews(
     })),
     excluded_node_mime_types: excludedNodeMimeTypes,
     node_types: getCoreViewTypeFilter(viewType),
+    node_ids: nodeIds,
   };
 }
