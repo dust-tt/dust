@@ -98,7 +98,7 @@ async function handler(
           .getNonNullableSubscriptionResource()
           .getCheckoutUrlForUpgrade(
             auth.getNonNullableWorkspace(),
-            auth.getNonNullableUser(),
+            auth.getNonNullableUser().toJSON(),
             bodyValidation.right.billingPeriod
           );
         return res.status(200).json({ checkoutUrl, plan: newPlan });
