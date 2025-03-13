@@ -105,6 +105,12 @@ const FILE_FORMATS = {
     exts: [".xlsx"],
   },
 
+  // Custom for section json files generated from tables query results.
+  "application/vnd.dust.section.json": {
+    cat: "data",
+    exts: [".json"],
+  },
+
   // Data
   "text/plain": { cat: "data", exts: [".txt", ".log", ".cfg", ".conf"] },
   "text/markdown": { cat: "data", exts: [".md", ".markdown"] },

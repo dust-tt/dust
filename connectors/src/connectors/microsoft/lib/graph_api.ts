@@ -426,28 +426,12 @@ export async function getAllPaginatedEntities<T extends Entity>(
   return allItems;
 }
 
-export async function getItem(
+export async function getItem<T extends Entity>(
   logger: LoggerInterface,
   client: Client,
   itemApiPath: string
-): Promise<Entity> {
+): Promise<T> {
   return clientApiGet(logger, client, itemApiPath);
-}
-
-export async function getFileDownloadURL(
-  logger: LoggerInterface,
-  client: Client,
-  internalId: string
-) {
-  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);
-
-  if (nodeType !== "file") {
-    throw new Error(`Invalid node type: ${nodeType} for getFileDownloadURL`);
-  }
-
-  const res = await clientApiGet(logger, client, `${itemAPIPath}`);
-
-  return res["@microsoft.graph.downloadUrl"];
 }
 
 type MicrosoftEntity = {

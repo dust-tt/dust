@@ -24,7 +24,7 @@ import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
-import { confirmPrivateNodesSync } from "@app/components/ConnectorPermissionsModal";
+import { confirmPrivateNodesSync } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";

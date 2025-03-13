@@ -686,23 +686,39 @@ export function useSpaceSearch({
   };
 }
 
+type BaseSearchParams = {
+  disabled?: boolean;
+  includeDataSources: boolean;
+  owner: LightWorkspaceType;
+  spaceIds?: string[];
+  viewType: ContentNodesViewType;
+  pagination?: CursorPaginationParams;
+};
+
+// Text search variant
+type TextSearchParams = BaseSearchParams & {
+  search: string;
+  nodeIds?: undefined;
+};
+
+// Node ID search variant
+type NodeIdSearchParams = BaseSearchParams & {
+  search?: undefined;
+  nodeIds: string[];
+};
+
+type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
+
 export function useSpacesSearch({
   disabled = false,
   includeDataSources = false,
+  nodeIds,
   owner,
   search,
   spaceIds,
   viewType,
   pagination,
-}: {
-  disabled?: boolean;
-  includeDataSources: boolean;
-  owner: LightWorkspaceType;
-  search: string;
-  spaceIds?: string[];
-  viewType: ContentNodesViewType;
-  pagination?: CursorPaginationParams;
-}): {
+}: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
   isSearchValidating: boolean;
@@ -722,6 +738,7 @@ export function useSpacesSearch({
   const body = {
     query: search,
     viewType,
+    nodeIds,
     spaceIds,
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
@@ -729,7 +746,7 @@ export function useSpacesSearch({
 
   // Only perform a query if we have a valid search
   const url =
-    search.length >= MIN_SEARCH_QUERY_SIZE
+    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
 

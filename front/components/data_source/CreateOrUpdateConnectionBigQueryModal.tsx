@@ -1,7 +1,6 @@
 import {
   BookOpenIcon,
   Button,
-  CloudArrowLeftRightIcon,
   ContentMessage,
   Icon,
   InformationCircleIcon,
@@ -32,7 +31,7 @@ import {
 } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
@@ -376,12 +375,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update Connection"
-                : "Connect Tables",
-            icon: CloudArrowLeftRightIcon,
+            label: isLoading ? "Saving..." : "Save",
             onClick: () => {
               setIsLoading(true);
               dataSourceToUpdate
@@ -393,7 +387,6 @@ export function CreateOrUpdateConnectionBigQueryModal({
               isLocationsLoading ||
               !credentialsState.valid ||
               !selectedLocation,
-            size: "md",
           }}
         />
       </SheetContent>

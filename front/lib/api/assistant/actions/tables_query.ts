@@ -1,6 +1,7 @@
 import type {
   ActionGeneratedFileType,
   AgentActionSpecification,
+  ConnectorProvider,
   DustAppParameters,
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -14,22 +15,30 @@ import type {
   TablesQueryStartedEvent,
 } from "@dust-tt/types";
 import {
+  assertNever,
   BaseAction,
-  getTablesQueryResultsFileAttachment,
+  getTablesQueryResultsFileAttachments,
   getTablesQueryResultsFileTitle,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import {
+  generateCSVFileAndSnippet,
+  generateSectionFile,
+  uploadFileToConversationDataSource,
+} from "@app/lib/api/assistant/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import { getToolResultOutputCsvFileAndSnippet } from "@app/lib/api/assistant/actions/result_file_helpers";
 import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
@@ -38,6 +47,7 @@ import logger from "@app/logger/logger";
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
+const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
 interface TablesQueryActionBlob {
   id: ModelId; // AgentTablesQueryAction.
@@ -46,6 +56,7 @@ interface TablesQueryActionBlob {
   output: Record<string, string | number | boolean> | null;
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
+  sectionFileId: string | null;
   functionCallId: string | null;
   functionCallName: string | null;
   step: number;
@@ -58,6 +69,7 @@ export class TablesQueryAction extends BaseAction {
   readonly output: Record<string, string | number | boolean> | null;
   readonly resultsFileId: string | null;
   readonly resultsFileSnippet: string | null;
+  readonly sectionFileId: string | null;
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number;
@@ -74,6 +86,7 @@ export class TablesQueryAction extends BaseAction {
     this.step = blob.step;
     this.resultsFileId = blob.resultsFileId;
     this.resultsFileSnippet = blob.resultsFileSnippet;
+    this.sectionFileId = blob.sectionFileId;
   }
 
   renderForFunctionCall(): FunctionCallType {
@@ -145,13 +158,13 @@ export class TablesQueryAction extends BaseAction {
     }
 
     if (hasResultsFile) {
-      const attachment = getTablesQueryResultsFileAttachment({
+      const attachments = getTablesQueryResultsFileAttachments({
         resultsFileId: this.resultsFileId,
         resultsFileSnippet: this.resultsFileSnippet,
+        sectionFileId: this.sectionFileId,
         output: this.output,
-        includeSnippet: true,
       });
-      if (!attachment) {
+      if (!attachments) {
         throw new Error(
           "Unexpected: No file attachment for tables query with results file."
         );
@@ -160,7 +173,7 @@ export class TablesQueryAction extends BaseAction {
       // We render it as an attachment.
       return {
         ...partialOutput,
-        content: attachment,
+        content: attachments,
       };
     }
 
@@ -193,24 +206,39 @@ export async function tableQueryTypesFromAgentMessageIds(
         model: FileModel,
         as: "resultsFile",
       },
+      {
+        model: FileModel,
+        as: "sectionFile",
+      },
     ],
   });
 
   return actions.map((action) => {
+    const title = getTablesQueryResultsFileTitle({
+      output: action.output as CSVRecord,
+    });
+
     const resultsFile: ActionGeneratedFileType | null = action.resultsFile
       ? {
           fileId: FileResource.modelIdToSId({
             id: action.resultsFile.id,
             workspaceId: owner.id,
           }),
-          title: getTablesQueryResultsFileTitle({
-            output: action.output as Record<
-              string,
-              string | number | boolean
-            > | null,
-          }),
+          title,
           contentType: action.resultsFile.contentType,
           snippet: action.resultsFile.snippet,
+        }
+      : null;
+
+    const sectionFile: ActionGeneratedFileType | null = action.sectionFile
+      ? {
+          fileId: FileResource.modelIdToSId({
+            id: action.sectionFile.id,
+            workspaceId: owner.id,
+          }),
+          title: `${title} (Section representation)`,
+          contentType: action.sectionFile.contentType,
+          snippet: action.sectionFile.snippet,
         }
       : null;
 
@@ -224,6 +252,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       step: action.step,
       resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
+      sectionFileId: sectionFile ? sectionFile.fileId : null,
       generatedFiles: resultsFile ? [resultsFile] : [],
     });
   });
@@ -328,6 +357,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         step: action.step,
         resultsFileId: null,
         resultsFileSnippet: null,
+        sectionFileId: null,
         generatedFiles: [],
       }),
     };
@@ -528,6 +558,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 step: action.step,
                 resultsFileId: null,
                 resultsFileSnippet: null,
+                sectionFileId: null,
                 generatedFiles: [],
               }),
             };
@@ -548,14 +579,17 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     const updateParams: {
       resultsFileId: number | null;
       resultsFileSnippet: string | null;
+      sectionFileId: number | null;
       output: Record<string, unknown> | null;
     } = {
       resultsFileId: null,
       resultsFileSnippet: null,
+      sectionFileId: null,
       output: null,
     };
 
-    let resultFile: ActionGeneratedFileType | null = null;
+    let generatedResultFile: ActionGeneratedFileType | null = null;
+    let generatedsectionFile: ActionGeneratedFileType | null = null;
 
     if (
       "results" in sanitizedOutput &&
@@ -566,25 +600,80 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         output: sanitizedOutput,
       });
 
-      const { file, snippet } = await getToolResultOutputCsvFileAndSnippet(
+      // Generate the CSV file.
+      const { csvFile, csvSnippet } = await generateCSVFileAndSnippet(auth, {
+        title: queryTitle,
+        conversationId: conversation.sId,
+        results,
+      });
+
+      // Upload the CSV file to the conversation data source.
+      await uploadFileToConversationDataSource({
         auth,
-        {
+        file: csvFile,
+      });
+
+      //  Save ref to the generated csv file to be yielded later.
+      generatedResultFile = {
+        fileId: csvFile.sId,
+        title: queryTitle,
+        contentType: csvFile.contentType,
+        snippet: csvFile.snippet,
+      };
+
+      // Check if we should generate a section JSON file.
+      const shouldGeneratesectionFile = results.some((result) => {
+        for (const value of Object.values(result)) {
+          if (
+            typeof value === "string" &&
+            value.length > TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH
+          ) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      let sectionFile: FileResource | null = null;
+      if (shouldGeneratesectionFile) {
+        // First we fetch the connector provider for the data source, cause the chunking
+        // strategy of the section file depends on it: Since all tables are from the same
+        // data source, we can just take the first table's data source view id.
+        const dataSourceView = await DataSourceViewResource.fetchById(
+          auth,
+          actionConfiguration.tables[0].dataSourceViewId
+        );
+        const connectorProvider =
+          dataSourceView?.dataSource?.connectorProvider ?? null;
+        const sectionColumnsPrefix = getSectionColumnsPrefix(connectorProvider);
+
+        // Generate the section file.
+        sectionFile = await generateSectionFile(auth, {
           title: queryTitle,
           conversationId: conversation.sId,
           results,
-        }
-      );
+          sectionColumnsPrefix,
+        });
 
-      resultFile = {
-        fileId: file.sId,
-        title: queryTitle,
-        contentType: file.contentType,
-        snippet: file.snippet,
-      };
+        // Upload the section file to the conversation data source.
+        await uploadFileToConversationDataSource({
+          auth,
+          file: sectionFile,
+        });
+
+        // Save ref to the generated section file to be yielded later.
+        generatedsectionFile = {
+          fileId: sectionFile.sId,
+          title: `${queryTitle} (Rich Text)`,
+          contentType: sectionFile.contentType,
+          snippet: null,
+        };
+      }
 
       delete sanitizedOutput.results;
-      updateParams.resultsFileId = file.id;
-      updateParams.resultsFileSnippet = snippet;
+      updateParams.resultsFileId = csvFile.id;
+      updateParams.resultsFileSnippet = csvSnippet;
+      updateParams.sectionFileId = sectionFile?.id ?? null;
     }
 
     // Updating action
@@ -607,11 +696,46 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         functionCallName: action.functionCallName,
         agentMessageId: action.agentMessageId,
         step: action.step,
-        resultsFileId: resultFile?.fileId ?? null,
+        resultsFileId: generatedResultFile?.fileId ?? null,
         resultsFileSnippet: updateParams.resultsFileSnippet,
-        generatedFiles: resultFile ? [resultFile] : [],
+        sectionFileId: generatedsectionFile?.fileId ?? null,
+        generatedFiles: removeNulls([
+          generatedResultFile,
+          generatedsectionFile,
+        ]),
       }),
     };
     return;
+  }
+}
+
+/**
+ * Get the prefix for a row in a section file.
+ * This prefix is used to identify the row in the section file.
+ * We currently only support Salesforce since it's the only connector for which we can
+ * generate a prefix.
+ */
+function getSectionColumnsPrefix(
+  provider: ConnectorProvider | null
+): string[] | null {
+  switch (provider) {
+    case "salesforce":
+      return ["Id", "Name"];
+    case "confluence":
+    case "github":
+    case "google_drive":
+    case "intercom":
+    case "notion":
+    case "slack":
+    case "microsoft":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "gong":
+    case null:
+      return null;
+    default:
+      assertNever(provider);
   }
 }

@@ -332,9 +332,9 @@ export async function triggerFromEmail({
       cfRes.value,
       {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
       }
     );
     if (contentFragmentRes.isErr()) {
@@ -386,9 +386,9 @@ export async function triggerFromEmail({
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
-        profilePictureUrl: user.image,
+        profilePictureUrl: user.imageUrl,
         origin: "email",
       },
     },

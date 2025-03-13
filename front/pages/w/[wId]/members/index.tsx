@@ -58,7 +58,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
-  const user = auth.user();
+  const user = auth.user()?.toJSON();
   const subscriptionResource = auth.subscriptionResource();
 
   if (!owner || !user || !auth.isAdmin() || !plan || !subscriptionResource) {

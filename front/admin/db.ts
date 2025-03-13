@@ -11,11 +11,6 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
-  AgentGithubCreateIssueAction,
-  AgentGithubGetPullRequestAction,
-} from "@app/lib/models/assistant/actions/github";
-import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
-import {
   AgentProcessAction,
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
@@ -88,7 +83,6 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
@@ -156,7 +150,6 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
-  await AgentGithubConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
@@ -172,8 +165,6 @@ async function main() {
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
-  await AgentGithubCreateIssueAction.sync({ alter: true });
-  await AgentGithubGetPullRequestAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
@@ -187,8 +178,6 @@ async function main() {
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
-
-  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

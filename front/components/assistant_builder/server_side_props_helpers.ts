@@ -14,8 +14,6 @@ import {
   assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -27,8 +25,6 @@ import {
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubCreateIssueActionConfiguration,
-  getDefaultGithubGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -113,10 +109,6 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubGetPullRequestActionConfiguration();
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else {

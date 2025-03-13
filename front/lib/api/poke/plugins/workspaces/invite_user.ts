@@ -46,7 +46,7 @@ export const inviteUser = createPlugin({
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       subscription,
       invitationRequests: [
         {

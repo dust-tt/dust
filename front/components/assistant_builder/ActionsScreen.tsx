@@ -53,11 +53,6 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
-  ActionGithubCreateIssue,
-  ActionGithubGetPullRequest,
-  hasErrorActionGithub,
-} from "@app/components/assistant_builder/actions/GithubAction";
-import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
@@ -111,8 +106,6 @@ const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
 // Note: not all capabilities are actions (eg: visualization)
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
-  "GITHUB_GET_PULL_REQUEST",
-  "GITHUB_CREATE_ISSUE",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -142,10 +135,6 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
-    case "GITHUB_GET_PULL_REQUEST":
-      return hasErrorActionGithub(action);
-    case "GITHUB_CREATE_ISSUE":
-      return hasErrorActionGithub(action);
     case "REASONING":
       return null;
     default:
@@ -229,8 +218,6 @@ export default function ActionsScreen({
           break;
 
         case "WEB_NAVIGATION":
-        case "GITHUB_GET_PULL_REQUEST":
-        case "GITHUB_CREATE_ISSUE":
         case "REASONING":
           break;
 
@@ -905,11 +892,6 @@ function ActionConfigEditor({
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
 
-    case "GITHUB_GET_PULL_REQUEST":
-      return <ActionGithubGetPullRequest />;
-    case "GITHUB_CREATE_ISSUE":
-      return <ActionGithubCreateIssue />;
-
     case "REASONING":
       return <ActionReasoning />;
 
@@ -1282,17 +1264,6 @@ function Capabilities({
     );
   };
 
-  const { platformActionsConfigurations } = useContext(AssistantBuilderContext);
-
-  const showGithubActions = useMemo(() => {
-    if (
-      builderState.actions.find((a) => a.type === "GITHUB_GET_PULL_REQUEST")
-    ) {
-      return true;
-    }
-    return platformActionsConfigurations.find((c) => c.provider === "github");
-  }, [platformActionsConfigurations, builderState]);
-
   return (
     <>
       <div className="mx-auto grid w-full grid-cols-1 gap-y-4 md:grid-cols-2">
@@ -1364,66 +1335,6 @@ function Capabilities({
           />
         )}
       </div>
-
-      {showGithubActions && (
-        <>
-          <Page.H variant="h6">Github Actions</Page.H>
-
-          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
-            <Capability
-              name="Pull request retrieval"
-              description="Agent can retrieve pull requests by number, including diffs"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_GET_PULL_REQUEST"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaultGithubGetPullRequestAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubGetPullRequestAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaulGithubGetPullRequestAction);
-                deleteAction(defaulGithubGetPullRequestAction.name);
-              }}
-            />
-
-            <Capability
-              name="Issue creation"
-              description="Agent can create issues"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_CREATE_ISSUE"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaultGithubCreateIssueAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubCreateIssueAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaulGithubCreateIssueAction);
-                deleteAction(defaulGithubCreateIssueAction.name);
-              }}
-            />
-          </div>
-        </>
-      )}
     </>
   );
 }

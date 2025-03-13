@@ -13,15 +13,15 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBarCitations } from "@app/components/assistant/conversation/input_bar/InputBarCitations";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarNodeAttachments } from "@app/components/assistant/conversation/input_bar/InputBarNodeAttachments";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -70,7 +70,15 @@ export function AssistantInputBar({
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
     () =>
-      Object.fromEntries(spaces?.map((space) => [space.sId, space.name]) || []),
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
     [spaces]
   );
 
@@ -326,12 +334,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              <InputBarNodeAttachments
-                nodes={attachedNodes}
-                spacesMap={spacesMap}
-                onRemoveNode={handleNodesAttachmentRemove}
+              <InputBarAttachments
+                files={{ service: fileUploaderService }}
+                nodes={{
+                  items: attachedNodes,
+                  spacesMap,
+                  onRemove: handleNodesAttachmentRemove,
+                }}
               />
-              <InputBarCitations fileUploaderService={fileUploaderService} />
               <InputBarContainer
                 actions={actions}
                 disableAutoFocus={disableAutoFocus}

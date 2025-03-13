@@ -1,18 +1,15 @@
-import type { UserType } from "@dust-tt/types";
 import { safeParseJSON } from "@dust-tt/types";
 
 import type { NavigationSelectionType } from "@app/hooks/usePersistedNavigationSelection";
 import { NAVIGATION_SELECTION_METADATA_NAME } from "@app/hooks/usePersistedNavigationSelection";
-import { getUserMetadata } from "@app/lib/api/user";
+
+import type { UserResource } from "./resources/user_resource";
 
 // Server-side counterpart of usePersistedNavigationSelection
 export const getPersistedNavigationSelection = async (
-  user: UserType
+  user: UserResource
 ): Promise<NavigationSelectionType> => {
-  const metadata = await getUserMetadata(
-    user,
-    NAVIGATION_SELECTION_METADATA_NAME
-  );
+  const metadata = await user.getMetadata(NAVIGATION_SELECTION_METADATA_NAME);
 
   if (!metadata) {
     return {};

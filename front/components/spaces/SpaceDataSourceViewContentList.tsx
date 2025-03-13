@@ -37,7 +37,7 @@ import {
 } from "react";
 
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import type {

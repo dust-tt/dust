@@ -33,7 +33,7 @@ import React, {
 } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";

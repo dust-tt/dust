@@ -30,8 +30,10 @@ import type { ComponentType } from "react";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -39,6 +41,16 @@ interface ConnectorOptionsProps {
   isAdmin: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
+}
+
+export interface ConnectorOauthExtraConfigProps {
+  extraConfig: Record<string, string>;
+  setExtraConfig: (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>)
+  ) => void;
+  setIsExtraConfigValid: (valid: boolean) => void;
 }
 
 export type ConnectorProviderConfiguration = {
@@ -54,6 +66,9 @@ export type ConnectorProviderConfiguration = {
   description: string;
   mismatchError: string;
   limitations: string | null;
+  oauthExtraConfigComponent?: (
+    props: ConnectorOauthExtraConfigProps
+  ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
@@ -300,6 +315,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
     optionsComponent: ZendeskConfigView,
+    oauthExtraConfigComponent: ZendeskOAuthExtraConfig,
     isNested: true,
     isSearchEnabled: false,
     permissions: {
@@ -342,6 +358,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return SalesforceLogo;
     },
+    oauthExtraConfigComponent: SalesforceOauthExtraConfig,
     isNested: true,
     isSearchEnabled: false,
     permissions: {

@@ -3,8 +3,6 @@ import type {
   BrowseConfigurationType,
   ConversationIncludeFileConfigurationType,
   DustAppRunConfigurationType,
-  GithubCreateIssueConfigurationType,
-  GithubGetPullRequestConfigurationType,
   ProcessConfigurationType,
   ReasoningConfigurationType,
   RetrievalConfigurationType,
@@ -28,17 +26,10 @@ import type {
 } from "@app/lib/api/assistant/actions/types";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
 
-import {
-  GithubCreateIssueConfigurationServerRunner,
-  GithubGetPullRequestConfigurationServerRunner,
-} from "./github";
-
 interface ActionToConfigTypeMap {
   browse_configuration: BrowseConfigurationType;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationType;
   dust_app_run_configuration: DustAppRunConfigurationType;
-  github_create_issue_configuration: GithubCreateIssueConfigurationType;
-  github_get_pull_request_configuration: GithubGetPullRequestConfigurationType;
   process_configuration: ProcessConfigurationType;
   reasoning_configuration: ReasoningConfigurationType;
   retrieval_configuration: RetrievalConfigurationType;
@@ -51,8 +42,6 @@ interface ActionTypeToClassMap {
   browse_configuration: BrowseConfigurationServerRunner;
   conversation_include_file_configuration: ConversationIncludeFileConfigurationServerRunner;
   dust_app_run_configuration: DustAppRunConfigurationServerRunner;
-  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner;
-  github_get_pull_request_configuration: GithubGetPullRequestConfigurationServerRunner;
   process_configuration: ProcessConfigurationServerRunner;
   reasoning_configuration: ReasoningConfigurationServerRunner;
   retrieval_configuration: RetrievalConfigurationServerRunner;
@@ -99,9 +88,6 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   conversation_include_file_configuration:
     ConversationIncludeFileConfigurationServerRunner,
   dust_app_run_configuration: DustAppRunConfigurationServerRunner,
-  github_create_issue_configuration: GithubCreateIssueConfigurationServerRunner,
-  github_get_pull_request_configuration:
-    GithubGetPullRequestConfigurationServerRunner,
   process_configuration: ProcessConfigurationServerRunner,
   reasoning_configuration: ReasoningConfigurationServerRunner,
   retrieval_configuration: RetrievalConfigurationServerRunner,

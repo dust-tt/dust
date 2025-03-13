@@ -12,7 +12,10 @@ import { Op } from "sequelize";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import {
+  UserMetadataModel,
+  UserModel,
+} from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 
 export interface SearchMembersPaginationParams {
@@ -180,6 +183,8 @@ export class UserResource extends BaseResource<UserModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
+    await this.deleteAllMetadata();
+
     try {
       await this.model.destroy({
         where: {
@@ -209,6 +214,43 @@ export class UserResource extends BaseResource<UserModel> {
     } catch (err) {
       return new Err(err as Error);
     }
+  }
+
+  async getMetadata(key: string) {
+    return UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+  }
+
+  async setMetadata(key: string, value: string) {
+    const metadata = await UserMetadataModel.findOne({
+      where: {
+        userId: this.id,
+        key,
+      },
+    });
+
+    if (!metadata) {
+      await UserMetadataModel.create({
+        userId: this.id,
+        key,
+        value,
+      });
+      return;
+    }
+
+    await metadata.update({ value });
+  }
+
+  async deleteAllMetadata() {
+    return UserMetadataModel.destroy({
+      where: {
+        userId: this.id,
+      },
+    });
   }
 
   fullName(): string {

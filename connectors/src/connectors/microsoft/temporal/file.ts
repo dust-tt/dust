@@ -9,9 +9,10 @@ import axios from "axios";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
-  getFileDownloadURL,
+  getItem,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
+import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
@@ -39,6 +40,7 @@ import {
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
@@ -109,19 +111,37 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+  const client = await getClient(connector.connectionId);
+  const { itemAPIPath } = typeAndPathFromInternalId(documentId);
 
-  const url =
-    "@microsoft.graph.downloadUrl" in file
-      ? file["@microsoft.graph.downloadUrl"]
-      : await getFileDownloadURL(
-          localLogger,
-          await getClient(connector.connectionId),
-          documentId
-        );
+  let url = file["@microsoft.graph.downloadUrl"];
+  let fields = file.listItem?.fields;
+
+  if (!url || !fields) {
+    if (!url) {
+      statsDClient.increment("microsoft.file.missing_download_url");
+    }
+    if (!fields) {
+      statsDClient.increment("microsoft.file.missing_fields");
+    }
+
+    const item = (await getItem(
+      logger,
+      client,
+      `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+    )) as DriveItem;
+
+    url = item["@microsoft.graph.downloadUrl"];
+    fields = item.listItem?.fields;
+  }
 
   if (!url) {
     localLogger.error("Unexpected missing download URL");
     throw new Error("Unexpected missing download URL");
+  }
+
+  if (!fields) {
+    localLogger.warn("Unexpected missing fields for file");
   }
 
   // If the file is too big to be downloaded, we skip it.
@@ -162,7 +182,8 @@ export async function syncOneFile({
   // Handle custom columns (metadata) potentially set on the file
   const columns = await getColumnsFromListItem(
     file,
-    await getClient(connector.connectionId),
+    fields,
+    client,
     localLogger
   );
 

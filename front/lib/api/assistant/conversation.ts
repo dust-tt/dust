@@ -111,10 +111,7 @@ export async function createConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<ConversationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.create({
     sId: generateRandomModelSId(),
@@ -152,15 +149,12 @@ export async function updateConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
-      workspaceId: auth.workspace()?.id,
+      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -191,14 +185,12 @@ export async function deleteConversation(
     destroy?: boolean;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
-  if (!auth.workspace()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
-      workspaceId: auth.workspace()?.id,
+      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -230,14 +222,8 @@ export async function getUserConversations(
   includeDeleted?: boolean,
   includeTest?: boolean
 ): Promise<ConversationWithoutContentType[]> {
-  const owner = auth.workspace();
-  const user = auth.user();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  if (!user) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
   const participations = await ConversationParticipant.findAll({
     attributes: ["userId", "updatedAt", "conversationId"],
@@ -303,7 +289,7 @@ async function createOrUpdateParticipation({
   user,
   conversation,
 }: {
-  user: UserType | null;
+  user: UserResource | null;
   conversation: ConversationType;
 }) {
   if (user) {
@@ -345,10 +331,7 @@ export async function getConversation(
   conversationId: string,
   includeDeleted?: boolean
 ): Promise<Result<ConversationType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
@@ -446,8 +429,7 @@ export async function getConversationMessageType(
   conversation: ConversationType | ConversationWithoutContentType,
   messageId: string
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
-  const owner = auth.workspace();
-  if (!owner) {
+  if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
@@ -483,10 +465,7 @@ export async function generateConversationTitle(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const model = getSmallWhitelistedModel(owner);
   if (!model) {
@@ -839,7 +818,7 @@ export async function* postUserMessage(
         type: "user_message",
         visibility: "visible",
         version: 0,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context,
@@ -1312,7 +1291,7 @@ export async function* editUserMessage(
         type: "user_message",
         visibility: m.visibility,
         version: m.version,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context: message.context,
@@ -1928,8 +1907,6 @@ async function* streamRunAgentEvents(
       case "dust_app_run_block":
       case "dust_app_run_params":
       case "generation_tokens":
-      case "github_create_issue_params":
-      case "github_get_pull_request_params":
       case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":

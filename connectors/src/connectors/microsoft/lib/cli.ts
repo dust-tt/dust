@@ -96,7 +96,12 @@ export const microsoft = async ({
           : ""
       )) as DriveItem;
 
-      const columns = await getColumnsFromListItem(driveItem, client, logger);
+      const columns = await getColumnsFromListItem(
+        driveItem,
+        driveItem.listItem?.fields,
+        client,
+        logger
+      );
 
       const microsoftNodeResource =
         await MicrosoftNodeResource.fetchByInternalId(
