@@ -256,6 +256,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "mcp_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });

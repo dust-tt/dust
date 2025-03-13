@@ -3,6 +3,7 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  CommandIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
@@ -33,6 +34,7 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -301,6 +303,14 @@ function renderOtherAction(
           Agent can perform step by step reasoning to solve complex problems.
           Slow but powerful.
         </div>
+      </ActionSection>
+    );
+  } else if (isMCPServerConfiguration(action)) {
+    //TODO(mcp) We want to display a more specific description here
+    return (
+      <ActionSection title="Calling a MCP Server" key={`other-${index}`}>
+        <Icon visual={CommandIcon} size="sm" />
+        <div>Agent can call use MCP Server tools to answer.</div>
       </ActionSection>
     );
   } else if (isBrowseConfiguration(action)) {

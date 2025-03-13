@@ -147,6 +147,7 @@ export async function streamConversationToSlack(
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "mcp_params":
         await postSlackMessageUpdate(
           {
             isComplete: false,

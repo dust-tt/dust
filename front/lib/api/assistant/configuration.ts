@@ -4,6 +4,7 @@ import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
 import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
+import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
 import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
 import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/configuration/retrieval";
@@ -20,14 +21,11 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
-  DataSourceConfiguration,
-  RetrievalTimeframe,
-} from "@app/lib/actions/retrieval";
-import type { RetrievalQuery } from "@app/lib/actions/retrieval";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+  AgentActionConfigurationType,
+  UnsavedAgentActionConfigurationType,
+} from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
@@ -39,6 +37,7 @@ import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -57,14 +56,10 @@ import type {
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentModelConfigurationType,
-  AgentReasoningEffort,
   AgentsGetViewType,
   AgentStatus,
-  AppType,
   LightAgentConfigurationType,
   ModelId,
-  ModelIdType,
-  ModelProviderIdType,
   Result,
   WorkspaceType,
 } from "@app/types";
@@ -477,6 +472,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     websearchActionsConfigurationsPerAgent,
     browseActionsConfigurationsPerAgent,
     reasoningActionsConfigurationsPerAgent,
+    mcpServerActionsConfigurationsPerAgent,
     favoriteStatePerAgent,
   ] = await Promise.all([
     fetchAgentRetrievalActionConfigurations({ configurationIds, variant }),
@@ -486,6 +482,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
+    fetchMCPServerActionConfigurations({ configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -530,6 +527,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
       const reasoningActionsConfigurations =
         reasoningActionsConfigurationsPerAgent.get(agent.id) ?? [];
       actions.push(...reasoningActionsConfigurations);
+
+      // MCP server configurations
+      const mcpServerActionsConfigurations =
+        mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [];
+      actions.push(...mcpServerActionsConfigurations);
     }
 
     const model: (typeof agentConfigurationType)["model"] = {
@@ -957,51 +959,11 @@ export async function restoreAgentConfiguration(
 }
 
 /**
- * Create Agent RetrievalConfiguration
+ * Called by Agent Builder to create an action configuration.
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
-  action: (
-    | {
-        type: "retrieval_configuration";
-        query: RetrievalQuery;
-        relativeTimeFrame: RetrievalTimeframe;
-        topK: number | "auto";
-        dataSources: DataSourceConfiguration[];
-      }
-    | {
-        type: "dust_app_run_configuration";
-        appWorkspaceId: string;
-        appId: string;
-        app: AppType;
-      }
-    | {
-        type: "tables_query_configuration";
-        tables: TableDataSourceConfiguration[];
-      }
-    | {
-        type: "process_configuration";
-        relativeTimeFrame: RetrievalTimeframe;
-        dataSources: DataSourceConfiguration[];
-        schema: ProcessSchemaPropertyType[];
-      }
-    | {
-        type: "websearch_configuration";
-      }
-    | {
-        type: "browse_configuration";
-      }
-    | {
-        type: "reasoning_configuration";
-        providerId: ModelProviderIdType;
-        modelId: ModelIdType;
-        temperature: number | null;
-        reasoningEffort: AgentReasoningEffort | null;
-      }
-  ) & {
-    name: string | null;
-    description: string | null;
-  },
+  action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
   const owner = auth.workspace();
@@ -1068,8 +1030,8 @@ export async function createAgentActionConfiguration(
         type: "dust_app_run_configuration",
         appWorkspaceId: action.appWorkspaceId,
         appId: action.appId,
-        name: action.app.name,
-        description: action.app.description,
+        name: action.name,
+        description: action.description,
       });
     }
     case "tables_query_configuration": {
@@ -1199,6 +1161,26 @@ export async function createAgentActionConfiguration(
         reasoningEffort: action.reasoningEffort,
         name: action.name || DEFAULT_REASONING_ACTION_NAME,
         description: action.description,
+      });
+    }
+    case "mcp_server_configuration": {
+      const mcpConfig = await AgentMCPServerConfiguration.create({
+        sId: generateRandomModelSId(),
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+        serverType: action.serverType,
+        internalMCPServerId: action.internalMCPServerId,
+      });
+
+      return new Ok({
+        id: mcpConfig.id,
+        sId: mcpConfig.sId,
+        type: "mcp_server_configuration",
+        name: action.name,
+        description: action.description,
+        serverType: action.serverType,
+        internalMCPServerId: action.internalMCPServerId,
+        remoteMCPServerId: action.remoteMCPServerId,
       });
     }
     default:

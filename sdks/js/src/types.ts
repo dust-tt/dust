@@ -810,6 +810,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "attach_from_datasources"
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
+  | "mcp_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -892,6 +893,12 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
 export type WebsearchActionPublicType = z.infer<
   typeof WebsearchActionTypeSchema
 >;
+
+const MCPActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.unknown(),
+  type: z.literal("mcp_action"),
+});
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1042,6 +1049,7 @@ const AgentActionTypeSchema = z.union([
   ConversationIncludeFileActionTypeSchema,
   ReasoningActionTypeSchema,
   SearchLabelsActionTypeSchema,
+  MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1263,6 +1271,14 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPParamsEventSchema = z.object({
+  type: z.literal("mcp_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1290,6 +1306,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryOutputEventSchema,
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
+  MCPParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -2727,7 +2744,7 @@ export type PostWorkspaceSearchResponseBodyType = z.infer<
   typeof PostWorkspaceSearchResponseBodySchema
 >;
 
-// TODO(mcp) move directly in the action type ?
+// TODO(mcp) move somewhere else as we'll need dynamic labels for MCP.
 export const ACTION_RUNNING_LABELS: Record<
   AgentActionPublicType["type"],
   string
@@ -2742,4 +2759,5 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
+  mcp_action: "Calling MCP Server",
 };

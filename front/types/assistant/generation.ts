@@ -2,6 +2,8 @@
  * Model rendering of conversations.
  */
 
+import type { MCPToolResultContent } from "@app/lib/actions/mcp";
+
 export interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment";
   name: string;
@@ -26,8 +28,14 @@ interface TextContent {
 
 type Content = TextContent | ImageContent;
 
-export function isTextContent(content: Content): content is TextContent {
-  return content.type === "text";
+export function isTextContent(content: object): content is TextContent {
+  return "text" in content && "type" in content && content.type === "text";
+}
+
+export function isImageContent(content: object): content is ImageContent {
+  return (
+    "image_url" in content && "type" in content && content.type === "image_url"
+  );
 }
 
 export interface ContentFragmentMessageTypeModel {
