@@ -51,6 +51,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "gemini-2.0-flash"
   | "gemini-2.0-flash-lite-preview-02-05"
   | "gemini-2.0-pro-exp-02-05"
+  | "gemma-3-27b-it"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai

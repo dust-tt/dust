@@ -132,6 +132,7 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-lite-preview-02-05" as const;
 export const GEMINI_2_PRO_PREVIEW_MODEL_ID =
   "gemini-2.0-pro-exp-02-05" as const;
+export const GEMMA_3_27B_IT_MODEL_ID = "gemma-3-27b-it" as const;
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
@@ -177,6 +178,7 @@ export const MODEL_IDS = [
   GEMINI_2_FLASH_MODEL_ID,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMMA_3_27B_IT_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
@@ -769,6 +771,22 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
 
+export const GEMMA_3_27B_IT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMMA_3_27B_IT_MODEL_ID,
+  displayName: "Gemma 3 27B",
+  contextSize: 128_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description: "Google's large Gemma 3 model (128k context)",
+  shortDescription: "Google's Gemma large model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
+
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "togetherai",
@@ -952,6 +970,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GEMINI_2_FLASH_MODEL_CONFIG,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG,
   GEMINI_2_PRO_PREVIEW_MODEL_CONFIG,
+  GEMMA_3_27B_IT_MODEL_CONFIG,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG,
