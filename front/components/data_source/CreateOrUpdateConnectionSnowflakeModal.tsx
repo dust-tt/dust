@@ -1,7 +1,6 @@
 import {
   BookOpenIcon,
   Button,
-  CloudArrowLeftRightIcon,
   Icon,
   Input,
   Page,
@@ -318,12 +317,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update connection"
-                : "Connect and select tables",
-            icon: CloudArrowLeftRightIcon,
+            label: isLoading ? "Saving..." : "Save",
             onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               dataSourceToUpdate
@@ -331,7 +325,6 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 : void createSnowflakeConnection();
             },
             disabled: isLoading || !areCredentialsValid(),
-            size: "md",
           }}
         />
       </SheetContent>

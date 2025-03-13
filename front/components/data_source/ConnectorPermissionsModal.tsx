@@ -13,12 +13,12 @@ import {
   DialogTrigger,
   Hoverable,
   Icon,
-  Input,
   LockIcon,
   Page,
   Sheet,
   SheetContainer,
   SheetContent,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
   Spinner,
@@ -37,11 +37,7 @@ import type {
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@dust-tt/types";
-import {
-  assertNever,
-  isOAuthProvider,
-  isValidZendeskSubdomain,
-} from "@dust-tt/types";
+import { assertNever, isOAuthProvider } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
   useCallback,
@@ -211,7 +207,7 @@ function DataSourceManagementModal({
   );
 }
 
-interface DataSourceEditionModalProps {
+interface UpdateConnectionOAuthModalProps {
   dataSource: DataSourceType;
   isOpen: boolean;
   onClose: () => void;
@@ -219,29 +215,20 @@ interface DataSourceEditionModalProps {
   owner: LightWorkspaceType;
 }
 
-function DataSourceEditionModal({
+function UpdateConnectionOAuthModal({
   dataSource,
   isOpen,
   onClose,
   onEditPermissionsClick,
   owner,
-}: DataSourceEditionModalProps) {
+}: UpdateConnectionOAuthModalProps) {
   const { isDark } = useTheme();
   const [extraConfig, setExtraConfig] = useState<Record<string, string>>({});
+  const [isExtraConfigValid, setIsExtraConfigValid] = useState(true);
+
   const { user } = useUser();
 
   const { connectorProvider, editedByUser } = dataSource;
-
-  const isExtraConfigValid = useCallback(
-    (extraConfig: Record<string, string>) => {
-      if (connectorProvider === "zendesk") {
-        return isValidZendeskSubdomain(extraConfig.zendesk_subdomain);
-      } else {
-        return true;
-      }
-    },
-    [connectorProvider]
-  );
 
   useEffect(() => {
     if (isOpen) {
@@ -253,17 +240,10 @@ function DataSourceEditionModal({
     return null;
   }
 
+  const connectorConfiguration =
+    connectorProvider && CONNECTOR_CONFIGURATIONS[connectorProvider];
+
   const isDataSourceOwner = editedByUser?.userId === user.sId;
-
-  const connectorConfiguration = CONNECTOR_CONFIGURATIONS[connectorProvider];
-
-  if (isRemoteDatabase(dataSource)) {
-    return (
-      <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
-        Edit {connectorConfiguration.name}
-      </DataSourceManagementModal>
-    );
-  }
 
   return (
     <DataSourceManagementModal isOpen={isOpen} onClose={onClose}>
@@ -357,21 +337,12 @@ function DataSourceEditionModal({
             </ContentMessage>
           </div>
         )}
-
-        {connectorProvider === "zendesk" && (
-          <div className="pb-4">
-            <Input
-              label="Zendesk account subdomain"
-              message="The first part of your Zendesk account URL."
-              messageStatus="info"
-              name="subdomain"
-              value={extraConfig.zendesk_subdomain ?? ""}
-              placeholder="my-subdomain"
-              onChange={(e) => {
-                setExtraConfig({ zendesk_subdomain: e.target.value });
-              }}
-            />
-          </div>
+        {connectorConfiguration.oauthExtraConfigComponent && (
+          <connectorConfiguration.oauthExtraConfigComponent
+            extraConfig={extraConfig}
+            setExtraConfig={setExtraConfig}
+            setIsExtraConfigValid={setIsExtraConfigValid}
+          />
         )}
 
         <div className="flex items-center justify-center">
@@ -381,7 +352,7 @@ function DataSourceEditionModal({
                 label="Edit Permissions"
                 icon={LockIcon}
                 variant="warning"
-                disabled={!isExtraConfigValid(extraConfig)}
+                disabled={!isExtraConfigValid}
               />
             </DialogTrigger>
             <DialogContent>
@@ -837,13 +808,11 @@ export function ConnectorPermissionsModal({
                       </div>
                     </>
                   )}
-
-                  <div className="p-1 text-xl font-bold">
-                    {connectorConfiguration.selectLabel}
-                  </div>
-
                   {!connectorConfiguration.isResourceSelectionDisabled && (
                     <>
+                      <div className="p-1 text-xl font-bold">
+                        {connectorConfiguration.selectLabel}
+                      </div>
                       <ContentNodeTree
                         isSearchEnabled={connectorConfiguration.isSearchEnabled}
                         isRoundedBackground={true}
@@ -858,19 +827,6 @@ export function ConnectorPermissionsModal({
                         }
                         showExpand={connectorConfiguration?.isNested}
                       />
-                      <div className="flex justify-end gap-2 border-t pt-4">
-                        <Button
-                          label="Cancel"
-                          variant="outline"
-                          onClick={() => closeModal(false)}
-                        />
-                        <Button
-                          label={saving ? "Saving..." : "Save"}
-                          variant="primary"
-                          disabled={isUnchanged || saving}
-                          onClick={save}
-                        />
-                      </div>
                     </>
                   )}
 
@@ -883,6 +839,21 @@ export function ConnectorPermissionsModal({
                   )}
                 </div>
               </SheetContainer>
+              {!connectorConfiguration.isResourceSelectionDisabled && (
+                <SheetFooter
+                  leftButtonProps={{
+                    label: "Cancel",
+                    variant: "outline",
+                    onClick: () => closeModal(false),
+                  }}
+                  rightButtonProps={{
+                    label: saving ? "Saving..." : "Save",
+                    variant: "primary",
+                    disabled: isUnchanged || saving,
+                    onClick: save,
+                  }}
+                />
+              )}
             </>
           )}
         </SheetContent>
@@ -931,7 +902,7 @@ export function ConnectorPermissionsModal({
           case "salesforce":
           case "gong":
             return (
-              <DataSourceEditionModal
+              <UpdateConnectionOAuthModal
                 key={`${c.type}-${modalToShow}`}
                 isOpen={modalToShow === "edition"}
                 onClose={() => closeModal(false)}
