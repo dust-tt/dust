@@ -1,9 +1,7 @@
-import type { OAuthConnectionType } from "@dust-tt/types";
 import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useState } from "react";
 
-import { finalizeConnection } from "@app/lib/api/oauth";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 
 // This endpoint is authenticated but cannot be workspace specific as it is hard-coded at each
@@ -11,52 +9,65 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "user",
 })<{
-  connection: OAuthConnectionType;
+  code: string;
+  state: string;
+  provider: string;
 }>(async (context) => {
-  const provider = context.query.provider as string;
+  const { provider, code, state } = context.query;
   if (!isOAuthProvider(provider)) {
     return {
       notFound: true,
     };
   }
-
-  const cRes = await finalizeConnection(provider, context.query);
-  if (!cRes.isOk()) {
-    return {
-      notFound: true,
-    };
-  }
-
   return {
     props: {
-      connection: cRes.value,
+      code: code as string,
+      state: state as string,
+      provider: provider as string,
     },
   };
 });
 
 export default function Finalize({
-  connection,
+  code,
+  state,
+  provider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // When the component mounts, send a message `connection_finalized` to the window that opened
-    // this one.
-    if (!window.opener) {
-      setError(
-        "This URL was unexpectedly visited outside of the Dust Connections setup flow. " +
-          "Please close this window and try again from Dust."
-      );
-    } else {
-      window.opener.postMessage(
-        {
-          type: "connection_finalized",
-          connection,
-        },
-        window.location.origin
-      );
+    async function finalizeOAuth() {
+      // When the component mounts, send a message `connection_finalized` to the window that opened
+      // this one.
+      if (!window.opener) {
+        setError(
+          "This URL was unexpectedly visited outside of the Dust Connections setup flow. " +
+            "Please close this window and try again from Dust."
+        );
+      } else {
+        try {
+          const res = await fetch(
+            `/api/oauth/${provider}/finalize?code=${code}&state=${state}`
+          );
+          if (!res.ok) {
+            throw new Error("Failed to finalize connection");
+          }
+          const data = await res.json();
+
+          window.opener.postMessage(
+            {
+              type: "connection_finalized",
+              connection: data.connection,
+            },
+            window.location.origin
+          );
+        } catch (err) {
+          setError("Failed to finalize connection. Please try again.");
+        }
+      }
     }
-  }, [connection]);
+    void finalizeOAuth();
+  }, [code, state, provider]);
 
   return error ? <p>{error}</p> : null; // Render nothing.
 }
