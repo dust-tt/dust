@@ -142,7 +142,7 @@ function FunctionsSection() {
       <CardCarousel
         title={
           <div className="flex flex-col gap-4">
-            <H2 from="from-amber-200" to="to-amber-400">
+            <H2 className="text-golden-200">
               Custom AI agents for every function
             </H2>
             <P size="lg">
