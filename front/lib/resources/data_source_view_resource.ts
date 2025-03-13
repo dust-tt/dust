@@ -130,20 +130,20 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static async createDataSourceAndDefaultView(
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
-    editedByUser?: UserType | null,
+    editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         space,
         dataSource,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
     };

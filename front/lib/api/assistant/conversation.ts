@@ -303,7 +303,7 @@ async function createOrUpdateParticipation({
   user,
   conversation,
 }: {
-  user: UserType | null;
+  user: UserResource | null;
   conversation: ConversationType;
 }) {
   if (user) {
@@ -311,7 +311,7 @@ async function createOrUpdateParticipation({
       const participant = await ConversationParticipant.findOne({
         where: {
           conversationId: conversation.id,
-          userId: user.id,
+          userId: user.toJSON().id,
         },
         transaction: t,
       });
@@ -738,7 +738,7 @@ export async function* postUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user: user?.toJSON() ?? null, conversation }),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
@@ -1195,7 +1195,7 @@ export async function* editUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user: user?.toJSON() ?? null, conversation }),
+    createOrUpdateParticipation({ user, conversation }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);

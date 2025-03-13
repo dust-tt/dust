@@ -6,7 +6,7 @@ import {
   Page,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useState } from "react";
 
@@ -23,17 +23,16 @@ import {
   modelProviders,
   serviceProviders,
 } from "@app/lib/providers";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { useProviders } from "@app/lib/swr/apps";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  user: UserResource;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
-  const user = auth.getNonNullableUser();
+  const user = auth.getNonNullableUser().toJSON();
   if (!auth.isAdmin()) {
     return { notFound: true };
   }

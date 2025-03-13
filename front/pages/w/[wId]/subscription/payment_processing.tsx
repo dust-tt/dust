@@ -1,5 +1,5 @@
 import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -7,16 +7,15 @@ import React, { useEffect } from "react";
 
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  user: UserResource;
+  user: UserType;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  const user = auth.user();
+  const user = auth.user()?.toJSON();
   if (!owner || !auth.isAdmin() || !subscription || !user) {
     return {
       notFound: true,

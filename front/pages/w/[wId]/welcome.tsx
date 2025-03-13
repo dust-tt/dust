@@ -6,7 +6,7 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -15,10 +15,9 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  user: UserResource;
+  user: UserType;
   owner: WorkspaceType;
   isAdmin: boolean;
   defaultExpertise: string;
@@ -49,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
   return {
     props: {
-      user,
+      user: user.toJSON(),
       owner,
       isAdmin,
       defaultExpertise: expertise?.value || "",

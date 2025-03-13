@@ -15,6 +15,7 @@ import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
+  UserType,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -45,10 +46,9 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
-import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserResource;
+  user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;
@@ -59,7 +59,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
-  const user = auth.user();
+  const user = auth.user()?.toJSON();
   const subscription = auth.subscription();
 
   if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
