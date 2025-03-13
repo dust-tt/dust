@@ -11,7 +11,7 @@ async function handler(
     WithAPIErrorResponse<{ connection: OAuthConnectionType }>
   >
 ) {
-  const provider = req.query.provider as string;
+  const provider = req.query.provider;
   if (!isOAuthProvider(provider)) {
     res.status(404).end();
     return;

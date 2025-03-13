@@ -22,7 +22,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   return {
     props: {
       queryParams,
-      provider: provider as string,
+      provider,
     },
   };
 });
