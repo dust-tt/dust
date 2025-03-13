@@ -171,6 +171,7 @@ async function updateConnectorConnectionId(
         "The authenticated user needs higher permissions from your service provider.",
     };
   }
+
   return {
     success: false,
     error: `Failed to update the permissions of the Data Source: (contact support@dust.tt for assistance)`,
