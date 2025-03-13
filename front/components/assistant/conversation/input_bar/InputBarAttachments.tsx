@@ -3,6 +3,7 @@ import {
   CitationClose,
   CitationDescription,
   CitationIcons,
+  CitationImage,
   CitationTitle,
   DocumentIcon,
   Icon,
@@ -10,7 +11,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { DataSourceViewContentNode } from "@dust-tt/types";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
@@ -34,6 +35,7 @@ type NodeAttachment = {
   id: string;
   title: string;
   spaceName: string;
+  spaceIcon: React.ComponentType;
   visual: React.ReactNode;
   path: string;
   onRemove: () => void;
@@ -47,7 +49,12 @@ interface FileAttachmentsProps {
 
 interface NodeAttachmentsProps {
   items: DataSourceViewContentNode[];
-  spacesMap: Record<string, string>;
+  spacesMap: {
+    [k: string]: {
+      name: string;
+      icon: React.ComponentType;
+    };
+  };
   onRemove: (node: DataSourceViewContentNode) => void;
 }
 
@@ -82,14 +89,14 @@ export function InputBarAttachments({
 
         const nodeId = node.internalId ?? `node-${node.internalId}`;
         const spaceName =
-          nodes.spacesMap[node.dataSourceView.spaceId] ?? "Unknown Space";
+          nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
-
         return {
           type: "node",
           id: nodeId,
           title: node.title,
           spaceName,
+          spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual:
             isWebsite(dataSource) || isFolder(dataSource) ? (
@@ -116,64 +123,72 @@ export function InputBarAttachments({
 
   return (
     <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
-      {allAttachments.map((attachment) => (
-        <Tooltip
-          key={`${attachment.type}-${attachment.id}`}
-          tooltipTriggerAsChild
-          trigger={
-            <Citation
-              className="w-40"
-              isLoading={attachment.type === "file" && attachment.isUploading}
-              action={
-                <CitationClose
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    attachment.onRemove();
-                  }}
-                />
-              }
-            >
-              {attachment.type === "file" ? (
-                <>
-                  <CitationIcons>
+      {allAttachments.map((attachment) => {
+        const isFile = attachment.type === "file";
+
+        return (
+          <Tooltip
+            key={`${attachment.type}-${attachment.id}`}
+            tooltipTriggerAsChild
+            trigger={
+              <Citation
+                className="w-40"
+                isLoading={attachment.type === "file" && attachment.isUploading}
+                action={
+                  <CitationClose
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      attachment.onRemove();
+                    }}
+                  />
+                }
+              >
+                {isFile && attachment.preview && (
+                  <CitationImage imgSrc={attachment.preview} />
+                )}
+
+                <CitationIcons>
+                  {isFile ? (
                     <Icon
                       visual={attachment.preview ? ImageIcon : DocumentIcon}
                     />
-                  </CitationIcons>
-                  <CitationTitle className="truncate">
-                    {attachment.title}
-                  </CitationTitle>
-                </>
-              ) : (
-                <>
-                  <CitationIcons>{attachment.visual}</CitationIcons>
-                  <CitationTitle className="truncate">
-                    {attachment.title}
-                  </CitationTitle>
-                  <CitationDescription className="truncate">
-                    {attachment.spaceName}
+                  ) : (
+                    attachment.visual
+                  )}
+                </CitationIcons>
+
+                <CitationTitle className="truncate text-ellipsis">
+                  {attachment.title}
+                </CitationTitle>
+
+                {!isFile && (
+                  <CitationDescription className="truncate text-ellipsis">
+                    <div className="flex items-center gap-1">
+                      <span>{attachment.spaceName}</span>
+                    </div>
                   </CitationDescription>
-                </>
-              )}
-            </Citation>
-          }
-          label={
-            attachment.type === "file" ? (
-              attachment.title
-            ) : (
-              <div className="flex flex-col gap-1">
-                <div className="font-bold">{attachment.title}</div>
-                <div className="text-sm text-element-600">
-                  Path: {attachment.path}
+                )}
+              </Citation>
+            }
+            label={
+              attachment.type === "file" ? (
+                attachment.title
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <div className="font-bold">{attachment.title}</div>
+                  <div className="flex gap-1 pt-1 text-sm">
+                    <Icon visual={attachment.spaceIcon} />
+                    <p>{attachment.spaceName}</p>
+                  </div>
+                  <div className="text-sm text-element-600">
+                    {attachment.path}
+                  </div>
                 </div>
-                <div className="text-sm text-element-600">
-                  Space: {attachment.spaceName}
-                </div>
-              </div>
-            )
-          }
-        />
-      ))}
+              )
+            }
+          />
+        );
+      })}
     </div>
   );
 }

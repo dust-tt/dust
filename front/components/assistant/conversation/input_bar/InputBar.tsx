@@ -21,6 +21,7 @@ import InputBarContainer, {
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DustError } from "@app/lib/error";
+import { getSpaceIcon } from "@app/lib/spaces";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -69,7 +70,15 @@ export function AssistantInputBar({
   const { spaces } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
     () =>
-      Object.fromEntries(spaces?.map((space) => [space.sId, space.name]) || []),
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
     [spaces]
   );
 
