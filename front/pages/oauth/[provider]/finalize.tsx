@@ -1,5 +1,7 @@
+import { Button, LogoutIcon } from "@dust-tt/sparkle";
 import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
@@ -9,11 +11,11 @@ import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session"
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "user",
 })<{
-  code: string;
-  state: string;
+  queryParams: Record<string, string | string[] | undefined>;
   provider: string;
 }>(async (context) => {
-  const { provider, code, state } = context.query;
+  const { provider, ...queryParams } = context.query;
+
   if (!isOAuthProvider(provider)) {
     return {
       notFound: true,
@@ -21,16 +23,14 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   }
   return {
     props: {
-      code: code as string,
-      state: state as string,
+      queryParams,
       provider: provider as string,
     },
   };
 });
 
 export default function Finalize({
-  code,
-  state,
+  queryParams,
   provider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [error, setError] = useState<string | null>(null);
@@ -45,13 +45,27 @@ export default function Finalize({
             "Please close this window and try again from Dust."
         );
       } else {
-        try {
-          const res = await fetch(
-            `/api/oauth/${provider}/finalize?code=${code}&state=${state}`
-          );
-          if (!res.ok) {
-            throw new Error("Failed to finalize connection");
+        const params = new URLSearchParams();
+        for (const [key, value] of Object.entries(queryParams)) {
+          if (Array.isArray(value)) {
+            value.forEach((v) => params.append(key, v));
+          } else if (value !== undefined) {
+            params.append(key, value);
           }
+        }
+
+        const res = await fetch(
+          `/api/oauth/${provider}/finalize?${params.toString()}`
+        );
+        if (!res.ok) {
+          window.opener.postMessage(
+            {
+              type: "connection_finalized",
+              error: "Failed to finalize connection",
+            },
+            window.location.origin
+          );
+        } else {
           const data = await res.json();
 
           window.opener.postMessage(
@@ -61,13 +75,11 @@ export default function Finalize({
             },
             window.location.origin
           );
-        } catch (err) {
-          setError("Failed to finalize connection. Please try again.");
         }
       }
     }
     void finalizeOAuth();
-  }, [code, state, provider]);
+  }, [queryParams, provider]);
 
   return error ? <p>{error}</p> : null; // Render nothing.
 }
