@@ -10,6 +10,7 @@ import {
   Err,
   isValidContentNodesViewType,
   Ok,
+  removeNulls,
 } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
@@ -130,6 +131,7 @@ const _getConnectorPermissions = async (
     }
   }
 
+  // Augment the resources with their parent internal ids.
   const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
     await concurrentExecutor(
       pRes.value,
@@ -162,18 +164,19 @@ const _getConnectorPermissions = async (
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: `Error retrieving content node parents: ${resourcesWithParentsResults
-          .filter((r) => r.isErr())
-          .map((r) => r.error.message)
-          .join(", ")}`,
+        message: `Error retrieving content node parents: ${removeNulls(
+          resourcesWithParentsResults.map((r) =>
+            r.isErr() ? r.error.message : null
+          )
+        ).join(", ")}`,
       },
     });
   }
 
   return res.status(200).json({
-    resources: resourcesWithParentsResults
-      .filter((r) => r.isOk())
-      .map((r) => r.value),
+    resources: removeNulls(
+      resourcesWithParentsResults.map((r) => (r.isOk() ? r.value : null))
+    ),
   });
 };
 
