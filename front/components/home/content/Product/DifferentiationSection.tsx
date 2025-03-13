@@ -11,7 +11,7 @@ export function DifferentiationSection() {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
+            <H2 className="text-blue-200">
               Your own AI agents, powered by the best models
             </H2>
             <P size="lg">

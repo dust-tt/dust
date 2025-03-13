@@ -17,15 +17,11 @@ interface DemoVideoSectionProps {
 
 export const DemoVideoSection: FC<DemoVideoSectionProps> = ({
   demoVideo,
-  fromColor,
-  toColor,
   fullWidth = false,
 }) => (
   <div className="flex flex-col justify-center gap-8 pb-4">
     <div>
-      <H2 from={fromColor} to={toColor}>
-        {demoVideo.sectionTitle}
-      </H2>
+      <H2 className="text-blue-200">{demoVideo.sectionTitle}</H2>
     </div>
     <div className={classNames("mx-auto", fullWidth ? "w-full" : "w-[90%]")}>
       <div className="relative w-full pt-[56.25%]">

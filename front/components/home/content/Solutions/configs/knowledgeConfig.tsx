@@ -24,8 +24,8 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Knowledge",
   title: <>Make Company Knowledge Instantly Accessible.</>,
-  from: "from-emerald-200",
-  to: "to-emerald-500",
+  from: "from-green-200",
+  to: "to-green-200",
   description: (
     <>
       Transform organizational knowledge into structured insights and empower
