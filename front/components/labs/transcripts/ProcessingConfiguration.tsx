@@ -1,20 +1,20 @@
 import { Page, SliderToggle } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
+  LabsTranscriptsConfigurationType,
   LightAgentConfigurationType,
-  WorkspaceType,
+  LightWorkspaceType,
 } from "@dust-tt/types";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
-import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 interface ProcessingConfigurationProps {
-  owner: WorkspaceType;
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource;
+  owner: LightWorkspaceType;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType;
   agents: LightAgentConfigurationType[];
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
@@ -42,38 +42,39 @@ export function ProcessingConfiguration({
 
   const transcriptConfigurationId = transcriptsConfiguration.id;
 
-  const makePatchRequest = async (
-    data: Partial<PatchTranscriptsConfiguration>,
-    successMessage: string
-  ) => {
-    const response = await fetch(
-      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+  const makePatchRequest = useCallback(
+    async (
+      data: Partial<PatchTranscriptsConfiguration>,
+      successMessage: string
+    ) => {
+      const response = await fetch(
+        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update",
+          description: "Could not update the configuration. Please try again.",
+        });
+        return;
       }
-    );
 
-    if (!response.ok) {
       sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
+        type: "success",
+        title: "Success!",
+        description: successMessage,
       });
-      return;
-    }
-
-    sendNotification({
-      type: "success",
-      title: "Success!",
-      description: successMessage,
-    });
-
-    await mutateTranscriptsConfiguration();
-  };
+    },
+    [workspaceId, transcriptConfigurationId, sendNotification]
+  );
 
   const handleSelectAssistant = async (
     assistant: LightAgentConfigurationType
@@ -97,14 +98,6 @@ export function ProcessingConfiguration({
         ? "We will start summarizing your meeting transcripts."
         : "We will no longer summarize your meeting transcripts."
     );
-
-    await makePatchRequest(
-      { isActive },
-      isActive
-        ? "We will start summarizing your meeting transcripts."
-        : "We will no longer summarize your meeting transcripts."
-    );
-
     await mutateTranscriptsConfiguration();
   };
 

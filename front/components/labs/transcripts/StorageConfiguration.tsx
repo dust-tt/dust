@@ -8,10 +8,11 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
-  WorkspaceType,
+  LightWorkspaceType,
+  SpaceType,
 } from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
@@ -20,13 +21,13 @@ import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 
 interface StorageConfigurationProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   transcriptsConfiguration: LabsTranscriptsConfigurationResource;
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)
     | KeyedMutator<GetLabsTranscriptsConfigurationResponseBody>;
   dataSourcesViews: DataSourceViewType[];
-  spaces: any[];
+  spaces: SpaceType[];
   isSpacesLoading: boolean;
 }
 
@@ -68,38 +69,39 @@ export function StorageConfiguration({
     }
   }, [transcriptsConfiguration.dataSourceViewId, dataSourcesViews]);
 
-  const makePatchRequest = async (
-    data: Partial<PatchTranscriptsConfiguration>,
-    successMessage: string
-  ) => {
-    const response = await fetch(
-      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
+  const makePatchRequest = useCallback(
+    async (
+      data: Partial<PatchTranscriptsConfiguration>,
+      successMessage: string
+    ) => {
+      const response = await fetch(
+        `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        sendNotification({
+          type: "error",
+          title: "Failed to update",
+          description: "Could not update the configuration. Please try again.",
+        });
+        return;
       }
-    );
 
-    if (!response.ok) {
       sendNotification({
-        type: "error",
-        title: "Failed to update",
-        description: "Could not update the configuration. Please try again.",
+        type: "success",
+        title: "Success!",
+        description: successMessage,
       });
-      return;
-    }
-
-    sendNotification({
-      type: "success",
-      title: "Success!",
-      description: successMessage,
-    });
-
-    await mutateTranscriptsConfiguration();
-  };
+    },
+    [workspaceId, transcriptConfigurationId, sendNotification]
+  );
 
   const handleSetDataSource = async (
     transcriptConfigurationId: number,

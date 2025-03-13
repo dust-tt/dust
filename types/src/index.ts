@@ -53,6 +53,7 @@ export * from "./front/extension";
 export * from "./front/files";
 export * from "./front/groups";
 export * from "./front/key";
+export * from "./front/labs";
 export * from "./front/lib/actions/types";
 export * from "./front/lib/api/credentials";
 export * from "./front/lib/assistant";

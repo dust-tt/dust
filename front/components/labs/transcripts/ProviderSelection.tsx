@@ -7,6 +7,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type {
+  LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -21,7 +22,7 @@ import {
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 
 interface ProviderSelectionProps {
-  transcriptsConfiguration: any;
+  transcriptsConfiguration: LabsTranscriptsConfigurationType;
   setIsDeleteProviderDialogOpened: (isOpen: boolean) => void;
   mutateTranscriptsConfiguration:
     | (() => Promise<void>)

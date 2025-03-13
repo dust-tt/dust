@@ -1,6 +1,6 @@
 // LABS - CAN BE REMOVED ANYTIME
 
-import type { WorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@dust-tt/types";
 import type { Fetcher } from "swr";
 
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -33,7 +33,7 @@ export function useLabsTranscriptsDefaultConfiguration({
   owner,
   provider,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   provider: string;
 }) {
   const defaultConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
@@ -56,7 +56,7 @@ export function useLabsTranscriptsIsConnectorConnected({
   owner,
   provider,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   provider: string;
 }) {
   const isConnectorConnectedFetcher: Fetcher<{
