@@ -1,10 +1,7 @@
 import assert from "assert";
 import _ from "lodash";
 
-import {
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_SEARCH_LABELS_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_RETRIEVAL_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
@@ -23,7 +20,6 @@ import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   DataSourceViewType,
@@ -339,30 +335,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     });
 
     return new Ok(spec);
-  }
-
-  getSupportingActions(): ActionConfigurationType[] {
-    const hasAutoTags = this.actionConfiguration.dataSources.some(
-      (ds) => ds.filter.tags?.mode === "auto"
-    );
-
-    if (hasAutoTags) {
-      return [
-        {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "search_labels_configuration",
-          // Tool name must be unique. We use the parent tool name to make it unique.
-          name: `${DEFAULT_SEARCH_LABELS_ACTION_NAME}_${this.actionConfiguration.name}`,
-          dataSourceViewIds: this.actionConfiguration.dataSources.map(
-            (ds) => ds.dataSourceViewId
-          ),
-          parentTool: this.actionConfiguration.name,
-        },
-      ];
-    }
-
-    return [];
   }
 
   // This method is in charge of running the retrieval and creating an AgentRetrievalAction object

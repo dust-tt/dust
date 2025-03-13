@@ -1934,6 +1934,7 @@ async function* streamRunAgentEvents(
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "mcp_params":
         yield event;
         break;
 

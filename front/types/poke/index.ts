@@ -17,6 +17,7 @@ export interface PokeItemBase {
 }
 
 export type PokeSpaceType = SpaceType & {
+  id: ModelId;
   groups: GroupType[];
 };
 

@@ -24,6 +24,10 @@ export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
           <PokeTable>
             <PokeTableBody>
               <PokeTableRow>
+                <PokeTableHead>Space ID</PokeTableHead>
+                <PokeTableCellWithCopy label={`${space.id}`} />
+              </PokeTableRow>
+              <PokeTableRow>
                 <PokeTableHead>sId</PokeTableHead>
                 <PokeTableCellWithCopy label={space.sId} />
               </PokeTableRow>

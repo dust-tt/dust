@@ -12,7 +12,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import { getAgentConfigurationFull } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type {
@@ -55,7 +55,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const [{ spaces, dataSourceViews, dustApps }, configuration] =
     await Promise.all([
       getAccessibleSourcesAndApps(auth),
-      getAgentConfiguration(auth, context.params?.aId as string),
+      getAgentConfigurationFull(auth, context.params?.aId as string),
     ]);
 
   if (configuration?.scope === "workspace" && !auth.isBuilder()) {

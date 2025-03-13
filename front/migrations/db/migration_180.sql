@@ -11,7 +11,7 @@ CREATE TABLE
             "serverType" VARCHAR(255) NOT NULL,
             "internalMCPServerId" VARCHAR(255),
             "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-            "id" BIGINT,
+            "id" BIGSERIAL,
             "agentConfigurationId" BIGINT NOT NULL REFERENCES "agent_configurations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
             PRIMARY KEY ("id")
     );
@@ -36,7 +36,7 @@ CREATE TABLE
             "executionState" VARCHAR(255) NOT NULL,
             "isError" BOOLEAN NOT NULL DEFAULT false,
             "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-            "id" BIGINT,
+            "id" BIGSERIAL,
             "agentMessageId" BIGINT NOT NULL REFERENCES "agent_messages" ("id") ON DELETE NO ACTION ON UPDATE CASCADE,
             PRIMARY KEY ("id")
     );
@@ -53,7 +53,7 @@ CREATE TABLE
             TIME ZONE NOT NULL,
             "content" JSONB NOT NULL,
             "workspaceId" BIGINT NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-            "id" BIGINT,
+            "id" BIGSERIAL,
             "agentMCPActionId" BIGINT NOT NULL REFERENCES "agent_mcp_actions" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
             "fileId" BIGINT REFERENCES "files" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
             PRIMARY KEY ("id")

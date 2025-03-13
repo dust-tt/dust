@@ -372,7 +372,6 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "dust_app_run_configuration",
-          app: app.toJSON(),
           appWorkspaceId: action.appWorkspaceId,
           appId: action.appId,
           name: action.name ?? null,
@@ -480,6 +479,25 @@ export async function createOrUpgradeAgentConfiguration({
         return res;
       }
       actionConfigs.push(res.value);
+    } else if (action.type === "mcp_server_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "mcp_server_configuration",
+          serverType: action.serverType,
+          internalMCPServerId: action.internalMCPServerId,
+          remoteMCPServerId: action.remoteMCPServerId,
+          name: action.name ?? null,
+          description: action.description ?? null,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
     } else {
       assertNever(action);
     }

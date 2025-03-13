@@ -2,7 +2,6 @@ import _ from "lodash";
 
 import {
   DEFAULT_PROCESS_ACTION_NAME,
-  DEFAULT_SEARCH_LABELS_ACTION_NAME,
   PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
 import type {
@@ -19,17 +18,13 @@ import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-} from "@app/lib/actions/types/agent";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -222,30 +217,6 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
           " structured blobs of information (complying to a fixed schema).",
     });
     return new Ok(spec);
-  }
-
-  getSupportingActions(): ActionConfigurationType[] {
-    const hasAutoTags = this.actionConfiguration.dataSources.some(
-      (ds) => ds.filter.tags?.mode === "auto"
-    );
-
-    if (hasAutoTags) {
-      return [
-        {
-          id: -1,
-          sId: generateRandomModelSId(),
-          type: "search_labels_configuration",
-          // Tool name must be unique. We use the parent tool name to make it unique.
-          name: `${DEFAULT_SEARCH_LABELS_ACTION_NAME}_${this.actionConfiguration.name}`,
-          dataSourceViewIds: this.actionConfiguration.dataSources.map(
-            (ds) => ds.dataSourceViewId
-          ),
-          parentTool: this.actionConfiguration.name,
-        },
-      ];
-    }
-
-    return [];
   }
 
   // This method is in charge of running the retrieval and creating an AgentProcessAction object in

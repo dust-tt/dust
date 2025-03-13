@@ -1,5 +1,5 @@
 import type { ModelMessageTypeMultiActions } from "@app/types";
-import { isTextContent } from "@app/types";
+import { isImageContent, isTextContent } from "@app/types";
 
 export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions
@@ -20,7 +20,11 @@ export function getTextContentFromMessage(
         return c.text;
       }
 
-      return c.image_url.url;
+      if (isImageContent(c)) {
+        return c.image_url.url;
+      }
+
+      return "";
     })
     .join("\n");
 }

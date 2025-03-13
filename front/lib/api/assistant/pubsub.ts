@@ -200,6 +200,7 @@ async function handleUserMessageEvents({
             case "dust_app_run_block":
             case "dust_app_run_params":
             case "generation_tokens":
+            case "mcp_params":
             case "process_params":
             case "reasoning_started":
             case "reasoning_thinking":
@@ -365,6 +366,7 @@ export async function retryAgentMessageWithPubSub(
               case "dust_app_run_params":
               case "generation_tokens":
               case "process_params":
+              case "mcp_params":
               case "reasoning_started":
               case "reasoning_thinking":
               case "reasoning_tokens":

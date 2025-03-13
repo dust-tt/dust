@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
   archiveAgentConfiguration,
-  getAgentConfiguration,
+  getAgentConfigurationFull,
 } from "@app/lib/api/assistant/configuration";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -32,7 +32,10 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfigurationFull(
+    auth,
+    req.query.aId as string
+  );
   if (
     !assistant ||
     (assistant.scope === "private" &&

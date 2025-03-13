@@ -15,7 +15,6 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type {
-  AgentConfigurationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
@@ -107,7 +106,7 @@ export async function getAgentUsage(
     rankingUsageDays = RANKING_USAGE_DAYS,
   }: {
     workspaceId: string;
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     providedRedis?: RedisClientType;
     rankingUsageDays?: number;
   }

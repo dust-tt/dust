@@ -6,14 +6,21 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  DEFAULT_SEARCH_LABELS_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
 import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
 import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
-import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type {
+  ActionConfigurationType,
+  AgentActionConfigurationType,
+} from "@app/lib/actions/types/agent";
+import {
+  isProcessConfiguration,
+  isRetrievalConfiguration,
+} from "@app/lib/actions/types/guards";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -25,14 +32,53 @@ import type {
   ConversationType,
 } from "@app/types";
 
+/**
+ * Returns a list of supporting actions that should be made available to the model alongside this action.
+ * These actions provide additional functionality that can be useful when using this action,
+ * but they are not required - the model may choose to use them or not.
+ *
+ * For example, a retrieval action with auto tags may return a search_tags action
+ * to help the model find relevant tags, but the model can still use the retrieval
+ * action without searching for tags first.
+ */
+function getSupportingActions(
+  agentActions: AgentActionConfigurationType[]
+): ActionConfigurationType[] {
+  return agentActions.flatMap((action) => {
+    if (isProcessConfiguration(action) || isRetrievalConfiguration(action)) {
+      const hasAutoTags = action.dataSources.some(
+        (ds) => ds.filter.tags?.mode === "auto"
+      );
+
+      if (hasAutoTags) {
+        return [
+          {
+            id: -1,
+            sId: generateRandomModelSId(),
+            type: "search_labels_configuration" as const,
+            // Tool name must be unique. We use the parent tool name to make it unique.
+            name: `${DEFAULT_SEARCH_LABELS_ACTION_NAME}_${action.name}`,
+            dataSourceViewIds: action.dataSources.map(
+              (ds) => ds.dataSourceViewId
+            ),
+            parentTool: action.name,
+          },
+        ];
+      }
+    }
+
+    return [];
+  });
+}
+
 async function getJITActions(
   auth: Authenticator,
   {
-    availableActions,
+    agentActions,
     conversation,
     files,
   }: {
-    availableActions: ActionConfigurationType[];
+    agentActions: AgentActionConfigurationType[];
     conversation: ConversationType;
     files: ConversationFileType[];
   }
@@ -40,10 +86,7 @@ async function getJITActions(
   const actions: ActionConfigurationType[] = [];
 
   // Get supporting actions from available actions.
-  const supportingActions = availableActions.flatMap((action) => {
-    const runner = getRunnerForActionConfiguration(action);
-    return runner.getSupportingActions?.() ?? [];
-  });
+  const supportingActions = getSupportingActions(agentActions);
 
   // Add supporting actions first.
   actions.push(...supportingActions);
@@ -137,11 +180,11 @@ export async function getEmulatedAndJITActions(
   auth: Authenticator,
   {
     agentMessage,
-    availableActions,
+    agentActions,
     conversation,
   }: {
     agentMessage: AgentMessageType;
-    availableActions: ActionConfigurationType[];
+    agentActions: AgentActionConfigurationType[];
     conversation: ConversationType;
   }
 ): Promise<{
@@ -164,7 +207,7 @@ export async function getEmulatedAndJITActions(
   jitActions = await getJITActions(auth, {
     conversation,
     files,
-    availableActions,
+    agentActions,
   });
 
   // We ensure that all emulated actions are injected with step -1.

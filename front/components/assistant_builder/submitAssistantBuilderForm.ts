@@ -175,6 +175,19 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
+      case "MCP":
+        //TODO(mcp): handle configuration of datasources
+        return [
+          {
+            type: "mcp_server_configuration",
+            name: a.name,
+            description: a.description,
+            serverType: a.configuration.serverType,
+            internalMCPServerId: a.configuration.internalMCPServerId,
+            remoteMCPServerId: a.configuration.remoteMCPServerId,
+          },
+        ];
+
       case "PROCESS":
         return [
           {

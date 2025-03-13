@@ -4,6 +4,7 @@ import { Op, Sequelize } from "sequelize";
 import { browseActionTypesFromAgentMessageIds } from "@app/lib/actions/browse";
 import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
 import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
+import { mcpActionTypesFromAgentMessageIds } from "@app/lib/actions/mcp";
 import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
 import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
 import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
@@ -128,6 +129,7 @@ async function batchRenderAgentMessages(
     agentConversationIncludeFileActions,
     agentReasoningActions,
     agentSearchLabelsActions,
+    agentMCPActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -161,6 +163,7 @@ async function batchRenderAgentMessages(
       conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
     (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   if (!agentConfigurations) {
@@ -191,6 +194,7 @@ async function batchRenderAgentMessages(
           agentSearchLabelsActions,
           agentTablesQueryActions,
           agentWebsearchActions,
+          agentMCPActions,
         ]
           .flat()
           .filter((a) => a.agentMessageId === agentMessage.id)

@@ -4,6 +4,8 @@ import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/actions/dust_app_run";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { MCPConfigurationServerRunner } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { ProcessConfigurationServerRunner } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
@@ -19,7 +21,7 @@ import type {
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/actions/types";
-import type { AgentAction } from "@app/lib/actions/types/agent";
+import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 
@@ -33,6 +35,7 @@ interface ActionToConfigTypeMap {
   search_labels_configuration: SearchLabelsConfigurationType;
   tables_query_configuration: TablesQueryConfigurationType;
   websearch_configuration: WebsearchConfigurationType;
+  mcp_configuration: MCPToolConfigurationType;
 }
 
 interface ActionTypeToClassMap {
@@ -45,14 +48,17 @@ interface ActionTypeToClassMap {
   search_labels_configuration: SearchLabelsConfigurationServerRunner;
   tables_query_configuration: TablesQueryConfigurationServerRunner;
   websearch_configuration: WebsearchConfigurationServerRunner;
+  mcp_configuration: MCPConfigurationServerRunner;
 }
 
 // Ensure all AgentAction keys are present in ActionToConfigTypeMap.
-type EnsureAllAgentActionsAreMapped<T extends Record<AgentAction, any>> = T;
+type EnsureAllAgentAreMapped<
+  T extends Record<ActionConfigurationType["type"], any>,
+> = T;
 
 // Validate the completeness of ActionToConfigTypeMap.
 type ValidatedActionToConfigTypeMap =
-  EnsureAllAgentActionsAreMapped<ActionToConfigTypeMap>;
+  EnsureAllAgentAreMapped<ActionToConfigTypeMap>;
 
 // Ensure all class types extend the base class with the appropriate config type
 type EnsureClassTypeCompatibility<
@@ -91,6 +97,7 @@ export const ACTION_TYPE_TO_CONFIGURATION_SERVER_RUNNER: {
   search_labels_configuration: SearchLabelsConfigurationServerRunner,
   tables_query_configuration: TablesQueryConfigurationServerRunner,
   websearch_configuration: WebsearchConfigurationServerRunner,
+  mcp_configuration: MCPConfigurationServerRunner,
 } as const;
 
 export function getRunnerForActionConfiguration<K extends keyof CombinedMap>(

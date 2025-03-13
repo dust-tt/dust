@@ -2,6 +2,7 @@ import type { BrowseActionType } from "@app/lib/actions/browse";
 import type { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
 import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
+import type { MCPActionType } from "@app/lib/actions/mcp";
 import type { ProcessActionType } from "@app/lib/actions/process";
 import type { ReasoningActionType } from "@app/lib/actions/reasoning";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
@@ -116,7 +117,8 @@ export type ConfigurableAgentActionType =
   | ProcessActionType
   | WebsearchActionType
   | BrowseActionType
-  | ReasoningActionType;
+  | ReasoningActionType
+  | MCPActionType;
 
 export type ConversationAgentActionType =
   | ConversationListFilesActionType
@@ -144,6 +146,7 @@ export const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string> = {
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
+  mcp_action: "Calling an external tool",
 };
 
 /**
