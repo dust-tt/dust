@@ -7,7 +7,7 @@ import React, { useEffect } from "react";
 
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

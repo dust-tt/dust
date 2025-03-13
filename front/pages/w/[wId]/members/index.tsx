@@ -15,7 +15,6 @@ import type {
   PlanType,
   SubscriptionPerSeatPricing,
   SubscriptionType,
-  UserType,
   WorkspaceDomain,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -46,7 +45,7 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserResource;

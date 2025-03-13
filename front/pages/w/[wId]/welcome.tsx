@@ -15,7 +15,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { UserResource } from "@app/lib/resources/user_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserResource;
@@ -40,9 +40,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   const isAdmin = auth.isAdmin();
 
   const expertise = await user.getMetadata("expertise");
-  const adminInterest = isAdmin
-    ? await user.getMetadata("interest")
-    : null;
+  const adminInterest = isAdmin ? await user.getMetadata("interest") : null;
 
   // If user was in onboarding flow "domain_conversation_link"
   // We will redirect to the conversation page after onboarding.

@@ -1,7 +1,5 @@
 import type {
   Result,
-  UserMetadataType,
-  UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@dust-tt/types";

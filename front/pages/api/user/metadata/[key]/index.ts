@@ -4,8 +4,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
-import { apiError } from "@app/logger/withlogging";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { apiError } from "@app/logger/withlogging";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;
@@ -36,7 +36,7 @@ async function handler(
   }
 
   // We get the UserResource from the session userId.
-  // Temporary, as we'd need to refactor the getUserFromSession method 
+  // Temporary, as we'd need to refactor the getUserFromSession method
   // to return the UserResource instead of a UserTypeWithWorkspace.
   const u = await UserResource.fetchByModelId(user.id);
 
