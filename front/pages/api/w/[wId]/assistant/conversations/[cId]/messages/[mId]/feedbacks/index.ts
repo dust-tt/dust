@@ -83,7 +83,7 @@ async function handler(
       const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
@@ -106,7 +106,7 @@ async function handler(
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
       });
 
       if (deleted) {

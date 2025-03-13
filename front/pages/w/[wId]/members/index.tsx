@@ -46,9 +46,10 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
+  user: UserResource;
   owner: WorkspaceType;
   subscription: SubscriptionType;
   perSeatPricing: SubscriptionPerSeatPricing | null;

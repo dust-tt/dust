@@ -144,7 +144,7 @@ async function createDataSourceAndConnector({
         workspaceId: owner.id,
       },
       systemSpace,
-      auth.user()
+      auth.user()?.toJSON()
     );
 
   const { dataSource } = dataSourceView;

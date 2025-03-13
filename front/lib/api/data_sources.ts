@@ -943,13 +943,13 @@ export async function createDataSourceWithoutProvider(
         conversationId: conversation?.id,
       },
       space,
-      auth.user()
+      auth.user()?.toJSON()
     );
 
   try {
     // Asynchronous tracking without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
-      user: auth.user() ?? undefined,
+      user: auth.user()?.toJSON(),
       workspace: owner,
       dataSource: dataSourceView.dataSource.toJSON(),
     });

@@ -211,7 +211,7 @@ async function handler(
           space,
           dataSource,
           parentsIn,
-          auth.user()
+          auth.user()?.toJSON()
         );
       return res.status(201).json({
         dataSourceView: dataSourceView.toJSON(),

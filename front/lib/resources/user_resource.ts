@@ -214,10 +214,10 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
-  static async getMetadata(userId: ModelId, key: string) {
+  async getMetadata(key: string) {
     return UserMetadataModel.findOne({
       where: {
-        userId,
+        userId: this.id,
         key,
       },
     });
@@ -234,17 +234,17 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  static async setMetadata(userId: ModelId, key: string, value: string) {
+  async setMetadata(key: string, value: string) {
     const metadata = await UserMetadataModel.findOne({
       where: {
-        userId,
+        userId: this.id,
         key,
       },
     });
 
     if (!metadata) {
       await UserMetadataModel.create({
-        userId,
+        userId: this.id,
         key,
         value,
       });
@@ -255,10 +255,10 @@ export class UserResource extends BaseResource<UserModel> {
     await metadata.save();
   }
 
-  static async deleteMetadata(userId: ModelId) {
+  async deleteMetadata() {
     return UserMetadataModel.destroy({
       where: {
-        userId,
+        userId: this.id,
       },
     });
   }

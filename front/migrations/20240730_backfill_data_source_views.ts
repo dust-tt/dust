@@ -50,7 +50,7 @@ async function backfillDataSourceViewsForWorkspace(
       globalVault,
       dataSource,
       [],
-      auth.user()
+      auth.user()?.toJSON()
     );
 
     updated++;

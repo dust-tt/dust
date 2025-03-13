@@ -48,6 +48,7 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { useKeys } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 
@@ -55,7 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   groups: GroupType[];
-  user: UserType;
+  user: UserResource;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();

@@ -412,7 +412,7 @@ const handleDataSourceWithProvider = async ({
         workspaceId: owner.id,
       },
       space,
-      auth.user()
+      auth.user()?.toJSON()
     );
 
   const { dataSource } = dataSourceView;
@@ -489,7 +489,7 @@ const handleDataSourceWithProvider = async ({
     // Asynchronous tracking & operations without awaiting, handled safely
     void ServerSideTracking.trackDataSourceCreated({
       dataSource: dataSource.toJSON(),
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       workspace: owner,
     });
 

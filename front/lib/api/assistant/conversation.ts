@@ -738,7 +738,7 @@ export async function* postUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user, conversation }),
+    createOrUpdateParticipation({ user: user?.toJSON() ?? null, conversation }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
@@ -839,7 +839,7 @@ export async function* postUserMessage(
         type: "user_message",
         visibility: "visible",
         version: 0,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context,
@@ -1195,7 +1195,7 @@ export async function* editUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user, conversation }),
+    createOrUpdateParticipation({ user: user?.toJSON() ?? null, conversation }),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
@@ -1312,7 +1312,7 @@ export async function* editUserMessage(
         type: "user_message",
         visibility: m.visibility,
         version: m.version,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context: message.context,

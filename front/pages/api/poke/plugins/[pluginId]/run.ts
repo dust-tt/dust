@@ -122,7 +122,7 @@ async function handler(
       const pluginRun = await PluginRunResource.makeNew(
         plugin,
         pluginArgsValidation.right,
-        auth.getNonNullableUser(),
+        auth.getNonNullableUser().toJSON(),
         workspaceId ? auth.getNonNullableWorkspace() : null,
         {
           resourceId: resourceId ?? undefined,

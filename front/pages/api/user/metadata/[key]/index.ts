@@ -2,10 +2,10 @@ import type { UserMetadataType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import { getUserMetadata, setUserMetadata } from "@app/lib/api/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;
@@ -35,6 +35,21 @@ async function handler(
     });
   }
 
+  // We get the UserResource from the session userId.
+  // Temporary, as we'd need to refactor the getUserFromSession method 
+  // to return the UserResource instead of a UserTypeWithWorkspace.
+  const u = await UserResource.fetchByModelId(user.id);
+
+  if (!u) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "user_not_found",
+        message: "Could not find the user.",
+      },
+    });
+  }
+
   if (typeof req.query.key != "string") {
     return apiError(req, res, {
       status_code: 400,
@@ -47,7 +62,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const metadata = await getUserMetadata(user, req.query.key as string);
+      const metadata = await u.getMetadata(req.query.key as string);
 
       res.status(200).json({
         metadata,
@@ -65,10 +80,7 @@ async function handler(
         });
       }
 
-      await setUserMetadata(user, {
-        key: req.query.key as string,
-        value: req.body.value,
-      });
+      await u.setMetadata(req.query.key as string, req.body.value);
 
       res.status(200).json({
         metadata: {

@@ -6,19 +6,19 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
+import type { WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
-import { getUserMetadata } from "@app/lib/api/user";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { UserResource } from "@app/lib/resources/user_resource";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  user: UserType;
+  user: UserResource;
   owner: WorkspaceType;
   isAdmin: boolean;
   defaultExpertise: string;
@@ -38,9 +38,10 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
   const isAdmin = auth.isAdmin();
-  const expertise = await getUserMetadata(user, "expertise");
+
+  const expertise = await user.getMetadata("expertise");
   const adminInterest = isAdmin
-    ? await getUserMetadata(user, "interest")
+    ? await user.getMetadata("interest")
     : null;
 
   // If user was in onboarding flow "domain_conversation_link"

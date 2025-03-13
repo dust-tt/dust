@@ -9,7 +9,6 @@ import type {
   Result,
   RoleType,
   SubscriptionType,
-  UserType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -753,15 +752,15 @@ export class Authenticator {
   }
 
   /**
-   * This is a convenience method to get the user from the Authenticator. The returned UserType
+   * This is a convenience method to get the user from the Authenticator. The returned UserResource
    * object won't have the user's workspaces set.
    * @returns
    */
-  user(): UserType | null {
-    return this._user ? this._user.toJSON() : null;
+  user(): UserResource | null {
+    return this._user ?? null;
   }
 
-  getNonNullableUser(): UserType {
+  getNonNullableUser(): UserResource {
     const user = this.user();
 
     if (!user) {

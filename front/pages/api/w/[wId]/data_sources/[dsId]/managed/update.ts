@@ -137,7 +137,7 @@ async function handler(
       await dataSource.setEditedBy(auth);
       void ServerSideTracking.trackDataSourceUpdated({
         dataSource: dataSource.toJSON(),
-        user,
+        user: user.toJSON(),
         workspace: owner,
       });
 
