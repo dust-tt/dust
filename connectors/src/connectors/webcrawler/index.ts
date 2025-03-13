@@ -41,7 +41,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
 
 import {
-  launchCrawlWebsiteScheduler,
+  launchCrawlWebsiteSchedulerForWorkspace,
   launchCrawlWebsiteWorkflow,
   stopCrawlWebsiteWorkflow,
 } from "./temporal/client";
@@ -97,7 +97,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     );
 
     // Ensure the workspace scheduler already exists.
-    await launchCrawlWebsiteScheduler({ workspaceId: connector.workspaceId });
+    await launchCrawlWebsiteSchedulerForWorkspace({
+      workspaceId: connector.workspaceId,
+    });
 
     return new Ok(connector.id.toString());
   }
@@ -134,7 +136,9 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     assert(connector, "Connector not found");
 
     // Ensure the workspace scheduler already exists.
-    await launchCrawlWebsiteScheduler({ workspaceId: connector.workspaceId });
+    await launchCrawlWebsiteSchedulerForWorkspace({
+      workspaceId: connector.workspaceId,
+    });
 
     return launchCrawlWebsiteWorkflow(this.connectorId);
   }

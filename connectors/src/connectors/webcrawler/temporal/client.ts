@@ -132,9 +132,6 @@ export async function launchCrawlWebsiteSchedulerForWorkspace({
       workflowType: crawlWebsiteSchedulerWorkflow,
       args: [workspaceId],
       taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
-      searchAttributes: {
-        workspaceId: [workspaceId],
-      },
     },
     spec: {
       intervals: [{ every: "1h" }],
