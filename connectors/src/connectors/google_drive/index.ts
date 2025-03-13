@@ -14,21 +14,14 @@ import {
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
-import { v4 as uuidv4 } from "uuid";
 
-import {
-  getLocalParents,
-  isDriveObjectExpandable,
-} from "@connectors/connectors/google_drive/lib";
+import { isDriveObjectExpandable } from "@connectors/connectors/google_drive/lib";
 import {
   GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID,
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import {
-  getFileParents,
-  getFileParentsMemoized,
-} from "@connectors/connectors/google_drive/lib/hierarchy";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
 import {
   folderHasChildren,
