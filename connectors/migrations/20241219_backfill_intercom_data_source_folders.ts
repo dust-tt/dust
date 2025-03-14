@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -17,6 +16,7 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MIME_TYPES } from "@connectors/types";
 
 async function createFolderNodes(execute: boolean) {
   const connectors = await ConnectorResource.listByType("intercom", {});

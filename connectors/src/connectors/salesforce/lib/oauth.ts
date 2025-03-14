@@ -1,8 +1,9 @@
-import type { Result } from "@dust-tt/types";
-import { Err, isValidSalesforceDomain, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
+import { isValidSalesforceDomain } from "@connectors/types";
 
 export type SalesforceAPICredentials = {
   accessToken: string;

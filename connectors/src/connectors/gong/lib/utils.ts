@@ -1,11 +1,13 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import { GongClient } from "@connectors/connectors/gong/lib/gong_api";
 import { apiConfig } from "@connectors/lib/api/config";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongConfigurationResource } from "@connectors/resources/gong_resources";
+import type { ModelId } from "@connectors/types";
+import { getOAuthConnectionAccessToken } from "@connectors/types";
 
 export async function fetchGongConnector({
   connectorId,

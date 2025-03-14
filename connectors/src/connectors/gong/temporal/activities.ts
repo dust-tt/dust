@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type { GongTranscriptMetadata } from "@connectors/connectors/gong/lib/gong_api";
 import { syncGongTranscript } from "@connectors/connectors/gong/lib/upserts";
 import {
@@ -17,6 +15,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { GongUserResource } from "@connectors/resources/gong_resources";
+import type { ModelId } from "@connectors/types";
 
 export async function gongSaveStartSyncActivity({
   connectorId,

@@ -1,8 +1,8 @@
-import type { ModelId } from "@dust-tt/types";
 import { proxyActivities, setHandler } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/snowflake/temporal/activities";
 import { resyncSignal } from "@connectors/connectors/snowflake/temporal/signals";
+import type { ModelId } from "@connectors/types";
 
 const { syncSnowflakeConnection } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",

@@ -1,9 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  ConfluenceCommandType,
-  ConfluenceMeResponseType,
-  ConfluenceUpsertPageResponseType,
-} from "@dust-tt/types";
 import assert from "assert";
 import fs from "fs/promises";
 
@@ -21,6 +15,12 @@ import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  AdminSuccessResponseType,
+  ConfluenceCommandType,
+  ConfluenceMeResponseType,
+  ConfluenceUpsertPageResponseType,
+} from "@connectors/types";
 
 export const confluence = async ({
   command,

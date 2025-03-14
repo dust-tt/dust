@@ -4,8 +4,8 @@
 //   OAuthAPIError,
 //   OAuthProvider,
 //   Result,
-// } from "@dust-tt/types";
-// import { Err, isOAuthProvider, OAuthAPI, Ok } from "@dust-tt/types";
+// } from "@connectors/types";
+// import { Err, isOAuthProvider, OAuthAPI, Ok } from "@connectors/types";
 // import { promises as fs } from "fs";
 // import { makeScript } from "scripts/helpers";
 

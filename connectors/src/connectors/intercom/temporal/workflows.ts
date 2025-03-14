@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -8,6 +7,7 @@ import {
 
 import type * as activities from "@connectors/connectors/intercom/temporal/activities";
 import type { IntercomUpdateSignal } from "@connectors/connectors/intercom/temporal/signals";
+import type { ModelId } from "@connectors/types";
 
 import { intercomUpdatesSignal } from "./signals";
 
