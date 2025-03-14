@@ -12,13 +12,13 @@ import {
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
 
 const {
+  gongCheckGarbageCollectionStateActivity,
+  gongDeleteOutdatedTranscriptsActivity,
   gongListAndSaveUsersActivity,
+  gongSaveGarbageCollectionSuccessActivity,
   gongSaveStartSyncActivity,
   gongSaveSyncSuccessActivity,
-  gongCheckGarbageCollectionStateActivity,
-  gongSaveGarbageCollectionSuccessActivity,
   gongSyncTranscriptsActivity,
-  gongDeleteOutdatedTranscriptsActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
