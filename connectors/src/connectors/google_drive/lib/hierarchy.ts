@@ -32,6 +32,7 @@ async function getFileParents(
   let currentObject = driveFile;
   while (currentObject.parent) {
     const parent = await getGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId: currentObject.parent,
       cacheKey: { connectorId, ts: startSyncTs },

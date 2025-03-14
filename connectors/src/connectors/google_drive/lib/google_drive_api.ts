@@ -6,7 +6,7 @@ import {
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import type { GoogleDriveObjectType } from "@connectors/types";
+import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
@@ -16,9 +16,11 @@ interface CacheKey {
 }
 
 async function _getGoogleDriveObject({
+  connectorId,
   authCredentials,
   driveObjectId,
 }: {
+  connectorId: ModelId;
   authCredentials: OAuth2Client;
   driveObjectId: string;
 }): Promise<GoogleDriveObjectType | null> {
@@ -37,7 +39,7 @@ async function _getGoogleDriveObject({
     }
     const file = res.data;
 
-    return await driveObjectToDustType(file, authCredentials);
+    return await driveObjectToDustType(connectorId, file, authCredentials);
   } catch (e) {
     if ((e as GaxiosError).response?.status === 401) {
       throw new ExternalOAuthTokenError();
@@ -53,6 +55,7 @@ const cachedGetGoogleDriveObject = cacheWithRedis<
   GoogleDriveObjectType | null,
   [
     {
+      connectorId: ModelId;
       authCredentials: OAuth2Client;
       driveObjectId: string;
       cacheKey: CacheKey;
@@ -67,20 +70,23 @@ const cachedGetGoogleDriveObject = cacheWithRedis<
 );
 
 export async function getGoogleDriveObject({
+  connectorId,
   authCredentials,
   driveObjectId,
   cacheKey,
 }: {
+  connectorId: ModelId;
   authCredentials: OAuth2Client;
   driveObjectId: string;
   cacheKey?: CacheKey;
 }): Promise<GoogleDriveObjectType | null> {
   if (cacheKey) {
     return cachedGetGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId,
       cacheKey,
     });
   }
-  return _getGoogleDriveObject({ authCredentials, driveObjectId });
+  return _getGoogleDriveObject({ connectorId, authCredentials, driveObjectId });
 }

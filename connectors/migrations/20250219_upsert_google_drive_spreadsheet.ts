@@ -19,6 +19,7 @@ makeScript(
 
     // Fetch spreadsheet metadata.
     const spreadsheetData = await getGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId: spreadsheetId,
     });
