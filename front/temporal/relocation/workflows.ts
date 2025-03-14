@@ -58,6 +58,20 @@ export async function workspaceRelocationWorkflow({
     searchAttributes: parentSearchAttributes,
     args: [{ sourceRegion, destRegion, workspaceId }],
   });
+
+  // 4) Relocate the apps to the destination region.
+  await executeChild(workspaceRelocateAppsWorkflow, {
+    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        workspaceId,
+        sourceRegion,
+        destRegion,
+      },
+    ],
+    memo,
+  });
 }
 
 /**
@@ -475,19 +489,6 @@ export async function workspaceRelocateCoreWorkflow({
       });
     }
   } while (hasMoreRows);
-
-  await executeChild(workspaceRelocateAppsWorkflow, {
-    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        workspaceId,
-        sourceRegion,
-        destRegion,
-      },
-    ],
-    memo,
-  });
 }
 
 // TODO: Below is not idempotent, we need to handle the case where the data source is already created in the destination region.
