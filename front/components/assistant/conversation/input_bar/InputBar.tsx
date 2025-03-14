@@ -6,7 +6,6 @@ import type {
   LightAgentConfigurationType,
   MentionType,
   Result,
-  UploadedContentFragment,
   WorkspaceType,
 } from "@dust-tt/types";
 import { compareAgentsForSort } from "@dust-tt/types";

@@ -2,7 +2,6 @@ import { Page, useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
   ContentFragmentsType,
-  DataSourceViewContentNode,
   LightAgentConfigurationType,
   MentionType,
   Result,

@@ -3,12 +3,10 @@ import type {
   AgentMention,
   ContentFragmentsType,
   ConversationType,
-  DataSourceViewContentNode,
   LightAgentConfigurationType,
   MentionType,
   ModelConfigurationType,
   Result,
-  UploadedContentFragment,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";

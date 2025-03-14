@@ -469,7 +469,7 @@ export async function renderFromFragmentId(
       );
     }
 
-    const dataSource = dataSourceView.dataSource;
+    const { dataSource } = dataSourceView;
 
     const documentRes = await coreAPI.getDataSourceDocument({
       dataSourceId: dataSource.dustAPIDataSourceId,
