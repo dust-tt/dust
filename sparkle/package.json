@@ -1,6 +1,10 @@
 {
   "name": "@dust-tt/sparkle",
+<<<<<<< HEAD
   "version": "0.2.437",
+=======
+  "version": "0.2.436",
+>>>>>>> 8f1644f41 (Bumping Sparkle)
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
