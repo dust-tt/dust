@@ -1,4 +1,10 @@
-import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  Button,
+  FullscreenExitIcon,
+  FullscreenIcon,
+} from "@dust-tt/sparkle";
 import type {
   AgentMention,
   DataSourceViewContentNode,
@@ -7,7 +13,13 @@ import type {
 } from "@dust-tt/types";
 import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
