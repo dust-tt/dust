@@ -1,6 +1,7 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
 import type {
   AgentMention,
+  ContentFragmentsType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   MentionType,
@@ -49,10 +50,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: {
-      uploaded: UploadedContentFragment[];
-      contentNodes: DataSourceViewContentNode[];
-    }
+    contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   conversationId: string | null;
   stickyMentions?: AgentMention[];
@@ -379,10 +377,7 @@ export function FixedAssistantInputBar({
   onSubmit: (
     input: string,
     mentions: MentionType[],
-    contentFragments: {
-      uploaded: UploadedContentFragment[];
-      contentNodes: DataSourceViewContentNode[];
-    }
+    contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
   stickyMentions?: AgentMention[];
   conversationId: string | null;

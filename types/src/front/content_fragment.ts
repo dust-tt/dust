@@ -1,6 +1,7 @@
 import { DustMimeType } from "../shared/internal_mime_types";
 import { ModelId } from "../shared/model_id";
 import { MessageType, MessageVisibility } from "./assistant/conversation";
+import { DataSourceViewContentNode } from "./data_source_view";
 import { SupportedFileContentType } from "./files";
 
 export type ContentFragmentContextType = {
@@ -42,6 +43,11 @@ export type ContentFragmentType = {
 export type UploadedContentFragment = {
   fileId: string;
   title: string;
+};
+
+export type ContentFragmentsType = {
+  uploaded: UploadedContentFragment[];
+  contentNodes: DataSourceViewContentNode[];
 };
 
 export function isContentFragmentType(

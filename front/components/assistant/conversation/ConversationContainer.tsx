@@ -6,7 +6,7 @@ import type {
   MentionType,
   Result,
   SubscriptionType,
-  UploadedContentFragment,
+  ContentFragmentsType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -100,10 +100,7 @@ export function ConversationContainer({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: {
-      uploaded: UploadedContentFragment[];
-      contentNodes: DataSourceViewContentNode[];
-    }
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
       return new Err({
@@ -196,10 +193,7 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: {
-        uploaded: UploadedContentFragment[];
-        contentNodes: DataSourceViewContentNode[];
-      }
+      contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({

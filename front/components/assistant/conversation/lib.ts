@@ -1,5 +1,6 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import type {
+  ContentFragmentsType,
   ConversationType,
   ConversationVisibility,
   DataSourceViewContentNode,
@@ -81,10 +82,7 @@ export async function submitMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: {
-      uploaded: UploadedContentFragment[];
-      contentNodes: DataSourceViewContentNode[];
-    };
+    contentFragments: ContentFragmentsType;
   };
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
@@ -233,10 +231,7 @@ export async function createConversationWithMessage({
   messageData: {
     input: string;
     mentions: MentionType[];
-    contentFragments: {
-      uploaded: UploadedContentFragment[];
-      contentNodes: DataSourceViewContentNode[];
-    };
+    contentFragments: ContentFragmentsType;
   };
   visibility?: ConversationVisibility;
   title?: string;
