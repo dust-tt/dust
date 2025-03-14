@@ -125,12 +125,15 @@ export async function gongGarbageCollectWorkflow({
   connectorId: ModelId;
   garbageCollectionStartTs: number;
 }) {
-  let hasMoreTranscripts = true;
-  while (hasMoreTranscripts) {
+  let hasMoreTranscripts: boolean | null = null;
+
+  // Do an outer loop to garbage collect all outdated transcripts and avoid hitting the activity startToCloseTimeout
+  // Enabling a retention policy can lead to having many transcripts to remove.
+  do {
     const { hasMore } = await gongDeleteOutdatedTranscriptsActivity({
       connectorId,
       garbageCollectionStartTs,
     });
     hasMoreTranscripts = hasMore;
-  }
+  } while (hasMoreTranscripts);
 }
