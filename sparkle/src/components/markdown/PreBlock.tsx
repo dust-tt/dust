@@ -9,7 +9,7 @@ export const preBlockVariants = cva(
   {
     variants: {
       variant: {
-        surface: "s-bg-muted-background dark:s-bg-muted-background-night",
+        surface: "s-bg-slate-100 dark:s-bg-muted-background-night",
       },
     },
   }

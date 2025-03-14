@@ -1,5 +1,5 @@
 import type { Meta } from "@storybook/react";
-import React, { useState } from "react";
+import React from "react";
 
 import {
   DriveLogo,
@@ -30,14 +30,6 @@ const meta = {
 export default meta;
 
 export const TreeExample = () => {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const check = (id: string) => {
-    setChecked((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   return (
     <div className="s-flex s-flex-col s-gap-10">
       <div className="s-flex s-gap-10">
@@ -55,9 +47,9 @@ export const TreeExample = () => {
                     type="leaf"
                     label="Item 1"
                     checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -65,9 +57,9 @@ export const TreeExample = () => {
                     label="Item 2"
                     type="leaf"
                     checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -75,16 +67,16 @@ export const TreeExample = () => {
                     label="Item 3"
                     type="leaf"
                     checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                 </Tree>
               </Tree.Item>
               <Tree.Item
-                label="Item 4 (forced expanded)"
+                label="Item 4 (forced collapsed)"
                 visual={FolderIcon}
                 collapsed={false}
               >
@@ -92,7 +84,7 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 1"
                     visual={FolderIcon}
-                    defaultCollapsed={false}
+                    collapsed={false}
                   >
                     <Tree.Item
                       label="Item 3"
@@ -166,7 +158,7 @@ export const TreeExample = () => {
                 visual={FolderIcon}
                 checkbox={{
                   checked: "partial",
-                  onCheckedChange: () => {
+                  onChange: () => {
                     return;
                   },
                 }}
@@ -176,9 +168,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 2"],
-                  onCheckedChange: () => {
-                    check("Item 2");
+                  checked: true,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -187,9 +179,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 3"],
-                  onCheckedChange: () => {
-                    check("Item 3");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -198,9 +190,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 4"],
-                  onCheckedChange: () => {
-                    check("Item 4");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -209,9 +201,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 5"],
-                  onCheckedChange: () => {
-                    check("Item 5");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -227,9 +219,9 @@ export const TreeExample = () => {
                 visual={IntercomLogo}
                 type="item"
                 checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -238,9 +230,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={NotionLogo}
                 checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -249,9 +241,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={SlackLogo}
                 checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -260,9 +252,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={DustIcon}
                 checkbox={{
-                  checked: checked["Dust"],
-                  onCheckedChange: () => {
-                    check("Dust");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -338,9 +330,9 @@ export const TreeExample = () => {
                         visual={FolderIcon}
                         type="leaf"
                         checkbox={{
-                          checked: checked["Item 1"],
-                          onCheckedChange: () => {
-                            check("Item 1");
+                          checked: false,
+                          onChange: () => {
+                            return;
                           },
                         }}
                       />
@@ -348,9 +340,9 @@ export const TreeExample = () => {
                         label="Item 2"
                         visual={FolderIcon}
                         checkbox={{
-                          checked: checked["Item 2"],
-                          onCheckedChange: () => {
-                            check("Item 2");
+                          checked: false,
+                          onChange: () => {
+                            return;
                           },
                         }}
                       />
@@ -358,9 +350,9 @@ export const TreeExample = () => {
                         label="Item 3"
                         visual={FolderIcon}
                         checkbox={{
-                          checked: checked["Item 3"],
-                          onCheckedChange: () => {
-                            check("Item 3");
+                          checked: false,
+                          onChange: () => {
+                            return;
                           },
                         }}
                       />
@@ -405,9 +397,9 @@ export const TreeExample = () => {
                     type="leaf"
                     label="Item 1"
                     checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -415,9 +407,9 @@ export const TreeExample = () => {
                     label="Item 2"
                     type="leaf"
                     checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -425,9 +417,9 @@ export const TreeExample = () => {
                     label="Item 3"
                     type="leaf"
                     checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -448,12 +440,12 @@ export const TreeExample = () => {
                 collapsed={false}
               >
                 <Tree>
-                  <Tree.Item label="Item 1" defaultCollapsed={false}>
+                  <Tree.Item label="Item 1" collapsed={false}>
                     <Tree>
                       <Tree.Empty label="No documents" />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 2" defaultCollapsed={false}>
+                  <Tree.Item label="Item 2" collapsed={false}>
                     <Tree>
                       <Tree.Empty
                         label="Empty tree can be clickable"
@@ -473,7 +465,7 @@ export const TreeExample = () => {
                     label="Item 1"
                     checkbox={{
                       checked: "partial",
-                      onCheckedChange: () => {
+                      onChange: () => {
                         return;
                       },
                     }}
@@ -481,36 +473,36 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
+                      checked: true,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 3"
                     checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 4"
                     checkbox={{
-                      checked: checked["Item 4"],
-                      onCheckedChange: () => {
-                        check("Item 4");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 5"
                     checkbox={{
-                      checked: checked["Item 5"],
-                      onCheckedChange: () => {
-                        check("Item 5");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -527,7 +519,7 @@ export const TreeExample = () => {
                     label="Item 1"
                     checkbox={{
                       checked: "partial",
-                      onCheckedChange: () => {
+                      onChange: () => {
                         return;
                       },
                     }}
@@ -535,9 +527,9 @@ export const TreeExample = () => {
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
+                      checked: true,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -546,7 +538,7 @@ export const TreeExample = () => {
                     type="leaf"
                     checkbox={{
                       checked: "partial",
-                      onCheckedChange: () => {
+                      onChange: () => {
                         return;
                       },
                     }}
@@ -565,9 +557,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 1"],
-                  onCheckedChange: () => {
-                    check("Item 1");
+                  checked: true,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -576,9 +568,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 2"],
-                  onCheckedChange: () => {
-                    check("Item 2");
+                  checked: true,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -587,9 +579,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 3"],
-                  onCheckedChange: () => {
-                    check("Item 3");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -598,9 +590,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 4"],
-                  onCheckedChange: () => {
-                    check("Item 4");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -609,9 +601,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={FolderIcon}
                 checkbox={{
-                  checked: checked["Item 5"],
-                  onCheckedChange: () => {
-                    check("Item 5");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -627,9 +619,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={IntercomLogo}
                 checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -638,9 +630,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={NotionLogo}
                 checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -649,9 +641,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={SlackLogo}
                 checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -660,9 +652,9 @@ export const TreeExample = () => {
                 type="item"
                 visual={DustIcon}
                 checkbox={{
-                  checked: checked["Dust"],
-                  onCheckedChange: () => {
-                    check("Dust");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -715,14 +707,6 @@ export const TreeExample = () => {
 };
 
 export const SelectDataSourceExample = () => {
-  const [checked, setChecked] = useState<Record<string, boolean>>({});
-  const check = (id: string) => {
-    setChecked((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
-
   return (
     <div className="s-flex s-w-full s-flex-col s-gap-10">
       <div className="s-flex s-grow s-gap-10">
@@ -751,7 +735,7 @@ export const SelectDataSourceExample = () => {
               />
               <Tree.Item
                 label="Slack"
-                defaultCollapsed={true}
+                collapsed={true}
                 visual={SlackLogo}
                 areActionsFading={false}
                 actions={
@@ -787,7 +771,7 @@ export const SelectDataSourceExample = () => {
                     />
                   </div>
                 }
-                defaultCollapsed={false}
+                collapsed={false}
               >
                 <Tree>
                   <Tree.Item label="Item 1" />
@@ -826,23 +810,23 @@ export const SelectDataSourceExample = () => {
           <div>
             <Tree>
               <Tree.Item
-                label="Intercoxxm"
+                label="Intercom"
                 visual={IntercomLogo}
                 checkbox={{
-                  checked: checked["Intercom"],
-                  onCheckedChange: () => {
-                    check("Intercom");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
               <Tree.Item
                 label="Slack"
-                defaultCollapsed={true}
+                collapsed={true}
                 visual={SlackLogo}
                 checkbox={{
-                  checked: checked["Slack"],
-                  onCheckedChange: () => {
-                    check("Slack");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
               />
@@ -850,47 +834,47 @@ export const SelectDataSourceExample = () => {
                 label="Notion"
                 visual={NotionLogo}
                 checkbox={{
-                  checked: checked["Notion"],
-                  onCheckedChange: () => {
-                    check("Notion");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
-                defaultCollapsed={false}
+                collapsed={false}
               >
                 <Tree>
                   <Tree.Item
                     label="Item 1"
                     checkbox={{
-                      checked: checked["Item 1"],
-                      onCheckedChange: () => {
-                        check("Item 1");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 2"
                     checkbox={{
-                      checked: checked["Item 2"],
-                      onCheckedChange: () => {
-                        check("Item 2");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 3"
                     checkbox={{
-                      checked: checked["Item 3"],
-                      onCheckedChange: () => {
-                        check("Item 3");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
                   <Tree.Item
                     label="Item 4"
                     checkbox={{
-                      checked: checked["Item 4"],
-                      onCheckedChange: () => {
-                        check("Item 4");
+                      checked: false,
+                      onChange: () => {
+                        return;
                       },
                     }}
                   />
@@ -900,9 +884,9 @@ export const SelectDataSourceExample = () => {
                 label="Google Drive"
                 visual={DriveLogo}
                 checkbox={{
-                  checked: checked["Google Drive"],
-                  onCheckedChange: () => {
-                    check("Google Drive");
+                  checked: false,
+                  onChange: () => {
+                    return;
                   },
                 }}
                 defaultCollapsed={true}
