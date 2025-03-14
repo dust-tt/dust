@@ -17,7 +17,11 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
-const GC_FREQUENCY_MS = 24 * 60 * 60 * 1000; // Every day.
+function daysToMs(days: number) {
+  return days * 24 * 60 * 60 * 1000;
+}
+
+const GC_FREQUENCY_MS = daysToMs(1); // Every day.
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -114,11 +118,11 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   getSyncStartTimestamp() {
     if (this.retentionPeriodDays) {
       if (!this.lastSyncTimestamp) {
-        return Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000;
+        return Date.now() - daysToMs(this.retentionPeriodDays);
       }
       return Math.max(
         this.lastSyncTimestamp,
-        Date.now() - this.retentionPeriodDays * 24 * 60 * 60 * 1000
+        Date.now() - daysToMs(this.retentionPeriodDays)
       );
     }
     return this.lastSyncTimestamp;
@@ -346,8 +350,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     }
 
     const retentionPeriodStart =
-      garbageCollectionStartTs -
-      configuration.retentionPeriodDays * 24 * 60 * 60 * 1000;
+      garbageCollectionStartTs - daysToMs(configuration.retentionPeriodDays);
     const transcripts = await GongTranscriptModel.findAll({
       where: {
         connectorId: connector.id,
