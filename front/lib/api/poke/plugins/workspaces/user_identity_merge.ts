@@ -29,7 +29,7 @@ export const userIdentityMergePlugin = createPlugin({
         label: "Ignore email match",
         description:
           "If true, the secondary user's email will not be checked against the primary user's email.",
-        default: true,
+        default: false,
       },
     },
   },
