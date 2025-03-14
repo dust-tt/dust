@@ -145,7 +145,6 @@ Tree.Item = React.forwardRef<
       ? onChevronClick
       : () => setCollapsedState(!collapsedState);
 
-    const canExpand = effectiveOnChevronClick && type === "node";
     const getChildren = () => {
       if (effectiveCollapsed) {
         return [];
@@ -167,9 +166,7 @@ Tree.Item = React.forwardRef<
           id={id}
           className={cn(
             treeItemStyleClasses.base,
-            onItemClick || checkbox?.onCheckedChange || canExpand
-              ? "s-cursor-pointer"
-              : "",
+            onItemClick ? "s-cursor-pointer" : "",
             isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
             isNavigatable
               ? isSelected
@@ -180,30 +177,13 @@ Tree.Item = React.forwardRef<
             type,
             className
           )}
-          onClick={
-            onItemClick ||
-            ((e) => {
-              // Skip if click on checkbox or any button
-              if (
-                e.target instanceof HTMLElement &&
-                e.target.tagName !== "BUTTON"
-              ) {
-                e.stopPropagation();
-                if (checkbox?.onCheckedChange) {
-                  checkbox.onCheckedChange?.(!checkbox.checked);
-                } else if (canExpand) {
-                  effectiveOnChevronClick();
-                }
-              }
-            })
-          }
+          onClick={onItemClick}
         >
           {type === "node" && (
             <Button
               icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
               size="xs"
               variant="ghost-secondary"
-              disabled={!effectiveOnChevronClick}
               onClick={(e) => {
                 e.stopPropagation();
                 if (effectiveOnChevronClick) {
