@@ -1,8 +1,8 @@
 import {
   Button,
   ChevronRightIcon,
+  DustLogo,
   IconButton,
-  LogoHorizontalColorLogo,
   MenuIcon,
   ScrollArea,
   Sheet,
@@ -37,7 +37,7 @@ export function MobileNavigation() {
             hideButton
           >
             <SheetTitle className="flex w-full items-center justify-between">
-              <LogoHorizontalColorLogo className="h-6 w-24" />
+              <DustLogo className="h-6 w-24" />
               <Button
                 size="md"
                 icon={XMarkIcon}

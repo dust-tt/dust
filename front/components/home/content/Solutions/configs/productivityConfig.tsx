@@ -24,8 +24,8 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Productivity",
   title: <>Get Things Done Faster, Better</>,
-  from: "from-violet-200",
-  to: "to-violet-500",
+  from: "from-purple-300",
+  to: "to-purple-300",
   description: (
     <>
       Automate routine tasks, enhance your communications, and get expert

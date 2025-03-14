@@ -9,7 +9,7 @@ export function ValuePropSection() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <H2 from="from-amber-200" to="to-amber-400">
+        <H2 className="text-brand-sunshine-golden">
           Amplify your team’s performance
         </H2>
         {/* <P size="lg">
@@ -22,9 +22,9 @@ export function ValuePropSection() {
           title={<>Answer any question, instantly</>}
           content={
             <>
-              Dust searches and synthesizes info from all your tools. Enjoy
-              summarization, targeted extractions, and crisp insights from
-              relevant docs.
+              Dust searches and synthesizes info from all your tools.&nbsp;
+              <br></br>Enjoy summarization, targeted extractions, and crisp
+              insights from relevant docs.
             </>
           }
         >

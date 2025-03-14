@@ -5,8 +5,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DustLogo,
   LoginIcon,
-  LogoHorizontalColorLogo,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -51,7 +51,7 @@ export const LoginPage = () => {
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
-              <LogoHorizontalColorLogo className="h-12 w-48" />
+              <DustLogo className="h-12 w-48" />
             </Link>
             <Page.SectionHeader title="Get more done, faster, with the power of your agents at your fingertips." />
           </div>

@@ -20,8 +20,8 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
   title: <>Instant knowledge, exceptional support</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
+  from: "from-blue-200",
+  to: "to-blue-200",
   description: (
     <>
       Equip your team with AI agents to accelerate issue resolution and increase

@@ -24,8 +24,8 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "IT",
   title: <>Automate Support, Empower Employees</>,
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-200",
   description: (
     <>
       Scale IT support, automate routine requests, and keep your IT desk clean.

@@ -253,7 +253,7 @@ export default function SecretsPage({
                 disabled={isGenerating || isRevoking}
               />
             </Page.Horizontal>
-            <div className="w-full space-y-4 divide-y divide-gray-200 dark:divide-gray-800">
+            <div className="w-full space-y-4 divide-y divide-separator dark:divide-separator-night">
               <div className="flex w-full flex-col space-y-4 pt-4">
                 {secrets
                   .sort((a, b) => a.name.localeCompare(b.name))
@@ -263,7 +263,7 @@ export default function SecretsPage({
                       className="flex items-center space-x-4"
                     >
                       <div className="flex-none">
-                        <pre className="bg-primary-100 p-2 text-sm dark:bg-primary-100-night">
+                        <pre className="bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night">
                           secrets.{secret.name}
                         </pre>
                       </div>

@@ -1,11 +1,5 @@
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
-import {
-  Button,
-  classNames,
-  LogoHorizontalColorLogo,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, classNames, DustLogo, Page, Spinner } from "@dust-tt/sparkle";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { RouteChangeMesssage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
@@ -103,7 +97,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
           <div className="flex flex-col items-center text-center space-y-4">
-            <LogoHorizontalColorLogo className="h-6 w-24" />
+            <DustLogo className="h-6 w-24" />
             <Page.Header title="Update required" />
           </div>
           <Page.SectionHeader title="Panel closes after update. Click Dust icon in toolbar to return." />

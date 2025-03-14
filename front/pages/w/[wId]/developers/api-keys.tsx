@@ -245,7 +245,7 @@ export function APIKeys({
                 onChange={(e) => setNewApiKeyName(e.target.value)}
               />
               <div className="align-center flex flex-row items-center gap-2 p-2">
-                <span className="dark:text-gray-700-night mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700">
+                <span className="mr-1 flex flex-initial py-2 text-sm font-medium leading-8 text-gray-700 dark:text-gray-700-night">
                   Assign permissions to space:{" "}
                 </span>
                 <DropdownMenu>
@@ -308,7 +308,7 @@ export function APIKeys({
           </DialogContent>
         </Dialog>
       </Page.Horizontal>
-      <div className="dark:divide-gray-200-night space-y-4 divide-y divide-gray-200">
+      <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
         <ul role="list" className="pt-4">
           {keys
             .sort((a, b) => (b.status === "active" ? 1 : -1))

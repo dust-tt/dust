@@ -158,7 +158,7 @@ export default function DatasetsView({
                       >
                         <div
                           key={d.name}
-                          className="dark:border-gray-300-night group rounded border border-gray-300 px-4 py-4"
+                          className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night"
                         >
                           <div className="flex items-center justify-between">
                             <p className="truncate text-base font-bold text-action-500">
@@ -167,7 +167,7 @@ export default function DatasetsView({
                             {readOnly ? null : (
                               <div className="ml-2 flex flex-shrink-0">
                                 <TrashIcon
-                                  className="dark:text-gray-400-night hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block"
+                                  className="hidden h-4 w-4 text-gray-400 hover:text-red-600 group-hover:block dark:text-gray-400-night"
                                   onClick={async (e) => {
                                     e.preventDefault();
                                     await handleDelete(d.name);
@@ -181,8 +181,8 @@ export default function DatasetsView({
                               <p
                                 className={classNames(
                                   d.description
-                                    ? "dark:text-gray-700-night text-gray-700"
-                                    : "dark:text-gray-300-night text-gray-300",
+                                    ? "text-gray-700 dark:text-gray-700-night"
+                                    : "text-gray-300 dark:text-gray-300-night",
                                   "text-s flex items-center"
                                 )}
                               >
@@ -198,7 +198,7 @@ export default function DatasetsView({
                   })}
                 </ul>
                 <div className="mt-2 max-w-4xl px-2">
-                  <div className="dark:text-gray-400-night py-2 text-sm text-gray-400">
+                  <div className="py-2 text-sm text-gray-400 dark:text-gray-400-night">
                     Datasets are used as input data to apps (
                     <Chip label="input" color="slate" /> block) or few-shot
                     examples to prompt models (

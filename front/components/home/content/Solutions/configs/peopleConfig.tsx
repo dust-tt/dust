@@ -25,7 +25,7 @@ export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
   from: "from-blue-200",
-  to: "to-blue-500",
+  to: "to-blue-200",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
