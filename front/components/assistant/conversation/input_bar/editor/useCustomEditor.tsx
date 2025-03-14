@@ -228,7 +228,9 @@ const useCustomEditor = ({
     extensions.push(
       URLDetectionExtension.configure({
         onUrlDetected: (url, nodeId) => {
-          onUrlDetected(url, nodeId ?? null);
+          if (nodeId) {
+            onUrlDetected(url, nodeId);
+          }
         },
       })
     );
