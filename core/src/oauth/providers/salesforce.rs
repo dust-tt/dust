@@ -66,7 +66,7 @@ impl Provider for SalesforceConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
-        credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -77,7 +77,7 @@ impl Provider for SalesforceConnectionProvider {
             .ok_or_else(|| anyhow!("Missing `code_verifier` in Salesforce connection"))?;
 
         // Get Salesforce client_id and client_secret using the helper
-        let (client_id, client_secret) = Self::get_credentials(credentials).await?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
         let body = json!({
             "grant_type": "authorization_code",
@@ -119,14 +119,14 @@ impl Provider for SalesforceConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let instance_url = Self::get_instance_url(&connection.metadata())?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Salesforce connection"))?;
 
-        let (client_id, client_secret) = Self::get_credentials(credentials).await?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
         let body = json!({
             "grant_type": "refresh_token",

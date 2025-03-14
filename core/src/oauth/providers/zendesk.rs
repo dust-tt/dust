@@ -37,7 +37,7 @@ impl Provider for ZendeskConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -90,7 +90,7 @@ impl Provider for ZendeskConnectionProvider {
     async fn refresh(
         &self,
         _connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Zendesk access tokens do not expire".to_string(),

@@ -144,7 +144,7 @@ pub trait Provider {
     async fn finalize(
         &self,
         connection: &Connection,
-        credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError>;
@@ -152,7 +152,7 @@ pub trait Provider {
     async fn refresh(
         &self,
         connection: &Connection,
-        credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in

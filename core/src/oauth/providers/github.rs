@@ -146,7 +146,7 @@ impl Provider for GithubConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -176,7 +176,7 @@ impl Provider for GithubConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let app_type = match connection.metadata()["use_case"].as_str() {
             Some(use_case) => match use_case {

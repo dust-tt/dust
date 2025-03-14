@@ -45,7 +45,7 @@ impl Provider for SlackConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -89,7 +89,7 @@ impl Provider for SlackConnectionProvider {
     async fn refresh(
         &self,
         _connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Slack access tokens do not expire.".to_string(),

@@ -29,7 +29,7 @@ impl Provider for MockConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -46,7 +46,7 @@ impl Provider for MockConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = connection
             .unseal_refresh_token()?

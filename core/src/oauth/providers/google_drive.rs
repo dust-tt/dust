@@ -42,7 +42,7 @@ impl Provider for GoogleDriveConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -107,7 +107,7 @@ impl Provider for GoogleDriveConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        _credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
