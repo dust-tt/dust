@@ -593,7 +593,8 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
 
     if (
       "results" in sanitizedOutput &&
-      Array.isArray(sanitizedOutput.results)
+      Array.isArray(sanitizedOutput.results) &&
+      sanitizedOutput.results.length > 0
     ) {
       const results = sanitizedOutput.results;
       const queryTitle = getTablesQueryResultsFileTitle({
