@@ -32,8 +32,7 @@ import {
 } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ContentNode } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { ContentNode, DataSourceConfig } from "@connectors/types";
 import { MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "gong" });
@@ -322,6 +321,19 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
         const retentionPeriodDays = configValue
           ? parseInt(configValue, 10)
           : null;
+
+        if (!Number.isFinite(retentionPeriodDays)) {
+          logger.error(
+            {
+              connectorId: connector.id,
+              configValue,
+              retentionPeriodDays,
+            },
+            "[Gong] Invalid retention period value."
+          );
+          return new Err(new Error("Invalid retention period"));
+        }
+
         logger.info(
           {
             connectorId: connector.id,
