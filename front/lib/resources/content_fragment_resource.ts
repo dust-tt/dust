@@ -248,7 +248,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       contentFormat: "text",
     });
 
-    let fileSid: string | null = null;
+    let fileStringId: string | null = null;
     let snippet: string | null = null;
     let generatedTables: string[] = [];
     let nodeId: string | null = null;
@@ -257,7 +257,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     if (this.fileId) {
       const file = await FileResource.fetchByModelId(this.fileId);
       if (file) {
-        fileSid = file.sId;
+        fileStringId = file.sId;
         snippet = file.snippet;
         generatedTables = file.useCaseMetadata?.generatedTables ?? [];
       }
@@ -276,7 +276,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
     return {
       id: message.id,
-      fileId: fileSid,
+      fileId: fileStringId,
       snippet: snippet,
       generatedTables: generatedTables,
       nodeId: nodeId,
@@ -398,7 +398,7 @@ export async function renderFromFragmentId(
 
   const { fileId: fileModelId, nodeId, nodeDataSourceViewId } = contentFragment;
 
-  const fileSId = fileModelId
+  const fileStringId = fileModelId
     ? FileResource.modelIdToSId({
         id: fileModelId,
         workspaceId: workspace.id,
@@ -427,13 +427,16 @@ export async function renderFromFragmentId(
       });
     }
 
-    if (!fileSId) {
+    if (!fileStringId) {
       throw new Error(
-        `Unreachable code path: fileSId is null. This would mean that the content fragment is a content node image, but we don't allow images as content nodes yet.`
+        `Unreachable code path: fileStringId is null. This would mean that the content fragment is a content node image, but we don't allow images as content nodes yet.`
       );
     }
 
-    const signedUrl = await getSignedUrlForProcessedContent(workspace, fileSId);
+    const signedUrl = await getSignedUrlForProcessedContent(
+      workspace,
+      fileStringId
+    );
 
     return new Ok({
       role: "content_fragment",
@@ -497,19 +500,19 @@ export async function renderFromFragmentId(
         },
       ],
     });
-  } else if (fileSId) {
-    let content = await getProcessedFileContent(workspace, fileSId);
+  } else if (fileStringId) {
+    let content = await getProcessedFileContent(workspace, fileStringId);
 
     if (!content) {
       logger.warn(
         {
-          fileId: fileSId,
+          fileId: fileStringId,
           contentType,
           workspaceId: workspace.sId,
         },
         "No content extracted from file processed version, we are retrieving the original file as a fallback."
       );
-      content = await getOriginalFileContent(workspace, fileSId);
+      content = await getOriginalFileContent(workspace, fileStringId);
     }
 
     return new Ok({
@@ -559,13 +562,13 @@ export async function renderLightContentFragmentForModel(
   // FileId is only needed in case of images (for light rendering)
   const { fileId: fileModelId } = contentFragment;
 
-  const fileSId = fileModelId
+  const fileStringId = fileModelId
     ? FileResource.modelIdToSId({
         id: fileModelId,
         workspaceId: conversation.owner.id,
       })
     : null;
-  if (fileSId && isSupportedImageContentType(contentType)) {
+  if (fileStringId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",
@@ -589,7 +592,7 @@ export async function renderLightContentFragmentForModel(
 
     const signedUrl = await getSignedUrlForProcessedContent(
       conversation.owner,
-      fileSId
+      fileStringId
     );
 
     return {
