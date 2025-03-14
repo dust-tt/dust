@@ -9,6 +9,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare updatedAt: CreationOptional<Date>;
 
   declare lastSyncTimestamp: number | null;
+  declare lastGarbageCollectTimestamp: number | null;
   declare baseUrl: string;
   declare retentionPeriodDays: number | null;
 }
@@ -26,6 +27,10 @@ GongConfigurationModel.init(
       defaultValue: DataTypes.NOW,
     },
     lastSyncTimestamp: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+    lastGarbageCollectTimestamp: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
