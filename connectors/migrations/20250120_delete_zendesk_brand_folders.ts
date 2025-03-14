@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { getBrandInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
@@ -14,6 +13,7 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import { MIME_TYPES } from "@connectors/types";
 
 const FOLDER_CONCURRENCY = 10;
 

@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, normalizeError, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   Client,
   ScheduleHandle,
@@ -16,6 +16,7 @@ import type { Duration } from "@temporalio/common";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { normalizeError } from "@connectors/types";
 
 /**
  * Terminates running workflows spawned by the given schedule.

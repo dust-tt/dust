@@ -1,4 +1,3 @@
-import { rateLimiter, setupGlobalErrorHandler } from "@dust-tt/types";
 import bodyParser from "body-parser";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
@@ -33,6 +32,7 @@ import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
 import { webhookSlackInteractionsAPIHandler } from "@connectors/api/webhooks/webhook_slack_interaction";
 import logger from "@connectors/logger/logger";
 import { authMiddleware } from "@connectors/middleware/auth";
+import { rateLimiter, setupGlobalErrorHandler } from "@connectors/types";
 
 import {
   getConnectorConfigAPIHandler,

@@ -1,19 +1,8 @@
-import type {
-  ConnectorType,
-  Result,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ConnectorCreateRequestBodySchema,
-  ioTsParsePayload,
-  isConnectorProvider,
-  normalizeError,
-  SlackConfigurationTypeSchema,
-  WebCrawlerConfigurationTypeSchema,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { createConnector } from "@connectors/connectors";
@@ -25,6 +14,23 @@ import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorType } from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import {
+  ioTsParsePayload,
+  SlackConfigurationTypeSchema,
+  WebCrawlerConfigurationTypeSchema,
+} from "@connectors/types";
+import { ConnectorConfigurationTypeSchema } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
+
+const ConnectorCreateRequestBodySchema = t.type({
+  workspaceAPIKey: t.string,
+  dataSourceId: t.string,
+  workspaceId: t.string,
+  connectionId: t.string,
+  configuration: ConnectorConfigurationTypeSchema,
+});
 
 type ConnectorCreateResBody = WithConnectorsAPIErrorReponse<ConnectorType>;
 

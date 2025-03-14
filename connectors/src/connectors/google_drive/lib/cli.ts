@@ -1,10 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  CheckFileGenericResponseType,
-  GoogleDriveCommandType,
-} from "@dust-tt/types";
-import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -34,6 +27,12 @@ import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  CheckFileGenericResponseType,
+  GoogleDriveCommandType,
+} from "@connectors/types";
+import { googleDriveIncrementalSyncWorkflowId } from "@connectors/types";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
   if (!args.wId) {

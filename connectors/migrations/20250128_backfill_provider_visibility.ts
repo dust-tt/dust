@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -12,6 +11,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { MIME_TYPES } from "@connectors/types";
 
 const FOLDER_CONCURRENCY = 16;
 

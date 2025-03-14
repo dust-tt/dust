@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
@@ -46,6 +45,7 @@
     "googleapis": "^118.0.0",
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
+    "io-ts-types": "^0.5.19",
     "io-ts-reporters": "^2.0.1",
     "jsforce": "^3.6.4",
     "lodash": "^4.17.21",

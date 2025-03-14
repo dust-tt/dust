@@ -1,4 +1,3 @@
-import { sendInitDbMessage } from "@dust-tt/types";
 import type { Sequelize } from "sequelize";
 
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
@@ -79,6 +78,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { sendInitDbMessage } from "@connectors/types";
 
 async function main(): Promise<void> {
   await sendInitDbMessage({

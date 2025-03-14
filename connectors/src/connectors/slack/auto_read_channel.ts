@@ -1,6 +1,5 @@
-import { DustAPI } from "@dust-tt/client";
-import type { Result, SlackAutoReadPattern } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -16,6 +15,8 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { SlackAutoReadPattern } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 function findMatchingChannelPatterns(
   remoteChannelName: string,

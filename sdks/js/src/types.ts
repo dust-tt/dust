@@ -96,6 +96,20 @@ export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
+export function isConnectorsAPIError(
+  obj: unknown
+): obj is ConnectorsAPIErrorType {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string" &&
+    ConnectorsAPIErrorTypeSchema.safeParse(obj).success
+  );
+}
+
 // Supported content types that are plain text and can be sent as file-less content fragment.
 export const supportedOtherFileFormats = {
   "application/msword": [".doc", ".docx"],
@@ -287,6 +301,11 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
+export const isConnectorProvider = (
+  provider: string
+): provider is ConnectorProvider =>
+  ConnectorProvidersSchema.safeParse(provider).success;
+
 const EditedByUserSchema = z.object({
   editedAt: z.number().nullable(),
   fullName: z.string().nullable(),
@@ -356,6 +375,8 @@ const CoreAPIRowSchema = z.object({
   row_id: z.string(),
   value: z.record(CoreAPIRowValueSchema),
 });
+
+export type CoreAPIRowType = z.infer<typeof CoreAPIRowSchema>;
 
 const CoreAPITableSchema = z.array(
   z.object({
@@ -1344,6 +1365,8 @@ export const CoreAPIErrorSchema = z.object({
   code: z.string(),
 });
 
+export type CoreAPIError = z.infer<typeof CoreAPIErrorSchema>;
+
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
@@ -1445,6 +1468,8 @@ export const WorkspaceDomainSchema = z.object({
   domain: z.string(),
   domainAutoJoinEnabled: z.boolean(),
 });
+
+export type WorkspaceDomainType = z.infer<typeof WorkspaceDomainSchema>;
 
 export const DustAppTypeSchema = z.object({
   appHash: z.string(),
@@ -2057,6 +2082,10 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   title: z.string().nullable().optional(),
 });
 
+export type PostDataSourceDocumentRequestType = z.infer<
+  typeof PostDataSourceDocumentRequestSchema
+>;
+
 const GetDocumentResponseSchema = z.object({
   document: CoreAPIDocumentSchema,
 });
@@ -2532,3 +2561,20 @@ export const AppsCheckResponseSchema = z.object({
 });
 
 export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
+
+// TODO(mcp) move directly in the action type ?
+export const ACTION_RUNNING_LABELS: Record<
+  AgentActionPublicType["type"],
+  string
+> = {
+  browse_action: "Browsing page",
+  conversation_include_file_action: "Reading file",
+  conversation_list_files_action: "Listing files",
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  reasoning_action: "Reasoning",
+  retrieval_action: "Searching data",
+  search_labels_action: "Searching labels",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+};
