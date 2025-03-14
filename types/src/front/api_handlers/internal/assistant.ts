@@ -31,13 +31,28 @@ export const getSupportedInlinedContentType = () => {
   ]);
 };
 
-export const getSupportedContentNodeContentType = () => {
-  const [first, second, ...rest] = MIME_TYPES_VALUES;
+const [first, second, ...rest] = [
+  ...MIME_TYPES_VALUES,
+  ...getSupportedNonImageMimeTypes(),
+];
+export const getSupportedContentNodeContentTypeSchema = () => {
   return t.union([
     t.literal(first),
     t.literal(second),
     ...rest.map((value) => t.literal(value)),
   ]);
+};
+
+export type SupportedContentNodeContentType = t.TypeOf<
+  ReturnType<typeof getSupportedContentNodeContentTypeSchema>
+>;
+
+export const isSupportedContentNodeFragmentContentType = (
+  contentType: string
+): contentType is SupportedContentNodeContentType => {
+  return (
+    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+  ).includes(contentType);
 };
 
 const ContentFragmentInputWithContentSchema = t.intersection([
@@ -57,10 +72,7 @@ const ContentFragmentInputWithContentNodeSchema = t.intersection([
   t.type({
     nodeId: t.string,
     nodeDataSourceViewId: t.string,
-    contentType: t.union([
-      getSupportedInlinedContentType(),
-      getSupportedContentNodeContentType(),
-    ]),
+    contentType: getSupportedContentNodeContentTypeSchema(),
   }),
 ]);
 

@@ -3,17 +3,20 @@ import type {
   ContentFragmentsType,
   ConversationType,
   ConversationVisibility,
-  DataSourceViewContentNode,
   InternalPostConversationsRequestBodySchema,
   MentionType,
   Result,
   SubmitMessageError,
-  UploadedContentFragment,
+  SupportedContentNodeContentType,
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import {
+  Err,
+  isSupportedContentNodeFragmentContentType,
+  Ok,
+} from "@dust-tt/types";
 import type * as t from "io-ts";
 
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -86,6 +89,7 @@ export async function submitMessage({
   };
 }): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
+
   // Create a new content fragment.
   if (
     contentFragments.uploaded.length > 0 ||
@@ -257,15 +261,28 @@ export async function createConversationWithMessage({
         },
         fileId: cf.fileId,
       })),
-      ...contentFragments.contentNodes.map((cf) => ({
-        title: cf.title,
-        context: {
-          profilePictureUrl: user.image,
-        },
-        nodeId: cf.internalId,
-        contentType: cf.mimeType as any,
-        nodeDataSourceViewId: cf.dataSourceView.sId,
-      })),
+      ...contentFragments.contentNodes.map((cf) => {
+        const contentType = isSupportedContentNodeFragmentContentType(
+          cf.mimeType
+        )
+          ? (cf.mimeType as SupportedContentNodeContentType)
+          : null;
+        if (!contentType) {
+          throw new Error(
+            `Unsupported content node fragment mime type: ${cf.mimeType}`
+          );
+        }
+
+        return {
+          title: cf.title,
+          context: {
+            profilePictureUrl: user.image,
+          },
+          nodeId: cf.internalId,
+          contentType,
+          nodeDataSourceViewId: cf.dataSourceView.sId,
+        };
+      }),
     ],
   };
 
