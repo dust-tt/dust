@@ -559,10 +559,9 @@ export async function renderLightContentFragmentForModel(
     message.id
   );
   if (!contentFragment) {
-    throw new Error(`Content fragment not found for sId ${sId}`);
+    throw new Error(`Content fragment not found for message ${sId}`);
   }
 
-  // FileId is only needed in case of images (for light rendering)
   const { fileId: fileModelId } = contentFragment;
 
   const fileStringId = fileModelId
