@@ -1,16 +1,3 @@
-import type {
-  AgentAction,
-  BrowseConfigurationType,
-  ConversationIncludeFileConfigurationType,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  SearchLabelsConfigurationType,
-  TablesQueryConfigurationType,
-  WebsearchConfigurationType,
-} from "@dust-tt/types";
-
 import { BrowseConfigurationServerRunner } from "@app/lib/api/assistant/actions/browse";
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/api/assistant/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/api/assistant/actions/dust_app_run";
@@ -25,6 +12,18 @@ import type {
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/api/assistant/actions/types";
 import { WebsearchConfigurationServerRunner } from "@app/lib/api/assistant/actions/websearch";
+import type {
+  AgentAction,
+  BrowseConfigurationType,
+  ConversationIncludeFileConfigurationType,
+  DustAppRunConfigurationType,
+  ProcessConfigurationType,
+  ReasoningConfigurationType,
+  RetrievalConfigurationType,
+  SearchLabelsConfigurationType,
+  TablesQueryConfigurationType,
+  WebsearchConfigurationType,
+} from "@app/types";
 
 interface ActionToConfigTypeMap {
   browse_configuration: BrowseConfigurationType;

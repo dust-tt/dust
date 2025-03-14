@@ -1,3 +1,13 @@
+import assert from "assert";
+
+import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import logger from "@app/logger/logger";
 import type {
   AgentActionSpecification,
   FunctionCallType,
@@ -10,19 +20,9 @@ import type {
   SearchLabelsErrorEvent,
   SearchLabelsParamsEvent,
   SearchLabelsSuccessEvent,
-} from "@dust-tt/types";
-import { isString } from "@dust-tt/types";
-import { BaseAction, CoreAPI, Ok } from "@dust-tt/types";
-import assert from "assert";
-
-import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import { isString } from "@app/types";
+import { BaseAction, CoreAPI, Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 

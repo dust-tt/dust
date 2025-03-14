@@ -10,7 +10,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
@@ -24,6 +23,7 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({
   owner,

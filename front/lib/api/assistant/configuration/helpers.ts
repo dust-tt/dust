@@ -1,7 +1,6 @@
-import type { RetrievalTimeframe } from "@dust-tt/types";
-
 import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
+import type { RetrievalTimeframe } from "@app/types";
 
 export function renderRetrievalTimeframeType(
   action: AgentRetrievalConfiguration | AgentProcessConfiguration

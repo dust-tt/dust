@@ -1,12 +1,12 @@
+import { escapeRegExp } from "lodash";
+
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
   ModelConfigurationType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import { escapeRegExp } from "lodash";
-
-import { getSupportedModelConfig } from "@app/lib/assistant";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
 

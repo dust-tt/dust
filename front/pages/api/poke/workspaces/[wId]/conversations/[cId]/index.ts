@@ -1,7 +1,3 @@
-import type {
-  PokeConversationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
@@ -10,6 +6,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getPokeConversation } from "@app/lib/poke/conversations";
 import { apiError } from "@app/logger/withlogging";
+import type { PokeConversationType, WithAPIErrorResponse } from "@app/types";
 
 export type GetConversationResponseBody = {
   conversation: PokeConversationType;

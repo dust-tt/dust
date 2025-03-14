@@ -25,20 +25,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorPermission,
-  ConnectorProvider,
-  ConnectorType,
-  ContentNode,
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  LightWorkspaceType,
-  UpdateConnectorRequestBody,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, isOAuthProvider } from "@dust-tt/types";
 import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, {
   useCallback,
@@ -76,6 +62,20 @@ import {
   useWorkspaceActiveSubscription,
 } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  APIError,
+  ConnectorPermission,
+  ConnectorProvider,
+  ConnectorType,
+  ContentNode,
+  ContentNodeWithParent,
+  DataSourceType,
+  DataSourceViewType,
+  LightWorkspaceType,
+  UpdateConnectorRequestBody,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, isOAuthProvider } from "@app/types";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>

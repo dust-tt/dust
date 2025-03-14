@@ -1,5 +1,6 @@
-import type { AppType, DataSourceViewType, SpaceType } from "@dust-tt/types";
 import { createContext } from "react";
+
+import type { AppType, DataSourceViewType, SpaceType } from "@app/types";
 
 type AssistantBuilderContextType = {
   dustApps: AppType[];

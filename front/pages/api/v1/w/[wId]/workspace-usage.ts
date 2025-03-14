@@ -3,8 +3,6 @@ import type {
   UsageTableType,
 } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
-import type { WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -21,6 +19,8 @@ import {
   getUserUsageData,
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
+import type { WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 /**
  * @swagger

@@ -1,10 +1,10 @@
 // LABS - CAN BE REMOVED ANYTIME
 
-import type { WorkspaceType } from "@dust-tt/types";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type { WorkspaceType } from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({

@@ -1,16 +1,4 @@
 import type {
-  ContentFragmentMessageTypeModel,
-  ContentFragmentType,
-  ContentFragmentVersion,
-  ConversationType,
-  ModelConfigurationType,
-  ModelId,
-  Result,
-  SupportedContentFragmentType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { CoreAPI, Err, isSupportedImageContentType, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -30,6 +18,18 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  ContentFragmentMessageTypeModel,
+  ContentFragmentType,
+  ContentFragmentVersion,
+  ConversationType,
+  ModelConfigurationType,
+  ModelId,
+  Result,
+  SupportedContentFragmentType,
+  WorkspaceType,
+} from "@app/types";
+import { CoreAPI, Err, isSupportedImageContentType, Ok } from "@app/types";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";

@@ -1,7 +1,8 @@
 import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import type { AppType, LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
+
+import type { AppType, LightWorkspaceType } from "@app/types";
 
 export function makeColumnsForApps(
   owner: LightWorkspaceType

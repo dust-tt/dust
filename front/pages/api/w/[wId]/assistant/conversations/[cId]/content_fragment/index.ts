@@ -1,5 +1,3 @@
-import type { ContentFragmentType, WithAPIErrorResponse } from "@dust-tt/types";
-import { InternalPostContentFragmentRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,6 +10,8 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { ContentFragmentType, WithAPIErrorResponse } from "@app/types";
+import { InternalPostContentFragmentRequestBodySchema } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

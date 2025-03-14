@@ -1,12 +1,11 @@
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
   ContentNodesViewType,
   CoreAPISearchScope,
   LightWorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   switch (viewType) {

@@ -1,5 +1,3 @@
-import type { CoreAPIDocument, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,6 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { CoreAPIDocument, WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const config = {
   api: {

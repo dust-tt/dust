@@ -1,4 +1,3 @@
-import type { DustAppParameters } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -7,6 +6,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { DustAppParameters } from "@app/types";
 
 export class AgentDustAppRunConfiguration extends WorkspaceAwareModel<AgentDustAppRunConfiguration> {
   declare createdAt: CreationOptional<Date>;

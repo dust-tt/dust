@@ -1,5 +1,4 @@
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -13,6 +12,7 @@ import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];

@@ -1,5 +1,3 @@
-import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
-import type { AgentReasoningEffort } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -7,6 +5,8 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelIdType, ModelProviderIdType } from "@app/types";
+import type { AgentReasoningEffort } from "@app/types";
 
 export class AgentReasoningConfiguration extends WorkspaceAwareModel<AgentReasoningConfiguration> {
   declare createdAt: CreationOptional<Date>;

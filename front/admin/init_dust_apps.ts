@@ -1,4 +1,3 @@
-import { concurrentExecutor, isDevelopment } from "@dust-tt/types";
 import _ from "lodash";
 import parseArgs from "minimist";
 
@@ -13,6 +12,7 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { concurrentExecutor, isDevelopment } from "@app/types";
 
 const DEFAULT_WORKSPACE_NAME = "dust-apps";
 const DEFAULT_SPACE_NAME = "Public Dust Apps";

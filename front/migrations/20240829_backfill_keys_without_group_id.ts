@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -8,6 +6,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 async function backfillApiKeys(
   workspace: LightWorkspaceType,

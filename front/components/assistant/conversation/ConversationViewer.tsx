@@ -1,21 +1,4 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type {
-  AgentGenerationCancelledEvent,
-  AgentMention,
-  AgentMessageNewEvent,
-  ContentFragmentType,
-  ConversationTitleEvent,
-  FetchConversationMessagesResponse,
-  MessageWithContentFragmentsType,
-  UserMessageNewEvent,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  isAgentMention,
-  isContentFragmentType,
-  isUserMessageType,
-} from "@dust-tt/types";
 import React, {
   useCallback,
   useEffect,
@@ -42,6 +25,23 @@ import {
   useConversations,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentGenerationCancelledEvent,
+  AgentMention,
+  AgentMessageNewEvent,
+  ContentFragmentType,
+  ConversationTitleEvent,
+  FetchConversationMessagesResponse,
+  MessageWithContentFragmentsType,
+  UserMessageNewEvent,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  isAgentMention,
+  isContentFragmentType,
+  isUserMessageType,
+} from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 

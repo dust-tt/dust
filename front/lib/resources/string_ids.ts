@@ -1,10 +1,10 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import Sqids from "sqids";
 import { v4 as uuidv4 } from "uuid";
 
 import logger from "@app/logger/logger";
+import type { ModelId, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const RESOURCE_S_ID_MIN_LENGTH = 10;
 

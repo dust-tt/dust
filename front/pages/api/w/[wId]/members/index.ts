@@ -1,7 +1,3 @@
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { NumberFromString, withFallback } from "io-ts-types";
@@ -12,6 +8,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 export const DEFAULT_PAGE_LIMIT = 50;
 export const MAX_PAGE_LIMIT = 150;

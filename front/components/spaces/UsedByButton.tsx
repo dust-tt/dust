@@ -7,7 +7,8 @@ import {
   RobotIcon,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import type { DataSourceWithAgentsUsageType } from "@dust-tt/types";
+
+import type { DataSourceWithAgentsUsageType } from "@app/types";
 
 export const UsedByButton = ({
   usage,

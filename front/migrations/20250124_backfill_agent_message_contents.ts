@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -6,6 +5,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 async function backfillAgentMessageContent(
   workspace: LightWorkspaceType,

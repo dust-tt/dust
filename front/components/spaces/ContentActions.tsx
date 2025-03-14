@@ -6,14 +6,6 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { DocumentDeletionKey, DocumentViewRawContentKey } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -31,6 +23,14 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"

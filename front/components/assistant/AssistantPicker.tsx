@@ -12,13 +12,10 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { filterAndSortAgents } from "@app/lib/utils";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 export function AssistantPicker({
   owner,

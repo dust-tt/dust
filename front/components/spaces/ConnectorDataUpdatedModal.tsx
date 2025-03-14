@@ -9,9 +9,9 @@ import {
   SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider } from "@dust-tt/types";
 
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;

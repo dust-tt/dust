@@ -1,7 +1,6 @@
-import { safeParseJSON } from "@dust-tt/types";
-
 import type { NavigationSelectionType } from "@app/hooks/usePersistedNavigationSelection";
 import { NAVIGATION_SELECTION_METADATA_NAME } from "@app/hooks/usePersistedNavigationSelection";
+import { safeParseJSON } from "@app/types";
 
 import type { UserResource } from "./resources/user_resource";
 

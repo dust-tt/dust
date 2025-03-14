@@ -1,10 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { DatasetSchema, DatasetType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -18,6 +14,10 @@ import { useRegisterUnloadHandlers } from "@app/lib/front";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import type { WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { DatasetSchema, DatasetType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

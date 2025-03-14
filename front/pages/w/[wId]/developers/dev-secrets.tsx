@@ -13,11 +13,6 @@ import {
   PlusIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DustAppSecretType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
@@ -27,6 +22,11 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
+import type {
+  DustAppSecretType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

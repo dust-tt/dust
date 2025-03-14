@@ -1,13 +1,3 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import AssistantBuilder from "@app/components/assistant_builder/AssistantBuilder";
@@ -24,6 +14,16 @@ import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type {
+  AgentConfigurationType,
+  AppType,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
+import { throwIfInvalidAgentConfiguration } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];

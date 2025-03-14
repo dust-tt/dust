@@ -1,4 +1,8 @@
 import type { NotificationType } from "@dust-tt/sparkle";
+import type * as t from "io-ts";
+
+import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   ContentFragmentsType,
   ConversationType,
@@ -11,16 +15,8 @@ import type {
   UserMessageWithRankType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-import {
-  Err,
-  isSupportedContentNodeFragmentContentType,
-  Ok,
-} from "@dust-tt/types";
-import type * as t from "io-ts";
-
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
+} from "@app/types";
+import { Err, isSupportedContentNodeFragmentContentType, Ok } from "@app/types";
 
 /**
  * id of the parent div that should be scrolled for autosrcolling to work on

@@ -1,5 +1,4 @@
 import { Button, DustLogoSquare, LoginIcon, Page } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
@@ -12,6 +11,7 @@ import {
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { getSignUpUrl } from "@app/lib/signup";
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * 3 ways to end up here:

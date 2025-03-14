@@ -1,5 +1,3 @@
-import type { PokeDataSourceViewType, WorkspaceType } from "@dust-tt/types";
-import { defaultSelectionConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -12,6 +10,8 @@ import { dataSourceViewToPokeJSON } from "@app/lib/poke/utils";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
+import type { PokeDataSourceViewType, WorkspaceType } from "@app/types";
+import { defaultSelectionConfiguration } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   dataSourceView: PokeDataSourceViewType;

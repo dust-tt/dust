@@ -1,10 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  BigQueryCredentialsWithLocationSchema,
-  OAuthAPI,
-  SalesforceCredentialsSchema,
-  SnowflakeCredentialsSchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,6 +8,13 @@ import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  BigQueryCredentialsWithLocationSchema,
+  OAuthAPI,
+  SalesforceCredentialsSchema,
+  SnowflakeCredentialsSchema,
+} from "@app/types";
 
 const PostSnowflakeCredentialsBodySchema = t.type({
   provider: t.literal("snowflake"),

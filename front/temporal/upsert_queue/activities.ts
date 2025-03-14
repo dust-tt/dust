@@ -1,4 +1,3 @@
-import { CoreAPI, dustManagedCredentials, safeSubstring } from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
@@ -11,6 +10,7 @@ import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
 import mainLogger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
+import { CoreAPI, dustManagedCredentials, safeSubstring } from "@app/types";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 

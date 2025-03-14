@@ -1,4 +1,3 @@
-import { isDevelopment } from "@dust-tt/types";
 import type { Attributes } from "sequelize";
 
 import { Plan } from "@app/lib/models/plan";
@@ -6,6 +5,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import { isDevelopment } from "@app/types";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,

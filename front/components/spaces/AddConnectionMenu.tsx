@@ -14,23 +14,6 @@ import {
   DropdownMenuTrigger,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  LightWorkspaceType,
-  PlanType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
@@ -47,6 +30,23 @@ import {
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  LightWorkspaceType,
+  PlanType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@app/types";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;

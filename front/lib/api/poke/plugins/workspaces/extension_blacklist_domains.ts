@@ -1,8 +1,7 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateExtensionConfiguration } from "@app/lib/api/workspace";
 import { isDomain } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
 export const extensionBlacklistDomainsPlugin = createPlugin({
   manifest: {

@@ -8,7 +8,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useRouter } from "next/router";
 import React, { useContext, useMemo } from "react";
@@ -22,6 +21,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 interface NavigationProps {
   hideSidebar: boolean;

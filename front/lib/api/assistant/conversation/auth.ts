@@ -1,12 +1,11 @@
+import { Authenticator } from "@app/lib/auth";
+import { Conversation } from "@app/lib/models/assistant/conversation";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   ConversationType,
   ConversationWithoutContentType,
   WorkspaceType,
-} from "@dust-tt/types";
-
-import { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
-import { GroupResource } from "@app/lib/resources/group_resource";
+} from "@app/types";
 
 export function getConversationRequestedGroupIdsFromModel(
   owner: WorkspaceType,

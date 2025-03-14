@@ -12,14 +12,6 @@ import {
   Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useContext, useMemo, useState } from "react";
 
@@ -34,6 +26,14 @@ import {
   useSpaceDataSourceViews,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { removeNulls } from "@app/types";
 
 interface EditSpaceManagedDataSourcesViewsProps {
   dataSourceView?: DataSourceViewType;

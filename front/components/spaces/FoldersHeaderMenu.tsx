@@ -11,16 +11,16 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import type { RefObject } from "react";
 import { useState } from "react";
 
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import SpaceFolderModal from "@app/components/spaces/SpaceFolderModal";
+import type {
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface FoldersHeaderMenuProps {
   canWriteInSpace: boolean;

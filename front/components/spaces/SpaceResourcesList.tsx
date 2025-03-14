@@ -12,16 +12,6 @@ import {
   TrashIcon,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, {
@@ -56,6 +46,16 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategory,
+  DataSourceViewsWithDetails,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isWebsiteOrFolderCategory } from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;

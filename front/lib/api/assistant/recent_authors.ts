@@ -1,15 +1,15 @@
-import type {
-  AgentRecentAuthors,
-  LightAgentConfigurationType,
-  UserType,
-} from "@dust-tt/types";
-import { getGlobalAgentAuthorName, removeNulls } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  AgentRecentAuthors,
+  LightAgentConfigurationType,
+  UserType,
+} from "@app/types";
+import { getGlobalAgentAuthorName, removeNulls } from "@app/types";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.

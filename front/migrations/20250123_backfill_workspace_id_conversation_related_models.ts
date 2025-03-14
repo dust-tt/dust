@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
@@ -16,6 +15,7 @@ import type { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/wo
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 type TableConfig = {
   model: typeof WorkspaceAwareModel<any>;

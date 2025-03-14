@@ -6,7 +6,6 @@ import {
   Page,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useState } from "react";
 
@@ -24,6 +23,7 @@ import {
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
+import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

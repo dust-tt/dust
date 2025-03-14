@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
@@ -5,9 +6,7 @@ import type {
   AgentMessageType,
   ConversationType,
   Result,
-} from "@dust-tt/types";
-
-import type { Authenticator } from "@app/lib/auth";
+} from "@app/types";
 
 export interface BaseActionConfigurationServerRunnerConstructor<
   T extends BaseActionConfigurationServerRunner<V>,

@@ -1,15 +1,3 @@
-import type {
-  AgentActionType,
-  AgentMessageType,
-  ContentFragmentType,
-  LightAgentConfigurationType,
-  MessageWithRankType,
-  ModelId,
-  Result,
-  UserMessageType,
-} from "@dust-tt/types";
-import { ConversationError } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -37,6 +25,18 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  AgentActionType,
+  AgentMessageType,
+  ContentFragmentType,
+  LightAgentConfigurationType,
+  MessageWithRankType,
+  ModelId,
+  Result,
+  UserMessageType,
+} from "@app/types";
+import { ConversationError } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
 import { processActionTypesFromAgentMessageIds } from "./actions/process";

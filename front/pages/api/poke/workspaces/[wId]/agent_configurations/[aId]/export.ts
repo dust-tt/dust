@@ -1,8 +1,3 @@
-import type {
-  AgentActionConfigurationType,
-  LightAgentConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -10,6 +5,11 @@ import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  AgentActionConfigurationType,
+  LightAgentConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export type ExportAgentConfigurationResponseBody = {
   assistant: Omit<

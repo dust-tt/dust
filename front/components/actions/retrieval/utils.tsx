@@ -1,11 +1,10 @@
-import type { RetrievalDocumentType } from "@dust-tt/types";
+import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
+import { citationIconMap } from "@app/components/markdown/MarkdownCitation";
+import type { RetrievalDocumentType } from "@app/types";
 import {
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-} from "@dust-tt/types";
-
-import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { citationIconMap } from "@app/components/markdown/MarkdownCitation";
+} from "@app/types";
 
 export function makeDocumentCitation(
   document: RetrievalDocumentType

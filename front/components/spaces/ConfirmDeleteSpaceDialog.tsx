@@ -7,9 +7,9 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { SpaceType } from "@dust-tt/types";
 
 import { getSpaceName } from "@app/lib/spaces";
+import type { SpaceType } from "@app/types";
 
 interface ConfirmDeleteSpaceDialogProps {
   space: SpaceType;
