@@ -84,7 +84,6 @@ export async function getApp({
 
   const specsToFetch = await getSpecificationsHashesFromCore(dustAPIProjectId);
 
-  const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
   const coreSpecifications: Record<string, string> = {};
 
   if (specsToFetch) {
@@ -93,27 +92,37 @@ export async function getApp({
         dustAPIProjectId,
         hash
       );
-      if (coreSpecification) {
-        // Parse dataset_id and hash from specification if it contains DATA section
-        dataSetsToFetch.push(
-          ...extractDatasetIdsAndHashes(coreSpecification.data)
-        );
-
-        coreSpecifications[hash] = coreSpecification.data;
+      if (!coreSpecification) {
+        throw new Error("Failed to get core specification");
       }
+      coreSpecifications[hash] = coreSpecification.data;
     }
   }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const datasets: CoreAPIDataset[] = [];
-  for (const dataset of dataSetsToFetch) {
-    const apiDataset = await coreAPI.getDataset({
-      projectId: dustAPIProjectId,
-      datasetName: dataset.datasetId,
-      datasetHash: dataset.hash,
-    });
 
-    if (apiDataset.isOk()) {
+  const dataSetsToFetch = await coreAPI.getDatasets({
+    projectId: dustAPIProjectId,
+  });
+
+  if (dataSetsToFetch.isErr()) {
+    throw new Error("Failed to get datasets");
+  }
+
+  const datasets: CoreAPIDataset[] = [];
+  for (const datasetId of Object.keys(dataSetsToFetch.value.datasets)) {
+    const dataSetVersions = dataSetsToFetch.value.datasets[datasetId];
+    for (const dataSetVersion of dataSetVersions) {
+      const apiDataset = await coreAPI.getDataset({
+        projectId: dustAPIProjectId,
+        datasetName: datasetId,
+        datasetHash: dataSetVersion.hash,
+      });
+
+      if (apiDataset.isErr()) {
+        throw new Error("Failed to get dataset");
+      }
+
       datasets.push(apiDataset.value.dataset);
     }
   }
