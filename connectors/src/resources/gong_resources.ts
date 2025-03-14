@@ -69,6 +69,8 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       lastSyncTimestamp: this.lastSyncTimestamp,
+      baseUrl: this.baseUrl,
+      retentionPeriodDays: this.retentionPeriodDays,
     };
   }
 
