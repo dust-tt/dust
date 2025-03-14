@@ -52,7 +52,7 @@ export async function retrieveAppsCoreIdsBatch({
     limit: BATCH_SIZE,
   });
 
-  localLogger.info({ spacesCount: apps.length }, "[Core] Retrieved apps");
+  localLogger.info({ appsCount: apps.length }, "[Core] Retrieved apps");
 
   return {
     dustAPIProjectIds: apps.map((a) => a.dustAPIProjectId),
