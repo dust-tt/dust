@@ -13,7 +13,6 @@ import type * as coreDestinationActivities from "@app/temporal/relocation/activi
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
 import type * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import type * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
-import { processApp } from "@app/temporal/relocation/activities/source_region/core";
 import type * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import type {
   CreateDataSourceProjectResult,
