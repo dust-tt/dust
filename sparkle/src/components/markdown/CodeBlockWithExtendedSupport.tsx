@@ -246,8 +246,8 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         },
       });
 
-      graphRef.current.textContent = chart;
-      mermaid.run(undefined);
+      graphRef.current.innerHTML = chart;
+      mermaid.init(undefined, graphRef.current);
     }
   }, [chart]);
 
