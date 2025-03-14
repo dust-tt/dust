@@ -195,7 +195,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Events",
-      href: "https://www.youtube.com/playlist?list=PLv-ZZddHqz5B7ORswb588oAtRHMYAMVDb",
+      href: "https://lu.ma/dust",
       isExternal: true,
     },
     {
