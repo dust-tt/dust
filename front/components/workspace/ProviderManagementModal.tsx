@@ -15,8 +15,6 @@ import {
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
@@ -26,6 +24,8 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ModelProviderIdType, WorkspaceType } from "@app/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 

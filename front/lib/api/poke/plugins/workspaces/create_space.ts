@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { Err, Ok } from "@app/types";
 
 export const createSpacePlugin = createPlugin({
   manifest: {

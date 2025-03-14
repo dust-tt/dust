@@ -1,14 +1,3 @@
-import type {
-  AgentConfigurationType,
-  AppType,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  TemplateAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { throwIfInvalidAgentConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ParsedUrlQuery } from "querystring";
 
@@ -28,6 +17,17 @@ import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assista
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type {
+  AgentConfigurationType,
+  AppType,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  TemplateAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { throwIfInvalidAgentConfiguration } from "@app/types";
 
 function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
   const { duplicate, templateId } = query;

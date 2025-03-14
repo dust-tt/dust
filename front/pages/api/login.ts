@@ -1,9 +1,3 @@
-import type {
-  ActiveRoleType,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
@@ -34,6 +28,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { ActiveRoleType, Result, WithAPIErrorResponse } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if

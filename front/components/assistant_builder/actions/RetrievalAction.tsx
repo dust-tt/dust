@@ -1,5 +1,4 @@
 import { Checkbox } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -12,6 +11,7 @@ import type {
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 export function hasErrorActionRetrievalSearch(
   action: AssistantBuilderActionConfiguration

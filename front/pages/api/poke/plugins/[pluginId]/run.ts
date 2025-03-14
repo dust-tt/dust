@@ -1,8 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  createIoTsCodecFromArgs,
-  supportedResourceTypes,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,6 +11,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { createIoTsCodecFromArgs, supportedResourceTypes } from "@app/types";
 
 const [first, second, ...rest] = supportedResourceTypes;
 const SupportedResourceTypeCodec = t.union([

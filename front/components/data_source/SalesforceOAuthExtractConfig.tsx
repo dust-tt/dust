@@ -1,12 +1,12 @@
 import { Input } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
 import {
   isValidSalesforceClientId,
   isValidSalesforceClientSecret,
   isValidSalesforceDomain,
-} from "@dust-tt/types";
-import { useEffect, useState } from "react";
-
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
+} from "@app/types";
 
 export function SalesforceOauthExtraConfig({
   extraConfig,

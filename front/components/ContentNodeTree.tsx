@@ -10,12 +10,12 @@ import {
   Tree,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,

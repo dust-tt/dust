@@ -20,11 +20,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ConversationWithoutContentType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, isOnlyUser } from "@dust-tt/types";
 import moment from "moment";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
@@ -39,6 +34,8 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
+import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
+import { isBuilder, isOnlyUser } from "@app/types";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;

@@ -1,8 +1,7 @@
-import { GPT_4_TURBO_MODEL_ID } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { Workspace } from "@app/lib/models/workspace";
+import { GPT_4_TURBO_MODEL_ID } from "@app/types";
+import { Err } from "@app/types";
 
 const { LIVE, WORKSPACE } = process.env;
 

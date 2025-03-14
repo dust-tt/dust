@@ -1,4 +1,4 @@
-import type { AgentConfigurationType } from "@dust-tt/types";
+import type { AgentConfigurationType } from "@app/types";
 
 export function isLegacyAgentConfiguration(
   agentConfiguration: AgentConfigurationType

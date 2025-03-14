@@ -1,5 +1,3 @@
-import type { TrackerGenerationToProcess } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 
 import config from "@app/lib/api/config";
@@ -7,6 +5,8 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import type { Logger } from "@app/logger/logger";
+import type { TrackerGenerationToProcess } from "@app/types";
+import { concurrentExecutor, CoreAPI, removeNulls } from "@app/types";
 
 const TRACKER_FROM_EMAIL = "dev@dust.tt";
 const TRACKER_FROM_NAME = "Bob Tracker"; // 😬

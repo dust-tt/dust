@@ -1,4 +1,9 @@
 import { useSendNotification } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import { getMimeTypeFromFile } from "@app/lib/file";
+import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
+import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type {
   FileFormatCategory,
   FileUseCase,
@@ -6,7 +11,7 @@ import type {
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   concurrentExecutor,
   Err,
@@ -16,12 +21,7 @@ import {
   isSupportedImageContentType,
   MAX_FILE_SIZES,
   Ok,
-} from "@dust-tt/types";
-import { useState } from "react";
-
-import { getMimeTypeFromFile } from "@app/lib/file";
-import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
-import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
+} from "@app/types";
 
 export interface FileBlob {
   contentType: SupportedFileContentType;

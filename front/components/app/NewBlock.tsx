@@ -8,9 +8,9 @@ import {
   PlusIcon,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import type { BlockType, SpecificationType } from "@dust-tt/types";
 
 import { classNames } from "@app/lib/utils";
+import type { BlockType, SpecificationType } from "@app/types";
 
 export default function NewBlock({
   spec,

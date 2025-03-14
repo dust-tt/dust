@@ -1,6 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, isAPIErrorResponse, Ok } from "@dust-tt/types";
-
 import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
@@ -12,6 +9,8 @@ import type {
   UserLookupRequestBodyType,
   UserLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
+import type { Result } from "@app/types";
+import { Err, isAPIErrorResponse, Ok } from "@app/types";
 
 interface UserLookup {
   email: string;

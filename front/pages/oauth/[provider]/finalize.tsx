@@ -1,10 +1,10 @@
-import type { OAuthProvider } from "@dust-tt/types";
-import { isOAuthProvider } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect, useState } from "react";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { useFinalize } from "@app/lib/swr/oauth";
+import type { OAuthProvider } from "@app/types";
+import { isOAuthProvider } from "@app/types";
 
 // This endpoint is authenticated but cannot be workspace specific as it is hard-coded at each
 // provider as our callback URI.

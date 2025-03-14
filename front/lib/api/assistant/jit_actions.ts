@@ -1,12 +1,3 @@
-import type {
-  ActionConfigurationType,
-  AgentActionType,
-  AgentMessageType,
-  ConversationFileType,
-  ConversationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-} from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
@@ -24,6 +15,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  ActionConfigurationType,
+  AgentActionType,
+  AgentMessageType,
+  ConversationFileType,
+  ConversationType,
+  RetrievalConfigurationType,
+  TablesQueryConfigurationType,
+} from "@app/types";
 
 async function getJITActions(
   auth: Authenticator,

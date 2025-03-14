@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import type { PokeItemBase } from "@dust-tt/types/dist/front/lib/poke";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -7,6 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { searchPokeResources } from "@app/lib/poke/search";
 import { apiError } from "@app/logger/withlogging";
+import type { PokeItemBase } from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetPokeSearchItemsResponseBody = {
   results: PokeItemBase[];

@@ -1,6 +1,5 @@
-import type { PluginArgs, SupportedResourceType } from "@dust-tt/types";
-
 import type { Plugin } from "@app/lib/api/poke/types";
+import type { PluginArgs, SupportedResourceType } from "@app/types";
 
 import * as allPlugins from "./plugins";
 

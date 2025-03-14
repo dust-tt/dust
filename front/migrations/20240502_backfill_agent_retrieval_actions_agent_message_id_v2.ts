@@ -1,4 +1,4 @@
-// import type { ModelId } from "@dust-tt/types";
+// import type { ModelId } from "@app/types";
 // import { QueryTypes } from "sequelize";
 // import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 // import { AgentMessage } from "@app/lib/models/assistant/conversation";

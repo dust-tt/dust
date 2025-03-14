@@ -1,4 +1,3 @@
-import type { ModelIdType, ModelProviderIdType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -8,6 +7,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelIdType, ModelProviderIdType } from "@app/types";
 
 export class TrackerConfigurationModel extends SoftDeletableWorkspaceAwareModel<TrackerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

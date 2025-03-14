@@ -1,13 +1,3 @@
-import type { ConnectorProvider, DataSourceType } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-} from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import {
   Authenticator,
@@ -26,6 +16,15 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { ConnectorProvider, DataSourceType } from "@app/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
+  EMBEDDING_CONFIGS,
+} from "@app/types";
 
 const PROVIDER = "gong";
 const LABS_STORAGE_FEATURE_FLAG = "labs_transcripts_full_storage";

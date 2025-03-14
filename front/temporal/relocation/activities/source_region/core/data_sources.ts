@@ -1,5 +1,3 @@
-import type { CoreAPIDataSource, ModelId } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
 import type { WhereOptions } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
@@ -9,6 +7,8 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
 import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
+import type { CoreAPIDataSource, ModelId } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 const BATCH_SIZE = 100;
 

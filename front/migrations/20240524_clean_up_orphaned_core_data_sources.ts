@@ -1,4 +1,4 @@
-// import { CoreAPI } from "@dust-tt/types";
+// import { CoreAPI } from "@app/types";
 
 // import config from "@app/lib/api/config";
 // import logger from "@app/logger/logger";

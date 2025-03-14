@@ -1,8 +1,7 @@
-import { assertNever, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
+import { assertNever, ConnectorsAPI, Err, Ok } from "@app/types";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 

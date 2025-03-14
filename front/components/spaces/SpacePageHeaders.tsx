@@ -1,13 +1,13 @@
-import type { DataSourceViewType } from "@dust-tt/types";
-import type {
-  DataSourceViewCategory,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import Link from "next/dist/client/link";
 import React from "react";
 
 import { SpaceBreadCrumbs } from "@app/components/spaces/SpaceBreadcrumb";
+import type { DataSourceViewType } from "@app/types";
+import type {
+  DataSourceViewCategory,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 export const ACTION_BUTTONS_CONTAINER_ID = "space-action-buttons-container";
 

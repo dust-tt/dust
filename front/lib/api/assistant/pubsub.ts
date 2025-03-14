@@ -1,29 +1,3 @@
-import type {
-  AgentDisabledErrorEvent,
-  AgentMessageType,
-  ConversationType,
-  GenerationTokensEvent,
-  MentionType,
-  PubSubError,
-  UserMessageContext,
-  UserMessageType,
-} from "@dust-tt/types";
-import type { Result } from "@dust-tt/types";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-} from "@dust-tt/types";
-import type {
-  AgentMessageNewEvent,
-  ConversationTitleEvent,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
@@ -33,6 +7,31 @@ import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
 import { createCallbackPromise } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
+import type {
+  AgentDisabledErrorEvent,
+  AgentMessageType,
+  ConversationType,
+  GenerationTokensEvent,
+  MentionType,
+  PubSubError,
+  UserMessageContext,
+  UserMessageType,
+} from "@app/types";
+import type { Result } from "@app/types";
+import type {
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageSuccessEvent,
+} from "@app/types";
+import type {
+  AgentMessageNewEvent,
+  ConversationTitleEvent,
+  UserMessageErrorEvent,
+  UserMessageNewEvent,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 import {
   editUserMessage,

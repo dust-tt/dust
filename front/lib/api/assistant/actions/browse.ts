@@ -1,3 +1,13 @@
+import { isLeft } from "fp-ts/lib/Either";
+
+import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import logger from "@app/logger/logger";
 import type {
   AgentActionSpecification,
   BrowseActionOutputType,
@@ -10,18 +20,8 @@ import type {
   FunctionMessageTypeModel,
   ModelId,
   Result,
-} from "@dust-tt/types";
-import { BaseAction, BrowseActionOutputSchema, Ok } from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-
-import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import { BaseAction, BrowseActionOutputSchema, Ok } from "@app/types";
 
 interface BrowseActionBlob {
   id: ModelId; // AgentBrowseAction

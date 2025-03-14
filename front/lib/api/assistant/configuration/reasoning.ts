@@ -1,8 +1,8 @@
-import type { ModelId, ReasoningConfigurationType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
+import type { ModelId, ReasoningConfigurationType } from "@app/types";
 
 export async function fetchReasoningActionConfigurations({
   configurationIds,

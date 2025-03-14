@@ -8,17 +8,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNode,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isAdmin } from "@dust-tt/types";
 import { useCallback, useEffect, useState } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
+import type { ContentNode, DataSourceType, WorkspaceType } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export type SlackChannel = { slackChannelId: string; slackChannelName: string };
 

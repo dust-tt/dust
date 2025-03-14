@@ -1,4 +1,3 @@
-import type { ModelId, Result } from "@dust-tt/types";
 import type {
   Attributes,
   Model,
@@ -8,6 +7,7 @@ import type {
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
+import type { ModelId, Result } from "@app/types";
 
 interface BaseResourceConstructor<
   T extends BaseResource<M>,

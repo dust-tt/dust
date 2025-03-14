@@ -8,15 +8,6 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceType,
-  DataSourceViewType,
-  LightAgentConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -29,6 +20,15 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  DataSourceType,
+  DataSourceViewType,
+  LightAgentConfigurationType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

@@ -5,6 +5,10 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+
+import { filterServiceProviders } from "@app/lib/providers";
+import { useProviders } from "@app/lib/swr/apps";
+import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -12,11 +16,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-
-import { filterServiceProviders } from "@app/lib/providers";
-import { useProviders } from "@app/lib/swr/apps";
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 

@@ -12,18 +12,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorType,
-  ContentNodesViewType,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isValidContentNodesViewType } from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import * as React from "react";
@@ -63,6 +51,18 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  APIError,
+  ConnectorType,
+  ContentNodesViewType,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isValidContentNodesViewType } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 const PAGE_SIZE = 25;

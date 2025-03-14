@@ -1,12 +1,12 @@
 import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import React, { useEffect } from "react";
 
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
+import type { UserType, WorkspaceType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

@@ -9,6 +9,10 @@ import {
   Square3Stack3DIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+
+import NewBlock from "@app/components/app/NewBlock";
+import { classNames } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -16,11 +20,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { useEffect, useState } from "react";
-
-import NewBlock from "@app/components/app/NewBlock";
-import { classNames } from "@app/lib/utils";
+} from "@app/types";
 
 import Output from "./Output";
 

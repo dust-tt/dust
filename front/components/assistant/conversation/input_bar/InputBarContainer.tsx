@@ -5,13 +5,6 @@ import {
   FullscreenExitIcon,
   FullscreenIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  DataSourceViewContentNode,
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
 import React, {
   useCallback,
@@ -34,6 +27,13 @@ import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentMention,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",

@@ -1,8 +1,3 @@
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
@@ -11,6 +6,11 @@ import { fetcher, fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeListDataSourceViews } from "@app/pages/api/poke/workspaces/[wId]/data_source_views";
 import type { PokeGetDataSourceViewContentNodes } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function usePokeDataSourceViews({
   disabled,

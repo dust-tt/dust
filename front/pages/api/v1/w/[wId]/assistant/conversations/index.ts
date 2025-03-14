@@ -3,16 +3,6 @@ import type {
   PostConversationsResponseType,
 } from "@dust-tt/client";
 import { PublicPostConversationsRequestBodySchema } from "@dust-tt/client";
-import type {
-  ContentFragmentType,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ConversationError,
-  isContentFragmentInputWithContentType,
-  isEmptyString,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -28,6 +18,16 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ContentFragmentType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  ConversationError,
+  isContentFragmentInputWithContentType,
+  isEmptyString,
+} from "@app/types";
 
 /**
  * @swagger

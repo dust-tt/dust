@@ -1,4 +1,4 @@
-import type { OAuthProvider } from "@dust-tt/types";
+import type { OAuthProvider } from "@app/types";
 
 export const useFinalize = () => {
   const doFinalize = async (

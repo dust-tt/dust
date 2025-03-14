@@ -1,7 +1,6 @@
-import { Err, maxFileSizeToHumanReadable, Ok } from "@dust-tt/types";
-
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { Err, maxFileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeStatsPlugin = createPlugin({
   manifest: {

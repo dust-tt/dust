@@ -1,5 +1,3 @@
-import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
-
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
@@ -8,6 +6,7 @@ import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { CoreAPIDataSourceDocumentSection } from "@app/types";
 
 /**
  * Generate a plain text file.

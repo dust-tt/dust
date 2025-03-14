@@ -2,13 +2,13 @@ import type {
   ConversationFileType,
   ConversationType,
   SupportedContentFragmentType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   isAgentMessageType,
   isContentFragmentType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
-} from "@dust-tt/types";
+} from "@app/types";
 
 function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType

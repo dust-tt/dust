@@ -1,40 +1,3 @@
-import type {
-  ActionConfigurationType,
-  AgentActionsEvent,
-  AgentActionSpecification,
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentChainOfThoughtEvent,
-  AgentConfigurationType,
-  AgentContentEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  ConversationType,
-  GenerationCancelEvent,
-  GenerationSuccessEvent,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
-  isTextContent,
-  isUserMessageTypeModel,
-  isWebsearchConfiguration,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-
 import { runActionStreamed } from "@app/lib/actions/server";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
@@ -56,6 +19,42 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
+import type {
+  ActionConfigurationType,
+  AgentActionsEvent,
+  AgentActionSpecification,
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
+  AgentChainOfThoughtEvent,
+  AgentConfigurationType,
+  AgentContentEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageSuccessEvent,
+  AgentMessageType,
+  ConversationType,
+  GenerationCancelEvent,
+  GenerationSuccessEvent,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
+  isTablesQueryConfiguration,
+  isTextContent,
+  isUserMessageTypeModel,
+  isWebsearchConfiguration,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;

@@ -7,16 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import {
   useAgentUsage,
   useDeleteAgentConfiguration,
 } from "@app/lib/swr/assistants";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface DeleteAssistantDialogProps {
   agentConfiguration?: LightAgentConfigurationType;

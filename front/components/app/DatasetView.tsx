@@ -10,12 +10,6 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DatasetEntry,
-  DatasetSchema,
-  DatasetType,
-  DatasetViewType,
-} from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -25,6 +19,12 @@ import { checkDatasetData, DATASET_DATA_TYPES } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
+import type {
+  DatasetEntry,
+  DatasetSchema,
+  DatasetType,
+  DatasetViewType,
+} from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

@@ -1,8 +1,7 @@
-import { Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import { Ok } from "@app/types";
 
 export const checkSeatCountPlugin = createPlugin({
   manifest: {

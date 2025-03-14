@@ -1,9 +1,10 @@
-import type { Result } from "@dust-tt/types";
-import { createRangeCodec, Err, Ok } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest } from "next";
+
+import type { Result } from "@app/types";
+import { createRangeCodec, Err, Ok } from "@app/types";
 
 class InvalidPaginationParamsError extends Error {
   constructor(

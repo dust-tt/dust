@@ -9,11 +9,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -23,6 +18,11 @@ import { getTopNavigationTabs } from "@app/components/navigation/config";
 import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { UserMenu } from "@app/components/UserMenu";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
+import type {
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;

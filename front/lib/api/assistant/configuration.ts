@@ -1,33 +1,3 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  AgentModelConfigurationType,
-  AgentReasoningEffort,
-  AgentsGetViewType,
-  AgentStatus,
-  AppType,
-  DataSourceConfiguration,
-  LightAgentConfigurationType,
-  ModelId,
-  ModelIdType,
-  ModelProviderIdType,
-  ProcessSchemaPropertyType,
-  Result,
-  RetrievalQuery,
-  RetrievalTimeframe,
-  TableDataSourceConfiguration,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  compareAgentsForSort,
-  Err,
-  isTimeFrame,
-  MAX_STEPS_USE_PER_RUN_LIMIT,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
@@ -75,6 +45,36 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
+import type {
+  AgentActionConfigurationType,
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  AgentModelConfigurationType,
+  AgentReasoningEffort,
+  AgentsGetViewType,
+  AgentStatus,
+  AppType,
+  DataSourceConfiguration,
+  LightAgentConfigurationType,
+  ModelId,
+  ModelIdType,
+  ModelProviderIdType,
+  ProcessSchemaPropertyType,
+  Result,
+  RetrievalQuery,
+  RetrievalTimeframe,
+  TableDataSourceConfiguration,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  compareAgentsForSort,
+  Err,
+  isTimeFrame,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 

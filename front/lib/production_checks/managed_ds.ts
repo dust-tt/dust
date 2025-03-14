@@ -1,11 +1,11 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import {
   getCoreReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export type CoreDSDocument = {
   id: number;

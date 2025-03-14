@@ -1,9 +1,3 @@
-import type {
-  PlanType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -21,6 +15,12 @@ import {
 } from "@app/lib/plans/subscription";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  PlanType,
+  SubscriptionType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export type PostSubscriptionResponseBody = {
   plan: PlanType;

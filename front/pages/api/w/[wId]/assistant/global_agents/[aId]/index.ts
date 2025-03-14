@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -8,6 +7,7 @@ import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents"
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 type PatchGlobalAgentSettingResponseBody = {
   success: boolean;

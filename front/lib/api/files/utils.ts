@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { contentTypeForExtension, Err, Ok } from "@dust-tt/types";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
@@ -9,6 +7,8 @@ import { pipeline } from "stream/promises";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import type { Result } from "@app/types";
+import { contentTypeForExtension, Err, Ok } from "@app/types";
 
 export const parseUploadRequest = async (
   file: FileResource,

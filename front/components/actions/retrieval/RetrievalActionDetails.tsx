@@ -6,11 +6,11 @@ import {
   PaginatedCitationsGrid,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { RetrievalActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { RetrievalActionType } from "@app/types";
 
 export function RetrievalActionDetails({
   action,

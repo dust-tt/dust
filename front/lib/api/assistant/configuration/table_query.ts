@@ -1,8 +1,3 @@
-import type {
-  ModelId,
-  TableDataSourceConfiguration,
-  TablesQueryConfigurationType,
-} from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 import type { Transaction } from "sequelize";
@@ -17,6 +12,11 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import type {
+  ModelId,
+  TableDataSourceConfiguration,
+  TablesQueryConfigurationType,
+} from "@app/types";
 
 export async function fetchTableQueryActionConfigurations({
   configurationIds,

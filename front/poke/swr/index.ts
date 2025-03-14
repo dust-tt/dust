@@ -1,8 +1,3 @@
-import type {
-  ConversationType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
@@ -13,6 +8,11 @@ import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pu
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type {
+  ConversationType,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function usePokePullTemplates() {
   const { mutateAssistantTemplates } = usePokeAssistantTemplates();

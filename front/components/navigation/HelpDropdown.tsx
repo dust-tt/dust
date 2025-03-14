@@ -13,19 +13,19 @@ import {
   SlackLogo,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  MentionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type {
+  AgentMention,
+  MentionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export function HelpDropdown({
   owner,

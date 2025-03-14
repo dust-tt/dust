@@ -1,6 +1,7 @@
 import { CompanyIcon, LockIcon, PlanetIcon } from "@dust-tt/sparkle";
-import type { SpaceKind } from "@dust-tt/types";
 import type React from "react";
+
+import type { SpaceKind } from "@app/types";
 
 export function getSpaceIcon(
   kind: SpaceKind

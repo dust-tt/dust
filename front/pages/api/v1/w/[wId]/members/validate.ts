@@ -1,6 +1,5 @@
 import type { ValidateMemberResponseType } from "@dust-tt/client";
 import { ValidateMemberRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -9,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger

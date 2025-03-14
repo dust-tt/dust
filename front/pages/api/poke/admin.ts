@@ -1,5 +1,3 @@
-import type { AdminResponseType, WithAPIErrorResponse } from "@dust-tt/types";
-import { AdminCommandSchema, ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -10,6 +8,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { AdminResponseType, WithAPIErrorResponse } from "@app/types";
+import { AdminCommandSchema, ConnectorsAPI } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

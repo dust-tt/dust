@@ -1,6 +1,7 @@
-import type { ActionResponseBase } from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
+
+import type { ActionResponseBase } from "@app/types";
 
 export const ActionResponseBaseSchema = t.type({
   run_id: t.string,

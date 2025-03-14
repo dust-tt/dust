@@ -1,9 +1,4 @@
 import { Chip, DataTable, Page, Spinner } from "@dust-tt/sparkle";
-import type {
-  RoleType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { CellContext, PaginationState } from "@tanstack/react-table";
 import _ from "lodash";
 import React, { useEffect, useMemo, useState } from "react";
@@ -11,6 +6,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import type {
+  RoleType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
 
 type RowData = {
   icon: string;

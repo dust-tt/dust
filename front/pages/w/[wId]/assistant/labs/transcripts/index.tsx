@@ -17,16 +17,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LabsTranscriptsProviderType,
-  LightAgentConfigurationType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { setupOAuthConnection } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
@@ -47,6 +37,16 @@ import {
 } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LabsTranscriptsProviderType,
+  LightAgentConfigurationType,
+  SubscriptionType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 
 const defaultTranscriptConfigurationState = {
   provider: "",

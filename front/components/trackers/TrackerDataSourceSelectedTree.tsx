@@ -5,12 +5,6 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
@@ -25,6 +19,12 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 export const TrackerDataSourceSelectedTree = ({
   owner,

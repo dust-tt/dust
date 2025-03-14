@@ -8,18 +8,18 @@ import {
   TableIcon,
   TimeIcon,
 } from "@dust-tt/sparkle";
+import assert from "assert";
+
+import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import { getSupportedModelConfig } from "@app/lib/assistant";
 import type {
   ActionConfigurationType,
   AgentConfigurationType,
   RetrievalConfigurationType,
   WebsearchConfigurationType,
   WhitelistableFeature,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import assert from "assert";
-
-import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 

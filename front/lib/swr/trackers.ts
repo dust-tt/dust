@@ -1,9 +1,9 @@
-import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetTrackersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/trackers";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 export function useTrackers({
   disabled,

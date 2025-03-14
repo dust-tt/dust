@@ -7,7 +7,6 @@ import {
   handleLogout,
   IdentityProviderError,
 } from "@auth0/nextjs-auth0";
-import { isString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getRegionForUserSession, setRegionForUser } from "@app/lib/api/auth0";
@@ -21,6 +20,7 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
+import { isString } from "@app/types";
 
 const afterCallback: AfterCallbackPageRoute = async (
   req,

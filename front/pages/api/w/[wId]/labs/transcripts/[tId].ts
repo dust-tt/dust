@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -14,6 +13,7 @@ import {
   launchRetrieveTranscriptsWorkflow,
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
