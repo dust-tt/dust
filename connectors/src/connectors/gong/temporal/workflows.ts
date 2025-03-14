@@ -5,7 +5,10 @@ import {
   workflowInfo,
 } from "@temporalio/workflow";
 
-import { makeGongSyncTranscriptsWorkflowIdFromParentId } from "@connectors/connectors/gong/lib/internal_ids";
+import {
+  makeGongGarbageCollectionWorkflowIdFromParentId,
+  makeGongSyncTranscriptsWorkflowIdFromParentId,
+} from "@connectors/connectors/gong/lib/internal_ids";
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
 
 const {
@@ -61,6 +64,18 @@ export async function gongSyncWorkflow({
   await gongSaveSyncSuccessActivity({
     connectorId,
     lastSyncTimestamp: syncStartTs,
+  });
+
+  // We start a child workflow for the garbage collection of outdated transcripts.
+  await executeChild(gongGarbageCollectWorkflow, {
+    workflowId: makeGongGarbageCollectionWorkflowIdFromParentId(workflowId),
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        connectorId,
+      },
+    ],
+    memo,
   });
 }
 
