@@ -125,7 +125,7 @@ export async function submitMessage({
             body: JSON.stringify({
               title: contentFragment.title,
               nodeId: contentFragment.internalId,
-              dataSourceViewId: contentFragment.dataSourceView.sId,
+              nodeDataSourceViewId: contentFragment.dataSourceView.sId,
               contentType: contentFragment.mimeType,
               context: {
                 timezone:
