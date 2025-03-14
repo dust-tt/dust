@@ -18,7 +18,7 @@ use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
-use qdrant_client::qdrant::vectors::VectorsOptions;
+use qdrant_client::qdrant::vectors_output::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
