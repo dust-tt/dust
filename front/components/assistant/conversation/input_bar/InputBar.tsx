@@ -356,6 +356,7 @@ export function AssistantInputBar({
                   disableSendButton || fileUploaderService.isProcessingFiles
                 }
                 onNodeSelect={handleNodesAttachmentSelect}
+                attachedNodes={attachedNodes}
               />
             </div>
           </div>
