@@ -1,8 +1,7 @@
 import { Button, ChevronRightIcon } from "@dust-tt/sparkle";
+import { cva } from "class-variance-authority";
 import Link from "next/link";
 import React from "react";
-
-import { classNames } from "@app/lib/utils";
 
 interface FunctionCardProps {
   title: string;
@@ -27,6 +26,16 @@ const colorVariants = {
   },
 };
 
+const cardVariants = cva("", {
+  variants: {
+    color: {
+      green: "bg-green-600",
+      blue: "bg-blue-600",
+      purple: "bg-purple-600",
+    },
+  },
+});
+
 export function FunctionCard({
   title,
   features,
@@ -36,12 +45,7 @@ export function FunctionCard({
 }: FunctionCardProps) {
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-3xl">
-      <div
-        className={classNames(
-          "h-60 w-full px-4 py-4",
-          colorVariants[color].visual
-        )}
-      >
+      <div className={`h-60 w-full px-4 py-4 ${colorVariants[color].visual}`}>
         <div className="flex h-full w-full items-center justify-center">
           <img
             src={visualSrc}
@@ -51,12 +55,7 @@ export function FunctionCard({
         </div>
       </div>
 
-      <div
-        className={classNames(
-          "flex flex-grow flex-col p-5",
-          colorVariants[color].card
-        )}
-      >
+      <div className={`flex flex-grow flex-col p-5 ${cardVariants({ color })}`}>
         <h3 className="font-objektiv text-2xl font-semibold text-white">
           {title}
         </h3>
