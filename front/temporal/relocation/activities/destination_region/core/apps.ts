@@ -38,11 +38,15 @@ export async function processApp({
     await concurrentExecutor(
       app.datasets,
       async (dataset) => {
-        await coreAPI.createDataset({
+        const res = await coreAPI.createDataset({
           projectId: dustAPIProjectId,
           datasetId: dataset.dataset_id,
           data: dataset.data,
         });
+
+        if (res.isErr()) {
+          throw new Error("Failed to create dataset");
+        }
       },
       { concurrency: 10 }
     );
@@ -50,10 +54,14 @@ export async function processApp({
     await concurrentExecutor(
       Object.values(app.coreSpecifications),
       async (specification) => {
-        await coreAPI.saveSpecification({
+        const res = await coreAPI.saveSpecification({
           projectId: dustAPIProjectId,
           specification: specification,
         });
+
+        if (res.isErr()) {
+          throw new Error("Failed to save specification");
+        }
       },
       { concurrency: 10 }
     );
