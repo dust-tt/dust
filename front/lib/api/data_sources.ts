@@ -759,11 +759,21 @@ export async function upsertTable({
       },
     });
     if (enqueueRes.isErr()) {
+      logger.error(
+        {
+          error: enqueueRes.error,
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          tableId,
+        },
+        "Error enqueueing the table for asynchronous upsert."
+      );
+
       return new Err({
         name: "dust_error",
         code: "data_source_error",
         message:
-          "There was an error enqueueing the the document for asynchronous upsert.",
+          "There was an error enqueueing the table for asynchronous upsert.",
       });
     }
     return new Ok({
