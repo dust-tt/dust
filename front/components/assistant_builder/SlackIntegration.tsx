@@ -122,7 +122,6 @@ export function SlackIntegration({
         });
       }}
       showExpand={false}
-      isSearchEnabled={false}
       useResourcesHook={useResourcesHook}
     />
   );
