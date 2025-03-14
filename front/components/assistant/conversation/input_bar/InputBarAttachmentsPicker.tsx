@@ -145,7 +145,10 @@ export const InputBarAttachmentsPicker = ({
                           className: "min-w-4",
                         })
                       }
-                      disabled={atachedNodeIds.includes(item.internalId)}
+                      disabled={
+                        atachedNodeIds.includes(item.internalId) ||
+                        item.type !== "document"
+                      }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                       onClick={() => {
                         setSearch("");
