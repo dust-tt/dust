@@ -41,9 +41,10 @@ export async function getDataSourceDocuments({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
+        // Only paginate through documents.
+        search_scope: "nodes_titles",
         // Leaving empty to get all documents.
         view_filter: [],
-        search_scope: "nodes_titles",
       },
     ],
     node_types: ["document"],
