@@ -228,7 +228,7 @@ export async function gongSaveGarbageCollectionSuccessActivity({
   const configuration = await fetchGongConfiguration(connector);
 
   // Update the last garbage collection timestamp.
-  await configuration.setLastGarbageCollectTimestamp(
+  await configuration.setLastGarbageCollectionTimestamp(
     lastGarbageCollectionTimestamp
   );
 }

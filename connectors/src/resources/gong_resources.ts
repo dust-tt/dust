@@ -144,7 +144,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
     };
   }
 
-  async setLastGarbageCollectTimestamp(timestamp: number): Promise<void> {
+  async setLastGarbageCollectionTimestamp(timestamp: number): Promise<void> {
     await this.update({
       lastGarbageCollectionTimestamp: timestamp,
     });
