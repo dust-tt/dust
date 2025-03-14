@@ -291,7 +291,8 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Build search query with potential truncation.
-        let (bool_query, warning_code) = self.build_search_node_query(query.clone(), filter)?;
+        let (bool_query, indices_to_query, warning_code) =
+            self.build_search_node_query(query.clone(), filter)?;
 
         let sort = match query {
             None => self.build_search_nodes_sort(options.sort)?,
@@ -317,10 +318,7 @@ impl SearchStore for ElasticsearchSearchStore {
         let search_start = utils::now();
         let response = self
             .client
-            .search(SearchParts::Index(&[
-                DATA_SOURCE_NODE_INDEX_NAME,
-                DATA_SOURCE_INDEX_NAME,
-            ]))
+            .search(SearchParts::Index(&indices_to_query))
             .body(search)
             .send()
             .await?;
@@ -635,7 +633,9 @@ impl ElasticsearchSearchStore {
         &self,
         query: Option<String>,
         filter: NodesSearchFilter,
-    ) -> Result<(BoolQuery, Option<SearchWarningCode>)> {
+    ) -> Result<(BoolQuery, Vec<&str>, Option<SearchWarningCode>)> {
+        let mut indices_to_query = vec![];
+
         // Check there is at least one data source view filter
         // !! do not remove; without data source view filter this endpoint is
         // dangerous as any data from any workspace can be retrieved.
@@ -665,6 +665,7 @@ impl ElasticsearchSearchStore {
                 .must(self.build_data_sources_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(data_sources_query);
+            indices_to_query.push(DATA_SOURCE_INDEX_NAME);
         }
 
         // Build nodes query only if we have clauses left.
@@ -674,6 +675,7 @@ impl ElasticsearchSearchStore {
                 .filter(self.build_nodes_content_query(&query, &filter, &mut counter)?);
 
             should_queries.push(nodes_query);
+            indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
         }
 
         // If we've used all available clauses or had to skip any queries, set the warning code.
@@ -683,7 +685,7 @@ impl ElasticsearchSearchStore {
 
         let bool_query = Query::bool().should(should_queries).minimum_should_match(1);
 
-        Ok((bool_query, warning_code))
+        Ok((bool_query, indices_to_query, warning_code))
     }
 
     /// On the data source index, we only want to add a clause if the search scope is
