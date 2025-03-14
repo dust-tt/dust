@@ -50,8 +50,8 @@ const backgroundVariants: Record<ChipColorType, string> = {
     "dark:s-bg-amber-100-night dark:s-border-amber-200-night"
   ),
   slate: cn(
-    "s-bg-muted-background s-border-border-dark",
-    "dark:s-bg-muted-background-night dark:s-border-border-dark-night"
+    "s-bg-muted-background s-border-border",
+    "dark:s-bg-muted-background-night dark:s-border-border-night"
   ),
   purple: cn(
     "s-bg-purple-100 s-border-purple-200",

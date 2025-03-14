@@ -9,12 +9,12 @@ const SvgMicrosoftWord = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#93C5FD" d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3H4V4Z" />
-    <path fill="#3B82F6" d="M4 12h16v5H4z" />
-    <path fill="#60A5FA" d="M4 7h16v5H4z" />
-    <path fill="#2563EB" d="M4 17h16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3Z" />
+    <path fill="#7AC6FF" d="M4 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3H4V4Z" />
+    <path fill="#1C91FF" d="M4 12h16v5H4z" />
+    <path fill="#4BABFF" d="M4 7h16v5H4z" />
+    <path fill="#137FE3" d="M4 17h16v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3Z" />
     <path
-      fill="#1D4ED8"
+      fill="#0A63B6"
       d="M2.833 7h8.334c.46 0 .833.373.833.833v8.334c0 .46-.373.833-.833.833H2.833A.833.833 0 0 1 2 16.167V7.833c0-.46.373-.833.833-.833Z"
     />
     <path
