@@ -24,8 +24,8 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Legal",
   title: <>Accelerate Legal Operations and Compliance</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
+  from: "from-blue-200",
+  to: "to-blue-200",
   description: (
     <>
       Assist your teams on legal or compliance reviews, and make legal support

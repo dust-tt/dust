@@ -2,7 +2,7 @@ import {
   Avatar,
   CloudArrowDownIcon,
   ContextItem,
-  LogoSquareColorLogo,
+  DustLogoSquare,
   Page,
   PlusIcon,
   SliderToggle,
@@ -204,7 +204,7 @@ export default function EditDustAssistant({
       <div className="h-12" />
       <Page.Header
         title="Dust Agent"
-        icon={LogoSquareColorLogo}
+        icon={DustLogoSquare}
         description="The Dust agent is a general purpose agent that has context on your company data."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">
