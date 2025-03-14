@@ -579,7 +579,7 @@ export async function renderLightContentFragmentForModel(
           {
             type: "text",
             text: renderContentFragmentXml({
-              contentFragmentId: null,
+              contentFragmentId: contentFragment.sId,
               contentType,
               title,
               version: contentFragmentVersion,
@@ -618,7 +618,7 @@ export async function renderLightContentFragmentForModel(
       {
         type: "text",
         text: renderContentFragmentXml({
-          contentFragmentId: null,
+          contentFragmentId: contentFragment.sId,
           contentType,
           title,
           version: contentFragmentVersion,
