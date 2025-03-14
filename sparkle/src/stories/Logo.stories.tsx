@@ -1,17 +1,16 @@
 import React from "react";
 
-import { Div3D, Hover3D } from "..";
+import { Div3D, Hover3D, LogoSquareColorLayer2Logo } from "..";
 import {
-  DustLogo,
-  DustLogoGray,
-  DustLogoLayer1,
-  DustLogoLayer2,
-  DustLogoSquare,
-  DustLogoSquareGray,
-  DustLogoSquareLayer1,
-  DustLogoSquareLayer2,
-  DustLogoSquareWhite,
-  DustLogoWhite,
+  LogoHorizontalColorLayer1Logo,
+  LogoHorizontalColorLayer2Logo,
+  LogoHorizontalColorLogo,
+  LogoHorizontalDarkLogo,
+  LogoHorizontalWhiteLogo,
+  LogoSquareColorLayer1Logo,
+  LogoSquareColorLogo,
+  LogoSquareDarkLogo,
+  LogoSquareWhiteLogo,
 } from "../logo/dust";
 
 export default {
@@ -32,52 +31,52 @@ const itemStyle = {
   width: "100%",
 };
 
-export const DustLogos = () => (
+export const DustLogo = () => (
   <>
     <div style={gridStyle}>
       <div className="s-p-6">
-        <DustLogo className="s-h-8 s-w-32" />
+        <LogoHorizontalColorLogo className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          DustLogo
+          LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
-        <DustLogoGray className="s-h-8 s-w-32" />
+        <LogoHorizontalDarkLogo className="s-h-8 s-w-32" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          DustLogoGray
+          LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
-        <DustLogoWhite className="s-h-8 s-w-32" />
+        <LogoHorizontalWhiteLogo className="s-h-8 s-w-32" />
         <div
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
         >
-          DustLogoWhite
+          LogoHorizontalWhiteLogo
         </div>
       </div>
     </div>
 
     <div style={gridStyle}>
       <div className="s-p-6">
-        <DustLogoSquare className="s-h-16 s-w-16" />
+        <LogoSquareColorLogo className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          DustLogoSquare
+          LogoHorizontalColorLogo
         </div>
       </div>
       <div className="s-p-6">
-        <DustLogoSquareGray className="s-h-16 s-w-16" />
+        <LogoSquareDarkLogo className="s-h-16 s-w-16" />
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
-          DustLogoSquareGray
+          LogoHorizontalDarkLogo
         </div>
       </div>
       <div className="s-bg-slate-800 s-p-6">
-        <DustLogoSquareWhite className="s-h-16 s-w-16" />
+        <LogoSquareWhiteLogo className="s-h-16 s-w-16" />
         <div
           style={itemStyle as React.CSSProperties}
           className="s-text-sm s-text-white"
         >
-          DustLogoWhite
+          LogoHorizontalWhiteLogo
         </div>
       </div>
     </div>
@@ -86,10 +85,10 @@ export const DustLogos = () => (
       <div className="s-p-6">
         <Hover3D className="s-relative s-h-8 s-w-32">
           <Div3D depth={0} className="s-h-8 s-w-32">
-            <DustLogoLayer1 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer1Logo className="s-h-8 s-w-32" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <DustLogoLayer2 className="s-h-8 s-w-32" />
+            <LogoHorizontalColorLayer2Logo className="s-h-8 s-w-32" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">
@@ -99,10 +98,10 @@ export const DustLogos = () => (
       <div className="s-p-6">
         <Hover3D className="s-relative s-h-16 s-w-16">
           <Div3D depth={0} className="s-h-16 s-w-16">
-            <DustLogoSquareLayer1 className="s-h-16 s-w-16" />
+            <LogoSquareColorLayer1Logo className="s-h-16 s-w-16" />
           </Div3D>
           <Div3D depth={25} className="s-absolute s-top-0">
-            <DustLogoSquareLayer2 className="s-h-16 s-w-16" />
+            <LogoSquareColorLayer2Logo className="s-h-16 s-w-16" />
           </Div3D>
         </Hover3D>
         <div style={itemStyle as React.CSSProperties} className="s-text-sm">

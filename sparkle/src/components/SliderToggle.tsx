@@ -29,12 +29,12 @@ const cusrsorTranslateSizeClasses = {
 
 const stateClasses = {
   idle: cn(
-    "s-bg-primary-200 dark:s-bg-primary-600",
+    "s-bg-primary-200 dark:s-bg-primary-500",
     "hover:s-bg-highlight-300 dark:hover:s-bg-highlight-600"
   ),
   selected: cn(
-    "s-bg-highlight-400 dark:s-bg-highlight-400-night",
-    "hover:s-bg-highlight-300"
+    "s-bg-success-300 dark:s-bg-success-500-night",
+    "hover:s-bg-success-200"
   ),
   disabled: cn(
     "s-bg-primary-200 dark:s-bg-primary-200-night",
