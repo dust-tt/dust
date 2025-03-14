@@ -56,7 +56,7 @@ const ContentFragmentInputWithContentNodeSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({
     nodeId: t.string,
-    dataSourceViewId: t.string,
+    nodeDataSourceViewId: t.string,
     contentType: t.union([
       getSupportedInlinedContentType(),
       getSupportedContentNodeContentType(),

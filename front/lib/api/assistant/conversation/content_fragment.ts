@@ -110,7 +110,7 @@ export async function getContentFragmentBlob(
     return new Ok({
       contentType: cf.contentType,
       nodeId: cf.nodeId,
-      nodeDataSourceViewId: getResourceIdFromSId(cf.dataSourceViewId),
+      nodeDataSourceViewId: getResourceIdFromSId(cf.nodeDataSourceViewId),
       sourceUrl: null,
       textBytes: null,
       fileId: null,

@@ -269,7 +269,7 @@ export async function createConversationWithMessage({
         },
         nodeId: cf.internalId,
         contentType: cf.mimeType as any,
-        dataSourceViewId: cf.dataSourceView.sId,
+        nodeDataSourceViewId: cf.dataSourceView.sId,
       })),
     ],
   };
