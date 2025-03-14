@@ -351,7 +351,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     const transcripts = await GongTranscriptModel.findAll({
       where: {
         connectorId: connector.id,
-        createdAt: {
+        callDate: {
           [Op.lt]: retentionPeriodStart,
         },
       },
