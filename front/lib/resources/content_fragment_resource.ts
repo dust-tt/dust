@@ -429,7 +429,7 @@ export async function renderFromFragmentId(
 
     if (!fileSId) {
       throw new Error(
-        `Unreachable code path: fileSId is null. This would mean that the content fragment is a content node, but we don't allow images as content nodes yet.`
+        `Unreachable code path: fileSId is null. This would mean that the content fragment is a content node image, but we don't allow images as content nodes yet.`
       );
     }
 
@@ -472,8 +472,10 @@ export async function renderFromFragmentId(
     });
 
     if (documentRes.isErr()) {
-      throw new Error(
-        `Failed to retrieve document for content node ${nodeId} in data source ${nodeDataSourceViewId}`
+      return new Err(
+        new Error(
+          `Failed to retrieve document for content node ${nodeId} in data source ${nodeDataSourceViewId}`
+        )
       );
     }
 
