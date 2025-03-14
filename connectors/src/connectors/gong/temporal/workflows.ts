@@ -84,6 +84,7 @@ export async function gongSyncWorkflow({
       args: [
         {
           connectorId,
+          garbageCollectionStartTs,
         },
       ],
       memo,
@@ -119,13 +120,16 @@ export async function gongSyncTranscriptsWorkflow({
 
 export async function gongGarbageCollectWorkflow({
   connectorId,
+  garbageCollectionStartTs,
 }: {
   connectorId: ModelId;
+  garbageCollectionStartTs: number;
 }) {
   let hasMoreTranscripts = true;
   while (hasMoreTranscripts) {
     const { hasMore } = await gongDeleteOutdatedTranscriptsActivity({
       connectorId,
+      garbageCollectionStartTs,
     });
     hasMoreTranscripts = hasMore;
   }

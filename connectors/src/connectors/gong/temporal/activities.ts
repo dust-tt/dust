@@ -235,8 +235,10 @@ export async function gongSaveGarbageCollectionSuccessActivity({
 
 export async function gongDeleteOutdatedTranscriptsActivity({
   connectorId,
+  garbageCollectionStartTs,
 }: {
   connectorId: ModelId;
+  garbageCollectionStartTs: number;
 }): Promise<{ hasMore: boolean }> {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
@@ -246,6 +248,7 @@ export async function gongDeleteOutdatedTranscriptsActivity({
     connector,
     configuration,
     {
+      garbageCollectionStartTs,
       limit: GARBAGE_COLLECT_BATCH_SIZE,
     }
   );

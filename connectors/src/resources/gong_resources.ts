@@ -335,7 +335,10 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   static async fetchOutdated(
     connector: ConnectorResource,
     configuration: GongConfigurationResource,
-    { limit }: { limit: number }
+    {
+      garbageCollectionStartTs,
+      limit,
+    }: { garbageCollectionStartTs: number; limit: number }
   ): Promise<GongTranscriptResource[]> {
     // If the retention period is not defined, we keep all transcripts.
     if (configuration.retentionPeriodDays === null) {
@@ -343,7 +346,8 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     }
 
     const retentionPeriodStart =
-      Date.now() - configuration.retentionPeriodDays * 24 * 60 * 60 * 1000;
+      garbageCollectionStartTs -
+      configuration.retentionPeriodDays * 24 * 60 * 60 * 1000;
     const transcripts = await GongTranscriptModel.findAll({
       where: {
         connectorId: connector.id,
