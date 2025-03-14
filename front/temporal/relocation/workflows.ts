@@ -13,6 +13,7 @@ import type * as coreDestinationActivities from "@app/temporal/relocation/activi
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
 import type * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import type * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
+import { processApp } from "@app/temporal/relocation/activities/source_region/core";
 import type * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
 import type {
   CreateDataSourceProjectResult,
@@ -475,6 +476,19 @@ export async function workspaceRelocateCoreWorkflow({
       });
     }
   } while (hasMoreRows);
+
+  await executeChild(workspaceRelocateAppsWorkflow, {
+    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        workspaceId,
+        sourceRegion,
+        destRegion,
+      },
+    ],
+    memo,
+  });
 }
 
 // TODO: Below is not idempotent, we need to handle the case where the data source is already created in the destination region.
@@ -723,4 +737,45 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
 
     pageCursor = nextPageCursor;
   } while (pageCursor);
+}
+
+export async function workspaceRelocateAppsWorkflow({
+  workspaceId,
+  lastProcessedId,
+  sourceRegion,
+  destRegion,
+}: RelocationWorkflowBase & { lastProcessedId?: ModelId }) {
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  let hasMoreRows = true;
+  let currentId: ModelId | undefined = lastProcessedId;
+
+  do {
+    const { dustAPIProjectIds, hasMore, lastId } =
+      await sourceRegionActivities.retrieveAppsCoreIdsBatch({
+        lastId: currentId,
+        workspaceId,
+      });
+
+    hasMoreRows = hasMore;
+    currentId = lastId;
+
+    for (const dustAPIProjectId of dustAPIProjectIds) {
+      const { dataPath } = await sourceRegionActivities.getApp({
+        dustAPIProjectId,
+        workspaceId,
+        sourceRegion,
+      });
+
+      await destinationRegionActivities.processApp({
+        dustAPIProjectId,
+        dataPath,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      });
+    }
+  } while (hasMoreRows);
 }
