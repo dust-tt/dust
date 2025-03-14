@@ -9,7 +9,7 @@ export class GongConfigurationModel extends ConnectorBaseModel<GongConfiguration
   declare updatedAt: CreationOptional<Date>;
 
   declare lastSyncTimestamp: number | null;
-  declare lastGarbageCollectTimestamp: number | null;
+  declare lastGarbageCollectionTimestamp: number | null;
   declare baseUrl: string;
   declare retentionPeriodDays: number | null;
 }
