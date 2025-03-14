@@ -2,9 +2,9 @@
 const path = require("path");
 
 function defaultIndexTemplate(filePaths) {
-  const exportEntries = filePaths.map(({ path: filePath }) => {
+  const exportEntries = filePaths.map(({ path: filePath, originalPath }) => {
     const basename = path.basename(filePath, path.extname(filePath));
-    return `export { default as ${basename} } from './${basename}'`;
+    return `export { default as ${basename}Logo } from './${basename}'`;
   });
   return exportEntries.join("\n");
 }
