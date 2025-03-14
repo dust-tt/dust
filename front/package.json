@@ -34,6 +34,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.437",
 =======
 =======
@@ -162,6 +163,9 @@
 =======
     "@dust-tt/sparkle": "^0.2.437",
 >>>>>>> 382cb5bff (Reset package)
+=======
+    "@dust-tt/sparkle": "0.2.438-rc.0",
+>>>>>>> fb53c61f7 (Version Sparkle)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
