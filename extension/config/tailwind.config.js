@@ -13,8 +13,8 @@ module.exports = {
       "2xl": "1536px",
     },
     fontFamily: {
-      sans: ["'darkmode-off-cc'", "sans-serif"],
-      objektiv: ["'objektiv-mk1'", "sans-serif"],
+      sans: ['var(--font-geist-sans)'],
+      mono: ['var(--font-geist-mono)'],
     },
     extend: {
       borderRadius: {

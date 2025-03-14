@@ -211,7 +211,7 @@ export default function RunsView({
                         href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                         className="block"
                       >
-                        <p className="font-mono truncate text-base text-action-500">
+                        <p className="truncate font-mono text-base text-action-500">
                           {run.run_id.slice(0, 8)}...
                           {run.run_id.slice(-8)}
                         </p>
@@ -245,7 +245,7 @@ export default function RunsView({
                           {block.name}
                         </span>
                       ))}
-                      <span className="font-mono ml-2 pt-1 text-xs text-gray-700">
+                      <span className="ml-2 pt-1 font-mono text-xs text-gray-700">
                         ({inputCount(run.status)} inputs)
                       </span>
                     </div>

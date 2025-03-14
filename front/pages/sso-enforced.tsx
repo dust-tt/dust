@@ -37,8 +37,8 @@ export default function SsoEnforced({
             <div>
               <Logo className="h-[48px] w-[192px] px-1" />
             </div>
-            <p className="mt-16 font-objektiv text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
-              <span className="text-red-400 sm:font-objektiv md:font-objektiv">
+            <p className="font-objektiv mt-16 text-4xl font-bold tracking-tighter text-slate-50 md:text-6xl">
+              <span className="sm:font-objektiv md:font-objektiv text-red-400">
                 Secure AI agent
               </span>{" "}
               <br />
