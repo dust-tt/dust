@@ -1,18 +1,24 @@
-import type { Client, WorkflowHandle } from "@temporalio/client";
+import type { Client } from "@temporalio/client";
+import { ScheduleNotFoundError } from "@temporalio/client";
 
 import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 
-async function isTemporalWorkflowRunning(client: Client, workflowId: string) {
+async function isTemporalSchedulerRunning(client: Client, workflowId: string) {
   try {
-    const workflowHandle: WorkflowHandle =
-      client.workflow.getHandle(workflowId);
+    const scheduleHandle = client.schedule.getHandle(workflowId);
 
-    const descriptions = await Promise.all([workflowHandle.describe()]);
+    // This throws and error if the schedule does not exist.
+    const scheduleDescription = await scheduleHandle.describe();
 
-    return descriptions.every(({ status: { name } }) => name === "RUNNING");
+    // If the schedule is paused, it will not run.
+    return !scheduleDescription.state.paused;
   } catch (err) {
-    return false;
+    if (err instanceof ScheduleNotFoundError) {
+      return false;
+    }
+
+    throw err;
   }
 }
 
@@ -24,15 +30,15 @@ export const checkWebcrawlerSchedulerActiveWorkflow: CheckFunction = async (
 ) => {
   const client = await getTemporalConnectorsNamespaceConnection();
 
-  logger.info("Checking if webcrawler scheduler is running");
-  const isActive = await isTemporalWorkflowRunning(
+  logger.info("Checking if webcrawler scheduler exists and it not paused");
+  const existsAndNotPaused = await isTemporalSchedulerRunning(
     client,
     "webcrawler-scheduler"
   );
 
-  if (!isActive) {
-    reportFailure({}, `Missing webcrawler_scheduler temporal workflow.`);
-  } else {
+  if (existsAndNotPaused) {
     reportSuccess({});
+  } else {
+    reportFailure({}, "Webcrawler scheduler does not exist or is paused");
   }
 };

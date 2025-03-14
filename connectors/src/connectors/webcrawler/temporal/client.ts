@@ -1,9 +1,17 @@
 import type { ModelId, Result } from "@dust-tt/types";
 import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
-import { WorkflowNotFoundError } from "@temporalio/client";
+import {
+  ScheduleOverlapPolicy,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 
 import { getTemporalClient } from "@connectors/lib/temporal";
+import {
+  createSchedule,
+  scheduleExists,
+  triggerSchedule,
+} from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
@@ -11,7 +19,6 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import { WebCrawlerQueueNames } from "./config";
 import {
   crawlWebsiteSchedulerWorkflow,
-  crawlWebsiteSchedulerWorkflowId,
   crawlWebsiteWorkflow,
   crawlWebsiteWorkflowId,
 } from "./workflows";
@@ -106,42 +113,35 @@ export async function stopCrawlWebsiteWorkflow(
   }
 }
 
-export async function launchCrawlWebsiteSchedulerWorkflow(): Promise<
-  Result<string, Error>
-> {
-  const client = await getTemporalClient();
+export async function launchCrawlWebsiteScheduler() {
+  const scheduleId = `webcrawler-scheduler`;
 
-  const workflowId = crawlWebsiteSchedulerWorkflowId();
-  try {
-    const handle = client.workflow.getHandle(workflowId);
-    await handle.terminate();
-  } catch (e) {
-    if (!(e instanceof WorkflowNotFoundError)) {
-      throw e;
-    }
+  // Only create the schedule if it doesn't already exist.
+  const scheduleAlreadyExists = await scheduleExists({
+    scheduleId,
+  });
+  // If the schedule already exists, trigger it.
+  if (scheduleAlreadyExists) {
+    return triggerSchedule({
+      scheduleId,
+    });
   }
-  try {
-    await client.workflow.start(crawlWebsiteSchedulerWorkflow, {
+
+  return createSchedule({
+    scheduleId,
+    action: {
+      type: "startWorkflow",
+      workflowType: crawlWebsiteSchedulerWorkflow,
       args: [],
       taskQueue: WebCrawlerQueueNames.UPDATE_WEBSITE,
-      workflowId: workflowId,
-      cronSchedule: "0 * * * *", // every hour, on the hour
-    });
-    logger.info(
-      {
-        workflowId,
-      },
-      `Started workflow.`
-    );
-    return new Ok(workflowId);
-  } catch (e) {
-    logger.error(
-      {
-        workflowId,
-        error: e,
-      },
-      `Failed starting workflow.`
-    );
-    return new Err(e as Error);
-  }
+    },
+    spec: {
+      intervals: [{ every: "1h" }],
+      jitter: "5m", // Add some randomness to avoid syncing on the exact hour.
+    },
+    policies: {
+      overlap: ScheduleOverlapPolicy.SKIP,
+      catchupWindow: "1 day",
+    },
+  });
 }
