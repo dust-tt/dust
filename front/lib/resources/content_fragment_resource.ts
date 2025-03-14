@@ -391,22 +391,45 @@ export async function renderFromFragmentId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
-    contentFragmentId,
-    contentFragmentVersion
-  );
-  if (!contentFragment) {
-    throw new Error(`Content fragment not found for sId ${contentFragmentId}`);
+  // TODO(pr,attach) this is a hack to fix incident here: https://dust4ai.slack.com/archives/C05B529FHV1/p1741976168265989
+  // to be properly fixed.
+  // if starting with fil_, it's not a content fragment id but a file id directly
+  const isOldFileId = contentFragmentId.startsWith("fil_");
+
+  let contentFragment: ContentFragmentResource | null = null;
+  if (!isOldFileId) {
+    contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
+      contentFragmentId,
+      contentFragmentVersion
+    );
+    if (!contentFragment) {
+      throw new Error(
+        `Content fragment not found for sId ${contentFragmentId}`
+      );
+    }
   }
 
-  const { fileId: fileModelId, nodeId, nodeDataSourceViewId } = contentFragment;
+  const {
+    fileId: fileModelId,
+    nodeId,
+    nodeDataSourceViewId,
+  } = contentFragment ?? {
+    fileId: -1,
+    nodeId: null,
+    nodeDataSourceViewId: null,
+  };
 
-  const fileStringId = fileModelId
-    ? FileResource.modelIdToSId({
-        id: fileModelId,
-        workspaceId: workspace.id,
-      })
-    : null;
+  let fileStringId;
+  if (isOldFileId) {
+    fileStringId = contentFragmentId;
+  } else {
+    fileStringId = fileModelId
+      ? FileResource.modelIdToSId({
+          id: fileModelId,
+          workspaceId: workspace.id,
+        })
+      : null;
+  }
 
   if (isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
