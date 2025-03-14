@@ -9,11 +9,6 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import {
-  extractDatasetIdsAndHashes,
-  getSpecificationFromCore,
-  getSpecificationsHashesFromCore,
-} from "@app/lib/utils/apps";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
@@ -82,24 +77,31 @@ export async function getApp({
     sourceRegion,
   });
 
-  const specsToFetch = await getSpecificationsHashesFromCore(dustAPIProjectId);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const coreSpec = await coreAPI.getSpecificationHashes({
+    projectId: dustAPIProjectId,
+  });
+  if (coreSpec.isErr()) {
+    throw new Error("Failed to get core specification hashes");
+  }
+
+  const specsToFetch = coreSpec.value.hashes;
 
   const coreSpecifications: Record<string, string> = {};
 
   if (specsToFetch) {
     for (const hash of specsToFetch) {
-      const coreSpecification = await getSpecificationFromCore(
-        dustAPIProjectId,
-        hash
-      );
-      if (!coreSpecification) {
+      const coreSpecification = await coreAPI.getSpecification({
+        projectId: dustAPIProjectId,
+        specificationHash: hash,
+      });
+
+      if (coreSpecification.isErr()) {
         throw new Error("Failed to get core specification");
       }
-      coreSpecifications[hash] = coreSpecification.data;
+      coreSpecifications[hash] = coreSpecification.value.specification.data;
     }
   }
-
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const dataSetsToFetch = await coreAPI.getDatasets({
     projectId: dustAPIProjectId,
