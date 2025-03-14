@@ -1,10 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  CheckFileGenericResponseType,
-  MicrosoftCommandType,
-} from "@dust-tt/types";
-import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -24,6 +17,12 @@ import { terminateWorkflow } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  CheckFileGenericResponseType,
+  MicrosoftCommandType,
+} from "@connectors/types";
+import { microsoftIncrementalSyncWorkflowId } from "@connectors/types";
 
 const getConnector = async (args: { [key: string]: string | undefined }) => {
   if (args.wId) {

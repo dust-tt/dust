@@ -1,11 +1,3 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import {
-  MIME_TYPES,
-  stripNullBytes,
-  WEBCRAWLER_MAX_DEPTH,
-  WEBCRAWLER_MAX_PAGES,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import { Context } from "@temporalio/activity";
 import { isCancellation } from "@temporalio/workflow";
 import { CheerioCrawler, Configuration, LogLevel } from "crawlee";
@@ -30,6 +22,7 @@ import {
   REQUEST_HANDLING_TIMEOUT,
 } from "@connectors/connectors/webcrawler/temporal/workflows";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -51,6 +44,14 @@ import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
+import type { ModelId } from "@connectors/types";
+import {
+  MIME_TYPES,
+  stripNullBytes,
+  WEBCRAWLER_MAX_DEPTH,
+  WEBCRAWLER_MAX_PAGES,
+} from "@connectors/types";
+import { validateUrl } from "@connectors/types";
 
 const CONCURRENCY = 1;
 

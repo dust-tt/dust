@@ -18,9 +18,6 @@ jobs:
           node-version: 20.13.0
           cache: "npm"
           cache-dependency-path: ./connectors/package-lock.json
-      - name: Build dust-types
-        working-directory: types
-        run: npm install &&  npm run build
       - name: Build sdk js
         working-directory: sdks/js
         run: npm install && npm run build

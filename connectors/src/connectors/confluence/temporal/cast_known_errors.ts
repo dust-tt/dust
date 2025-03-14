@@ -1,4 +1,3 @@
-import { ConfluenceClientError } from "@dust-tt/types";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -6,6 +5,7 @@ import type {
 } from "@temporalio/worker";
 
 import { ProviderWorkflowError } from "@connectors/lib/error";
+import { ConfluenceClientError } from "@connectors/types";
 
 export class ConfluenceCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor

@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   ScheduleOverlapPolicy,
@@ -15,6 +15,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
+import type { ModelId } from "@connectors/types";
 
 import { WebCrawlerQueueNames } from "./config";
 import {

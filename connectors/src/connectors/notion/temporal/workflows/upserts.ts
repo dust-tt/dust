@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -13,6 +12,7 @@ import {
   syncResultPageChildWorkflow,
   syncResultPageDatabaseChildWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/children";
+import type { ModelId } from "@connectors/types";
 
 const {
   garbageCollectorMarkAsSeenAndReturnNewEntities,

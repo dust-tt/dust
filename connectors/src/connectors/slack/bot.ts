@@ -1,26 +1,20 @@
 import type {
+  AgentMessageSuccessEvent,
+  APIError,
   ConversationPublicType,
+  LightAgentConfigurationType,
   PublicPostContentFragmentRequestBody,
+  Result,
   SupportedFileContentType,
   UserMessageType,
 } from "@dust-tt/client";
-import { DustAPI, isSupportedFileContentType } from "@dust-tt/client";
-import type {
-  AgentMessageSuccessEvent,
-  APIError,
-  CoreAPIDataSourceDocumentSection,
-  LightAgentConfigurationType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
 import {
+  DustAPI,
   Err,
-  getHeaderFromGroupIds,
-  getHeaderFromUserEmail,
+  isSupportedFileContentType,
   Ok,
   removeNulls,
-  sectionFullText,
-} from "@dust-tt/types";
+} from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/response/ConversationsHistoryResponse";
 import removeMarkdown from "remove-markdown";
@@ -49,6 +43,8 @@ import {
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
+import { sectionFullText } from "@connectors/lib/data_sources";
 import {
   SlackChannel,
   SlackChatBotMessage,
@@ -56,6 +52,11 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ModelId } from "@connectors/types";
+import {
+  getHeaderFromGroupIds,
+  getHeaderFromUserEmail,
+} from "@connectors/types";
 
 import {
   formatMessagesForUpsert,

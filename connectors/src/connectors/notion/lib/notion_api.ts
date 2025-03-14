@@ -1,11 +1,4 @@
-import type {
-  PageObjectProperties,
-  ParsedNotionBlock,
-  ParsedNotionDatabase,
-  ParsedNotionPage,
-  PropertyKeys,
-} from "@dust-tt/types";
-import { assertNever, cacheWithRedis } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import type { LogLevel } from "@notionhq/client";
 import {
   APIResponseError,
@@ -31,6 +24,14 @@ import type { Logger } from "pino";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+  ParsedNotionDatabase,
+  ParsedNotionPage,
+  PropertyKeys,
+} from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
@@ -844,6 +845,8 @@ export function parsePropertyValue(
   };
 
   switch (property.type) {
+    case "button":
+      return null;
     case "number":
       return property.number?.toString() || null;
     case "url":

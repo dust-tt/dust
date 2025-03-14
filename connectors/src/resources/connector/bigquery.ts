@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
@@ -14,6 +13,7 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 export class BigQueryConnectorStrategy
   implements ConnectorProviderStrategy<"bigquery">

@@ -1,19 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-  WebCrawlerConfigurationType,
-} from "@dust-tt/types";
-import {
-  DepthOptions,
-  Err,
-  isDepthOption,
-  MIME_TYPES,
-  Ok,
-  WEBCRAWLER_MAX_PAGES,
-  WebCrawlerHeaderRedactedValue,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -37,7 +23,20 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  WebCrawlerConfigurationType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  DepthOptions,
+  isDepthOption,
+  MIME_TYPES,
+  WEBCRAWLER_MAX_PAGES,
+  WebCrawlerHeaderRedactedValue,
+} from "@connectors/types";
 
 import {
   launchCrawlWebsiteWorkflow,

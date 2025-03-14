@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -53,7 +48,12 @@ import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   static async create({

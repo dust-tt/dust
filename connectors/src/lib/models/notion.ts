@@ -1,9 +1,9 @@
-import type { NotionBlockType, PageObjectProperties } from "@dust-tt/types";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { NotionBlockType, PageObjectProperties } from "@connectors/types";
 
 export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorState> {
   declare createdAt: CreationOptional<Date>;

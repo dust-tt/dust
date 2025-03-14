@@ -1,5 +1,5 @@
-import type { BigQueryCredentialsWithLocation, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 
 import type {
@@ -8,6 +8,7 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
+import type { BigQueryCredentialsWithLocation } from "@connectors/types";
 
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 

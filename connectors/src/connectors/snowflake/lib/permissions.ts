@@ -1,16 +1,5 @@
-import type {
-  ContentNode,
-  ModelId,
-  Result,
-  SnowflakeCredentials,
-} from "@dust-tt/types";
-import {
-  Err,
-  EXCLUDE_DATABASES,
-  EXCLUDE_SCHEMAS,
-  MIME_TYPES,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   fetchDatabases,
@@ -26,6 +15,13 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import type { ContentNode, SnowflakeCredentials } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import {
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  MIME_TYPES,
+} from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.

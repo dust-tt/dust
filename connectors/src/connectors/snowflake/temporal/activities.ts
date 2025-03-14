@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
-
 import {
   connectToSnowflake,
   fetchTree,
@@ -14,6 +11,8 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
+import { isSnowflakeCredentials, MIME_TYPES } from "@connectors/types";
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const localLogger = logger.child({

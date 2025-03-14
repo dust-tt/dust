@@ -1,5 +1,4 @@
 import type { LoggerInterface } from "@dust-tt/client";
-import { cacheWithRedis } from "@dust-tt/types";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type {
   ColumnDefinition,
@@ -8,6 +7,7 @@ import type {
 } from "@microsoft/microsoft-graph-types";
 
 import { clientApiGet } from "@connectors/connectors/microsoft/lib/graph_api";
+import { cacheWithRedis } from "@connectors/types";
 
 import type { DriveItem, MicrosoftNodeType } from "./types";
 import { isValidNodeType } from "./types";

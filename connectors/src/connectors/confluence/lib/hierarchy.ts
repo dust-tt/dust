@@ -1,10 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-
 import {
   makePageInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import { ConfluencePage } from "@connectors/lib/models/confluence";
+import type { ModelId } from "@connectors/types";
 
 interface RawConfluencePage {
   pageId: string;

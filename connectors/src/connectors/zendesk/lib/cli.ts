@@ -1,12 +1,3 @@
-import type {
-  AdminResponseType,
-  ZendeskCheckIsAdminResponseType,
-  ZendeskCommandType,
-  ZendeskCountTicketsResponseType,
-  ZendeskFetchBrandResponseType,
-  ZendeskFetchTicketResponseType,
-} from "@dust-tt/types";
-
 import { extractMetadataFromDocumentUrl } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
@@ -29,6 +20,14 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type {
+  AdminResponseType,
+  ZendeskCheckIsAdminResponseType,
+  ZendeskCommandType,
+  ZendeskCountTicketsResponseType,
+  ZendeskFetchBrandResponseType,
+  ZendeskFetchTicketResponseType,
+} from "@connectors/types";
 
 export const zendesk = async ({
   command,

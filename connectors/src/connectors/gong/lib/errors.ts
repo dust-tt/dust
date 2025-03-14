@@ -1,5 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
-import { safeParseJSON } from "@dust-tt/types";
+import type { ModelId } from "@connectors/types";
+import { safeParseJSON } from "@connectors/types";
 
 type GongAPIErrorType = "validation_error" | "http_response_error";
 

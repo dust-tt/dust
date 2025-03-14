@@ -1,4 +1,3 @@
-import type { MIME_TYPES } from "@dust-tt/types";
 import { heartbeat } from "@temporalio/activity";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -20,7 +19,8 @@ import type {
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { MIME_TYPES } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 const isDatabaseReadGranted = ({
   readGrantedInternalIds,

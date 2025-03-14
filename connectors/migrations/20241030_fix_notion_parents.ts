@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -11,6 +10,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 async function findAllDescendants(
   nodes: (NotionPage | NotionDatabase)[],

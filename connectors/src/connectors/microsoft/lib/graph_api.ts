@@ -1,6 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import type { LoggerInterface } from "@dust-tt/types/dist/shared/logger";
+import type { LoggerInterface, Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import type {

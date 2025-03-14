@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -14,6 +13,7 @@ import {
   performUpserts,
   upsertDatabase,
 } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import type { ModelId } from "@connectors/types";
 
 export function getUpsertPageWorkflowId(
   pageId: string,

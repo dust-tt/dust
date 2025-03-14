@@ -1,9 +1,4 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
 import axios from "axios";
 
 import { getClient } from "@connectors/connectors/microsoft";
@@ -28,6 +23,7 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -48,7 +44,9 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 

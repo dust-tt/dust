@@ -1,5 +1,5 @@
-import type { ContentNode, Result } from "@dust-tt/types";
-import { MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
@@ -26,6 +26,8 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+import type { ContentNode } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -1,8 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
-
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceInfo } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceInfo } from "@connectors/types";
 
 // Note: this function does not let you "remove" a skipReason.
 export async function upsertNotionPageInConnectorsDb({

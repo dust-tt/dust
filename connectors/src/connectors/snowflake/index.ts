@@ -1,5 +1,5 @@
-import type { ConnectorPermission, ContentNode, Result } from "@dust-tt/types";
-import { assertNever, Err, isSnowflakeCredentials, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -31,7 +31,9 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isSnowflakeCredentials } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "snowflake",

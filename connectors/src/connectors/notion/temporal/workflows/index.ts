@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   defineQuery,
@@ -20,6 +19,7 @@ import {
   SYNC_PERIOD_DURATION_MS,
 } from "@connectors/connectors/notion/temporal/config";
 import { performUpserts } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import type { ModelId } from "@connectors/types";
 
 // re-export all the workflows to make temporal happy
 export * from "./admins";

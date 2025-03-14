@@ -1,6 +1,5 @@
 import type { LoggerInterface } from "@dust-tt/client";
-import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis, MIME_TYPES, removeNulls } from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { heartbeat } from "@temporalio/activity";
@@ -54,7 +53,9 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis, MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;

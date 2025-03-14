@@ -1,5 +1,5 @@
-import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
@@ -14,6 +14,9 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ConnectorPermission } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 import { getSlackClient } from "./slack_client";
 

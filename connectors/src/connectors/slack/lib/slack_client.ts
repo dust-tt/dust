@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIHTTPError,
@@ -14,6 +13,7 @@ import {
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 // Timeout in ms for all network requests;
 const SLACK_NETWORK_TIMEOUT_MS = 30000;

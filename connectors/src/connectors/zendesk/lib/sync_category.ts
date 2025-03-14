@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import type { ZendeskFetchedCategory } from "@connectors/@types/node-zendesk";
 import {
   getArticleInternalId,
@@ -17,7 +14,9 @@ import {
   ZendeskArticleResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * Deletes all the data stored in the db and in the data source relative to a category (articles).

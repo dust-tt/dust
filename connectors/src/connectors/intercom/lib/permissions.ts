@@ -1,6 +1,3 @@
-import type { ContentNode, ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import {
   getHelpCenterCollectionInternalId,
   getHelpCenterInternalId,
@@ -14,6 +11,9 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all selected nodes by the admin when setting permissions.

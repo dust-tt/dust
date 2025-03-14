@@ -1,5 +1,3 @@
-import type { ContentNode, ContentNodeType } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import type {
   Channel,
   Drive,
@@ -18,6 +16,8 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import type { ContentNode, ContentNodeType } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode(), getTeamsRootAsContentNode()];

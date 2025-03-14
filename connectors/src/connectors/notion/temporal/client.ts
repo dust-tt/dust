@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { getNotionWorkflowId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
@@ -19,6 +17,8 @@ import { NotionConnectorState } from "@connectors/lib/models/notion";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { getNotionWorkflowId } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 
