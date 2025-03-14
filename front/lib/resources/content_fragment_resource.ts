@@ -375,25 +375,25 @@ export async function renderFromFragmentId(
   {
     contentType,
     excludeImages,
-    sId,
+    contentFragmentId,
     model,
     title,
     contentFragmentVersion,
   }: {
     contentType: SupportedContentFragmentType;
     excludeImages: boolean;
-    sId: string;
+    contentFragmentId: string;
     model: ModelConfigurationType;
     title: string;
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   const contentFragment = await ContentFragmentResource.fromSIdAndVersion(
-    sId,
+    contentFragmentId,
     contentFragmentVersion
   );
   if (!contentFragment) {
-    throw new Error(`Content fragment not found for sId ${sId}`);
+    throw new Error(`Content fragment not found for sId ${contentFragmentId}`);
   }
 
   const { fileId: fileModelId, nodeId, nodeDataSourceViewId } = contentFragment;
@@ -414,7 +414,7 @@ export async function renderFromFragmentId(
           {
             type: "text",
             text: renderContentFragmentXml({
-              sId: null,
+              contentFragmentId: null,
               contentType,
               title,
               version: contentFragmentVersion,
@@ -486,7 +486,7 @@ export async function renderFromFragmentId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            sId,
+            contentFragmentId,
             contentType,
             title,
             version: contentFragmentVersion,
@@ -517,7 +517,7 @@ export async function renderFromFragmentId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            sId,
+            contentFragmentId,
             contentType,
             title,
             version: contentFragmentVersion,
@@ -572,7 +572,7 @@ export async function renderLightContentFragmentForModel(
           {
             type: "text",
             text: renderContentFragmentXml({
-              sId,
+              contentFragmentId: null,
               contentType,
               title,
               version: contentFragmentVersion,
@@ -611,7 +611,7 @@ export async function renderLightContentFragmentForModel(
       {
         type: "text",
         text: renderContentFragmentXml({
-          sId,
+          contentFragmentId: null,
           contentType,
           title,
           version: contentFragmentVersion,
@@ -623,19 +623,19 @@ export async function renderLightContentFragmentForModel(
 }
 
 function renderContentFragmentXml({
-  sId,
+  contentFragmentId,
   contentType,
   title,
   version,
   content,
 }: {
-  sId: string | null;
+  contentFragmentId: string | null;
   contentType: string;
   title: string;
   version: ContentFragmentVersion;
   content: string | null;
 }) {
-  let tag = `<attachment id="${sId}" type="${contentType}" title="${title}" version="${version}"`;
+  let tag = `<attachment id="${contentFragmentId}" type="${contentType}" title="${title}" version="${version}"`;
   if (content) {
     tag += `>\n${content}\n</attachment>`;
   } else {

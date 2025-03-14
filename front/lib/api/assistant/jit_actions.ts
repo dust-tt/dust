@@ -74,8 +74,10 @@ async function getJITActions(
             conversationId: conversation.sId,
             fileIds: _.uniq(
               filesUsableAsTableQuery
-                .map((f) => f.sId)
-                .concat(filesUsableAsRetrievalQuery.map((f) => f.sId))
+                .map((f) => f.contentFragmentId)
+                .concat(
+                  filesUsableAsRetrievalQuery.map((f) => f.contentFragmentId)
+                )
             ),
             workspaceId: conversation.owner.sId,
           },

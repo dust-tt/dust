@@ -91,7 +91,7 @@ export class ConversationIncludeFileAction extends BaseAction {
     // message).
     const files = listFiles(conversation);
     for (const f of files) {
-      if (f.sId === fileId && f.isIncludable) {
+      if (f.contentFragmentId === fileId && f.isIncludable) {
         if (f.contentFragmentVersion === "superseded") {
           return new Ok({
             fileId,
@@ -103,7 +103,7 @@ export class ConversationIncludeFileAction extends BaseAction {
         const r = await renderFromFragmentId(conversation.owner, {
           contentType: f.contentType,
           excludeImages: true,
-          sId: f.sId,
+          contentFragmentId: f.contentFragmentId,
           model,
           title: f.title,
           contentFragmentVersion: f.contentFragmentVersion,
