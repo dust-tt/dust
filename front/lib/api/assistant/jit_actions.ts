@@ -49,6 +49,9 @@ async function getJITActions(
   actions.push(...supportingActions);
 
   if (files.length > 0) {
+    // conversation_include_file_action
+    actions.push(makeConversationIncludeFileConfiguration());
+
     // Check tables for the table query action.
     const filesUsableAsTableQuery = files.filter((f) => f.isQueryable);
 
@@ -65,21 +68,24 @@ async function getJITActions(
         conversation
       );
 
+      // TODO(pr,attach) remove this if when tackling table query / semantic search action
       if (!dataSourceView) {
         logger.warn(
           {
             conversationId: conversation.sId,
             fileIds: _.uniq(
               filesUsableAsTableQuery
-                .map((f) => f.fileId)
-                .concat(filesUsableAsRetrievalQuery.map((f) => f.fileId))
+                .map((f) => f.contentFragmentId)
+                .concat(
+                  filesUsableAsRetrievalQuery.map((f) => f.contentFragmentId)
+                )
             ),
             workspaceId: conversation.owner.sId,
           },
           "No default datasource view found for conversation when trying to get JIT actions"
         );
 
-        return [];
+        return actions;
       }
 
       if (filesUsableAsTableQuery.length > 0) {
@@ -124,9 +130,6 @@ async function getJITActions(
         actions.push(action);
       }
     }
-
-    // conversation_include_file_action
-    actions.push(makeConversationIncludeFileConfiguration());
   }
 
   return actions;

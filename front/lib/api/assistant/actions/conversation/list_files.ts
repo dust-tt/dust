@@ -59,7 +59,7 @@ export class ConversationListFilesAction extends BaseAction {
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
-      content += `<file id="${f.fileId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
+      content += `<file id="${f.contentFragmentId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;

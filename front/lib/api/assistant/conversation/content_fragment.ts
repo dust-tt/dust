@@ -1,19 +1,30 @@
 import type {
+  ContentFragmentInputWithContentNode,
   ContentFragmentInputWithContentType,
   ContentFragmentInputWithFileIdType,
+  DustMimeType,
   ModelId,
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
-import { Err, extensionsForContentType, Ok } from "@dust-tt/types";
+import {
+  Err,
+  extensionsForContentType,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
+  Ok,
+} from "@dust-tt/types";
 
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 
 interface ContentFragmentBlob {
-  contentType: SupportedFileContentType;
+  contentType: DustMimeType | SupportedFileContentType;
   fileId: ModelId | null;
+  nodeId: string | null;
+  nodeDataSourceViewId: ModelId | null;
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
@@ -62,32 +73,50 @@ export async function toFileContentFragment(
 
 export async function getContentFragmentBlob(
   auth: Authenticator,
-  cf: ContentFragmentInputWithFileIdType
+  cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode
 ): Promise<Result<ContentFragmentBlob, Error>> {
   const { title, url } = cf;
 
-  const file = await FileResource.fetchById(auth, cf.fileId);
-  if (!file) {
-    return new Err(new Error("File not found."));
-  }
+  if (isContentFragmentInputWithFileId(cf)) {
+    const file = await FileResource.fetchById(auth, cf.fileId);
+    if (!file) {
+      return new Err(new Error("File not found."));
+    }
 
-  if (file.useCase !== "conversation") {
-    return new Err(new Error("File not meant to be used in a conversation."));
-  }
+    if (file.useCase !== "conversation") {
+      return new Err(new Error("File not meant to be used in a conversation."));
+    }
 
-  if (!file.isReady) {
-    return new Err(
-      new Error("The file is not ready. Please re-upload the file to proceed.")
-    );
-  }
+    if (!file.isReady) {
+      return new Err(
+        new Error(
+          "The file is not ready. Please re-upload the file to proceed."
+        )
+      );
+    }
 
-  // Give priority to the URL if it is provided.
-  const sourceUrl = url ?? file.getPrivateUrl(auth);
-  return new Ok({
-    contentType: file.contentType,
-    fileId: file.id,
-    sourceUrl,
-    textBytes: file.fileSize,
-    title,
-  });
+    // Give priority to the URL if it is provided.
+    const sourceUrl = url ?? file.getPrivateUrl(auth);
+    return new Ok({
+      contentType: file.contentType,
+      fileId: file.id,
+      sourceUrl,
+      textBytes: file.fileSize,
+      nodeId: null,
+      nodeDataSourceViewId: null,
+      title,
+    });
+  } else if (isContentFragmentInputWithContentNode(cf)) {
+    return new Ok({
+      contentType: cf.contentType,
+      nodeId: cf.nodeId,
+      nodeDataSourceViewId: getResourceIdFromSId(cf.nodeDataSourceViewId),
+      sourceUrl: null,
+      textBytes: null,
+      fileId: null,
+      title,
+    });
+  } else {
+    return new Err(new Error("Invalid content fragment input."));
+  }
 }

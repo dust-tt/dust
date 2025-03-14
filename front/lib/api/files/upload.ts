@@ -3,6 +3,7 @@ import type {
   Result,
   SupportedFileContentType,
 } from "@dust-tt/types";
+import { isDustMimeType } from "@dust-tt/types";
 import {
   assertNever,
   Err,
@@ -242,6 +243,8 @@ const getProcessingFunction = ({
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/vnd.ms-powerpoint":
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    case "application/vnd.google-apps.document":
+    case "application/vnd.google-apps.presentation":
     case "application/pdf":
       if (["conversation", "upsert_document"].includes(useCase)) {
         return extractTextFromFileAndUpload;
@@ -294,7 +297,11 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
+    // Processing is assumed to be irrelevant for internal mime types.
     default:
+      if (isDustMimeType(contentType)) {
+        break;
+      }
       assertNever(contentType);
   }
 
