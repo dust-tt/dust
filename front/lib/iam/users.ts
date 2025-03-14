@@ -178,10 +178,12 @@ export async function mergeUserIdentities({
   auth,
   primaryUserId,
   secondaryUserId,
+  enforceEmailMatch = true,
 }: {
   auth: Authenticator;
   primaryUserId: string;
   secondaryUserId: string;
+  enforceEmailMatch?: boolean;
 }): Promise<
   Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
 > {
@@ -195,7 +197,7 @@ export async function mergeUserIdentities({
     return new Err(new Error("Primary or secondary user not found."));
   }
 
-  if (primaryUser.email !== secondaryUser.email) {
+  if (enforceEmailMatch && primaryUser.email !== secondaryUser.email) {
     return new Err(
       new Error("Primary and secondary user emails do not match.")
     );
@@ -210,6 +212,16 @@ export async function mergeUserIdentities({
   if (!primaryMemberships.some((m) => m.workspaceId === workspaceId)) {
     return new Err(
       new Error("Primary must have a membership in the workspace.")
+    );
+  }
+
+  // Ensure that secondary user has a membership in the workspace.
+  const secondaryMemberships = await MembershipResource.fetchByUserIds([
+    secondaryUser.id,
+  ]);
+  if (!secondaryMemberships.some((m) => m.workspaceId === workspaceId)) {
+    return new Err(
+      new Error("Secondary must have a membership in the workspace.")
     );
   }
 
