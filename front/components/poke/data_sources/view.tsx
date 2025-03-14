@@ -8,11 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  CoreAPIDataSource,
-  DataSourceType,
-} from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
@@ -26,6 +21,11 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+} from "@app/types";
 
 export function ViewDataSourceTable({
   connector,

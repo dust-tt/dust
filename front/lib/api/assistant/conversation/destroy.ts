@@ -1,5 +1,3 @@
-import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
@@ -28,6 +26,8 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
+import type { ConversationWithoutContentType, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 

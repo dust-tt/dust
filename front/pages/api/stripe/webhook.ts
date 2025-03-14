@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever, ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { pipeline, Writable } from "stream";
 import type Stripe from "stripe";
@@ -33,6 +31,8 @@ import {
   launchScheduleWorkspaceScrubWorkflow,
   terminateScheduleWorkspaceScrubWorkflow,
 } from "@app/temporal/scrub_workspace/client";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever, ConnectorsAPI, removeNulls } from "@app/types";
 
 export type GetResponseBody = {
   success: boolean;

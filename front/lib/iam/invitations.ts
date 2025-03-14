@@ -1,9 +1,3 @@
-import type {
-  LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { verify } from "jsonwebtoken";
 
 import config from "@app/lib/api/config";
@@ -14,6 +8,12 @@ import { Workspace } from "@app/lib/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  MembershipInvitationType,
+  Result,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function getPendingMembershipInvitationForToken(
   inviteToken: string | string[] | undefined

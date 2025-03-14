@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 

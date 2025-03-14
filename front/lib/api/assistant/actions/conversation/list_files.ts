@@ -1,12 +1,3 @@
-import type {
-  AgentMessageType,
-  ConversationFileType,
-  ConversationListFilesActionType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelId,
-} from "@dust-tt/types";
-import { BaseAction } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -15,6 +6,15 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
+import type {
+  AgentMessageType,
+  ConversationFileType,
+  ConversationListFilesActionType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+} from "@app/types";
+import { BaseAction } from "@app/types";
 
 interface ConversationListFilesActionBlob {
   agentMessageId: ModelId;

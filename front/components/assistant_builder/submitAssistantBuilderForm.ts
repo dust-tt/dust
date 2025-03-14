@@ -1,14 +1,3 @@
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  RetrievalTimeframe,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
@@ -25,6 +14,16 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+  Result,
+  RetrievalTimeframe,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;

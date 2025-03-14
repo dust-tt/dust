@@ -1,21 +1,3 @@
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-  DataSourceConfiguration,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelId,
-  Result,
-  RetrievalActionType,
-  RetrievalConfigurationType,
-  RetrievalDocumentChunkType,
-  RetrievalDocumentType,
-  RetrievalErrorEvent,
-  RetrievalParamsEvent,
-  RetrievalSuccessEvent,
-  TimeFrame,
-} from "@dust-tt/types";
-import { BaseAction, Ok } from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
@@ -40,6 +22,24 @@ import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_documen
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  ActionConfigurationType,
+  AgentActionSpecification,
+  DataSourceConfiguration,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+  Result,
+  RetrievalActionType,
+  RetrievalConfigurationType,
+  RetrievalDocumentChunkType,
+  RetrievalDocumentType,
+  RetrievalErrorEvent,
+  RetrievalParamsEvent,
+  RetrievalSuccessEvent,
+  TimeFrame,
+} from "@app/types";
+import { BaseAction, Ok } from "@app/types";
 
 /**
  * TimeFrame parsing

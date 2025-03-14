@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   executeChild,
@@ -19,6 +18,7 @@ import type {
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import type { ModelId } from "@app/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;

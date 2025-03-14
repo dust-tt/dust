@@ -15,7 +15,6 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, LightWorkspaceType } from "@dust-tt/types";
 import * as _ from "lodash";
 import { useEffect, useState } from "react";
 
@@ -24,6 +23,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import logger from "@app/logger/logger";
+import type { DataSourceType, LightWorkspaceType } from "@app/types";
 
 interface RequestDataSourceModal {
   dataSources: DataSourceType[];

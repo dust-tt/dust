@@ -1,8 +1,8 @@
-import type { ModelId, WebsearchConfigurationType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
+import type { ModelId, WebsearchConfigurationType } from "@app/types";
 
 export async function fetchWebsearchActionConfigurations({
   configurationIds,

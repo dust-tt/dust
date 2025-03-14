@@ -1,4 +1,3 @@
-import { ConnectorsAPI, removeNulls } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -34,6 +33,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { ConnectorsAPI, removeNulls } from "@app/types";
 
 export async function sendDataDeletionEmail({
   remainingDays,

@@ -9,15 +9,15 @@ import {
   NotionLogo,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
+import { useCallback, useState } from "react";
+
+import { classNames } from "@app/lib/utils";
+import type { PlanType } from "@app/types";
 import {
   assertNever,
   isMaxMessagesTimeframeType,
   MAX_MESSAGE_TIMEFRAMES,
-} from "@dust-tt/types";
-import { useCallback, useState } from "react";
-
-import { classNames } from "@app/lib/utils";
+} from "@app/types";
 
 export type EditingPlanType = {
   name: string;

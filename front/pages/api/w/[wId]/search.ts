@@ -1,11 +1,3 @@
-import type {
-  ContentNodeWithParent,
-  DataSourceType,
-  DataSourceViewType,
-  SearchWarningCode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { CoreAPI, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -24,6 +16,14 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ContentNodeWithParent,
+  DataSourceType,
+  DataSourceViewType,
+  SearchWarningCode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { CoreAPI, removeNulls } from "@app/types";
 
 const BaseSearchBody = t.type({
   viewType: t.union([

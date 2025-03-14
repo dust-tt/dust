@@ -1,11 +1,4 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type {
-  ContentFragmentType,
-  PokeAgentMessageType,
-  UserMessageType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -16,6 +9,13 @@ import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeConversation } from "@app/poke/swr";
+import type {
+  ContentFragmentType,
+  PokeAgentMessageType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   workspace: WorkspaceType;

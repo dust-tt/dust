@@ -5,7 +5,6 @@ import {
   Icon,
   Page,
 } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -17,6 +16,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(

@@ -1,13 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type {
-  AppType,
-  SpecificationBlockType,
-  SpecificationType,
-} from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
 import _ from "lodash";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect } from "react";
@@ -15,6 +8,13 @@ import { useCallback, useEffect } from "react";
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import TablePicker from "@app/components/tables/TablePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type {
+  AppType,
+  SpecificationBlockType,
+  SpecificationType,
+} from "@app/types";
+import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
 

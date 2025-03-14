@@ -1,6 +1,5 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-
 import type { PostRequestAccessBody } from "@app/pages/api/w/[wId]/data_sources/request_access";
+import type { LightWorkspaceType } from "@app/types";
 
 export async function sendRequestDataSourceEmail({
   userTo,

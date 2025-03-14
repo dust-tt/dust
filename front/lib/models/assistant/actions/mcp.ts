@@ -1,4 +1,3 @@
-import { assertNever } from "@dust-tt/types";
 import type { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -9,6 +8,7 @@ import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { assertNever } from "@app/types";
 
 type MCPToolResultContent = z.infer<
   typeof CallToolResultSchema

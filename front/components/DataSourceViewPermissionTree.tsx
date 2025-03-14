@@ -1,14 +1,14 @@
 import { Tree } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useCallback } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 
 const getUseResourceHook =
   (

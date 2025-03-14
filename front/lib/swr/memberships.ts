@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -7,6 +6,7 @@ import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { LightWorkspaceType } from "@app/types";
 
 type PaginationParams = {
   orderColumn: "createdAt";

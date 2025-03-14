@@ -1,15 +1,4 @@
 import { Page, useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  ContentFragmentsType,
-  LightAgentConfigurationType,
-  MentionType,
-  Result,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -32,6 +21,17 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;

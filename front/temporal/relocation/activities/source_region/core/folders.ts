@@ -1,9 +1,3 @@
-import type {
-  CoreAPINodesSearchFilter,
-  CoreAPISearchCursorRequest,
-} from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
@@ -13,6 +7,11 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type {
+  CoreAPINodesSearchFilter,
+  CoreAPISearchCursorRequest,
+} from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,

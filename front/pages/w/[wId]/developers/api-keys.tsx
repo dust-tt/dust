@@ -29,15 +29,6 @@ import {
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import type {
-  GroupType,
-  KeyType,
-  ModelId,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { prettifyGroupName } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import React, { useMemo, useState } from "react";
@@ -50,6 +41,15 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { useKeys } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type {
+  GroupType,
+  KeyType,
+  ModelId,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { prettifyGroupName } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

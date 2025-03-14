@@ -1,8 +1,3 @@
-import type {
-  TrackerConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { md5, ModelIdCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,6 +10,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  TrackerConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { md5, ModelIdCodec, ModelProviderIdCodec } from "@app/types";
 
 const TRACKER_LIMIT_BY_WORKSPACE: Record<string, number> = {
   baf50ff50aa28e3b3ebb09bf21fbc29d: -1, // dust US workspace

@@ -1,10 +1,10 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 async function backfillDefaultTranscriptsConfigurations(
   workspace: LightWorkspaceType,

@@ -1,23 +1,4 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentReasoningEffort,
-  AppType,
-  DataSourceViewSelectionConfigurations,
-  ModelIdType,
-  ModelProviderIdType,
-  PlanType,
-  ProcessSchemaPropertyType,
-  SubscriptionType,
-  SupportedModel,
-  TimeframeUnit,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
-import {
-  assertNever,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-} from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import type { SVGProps } from "react";
 import type React from "react";
@@ -32,6 +13,25 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/api/assistant/actions/constants";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type {
+  AgentConfigurationScope,
+  AgentReasoningEffort,
+  AppType,
+  DataSourceViewSelectionConfigurations,
+  ModelIdType,
+  ModelProviderIdType,
+  PlanType,
+  ProcessSchemaPropertyType,
+  SubscriptionType,
+  SupportedModel,
+  TimeframeUnit,
+  WorkspaceType,
+} from "@app/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types";
+import {
+  assertNever,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+} from "@app/types";
 
 export const ACTION_MODES = [
   "GENERIC",

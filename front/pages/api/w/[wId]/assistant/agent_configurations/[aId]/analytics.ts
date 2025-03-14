@@ -1,8 +1,3 @@
-import type {
-  AgentConfigurationType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,6 +13,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  AgentConfigurationType,
+  UserType,
+  WithAPIErrorResponse,
+} from "@app/types";
 export type GetAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
 };

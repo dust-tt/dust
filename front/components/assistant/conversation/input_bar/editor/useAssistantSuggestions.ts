@@ -1,11 +1,8 @@
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { compareAgentsForSort } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import { compareAgentsForSort } from "@app/types";
 
 function makeEditorSuggestions(
   agentConfigurations: LightAgentConfigurationType[]

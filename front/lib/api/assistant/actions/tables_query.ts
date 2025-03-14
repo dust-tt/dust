@@ -1,28 +1,3 @@
-import type {
-  ActionGeneratedFileType,
-  AgentActionSpecification,
-  ConnectorProvider,
-  DustAppParameters,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelId,
-  Result,
-  TablesQueryActionType,
-  TablesQueryConfigurationType,
-  TablesQueryErrorEvent,
-  TablesQueryModelOutputEvent,
-  TablesQueryOutputEvent,
-  TablesQueryStartedEvent,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  BaseAction,
-  getTablesQueryResultsFileAttachments,
-  getTablesQueryResultsFileTitle,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
-
 import { runActionStreamed } from "@app/lib/actions/server";
 import {
   generateCSVFileAndSnippet,
@@ -43,6 +18,30 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type {
+  ActionGeneratedFileType,
+  AgentActionSpecification,
+  ConnectorProvider,
+  DustAppParameters,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+  Result,
+  TablesQueryActionType,
+  TablesQueryConfigurationType,
+  TablesQueryErrorEvent,
+  TablesQueryModelOutputEvent,
+  TablesQueryOutputEvent,
+  TablesQueryStartedEvent,
+} from "@app/types";
+import {
+  assertNever,
+  BaseAction,
+  getTablesQueryResultsFileAttachments,
+  getTablesQueryResultsFileTitle,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 // Need a model with at least 32k to run tables query.
 const TABLES_QUERY_MIN_TOKEN = 28_000;

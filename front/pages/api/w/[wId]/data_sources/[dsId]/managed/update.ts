@@ -1,11 +1,4 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  isAPIError,
-  isConnectorsAPIError,
-  sendUserOperationMessage,
-  UpdateConnectorRequestBodySchema,
-} from "@dust-tt/types";
+import { isConnectorsAPIError } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -18,6 +11,13 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  ConnectorsAPI,
+  isAPIError,
+  sendUserOperationMessage,
+  UpdateConnectorRequestBodySchema,
+} from "@app/types";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;

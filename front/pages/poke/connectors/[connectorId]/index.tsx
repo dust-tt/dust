@@ -1,9 +1,8 @@
-import type { ConnectorType } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
+import type { ConnectorType } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async (context) => {

@@ -1,15 +1,3 @@
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceWithConnectorDetailsType,
-  SpaceType,
-} from "@dust-tt/types";
-import {
-  CONNECTOR_PROVIDERS,
-  isConnectorProvider,
-  isDataSourceViewCategoryWithoutApps,
-  removeNulls,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -28,6 +16,18 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategory,
+  DataSourceWithConnectorDetailsType,
+  SpaceType,
+} from "@app/types";
+import {
+  CONNECTOR_PROVIDERS,
+  isConnectorProvider,
+  isDataSourceViewCategoryWithoutApps,
+  removeNulls,
+} from "@app/types";
 
 type DataSourceViewCategoryWithoutApps = Exclude<
   DataSourceViewCategory,

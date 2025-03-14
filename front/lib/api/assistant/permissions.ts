@@ -1,9 +1,3 @@
-import type {
-  DustAppRunConfigurationType,
-  ModelId,
-  UnsavedAgentActionConfigurationType,
-} from "@dust-tt/types";
-import { isDustAppRunConfiguration, removeNulls } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +5,12 @@ import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
+import type {
+  DustAppRunConfigurationType,
+  ModelId,
+  UnsavedAgentActionConfigurationType,
+} from "@app/types";
+import { isDustAppRunConfiguration, removeNulls } from "@app/types";
 
 export async function listAgentConfigurationsForGroups(
   auth: Authenticator,

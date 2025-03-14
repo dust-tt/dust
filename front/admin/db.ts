@@ -1,5 +1,3 @@
-import { sendInitDbMessage } from "@dust-tt/types";
-
 import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
@@ -100,6 +98,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
+import { sendInitDbMessage } from "@app/types";
 
 async function main() {
   await sendInitDbMessage({

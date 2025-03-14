@@ -1,28 +1,3 @@
-import type {
-  AgentConfigurationType,
-  AssistantContentMessageTypeModel,
-  AssistantFunctionCallMessageTypeModel,
-  ConversationType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelConfigurationType,
-  ModelConversationTypeMultiActions,
-  ModelMessageTypeMultiActions,
-  Result,
-  UserMessageType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isAgentMessageType,
-  isContentFragmentMessageTypeModel,
-  isContentFragmentType,
-  isRetrievalConfiguration,
-  isUserMessageType,
-  isWebsearchConfiguration,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import moment from "moment-timezone";
 
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
@@ -36,6 +11,31 @@ import type { Authenticator } from "@app/lib/auth";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
+import type {
+  AgentConfigurationType,
+  AssistantContentMessageTypeModel,
+  AssistantFunctionCallMessageTypeModel,
+  ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelConfigurationType,
+  ModelConversationTypeMultiActions,
+  ModelMessageTypeMultiActions,
+  Result,
+  UserMessageType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isAgentMessageType,
+  isContentFragmentMessageTypeModel,
+  isContentFragmentType,
+  isRetrievalConfiguration,
+  isUserMessageType,
+  isWebsearchConfiguration,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 /**
  * Generation execution.

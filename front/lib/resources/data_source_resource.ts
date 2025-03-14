@@ -1,13 +1,4 @@
 import type {
-  ConnectorProvider,
-  ConversationWithoutContentType,
-  DataSourceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { formatUserFullName, Ok, removeNulls } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -32,6 +23,15 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ConnectorProvider,
+  ConversationWithoutContentType,
+  DataSourceType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { formatUserFullName, Ok, removeNulls } from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 

@@ -11,14 +11,6 @@ import {
   SearchInput,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  PlanType,
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-  UserType,
-  WorkspaceDomain,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -46,6 +38,14 @@ import {
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+import type {
+  PlanType,
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+  UserType,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;

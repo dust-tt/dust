@@ -1,6 +1,3 @@
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
-
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
@@ -10,6 +7,8 @@ import { RetrievalActionDetails } from "@app/components/actions/retrieval/Retrie
 import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
+import { ACTION_RUNNING_LABELS } from "@app/types";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,

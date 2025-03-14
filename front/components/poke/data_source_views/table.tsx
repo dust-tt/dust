@@ -1,10 +1,9 @@
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
-
 import { makeColumnsForDataSourceViews } from "@app/components/poke/data_source_views/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { usePokeDataSourceViews } from "@app/poke/swr/data_source_views";
+import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
 
 interface DataSourceViewsDataTableProps {
   owner: LightWorkspaceType;

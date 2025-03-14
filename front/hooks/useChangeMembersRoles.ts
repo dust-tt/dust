@@ -1,12 +1,12 @@
 import { useSendNotification } from "@dust-tt/sparkle";
+import { useCallback } from "react";
+
+import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspaces,
-} from "@dust-tt/types";
-import { useCallback } from "react";
-
-import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
+} from "@app/types";
 
 type HandleMembersRoleChangeParams = {
   members: UserTypeWithWorkspaces[];

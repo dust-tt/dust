@@ -1,51 +1,3 @@
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentDisabledErrorEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageErrorEvent,
-  AgentMessageNewEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  AgentMessageWithRankType,
-  ContentFragmentContextType,
-  ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithFileIdType,
-  ContentFragmentType,
-  ConversationTitleEvent,
-  ConversationType,
-  ConversationVisibility,
-  ConversationWithoutContentType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  MentionType,
-  PlanType,
-  Result,
-  UserMessageContext,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
-  UserMessageType,
-  UserMessageWithRankType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ConversationError,
-  Err,
-  getSmallWhitelistedModel,
-  getTimeframeSecondsFromLiteral,
-  isAgentMention,
-  isAgentMessageType,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  isUserMessageType,
-  md5,
-  Ok,
-  rateLimiter,
-  removeNulls,
-} from "@dust-tt/types";
 import { isEqual, sortBy } from "lodash";
 import _ from "lodash";
 import type { Transaction } from "sequelize";
@@ -95,8 +47,72 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type {
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
+  AgentDisabledErrorEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageErrorEvent,
+  AgentMessageNewEvent,
+  AgentMessageSuccessEvent,
+  AgentMessageType,
+  AgentMessageWithRankType,
+  ContentFragmentContextType,
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+  ContentFragmentType,
+  ConversationTitleEvent,
+  ConversationType,
+  ConversationVisibility,
+  ConversationWithoutContentType,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  MaxMessagesTimeframeType,
+  MentionType,
+  PlanType,
+  Result,
+  UserMessageContext,
+  UserMessageErrorEvent,
+  UserMessageNewEvent,
+  UserMessageType,
+  UserMessageWithRankType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  ConversationError,
+  Err,
+  getSmallWhitelistedModel,
+  isAgentMention,
+  isAgentMessageType,
+  isContentFragmentType,
+  isProviderWhitelisted,
+  isUserMessageType,
+  md5,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    // Lifetime is intentionally mapped to a 30-day period.
+    case "lifetime":
+      return 60 * 60 * 24 * 30; // 30 days.
+
+    default:
+      return 0;
+  }
+}
 
 /**
  * Conversation Creation, update and deletion

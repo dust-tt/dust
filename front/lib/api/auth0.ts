@@ -1,6 +1,4 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { ManagementClient } from "auth0";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -13,6 +11,8 @@ import type { RegionType } from "@app/lib/api/regions/config";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 let auth0ManagemementClient: ManagementClient | null = null;
 

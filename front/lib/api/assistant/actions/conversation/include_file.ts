@@ -1,19 +1,3 @@
-import type {
-  AgentActionSpecification,
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-  ConversationIncludeFileErrorEvent,
-  ConversationIncludeFileParamsEvent,
-  ConversationIncludeFileSuccessEvent,
-  ConversationType,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelConfigurationType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { BaseAction, CoreAPI, Err, isTextContent, Ok } from "@dust-tt/types";
-
 import {
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
   DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
@@ -33,6 +17,21 @@ import {
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  AgentActionSpecification,
+  ConversationIncludeFileActionType,
+  ConversationIncludeFileConfigurationType,
+  ConversationIncludeFileErrorEvent,
+  ConversationIncludeFileParamsEvent,
+  ConversationIncludeFileSuccessEvent,
+  ConversationType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelConfigurationType,
+  ModelId,
+  Result,
+} from "@app/types";
+import { BaseAction, CoreAPI, Err, isTextContent, Ok } from "@app/types";
 
 interface ConversationIncludeFileActionBlob {
   id: ModelId;

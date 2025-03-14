@@ -1,10 +1,10 @@
-import type { DustAppRunConfigurationType, ModelId } from "@dust-tt/types";
 import _ from "lodash";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AppResource } from "@app/lib/resources/app_resource";
+import type { DustAppRunConfigurationType, ModelId } from "@app/types";
 
 export async function fetchDustAppRunActionConfigurations(
   auth: Authenticator,

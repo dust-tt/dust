@@ -6,12 +6,12 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
-import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
+import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;

@@ -1,23 +1,3 @@
-import type {
-  DataSourceType,
-  DataSourceViewType,
-  PlanType,
-  WithAPIErrorResponse,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CONNECTOR_PROVIDERS,
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  ioTsParsePayload,
-  sendUserOperationMessage,
-  WebCrawlerConfigurationTypeSchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -44,6 +24,26 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceType,
+  DataSourceViewType,
+  PlanType,
+  WithAPIErrorResponse,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CONNECTOR_PROVIDERS,
+  ConnectorConfigurationTypeSchema,
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
+  EMBEDDING_CONFIGS,
+  ioTsParsePayload,
+  sendUserOperationMessage,
+  WebCrawlerConfigurationTypeSchema,
+} from "@app/types";
 
 // Sorcery: Create a union type with at least two elements to satisfy t.union
 function getConnectorProviderCodec(): t.Mixed {

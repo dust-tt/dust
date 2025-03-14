@@ -1,3 +1,4 @@
+import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
@@ -11,18 +12,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
   SnowflakeCredentials,
   WorkspaceType,
-} from "@dust-tt/types";
-import { isConnectorsAPIError } from "@dust-tt/types";
-import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+} from "@app/types";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;

@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import assert from "assert";
 import type { GroupedCountResultItem } from "sequelize";
 import { Op } from "sequelize";
@@ -11,6 +10,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 async function backfillViewsInAgentTableQueryConfigurationForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,

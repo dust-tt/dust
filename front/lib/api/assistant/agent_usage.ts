@@ -1,8 +1,3 @@
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import _ from "lodash";
 import type { RedisClientType } from "redis";
 import { literal, Op, QueryTypes, Sequelize } from "sequelize";
@@ -19,6 +14,11 @@ import { Workspace } from "@app/lib/models/workspace";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;

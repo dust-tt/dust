@@ -13,28 +13,6 @@ import {
   Page,
   Popover,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  RetrievalActionType,
-  UserType,
-  WebsearchActionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isRetrievalActionType,
-  isWebsearchActionType,
-  removeNulls,
-} from "@dust-tt/types";
 import { marked } from "marked";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -73,6 +51,28 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+import type {
+  AgentActionSpecificEvent,
+  AgentActionSuccessEvent,
+  AgentActionType,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageSuccessEvent,
+  AgentMessageType,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  RetrievalActionType,
+  UserType,
+  WebsearchActionType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  GLOBAL_AGENTS_SID,
+  isRetrievalActionType,
+  isWebsearchActionType,
+  removeNulls,
+} from "@app/types";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;

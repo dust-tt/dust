@@ -2,13 +2,6 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 
-import type {
-  ModelId,
-  Result,
-  RetrievalDocumentChunkType,
-  RetrievalDocumentType,
-} from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
@@ -23,6 +16,13 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type {
+  ModelId,
+  Result,
+  RetrievalDocumentChunkType,
+  RetrievalDocumentType,
+} from "@app/types";
+import { removeNulls } from "@app/types";
 
 export type RetrievalDocumentBlob = CreationAttributes<RetrievalDocument>;
 

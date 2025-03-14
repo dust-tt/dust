@@ -6,17 +6,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React from "react";
 
@@ -38,6 +27,17 @@ import {
 } from "@app/lib/content_nodes";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpaceSearch } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 

@@ -1,13 +1,4 @@
 import type {
-  GroupType,
-  LightWorkspaceType,
-  ModelId,
-  ResourcePermission,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   Includeable,
@@ -30,6 +21,15 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  GroupType,
+  LightWorkspaceType,
+  ModelId,
+  ResourcePermission,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -31,12 +31,6 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ModelConfigurationType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -89,6 +83,12 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",

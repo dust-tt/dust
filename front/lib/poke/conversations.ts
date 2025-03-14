@@ -1,10 +1,3 @@
-import type {
-  ConversationError,
-  PokeConversationType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Ok } from "@dust-tt/types";
-
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -16,6 +9,12 @@ import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearc
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { getDustProdAction } from "@app/lib/registry";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type {
+  ConversationError,
+  PokeConversationType,
+  Result,
+} from "@app/types";
+import { assertNever, Ok } from "@app/types";
 
 export async function getPokeConversation(
   auth: Authenticator,

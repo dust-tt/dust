@@ -1,18 +1,3 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  GetAgentConfigurationsQuerySchema,
-  Ok,
-  PostOrPatchAgentConfigurationRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import _ from "lodash";
@@ -35,6 +20,21 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+  Result,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  GetAgentConfigurationsQuerySchema,
+  Ok,
+  PostOrPatchAgentConfigurationRequestBodySchema,
+} from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
   agentConfigurations: LightAgentConfigurationType[];

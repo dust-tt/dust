@@ -1,5 +1,3 @@
-import type { WorkspaceType } from "@dust-tt/types";
-import { Ok, slugify, TABLE_PREFIX } from "@dust-tt/types";
 import { beforeEach, describe, expect, vi } from "vitest";
 
 import { upsertTable } from "@app/lib/api/data_sources";
@@ -12,6 +10,8 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { WorkspaceType } from "@app/types";
+import { Ok, slugify, TABLE_PREFIX } from "@app/types";
 
 // Mock the data_sources module to spy on upsertTable
 vi.mock(import("../data_sources"), async (importOriginal) => {

@@ -1,5 +1,4 @@
 import { ContextItem, Popup, SlackLogo, SliderToggle } from "@dust-tt/sparkle";
-import type { DataSourceType, PlanType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import * as React from "react";
@@ -8,6 +7,7 @@ import {
   useConnectorConfig,
   useToggleSlackChatBot,
 } from "@app/lib/swr/connectors";
+import type { DataSourceType, PlanType, WorkspaceType } from "@app/types";
 
 export function SlackBotEnableView({
   owner,

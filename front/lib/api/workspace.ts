@@ -1,21 +1,3 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  Result,
-  RoleType,
-  SubscriptionType,
-  UserTypeWithWorkspaces,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  ACTIVE_ROLES,
-  assertNever,
-  Err,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -36,6 +18,18 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  Result,
+  RoleType,
+  SubscriptionType,
+  UserTypeWithWorkspaces,
+  WorkspaceDomain,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types";
+import { ACTIVE_ROLES, assertNever, Err, Ok, removeNulls } from "@app/types";
 
 export async function getWorkspaceInfos(
   wId: string

@@ -17,24 +17,6 @@ import {
   TableIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  CoreAPIDataSource,
-  DataSourceType,
-  GroupType,
-  NotionCheckUrlResponseType,
-  NotionFindUrlResponseType,
-  SlackAutoReadPattern,
-  SlackbotWhitelistType,
-  WorkspaceType,
-  ZendeskFetchTicketResponseType,
-} from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  isSlackAutoReadPatterns,
-  safeParseJSON,
-} from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -59,6 +41,24 @@ import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+  GroupType,
+  NotionCheckUrlResponseType,
+  NotionFindUrlResponseType,
+  SlackAutoReadPattern,
+  SlackbotWhitelistType,
+  WorkspaceType,
+  ZendeskFetchTicketResponseType,
+} from "@app/types";
+import {
+  ConnectorsAPI,
+  CoreAPI,
+  isSlackAutoReadPatterns,
+  safeParseJSON,
+} from "@app/types";
 
 const { TEMPORAL_CONNECTORS_NAMESPACE = "" } = process.env;
 

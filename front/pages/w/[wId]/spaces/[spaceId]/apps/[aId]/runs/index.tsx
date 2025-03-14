@@ -1,8 +1,4 @@
 import { Button, cn, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { RunRunType, RunStatus } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -16,6 +12,10 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
+import type { RunRunType, RunStatus } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

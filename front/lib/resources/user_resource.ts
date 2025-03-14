@@ -1,11 +1,3 @@
-import type {
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserProviderType,
-  UserType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -17,6 +9,14 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type {
+  LightWorkspaceType,
+  ModelId,
+  Result,
+  UserProviderType,
+  UserType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export interface SearchMembersPaginationParams {
   orderColumn: "name";

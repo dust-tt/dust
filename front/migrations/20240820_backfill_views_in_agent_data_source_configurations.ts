@@ -1,4 +1,4 @@
-// import type { LightWorkspaceType } from "@dust-tt/types";
+// import type { LightWorkspaceType } from "@app/types";
 // import assert from "assert";
 // import { Op } from "sequelize";
 //

@@ -1,8 +1,8 @@
 import { MagnifyingGlassIcon } from "@dust-tt/sparkle";
-import type { ConversationIncludeFileActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { ConversationIncludeFileActionType } from "@app/types";
 
 export function ConversationIncludeFileActionDetails({
   action,

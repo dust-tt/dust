@@ -1,7 +1,5 @@
 import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { CoreAPIError, Result } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI, Err, Ok } from "@dust-tt/types";
 import _ from "lodash";
 
 import { default as config } from "@app/lib/api/config";
@@ -12,6 +10,8 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
+import type { CoreAPIError, Result } from "@app/types";
+import { concurrentExecutor, CoreAPI, Err, Ok } from "@app/types";
 
 async function updateOrCreateApp(
   auth: Authenticator,

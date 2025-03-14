@@ -6,13 +6,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -23,6 +16,13 @@ import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;

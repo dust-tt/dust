@@ -7,6 +7,11 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
+import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -14,12 +19,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-
-import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 

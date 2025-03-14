@@ -1,8 +1,7 @@
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 export const fetchDocumentContentPlugin = createPlugin({
   manifest: {

@@ -1,4 +1,4 @@
-import type { RoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
+import type { RoleType, UserTypeWithWorkspaces } from "@app/types";
 
 export async function handleMembersRoleChange({
   members,

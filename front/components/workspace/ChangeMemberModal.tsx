@@ -18,8 +18,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ActiveRoleType, UserTypeWithWorkspaces } from "@dust-tt/types";
-import { isActiveRoleType } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
@@ -27,6 +25,8 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+import type { ActiveRoleType, UserTypeWithWorkspaces } from "@app/types";
+import { isActiveRoleType } from "@app/types";
 
 export function ChangeMemberModal({
   onClose,

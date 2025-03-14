@@ -1,6 +1,5 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)

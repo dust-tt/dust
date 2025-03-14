@@ -1,3 +1,16 @@
+import { runActionStreamed } from "@app/lib/actions/server";
+import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
+import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
+import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
+import { renderConversationForModel } from "@app/lib/api/assistant/generation";
+import { getRedisClient } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
+import { getDustProdAction } from "@app/lib/registry";
+import { cloneBaseConfig } from "@app/lib/registry";
+import logger from "@app/logger/logger";
 import type {
   AgentActionSpecification,
   FunctionCallType,
@@ -12,28 +25,14 @@ import type {
   ReasoningThinkingEvent,
   ReasoningTokensEvent,
   Result,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   BaseAction,
   isProviderWhitelisted,
   isReasoningConfiguration,
   Ok,
   SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-
-import { runActionStreamed } from "@app/lib/actions/server";
-import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/api/assistant/actions/constants";
-import type { BaseActionRunParams } from "@app/lib/api/assistant/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/api/assistant/actions/types";
-import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
-import { renderConversationForModel } from "@app/lib/api/assistant/generation";
-import { getRedisClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
-import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 interface ReasoningActionBlob {
   id: ModelId;

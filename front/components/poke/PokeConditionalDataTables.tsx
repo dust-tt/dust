@@ -1,9 +1,9 @@
 import { Button, Spinner } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
+import type { LightWorkspaceType } from "@app/types";
 
 interface PokeDataTableConditionalFetchProps<T, M> {
   buttonText?: string;

@@ -2,11 +2,8 @@ import type {
   DataSourceType,
   LightContentNode,
   TimeframeUnit,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isGoogleSheetContentNodeInternalId,
-} from "@dust-tt/types";
+} from "@app/types";
+import { assertNever, isGoogleSheetContentNodeInternalId } from "@app/types";
 
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",

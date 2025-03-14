@@ -1,7 +1,5 @@
 import type { DustAppConfigType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { APIError, Result } from "@dust-tt/types";
-import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
 import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,6 +14,8 @@ import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import type { Action } from "@app/lib/registry";
 import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
+import type { APIError, Result } from "@app/types";
+import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
 
 interface CallActionParams<V extends t.Mixed> {
   input: { [key: string]: unknown };

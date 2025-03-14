@@ -1,5 +1,4 @@
 import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
-import type { PluginResourceTarget } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
@@ -11,6 +10,7 @@ import {
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 interface PluginCardProps {
   onClick: () => void;

@@ -1,11 +1,8 @@
-import type {
-  CheckBigQueryCredentials,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PostCheckBigQueryLocationsResponseBody } from "@app/pages/api/w/[wId]/credentials/check_bigquery_locations";
+import type { CheckBigQueryCredentials, LightWorkspaceType } from "@app/types";
 
 export function useBigQueryLocations({
   owner,

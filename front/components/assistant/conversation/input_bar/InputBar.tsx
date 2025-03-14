@@ -1,14 +1,4 @@
 import { Button, cn, RainbowEffect, StopIcon } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  ContentFragmentsType,
-  DataSourceViewContentNode,
-  LightAgentConfigurationType,
-  MentionType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { compareAgentsForSort } from "@dust-tt/types";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
@@ -26,6 +16,16 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { compareAgentsForSort } from "@app/types";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
 

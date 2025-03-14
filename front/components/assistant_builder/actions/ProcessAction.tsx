@@ -14,13 +14,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ProcessSchemaPropertyType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import React, { useEffect, useState } from "react";
 
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -32,6 +25,13 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import { classNames } from "@app/lib/utils";
+import type {
+  ProcessSchemaPropertyType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration

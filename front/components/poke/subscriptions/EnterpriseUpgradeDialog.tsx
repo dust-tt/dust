@@ -9,8 +9,6 @@ import {
   DialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import { useState } from "react";
@@ -23,6 +21,8 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
+import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
+import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
 
 export default function EnterpriseUpgradeDialog({
   owner,

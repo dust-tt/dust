@@ -1,27 +1,3 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-  slugify,
-} from "@dust-tt/types";
-
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
@@ -39,6 +15,29 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  DustAppRunConfigurationType,
+  ProcessConfigurationType,
+  ReasoningConfigurationType,
+  RetrievalConfigurationType,
+  TablesQueryConfigurationType,
+  TemplateAgentConfigurationType,
+} from "@app/types";
+import {
+  assertNever,
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+  slugify,
+} from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleSpaces = (

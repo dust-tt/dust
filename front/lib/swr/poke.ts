@@ -1,8 +1,3 @@
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -13,6 +8,11 @@ import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import type {
+  ConnectorPermission,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function usePokeRegion() {
   const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;

@@ -73,6 +73,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unknown_connector_provider"
   | "invalid_request_error"
+  | "connector_authorization_error"
   | "connector_not_found"
   | "connector_configuration_not_found"
   | "connector_update_error"
@@ -90,15 +91,15 @@ const ConnectorsAPIErrorSchema = z.object({
   message: z.string(),
 });
 
+export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
+
 const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
 
-export function isConnectorsAPIError(
-  obj: unknown
-): obj is ConnectorsAPIErrorType {
+export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
@@ -106,7 +107,7 @@ export function isConnectorsAPIError(
     typeof obj.message === "string" &&
     "type" in obj &&
     typeof obj.type === "string" &&
-    ConnectorsAPIErrorTypeSchema.safeParse(obj).success
+    ConnectorsAPIErrorSchema.safeParse(obj).success
   );
 }
 

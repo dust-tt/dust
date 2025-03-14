@@ -1,9 +1,8 @@
-import type { AdminCommandType } from "@dust-tt/types";
-import { ConnectorsAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger from "@app/logger/logger";
+import type { AdminCommandType } from "@app/types";
+import { ConnectorsAPI, Err, Ok } from "@app/types";
 
 export const notion = createPlugin({
   manifest: {

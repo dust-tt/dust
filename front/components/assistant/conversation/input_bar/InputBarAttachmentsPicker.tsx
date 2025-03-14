@@ -13,11 +13,6 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -26,6 +21,8 @@ import {
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;

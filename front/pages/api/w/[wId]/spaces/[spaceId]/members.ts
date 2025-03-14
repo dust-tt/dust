@@ -1,5 +1,3 @@
-import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PatchSpaceMembersRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -10,6 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import { PatchSpaceMembersRequestBodySchema } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;

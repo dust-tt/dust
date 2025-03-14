@@ -1,14 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
@@ -40,6 +30,16 @@ import type {
   PostSpaceSearchRequestBody,
   PostSpaceSearchResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type {
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,

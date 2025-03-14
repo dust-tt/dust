@@ -1,5 +1,3 @@
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 import type Stripe from "stripe";
 
@@ -10,6 +8,8 @@ import {
 import type { MauReportUsageType } from "@app/lib/plans/usage/types";
 import { InvalidRecurringPriceError } from "@app/lib/plans/usage/types";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 async function countActiveUsersForPeriodInWorkspace({
   messagesPerMonthForMau,

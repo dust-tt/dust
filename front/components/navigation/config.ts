@@ -11,8 +11,9 @@ import {
   ShapesIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { AppType, WorkspaceType } from "@dust-tt/types";
-import { isAdmin, isBuilder } from "@dust-tt/types";
+
+import type { AppType, WorkspaceType } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 /**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need

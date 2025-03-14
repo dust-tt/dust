@@ -1,4 +1,3 @@
-import type { Result } from "@dust-tt/types";
 import type {
   Attributes,
   ForeignKey,
@@ -25,6 +24,7 @@ import type {
   InferIncludeType,
   ResourceFindOptions,
 } from "@app/lib/resources/types";
+import type { Result } from "@app/types";
 
 // Interface to enforce workspaceId and vaultId.
 interface ModelWithSpace extends ResourceWithId {

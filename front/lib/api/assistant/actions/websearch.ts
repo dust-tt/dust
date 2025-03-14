@@ -1,19 +1,3 @@
-import type {
-  ActionConfigurationType,
-  AgentActionSpecification,
-  FunctionCallType,
-  FunctionMessageTypeModel,
-  ModelId,
-  Result,
-  WebsearchActionOutputType,
-  WebsearchActionType,
-  WebsearchConfigurationType,
-  WebsearchErrorEvent,
-  WebsearchParamsEvent,
-  WebsearchResultType,
-  WebsearchSuccessEvent,
-} from "@dust-tt/types";
-import { BaseAction, Ok, WebsearchAppActionOutputSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 
 import { runActionStreamed } from "@app/lib/actions/server";
@@ -29,6 +13,22 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
+import type {
+  ActionConfigurationType,
+  AgentActionSpecification,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+  Result,
+  WebsearchActionOutputType,
+  WebsearchActionType,
+  WebsearchConfigurationType,
+  WebsearchErrorEvent,
+  WebsearchParamsEvent,
+  WebsearchResultType,
+  WebsearchSuccessEvent,
+} from "@app/types";
+import { BaseAction, Ok, WebsearchAppActionOutputSchema } from "@app/types";
 
 interface WebsearchActionBlob {
   id: ModelId; // AgentWebsearchAction

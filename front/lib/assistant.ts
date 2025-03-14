@@ -1,6 +1,6 @@
-import type { AgentModelConfigurationType } from "@dust-tt/types";
-import type { SupportedModel } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import type { AgentModelConfigurationType } from "@app/types";
+import type { SupportedModel } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export function isLargeModel(model: unknown): model is SupportedModel {
   const maybeSupportedModel = model as SupportedModel;

@@ -1,5 +1,4 @@
 import { cn } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
 import Script from "next/script";
@@ -13,6 +12,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.

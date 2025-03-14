@@ -1,10 +1,3 @@
-import type {
-  OAuthAPIError,
-  OAuthConnectionType,
-  Result,
-} from "@dust-tt/types";
-import type { OAuthProvider, OAuthUseCase } from "@dust-tt/types";
-import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@dust-tt/types";
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
@@ -12,6 +5,9 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
+import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@app/types";
 
 export type OAuthError = {
   code:

@@ -1,10 +1,10 @@
-import { isDevelopment } from "@dust-tt/types";
 import assert from "assert";
 import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@app/lib/resources/storage/config";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types";
 
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.

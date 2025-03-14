@@ -1,10 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
 import { google } from "googleapis";
 
 import type { Authenticator } from "@app/lib/auth";
 import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import type { ModelId } from "@app/types";
 
 export async function retrieveRecentGoogleTranscripts(
   {

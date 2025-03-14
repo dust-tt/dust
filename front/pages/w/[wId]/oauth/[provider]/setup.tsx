@@ -1,9 +1,9 @@
-import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@app/types";
 
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
 export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;

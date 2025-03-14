@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { upgradeWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
 export const upgradeToBusinessPlan = createPlugin({
   manifest: {

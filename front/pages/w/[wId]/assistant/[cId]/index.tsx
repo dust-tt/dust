@@ -1,4 +1,3 @@
-import type { UserType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -11,6 +10,7 @@ import { useConversationsNavigation } from "@app/components/assistant/conversati
 import { CONVERSATION_PARENT_SCROLL_DIV_ID } from "@app/components/assistant/conversation/lib";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { UserType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   ConversationLayoutProps & {

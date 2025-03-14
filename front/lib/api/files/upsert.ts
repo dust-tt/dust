@@ -1,19 +1,4 @@
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
-import type {
-  CoreAPIDataSourceDocumentSection,
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isDustMimeType,
-  isSupportedImageContentType,
-  Ok,
-  slugify,
-  TABLE_PREFIX,
-} from "@dust-tt/types";
 
 import type {
   UpsertDocumentArgs,
@@ -32,6 +17,21 @@ import type { DustError } from "@app/lib/error";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type {
+  CoreAPIDataSourceDocumentSection,
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isDustMimeType,
+  isSupportedImageContentType,
+  Ok,
+  slugify,
+  TABLE_PREFIX,
+} from "@app/types";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (

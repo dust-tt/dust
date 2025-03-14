@@ -1,4 +1,3 @@
-import { isModjoCredentials, OAuthAPI } from "@dust-tt/types";
 import { either } from "fp-ts";
 import { pipe } from "fp-ts/function";
 import * as t from "io-ts";
@@ -9,6 +8,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import { isModjoCredentials, OAuthAPI } from "@app/types";
 
 const ModjoSpeakerSchema = t.partial({
   contactId: t.union([t.number, t.undefined]),

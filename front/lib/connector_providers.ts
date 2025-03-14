@@ -16,15 +16,6 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorPermission,
-  ConnectorProvider,
-  DataSourceType,
-  PlanType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { ComponentType } from "react";
 
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
@@ -34,6 +25,15 @@ import { SalesforceOauthExtraConfig } from "@app/components/data_source/Salesfor
 import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
+import type {
+  ConnectorPermission,
+  ConnectorProvider,
+  DataSourceType,
+  PlanType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;

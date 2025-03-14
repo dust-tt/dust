@@ -1,5 +1,3 @@
-import type { PluginResourceTarget, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -11,6 +9,8 @@ import {
 import type { PokeListPluginsForScopeResponseBody } from "@app/pages/api/poke/plugins/";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
 import type { PokeRunPluginResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/run";
+import type { PluginResourceTarget, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function usePokeListPluginForResourceType({
   disabled,

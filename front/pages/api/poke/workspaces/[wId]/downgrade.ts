@@ -1,4 +1,3 @@
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -8,6 +7,7 @@ import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscript
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
 
 export type DowngradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;

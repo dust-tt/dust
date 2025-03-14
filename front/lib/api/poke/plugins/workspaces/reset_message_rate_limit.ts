@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { resetMessageRateLimitForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { Err, Ok } from "@app/types";
 
 export const resetMessageRateLimitPlugin = createPlugin({
   manifest: {

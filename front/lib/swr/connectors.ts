@@ -1,12 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  DataSourceType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -19,6 +11,14 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GetConnectorResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/connector";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/config/[key]";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
+import type {
+  APIError,
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  DataSourceType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission

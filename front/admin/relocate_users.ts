@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
 import type { ApiResponse } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
@@ -10,6 +8,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { Result } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 let remaining = 10;
 let resetTime = Date.now();

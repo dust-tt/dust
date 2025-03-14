@@ -9,13 +9,6 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  TrackerConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { capitalize } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -30,6 +23,13 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useTrackers } from "@app/lib/swr/trackers";
+import type {
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  TrackerConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 type RowData = TrackerConfigurationType & {
   onClick: () => undefined;

@@ -1,6 +1,4 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { Result, UserProviderType } from "@dust-tt/types";
-import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
@@ -13,6 +11,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
+import type { Result, UserProviderType } from "@app/types";
+import { Err, Ok, sanitizeString } from "@app/types";
 
 interface LegacyProviderInfo {
   provider: UserProviderType;

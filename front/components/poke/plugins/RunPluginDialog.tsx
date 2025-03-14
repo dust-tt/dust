@@ -7,7 +7,6 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { PluginResourceTarget } from "@dust-tt/types";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -19,6 +18,7 @@ import {
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
 import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;

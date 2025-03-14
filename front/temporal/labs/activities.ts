@@ -1,11 +1,3 @@
-import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import {
-  assertNever,
-  dustManagedCredentials,
-  isEmptyString,
-} from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
@@ -40,6 +32,10 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/utils/modjo";
+import type { AgentMessageType, ModelId } from "@app/types";
+import { assertNever, dustManagedCredentials, isEmptyString } from "@app/types";
+import { Err } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId

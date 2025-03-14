@@ -13,16 +13,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  ExtensionConfigurationType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -56,6 +46,16 @@ import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type {
+  DataSourceType,
+  ExtensionConfigurationType,
+  SubscriptionType,
+  WhitelistableFeature,
+  WorkspaceDomain,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types";
+import { WHITELISTABLE_FEATURES } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;

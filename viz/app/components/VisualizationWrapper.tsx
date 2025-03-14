@@ -4,7 +4,7 @@ import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
-} from "@dust-tt/types";
+} from "@viz/app/types";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob } from "html-to-image";

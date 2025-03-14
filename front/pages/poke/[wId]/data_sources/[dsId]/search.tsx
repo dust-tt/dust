@@ -1,9 +1,4 @@
 import { Input } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DocumentType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
@@ -13,6 +8,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { DataSourceType, DocumentType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;

@@ -1,4 +1,3 @@
-import type { UserMetadataType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -6,6 +5,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { UserMetadataType, WithAPIErrorResponse } from "@app/types";
 
 export type PostUserMetadataResponseBody = {
   metadata: UserMetadataType;

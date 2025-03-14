@@ -9,8 +9,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
-import { assertNever, slugify } from "@dust-tt/types";
 import { sortBy } from "lodash";
 import React, { useContext, useMemo } from "react";
 
@@ -19,6 +17,8 @@ import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSel
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration

@@ -16,32 +16,6 @@ import {
   SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  ConnectorProvider,
-  ContentNodesViewType,
-  DataSourceConfiguration,
-  DataSourceTag,
-  DataSourceViewType,
-  DustAppRunConfigurationType,
-  LightWorkspaceType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TagsFilter,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  DocumentViewRawContentKey,
-  GLOBAL_AGENTS_SID,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-} from "@dust-tt/types";
 import _ from "lodash";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
@@ -62,6 +36,32 @@ import {
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  AgentActionConfigurationType,
+  AgentConfigurationType,
+  ConnectorProvider,
+  ContentNodesViewType,
+  DataSourceConfiguration,
+  DataSourceTag,
+  DataSourceViewType,
+  DustAppRunConfigurationType,
+  LightWorkspaceType,
+  RetrievalConfigurationType,
+  TablesQueryConfigurationType,
+  TagsFilter,
+} from "@app/types";
+import {
+  assertNever,
+  DocumentViewRawContentKey,
+  GLOBAL_AGENTS_SID,
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/types";
 
 interface AssistantActionsSectionProps {
   agentConfiguration: AgentConfigurationType;

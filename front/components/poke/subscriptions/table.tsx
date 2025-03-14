@@ -15,8 +15,6 @@ import {
   SheetTrigger,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { isDevelopment } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
@@ -39,6 +37,8 @@ import {
   isProPlan,
 } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
+import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;

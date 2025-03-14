@@ -8,12 +8,12 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
 import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
+import type { WorkspaceType } from "@app/types";
 
 export type ProviderField = {
   name: string;

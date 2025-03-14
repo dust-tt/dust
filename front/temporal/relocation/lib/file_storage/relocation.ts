@@ -1,7 +1,6 @@
-import { isDevelopment } from "@dust-tt/types";
-
 import { getBucketInstance } from "@app/lib/file_storage";
 import config from "@app/temporal/relocation/activities/config";
+import { isDevelopment } from "@app/types";
 
 const RELOCATION_PATH_PREFIX = "relocations";
 

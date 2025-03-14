@@ -17,12 +17,6 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
 
@@ -45,6 +39,12 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type {
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
+  ModelConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;

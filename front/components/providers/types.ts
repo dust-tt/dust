@@ -7,7 +7,9 @@ import {
   OpenaiWhiteLogo,
   PlanetIcon,
 } from "@dust-tt/sparkle";
-import type { ModelConfig, SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
+import type { ComponentType } from "react";
+
+import type { ModelConfig, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 import {
   CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
@@ -30,8 +32,7 @@ import {
   O1_MODEL_CONFIG,
   O3_MINI_HIGH_REASONING_MODEL_CONFIG,
   O3_MINI_MODEL_CONFIG,
-} from "@dust-tt/types";
-import type { ComponentType } from "react";
+} from "@app/types";
 
 type ModelProvider = (typeof SUPPORTED_MODEL_CONFIGS)[number]["providerId"];
 
