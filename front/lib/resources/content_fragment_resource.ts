@@ -129,7 +129,10 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
-  static async fromSIdAndVersion(sId: string, version: ContentFragmentVersion) {
+  static async fromStringIdAndVersion(
+    sId: string,
+    version: ContentFragmentVersion
+  ) {
     const contentFragment = await ContentFragmentModel.findOne({
       where: { sId, version },
     });
@@ -388,7 +391,7 @@ export async function renderFromFragmentId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  const contentFragment = await ContentFragmentResource.fromSIdAndVersion(
+  const contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
     contentFragmentId,
     contentFragmentVersion
   );
