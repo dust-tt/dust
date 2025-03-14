@@ -312,7 +312,27 @@ impl SearchStore for ElasticsearchSearchStore {
             let decoded = URL_SAFE.decode(cursor)?;
             let json_str = String::from_utf8(decoded)?;
             let search_after: Vec<serde_json::Value> = serde_json::from_str(&json_str)?;
-            search = search.search_after(search_after);
+
+            // We replace empty strings with a “high sort” sentinel so that documents with
+            // an originally empty title will appear at the end of ascending sort order.
+            //
+            // Elasticsearch’s Rust client (or DSL) has trouble when search_after contains "".
+            // By substituting a high-Unicode character ("\u{10FFFF}"), we ensure those items
+            // sort last without breaking the library’s internal validation.
+            //
+            // Will be removed once we don't have empty strings titles anymore.
+            let fixed_sort = search_after
+                .iter()
+                .map(|v| {
+                    if v.as_str() == Some("") {
+                        serde_json::Value::String("\u{10FFFF}".to_string())
+                    } else {
+                        v.clone()
+                    }
+                })
+                .collect::<Vec<_>>();
+
+            search = search.search_after(fixed_sort);
         }
 
         let search_start = utils::now();
