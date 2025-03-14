@@ -115,7 +115,7 @@ export default function AssistantBuilderDataSourceModal({
               selectionConfigurations={selectionConfigurations}
               setSelectionConfigurations={setSelectionConfigurationsCallback}
               viewType={viewType}
-              isRootSelectable={viewType !== "table"}
+              isRootSelectable={false}
             />
           </div>
         </SheetContainer>
