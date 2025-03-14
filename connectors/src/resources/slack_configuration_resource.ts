@@ -154,13 +154,28 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     groupIds: string[],
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
-    await SlackBotWhitelistModel.create({
-      connectorId: this.connectorId,
-      slackConfigurationId: this.id,
-      botName,
-      groupIds,
-      whitelistType,
+    const existingBot = await SlackBotWhitelistModel.findOne({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+      },
     });
+
+    if (existingBot) {
+      await existingBot.update({
+        groupIds,
+        whitelistType,
+      });
+    } else {
+      await SlackBotWhitelistModel.create({
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+        groupIds,
+        whitelistType,
+      });
+    }
 
     return new Ok(undefined);
   }
