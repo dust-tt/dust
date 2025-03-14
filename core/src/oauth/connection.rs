@@ -22,7 +22,7 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
-use super::providers::utils::ProviderHttpRequestError;
+use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -144,11 +144,16 @@ pub trait Provider {
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
@@ -558,8 +563,13 @@ impl Connection {
 
         let now = utils::now();
 
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
         let finalize = provider(self.provider)
-            .finalize(self, code, redirect_uri)
+            .finalize(self, credential, code, redirect_uri)
             .await?;
 
         self.status = ConnectionStatus::Finalized;
@@ -704,7 +714,12 @@ impl Connection {
 
         let now = utils::now();
 
-        let refresh = provider(self.provider).refresh(self).await?;
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
+        let refresh = provider(self.provider).refresh(self, credential).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);

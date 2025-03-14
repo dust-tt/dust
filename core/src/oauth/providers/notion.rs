@@ -2,6 +2,7 @@ use crate::oauth::{
     connection::{
         Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
     },
+    credential::Credential,
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -40,6 +41,7 @@ impl Provider for NotionConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -75,7 +77,11 @@ impl Provider for NotionConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        _connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Notion access tokens do not expire".to_string(),
         ))?

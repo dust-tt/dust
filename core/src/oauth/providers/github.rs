@@ -3,6 +3,7 @@ use crate::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
         },
+        credential::Credential,
         providers::utils::execute_request,
     },
     utils,
@@ -145,6 +146,7 @@ impl Provider for GithubConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -171,7 +173,11 @@ impl Provider for GithubConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let app_type = match connection.metadata()["use_case"].as_str() {
             Some(use_case) => match use_case {
                 "connection" => GithubUseCase::Connection,

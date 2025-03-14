@@ -1,10 +1,9 @@
 use crate::{
     oauth::{
-        client::OauthClient,
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
         },
-        credential::CredentialProvider,
+        credential::{Credential, CredentialProvider},
         providers::utils::execute_request,
     },
     utils,
@@ -28,14 +27,14 @@ impl SalesforceConnectionProvider {
     }
 
     /// Gets the Salesforce credentials (client_id and client_secret) from the related credential
-    pub async fn get_credentials(connection: &Connection) -> Result<(String, String)> {
-        // Get credential ID from connection
-        let credential_id = connection
-            .related_credential_id()
-            .ok_or_else(|| anyhow!("Missing related_credential_id for Salesforce connection"))?;
+    pub async fn get_credentials(credentials: Option<Credential>) -> Result<(String, String)> {
+        let credentials =
+            credentials.ok_or_else(|| anyhow!("Missing credentials for Salesforce connection"))?;
+
+        let content = credentials.unseal_encrypted_content()?;
+        let provider = credentials.provider();
 
         // Fetch credential
-        let (provider, content) = OauthClient::get_credential(&credential_id).await?;
         if provider != CredentialProvider::Salesforce {
             return Err(anyhow!(
                 "Invalid credential provider: {:?}, expected Salesforce",
@@ -67,6 +66,7 @@ impl Provider for SalesforceConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -77,7 +77,7 @@ impl Provider for SalesforceConnectionProvider {
             .ok_or_else(|| anyhow!("Missing `code_verifier` in Salesforce connection"))?;
 
         // Get Salesforce client_id and client_secret using the helper
-        let (client_id, client_secret) = Self::get_credentials(connection).await?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
         let body = json!({
             "grant_type": "authorization_code",
@@ -116,13 +116,17 @@ impl Provider for SalesforceConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let instance_url = Self::get_instance_url(&connection.metadata())?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Salesforce connection"))?;
 
-        let (client_id, client_secret) = Self::get_credentials(connection).await?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
         let body = json!({
             "grant_type": "refresh_token",

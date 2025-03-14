@@ -1,7 +1,10 @@
 use crate::{
-    oauth::connection::{
-        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
-        ACCESS_TOKEN_REFRESH_BUFFER_MILLIS, PROVIDER_TIMEOUT_SECONDS,
+    oauth::{
+        connection::{
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+            ACCESS_TOKEN_REFRESH_BUFFER_MILLIS, PROVIDER_TIMEOUT_SECONDS,
+        },
+        credential::Credential,
     },
     utils,
 };
@@ -26,6 +29,7 @@ impl Provider for MockConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -39,7 +43,11 @@ impl Provider for MockConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Mock connection"))?;
