@@ -679,7 +679,7 @@ export const TreeExample = () => {
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
               >
-                <Tree tailwindIconTextColor="s-text-brand">
+                <Tree tailwindIconTextColor="s-text-foreground">
                   <Tree.Item label="Item 1" visual={FolderIcon}>
                     <Tree>
                       <Tree.Item label="Item 1" visual={FolderIcon} />

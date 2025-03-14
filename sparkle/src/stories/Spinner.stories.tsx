@@ -19,17 +19,17 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="xs" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="xs" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="xs" />
         </div>
         <div className="s-p-20">
           <Spinner variant="dark" size="xs" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="pink900" size="xs" />
+          <Spinner variant="rose900" size="xs" />
         </div>
       </div>
       Size = SM
@@ -37,17 +37,17 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="sm" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="sm" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="sm" />
         </div>
         <div className="s-p-20">
           <Spinner variant="dark" size="sm" />
         </div>
         <div className="s-p-20">
-          <Spinner variant="pink900" size="sm" />
+          <Spinner variant="rose900" size="sm" />
         </div>
       </div>
       Size = MD
@@ -55,10 +55,10 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="md" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="md" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="md" />
         </div>
         <div className="s-p-20">
@@ -70,10 +70,10 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="lg" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="lg" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="lg" />
         </div>
         <div className="s-p-20">
@@ -85,10 +85,10 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="xl" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="xl" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="xl" />
         </div>
         <div className="s-p-20">
@@ -100,10 +100,10 @@ export const SpinnerExample = () => {
         <div className="s-p-20">
           <Spinner variant="color" size="xxl" />
         </div>
-        <div className="s-bg-slate-900 s-p-20">
+        <div className="s-bg-primary-900 s-p-20">
           <Spinner variant="light" size="xxl" />
         </div>
-        <div className="s-bg-emerald-500 s-p-20">
+        <div className="s-bg-blue-500 s-p-20">
           <Spinner variant="light" size="xxl" />
         </div>
         <div className="s-p-20">
