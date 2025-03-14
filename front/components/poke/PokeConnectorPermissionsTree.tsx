@@ -49,7 +49,6 @@ export function PokePermissionTree({
         showExpand={showExpand}
         onDocumentViewClick={onDocumentViewClick}
         useResourcesHook={useResourcesHook}
-        isSearchEnabled={false}
       />
     </div>
   );
