@@ -129,20 +129,19 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   }: {
     currentTimestamp: number;
   }): { shouldRunGarbageCollection: boolean } {
-    // Check whether we enforce a retention period.
-    if (this.retentionPeriodDays) {
-      // If we never ran the GC, we run it (handles retention period changes).
-      if (!this.lastGarbageCollectionTimestamp) {
-        return { shouldRunGarbageCollection: true };
-      }
-      return {
-        shouldRunGarbageCollection:
-          currentTimestamp - this.lastGarbageCollectionTimestamp >
-          GC_FREQUENCY_MS,
-      };
-    }
     // If we have no retention period policy, we never run the garbage collection.
-    return { shouldRunGarbageCollection: false };
+    if (this.retentionPeriodDays === null) {
+      return { shouldRunGarbageCollection: false };
+    }
+    // If we never ran the GC, we run it (handles retention period changes).
+    if (this.lastGarbageCollectionTimestamp === null) {
+      return { shouldRunGarbageCollection: true };
+    }
+    return {
+      shouldRunGarbageCollection:
+        currentTimestamp - this.lastGarbageCollectionTimestamp >
+        GC_FREQUENCY_MS,
+    };
   }
 
   async setLastGarbageCollectTimestamp(timestamp: number): Promise<void> {
