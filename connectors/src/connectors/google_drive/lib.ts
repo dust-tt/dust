@@ -258,6 +258,7 @@ export async function fixParentsConsistency({
         files,
         async (file) =>
           getGoogleDriveObject({
+            connectorId: connector.id,
             authCredentials,
             driveObjectId: file.driveFileId,
             cacheKey: {
@@ -329,6 +330,7 @@ export async function fixParentsConsistency({
           if (execute) {
             for (const missingFolderId of missing) {
               const missingFolder = await getGoogleDriveObject({
+                connectorId: connector.id,
                 authCredentials,
                 driveObjectId: getDriveFileId(missingFolderId),
               });

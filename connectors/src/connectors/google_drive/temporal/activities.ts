@@ -139,6 +139,7 @@ export async function getDrivesToSync(
 
   for (const folder of selectedFolders) {
     const remoteFolder = await getGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId: folder.folderId,
     });
@@ -200,6 +201,7 @@ export async function syncFiles(
   });
   const authCredentials = await getAuthObject(connector.connectionId);
   const driveFolder = await getGoogleDriveObject({
+    connectorId,
     authCredentials,
     driveObjectId: driveFolderId,
     cacheKey: { connectorId, ts: startSyncTs },
@@ -236,7 +238,7 @@ export async function syncFiles(
     }
   }
 
-  const labels = await getCachedLabels(authCredentials);
+  const labels = await getCachedLabels(connectorId, authCredentials);
 
   const drive = await getDriveClient(authCredentials);
   const mimeTypesSearchString = mimeTypesToSync
@@ -272,7 +274,7 @@ export async function syncFiles(
         if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
           throw new Error("Invalid file. File is: " + JSON.stringify(file));
         }
-        return driveObjectToDustType(file, authCredentials);
+        return driveObjectToDustType(connectorId, file, authCredentials);
       })
   );
   const subfolders = filesToSync.filter(
@@ -400,7 +402,7 @@ export async function incrementalSync(
     const selectedFoldersIds = await getFoldersToSync(connectorId);
 
     const authCredentials = await getAuthObject(connector.connectionId);
-    const labels = await getCachedLabels(authCredentials);
+    const labels = await getCachedLabels(connectorId, authCredentials);
     const driveClient = await getDriveClient(authCredentials);
 
     let opts: drive_v3.Params$Resource$Changes$List = {
@@ -466,7 +468,11 @@ export async function incrementalSync(
         continue;
       }
 
-      const file = await driveObjectToDustType(change.file, authCredentials);
+      const file = await driveObjectToDustType(
+        connectorId,
+        change.file,
+        authCredentials
+      );
       if (
         !(await objectIsInFolderSelection(
           connectorId,
@@ -507,6 +513,7 @@ export async function incrementalSync(
       const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
       const driveFile: GoogleDriveObjectType = await driveObjectToDustType(
+        connectorId,
         change.file,
         authCredentials
       );
@@ -724,6 +731,7 @@ export async function shouldGarbageCollect(connectorId: ModelId) {
   const authCredentials = await getAuthObject(connector.connectionId);
   for (const folder of selectedFolder) {
     const remoteFolder = await getGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId: folder.folderId,
     });
@@ -773,6 +781,7 @@ export async function garbageCollector(
     files.map(async (file) => {
       return queue.add(async () => {
         const driveFile = await getGoogleDriveObject({
+          connectorId,
           authCredentials,
           driveObjectId: file.driveFileId,
           cacheKey: { connectorId, ts },
@@ -907,6 +916,7 @@ export async function markFolderAsVisited(
   }
   const authCredentials = await getAuthObject(connector.connectionId);
   const file = await getGoogleDriveObject({
+    connectorId,
     authCredentials,
     driveObjectId: driveFileId,
     cacheKey: { connectorId, ts: startSyncTs },
