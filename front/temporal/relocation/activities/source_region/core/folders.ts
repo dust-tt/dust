@@ -38,7 +38,7 @@ export async function getDataSourceFolders({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
-        // Only paginate through documents.
+        // Only paginate through data source nodes.
         search_scope: "nodes_titles",
         // Leaving empty to get all folders.
         view_filter: [],
