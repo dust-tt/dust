@@ -34,6 +34,7 @@ import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import { PendingReplacement } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLReplacementStorage";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -115,6 +116,42 @@ const InputBarContainer = ({
       isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
     spaceIds: spaces.map((s) => s.sId),
   });
+
+  useEffect(() => {
+    if (!searchResultNodes.length || !editor) {
+      return;
+    }
+
+    const storage = editor.storage.urlReplacementStorage;
+    const pendingReplacements: PendingReplacement[] = storage.getReplacements();
+
+    if (pendingReplacements.length > 0) {
+      const tr = editor.state.tr;
+      let success = false;
+
+      pendingReplacements.forEach(({ url, position }) => {
+        try {
+          const node = searchResultNodes[0];
+          const text = `${node.title} - `;
+
+          tr.replaceWith(
+            position,
+            position + url.length,
+            editor.schema.text(text)
+          );
+          success = true;
+        } catch (e) {
+          console.debug("Position update failed", e);
+        }
+      });
+
+      if (success) {
+        editor.view.dispatch(tr);
+      }
+
+      storage.clearReplacements();
+    }
+  }, [searchResultNodes, editor, spacesMap]);
 
   useEffect(() => {
     if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
