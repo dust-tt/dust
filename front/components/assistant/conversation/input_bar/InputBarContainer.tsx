@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -29,6 +30,7 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
@@ -99,6 +101,10 @@ const InputBarContainer = ({
   });
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
+    [spaces]
+  );
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch({
     includeDataSources: true,
@@ -121,12 +127,15 @@ const InputBarContainer = ({
         return dataSourceViews.map((view) => ({
           ...rest,
           dataSourceView: view,
+          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
         }));
       });
 
       if (nodesWithViews.length > 0) {
-        // Pass the first valid node to the handler
-        onNodeSelect(nodesWithViews[0]);
+        const sortedNodes = nodesWithViews.sort(
+          (a, b) => b.spacePriority - a.spacePriority
+        );
+        onNodeSelect(sortedNodes[0]);
       }
 
       // Reset node candidate after processing
@@ -140,6 +149,7 @@ const InputBarContainer = ({
     onNodeSelect,
     isSearchLoading,
     editorService,
+    spacesMap,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
