@@ -202,6 +202,37 @@ export async function gongListAndSaveUsersActivity({
   } while (pageCursor);
 }
 
+export async function gongCheckGarbageCollectionStateActivity({
+  connectorId,
+  currentTimestamp,
+}: {
+  connectorId: ModelId;
+  currentTimestamp: number;
+}): Promise<{ shouldRunGarbageCollection: boolean }> {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  return configuration.checkGarbageCollectionState({
+    currentTimestamp,
+  });
+}
+
+export async function gongSaveGarbageCollectionSuccessActivity({
+  connectorId,
+  lastGarbageCollectionTimestamp,
+}: {
+  connectorId: ModelId;
+  lastGarbageCollectionTimestamp: number;
+}) {
+  const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  // Update the last garbage collection timestamp.
+  await configuration.setLastGarbageCollectTimestamp(
+    lastGarbageCollectionTimestamp
+  );
+}
+
 export async function gongDeleteOutdatedTranscriptsActivity({
   connectorId,
 }: {

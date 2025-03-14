@@ -17,6 +17,8 @@ import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 
+const GC_FREQUENCY_MS = 24 * 60 * 60 * 1000; // Every day.
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -119,6 +121,33 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       );
     }
     return this.lastSyncTimestamp;
+  }
+
+  checkGarbageCollectionState({
+    currentTimestamp,
+  }: {
+    currentTimestamp: number;
+  }): { shouldRunGarbageCollection: boolean } {
+    // Check whether we enforce a retention period.
+    if (this.retentionPeriodDays) {
+      // If we never ran the GC, we run it (handles retention period changes).
+      if (!this.lastGarbageCollectionTimestamp) {
+        return { shouldRunGarbageCollection: true };
+      }
+      return {
+        shouldRunGarbageCollection:
+          currentTimestamp - this.lastGarbageCollectionTimestamp >
+          GC_FREQUENCY_MS,
+      };
+    }
+    // If we have no retention period policy, we never run the garbage collection.
+    return { shouldRunGarbageCollection: false };
+  }
+
+  async setLastGarbageCollectTimestamp(timestamp: number): Promise<void> {
+    await this.update({
+      lastGarbageCollectionTimestamp: timestamp,
+    });
   }
 }
 

@@ -15,6 +15,8 @@ const {
   gongListAndSaveUsersActivity,
   gongSaveStartSyncActivity,
   gongSaveSyncSuccessActivity,
+  gongCheckGarbageCollectionStateActivity,
+  gongSaveGarbageCollectionSuccessActivity,
   gongSyncTranscriptsActivity,
   gongDeleteOutdatedTranscriptsActivity,
 } = proxyActivities<typeof activities>({
@@ -66,17 +68,32 @@ export async function gongSyncWorkflow({
     lastSyncTimestamp: syncStartTs,
   });
 
+  const garbageCollectionStartTs = Date.now();
+
+  const { shouldRunGarbageCollection } =
+    await gongCheckGarbageCollectionStateActivity({
+      connectorId,
+      currentTimestamp: garbageCollectionStartTs,
+    });
+
   // We start a child workflow for the garbage collection of outdated transcripts.
-  await executeChild(gongGarbageCollectWorkflow, {
-    workflowId: makeGongGarbageCollectionWorkflowIdFromParentId(workflowId),
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        connectorId,
-      },
-    ],
-    memo,
-  });
+  if (shouldRunGarbageCollection) {
+    await executeChild(gongGarbageCollectWorkflow, {
+      workflowId: makeGongGarbageCollectionWorkflowIdFromParentId(workflowId),
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId,
+        },
+      ],
+      memo,
+    });
+
+    await gongSaveGarbageCollectionSuccessActivity({
+      connectorId,
+      lastGarbageCollectionTimestamp: garbageCollectionStartTs,
+    });
+  }
 }
 
 export async function gongSyncTranscriptsWorkflow({
