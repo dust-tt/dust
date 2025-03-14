@@ -74,7 +74,7 @@ async function handler(
             }
 
             const deploymentsRes = await fetch(
-              `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+              `${config.endpoint}openai/deployments?api-version=2024-10-21`,
               {
                 method: "GET",
                 headers: {

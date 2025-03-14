@@ -51,7 +51,7 @@ struct AzureOpenAIDeployments {
 }
 
 async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenAIDeployment>> {
-    let url = format!("{}openai/deployments?api-version=2022-12-01", endpoint);
+    let url = format!("{}openai/deployments?api-version=2024-10-21", endpoint);
 
     let res = reqwest::Client::new()
         .get(url)
@@ -86,7 +86,7 @@ async fn get_deployment(
     deployment_id: &str,
 ) -> Result<AzureOpenAIDeployment> {
     let url = format!(
-        "{}openai/deployments/{}?api-version=2022-12-01",
+        "{}openai/deployments/{}?api-version=2024-10-21",
         endpoint, deployment_id
     );
 
