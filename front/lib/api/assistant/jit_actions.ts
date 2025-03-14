@@ -68,6 +68,7 @@ async function getJITActions(
         conversation
       );
 
+      // TODO(pr,attach) remove this if when tackling table query / semantic search action
       if (!dataSourceView) {
         logger.warn(
           {
