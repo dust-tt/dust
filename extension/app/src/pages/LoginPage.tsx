@@ -5,8 +5,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  LoginIcon,
   DustLogo,
+  LoginIcon,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";

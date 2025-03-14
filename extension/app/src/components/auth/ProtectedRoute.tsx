@@ -1,11 +1,5 @@
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
-import {
-  Button,
-  classNames,
-  DustLogo,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Button, classNames, DustLogo, Page, Spinner } from "@dust-tt/sparkle";
 import { useAuth } from "@extension/components/auth/AuthProvider";
 import type { RouteChangeMesssage } from "@extension/lib/messages";
 import type { StoredUser } from "@extension/lib/storage";
