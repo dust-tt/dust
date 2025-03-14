@@ -150,7 +150,7 @@ export default function AppLayout({
           className={cn(
             "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
             "bg-background text-foreground",
-            "dark:bg-background-night dark:text-foreground"
+            "dark:bg-background-night dark:text-foreground-night"
           )}
         >
           <main
