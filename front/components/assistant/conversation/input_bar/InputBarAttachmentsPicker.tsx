@@ -32,12 +32,14 @@ interface InputBarAttachmentsPickerProps {
   fileUploaderService: FileUploaderService;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
+  attachedNodes: DataSourceViewContentNode[];
 }
 
 export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
   onNodeSelect,
+  attachedNodes,
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +57,10 @@ export const InputBarAttachmentsPicker = ({
     disabled: isSpacesLoading || !debouncedSearch,
     spaceIds: spaces.map((s) => s.sId),
   });
+
+  const atachedNodeIds = useMemo(() => {
+    return attachedNodes.map((node) => node.internalId);
+  }, [attachedNodes]);
 
   useEffect(() => {
     setIsDebouncing(true);
@@ -139,6 +145,7 @@ export const InputBarAttachmentsPicker = ({
                           className: "min-w-4",
                         })
                       }
+                      disabled={atachedNodeIds.includes(item.internalId)}
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                       onClick={() => {
                         setSearch("");
