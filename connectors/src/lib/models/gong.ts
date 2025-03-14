@@ -30,7 +30,7 @@ GongConfigurationModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
     },
-    lastGarbageCollectTimestamp: {
+    lastGarbageCollectionTimestamp: {
       type: DataTypes.BIGINT,
       allowNull: true,
     },
