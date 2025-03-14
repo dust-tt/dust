@@ -1,18 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-  Result,
-  SlackConfigurationType,
-} from "@dust-tt/types";
-import {
-  Err,
-  isSlackAutoReadPatterns,
-  MIME_TYPES,
-  Ok,
-  safeParseJSON,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { WebClient } from "@slack/web-api";
 import PQueue from "p-queue";
 
@@ -46,7 +33,19 @@ import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  SlackConfigurationType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  isSlackAutoReadPatterns,
+  MIME_TYPES,
+  safeParseJSON,
+} from "@connectors/types";
 
 const { SLACK_CLIENT_ID, SLACK_CLIENT_SECRET } = process.env;
 

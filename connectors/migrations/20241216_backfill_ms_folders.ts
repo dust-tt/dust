@@ -1,4 +1,3 @@
-import { concurrentExecutor } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
@@ -12,6 +11,7 @@ import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import { concurrentExecutor } from "@connectors/types";
 
 const QUERY_BATCH_SIZE = 1024;
 

@@ -1,6 +1,6 @@
 // JS cannot give you any guarantee about the shape of an error you `catch`
 
-import type { APIError, ConnectorProvider } from "@dust-tt/types";
+import type { APIError, ConnectorProvider } from "@dust-tt/client";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function errorFromAny(e: any): Error {

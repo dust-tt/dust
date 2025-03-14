@@ -1,6 +1,5 @@
 import assert from "node:assert";
 
-import { concurrentExecutor } from "@dust-tt/types";
 import _ from "lodash";
 import { makeScript } from "scripts/helpers";
 
@@ -8,6 +7,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { WebCrawlerFolder } from "@connectors/lib/models/webcrawler";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { concurrentExecutor } from "@connectors/types";
 
 makeScript(
   {

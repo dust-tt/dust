@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -10,6 +9,7 @@ import {
   makeGongSyncTranscriptsWorkflowIdFromParentId,
 } from "@connectors/connectors/gong/lib/internal_ids";
 import type * as activities from "@connectors/connectors/gong/temporal/activities";
+import type { ModelId } from "@connectors/types";
 
 const {
   gongCheckGarbageCollectionStateActivity,

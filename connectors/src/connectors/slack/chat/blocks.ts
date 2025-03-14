@@ -1,9 +1,9 @@
-import type { LightAgentConfigurationType } from "@dust-tt/types";
-import { truncate } from "@dust-tt/types";
+import type { LightAgentConfigurationType } from "@dust-tt/client";
 
 import { STATIC_AGENT_CONFIG } from "@connectors/api/webhooks/webhook_slack_interaction";
 import type { SlackMessageFootnotes } from "@connectors/connectors/slack/chat/citations";
 import { makeDustAppUrl } from "@connectors/connectors/slack/chat/utils";
+import { truncate } from "@connectors/types";
 
 /*
  * This length threshold is set to prevent the "msg_too_long" error

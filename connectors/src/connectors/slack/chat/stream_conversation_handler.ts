@@ -4,8 +4,8 @@ import type {
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 

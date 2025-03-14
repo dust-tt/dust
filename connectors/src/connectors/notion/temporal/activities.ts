@@ -1,15 +1,4 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  PageObjectProperties,
-  ParsedNotionBlock,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  getNotionDatabaseTableId,
-  MIME_TYPES,
-  slugify,
-} from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import { isFullBlock, isFullPage, isNotionClientError } from "@notionhq/client";
 import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { Context } from "@temporalio/activity";
@@ -49,6 +38,7 @@ import {
   dataSourceInfoFromConnector,
 } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceTable,
@@ -80,7 +70,17 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  PageObjectProperties,
+  ParsedNotionBlock,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  getNotionDatabaseTableId,
+  MIME_TYPES,
+  slugify,
+} from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "notion" });
 

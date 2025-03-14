@@ -1,12 +1,3 @@
-import type {
-  IntercomCheckConversationResponseType,
-  IntercomCheckMissingConversationsResponseType,
-  IntercomCheckTeamsResponseType,
-  IntercomCommandType,
-  IntercomFetchArticlesResponseType,
-  IntercomFetchConversationResponseType,
-  IntercomForceResyncArticlesResponseType,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -23,6 +14,15 @@ import {
 } from "@connectors/lib/models/intercom";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  IntercomCheckConversationResponseType,
+  IntercomCheckMissingConversationsResponseType,
+  IntercomCheckTeamsResponseType,
+  IntercomCommandType,
+  IntercomFetchArticlesResponseType,
+  IntercomFetchConversationResponseType,
+  IntercomForceResyncArticlesResponseType,
+} from "@connectors/types";
 
 type IntercomResponse =
   | IntercomCheckConversationResponseType
