@@ -91,7 +91,7 @@ export const google_drive = async ({
     case "list-labels": {
       const connector = await getConnector(args);
       const authCredentials = await getAuthObject(connector.connectionId);
-      const labels = await _getLabels(authCredentials);
+      const labels = await _getLabels(connector.id, authCredentials);
       return { status: 200, content: labels, type: typeof labels };
     }
     case "check-file": {
@@ -128,6 +128,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },
@@ -145,6 +146,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },
@@ -172,6 +174,7 @@ export const google_drive = async ({
         });
         if (!file) {
           const parentDriveObject = await getGoogleDriveObject({
+            connectorId: connector.id,
             authCredentials,
             driveObjectId: getDriveFileId(parent),
             cacheKey: { connectorId: connector.id, ts: now },
@@ -204,6 +207,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },

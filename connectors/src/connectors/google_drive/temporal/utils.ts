@@ -7,7 +7,7 @@ import { OAuth2Client } from "googleapis-common";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
-import type { GoogleDriveObjectType } from "@connectors/types";
+import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
 
 export function getInternalId(driveFileId: string): string {
@@ -54,6 +54,7 @@ export const getMyDriveIdCached = cacheWithRedis(
 
 // Turn the labels into a string array of formatted string such as labelTitle:labelValue
 const getLabelsNamesFromLabels = async (
+  connectorId: ModelId,
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
 ) => {
@@ -61,7 +62,7 @@ const getLabelsNamesFromLabels = async (
   if (!labelInfo) {
     return [];
   }
-  const labels = await getCachedLabels(authCredentials);
+  const labels = await getCachedLabels(connectorId, authCredentials);
 
   return removeNulls(
     labelInfo.labels?.flatMap((l) => {
@@ -114,6 +115,7 @@ const getLabelsNamesFromLabels = async (
 };
 
 export async function driveObjectToDustType(
+  connectorId: ModelId,
   file: drive_v3.Schema$File,
   authCredentials: OAuth2Client
 ): Promise<GoogleDriveObjectType> {
@@ -129,7 +131,11 @@ export async function driveObjectToDustType(
 
   const drive = await getDriveClient(authCredentials);
 
-  const labels = await getLabelsNamesFromLabels(file, authCredentials);
+  const labels = await getLabelsNamesFromLabels(
+    connectorId,
+    file,
+    authCredentials
+  );
 
   if (!file.driveId) {
     // There is no driveId, the object is stored in "My Drive".
@@ -251,17 +257,22 @@ export async function getDriveClient(
 
 export const getCachedLabels = cacheWithRedis(
   _getLabels,
-  (authCredentials) => {
+  (connectorId, authCredentials) => {
     if (!authCredentials.credentials.access_token) {
       throw new Error("No access token in auth credentials");
     }
-    return authCredentials.credentials.access_token;
+    return `${connectorId}-labels`;
   },
   60 * 10 * 1000 // 10 minutes
 );
 
 // Get the list of published labels
-export async function _getLabels(authCredentials: OAuth2Client) {
+export async function _getLabels(
+  connectorId: ModelId,
+  authCredentials: OAuth2Client
+) {
+  // For now, return empty array until we have the new scope approved.
+  return [];
   try {
     const driveLabels = google.drivelabels({
       version: "v2",

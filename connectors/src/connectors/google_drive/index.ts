@@ -377,6 +377,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             drives.map(async (d): Promise<ContentNode> => {
               const driveObject = await getGoogleDriveObject({
+                connectorId: c.id,
                 authCredentials,
                 driveObjectId: d.id,
               });
@@ -476,6 +477,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             remoteFolders.map(async (rf): Promise<ContentNode> => {
               const driveObject = await driveObjectToDustType(
+                this.connectorId,
                 rf,
                 authCredentials
               );
@@ -701,6 +703,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       const authCredentials = await getAuthObject(connector.connectionId);
 
       const driveObject = await getGoogleDriveObject({
+        connectorId: this.connectorId,
         authCredentials,
         driveObjectId: getDriveFileId(internalId),
         cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
@@ -852,6 +855,7 @@ async function getFoldersAsContentNodes({
     folders,
     async (f): Promise<ContentNode | null> => {
       const fd = await getGoogleDriveObject({
+        connectorId: f.connectorId,
         authCredentials,
         driveObjectId: f.folderId,
       });
