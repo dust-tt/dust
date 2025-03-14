@@ -31,6 +31,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "@dust-tt/sparkle": "^0.2.437",
 =======
 =======
@@ -150,6 +151,9 @@
     "@dust-tt/sparkle": "^0.2.435-rc.2",
 >>>>>>> 9868bbbc4 (Sparkle bump)
 >>>>>>> 66ed7b91d (Sparkle bump)
+=======
+    "@dust-tt/sparkle": "^0.2.436-rc",
+>>>>>>> 8f1644f41 (Bumping Sparkle)
     "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.1",
     "@google-cloud/storage-transfer": "^3.6.0",
