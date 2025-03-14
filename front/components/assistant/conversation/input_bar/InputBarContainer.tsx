@@ -13,14 +13,7 @@ import type {
 } from "@dust-tt/types";
 import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
@@ -30,11 +23,9 @@ import useHandleMentions from "@app/components/assistant/conversation/input_bar/
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getSpaceAccessPriority } from "@app/lib/spaces";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
-import { PendingReplacement } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLReplacementStorage";
+import { useUrlHandling } from "@app/hooks/useUrlHandling";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -75,16 +66,12 @@ const InputBarContainer = ({
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
 
-  const handleUrlDetected = useCallback(
-    (url: string, nodeId: string | null) => {
-      if (nodeId) {
-        setNodeCandidate(nodeId);
-      }
-    },
-    []
-  );
+  const { handleUrlDetected, setEditor } = useUrlHandling({
+    owner,
+    onNodeSelect,
+    isFeatureEnabled: featureFlags.includes("attach_from_datasources"),
+  });
 
   // TODO: remove once attach from datasources is released
   const isAttachedFromDataSourceActivated = featureFlags.includes(
@@ -101,93 +88,9 @@ const InputBarContainer = ({
     }),
   });
 
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const spacesMap = useMemo(
-    () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
-    [spaces]
-  );
-
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    viewType: "all",
-    nodeIds: nodeCandidate ? [nodeCandidate] : [],
-    disabled:
-      isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
-    spaceIds: spaces.map((s) => s.sId),
-  });
-
   useEffect(() => {
-    if (!searchResultNodes.length || !editor) {
-      return;
-    }
-
-    const storage = editor.storage.urlReplacementStorage;
-    const pendingReplacements: PendingReplacement[] = storage.getReplacements();
-
-    if (pendingReplacements.length > 0) {
-      const tr = editor.state.tr;
-      let success = false;
-
-      pendingReplacements.forEach(({ url, position }) => {
-        try {
-          const node = searchResultNodes[0];
-          const text = `${node.title} - `;
-
-          tr.replaceWith(
-            position,
-            position + url.length,
-            editor.schema.text(text)
-          );
-          success = true;
-        } catch (e) {
-          console.debug("Position update failed", e);
-        }
-      });
-
-      if (success) {
-        editor.view.dispatch(tr);
-      }
-
-      storage.clearReplacements();
-    }
-  }, [searchResultNodes, editor, spacesMap]);
-
-  useEffect(() => {
-    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
-      return;
-    }
-
-    if (searchResultNodes.length > 0) {
-      const nodesWithViews = searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-        }));
-      });
-
-      if (nodesWithViews.length > 0) {
-        const sortedNodes = nodesWithViews.sort(
-          (a, b) => b.spacePriority - a.spacePriority
-        );
-        onNodeSelect(sortedNodes[0]);
-      }
-
-      // Reset node candidate after processing
-      setNodeCandidate(null);
-    } else {
-      setNodeCandidate(null);
-    }
-  }, [
-    searchResultNodes,
-    nodeCandidate,
-    onNodeSelect,
-    isSearchLoading,
-    editorService,
-    spacesMap,
-  ]);
+    setEditor(editor);
+  }, [editor, setEditor]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
   // the input bar), we grab it back.

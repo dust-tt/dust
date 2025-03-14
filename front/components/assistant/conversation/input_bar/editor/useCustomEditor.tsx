@@ -203,7 +203,6 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
-  onNodeResolved,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
