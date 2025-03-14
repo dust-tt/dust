@@ -63,16 +63,18 @@ export function listFiles(
       isListableContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
-      if (m.fileId) {
-        const canDoJIT = m.snippet !== null;
+      if (m.fileId || m.nodeId) {
+        const canDoJIT = m.snippet !== null || !!m.nodeId;
         const isIncludable = isConversationIncludableFileContentType(
           m.contentType
         );
-        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
+        // TODO(attach-ds) remove the m.fileId check once we manage table queries
+        const isQueryable =
+          canDoJIT && !!m.fileId && isQueryableContentType(m.contentType);
         const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
 
         files.push({
-          fileId: m.fileId,
+          contentFragmentId: m.contentFragmentId,
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
@@ -80,7 +82,8 @@ export function listFiles(
           generatedTables:
             m.generatedTables.length > 0
               ? m.generatedTables
-              : isQueryable
+              : // TODO(attach-ds) remove the m.fileId check once we manage table queries
+                isQueryable && m.fileId
                 ? [m.fileId]
                 : [],
           contentFragmentVersion: m.contentFragmentVersion,
@@ -101,7 +104,7 @@ export function listFiles(
         const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
 
         files.push({
-          fileId: f.fileId,
+          contentFragmentId: f.fileId,
           contentType: f.contentType,
           title: f.title,
           snippet: f.snippet,

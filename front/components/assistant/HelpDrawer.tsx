@@ -143,7 +143,10 @@ export function HelpDrawer({
         messageData: {
           input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
           mentions: mentionsWithHelp,
-          contentFragments: [],
+          contentFragments: {
+            uploaded: [],
+            contentNodes: [],
+          },
         },
       });
 

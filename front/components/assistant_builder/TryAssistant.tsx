@@ -1,12 +1,12 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import type {
   AgentMention,
+  ContentFragmentsType,
   ConversationType,
   LightAgentConfigurationType,
   MentionType,
   ModelConfigurationType,
   Result,
-  UploadedContentFragment,
   UserType,
   WorkspaceType,
 } from "@dust-tt/types";
@@ -171,7 +171,7 @@ export function useTryAssistantCore({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!user) {
       return new Err({

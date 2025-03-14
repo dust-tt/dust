@@ -1,5 +1,6 @@
 import * as t from "io-ts";
 
+import { MIME_TYPES_VALUES } from "../../../shared/internal_mime_types";
 import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
@@ -30,6 +31,30 @@ export const getSupportedInlinedContentType = () => {
   ]);
 };
 
+const [first, second, ...rest] = [
+  ...MIME_TYPES_VALUES,
+  ...getSupportedNonImageMimeTypes(),
+];
+export const getSupportedContentNodeContentTypeSchema = () => {
+  return t.union([
+    t.literal(first),
+    t.literal(second),
+    ...rest.map((value) => t.literal(value)),
+  ]);
+};
+
+export type SupportedContentNodeContentType = t.TypeOf<
+  ReturnType<typeof getSupportedContentNodeContentTypeSchema>
+>;
+
+export const isSupportedContentNodeFragmentContentType = (
+  contentType: string
+): contentType is SupportedContentNodeContentType => {
+  return (
+    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+  ).includes(contentType);
+};
+
 const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({
@@ -40,6 +65,19 @@ const ContentFragmentInputWithContentSchema = t.intersection([
 
 export type ContentFragmentInputWithContentType = t.TypeOf<
   typeof ContentFragmentInputWithContentSchema
+>;
+
+const ContentFragmentInputWithContentNodeSchema = t.intersection([
+  ContentFragmentBaseSchema,
+  t.type({
+    nodeId: t.string,
+    nodeDataSourceViewId: t.string,
+    contentType: getSupportedContentNodeContentTypeSchema(),
+  }),
+]);
+
+export type ContentFragmentInputWithContentNode = t.TypeOf<
+  typeof ContentFragmentInputWithContentNodeSchema
 >;
 
 const ContentFragmentInputWithFileIdSchema = t.intersection([
@@ -55,12 +93,25 @@ export type ContentFragmentInputWithFileIdType = t.TypeOf<
 
 type ContentFragmentInputType =
   | ContentFragmentInputWithContentType
-  | ContentFragmentInputWithFileIdType;
+  | ContentFragmentInputWithFileIdType
+  | ContentFragmentInputWithContentNode;
 
 export function isContentFragmentInputWithContentType(
   fragment: ContentFragmentInputType
 ): fragment is ContentFragmentInputWithContentType {
   return "contentType" in fragment;
+}
+
+export function isContentFragmentInputWithFileId(
+  fragment: ContentFragmentInputType
+): fragment is ContentFragmentInputWithFileIdType {
+  return "fileId" in fragment;
+}
+
+export function isContentFragmentInputWithContentNode(
+  fragment: ContentFragmentInputType
+): fragment is ContentFragmentInputWithContentNode {
+  return "nodeId" in fragment;
 }
 
 export const InternalPostContentFragmentRequestBodySchema = t.intersection([
@@ -69,8 +120,15 @@ export const InternalPostContentFragmentRequestBodySchema = t.intersection([
       profilePictureUrl: t.union([t.string, t.null]),
     }),
   }),
-  ContentFragmentInputWithFileIdSchema,
+  t.union([
+    ContentFragmentInputWithFileIdSchema,
+    ContentFragmentInputWithContentNodeSchema,
+  ]),
 ]);
+
+export type InternalPostContentFragmentRequestBodyType = t.TypeOf<
+  typeof InternalPostContentFragmentRequestBodySchema
+>;
 
 export const InternalPostConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

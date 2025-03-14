@@ -160,6 +160,9 @@ async function handler(
 
       res.status(200).json({
         message: editedMessageRes.value.userMessage,
+        // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
+        // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
+        // @ts-expect-error cf above
         agentMessages: editedMessageRes.value.agentMessages ?? undefined,
       });
       return;

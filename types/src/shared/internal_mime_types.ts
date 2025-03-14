@@ -142,6 +142,10 @@ export const MIME_TYPES = {
   }),
 };
 
+export const MIME_TYPES_VALUES = Object.values(MIME_TYPES).flatMap((value) =>
+  Object.values(value).map((v) => v)
+);
+
 export type BigQueryMimeType =
   (typeof MIME_TYPES.BIGQUERY)[keyof typeof MIME_TYPES.BIGQUERY];
 
@@ -178,6 +182,9 @@ export type ZendeskMimeType =
 export type SalesforceMimeType =
   (typeof MIME_TYPES.SALESFORCE)[keyof typeof MIME_TYPES.SALESFORCE];
 
+export type GongMimeType =
+  (typeof MIME_TYPES.GONG)[keyof typeof MIME_TYPES.GONG];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -190,4 +197,9 @@ export type DustMimeType =
   | SnowflakeMimeType
   | WebcrawlerMimeType
   | ZendeskMimeType
-  | SalesforceMimeType;
+  | SalesforceMimeType
+  | GongMimeType;
+
+export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
+  return (MIME_TYPES_VALUES as string[]).includes(mimeType);
+}

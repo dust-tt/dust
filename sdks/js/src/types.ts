@@ -122,6 +122,8 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.google-apps.document": [],
+  "application/vnd.google-apps.presentation": [],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
   ],
