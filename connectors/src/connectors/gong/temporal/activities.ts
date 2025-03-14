@@ -237,36 +237,37 @@ export async function gongDeleteOutdatedTranscriptsActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}) {
+}): Promise<{ hasMore: boolean }> {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  let outdatedTranscripts;
-  do {
-    outdatedTranscripts = await GongTranscriptResource.fetchOutdated(
-      connector,
-      configuration,
+  const outdatedTranscripts = await GongTranscriptResource.fetchOutdated(
+    connector,
+    configuration,
+    {
+      limit: GARBAGE_COLLECT_BATCH_SIZE,
+    }
+  );
+
+  // Delete the data from core.
+  for (const transcript of outdatedTranscripts) {
+    await deleteDataSourceDocument(
+      dataSourceConfig,
+      makeGongTranscriptInternalId(connector, transcript.callId),
       {
-        limit: GARBAGE_COLLECT_BATCH_SIZE,
+        workspaceId: dataSourceConfig.workspaceId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        provider: "gong",
+        callId: transcript.callId,
       }
     );
+  }
 
-    // Delete the data from core.
-    for (const transcript of outdatedTranscripts) {
-      await deleteDataSourceDocument(
-        dataSourceConfig,
-        makeGongTranscriptInternalId(connector, transcript.callId),
-        {
-          workspaceId: dataSourceConfig.workspaceId,
-          dataSourceId: dataSourceConfig.dataSourceId,
-          provider: "gong",
-          callId: transcript.callId,
-        }
-      );
-    }
+  // Delete the data from connectors.
+  await GongTranscriptResource.batchDelete(connector, outdatedTranscripts);
 
-    // Delete the data from connectors.
-    await GongTranscriptResource.batchDelete(connector, outdatedTranscripts);
-  } while (outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE);
+  return {
+    hasMore: outdatedTranscripts.length === GARBAGE_COLLECT_BATCH_SIZE,
+  };
 }

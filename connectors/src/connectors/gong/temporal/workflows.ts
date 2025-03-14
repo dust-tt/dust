@@ -122,5 +122,11 @@ export async function gongGarbageCollectWorkflow({
 }: {
   connectorId: ModelId;
 }) {
-  await gongDeleteOutdatedTranscriptsActivity({ connectorId });
+  let hasMoreTranscripts = true;
+  while (hasMoreTranscripts) {
+    const { hasMore } = await gongDeleteOutdatedTranscriptsActivity({
+      connectorId,
+    });
+    hasMoreTranscripts = hasMore;
+  }
 }
