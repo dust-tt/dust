@@ -97,8 +97,8 @@ export default function Block({
       <div
         className={classNames(
           block.indent == 1 ? "ml-8" : "ml-0",
-          "border-border-dark dark:border-border-dark-night",
-          "flex flex-col rounded-2xl border px-4 py-4"
+          "border-slate-300 dark:border-slate-700",
+          "flex flex-col rounded-lg border px-4 py-4"
         )}
       >
         <div className="flex w-full flex-row items-start justify-between pb-2">
@@ -173,7 +173,7 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "text-primary-500 dark:text-primary-500-night"
+              "dark:text-gray-400-night text-gray-400"
             )}
           >
             <div className="ml-2 mr-2">
@@ -185,7 +185,7 @@ export default function Block({
           <div
             className={classNames(
               "flex flex-row items-center text-sm",
-              "text-primary-500 dark:text-primary-500-night"
+              "dark:text-gray-400-night text-gray-400"
             )}
           >
             <div role="status">

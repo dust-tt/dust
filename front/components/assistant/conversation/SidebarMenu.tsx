@@ -339,7 +339,7 @@ const RenderConversations = ({
       <NavigationListLabel
         label={dateLabel}
         isSticky
-        className="bg-muted-background dark:bg-muted-background-night"
+        className="bg-structure-50 dark:bg-structure-50-night"
       />
       {conversations.map((conversation) => (
         <RenderConversation

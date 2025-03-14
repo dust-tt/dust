@@ -115,7 +115,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
         />
       )}
 
-      <Container className="h-full w-full" noPadding>
+      <Container className="h-full w-full bg-background" noPadding>
         <div className="space-y-8">
           <div>
             <Page.SectionHeader
@@ -124,7 +124,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
             />
             <ul
               role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
+              className="divide-y divide-structure-200 pt-4 dark:divide-structure-200-night"
             >
               {filteredProviders.map((provider) => (
                 <ProviderListItem
@@ -148,7 +148,7 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
             />
             <ul
               role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
+              className="divide-y divide-structure-200 pt-4 dark:divide-structure-200-night"
             >
               {serviceProviders.map((provider) => (
                 <ProviderListItem
@@ -198,9 +198,7 @@ function ProviderListItem({
             <p
               className={cn(
                 "truncate text-base font-bold",
-                isEnabled
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-primary-500 dark:text-primary-500-night"
+                isEnabled ? "text-slate-700" : "text-slate-400"
               )}
             >
               {name}
@@ -212,7 +210,7 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <div className="font-mono flex items-center gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <div className="font-mono flex items-center gap-1 text-xs text-element-700">
               <span className="shrink-0">API Key:</span>
               <div className="max-w-72 truncate">{formatApiKey(apiKey)}</div>
             </div>

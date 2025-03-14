@@ -63,7 +63,13 @@ export const NavigationSidebar = React.forwardRef<
   );
 
   return (
-    <div ref={ref} className="flex min-w-0 grow flex-col">
+    <div
+      ref={ref}
+      className={classNames(
+        "flex min-w-0 grow flex-col",
+        "bg-structure-50 dark:bg-structure-50-night"
+      )}
+    >
       <div className="flex flex-col">
         <AppStatusBanner />
         {subscription.endDate && (
@@ -306,7 +312,7 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={direction} variant="light" />
+      <CollapseButton direction={direction} />
     </div>
   );
 });
