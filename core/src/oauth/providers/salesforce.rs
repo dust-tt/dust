@@ -6,7 +6,7 @@ use crate::{
         credential::{Credential, CredentialProvider},
         providers::utils::execute_request,
     },
-    utils::{self},
+    utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
