@@ -816,7 +816,9 @@ export function ConnectorPermissionsModal({
                         {connectorConfiguration.selectLabel}
                       </div>
                       <ContentNodeTree
-                        isSearchEnabled={connectorConfiguration.isSearchEnabled}
+                        isTitleFilterEnabled={
+                          connectorConfiguration.isTitleFilterEnabled
+                        }
                         isRoundedBackground={true}
                         useResourcesHook={useResourcesHook}
                         selectedNodes={

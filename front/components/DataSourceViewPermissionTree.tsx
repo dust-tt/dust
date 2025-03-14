@@ -35,7 +35,6 @@ const getUseResourceHook =
 interface DataSourceViewPermissionTreeProps {
   dataSourceView: DataSourceViewType;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
   onDocumentViewClick: (documentId: string) => void;
   owner: LightWorkspaceType;
   parentId?: string | null;
@@ -52,7 +51,6 @@ interface DataSourceViewPermissionTreeProps {
 export function DataSourceViewPermissionTree({
   dataSourceView,
   isRoundedBackground,
-  isSearchEnabled,
   onDocumentViewClick,
   owner,
   parentId,
@@ -73,7 +71,6 @@ export function DataSourceViewPermissionTree({
 
   return (
     <ContentNodeTree
-      isSearchEnabled={isSearchEnabled}
       isRoundedBackground={isRoundedBackground}
       onDocumentViewClick={onDocumentViewClick}
       showExpand={showExpand}
