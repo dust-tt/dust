@@ -73,6 +73,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       lastSyncTimestamp: this.lastSyncTimestamp,
       baseUrl: this.baseUrl,
       retentionPeriodDays: this.retentionPeriodDays,
+      lastGarbageCollectionTimestamp: this.lastGarbageCollectionTimestamp,
     };
   }
 
