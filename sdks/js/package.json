@@ -4,12 +4,12 @@
   "description": "Client for Dust API",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dust/dust-tt.git"
+    "url": "git+https://github.com/dust-tt/dust.git"
   },
   "author": "Dust (Permutation Labs SAS)",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/dust/dust-tt/issues"
+    "url": "https://github.com/dust-tt/dust/issues"
   },
   "homepage": "https://github.com/dust-tt/dust-sdk-js",
   "main": "dist/index.js",
