@@ -23,6 +23,22 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
+import {
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/types/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -37,30 +53,18 @@ import {
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationType,
   ConnectorProvider,
   ContentNodesViewType,
-  DataSourceConfiguration,
   DataSourceTag,
   DataSourceViewType,
-  DustAppRunConfigurationType,
   LightWorkspaceType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
   TagsFilter,
 } from "@app/types";
 import {
   assertNever,
   DocumentViewRawContentKey,
   GLOBAL_AGENTS_SID,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
 } from "@app/types";
 
 interface AssistantActionsSectionProps {

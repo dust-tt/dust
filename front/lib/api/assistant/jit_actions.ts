@@ -6,23 +6,23 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
-import { makeConversationIncludeFileConfiguration } from "@app/lib/api/assistant/actions/conversation/include_file";
-import { makeConversationListFilesAction } from "@app/lib/api/assistant/actions/conversation/list_files";
-import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
+} from "@app/lib/actions/constants";
+import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
+import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
+import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { ConversationFileType } from "@app/lib/actions/types/conversation/list_files";
+import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
-  ActionConfigurationType,
   AgentActionType,
   AgentMessageType,
-  ConversationFileType,
   ConversationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
 } from "@app/types";
 
 async function getJITActions(

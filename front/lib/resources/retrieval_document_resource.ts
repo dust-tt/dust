@@ -5,6 +5,10 @@
 import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  RetrievalDocumentChunkType,
+  RetrievalDocumentType,
+} from "@app/lib/actions/types/retrieval";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";
@@ -16,12 +20,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  ModelId,
-  Result,
-  RetrievalDocumentChunkType,
-  RetrievalDocumentType,
-} from "@app/types";
+import type { ModelId, Result } from "@app/types";
 import { removeNulls } from "@app/types";
 
 export type RetrievalDocumentBlob = CreationAttributes<RetrievalDocument>;

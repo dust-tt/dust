@@ -1,5 +1,9 @@
 import moment from "moment-timezone";
 
+import {
+  isRetrievalConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import {
@@ -30,9 +34,7 @@ import {
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
-  isRetrievalConfiguration,
   isUserMessageType,
-  isWebsearchConfiguration,
   Ok,
   removeNulls,
 } from "@app/types";

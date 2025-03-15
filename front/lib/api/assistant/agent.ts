@@ -1,7 +1,22 @@
+import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
-import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
+import type {
+  ActionConfigurationType,
+  AgentActionSpecification,
+  AgentActionSpecificEvent,
+} from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import { getCitationsCount } from "@app/lib/actions/utils";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -11,6 +26,7 @@ import {
   constructPromptMultiActions,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -20,10 +36,7 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
-  ActionConfigurationType,
   AgentActionsEvent,
-  AgentActionSpecification,
-  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
@@ -42,17 +55,8 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  isBrowseConfiguration,
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
   isTextContent,
   isUserMessageTypeModel,
-  isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 

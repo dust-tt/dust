@@ -1,7 +1,10 @@
 import { DocumentTextIcon } from "@dust-tt/sparkle";
 
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import type { WebsearchActionType, WebsearchResultType } from "@app/types";
+import type {
+  WebsearchActionType,
+  WebsearchResultType,
+} from "@app/lib/actions/types/websearch";
 
 export function makeWebsearchResultsCitation(
   result: WebsearchResultType
