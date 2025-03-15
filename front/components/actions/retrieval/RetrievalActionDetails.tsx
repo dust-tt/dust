@@ -10,7 +10,7 @@ import {
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { RetrievalActionType } from "@app/types";
+import type { RetrievalActionType } from "@app/lib/actions/types/retrieval";
 
 export function RetrievalActionDetails({
   action,

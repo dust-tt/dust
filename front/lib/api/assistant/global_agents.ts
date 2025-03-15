@@ -10,7 +10,8 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+} from "@app/lib/actions/constants";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,7 +20,6 @@ import { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationStatus,
   AgentConfigurationType,
   AgentModelConfigurationType,

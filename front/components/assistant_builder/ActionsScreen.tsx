@@ -82,7 +82,7 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import type {
   ModelConfigurationType,
   SpaceType,

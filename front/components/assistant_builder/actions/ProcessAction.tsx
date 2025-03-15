@@ -24,13 +24,9 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
 import { classNames } from "@app/lib/utils";
-import type {
-  ProcessSchemaPropertyType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { Result, SpaceType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(

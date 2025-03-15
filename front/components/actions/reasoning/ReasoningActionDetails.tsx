@@ -3,7 +3,7 @@ import { Markdown } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { ReasoningActionType } from "@app/types";
+import type { ReasoningActionType } from "@app/lib/actions/types/reasoning";
 
 export function ReasoningActionDetails({
   action,

@@ -1,3 +1,4 @@
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
@@ -19,7 +20,6 @@ import type {
 } from "@app/types";
 import type { Result } from "@app/types";
 import type {
-  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,

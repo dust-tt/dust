@@ -16,8 +16,9 @@ import { useCallback } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { LightWorkspaceType, TablesQueryActionType } from "@app/types";
-import { getTablesQueryResultsFileTitle } from "@app/types";
+import type { TablesQueryActionType } from "@app/lib/actions/types/tables_query";
+import { getTablesQueryResultsFileTitle } from "@app/lib/actions/types/tables_query";
+import type { LightWorkspaceType } from "@app/types";
 
 export function TablesQueryActionDetails({
   action,

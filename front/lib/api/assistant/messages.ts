@@ -1,12 +1,15 @@
 import type { WhereOptions } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
-import { browseActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/browse";
-import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/dust_app_run";
-import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/reasoning";
-import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/search_labels";
-import { tableQueryTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/tables_query";
-import { websearchActionTypesFromAgentMessageIds } from "@app/lib/api/assistant/actions/websearch";
+import { browseActionTypesFromAgentMessageIds } from "@app/lib/actions/browse";
+import { conversationIncludeFileTypesFromAgentMessageIds } from "@app/lib/actions/conversation/include_file";
+import { dustAppRunTypesFromAgentMessageIds } from "@app/lib/actions/dust_app_run";
+import { processActionTypesFromAgentMessageIds } from "@app/lib/actions/process";
+import { reasoningActionTypesFromAgentMessageIds } from "@app/lib/actions/reasoning";
+import { retrievalActionTypesFromAgentMessageIds } from "@app/lib/actions/retrieval";
+import { searchLabelsActionTypesFromAgentMessageIds } from "@app/lib/actions/search_labels";
+import { tableQueryTypesFromAgentMessageIds } from "@app/lib/actions/tables_query";
+import { websearchActionTypesFromAgentMessageIds } from "@app/lib/actions/websearch";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -37,10 +40,6 @@ import type {
 } from "@app/types";
 import { ConversationError } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
-
-import { conversationIncludeFileTypesFromAgentMessageIds } from "./actions/conversation/include_file";
-import { processActionTypesFromAgentMessageIds } from "./actions/process";
-import { retrievalActionTypesFromAgentMessageIds } from "./actions/retrieval";
 
 async function batchRenderUserMessages(
   messages: Message[]

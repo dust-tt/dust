@@ -2,7 +2,7 @@ import { MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { ConversationIncludeFileActionType } from "@app/types";
+import type { ConversationIncludeFileActionType } from "@app/lib/actions/types/conversation/include_file";
 
 export function ConversationIncludeFileActionDetails({
   action,

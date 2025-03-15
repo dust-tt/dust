@@ -11,7 +11,8 @@ import {
   DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+} from "@app/lib/actions/constants";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
@@ -21,7 +22,6 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   PlanType,
-  ProcessSchemaPropertyType,
   SubscriptionType,
   SupportedModel,
   TimeframeUnit,

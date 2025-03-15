@@ -9,26 +9,9 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
-import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@app/types";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
 import {
-  assertNever,
   isBrowseConfiguration,
   isDustAppRunConfiguration,
   isProcessConfiguration,
@@ -36,8 +19,24 @@ import {
   isRetrievalConfiguration,
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
-  slugify,
+} from "@app/lib/actions/types/guards";
+import type { ProcessConfigurationType } from "@app/lib/actions/types/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
+import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
+import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import type { Authenticator } from "@app/lib/auth";
+import { AppResource } from "@app/lib/resources/app_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
+import type {
+  AgentConfigurationType,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  TemplateAgentConfigurationType,
 } from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleSpaces = (

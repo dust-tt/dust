@@ -1,5 +1,5 @@
+import type { ConversationFileType } from "@app/lib/actions/types/conversation/list_files";
 import type {
-  ConversationFileType,
   ConversationType,
   SupportedContentFragmentType,
 } from "@app/types";

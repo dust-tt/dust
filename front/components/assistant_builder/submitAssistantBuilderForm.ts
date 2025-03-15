@@ -13,14 +13,14 @@ import {
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+} from "@app/lib/actions/constants";
+import type { RetrievalTimeframe } from "@app/lib/actions/types/retrieval";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
   ModelConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
-  RetrievalTimeframe,
   WorkspaceType,
 } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";

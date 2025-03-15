@@ -36,7 +36,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {

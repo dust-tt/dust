@@ -49,10 +49,16 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import {
+  isRetrievalActionType,
+  isWebsearchActionType,
+} from "@app/lib/actions/types/guards";
+import type { RetrievalActionType } from "@app/lib/actions/types/retrieval";
+import type { WebsearchActionType } from "@app/lib/actions/types/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
-  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentActionType,
   AgentErrorEvent,
@@ -61,18 +67,10 @@ import type {
   AgentMessageType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
-  RetrievalActionType,
   UserType,
-  WebsearchActionType,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isRetrievalActionType,
-  isWebsearchActionType,
-  removeNulls,
-} from "@app/types";
+import { assertNever, GLOBAL_AGENTS_SID, removeNulls } from "@app/types";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
