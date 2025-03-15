@@ -1,15 +1,15 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type {
+  ProcessActionOutputsType,
+  ProcessSchemaPropertyType,
+} from "@app/lib/actions/types/process";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type {
-  ProcessActionOutputsType,
-  ProcessSchemaPropertyType,
-  TimeframeUnit,
-} from "@app/types";
+import type { TimeframeUnit } from "@app/types";
 
 export class AgentProcessConfiguration extends WorkspaceAwareModel<AgentProcessConfiguration> {
   declare createdAt: CreationOptional<Date>;

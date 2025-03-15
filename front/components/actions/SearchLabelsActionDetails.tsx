@@ -2,7 +2,7 @@ import { CollapsibleComponent, MagnifyingGlassIcon } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { SearchLabelsActionType } from "@app/types";
+import type { SearchLabelsActionType } from "@app/lib/actions/types/search_labels";
 
 export function SearchLabelsActionDetails({
   action,

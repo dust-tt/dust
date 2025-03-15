@@ -2,6 +2,16 @@ import assert from "assert";
 import type { Order, Transaction } from "sequelize";
 import { Op, Sequelize, UniqueConstraintError } from "sequelize";
 
+import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
+import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
+import { fetchAgentProcessActionConfigurations } from "@app/lib/actions/configuration/process";
+import { fetchReasoningActionConfigurations } from "@app/lib/actions/configuration/reasoning";
+import { fetchAgentRetrievalActionConfigurations } from "@app/lib/actions/configuration/retrieval";
+import {
+  createTableDataSourceConfiguration,
+  fetchTableQueryActionConfigurations,
+} from "@app/lib/actions/configuration/table_query";
+import { fetchWebsearchActionConfigurations } from "@app/lib/actions/configuration/websearch";
 import {
   DEFAULT_BROWSE_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
@@ -9,17 +19,15 @@ import {
   DEFAULT_RETRIEVAL_ACTION_NAME,
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
-import { fetchBrowseActionConfigurations } from "@app/lib/api/assistant/configuration/browse";
-import { fetchDustAppRunActionConfigurations } from "@app/lib/api/assistant/configuration/dust_app_run";
-import { fetchAgentProcessActionConfigurations } from "@app/lib/api/assistant/configuration/process";
-import { fetchReasoningActionConfigurations } from "@app/lib/api/assistant/configuration/reasoning";
-import { fetchAgentRetrievalActionConfigurations } from "@app/lib/api/assistant/configuration/retrieval";
-import {
-  createTableDataSourceConfiguration,
-  fetchTableQueryActionConfigurations,
-} from "@app/lib/api/assistant/configuration/table_query";
-import { fetchWebsearchActionConfigurations } from "@app/lib/api/assistant/configuration/websearch";
+} from "@app/lib/actions/constants";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
+import type {
+  DataSourceConfiguration,
+  RetrievalTimeframe,
+} from "@app/lib/actions/types/retrieval";
+import type { RetrievalQuery } from "@app/lib/actions/types/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/types/tables_query";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,
@@ -46,7 +54,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import type {
-  AgentActionConfigurationType,
   AgentConfigurationScope,
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -54,16 +61,11 @@ import type {
   AgentsGetViewType,
   AgentStatus,
   AppType,
-  DataSourceConfiguration,
   LightAgentConfigurationType,
   ModelId,
   ModelIdType,
   ModelProviderIdType,
-  ProcessSchemaPropertyType,
   Result,
-  RetrievalQuery,
-  RetrievalTimeframe,
-  TableDataSourceConfiguration,
   WorkspaceType,
 } from "@app/types";
 import {

@@ -1,16 +1,17 @@
+import type { BrowseActionType } from "@app/lib/actions/types/browse";
+import type { ConversationIncludeFileActionType } from "@app/lib/actions/types/conversation/include_file";
+import type { ConversationListFilesActionType } from "@app/lib/actions/types/conversation/list_files";
+import type { DustAppRunActionType } from "@app/lib/actions/types/dust_app_run";
+import type { ProcessActionType } from "@app/lib/actions/types/process";
+import type { ReasoningActionType } from "@app/lib/actions/types/reasoning";
+import type { RetrievalActionType } from "@app/lib/actions/types/retrieval";
+import type { SearchLabelsActionType } from "@app/lib/actions/types/search_labels";
+import type { TablesQueryActionType } from "@app/lib/actions/types/tables_query";
+import type { WebsearchActionType } from "@app/lib/actions/types/websearch";
+
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";
 import type { UserType, WorkspaceType } from "../user";
-import type { BrowseActionType } from "./actions/browse";
-import type { ConversationIncludeFileActionType } from "./actions/conversation/include_file";
-import type { ConversationListFilesActionType } from "./actions/conversation/list_files";
-import type { DustAppRunActionType } from "./actions/dust_app_run";
-import type { ProcessActionType } from "./actions/process";
-import type { ReasoningActionType } from "./actions/reasoning";
-import type { RetrievalActionType } from "./actions/retrieval";
-import type { SearchLabelsActionType } from "./actions/search_labels";
-import type { TablesQueryActionType } from "./actions/tables_query";
-import type { WebsearchActionType } from "./actions/websearch";
 import type { LightAgentConfigurationType } from "./agent";
 
 /**

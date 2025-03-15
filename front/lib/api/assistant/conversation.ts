@@ -4,6 +4,7 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -51,7 +52,6 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
-  AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,

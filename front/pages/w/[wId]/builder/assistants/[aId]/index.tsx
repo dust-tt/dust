@@ -11,6 +11,7 @@ import type {
   BuilderFlow,
 } from "@app/components/assistant_builder/types";
 import { BUILDER_FLOWS } from "@app/components/assistant_builder/types";
+import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -23,7 +24,6 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
-import { throwIfInvalidAgentConfiguration } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   actions: AssistantBuilderInitialState["actions"];

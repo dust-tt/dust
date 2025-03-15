@@ -7,7 +7,7 @@ import * as reporter from "io-ts-reporters";
 import {
   ActionResponseBaseSchema,
   isActionResponseBase,
-} from "@app/lib/actions/types";
+} from "@app/lib/actions/types/types";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
