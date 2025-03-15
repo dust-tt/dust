@@ -18,3 +18,9 @@ export function makeGongSyncTranscriptsWorkflowIdFromParentId(
 ): string | undefined {
   return `${workflowId}-transcripts`;
 }
+
+export function makeGongGarbageCollectionWorkflowIdFromParentId(
+  workflowId: string
+): string {
+  return `${workflowId}-garbage-collection`;
+}
