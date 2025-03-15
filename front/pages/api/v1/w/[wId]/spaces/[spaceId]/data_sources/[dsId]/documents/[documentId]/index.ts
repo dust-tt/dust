@@ -137,10 +137,10 @@ export const config = {
  *                 description: The MIME type of the document to upsert.
  *               text:
  *                 type: string
- *                 description: The text content of the document to upsert.
+ *                 description: The text content of the document to upsert. Either 'text' or 'section' must be provided, but not both.
  *               section:
- *                 type: object
- *                 description: The structured content of the document to upsert.
+ *                 $ref: '#/components/schemas/Section'
+ *                 description: The structured content of the document to upsert. Either 'text' or 'section' must be provided, but not both.
  *               source_url:
  *                 type: string
  *                 description: The source URL for the document to upsert.
