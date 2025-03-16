@@ -3,6 +3,10 @@ import type {
   BrowseConfigurationType,
 } from "@app/lib/actions/browse";
 import type {
+  ConversationIncludeFileActionType,
+  ConversationIncludeFileConfigurationType,
+} from "@app/lib/actions/conversation/include_file";
+import type {
   DustAppRunActionType,
   DustAppRunConfigurationType,
 } from "@app/lib/actions/dust_app_run";
@@ -21,10 +25,6 @@ import type {
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
 import { BaseAction } from "@app/lib/actions/types";
-import type {
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-} from "@app/lib/actions/types/conversation/include_file";
 import type {
   WebsearchActionType,
   WebsearchConfigurationType,

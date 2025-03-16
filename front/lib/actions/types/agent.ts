@@ -3,6 +3,10 @@ import type {
   BrowseConfigurationType,
 } from "@app/lib/actions/browse";
 import type {
+  ConversationIncludeFileActionRunningEvents,
+  ConversationIncludeFileConfigurationType,
+} from "@app/lib/actions/conversation/include_file";
+import type {
   DustAppRunActionRunningEvents,
   DustAppRunConfigurationType,
 } from "@app/lib/actions/dust_app_run";
@@ -26,10 +30,6 @@ import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
-import type {
-  ConversationIncludeFileConfigurationType,
-  ConversationIncludeFileParamsEvent,
-} from "@app/lib/actions/types/conversation/include_file";
 import type {
   WebsearchActionRunningEvents,
   WebsearchConfigurationType,
@@ -112,7 +112,7 @@ export type AgentActionSpecification = {
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
   | BrowseActionRunningEvents
-  | ConversationIncludeFileParamsEvent
+  | ConversationIncludeFileActionRunningEvents
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | ReasoningActionRunningEvents
