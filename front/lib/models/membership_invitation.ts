@@ -1,10 +1,10 @@
-import type { RoleType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { RoleType } from "@app/types";
 
 export class MembershipInvitation extends WorkspaceAwareModel<MembershipInvitation> {
   declare createdAt: CreationOptional<Date>;

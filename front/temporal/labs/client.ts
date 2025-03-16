@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { WorkflowHandle } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 
@@ -9,6 +7,8 @@ import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/labs/config";
 import { makeRetrieveTranscriptWorkflowId } from "@app/temporal/labs/utils";
 import { retrieveNewTranscriptsWorkflow } from "@app/temporal/labs/workflows";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function launchRetrieveTranscriptsWorkflow(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource

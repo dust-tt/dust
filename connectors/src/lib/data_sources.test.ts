@@ -1,6 +1,6 @@
-import type { CoreAPIDataSourceDocumentSection } from "@dust-tt/types";
 import { describe, expect, it } from "vitest";
 
+import type { CoreAPIDataSourceDocumentSection } from "./data_sources";
 import { sectionLength, truncateSection } from "./data_sources";
 
 describe("truncateSection", () => {

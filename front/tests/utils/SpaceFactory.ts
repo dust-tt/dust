@@ -1,8 +1,8 @@
-import type { WorkspaceType } from "@dust-tt/types";
 import { faker } from "@faker-js/faker";
 import type { Transaction } from "sequelize";
 
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { WorkspaceType } from "@app/types";
 
 export class SpaceFactory {
   static async global(workspace: WorkspaceType, t: Transaction) {

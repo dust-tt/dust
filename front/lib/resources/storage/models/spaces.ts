@@ -1,11 +1,11 @@
-import type { SpaceKind } from "@dust-tt/types";
-import { isUniqueSpaceKind } from "@dust-tt/types";
 import type { CreationOptional, NonAttribute, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { SpaceKind } from "@app/types";
+import { isUniqueSpaceKind } from "@app/types";
 
 export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare id: CreationOptional<number>;

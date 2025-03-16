@@ -1,4 +1,3 @@
-import type { APIErrorWithStatusCode } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -43,10 +42,7 @@ export const SlackInteractionPayloadSchema = t.type({
   ),
 });
 
-type SlackWebhookResBody =
-  | { challenge: string }
-  | null
-  | APIErrorWithStatusCode;
+type SlackWebhookResBody = { challenge: string } | null;
 
 const _webhookSlackInteractionsAPIHandler = async (
   req: Request<

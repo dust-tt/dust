@@ -1,9 +1,3 @@
-import {
-  concurrentExecutor,
-  CoreAPI,
-  dustManagedCredentials,
-} from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
@@ -16,6 +10,11 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import {
+  concurrentExecutor,
+  CoreAPI,
+  dustManagedCredentials,
+} from "@app/types";
 
 export async function processDataSourceDocuments({
   destIds,

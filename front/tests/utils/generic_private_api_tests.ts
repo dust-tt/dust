@@ -1,4 +1,3 @@
-import type { MembershipRoleType } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
@@ -8,6 +7,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { MembershipRoleType } from "@app/types";
 
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();

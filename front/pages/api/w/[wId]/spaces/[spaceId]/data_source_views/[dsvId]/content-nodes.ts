@@ -1,8 +1,3 @@
-import type {
-  DataSourceViewContentNode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,6 +10,11 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { ContentNodesViewTypeCodec, removeNulls } from "@app/types";
 
 const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),

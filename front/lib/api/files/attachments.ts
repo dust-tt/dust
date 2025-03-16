@@ -1,11 +1,10 @@
-import type { ConversationType } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
-
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types";
+import { removeNulls } from "@app/types";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
 // Therefore, we couldn't upsert them to the conversation datasource.

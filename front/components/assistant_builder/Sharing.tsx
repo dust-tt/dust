@@ -25,20 +25,20 @@ import {
   SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  DataSourceType,
-  LightWorkspaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isAdmin, isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  DataSourceType,
+  LightWorkspaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 type ConfirmationModalDataType = {
   title: string;

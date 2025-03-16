@@ -1,7 +1,3 @@
-import type {
-  DataSourceViewContentNode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -11,6 +7,10 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export type ListTablesResponseBody = {
   tables: DataSourceViewContentNode[];

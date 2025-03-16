@@ -1,9 +1,3 @@
-import type {
-  AppType,
-  LightWorkspaceType,
-  RunRunType,
-  SpaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -15,6 +9,12 @@ import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
+import type {
+  AppType,
+  LightWorkspaceType,
+  RunRunType,
+  SpaceType,
+} from "@app/types";
 
 export function useApps({
   disabled,

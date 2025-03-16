@@ -1,3 +1,10 @@
+import * as _ from "lodash";
+
+import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentMessageType,
@@ -8,14 +15,7 @@ import type {
   UserType,
   UserTypeWithWorkspaces,
   WorkspaceType,
-} from "@dust-tt/types";
-import * as _ from "lodash";
-
-import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 import type { UserResource } from "../resources/user_resource";
 

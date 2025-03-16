@@ -1,4 +1,3 @@
-import { removeNulls } from "@dust-tt/types";
 import * as _ from "lodash";
 
 import { Plan, Subscription } from "@app/lib/models/plan";
@@ -13,6 +12,7 @@ import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/serve
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { removeNulls } from "@app/types";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allActiveSubscriptions = await Subscription.findAll({

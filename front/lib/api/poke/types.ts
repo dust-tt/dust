@@ -1,13 +1,12 @@
+import type { ResourceTypeMap } from "@app/lib/api/poke/utils";
+import type { Authenticator } from "@app/lib/auth";
 import type {
   PluginArgDefinition,
   PluginArgs,
   PluginManifest,
   Result,
   SupportedResourceType,
-} from "@dust-tt/types";
-
-import type { ResourceTypeMap } from "@app/lib/api/poke/utils";
-import type { Authenticator } from "@app/lib/auth";
+} from "@app/types";
 
 // Helper type to infer the correct TypeScript type from SupportedArgType.
 type InferArgType<

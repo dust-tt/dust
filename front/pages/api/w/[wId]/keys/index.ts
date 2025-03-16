@@ -1,4 +1,3 @@
-import type { KeyType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -8,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { KeyType, WithAPIErrorResponse } from "@app/types";
 
 export type GetKeysResponseBody = {
   keys: KeyType[];

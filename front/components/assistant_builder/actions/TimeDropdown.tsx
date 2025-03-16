@@ -5,10 +5,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import type { TimeframeUnit } from "@dust-tt/types";
 
 import { TIME_FRAME_UNIT_TO_LABEL } from "@app/components/assistant_builder/shared";
 import type { AssistantBuilderTimeFrame } from "@app/components/assistant_builder/types";
+import type { TimeframeUnit } from "@app/types";
 
 interface TimeUnitDropdownProps<
   T extends { timeFrame?: AssistantBuilderTimeFrame | null },

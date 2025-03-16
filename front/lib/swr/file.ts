@@ -1,5 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import type { SWRConfiguration } from "swr";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -8,6 +7,7 @@ import type {
   UpsertFileToDataSourceRequestBody,
   UpsertFileToDataSourceResponseBody,
 } from "@app/pages/api/w/[wId]/data_sources/[dsId]/files";
+import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
 
 export const getFileProcessedUrl = (
   owner: LightWorkspaceType,

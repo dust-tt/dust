@@ -1,13 +1,13 @@
+import { isPlainObject } from "lodash";
+
+import type { RegionType } from "@app/lib/api/regions/config";
 import type {
   CoreAPIContentNode,
   CoreAPIDataset,
   CoreAPIDocumentBlob,
   CoreAPITableBlob,
   ModelId,
-} from "@dust-tt/types";
-import { isPlainObject } from "lodash";
-
-import type { RegionType } from "@app/lib/api/regions/config";
+} from "@app/types";
 
 export interface RelocationBlob<T extends string = string> {
   statements: Record<T, { sql: string; params: any[] }[]>;

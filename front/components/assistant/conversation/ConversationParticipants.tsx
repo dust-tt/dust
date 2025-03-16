@@ -1,8 +1,8 @@
 import { Avatar } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import React from "react";
 
 import { useConversationParticipants } from "@app/lib/swr/conversations";
+import type { WorkspaceType } from "@app/types";
 
 interface ConversationParticipantsProps {
   conversationId: string;

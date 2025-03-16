@@ -7,12 +7,9 @@ import {
   DropdownMenuTrigger,
   Label,
 } from "@dust-tt/sparkle";
-import type {
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@dust-tt/types";
 
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
+import type { LightWorkspaceType, UserTypeWithWorkspaces } from "@app/types";
 
 interface WorkspacePickerProps {
   onWorkspaceUpdate: (w: LightWorkspaceType) => void;

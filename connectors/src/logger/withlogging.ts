@@ -1,11 +1,11 @@
-import type {
-  ConnectorsAPIErrorWithStatusCode,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
 import type { Request, Response } from "express";
 import StatsD from "hot-shots";
 
 import logger from "@connectors/logger/logger";
+import type {
+  ConnectorsAPIErrorWithStatusCode,
+  WithConnectorsAPIErrorReponse,
+} from "@connectors/types";
 
 export const statsDClient = new StatsD();
 

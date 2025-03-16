@@ -1,6 +1,4 @@
 import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
-import type { AgentConfigurationType, WorkspaceType } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
@@ -9,6 +7,8 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AgentConfigurationType, WorkspaceType } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];

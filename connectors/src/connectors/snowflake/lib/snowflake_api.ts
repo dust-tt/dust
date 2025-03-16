@@ -1,6 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import type { SnowflakeCredentials } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -19,6 +18,8 @@ import {
   remoteDBTableCodec,
 } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
+import type { SnowflakeCredentials } from "@connectors/types";
+import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;

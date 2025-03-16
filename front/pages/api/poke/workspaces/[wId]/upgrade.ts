@@ -1,4 +1,3 @@
-import type { LightWorkspaceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -7,6 +6,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
+import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
 
 export type UpgradeWorkspaceResponseBody = {
   workspace: LightWorkspaceType;

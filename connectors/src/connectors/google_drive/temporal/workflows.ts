@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { assertNever } from "@temporalio/common/lib/type-helpers";
 import {
   continueAsNew,
@@ -13,6 +12,7 @@ import { uniq } from "lodash";
 import type * as activities from "@connectors/connectors/google_drive/temporal/activities";
 import type { FolderUpdatesSignal } from "@connectors/connectors/google_drive/temporal/signals";
 import type * as sync_status from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
 
 import { GOOGLE_DRIVE_USER_SPACE_VIRTUAL_DRIVE_ID } from "../lib/consts";
 import { folderUpdatesSignal } from "./signals";

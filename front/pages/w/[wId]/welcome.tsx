@@ -1,12 +1,11 @@
 import {
   Button,
+  DustLogoSquare,
   Input,
-  LogoSquareColorLogo,
   Page,
   RadioGroup,
   RadioGroupItem,
 } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -15,6 +14,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import type { UserType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   user: UserType;
@@ -133,7 +133,7 @@ export default function Welcome({
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello ${firstName}!`}
-          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <p className="text-element-800">Let's check a few things.</p>
         {!isAdmin && (

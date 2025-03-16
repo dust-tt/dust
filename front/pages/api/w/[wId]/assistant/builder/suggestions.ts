@@ -1,17 +1,3 @@
-import type {
-  BuilderEmojiSuggestionsType,
-  BuilderSuggestionsType,
-  ModelConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  BuilderEmojiSuggestionsResponseBodySchema,
-  BuilderSuggestionsResponseBodySchema,
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  InternalPostBuilderSuggestionsRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -23,6 +9,20 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  BuilderEmojiSuggestionsType,
+  BuilderSuggestionsType,
+  ModelConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  assertNever,
+  BuilderEmojiSuggestionsResponseBodySchema,
+  BuilderSuggestionsResponseBodySchema,
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  InternalPostBuilderSuggestionsRequestBodySchema,
+} from "@app/types";
 
 async function handler(
   req: NextApiRequest,

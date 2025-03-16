@@ -27,12 +27,6 @@ import {
   Tooltip,
   ValueCard,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, removeNulls } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useState } from "react";
 
@@ -48,6 +42,12 @@ import {
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { isBuilder, removeNulls } from "@app/types";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },

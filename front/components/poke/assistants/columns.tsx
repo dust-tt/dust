@@ -5,12 +5,12 @@ import {
   LinkWrapper,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 import Link from "next/link";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { LightWorkspaceType } from "@app/types";
 
 type AgentConfigurationDisplayType = {
   // TODO(2024-02-28 flav) Add description preview.

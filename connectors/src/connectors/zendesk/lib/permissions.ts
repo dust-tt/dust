@@ -1,10 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-} from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import type { Client } from "node-zendesk";
 
 import {
@@ -26,6 +20,13 @@ import {
   ZendeskCategoryResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all nodes selected by the admin when setting permissions.

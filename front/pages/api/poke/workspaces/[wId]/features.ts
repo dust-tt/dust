@@ -1,8 +1,3 @@
-import type {
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { isWhitelistableFeature } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -10,6 +5,8 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { apiError } from "@app/logger/withlogging";
+import type { WhitelistableFeature, WithAPIErrorResponse } from "@app/types";
+import { isWhitelistableFeature } from "@app/types";
 
 export type GetPokeFeaturesResponseBody = {
   features: WhitelistableFeature[];

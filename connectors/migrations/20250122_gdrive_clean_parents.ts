@@ -1,8 +1,3 @@
-import {
-  concurrentExecutor,
-  getGoogleSheetTableId,
-  MIME_TYPES,
-} from "@dust-tt/types";
 import _ from "lodash";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
@@ -24,7 +19,12 @@ import {
 } from "@connectors/lib/models/google_drive";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  concurrentExecutor,
+  getGoogleSheetTableId,
+  MIME_TYPES,
+} from "@connectors/types";
 
 async function migrateConnector(
   connector: ConnectorResource,

@@ -1,5 +1,3 @@
-import type { RunType, WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI, credentialsFromProviders } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -15,6 +13,8 @@ import { Provider } from "@app/lib/resources/storage/models/apps";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { RunType, WithAPIErrorResponse } from "@app/types";
+import { CoreAPI, credentialsFromProviders } from "@app/types";
 
 export type GetRunsResponseBody = {
   runs: RunType[];

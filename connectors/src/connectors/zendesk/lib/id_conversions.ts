@@ -1,6 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
-
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
 
 /**
  * Conversion from an id to an internalId.

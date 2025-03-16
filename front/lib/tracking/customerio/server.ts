@@ -1,9 +1,3 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  UserType,
-} from "@dust-tt/types";
-import { rateLimiter } from "@dust-tt/types";
 import * as _ from "lodash";
 
 import config from "@app/lib/api/config";
@@ -12,8 +6,14 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  UserType,
+} from "@app/types";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
 

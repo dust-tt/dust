@@ -12,7 +12,6 @@ import {
   RadioGroupCustomItem,
   Separator,
 } from "@dust-tt/sparkle";
-import type { SpaceType } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import {
@@ -20,6 +19,7 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
+import type { SpaceType } from "@app/types";
 
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];

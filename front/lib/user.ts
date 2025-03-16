@@ -1,4 +1,4 @@
-import type { UserMetadataType } from "@dust-tt/types";
+import type { UserMetadataType } from "@app/types";
 
 export async function setUserMetadataFromClient(metadata: UserMetadataType) {
   const res = await fetch(

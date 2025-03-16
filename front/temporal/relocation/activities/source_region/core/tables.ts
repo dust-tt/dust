@@ -1,11 +1,3 @@
-import type {
-  CoreAPINodesSearchFilter,
-  CoreAPISearchCursorRequest,
-  CoreAPITableBlob,
-  Ok,
-} from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
@@ -18,6 +10,13 @@ import {
   CORE_API_LIST_NODES_BATCH_SIZE,
 } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type {
+  CoreAPINodesSearchFilter,
+  CoreAPISearchCursorRequest,
+  CoreAPITableBlob,
+  Ok,
+} from "@app/types";
+import { concurrentExecutor, CoreAPI } from "@app/types";
 
 export async function getDataSourceTables({
   dataSourceCoreIds,
@@ -43,6 +42,8 @@ export async function getDataSourceTables({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
+        // Only paginate through data source nodes.
+        search_scope: "nodes_titles",
         // Leaving empty to get all tables.
         view_filter: [],
       },
@@ -66,7 +67,7 @@ export async function getDataSourceTables({
 
   if (searchResults.isErr()) {
     localLogger.error(
-      { error: searchResults.error },
+      { cursor: pageCursor, error: searchResults.error },
       "[Core] Failed to search nodes with cursor"
     );
 

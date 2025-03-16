@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,6 +8,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PostStateResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
 import { PostStateRequestBodySchema } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/state";
+import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

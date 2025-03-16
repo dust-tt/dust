@@ -1,10 +1,11 @@
-import type { ModelId, SearchLabelsActionOutputType } from "@dust-tt/types";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { SearchLabelsActionOutputType } from "@app/lib/actions/search_labels";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ModelId } from "@app/types";
 
 export class AgentSearchLabelsAction extends WorkspaceAwareModel<AgentSearchLabelsAction> {
   declare createdAt: CreationOptional<Date>;

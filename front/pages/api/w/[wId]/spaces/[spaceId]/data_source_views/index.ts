@@ -1,10 +1,3 @@
-import type {
-  DataSourceViewCategory,
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { ContentSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -24,6 +17,13 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewCategory,
+  DataSourceViewsWithDetails,
+  DataSourceViewType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { ContentSchema } from "@app/types";
 
 export type GetSpaceDataSourceViewsResponseBody<
   IncludeDetails extends boolean = boolean,

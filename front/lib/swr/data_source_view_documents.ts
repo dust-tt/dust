@@ -1,10 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightWorkspaceType,
-  PatchDataSourceWithNameDocumentRequestBody,
-  PostDataSourceWithNameDocumentRequestBody,
-} from "@dust-tt/types";
 import type { Fetcher } from "swr";
 
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
@@ -16,6 +10,12 @@ import {
 import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
 import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
 import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
+import type {
+  DataSourceViewType,
+  LightWorkspaceType,
+  PatchDataSourceWithNameDocumentRequestBody,
+  PostDataSourceWithNameDocumentRequestBody,
+} from "@app/types";
 
 export function useDataSourceViewDocument({
   dataSourceView,

@@ -1,23 +1,20 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodeWithParent,
-  Result,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  concurrentExecutor,
-  Err,
-  isValidContentNodesViewType,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok, removeNulls } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodeWithParent,
+} from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import {
+  concurrentExecutor,
+  isValidContentNodesViewType,
+} from "@connectors/types";
 
 type GetConnectorPermissionsRes<
   T extends ConnectorPermission | null = ConnectorPermission,

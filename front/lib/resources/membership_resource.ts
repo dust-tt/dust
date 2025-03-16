@@ -1,12 +1,4 @@
 import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   FindOptions,
   IncludeOptions,
@@ -24,6 +16,14 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  ModelId,
+  RequireAtLeastOne,
+  Result,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];

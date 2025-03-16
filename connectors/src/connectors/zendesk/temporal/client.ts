@@ -1,10 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import {
-  Err,
-  getZendeskGarbageCollectionWorkflowId,
-  getZendeskSyncWorkflowId,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WorkflowHandle } from "@temporalio/client";
 import {
   WorkflowExecutionAlreadyStartedError,
@@ -29,6 +24,10 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import {
+  getZendeskGarbageCollectionWorkflowId,
+  getZendeskSyncWorkflowId,
+} from "@connectors/types";
 
 export async function launchZendeskSyncWorkflow(
   connector: ConnectorResource,

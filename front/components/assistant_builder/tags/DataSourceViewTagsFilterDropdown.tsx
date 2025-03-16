@@ -7,16 +7,16 @@ import {
   PopoverTrigger,
   SliderToggle,
 } from "@dust-tt/sparkle";
+import { cloneDeep } from "lodash";
+
+import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
+import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
 import type {
   DataSourceTag,
   DataSourceViewSelectionConfiguration,
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
-} from "@dust-tt/types";
-import { cloneDeep } from "lodash";
-
-import { getActionTags } from "@app/components/assistant_builder/tags/helpers";
-import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
+} from "@app/types";
 
 interface DataSourceViewTagsFilterDropdownProps {
   currentDataSourceConfiguration: DataSourceViewSelectionConfiguration;

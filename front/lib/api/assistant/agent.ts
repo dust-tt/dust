@@ -1,8 +1,42 @@
+import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
-  AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
+} from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import { getCitationsCount } from "@app/lib/actions/utils";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  constructPromptMultiActions,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/generation";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import config from "@app/lib/api/config";
+import { getRedisClient } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import logger from "@app/logger/logger";
+import type {
+  AgentActionsEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
@@ -18,44 +52,13 @@ import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   assertNever,
-  isBrowseConfiguration,
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
   isTextContent,
   isUserMessageTypeModel,
-  isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-
-import { runActionStreamed } from "@app/lib/actions/server";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
-import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
-import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import config from "@app/lib/api/config";
-import { getRedisClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;

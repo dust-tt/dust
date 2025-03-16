@@ -1,28 +1,4 @@
 import { getSession as getAuth0Session } from "@auth0/nextjs-auth0";
-import type {
-  APIErrorWithStatusCode,
-  GroupType,
-  LightWorkspaceType,
-  PermissionType,
-  PlanType,
-  ResourcePermission,
-  Result,
-  RoleType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  Err,
-  hasRolePermissions,
-  isAdmin,
-  isBuilder,
-  isDevelopment,
-  isSupportedEnterpriseConnectionStrategy,
-  isUser,
-  Ok,
-  WHITELISTABLE_FEATURES,
-} from "@dust-tt/types";
 import memoizer from "lru-memoizer";
 import type {
   GetServerSidePropsContext,
@@ -51,6 +27,30 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  APIErrorWithStatusCode,
+  GroupType,
+  LightWorkspaceType,
+  PermissionType,
+  PlanType,
+  ResourcePermission,
+  Result,
+  RoleType,
+  SubscriptionType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import {
+  Err,
+  hasRolePermissions,
+  isAdmin,
+  isBuilder,
+  isDevelopment,
+  isSupportedEnterpriseConnectionStrategy,
+  isUser,
+  Ok,
+  WHITELISTABLE_FEATURES,
+} from "@app/types";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 

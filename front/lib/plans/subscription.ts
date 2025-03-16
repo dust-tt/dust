@@ -1,11 +1,3 @@
-import type {
-  BillingPeriod,
-  EnterpriseUpgradeFormType,
-  PlanType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { sendUserOperationMessage } from "@dust-tt/types";
 import type Stripe from "stripe";
 
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
@@ -37,6 +29,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
+import type {
+  BillingPeriod,
+  EnterpriseUpgradeFormType,
+  PlanType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
+import { sendUserOperationMessage } from "@app/types";
 
 /**
  * Internal function to subscribe to the FREE_NO_PLAN.

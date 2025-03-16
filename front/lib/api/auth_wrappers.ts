@@ -1,11 +1,3 @@
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  getGroupIdsFromHeaders,
-  getUserEmailFromHeaders,
-} from "@dust-tt/types";
 import type { TokenExpiredError } from "jsonwebtoken";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -26,6 +18,8 @@ import {
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import { getGroupIdsFromHeaders, getUserEmailFromHeaders } from "@app/types";
 
 /**
  * This function is a wrapper for API routes that require session authentication.

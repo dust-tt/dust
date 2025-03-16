@@ -15,7 +15,7 @@ const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
       full: "s-w-full",
     },
     border: {
-      true: "s-border-b s-border-border-dark dark:s-border-border-dark-night",
+      true: "s-border-b s-border-border dark:s-border-border-night",
     },
   },
   defaultVariants: {
@@ -89,7 +89,11 @@ const TabsTrigger = React.forwardRef<
           rel={rel}
           replace={replace}
           shallow={shallow}
-          className="s-relative after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2 after:s-bg-primary-500 after:s-opacity-0 data-[state=active]:after:s-opacity-100 data-[state=active]:after:s-shadow-inner-border dark:data-[state=active]:after:s-shadow-inner-border-night"
+          className={cn(
+            "s-relative",
+            "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
+            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
+          )}
         />
       </TabsPrimitive.Trigger>
     );

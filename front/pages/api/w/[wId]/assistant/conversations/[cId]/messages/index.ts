@@ -1,5 +1,3 @@
-import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
-import { InternalPostMessagesRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -13,6 +11,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
+import { InternalPostMessagesRequestBodySchema } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

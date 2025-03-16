@@ -10,15 +10,6 @@ import {
   UserGroupIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  MentionType,
-  Result,
-  RoleType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, GLOBAL_AGENTS_SID, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { ComponentType } from "react";
 import { useCallback, useState } from "react";
@@ -26,6 +17,15 @@ import { useCallback, useState } from "react";
 import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import type { DustError } from "@app/lib/error";
+import type {
+  AgentMention,
+  MentionType,
+  Result,
+  RoleType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, GLOBAL_AGENTS_SID, Ok } from "@app/types";
 
 // describe the type of userContent where the
 
@@ -143,7 +143,10 @@ export function HelpDrawer({
         messageData: {
           input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
           mentions: mentionsWithHelp,
-          contentFragments: [],
+          contentFragments: {
+            uploaded: [],
+            contentNodes: [],
+          },
         },
       });
 

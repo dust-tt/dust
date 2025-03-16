@@ -2,16 +2,6 @@
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 import type {
-  FileType,
-  FileTypeWithUploadUrl,
-  FileUseCaseMetadata,
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
-import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
@@ -30,6 +20,16 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type {
+  FileType,
+  FileTypeWithUploadUrl,
+  FileUseCaseMetadata,
+  LightWorkspaceType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 export type FileVersion = "processed" | "original" | "public";
 

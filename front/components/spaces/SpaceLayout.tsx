@@ -7,14 +7,6 @@ import {
   DialogTitle,
   Page,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewCategory,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
@@ -25,6 +17,14 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import type {
+  DataSourceViewCategory,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export interface SpaceLayoutPageProps {
   canReadInSpace: boolean;

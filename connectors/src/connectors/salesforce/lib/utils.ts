@@ -1,10 +1,11 @@
+import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { ModelId, Result } from "@dust-tt/types";
 
 import { ConnectorManagerError } from "@connectors/connectors/interface";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 export const getConnectorAndCredentials = async (
   connectorId: ModelId
