@@ -11,8 +11,8 @@ import {
 import assert from "assert";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
 import type { WebsearchConfigurationType } from "@app/lib/actions/types/websearch";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AgentConfigurationType, WhitelistableFeature } from "@app/types";

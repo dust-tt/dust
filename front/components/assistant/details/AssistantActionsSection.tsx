@@ -24,6 +24,10 @@ import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentM
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
@@ -35,10 +39,6 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import type {
-  DataSourceConfiguration,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/types/retrieval";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";

@@ -15,6 +15,10 @@ import type {
   ReasoningConfigurationType,
 } from "@app/lib/actions/reasoning";
 import type {
+  RetrievalActionRunningEvents,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
+import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -22,10 +26,6 @@ import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  RetrievalConfigurationType,
-  RetrievalParamsEvent,
-} from "@app/lib/actions/types/retrieval";
 import type {
   SearchLabelsConfigurationType,
   SearchLabelsParamsEvent,
@@ -116,7 +116,7 @@ export type AgentActionSpecificEvent =
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
   | ReasoningActionRunningEvents
-  | RetrievalParamsEvent
+  | RetrievalActionRunningEvents
   | SearchLabelsParamsEvent
   | TablesQueryActionRunningEvents
   | WebsearchParamsEvent;

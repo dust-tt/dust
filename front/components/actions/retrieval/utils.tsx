@@ -1,10 +1,10 @@
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
 import { citationIconMap } from "@app/components/markdown/MarkdownCitation";
-import type { RetrievalDocumentType } from "@app/lib/actions/types/retrieval";
+import type { RetrievalDocumentType } from "@app/lib/actions/retrieval";
 import {
   getProviderFromRetrievedDocument,
   getTitleFromRetrievedDocument,
-} from "@app/lib/actions/types/retrieval";
+} from "@app/lib/actions/retrieval";
 
 export function makeDocumentCitation(
   document: RetrievalDocumentType

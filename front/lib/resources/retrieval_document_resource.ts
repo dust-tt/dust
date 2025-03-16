@@ -8,7 +8,7 @@ import { Op } from "sequelize";
 import type {
   RetrievalDocumentChunkType,
   RetrievalDocumentType,
-} from "@app/lib/actions/types/retrieval";
+} from "@app/lib/actions/retrieval";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isWebsite } from "@app/lib/data_sources";

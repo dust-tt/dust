@@ -12,6 +12,10 @@ import type {
 } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
+  RetrievalActionType,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
+import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -20,10 +24,6 @@ import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  RetrievalActionType,
-  RetrievalConfigurationType,
-} from "@app/lib/actions/types/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/types/search_labels";
 import type {
   WebsearchActionType,
