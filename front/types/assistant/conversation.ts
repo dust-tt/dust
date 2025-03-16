@@ -7,7 +7,7 @@ import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
 import type { ConversationIncludeFileActionType } from "@app/lib/actions/types/conversation/include_file";
 import type { ConversationListFilesActionType } from "@app/lib/actions/types/conversation/list_files";
-import type { WebsearchActionType } from "@app/lib/actions/types/websearch";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
 import type { ContentFragmentType } from "../content_fragment";
 import type { ModelId } from "../shared/model_id";

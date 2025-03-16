@@ -31,9 +31,9 @@ import type {
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
 import type {
+  WebsearchActionRunningEvents,
   WebsearchConfigurationType,
-  WebsearchParamsEvent,
-} from "@app/lib/actions/types/websearch";
+} from "@app/lib/actions/websearch";
 
 /**
  * Agent Action configuration
@@ -119,4 +119,4 @@ export type AgentActionSpecificEvent =
   | RetrievalActionRunningEvents
   | SearchLabelsActionRunningEvents
   | TablesQueryActionRunningEvents
-  | WebsearchParamsEvent;
+  | WebsearchActionRunningEvents;

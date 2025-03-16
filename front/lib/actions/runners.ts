@@ -20,7 +20,7 @@ import type {
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/actions/types/base";
 import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/types/conversation/include_file";
-import type { WebsearchConfigurationType } from "@app/lib/actions/types/websearch";
+import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 
 interface ActionToConfigTypeMap {

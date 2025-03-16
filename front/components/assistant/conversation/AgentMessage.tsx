@@ -55,7 +55,7 @@ import {
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
-import type { WebsearchActionType } from "@app/lib/actions/types/websearch";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {

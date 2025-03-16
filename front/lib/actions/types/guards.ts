@@ -28,7 +28,7 @@ import type {
 import type {
   WebsearchActionType,
   WebsearchConfigurationType,
-} from "@app/lib/actions/types/websearch";
+} from "@app/lib/actions/websearch";
 import type { AgentActionType } from "@app/types";
 import type {
   AgentConfigurationType,
