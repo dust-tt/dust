@@ -74,7 +74,7 @@ type BrowseSuccessEvent = {
   action: BrowseActionType;
 };
 
-export type BrowseRunningActionEvents = BrowseParamsEvent;
+export type BrowseActionRunningEvents = BrowseParamsEvent;
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((t) => typeof t === "string");

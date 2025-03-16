@@ -7,6 +7,10 @@ import type {
   DustAppRunConfigurationType,
 } from "@app/lib/actions/dust_app_run";
 import type {
+  ProcessActionType,
+  ProcessConfigurationType,
+} from "@app/lib/actions/process";
+import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -15,10 +19,6 @@ import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  ProcessActionType,
-  ProcessConfigurationType,
-} from "@app/lib/actions/types/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
 import type {
   RetrievalActionType,

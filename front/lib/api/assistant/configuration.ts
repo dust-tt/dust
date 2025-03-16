@@ -20,9 +20,9 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
 import type {
   DataSourceConfiguration,
   RetrievalTimeframe,

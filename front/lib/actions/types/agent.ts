@@ -1,11 +1,15 @@
 import type {
+  BrowseActionRunningEvents,
   BrowseConfigurationType,
-  BrowseRunningActionEvents,
 } from "@app/lib/actions/browse";
 import type {
   DustAppRunActionRunningEvents,
   DustAppRunConfigurationType,
 } from "@app/lib/actions/dust_app_run";
+import type {
+  ProcessActionRunningEvents,
+  ProcessConfigurationType,
+} from "@app/lib/actions/process";
 import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
@@ -14,10 +18,6 @@ import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  ProcessConfigurationType,
-  ProcessParamsEvent,
-} from "@app/lib/actions/types/process";
 import type {
   ReasoningConfigurationType,
   ReasoningStartedEvent,
@@ -113,10 +113,10 @@ export type AgentActionSpecification = {
 
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
-  | BrowseRunningActionEvents
+  | BrowseActionRunningEvents
   | ConversationIncludeFileParamsEvent
   | DustAppRunActionRunningEvents
-  | ProcessParamsEvent
+  | ProcessActionRunningEvents
   | ReasoningStartedEvent
   | ReasoningThinkingEvent
   | ReasoningTokensEvent
