@@ -3,6 +3,7 @@ import { DustAPI } from "@dust-tt/client";
 import _ from "lodash";
 
 import { default as config } from "@app/lib/api/config";
+import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
@@ -337,11 +338,82 @@ export async function importApps(
   return apps;
 }
 
-export async function getSpecificationsHashesFromCore(app: AppResource) {
+export const extractDatasetIdsAndHashes = (specification: string) => {
+  const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
+  const dataBlockMatch = specification.match(
+    /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
+  );
+  if (dataBlockMatch) {
+    const [, datasetId, hash] = dataBlockMatch;
+    dataSetsToFetch.push({ datasetId, hash });
+  }
+  return dataSetsToFetch;
+};
+
+export async function exportApps(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<Result<ApiAppType[], Error>> {
+  const apps = await AppResource.listBySpace(auth, space);
+
+  const enhancedApps = await concurrentExecutor(
+    apps.filter((app) => app.canRead(auth)),
+
+    async (app) => {
+      const specsToFetch = await getSpecificationsHashesFromCore(
+        app.dustAPIProjectId
+      );
+
+      const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
+        (ds) => ({ datasetId: ds.name, hash: "latest" })
+      );
+
+      const coreSpecifications: { [key: string]: string } = {};
+
+      if (specsToFetch) {
+        for (const hash of specsToFetch) {
+          const coreSpecification = await getSpecificationFromCore(
+            app.dustAPIProjectId,
+            hash
+          );
+          if (coreSpecification) {
+            // Parse dataset_id and hash from specification if it contains DATA section
+            dataSetsToFetch.push(
+              ...extractDatasetIdsAndHashes(coreSpecification.data)
+            );
+
+            coreSpecifications[hash] = coreSpecification.data;
+          }
+        }
+      }
+      const datasets = [];
+      for (const dataset of dataSetsToFetch) {
+        const fromCore = await getDatasetHash(
+          auth,
+          app,
+          dataset.datasetId,
+          dataset.hash,
+          { includeDeleted: true }
+        );
+        if (fromCore) {
+          datasets.push(fromCore);
+        }
+      }
+
+      return { ...app.toJSON(), datasets, coreSpecifications };
+    },
+    { concurrency: 5 }
+  );
+  return new Ok(enhancedApps);
+}
+
+export async function getSpecificationsHashesFromCore(
+  dustAPIProjectId: string
+) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const coreSpec = await coreAPI.getSpecificationHashes({
-    projectId: app.dustAPIProjectId,
+    projectId: dustAPIProjectId,
   });
 
   if (coreSpec.isErr()) {
@@ -351,11 +423,14 @@ export async function getSpecificationsHashesFromCore(app: AppResource) {
   return coreSpec.value.hashes;
 }
 
-export async function getSpecificationFromCore(app: AppResource, hash: string) {
+export async function getSpecificationFromCore(
+  dustAPIProjectId: string,
+  hash: string
+) {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const coreSpec = await coreAPI.getSpecification({
-    projectId: app.dustAPIProjectId,
+    projectId: dustAPIProjectId,
     specificationHash: hash,
   });
 

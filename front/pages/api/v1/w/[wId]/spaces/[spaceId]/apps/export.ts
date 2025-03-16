@@ -2,30 +2,12 @@ import type { GetAppsResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  getSpecificationFromCore,
-  getSpecificationsHashesFromCore,
-} from "@app/lib/utils/apps";
+import { exportApps } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { concurrentExecutor } from "@app/types";
-
-const extractDatasetIdsAndHashes = (specification: string) => {
-  const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
-  const dataBlockMatch = specification.match(
-    /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
-  );
-  if (dataBlockMatch) {
-    const [, datasetId, hash] = dataBlockMatch;
-    dataSetsToFetch.push({ datasetId, hash });
-  }
-  return dataSetsToFetch;
-};
 
 /**
  * @ignoreswagger
@@ -59,58 +41,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const apps = await AppResource.listBySpace(auth, space);
+      const apps = await exportApps(auth, space);
+      if (apps.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to export apps.",
+          },
+        });
+      }
 
-      const enhancedApps = await concurrentExecutor(
-        apps.filter((app) => app.canRead(auth)),
-
-        async (app) => {
-          const specsToFetch = await getSpecificationsHashesFromCore(app);
-
-          const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
-            (ds) => ({ datasetId: ds.name, hash: "latest" })
-          );
-
-          const coreSpecifications: { [key: string]: string } = {};
-
-          if (specsToFetch) {
-            for (const hash of specsToFetch) {
-              const coreSpecification = await getSpecificationFromCore(
-                app,
-                hash
-              );
-              if (coreSpecification) {
-                // Parse dataset_id and hash from specification if it contains DATA section
-                dataSetsToFetch.push(
-                  ...extractDatasetIdsAndHashes(coreSpecification.data)
-                );
-
-                coreSpecifications[hash] = coreSpecification.data;
-              }
-            }
-          }
-          const datasets = [];
-          for (const dataset of dataSetsToFetch) {
-            const fromCore = await getDatasetHash(
-              auth,
-              app,
-              dataset.datasetId,
-              dataset.hash,
-              { includeDeleted: true }
-            );
-            if (fromCore) {
-              datasets.push(fromCore);
-            }
-          }
-
-          return { ...app.toJSON(), datasets, coreSpecifications };
-        },
-        { concurrency: 5 }
-      );
-
-      res.status(200).json({
-        apps: enhancedApps,
-      });
+      res.status(200).json({ apps: apps.value });
       return;
 
     default:
