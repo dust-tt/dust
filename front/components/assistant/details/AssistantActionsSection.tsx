@@ -23,9 +23,9 @@ import { useMemo, useState } from "react";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,

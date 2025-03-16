@@ -6,21 +6,14 @@ import {
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { BaseActionRunParams } from "@app/lib/actions/types/base";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type { DustAppRunActionType } from "@app/lib/actions/types/dust_app_run";
-import type {
-  DustAppParameters,
-  DustAppRunBlockEvent,
-  DustAppRunConfigurationType,
-  DustAppRunErrorEvent,
-  DustAppRunParamsEvent,
-  DustAppRunSuccessEvent,
-} from "@app/lib/actions/types/dust_app_run";
-import { getDustAppRunResultsFileTitle } from "@app/lib/actions/types/dust_app_run";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -49,29 +42,81 @@ import {
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
-interface DustAppRunActionBlob {
-  id: ModelId; // AgentDustAppRun.
-  agentMessageId: ModelId;
+export type DustAppRunConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "dust_app_run_configuration";
+
   appWorkspaceId: string;
   appId: string;
+
+  name: string;
+  description: string | null;
+};
+
+export type DustAppParameters = {
+  [key: string]: string | number | boolean;
+};
+
+// Event sent before the execution of a dust app run with the finalized params to be used.
+type DustAppRunParamsEvent = {
+  type: "dust_app_run_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DustAppRunActionType;
+};
+
+type DustAppRunErrorEvent = {
+  type: "dust_app_run_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type DustAppRunBlockEvent = {
+  type: "dust_app_run_block";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DustAppRunActionType;
+};
+
+type DustAppRunSuccessEvent = {
+  type: "dust_app_run_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: DustAppRunActionType;
+};
+
+export type DustAppRunActionRunningEvents =
+  | DustAppRunParamsEvent
+  | DustAppRunBlockEvent;
+
+export function getDustAppRunResultsFileTitle({
+  appName,
+  resultsFileContentType,
+}: {
   appName: string;
-  params: DustAppParameters;
-  runningBlock: {
-    type: string;
-    name: string;
-    status: "running" | "succeeded" | "errored";
-  } | null;
-  output: unknown | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-  resultsFileId: string | null;
-  resultsFileSnippet: string | null;
-  resultsFileContentType: SupportedFileContentType | null;
-  generatedFiles: ActionGeneratedFileType[];
+  resultsFileContentType: SupportedFileContentType;
+}): string {
+  const extension = resultsFileContentType.split("/").pop();
+  let title = `${appName}_output`;
+  if (extension) {
+    title += `.${extension}`;
+  }
+  return title;
 }
 
-export class DustAppRunAction extends BaseAction {
+type DustAppRunActionBlob = ExtractActionBlob<DustAppRunActionType>;
+
+export class DustAppRunActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly appWorkspaceId: string;
   readonly appId: string;
@@ -354,7 +399,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new DustAppRunAction({
+      action: new DustAppRunActionType({
         id: action.id,
         appWorkspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,
@@ -370,6 +415,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         resultsFileSnippet: null,
         resultsFileContentType: null,
         generatedFiles: [],
+        type: "dust_app_run_action",
       }),
     };
 
@@ -494,7 +540,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
-          action: new DustAppRunAction({
+          action: new DustAppRunActionType({
             id: action.id,
             appWorkspaceId: actionConfiguration.appWorkspaceId,
             appId: actionConfiguration.appId,
@@ -514,6 +560,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
             resultsFileSnippet: null,
             resultsFileContentType: null,
             generatedFiles: [],
+            type: "dust_app_run_action",
           }),
         };
       }
@@ -694,7 +741,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new DustAppRunAction({
+      action: new DustAppRunActionType({
         id: action.id,
         appWorkspaceId: actionConfiguration.appWorkspaceId,
         appId: actionConfiguration.appId,
@@ -710,6 +757,7 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         resultsFileSnippet: updateParams.resultsFileSnippet,
         resultsFileContentType: resultFile?.contentType ?? null,
         generatedFiles: resultFile ? [resultFile] : [],
+        type: "dust_app_run_action",
       }),
     };
   }
@@ -803,7 +851,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
         }
       : null;
 
-    return new DustAppRunAction({
+    return new DustAppRunActionType({
       id: action.id,
       appWorkspaceId: action.appWorkspaceId,
       appId: action.appId,
@@ -819,6 +867,7 @@ export async function dustAppRunTypesFromAgentMessageIds(
       resultsFileSnippet: action.resultsFileSnippet,
       resultsFileContentType: resultsFile?.contentType ?? null,
       generatedFiles: resultsFile ? [resultsFile] : [],
+      type: "dust_app_run_action",
     });
   });
 }

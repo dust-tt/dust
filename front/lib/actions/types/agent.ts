@@ -3,6 +3,10 @@ import type {
   BrowseRunningActionEvents,
 } from "@app/lib/actions/browse";
 import type {
+  DustAppRunActionRunningEvents,
+  DustAppRunConfigurationType,
+} from "@app/lib/actions/dust_app_run";
+import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -10,11 +14,6 @@ import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  DustAppRunBlockEvent,
-  DustAppRunConfigurationType,
-  DustAppRunParamsEvent,
-} from "@app/lib/actions/types/dust_app_run";
 import type {
   ProcessConfigurationType,
   ProcessParamsEvent,
@@ -116,8 +115,7 @@ export type AgentActionSpecification = {
 export type AgentActionSpecificEvent =
   | BrowseRunningActionEvents
   | ConversationIncludeFileParamsEvent
-  | DustAppRunBlockEvent
-  | DustAppRunParamsEvent
+  | DustAppRunActionRunningEvents
   | ProcessParamsEvent
   | ReasoningStartedEvent
   | ReasoningThinkingEvent

@@ -3,6 +3,10 @@ import type {
   BrowseConfigurationType,
 } from "@app/lib/actions/browse";
 import type {
+  DustAppRunActionType,
+  DustAppRunConfigurationType,
+} from "@app/lib/actions/dust_app_run";
+import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -30,11 +34,6 @@ import type {
   AgentConfigurationType,
   TemplateAgentConfigurationType,
 } from "@app/types";
-
-import type {
-  DustAppRunActionType,
-  DustAppRunConfigurationType,
-} from "./dust_app_run";
 
 export function isTablesQueryConfiguration(
   arg: unknown
