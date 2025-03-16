@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import { renderRetrievalTimeframeType } from "@app/lib/actions/configuration/helpers";
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import { DEFAULT_PROCESS_ACTION_NAME } from "@app/lib/actions/constants";
-import type { ProcessConfigurationType } from "@app/lib/actions/types/process";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { Workspace } from "@app/lib/models/workspace";

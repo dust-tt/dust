@@ -7,7 +7,7 @@ import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import type {
   TableDataSourceConfiguration,
   TablesQueryConfigurationType,
-} from "@app/lib/actions/types/tables_query";
+} from "@app/lib/actions/tables_query";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentTablesQueryConfiguration,

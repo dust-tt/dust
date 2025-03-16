@@ -4,17 +4,11 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type {
-  ConversationIncludeFileActionType,
-  ConversationIncludeFileConfigurationType,
-  ConversationIncludeFileErrorEvent,
-  ConversationIncludeFileParamsEvent,
-  ConversationIncludeFileSuccessEvent,
-} from "@app/lib/actions/types/conversation/include_file";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -36,22 +30,51 @@ import type {
 } from "@app/types";
 import { CoreAPI, Err, isTextContent, Ok } from "@app/types";
 
-interface ConversationIncludeFileActionBlob {
-  id: ModelId;
-  agentMessageId: ModelId;
-  params: {
-    fileId: string;
-  };
-  tokensCount: number | null;
-  fileTitle: string | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-}
-
 const CONTEXT_SIZE_DIVISOR_FOR_INCLUDE = 4;
 
-export class ConversationIncludeFileAction extends BaseAction {
+export type ConversationIncludeFileConfigurationType = {
+  id: ModelId;
+  sId: string;
+  type: "conversation_include_file_configuration";
+  name: string;
+  description: string | null;
+};
+
+// Event sent before running the action with the finalized params to be used.
+type ConversationIncludeFileParamsEvent = {
+  type: "conversation_include_file_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ConversationIncludeFileActionType;
+};
+
+type ConversationIncludeFileSuccessEvent = {
+  type: "conversation_include_file_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ConversationIncludeFileActionType;
+};
+
+type ConversationIncludeFileErrorEvent = {
+  type: "conversation_include_file_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type ConversationIncludeFileActionRunningEvents =
+  ConversationIncludeFileParamsEvent;
+
+type ConversationIncludeFileActionBlob =
+  ExtractActionBlob<ConversationIncludeFileActionType>;
+
+export class ConversationIncludeFileActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: {
     fileId: string;
@@ -65,7 +88,7 @@ export class ConversationIncludeFileAction extends BaseAction {
   readonly type = "conversation_include_file_action";
 
   constructor(blob: ConversationIncludeFileActionBlob) {
-    super(blob.id, "conversation_include_file_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -158,11 +181,12 @@ export class ConversationIncludeFileAction extends BaseAction {
       };
     };
 
-    const textRes = await ConversationIncludeFileAction.fileFromConversation(
-      this.params.fileId,
-      conversation,
-      model
-    );
+    const textRes =
+      await ConversationIncludeFileActionType.fileFromConversation(
+        this.params.fileId,
+        conversation,
+        model
+      );
     if (textRes.isErr()) {
       return finalize(`Error: ${textRes.error}`);
     }
@@ -285,7 +309,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ConversationIncludeFileAction({
+      action: new ConversationIncludeFileActionType({
         id: action.id,
         params: {
           fileId,
@@ -296,15 +320,19 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
+        type: "conversation_include_file_action",
+        generatedFiles: [],
+        contentFragments: [],
       }),
     };
 
     const model = getSupportedModelConfig(agentConfiguration.model);
-    const fileRes = await ConversationIncludeFileAction.fileFromConversation(
-      fileId,
-      conversation,
-      model
-    );
+    const fileRes =
+      await ConversationIncludeFileActionType.fileFromConversation(
+        fileId,
+        conversation,
+        model
+      );
     if (fileRes.isErr()) {
       // We error here if the file was not found which will interrupt the agent loop. We might want
       // to consider letting this error go through here in the future if it happens non trivially
@@ -359,7 +387,7 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ConversationIncludeFileAction({
+      action: new ConversationIncludeFileActionType({
         id: action.id,
         params: {
           fileId,
@@ -370,6 +398,9 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
+        type: "conversation_include_file_action",
+        generatedFiles: [],
+        contentFragments: [],
       }),
     };
   }
@@ -393,7 +424,7 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
   });
 
   return actions.map((action) => {
-    return new ConversationIncludeFileAction({
+    return new ConversationIncludeFileActionType({
       id: action.id,
       params: { fileId: action.fileId },
       tokensCount: action.tokensCount,
@@ -402,6 +433,9 @@ export async function conversationIncludeFileTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
+      type: "conversation_include_file_action",
+      generatedFiles: [],
+      contentFragments: [],
     });
   });
 }

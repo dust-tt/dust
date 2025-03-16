@@ -12,7 +12,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,

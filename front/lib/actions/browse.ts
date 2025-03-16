@@ -1,20 +1,13 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type {
-  BrowseActionOutputType,
-  BrowseActionType,
-  BrowseConfigurationType,
-  BrowseErrorEvent,
-  BrowseParamsEvent,
-  BrowseSuccessEvent,
-} from "@app/lib/actions/types/browse";
-import { BrowseActionOutputSchema } from "@app/lib/actions/types/browse";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -27,21 +20,67 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-interface BrowseActionBlob {
-  id: ModelId; // AgentBrowseAction
-  agentMessageId: ModelId;
-  urls: string[];
-  output: BrowseActionOutputType | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-}
+type BrowseActionBlob = ExtractActionBlob<BrowseActionType>;
+
+export type BrowseConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "browse_configuration";
+
+  name: string;
+  description: string | null;
+};
+
+const BrowseResultSchema = t.type({
+  requestedUrl: t.string,
+  browsedUrl: t.string,
+  content: t.string,
+  responseCode: t.string,
+  errorMessage: t.string,
+});
+
+const BrowseActionOutputSchema = t.type({
+  results: t.array(BrowseResultSchema),
+});
+
+export type BrowseActionOutputType = t.TypeOf<typeof BrowseActionOutputSchema>;
+
+// Event sent before the execution with the finalized params to be used.
+type BrowseParamsEvent = {
+  type: "browse_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: BrowseActionType;
+};
+
+type BrowseErrorEvent = {
+  type: "browse_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type BrowseSuccessEvent = {
+  type: "browse_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: BrowseActionType;
+};
+
+export type BrowseActionRunningEvents = BrowseParamsEvent;
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((t) => typeof t === "string");
 }
 
-export class BrowseAction extends BaseAction {
+export class BrowseActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly urls: string[];
   readonly output: BrowseActionOutputType | null;
@@ -51,7 +90,7 @@ export class BrowseAction extends BaseAction {
   readonly type = "browse_action";
 
   constructor(blob: BrowseActionBlob) {
-    super(blob.id, "browse_action");
+    super(blob.id, blob.type);
     this.agentMessageId = blob.agentMessageId;
     this.urls = blob.urls;
     this.output = blob.output;
@@ -181,7 +220,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new BrowseAction({
+      action: new BrowseActionType({
         id: action.id,
         agentMessageId: action.agentMessageId,
         urls,
@@ -189,6 +228,8 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "browse_action",
+        generatedFiles: [],
       }),
     };
 
@@ -320,7 +361,7 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new BrowseAction({
+      action: new BrowseActionType({
         id: action.id,
         agentMessageId: agentMessage.agentMessageId,
         urls,
@@ -328,6 +369,8 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "browse_action",
+        generatedFiles: [],
       }),
     };
   }
@@ -350,7 +393,7 @@ export async function browseActionTypesFromAgentMessageIds(
   });
 
   return models.map((action) => {
-    return new BrowseAction({
+    return new BrowseActionType({
       id: action.id,
       agentMessageId: action.agentMessageId,
       urls: action.urls,
@@ -358,6 +401,8 @@ export async function browseActionTypesFromAgentMessageIds(
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      type: "browse_action",
+      generatedFiles: [],
     });
   });
 }

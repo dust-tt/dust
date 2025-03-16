@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
-import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import type { ModelId } from "@app/types";
 

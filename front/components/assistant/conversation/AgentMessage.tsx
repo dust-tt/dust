@@ -49,13 +49,13 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import {
   isRetrievalActionType,
   isWebsearchActionType,
 } from "@app/lib/actions/types/guards";
-import type { RetrievalActionType } from "@app/lib/actions/types/retrieval";
-import type { WebsearchActionType } from "@app/lib/actions/types/websearch";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {

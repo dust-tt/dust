@@ -1,18 +1,11 @@
 import assert from "assert";
 
 import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/actions/constants";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type {
-  SearchLabelsActionOutputType,
-  SearchLabelsActionType,
-  SearchLabelsConfigurationType,
-  SearchLabelsErrorEvent,
-  SearchLabelsParamsEvent,
-  SearchLabelsSuccessEvent,
-} from "@app/lib/actions/types/search_labels";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
@@ -29,21 +22,67 @@ import { CoreAPI, Ok } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_LIMIT = 10;
 
-interface SearchLabelsActionBlob {
-  agentMessageId: ModelId;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  id: ModelId; // AgentSearchLabelsAction
-  output: SearchLabelsActionOutputType | null;
+export type SearchLabelsConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "search_labels_configuration";
+
+  name: string;
+  description?: string;
+
+  // Used to scope the search results to a specific set of data sources.
+  dataSourceViewIds: string[];
+
   parentTool: string;
-  searchText: string;
-  step: number;
+};
+
+interface SearchLabelsResultType {
+  tag: string;
+  match_count: number;
+  data_sources: string[];
 }
 
-export class SearchLabelsAction extends BaseAction {
+export interface SearchLabelsActionOutputType {
+  tags: SearchLabelsResultType[];
+}
+
+// Event sent before the execution with the finalized params to be used.
+type SearchLabelsParamsEvent = {
+  type: "search_labels_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: SearchLabelsActionType;
+};
+
+type SearchLabelsErrorEvent = {
+  type: "search_labels_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type SearchLabelsSuccessEvent = {
+  type: "search_labels_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: SearchLabelsActionType;
+};
+
+export type SearchLabelsActionRunningEvents = SearchLabelsParamsEvent;
+
+type SearchLabelsActionBlob = ExtractActionBlob<SearchLabelsActionType>;
+
+export class SearchLabelsActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly functionCallId: string | null;
-  readonly functionCallName: string;
+  readonly functionCallName: string | null;
   readonly output: SearchLabelsActionOutputType | null;
   readonly parentTool: string;
   readonly searchText: string;
@@ -67,7 +106,7 @@ export class SearchLabelsAction extends BaseAction {
   renderForFunctionCall(): FunctionCallType {
     return {
       id: this.functionCallId ?? `call_${this.id.toString()}`,
-      name: this.functionCallName,
+      name: this.functionCallName ?? DEFAULT_SEARCH_LABELS_ACTION_NAME,
       arguments: JSON.stringify({ searchText: this.searchText }),
     };
   }
@@ -85,7 +124,7 @@ export class SearchLabelsAction extends BaseAction {
 
     return {
       role: "function",
-      name: this.functionCallName,
+      name: this.functionCallName ?? DEFAULT_SEARCH_LABELS_ACTION_NAME,
       function_call_id: this.functionCallId ?? `call_${this.id.toString()}`,
       content,
     };
@@ -187,7 +226,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new SearchLabelsAction({
+      action: new SearchLabelsActionType({
         agentMessageId: action.agentMessageId,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -196,6 +235,8 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         parentTool: actionConfiguration.parentTool,
         searchText,
         step: action.step,
+        type: "search_labels_action",
+        generatedFiles: [],
       }),
     };
 
@@ -231,7 +272,7 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new SearchLabelsAction({
+      action: new SearchLabelsActionType({
         agentMessageId: action.agentMessageId,
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
@@ -240,6 +281,8 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         parentTool: actionConfiguration.parentTool,
         searchText: action.searchText,
         step: action.step,
+        type: "search_labels_action",
+        generatedFiles: [],
       }),
     };
   }
@@ -262,7 +305,7 @@ export async function searchLabelsActionTypesFromAgentMessageIds(
   });
 
   return models.map((action) => {
-    return new SearchLabelsAction({
+    return new SearchLabelsActionType({
       agentMessageId: action.agentMessageId,
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
@@ -271,6 +314,8 @@ export async function searchLabelsActionTypesFromAgentMessageIds(
       parentTool: action.parentTool,
       searchText: action.searchText,
       step: action.step,
+      type: "search_labels_action",
+      generatedFiles: [],
     });
   });
 }

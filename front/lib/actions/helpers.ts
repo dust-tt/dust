@@ -4,10 +4,6 @@ import { isLeft, isRight } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
-import {
-  ActionResponseBaseSchema,
-  isActionResponseBase,
-} from "@app/lib/actions/types/types";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { prodAPICredentialsForOwner } from "@app/lib/auth";
@@ -16,6 +12,35 @@ import { cloneBaseConfig } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type { APIError, Result } from "@app/types";
 import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
+
+const ActionResponseBaseSchema = t.type({
+  run_id: t.string,
+  created: t.Integer,
+  run_type: t.string,
+  config: t.UnknownRecord,
+  status: t.type({
+    run: t.string,
+    blocks: t.array(
+      t.type({
+        block_type: t.string,
+        name: t.string,
+        status: t.string,
+        success_count: t.Integer,
+        error_count: t.Integer,
+      })
+    ),
+  }),
+  traces: t.UnknownArray,
+  specification_hash: t.string,
+});
+
+type ActionResponseBase = t.TypeOf<typeof ActionResponseBaseSchema>;
+
+function isActionResponseBase(
+  response: unknown
+): response is ActionResponseBase {
+  return isRight(ActionResponseBaseSchema.decode(response));
+}
 
 interface CallActionParams<V extends t.Mixed> {
   input: { [key: string]: unknown };

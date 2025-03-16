@@ -1,44 +1,39 @@
 import type {
+  BrowseActionRunningEvents,
   BrowseConfigurationType,
-  BrowseParamsEvent,
-} from "@app/lib/actions/types/browse";
+} from "@app/lib/actions/browse";
 import type {
+  ConversationIncludeFileActionRunningEvents,
   ConversationIncludeFileConfigurationType,
-  ConversationIncludeFileParamsEvent,
-} from "@app/lib/actions/types/conversation/include_file";
+} from "@app/lib/actions/conversation/include_file";
 import type {
-  DustAppRunBlockEvent,
+  DustAppRunActionRunningEvents,
   DustAppRunConfigurationType,
-  DustAppRunParamsEvent,
-} from "@app/lib/actions/types/dust_app_run";
+} from "@app/lib/actions/dust_app_run";
 import type {
+  ProcessActionRunningEvents,
   ProcessConfigurationType,
-  ProcessParamsEvent,
-} from "@app/lib/actions/types/process";
+} from "@app/lib/actions/process";
 import type {
+  ReasoningActionRunningEvents,
   ReasoningConfigurationType,
-  ReasoningStartedEvent,
-  ReasoningThinkingEvent,
-  ReasoningTokensEvent,
-} from "@app/lib/actions/types/reasoning";
+} from "@app/lib/actions/reasoning";
 import type {
+  RetrievalActionRunningEvents,
   RetrievalConfigurationType,
-  RetrievalParamsEvent,
-} from "@app/lib/actions/types/retrieval";
+} from "@app/lib/actions/retrieval";
 import type {
+  SearchLabelsActionRunningEvents,
   SearchLabelsConfigurationType,
-  SearchLabelsParamsEvent,
-} from "@app/lib/actions/types/search_labels";
+} from "@app/lib/actions/search_labels";
 import type {
+  TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
-  TablesQueryModelOutputEvent,
-  TablesQueryOutputEvent,
-  TablesQueryStartedEvent,
-} from "@app/lib/actions/types/tables_query";
+} from "@app/lib/actions/tables_query";
 import type {
+  WebsearchActionRunningEvents,
   WebsearchConfigurationType,
-  WebsearchParamsEvent,
-} from "@app/lib/actions/types/websearch";
+} from "@app/lib/actions/websearch";
 
 /**
  * Agent Action configuration
@@ -116,17 +111,12 @@ export type AgentActionSpecification = {
 
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
-  | BrowseParamsEvent
-  | ConversationIncludeFileParamsEvent
-  | DustAppRunBlockEvent
-  | DustAppRunParamsEvent
-  | ProcessParamsEvent
-  | ReasoningStartedEvent
-  | ReasoningThinkingEvent
-  | ReasoningTokensEvent
-  | RetrievalParamsEvent
-  | SearchLabelsParamsEvent
-  | TablesQueryModelOutputEvent
-  | TablesQueryOutputEvent
-  | TablesQueryStartedEvent
-  | WebsearchParamsEvent;
+  | BrowseActionRunningEvents
+  | ConversationIncludeFileActionRunningEvents
+  | DustAppRunActionRunningEvents
+  | ProcessActionRunningEvents
+  | ReasoningActionRunningEvents
+  | RetrievalActionRunningEvents
+  | SearchLabelsActionRunningEvents
+  | TablesQueryActionRunningEvents
+  | WebsearchActionRunningEvents;

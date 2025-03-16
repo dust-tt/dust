@@ -15,10 +15,10 @@ import { capitalize } from "lodash";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
-import type { DustAppRunActionType } from "@app/lib/actions/types/dust_app_run";
-import { getDustAppRunResultsFileTitle } from "@app/lib/actions/types/dust_app_run";
+import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { SupportedFileContentType } from "@app/types";
 
 function ContentTypeIcon({

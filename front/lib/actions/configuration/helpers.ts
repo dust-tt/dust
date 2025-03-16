@@ -1,4 +1,4 @@
-import type { RetrievalTimeframe } from "@app/lib/actions/types/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import type { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 

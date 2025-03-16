@@ -4,7 +4,7 @@ import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation
 import type {
   WebsearchActionType,
   WebsearchResultType,
-} from "@app/lib/actions/types/websearch";
+} from "@app/lib/actions/websearch";
 
 export function makeWebsearchResultsCitation(
   result: WebsearchResultType

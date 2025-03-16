@@ -3,35 +3,26 @@ import _ from "lodash";
 import {
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
+  PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
+import type {
+  DataSourceConfiguration,
+  RetrievalTimeframe,
+} from "@app/lib/actions/retrieval";
 import {
   applyDataSourceFilters,
-  parseTimeFrame,
   retrievalAutoTimeFrameInputSpecification,
   retrievalTagsInputSpecification,
-  timeFrameFromNow,
 } from "@app/lib/actions/retrieval";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type {
-  ProcessActionOutputsType,
-  ProcessActionType,
-  ProcessConfigurationType,
-  ProcessErrorEvent,
-  ProcessParamsEvent,
-  ProcessSchemaPropertyType,
-  ProcessSuccessEvent,
-} from "@app/lib/actions/types/process";
-import {
-  PROCESS_ACTION_TOP_K,
-  renderSchemaPropertiesAsJSONSchema,
-} from "@app/lib/actions/types/process";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -48,24 +39,104 @@ import type {
   TimeFrame,
   UserMessageType,
 } from "@app/types";
-import { Ok } from "@app/types";
+import { Ok, parseTimeFrame, timeFrameFromNow } from "@app/types";
 
-interface ProcessActionBlob {
-  id: ModelId; // AgentProcessAction.
-  agentMessageId: ModelId;
-  params: {
-    relativeTimeFrame: TimeFrame | null;
-    tagsIn: string[] | null;
-    tagsNot: string[] | null;
-  };
-  schema: ProcessSchemaPropertyType[];
-  outputs: ProcessActionOutputsType | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
+export const PROCESS_SCHEMA_ALLOWED_TYPES = [
+  "string",
+  "number",
+  "boolean",
+] as const;
+
+// Properties in the process configuration table are stored as an array of objects.
+export type ProcessSchemaPropertyType = {
+  name: string;
+  type: (typeof PROCESS_SCHEMA_ALLOWED_TYPES)[number];
+  description: string;
+};
+
+function renderSchemaPropertiesAsJSONSchema(
+  schema: ProcessSchemaPropertyType[]
+): { [name: string]: { type: string; description: string } } {
+  let jsonSchema: { [name: string]: { type: string; description: string } } =
+    {};
+
+  if (schema.length > 0) {
+    schema.forEach((f) => {
+      jsonSchema[f.name] = {
+        type: f.type,
+        description: f.description,
+      };
+    });
+  } else {
+    // Default schema for extraction.
+    jsonSchema = {
+      required_data: {
+        type: "string",
+        description:
+          "Minimal (short and concise) piece of information extracted to follow instructions",
+      },
+    };
+  }
+
+  return jsonSchema;
 }
 
-export class ProcessAction extends BaseAction {
+export type ProcessConfigurationType = {
+  id: ModelId;
+  sId: string;
+
+  type: "process_configuration";
+
+  dataSources: DataSourceConfiguration[];
+  relativeTimeFrame: RetrievalTimeframe;
+  schema: ProcessSchemaPropertyType[];
+
+  name: string;
+  description: string | null;
+};
+
+export type ProcessActionOutputsType = {
+  data: unknown[];
+  min_timestamp: number;
+  total_documents: number;
+  total_chunks: number;
+  total_tokens: number;
+};
+
+// Event sent before the execution with the finalized params to be used.
+type ProcessParamsEvent = {
+  type: "process_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  dataSources: DataSourceConfiguration[];
+  action: ProcessActionType;
+};
+
+type ProcessErrorEvent = {
+  type: "process_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type ProcessSuccessEvent = {
+  type: "process_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ProcessActionType;
+};
+
+export type ProcessActionRunningEvents = ProcessParamsEvent;
+
+type ProcessActionBlob = ExtractActionBlob<ProcessActionType>;
+
+export class ProcessActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: {
     relativeTimeFrame: TimeFrame | null;
@@ -80,7 +151,7 @@ export class ProcessAction extends BaseAction {
   readonly type = "process_action";
 
   constructor(blob: ProcessActionBlob) {
-    super(blob.id, "process_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -275,7 +346,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       dataSources: actionConfiguration.dataSources,
-      action: new ProcessAction({
+      action: new ProcessActionType({
         id: action.id,
         agentMessageId: agentMessage.agentMessageId,
         params: {
@@ -288,6 +359,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "process_action",
+        generatedFiles: [],
       }),
     };
 
@@ -463,7 +536,7 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ProcessAction({
+      action: new ProcessActionType({
         id: action.id,
         agentMessageId: agentMessage.agentMessageId,
         params: {
@@ -476,6 +549,8 @@ export class ProcessConfigurationServerRunner extends BaseActionConfigurationSer
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "process_action",
+        generatedFiles: [],
       }),
     };
   }
@@ -544,7 +619,7 @@ export async function processActionTypesFromAgentMessageIds(
       };
     }
 
-    return new ProcessAction({
+    return new ProcessActionType({
       id: action.id,
       agentMessageId: action.agentMessageId,
       params: {
@@ -557,6 +632,8 @@ export async function processActionTypesFromAgentMessageIds(
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      type: "process_action",
+      generatedFiles: [],
     });
   });
 }

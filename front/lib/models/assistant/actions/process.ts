@@ -4,7 +4,7 @@ import { DataTypes } from "sequelize";
 import type {
   ProcessActionOutputsType,
   ProcessSchemaPropertyType,
-} from "@app/lib/actions/types/process";
+} from "@app/lib/actions/process";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";

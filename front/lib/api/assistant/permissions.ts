@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { UnsavedAgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
 import { isDustAppRunConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";

@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import { PROCESS_SCHEMA_ALLOWED_TYPES } from "@app/lib/actions/process";
 import { runAction } from "@app/lib/actions/server";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
-import { PROCESS_SCHEMA_ALLOWED_TYPES } from "@app/lib/actions/types/process";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";

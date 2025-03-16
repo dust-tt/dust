@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
-import type { WebsearchConfigurationType } from "@app/lib/actions/types/websearch";
+import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { AgentWebsearchConfiguration } from "@app/lib/models/assistant/actions/websearch";
 import type { ModelId } from "@app/types";
 
