@@ -3,6 +3,7 @@ import { isPlainObject } from "lodash";
 import type { RegionType } from "@app/lib/api/regions/config";
 import type {
   CoreAPIContentNode,
+  CoreAPIDataset,
   CoreAPIDocumentBlob,
   CoreAPITableBlob,
   ModelId,
@@ -61,6 +62,14 @@ export type CoreFolderAPIRelocationBlob = APIRelocationBlob<
 export type CoreTableAPIRelocationBlob = APIRelocationBlob<
   "tables",
   CoreAPITableBlob
+>;
+
+export type CoreAppAPIRelocationBlob = APIRelocationBlob<
+  "apps",
+  {
+    coreSpecifications: Record<string, string>;
+    datasets: CoreAPIDataset[];
+  }
 >;
 
 export function isArrayOfPlainObjects(value: unknown) {
