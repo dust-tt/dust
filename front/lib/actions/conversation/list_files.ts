@@ -6,26 +6,34 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import type {
-  ConversationFileType,
-  ConversationListFilesActionType,
-} from "@app/lib/actions/types/conversation/list_files";
-import type {
   AgentMessageType,
+  ContentFragmentVersion,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
+  SupportedContentFragmentType,
 } from "@app/types";
 
-interface ConversationListFilesActionBlob {
-  agentMessageId: ModelId;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  files: ConversationFileType[];
-}
+export type ConversationFileType = {
+  contentFragmentId: string;
+  title: string;
+  contentType: SupportedContentFragmentType;
+  contentFragmentVersion: ContentFragmentVersion;
+  snippet: string | null;
+  generatedTables: string[];
+  isIncludable: boolean;
+  isSearchable: boolean;
+  isQueryable: boolean;
+};
 
-export class ConversationListFilesAction extends BaseAction {
+type ConversationListFilesActionBlob =
+  ExtractActionBlob<ConversationListFilesActionType>;
+
+export class ConversationListFilesActionType extends BaseAction {
+  readonly id: ModelId = -1;
   readonly agentMessageId: ModelId;
   readonly files: ConversationFileType[];
   readonly functionCallId: string | null;
@@ -34,7 +42,7 @@ export class ConversationListFilesAction extends BaseAction {
   readonly type = "conversation_list_files_action";
 
   constructor(blob: ConversationListFilesActionBlob) {
-    super(-1, "conversation_list_files_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
     this.files = blob.files;
@@ -91,10 +99,14 @@ export function makeConversationListFilesAction({
     return null;
   }
 
-  return new ConversationListFilesAction({
+  return new ConversationListFilesActionType({
+    id: -1,
     functionCallId: "call_" + Math.random().toString(36).substring(7),
     functionCallName: DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
     files,
     agentMessageId: agentMessage.agentMessageId,
+    step: -1,
+    type: "conversation_list_files_action",
+    generatedFiles: [],
   });
 }

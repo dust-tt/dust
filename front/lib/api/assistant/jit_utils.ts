@@ -1,4 +1,4 @@
-import type { ConversationFileType } from "@app/lib/actions/types/conversation/list_files";
+import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
 import type {
   ConversationType,
   SupportedContentFragmentType,

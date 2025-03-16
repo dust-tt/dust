@@ -1,12 +1,12 @@
 import type { BrowseActionType } from "@app/lib/actions/browse";
 import type { ConversationIncludeFileActionType } from "@app/lib/actions/conversation/include_file";
+import type { ConversationListFilesActionType } from "@app/lib/actions/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
 import type { ProcessActionType } from "@app/lib/actions/process";
 import type { ReasoningActionType } from "@app/lib/actions/reasoning";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { SearchLabelsActionType } from "@app/lib/actions/search_labels";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
-import type { ConversationListFilesActionType } from "@app/lib/actions/types/conversation/list_files";
 import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
 import type { ContentFragmentType } from "../content_fragment";
