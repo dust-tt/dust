@@ -10,10 +10,10 @@ import {
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
 import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { ConversationFileType } from "@app/lib/actions/types/conversation/list_files";
 import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";

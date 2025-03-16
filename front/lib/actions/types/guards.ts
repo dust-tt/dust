@@ -1,3 +1,7 @@
+import type {
+  TablesQueryActionType,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
 import { BaseAction } from "@app/lib/actions/types";
 import type {
   BrowseActionType,
@@ -17,10 +21,6 @@ import type {
   RetrievalConfigurationType,
 } from "@app/lib/actions/types/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/types/search_labels";
-import type {
-  TablesQueryActionType,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/types/tables_query";
 import type {
   WebsearchActionType,
   WebsearchConfigurationType,

@@ -1,4 +1,8 @@
 import type {
+  TablesQueryActionRunningEvents,
+  TablesQueryConfigurationType,
+} from "@app/lib/actions/tables_query";
+import type {
   BrowseConfigurationType,
   BrowseParamsEvent,
 } from "@app/lib/actions/types/browse";
@@ -29,12 +33,6 @@ import type {
   SearchLabelsConfigurationType,
   SearchLabelsParamsEvent,
 } from "@app/lib/actions/types/search_labels";
-import type {
-  TablesQueryConfigurationType,
-  TablesQueryModelOutputEvent,
-  TablesQueryOutputEvent,
-  TablesQueryStartedEvent,
-} from "@app/lib/actions/types/tables_query";
 import type {
   WebsearchConfigurationType,
   WebsearchParamsEvent,
@@ -126,7 +124,5 @@ export type AgentActionSpecificEvent =
   | ReasoningTokensEvent
   | RetrievalParamsEvent
   | SearchLabelsParamsEvent
-  | TablesQueryModelOutputEvent
-  | TablesQueryOutputEvent
-  | TablesQueryStartedEvent
+  | TablesQueryActionRunningEvents
   | WebsearchParamsEvent;

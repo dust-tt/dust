@@ -11,18 +11,6 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { BaseActionRunParams } from "@app/lib/actions/types/base";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import type { DustAppParameters } from "@app/lib/actions/types/dust_app_run";
-import type {
-  TablesQueryActionType,
-  TablesQueryConfigurationType,
-  TablesQueryErrorEvent,
-  TablesQueryModelOutputEvent,
-  TablesQueryOutputEvent,
-  TablesQueryStartedEvent,
-} from "@app/lib/actions/types/tables_query";
-import {
-  getTablesQueryResultsFileAttachments,
-  getTablesQueryResultsFileTitle,
-} from "@app/lib/actions/types/tables_query";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import type { CSVRecord } from "@app/lib/api/csv";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -48,21 +36,117 @@ const TABLES_QUERY_MIN_TOKEN = 28_000;
 const RENDERED_CONVERSATION_MIN_TOKEN = 4_000;
 const TABLES_QUERY_SECTION_FILE_MIN_COLUMN_LENGTH = 500;
 
-interface TablesQueryActionBlob {
-  id: ModelId; // AgentTablesQueryAction.
-  agentMessageId: ModelId;
-  params: DustAppParameters;
-  output: Record<string, string | number | boolean> | null;
+export type TablesQueryConfigurationType = {
+  description: string | null;
+  id: ModelId;
+  name: string;
+  sId: string;
+  tables: TableDataSourceConfiguration[];
+  type: "tables_query_configuration";
+};
+
+export type TableDataSourceConfiguration = {
+  workspaceId: string;
+  dataSourceViewId: string;
+  tableId: string;
+};
+
+export function getTablesQueryResultsFileTitle({
+  output,
+}: {
+  output: Record<string, unknown> | null;
+}): string {
+  return typeof output?.query_title === "string"
+    ? output.query_title
+    : "query_results";
+}
+
+function getTablesQueryResultsFileAttachments({
+  resultsFileId,
+  resultsFileSnippet,
+  sectionFileId,
+  output,
+}: {
   resultsFileId: string | null;
   resultsFileSnippet: string | null;
   sectionFileId: string | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-  generatedFiles: ActionGeneratedFileType[];
+  output: Record<string, unknown> | null;
+}): string | null {
+  if (!resultsFileId || !resultsFileSnippet) {
+    return null;
+  }
+
+  const fileTitle = getTablesQueryResultsFileTitle({ output });
+
+  const resultsFileAttachment =
+    `<file ` +
+    `id="${resultsFileId}" type="text/csv" title="${fileTitle}">\n${resultsFileSnippet}\n</file>`;
+
+  let sectionFileAttachment = "";
+  if (sectionFileId) {
+    sectionFileAttachment =
+      `\n<file ` +
+      `id="${sectionFileId}" type="application/vnd.dust.section.json" title="${fileTitle} (Results optimized for search)" />`;
+  }
+
+  return `${resultsFileAttachment}${sectionFileAttachment}`;
 }
 
-export class TablesQueryAction extends BaseAction {
+/**
+ * TablesQuey Events
+ */
+
+type TablesQueryErrorEvent = {
+  type: "tables_query_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: "tables_query_error" | "too_many_result_rows";
+    message: string;
+  };
+};
+
+type TablesQueryStartedEvent = {
+  type: "tables_query_started";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: TablesQueryActionType;
+};
+
+type TablesQueryModelOutputEvent = {
+  type: "tables_query_model_output";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: TablesQueryActionType;
+};
+
+type TablesQueryOutputEvent = {
+  type: "tables_query_output";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: TablesQueryActionType;
+};
+
+export type TablesQueryActionRunningEvents =
+  | TablesQueryStartedEvent
+  | TablesQueryModelOutputEvent
+  | TablesQueryOutputEvent;
+
+type TablesQueryActionBlob = Pick<
+  TablesQueryActionType,
+  {
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    [K in keyof TablesQueryActionType]: TablesQueryActionType[K] extends Function
+      ? never
+      : K;
+  }[keyof TablesQueryActionType]
+>;
+
+export class TablesQueryActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly params: DustAppParameters;
   readonly output: Record<string, string | number | boolean> | null;
@@ -75,7 +159,7 @@ export class TablesQueryAction extends BaseAction {
   readonly type = "tables_query_action";
 
   constructor(blob: TablesQueryActionBlob) {
-    super(blob.id, "tables_query_action", blob.generatedFiles);
+    super(blob.id, blob.type, blob.generatedFiles);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;
@@ -241,7 +325,7 @@ export async function tableQueryTypesFromAgentMessageIds(
         }
       : null;
 
-    return new TablesQueryAction({
+    return new TablesQueryActionType({
       id: action.id,
       params: action.params as DustAppParameters,
       output: action.output as Record<string, string | number | boolean>,
@@ -253,6 +337,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       resultsFileSnippet: action.resultsFileSnippet,
       sectionFileId: sectionFile ? sectionFile.fileId : null,
       generatedFiles: resultsFile ? [resultsFile] : [],
+      type: "tables_query_action",
     });
   });
 }
@@ -346,7 +431,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new TablesQueryAction({
+      action: new TablesQueryActionType({
         id: action.id,
         params: action.params as DustAppParameters,
         output: action.output as Record<string, string | number | boolean>,
@@ -358,6 +443,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
         resultsFileSnippet: null,
         sectionFileId: null,
         generatedFiles: [],
+        type: "tables_query_action",
       }),
     };
 
@@ -547,7 +633,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
               created: Date.now(),
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
-              action: new TablesQueryAction({
+              action: new TablesQueryActionType({
                 id: action.id,
                 params: action.params as DustAppParameters,
                 output: e.value as Record<string, string | number | boolean>,
@@ -559,6 +645,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
                 resultsFileSnippet: null,
                 sectionFileId: null,
                 generatedFiles: [],
+                type: "tables_query_action",
               }),
             };
           }
@@ -688,7 +775,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new TablesQueryAction({
+      action: new TablesQueryActionType({
         id: action.id,
         params: action.params as DustAppParameters,
         output: sanitizedOutput as Record<string, string | number | boolean>,
@@ -703,6 +790,7 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
           generatedResultFile,
           generatedsectionFile,
         ]),
+        type: "tables_query_action",
       }),
     };
     return;
