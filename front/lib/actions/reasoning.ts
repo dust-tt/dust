@@ -1,19 +1,11 @@
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
-import type {
-  ReasoningActionType,
-  ReasoningConfigurationType,
-  ReasoningErrorEvent,
-  ReasoningStartedEvent,
-  ReasoningSuccessEvent,
-  ReasoningThinkingEvent,
-  ReasoningTokensEvent,
-} from "@app/lib/actions/types/reasoning";
 import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import { getRedisClient } from "@app/lib/api/redis";
@@ -28,24 +20,83 @@ import type {
   FunctionMessageTypeModel,
   GenerationTokensEvent,
   ModelId,
+  ModelIdType,
+  ModelProviderIdType,
+  ReasoningEffortIdType,
   Result,
+  TokensClassification,
 } from "@app/types";
 import { isProviderWhitelisted, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
-interface ReasoningActionBlob {
-  id: ModelId;
-  agentMessageId: ModelId;
-  output: string | null;
-  thinking: string | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-}
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
 const REASONING_GENERATION_TOKENS = 20480;
 
-export class ReasoningAction extends BaseAction {
+export type ReasoningConfigurationType = {
+  description: string | null;
+  id: ModelId;
+  name: string;
+  sId: string;
+  providerId: ModelProviderIdType;
+  modelId: ModelIdType;
+  temperature: number | null;
+  reasoningEffort: ReasoningEffortIdType | null;
+  type: "reasoning_configuration";
+};
+
+type ReasoningErrorEvent = {
+  type: "reasoning_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: "reasoning_error";
+    message: string;
+  };
+};
+
+type ReasoningStartedEvent = {
+  type: "reasoning_started";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ReasoningActionType;
+};
+
+type ReasoningThinkingEvent = {
+  type: "reasoning_thinking";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ReasoningActionType;
+};
+
+type ReasoningSuccessEvent = {
+  type: "reasoning_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ReasoningActionType;
+};
+
+type ReasoningTokensEvent = {
+  type: "reasoning_tokens";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ReasoningActionType;
+  content: string;
+  classification: TokensClassification;
+};
+
+export type ReasoningActionRunningEvents =
+  | ReasoningStartedEvent
+  | ReasoningThinkingEvent
+  | ReasoningTokensEvent;
+
+type ReasoningActionBlob = ExtractActionBlob<ReasoningActionType>;
+
+export class ReasoningActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly output: string | null;
   readonly thinking: string | null;
@@ -55,7 +106,7 @@ export class ReasoningAction extends BaseAction {
   readonly type = "reasoning_action";
 
   constructor(blob: ReasoningActionBlob) {
-    super(blob.id, "reasoning_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
 
@@ -140,7 +191,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ReasoningAction({
+      action: new ReasoningActionType({
         id: action.id,
         agentMessageId: action.agentMessageId,
         output: null,
@@ -148,6 +199,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "reasoning_action",
+        generatedFiles: [],
       }),
     };
 
@@ -317,7 +370,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
-          action: new ReasoningAction({
+          action: new ReasoningActionType({
             id: action.id,
             agentMessageId: action.agentMessageId,
             output: actionOutput.content,
@@ -325,6 +378,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
             functionCallId: action.functionCallId,
             functionCallName: action.functionCallName,
             step: action.step,
+            type: "reasoning_action",
+            generatedFiles: [],
           }),
           content: token.text,
           classification: token.classification,
@@ -401,7 +456,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ReasoningAction({
+      action: new ReasoningActionType({
         id: action.id,
         agentMessageId: action.agentMessageId,
         output: actionOutput.content,
@@ -409,6 +464,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "reasoning_action",
+        generatedFiles: [],
       }),
     };
 
@@ -417,7 +474,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new ReasoningAction({
+      action: new ReasoningActionType({
         id: action.id,
         agentMessageId: action.agentMessageId,
         output: actionOutput.content,
@@ -425,6 +482,8 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "reasoning_action",
+        generatedFiles: [],
       }),
     };
 
@@ -446,7 +505,7 @@ export async function reasoningActionTypesFromAgentMessageIds(
   });
 
   return models.map((action) => {
-    return new ReasoningAction({
+    return new ReasoningActionType({
       id: action.id,
       agentMessageId: action.agentMessageId,
       output: action.output,
@@ -454,6 +513,8 @@ export async function reasoningActionTypesFromAgentMessageIds(
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      type: "reasoning_action",
+      generatedFiles: [],
     });
   });
 }

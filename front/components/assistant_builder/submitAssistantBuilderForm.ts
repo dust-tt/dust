@@ -14,7 +14,7 @@ import {
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { RetrievalTimeframe } from "@app/lib/actions/types/retrieval";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,

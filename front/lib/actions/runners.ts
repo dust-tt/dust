@@ -1,26 +1,26 @@
+import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import { BrowseConfigurationServerRunner } from "@app/lib/actions/browse";
+import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/conversation/include_file";
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/actions/conversation/include_file";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/actions/dust_app_run";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import { ProcessConfigurationServerRunner } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import { ReasoningConfigurationServerRunner } from "@app/lib/actions/reasoning";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { RetrievalConfigurationServerRunner } from "@app/lib/actions/retrieval";
+import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import { SearchLabelsConfigurationServerRunner } from "@app/lib/actions/search_labels";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/actions/tables_query";
-import type { AgentAction } from "@app/lib/actions/types/agent";
 import type {
   BaseActionConfigurationServerRunner,
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
-} from "@app/lib/actions/types/base";
-import type { BrowseConfigurationType } from "@app/lib/actions/types/browse";
-import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/types/conversation/include_file";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
-import type { ProcessConfigurationType } from "@app/lib/actions/types/process";
-import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
-import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/types/search_labels";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
-import type { WebsearchConfigurationType } from "@app/lib/actions/types/websearch";
+} from "@app/lib/actions/types";
+import type { AgentAction } from "@app/lib/actions/types/agent";
+import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 
 interface ActionToConfigTypeMap {

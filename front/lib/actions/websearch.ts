@@ -1,26 +1,16 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 
 import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
-import type {
-  WebsearchActionType,
-  WebsearchResultType,
-} from "@app/lib/actions/types/websearch";
-import type {
-  WebsearchActionOutputType,
-  WebsearchConfigurationType,
-  WebsearchErrorEvent,
-  WebsearchParamsEvent,
-  WebsearchSuccessEvent,
-} from "@app/lib/actions/types/websearch";
-import { WebsearchAppActionOutputSchema } from "@app/lib/actions/types/websearch";
 import {
   actionRefsOffset,
   getWebsearchNumResults,
@@ -38,17 +28,88 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-interface WebsearchActionBlob {
-  id: ModelId; // AgentWebsearchAction
-  agentMessageId: ModelId;
-  query: string;
-  output: WebsearchActionOutputType | null;
-  functionCallId: string | null;
-  functionCallName: string | null;
-  step: number;
-}
+export type WebsearchConfigurationType = {
+  id: ModelId;
+  sId: string;
+  type: "websearch_configuration";
+  name: string;
+  description: string | null;
+};
 
-export class WebsearchAction extends BaseAction {
+// Type fresh out from the Dust app
+const WebsearchAppResultSchema = t.type({
+  title: t.string,
+  snippet: t.string,
+  link: t.string,
+});
+
+const WebsearchAppActionOutputSchema = t.union([
+  t.type({
+    results: t.array(WebsearchAppResultSchema),
+  }),
+  t.type({
+    error: t.string,
+    results: t.array(WebsearchAppResultSchema),
+  }),
+]);
+
+// Type after processing in the run loop (to add references)
+const WebsearchResultSchema = t.type({
+  title: t.string,
+  snippet: t.string,
+  link: t.string,
+  reference: t.string,
+});
+
+const WebsearchActionOutputSchema = t.union([
+  t.type({
+    results: t.array(WebsearchResultSchema),
+  }),
+  t.type({
+    results: t.array(WebsearchResultSchema),
+    error: t.string,
+  }),
+]);
+
+export type WebsearchActionOutputType = t.TypeOf<
+  typeof WebsearchActionOutputSchema
+>;
+
+export type WebsearchResultType = t.TypeOf<typeof WebsearchResultSchema>;
+
+// Event sent before the execution with the finalized params to be used.
+type WebsearchParamsEvent = {
+  type: "websearch_params";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: WebsearchActionType;
+};
+
+type WebsearchErrorEvent = {
+  type: "websearch_error";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+type WebsearchSuccessEvent = {
+  type: "websearch_success";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: WebsearchActionType;
+};
+
+export type WebsearchActionRunningEvents = WebsearchParamsEvent;
+
+type WebsearchActionBlob = ExtractActionBlob<WebsearchActionType>;
+
+export class WebsearchActionType extends BaseAction {
   readonly agentMessageId: ModelId;
   readonly query: string;
   readonly output: WebsearchActionOutputType | null;
@@ -58,7 +119,7 @@ export class WebsearchAction extends BaseAction {
   readonly type = "websearch_action";
 
   constructor(blob: WebsearchActionBlob) {
-    super(blob.id, "websearch_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
     this.query = blob.query;
@@ -207,7 +268,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       created: Date.now(),
       configurationId: actionConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new WebsearchAction({
+      action: new WebsearchActionType({
         id: action.id,
         agentMessageId: action.agentMessageId,
         query,
@@ -215,6 +276,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "websearch_action",
+        generatedFiles: [],
       }),
     };
 
@@ -370,7 +433,7 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new WebsearchAction({
+      action: new WebsearchActionType({
         id: action.id,
         agentMessageId: agentMessage.agentMessageId,
         query,
@@ -378,6 +441,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
         functionCallId: action.functionCallId,
         functionCallName: action.functionCallName,
         step: action.step,
+        type: "websearch_action",
+        generatedFiles: [],
       }),
     };
   }
@@ -400,7 +465,7 @@ export async function websearchActionTypesFromAgentMessageIds(
   });
 
   return models.map((action) => {
-    return new WebsearchAction({
+    return new WebsearchActionType({
       id: action.id,
       agentMessageId: action.agentMessageId,
       query: action.query,
@@ -408,6 +473,8 @@ export async function websearchActionTypesFromAgentMessageIds(
       functionCallId: action.functionCallId,
       functionCallName: action.functionCallName,
       step: action.step,
+      type: "websearch_action",
+      generatedFiles: [],
     });
   });
 }

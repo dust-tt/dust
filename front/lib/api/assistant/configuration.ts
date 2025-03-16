@@ -20,14 +20,14 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { ProcessSchemaPropertyType } from "@app/lib/actions/types/process";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type {
   DataSourceConfiguration,
   RetrievalTimeframe,
-} from "@app/lib/actions/types/retrieval";
-import type { RetrievalQuery } from "@app/lib/actions/types/retrieval";
-import type { TableDataSourceConfiguration } from "@app/lib/actions/types/tables_query";
+} from "@app/lib/actions/retrieval";
+import type { RetrievalQuery } from "@app/lib/actions/retrieval";
+import type { TableDataSourceConfiguration } from "@app/lib/actions/tables_query";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   getGlobalAgents,

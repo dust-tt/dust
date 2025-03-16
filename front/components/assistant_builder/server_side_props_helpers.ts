@@ -9,8 +9,12 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
-import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
@@ -20,10 +24,6 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import type { ProcessConfigurationType } from "@app/lib/actions/types/process";
-import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
-import type { RetrievalConfigurationType } from "@app/lib/actions/types/retrieval";
-import type { TablesQueryConfigurationType } from "@app/lib/actions/types/tables_query";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";

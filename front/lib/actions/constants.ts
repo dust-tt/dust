@@ -1,4 +1,9 @@
 // Stored in a separate file to prevent a circular dependency issue.
+
+// Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the
+// future based on user feedback.
+export const PROCESS_ACTION_TOP_K = 768;
+
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
   "Browse the content of a web page";

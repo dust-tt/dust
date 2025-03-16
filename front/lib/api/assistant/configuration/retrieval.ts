@@ -7,7 +7,7 @@ import type {
   DataSourceConfiguration,
   DataSourceFilter,
   RetrievalConfigurationType,
-} from "@app/lib/actions/types/retrieval";
+} from "@app/lib/actions/retrieval";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { Workspace } from "@app/lib/models/workspace";

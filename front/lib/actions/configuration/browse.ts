@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
+import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import { DEFAULT_BROWSE_ACTION_NAME } from "@app/lib/actions/constants";
-import type { BrowseConfigurationType } from "@app/lib/actions/types/browse";
 import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/browse";
 import type { ModelId } from "@app/types";
 
