@@ -1,5 +1,3 @@
-import type { CoreAPIDataset, ModelId } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
 import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -12,6 +10,8 @@ import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CoreAPIDataset, ModelId } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 const BATCH_SIZE = 10;
 
