@@ -1,11 +1,11 @@
 import type {
+  BrowseConfigurationType,
+  BrowseRunningActionEvents,
+} from "@app/lib/actions/browse";
+import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
-import type {
-  BrowseConfigurationType,
-  BrowseParamsEvent,
-} from "@app/lib/actions/types/browse";
 import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
@@ -114,7 +114,7 @@ export type AgentActionSpecification = {
 
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =
-  | BrowseParamsEvent
+  | BrowseRunningActionEvents
   | ConversationIncludeFileParamsEvent
   | DustAppRunBlockEvent
   | DustAppRunParamsEvent

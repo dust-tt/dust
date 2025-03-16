@@ -1,3 +1,4 @@
+import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import { BrowseConfigurationServerRunner } from "@app/lib/actions/browse";
 import { ConversationIncludeFileConfigurationServerRunner } from "@app/lib/actions/conversation/include_file";
 import { DustAppRunConfigurationServerRunner } from "@app/lib/actions/dust_app_run";
@@ -13,7 +14,6 @@ import type {
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/actions/types/base";
-import type { BrowseConfigurationType } from "@app/lib/actions/types/browse";
 import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/types/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/types/dust_app_run";
 import type { ProcessConfigurationType } from "@app/lib/actions/types/process";

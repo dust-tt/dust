@@ -5,7 +5,10 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { DEFAULT_TABLES_QUERY_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type {
+  ActionGeneratedFileType,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { BaseActionRunParams } from "@app/lib/actions/types/base";
@@ -136,15 +139,7 @@ export type TablesQueryActionRunningEvents =
   | TablesQueryModelOutputEvent
   | TablesQueryOutputEvent;
 
-type TablesQueryActionBlob = Pick<
-  TablesQueryActionType,
-  {
-    // eslint-disable-next-line @typescript-eslint/ban-types
-    [K in keyof TablesQueryActionType]: TablesQueryActionType[K] extends Function
-      ? never
-      : K;
-  }[keyof TablesQueryActionType]
->;
+type TablesQueryActionBlob = ExtractActionBlob<TablesQueryActionType>;
 
 export class TablesQueryActionType extends BaseAction {
   readonly agentMessageId: ModelId;

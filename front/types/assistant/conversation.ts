@@ -1,5 +1,5 @@
+import type { BrowseActionType } from "@app/lib/actions/browse";
 import type { TablesQueryActionType } from "@app/lib/actions/tables_query";
-import type { BrowseActionType } from "@app/lib/actions/types/browse";
 import type { ConversationIncludeFileActionType } from "@app/lib/actions/types/conversation/include_file";
 import type { ConversationListFilesActionType } from "@app/lib/actions/types/conversation/list_files";
 import type { DustAppRunActionType } from "@app/lib/actions/types/dust_app_run";

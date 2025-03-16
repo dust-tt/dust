@@ -9,7 +9,7 @@ import {
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import type { BrowseActionType } from "@app/lib/actions/types/browse";
+import type { BrowseActionType } from "@app/lib/actions/browse";
 
 export function BrowseActionDetails({
   action,

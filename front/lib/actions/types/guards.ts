@@ -1,12 +1,12 @@
 import type {
+  BrowseActionType,
+  BrowseConfigurationType,
+} from "@app/lib/actions/browse";
+import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
 import { BaseAction } from "@app/lib/actions/types";
-import type {
-  BrowseActionType,
-  BrowseConfigurationType,
-} from "@app/lib/actions/types/browse";
 import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
