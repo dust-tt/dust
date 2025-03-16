@@ -14,12 +14,12 @@ import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labe
 import { SearchLabelsConfigurationServerRunner } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/actions/tables_query";
-import type { AgentAction } from "@app/lib/actions/types/agent";
 import type {
   BaseActionConfigurationServerRunner,
   BaseActionConfigurationServerRunnerConstructor,
   BaseActionConfigurationStaticMethods,
-} from "@app/lib/actions/types/base";
+} from "@app/lib/actions/types";
+import type { AgentAction } from "@app/lib/actions/types/agent";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
 import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 

@@ -5,10 +5,10 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";

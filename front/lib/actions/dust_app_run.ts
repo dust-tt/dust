@@ -10,10 +10,10 @@ import type {
   ActionGeneratedFileType,
   ExtractActionBlob,
 } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";

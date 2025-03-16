@@ -1,10 +1,10 @@
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";

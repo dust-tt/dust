@@ -7,13 +7,13 @@ import {
 } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";

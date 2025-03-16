@@ -2,10 +2,10 @@ import assert from "assert";
 
 import { DEFAULT_SEARCH_LABELS_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
+import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
+import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { BaseActionRunParams } from "@app/lib/actions/types/base";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types/base";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
