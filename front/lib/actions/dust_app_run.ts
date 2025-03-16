@@ -137,7 +137,7 @@ export class DustAppRunActionType extends BaseAction {
   readonly type = "dust_app_run_action";
 
   constructor(blob: DustAppRunActionBlob) {
-    super(blob.id, "dust_app_run_action", blob.generatedFiles || []);
+    super(blob.id, blob.type, blob.generatedFiles || []);
 
     this.agentMessageId = blob.agentMessageId;
     this.appWorkspaceId = blob.appWorkspaceId;

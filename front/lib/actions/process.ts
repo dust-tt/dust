@@ -160,7 +160,7 @@ export class ProcessActionType extends BaseAction {
   readonly type = "process_action";
 
   constructor(blob: ProcessActionBlob) {
-    super(blob.id, "process_action");
+    super(blob.id, blob.type);
 
     this.agentMessageId = blob.agentMessageId;
     this.params = blob.params;

@@ -10,6 +10,7 @@ import type {
   ProcessActionType,
   ProcessConfigurationType,
 } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
@@ -19,7 +20,6 @@ import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/types/conversation/include_file";
-import type { ReasoningConfigurationType } from "@app/lib/actions/types/reasoning";
 import type {
   RetrievalActionType,
   RetrievalConfigurationType,

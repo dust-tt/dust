@@ -11,6 +11,10 @@ import type {
   ProcessConfigurationType,
 } from "@app/lib/actions/process";
 import type {
+  ReasoningActionRunningEvents,
+  ReasoningConfigurationType,
+} from "@app/lib/actions/reasoning";
+import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -18,12 +22,6 @@ import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  ReasoningConfigurationType,
-  ReasoningStartedEvent,
-  ReasoningThinkingEvent,
-  ReasoningTokensEvent,
-} from "@app/lib/actions/types/reasoning";
 import type {
   RetrievalConfigurationType,
   RetrievalParamsEvent,
@@ -117,9 +115,7 @@ export type AgentActionSpecificEvent =
   | ConversationIncludeFileParamsEvent
   | DustAppRunActionRunningEvents
   | ProcessActionRunningEvents
-  | ReasoningStartedEvent
-  | ReasoningThinkingEvent
-  | ReasoningTokensEvent
+  | ReasoningActionRunningEvents
   | RetrievalParamsEvent
   | SearchLabelsParamsEvent
   | TablesQueryActionRunningEvents
