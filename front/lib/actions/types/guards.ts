@@ -1,30 +1,17 @@
-import type {
-  BrowseActionType,
-  BrowseConfigurationType,
-} from "@app/lib/actions/browse";
+import type { BrowseConfigurationType } from "@app/lib/actions/browse";
 import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/conversation/include_file";
-import type {
-  DustAppRunActionType,
-  DustAppRunConfigurationType,
-} from "@app/lib/actions/dust_app_run";
-import type {
-  ProcessActionType,
-  ProcessConfigurationType,
-} from "@app/lib/actions/process";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
   RetrievalActionType,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
 import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
-import type {
-  TablesQueryActionType,
-  TablesQueryConfigurationType,
-} from "@app/lib/actions/tables_query";
-import { BaseAction } from "@app/lib/actions/types";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type {
   WebsearchActionType,
   WebsearchConfigurationType,
@@ -46,12 +33,6 @@ export function isTablesQueryConfiguration(
   );
 }
 
-export function isTablesQueryActionType(
-  arg: AgentActionType
-): arg is TablesQueryActionType {
-  return arg.type === "tables_query_action";
-}
-
 export function isDustAppRunConfiguration(
   arg: unknown
 ): arg is DustAppRunConfigurationType {
@@ -61,18 +42,6 @@ export function isDustAppRunConfiguration(
     "type" in arg &&
     arg.type === "dust_app_run_configuration"
   );
-}
-
-// TODO(2024-05-14 flav) Refactor for better separation of concerns in the front-end.
-export function isDustAppRunActionType(
-  arg: AgentActionType
-): arg is DustAppRunActionType {
-  return arg.type === "dust_app_run_action";
-}
-
-// This is temporary until we refactor all action to this class structure.
-export function isBaseActionClass(action: unknown): action is BaseAction {
-  return action instanceof BaseAction;
 }
 
 export function isRetrievalConfiguration(
@@ -101,12 +70,6 @@ export function isProcessConfiguration(
     "type" in arg &&
     arg.type === "process_configuration"
   );
-}
-
-export function isProcessActionType(
-  arg: AgentActionType
-): arg is ProcessActionType {
-  return arg.type === "process_action";
 }
 
 export function isWebsearchConfiguration(
@@ -157,12 +120,6 @@ export function isBrowseConfiguration(
     "type" in arg &&
     arg.type === "browse_configuration"
   );
-}
-
-export function isBrowseActionType(
-  arg: AgentActionType
-): arg is BrowseActionType {
-  return arg.type === "browse_action";
 }
 
 export function isConversationIncludeFileConfiguration(
