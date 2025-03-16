@@ -1,3 +1,4 @@
+import { getTablesQueryResultsFileTitle } from "@app/components/actions/tables_query/utils";
 import {
   generateCSVFileAndSnippet,
   generateSectionFile,
@@ -53,16 +54,6 @@ export type TableDataSourceConfiguration = {
   dataSourceViewId: string;
   tableId: string;
 };
-
-export function getTablesQueryResultsFileTitle({
-  output,
-}: {
-  output: Record<string, unknown> | null;
-}): string {
-  return typeof output?.query_title === "string"
-    ? output.query_title
-    : "query_results";
-}
 
 function getTablesQueryResultsFileAttachments({
   resultsFileId,

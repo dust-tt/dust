@@ -1,5 +1,6 @@
 import { DustAPI } from "@dust-tt/client";
 
+import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import {
   generateCSVFileAndSnippet,
   generatePlainTextFile,
@@ -98,21 +99,6 @@ type DustAppRunSuccessEvent = {
 export type DustAppRunActionRunningEvents =
   | DustAppRunParamsEvent
   | DustAppRunBlockEvent;
-
-export function getDustAppRunResultsFileTitle({
-  appName,
-  resultsFileContentType,
-}: {
-  appName: string;
-  resultsFileContentType: SupportedFileContentType;
-}): string {
-  const extension = resultsFileContentType.split("/").pop();
-  let title = `${appName}_output`;
-  if (extension) {
-    title += `.${extension}`;
-  }
-  return title;
-}
 
 type DustAppRunActionBlob = ExtractActionBlob<DustAppRunActionType>;
 

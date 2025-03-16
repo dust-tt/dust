@@ -3,6 +3,7 @@ import _ from "lodash";
 import {
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_SEARCH_LABELS_ACTION_NAME,
+  PROCESS_ACTION_TOP_K,
 } from "@app/lib/actions/constants";
 import type {
   DataSourceConfiguration,
@@ -101,14 +102,6 @@ export type ProcessActionOutputsType = {
   total_chunks: number;
   total_tokens: number;
 };
-
-// Use top_k of 768 as 512 worked really smoothly during initial tests. Might update to 1024 in the
-// future based on user feedback.
-export const PROCESS_ACTION_TOP_K = 768;
-
-/**
- * Process Action Events
- */
 
 // Event sent before the execution with the finalized params to be used.
 type ProcessParamsEvent = {
