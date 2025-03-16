@@ -9,6 +9,7 @@ import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import { ReasoningConfigurationServerRunner } from "@app/lib/actions/reasoning";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { RetrievalConfigurationServerRunner } from "@app/lib/actions/retrieval";
+import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import { SearchLabelsConfigurationServerRunner } from "@app/lib/actions/search_labels";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import { TablesQueryConfigurationServerRunner } from "@app/lib/actions/tables_query";
@@ -19,7 +20,6 @@ import type {
   BaseActionConfigurationStaticMethods,
 } from "@app/lib/actions/types/base";
 import type { ConversationIncludeFileConfigurationType } from "@app/lib/actions/types/conversation/include_file";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/types/search_labels";
 import type { WebsearchConfigurationType } from "@app/lib/actions/types/websearch";
 import { WebsearchConfigurationServerRunner } from "@app/lib/actions/websearch";
 

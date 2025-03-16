@@ -15,6 +15,7 @@ import type {
   RetrievalActionType,
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
+import type { SearchLabelsConfigurationType } from "@app/lib/actions/search_labels";
 import type {
   TablesQueryActionType,
   TablesQueryConfigurationType,
@@ -24,7 +25,6 @@ import type {
   ConversationIncludeFileActionType,
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/types/conversation/include_file";
-import type { SearchLabelsConfigurationType } from "@app/lib/actions/types/search_labels";
 import type {
   WebsearchActionType,
   WebsearchConfigurationType,

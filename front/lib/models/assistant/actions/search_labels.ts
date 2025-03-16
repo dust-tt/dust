@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { SearchLabelsActionOutputType } from "@app/lib/actions/types/search_labels";
+import type { SearchLabelsActionOutputType } from "@app/lib/actions/search_labels";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";

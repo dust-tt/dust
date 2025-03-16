@@ -19,6 +19,10 @@ import type {
   RetrievalConfigurationType,
 } from "@app/lib/actions/retrieval";
 import type {
+  SearchLabelsActionRunningEvents,
+  SearchLabelsConfigurationType,
+} from "@app/lib/actions/search_labels";
+import type {
   TablesQueryActionRunningEvents,
   TablesQueryConfigurationType,
 } from "@app/lib/actions/tables_query";
@@ -26,10 +30,6 @@ import type {
   ConversationIncludeFileConfigurationType,
   ConversationIncludeFileParamsEvent,
 } from "@app/lib/actions/types/conversation/include_file";
-import type {
-  SearchLabelsConfigurationType,
-  SearchLabelsParamsEvent,
-} from "@app/lib/actions/types/search_labels";
 import type {
   WebsearchConfigurationType,
   WebsearchParamsEvent,
@@ -117,6 +117,6 @@ export type AgentActionSpecificEvent =
   | ProcessActionRunningEvents
   | ReasoningActionRunningEvents
   | RetrievalActionRunningEvents
-  | SearchLabelsParamsEvent
+  | SearchLabelsActionRunningEvents
   | TablesQueryActionRunningEvents
   | WebsearchParamsEvent;
