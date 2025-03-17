@@ -75,21 +75,6 @@ async function handler(
         workspace,
       });
 
-    case "DELETE": {
-      const deleteRes = await deleteWorkspace(owner);
-      if (deleteRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: deleteRes.error.message,
-          },
-        });
-      }
-
-      return res.status(200).json({ success: true });
-    }
-
     default:
       return apiError(req, res, {
         status_code: 405,

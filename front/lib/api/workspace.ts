@@ -354,18 +354,27 @@ export async function areAllSubscriptionsCanceled(
 }
 
 export async function deleteWorkspace(
-  owner: LightWorkspaceType
+  owner: LightWorkspaceType,
+  {
+    workspaceHasBeenRelocated = false,
+  }: { workspaceHasBeenRelocated?: boolean } = {}
 ): Promise<Result<void, Error>> {
-  const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
-  if (!allSubscriptionsCanceled) {
-    return new Err(
-      new Error(
-        "The workspace cannot be deleted because there are active subscriptions."
-      )
-    );
+  // If the workspace has not been relocated, we expect all subscriptions to be canceled.
+  if (!workspaceHasBeenRelocated) {
+    const allSubscriptionsCanceled = await areAllSubscriptionsCanceled(owner);
+    if (!allSubscriptionsCanceled) {
+      return new Err(
+        new Error(
+          "The workspace cannot be deleted because there are active subscriptions."
+        )
+      );
+    }
   }
 
-  await launchDeleteWorkspaceWorkflow({ workspaceId: owner.sId });
+  await launchDeleteWorkspaceWorkflow({
+    workspaceId: owner.sId,
+    workspaceHasBeenRelocated: true,
+  });
 
   return new Ok(undefined);
 }
