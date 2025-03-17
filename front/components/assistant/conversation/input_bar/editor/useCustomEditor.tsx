@@ -16,6 +16,7 @@ import { makeGetAssistantSuggestions } from "@app/components/assistant/conversat
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 
 export interface EditorMention {
   id: string;
@@ -211,6 +212,7 @@ const useCustomEditor = ({
       strike: false,
     }),
     MentionStorageExtension,
+    DataSourceLinkExtension,
     MentionWithPasteExtension.configure({
       HTMLAttributes: {
         class:
