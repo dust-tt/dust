@@ -1787,7 +1787,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
-    content: z.string(),
+    content: z.string().min(1),
     mentions: z.array(
       z.object({
         configurationId: z.string(),
@@ -1873,7 +1873,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     message: z.union([
       z.intersection(
         z.object({
-          content: z.string(),
+          content: z.string().min(1),
           mentions: z.array(
             z.object({
               configurationId: z.string(),

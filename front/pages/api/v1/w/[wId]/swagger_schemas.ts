@@ -327,7 +327,7 @@
  *       properties:
  *         content:
  *           type: string
- *           description: The content of the message
+ *           description: The content of the message. Should not be empty.
  *           example: "This is my message"
  *         mentions:
  *           type: array
