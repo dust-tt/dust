@@ -1,9 +1,12 @@
-import { CitationIndex, Separator } from "@dust-tt/sparkle";
-import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
   Chip,
+  Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
+  ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -12,6 +15,8 @@ import {
   Markdown,
   Page,
   Popover,
+  Separator,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { marked } from "marked";
 import Link from "next/link";
@@ -151,6 +156,7 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+  const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
@@ -414,7 +420,7 @@ export function AgentMessage({
       : [
           <Button
             key="copy-msg-button"
-            tooltip="Copy to clipboard"
+            tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
             variant="outline"
             size="xs"
             onClick={async () => {
@@ -424,16 +430,16 @@ export function AgentMessage({
               // Convert markdown to HTML
               const htmlContent = await marked(markdownText);
 
-              void navigator.clipboard.write([
+              await copy(
                 new ClipboardItem({
                   "text/plain": new Blob([markdownText], {
                     type: "text/plain",
                   }),
                   "text/html": new Blob([htmlContent], { type: "text/html" }),
-                }),
-              ]);
+                })
+              );
             }}
-            icon={ClipboardIcon}
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground"
           />,
           <Button
