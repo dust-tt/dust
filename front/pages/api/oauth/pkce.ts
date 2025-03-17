@@ -6,6 +6,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isValidSalesforceDomain } from "@app/types";
 
 type PKCEResponse = {
   code_verifier: string;
@@ -31,12 +32,13 @@ async function handler(
 
   const domain = req.query.domain as string;
 
-  if (!domain.endsWith(".salesforce.com")) {
+  if (!isValidSalesforceDomain(domain)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "The domain must end with .salesforce.com",
+        message:
+          "The domain must be a valid Salesforce domain and in https://... format",
       },
     });
   }
