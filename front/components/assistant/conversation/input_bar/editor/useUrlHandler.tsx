@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
 
+import { getLocationForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import type { DataSourceViewContentNode } from "@app/types";
 
 import type { URLState } from "./extensions/URLStorageExtension";
@@ -10,14 +11,14 @@ const useUrlHandler = (
   selectedNode: DataSourceViewContentNode | null
 ) => {
   const replaceUrl = useCallback(
-    (pendingUrl: URLState, nodeId: string, spaceId: string) => {
+    (pendingUrl: URLState, node: DataSourceViewContentNode) => {
       if (!editor?.commands) {
         // editor is not ready yet
         return;
       }
 
       try {
-        const formattedText = `${nodeId} - ${spaceId}`;
+        const formattedText = `${node.title} - ${getLocationForDataSourceViewContentNode(node)}`;
         return editor.commands.insertContentAt(
           { from: pendingUrl.from, to: pendingUrl.to },
           formattedText
@@ -43,12 +44,7 @@ const useUrlHandler = (
       return;
     }
 
-    const success = replaceUrl(
-      pendingUrl,
-      nodeId,
-      selectedNode.dataSourceView.spaceId
-    );
-
+    const success = replaceUrl(pendingUrl, selectedNode);
     if (success) {
       pendingUrls.delete(nodeId);
     }
