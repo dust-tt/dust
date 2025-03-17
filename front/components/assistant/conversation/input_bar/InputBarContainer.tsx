@@ -20,6 +20,7 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -77,15 +78,14 @@ const InputBarContainer = ({
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] =
+    useState<DataSourceViewContentNode | null>(null);
 
-  const handleUrlDetected = useCallback(
-    (url: string, nodeId: string | null) => {
-      if (nodeId) {
-        setNodeCandidate(nodeId);
-      }
-    },
-    []
-  );
+  const handleUrlDetected = useCallback((nodeId: string | null) => {
+    if (nodeId) {
+      setNodeCandidate(nodeId);
+    }
+  }, []);
 
   // TODO: remove once attach from datasources is released
   const isAttachedFromDataSourceActivated = featureFlags.includes(
@@ -97,10 +97,12 @@ const InputBarContainer = ({
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
-    ...(featureFlags.includes("attach_from_datasources") && {
+    ...(isAttachedFromDataSourceActivated && {
       onUrlDetected: handleUrlDetected,
     }),
   });
+
+  useUrlHandler(editor, selectedNode);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -137,7 +139,9 @@ const InputBarContainer = ({
         const sortedNodes = nodesWithViews.sort(
           (a, b) => b.spacePriority - a.spacePriority
         );
-        onNodeSelect(sortedNodes[0]);
+        const node = sortedNodes[0];
+        onNodeSelect(node);
+        setSelectedNode(node);
       }
 
       // Reset node candidate after processing

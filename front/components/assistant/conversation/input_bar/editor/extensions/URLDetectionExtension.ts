@@ -4,7 +4,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { nodeIdFromUrl } from "@app/lib/connectors";
 
 type URLFormatOptions = {
-  onUrlDetected?: (url: string, nodeId: string | null) => void;
+  onUrlDetected?: (nodeId: string | null) => void;
 };
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
@@ -20,6 +20,7 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
 
   addProseMirrorPlugins() {
     const { onUrlDetected } = this.options;
+    const storage = this.editor.storage.URLStorage;
 
     return [
       new Plugin({
@@ -43,7 +44,17 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
               // For each URL found, check if it has a node ID
               urls.forEach((url) => {
                 const nodeId = nodeIdFromUrl(url);
-                onUrlDetected(url, nodeId || null);
+                if (nodeId) {
+                  const { from } = view.state.selection;
+                  // Store URL position for later replacement
+                  storage.pendingUrls.set(nodeId, {
+                    url,
+                    nodeId,
+                    from,
+                    to: from + url.length,
+                  });
+                }
+                onUrlDetected(nodeId || null);
               });
             }
 
