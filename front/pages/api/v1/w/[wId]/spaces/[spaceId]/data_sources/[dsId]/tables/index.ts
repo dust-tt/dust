@@ -299,7 +299,7 @@ async function handler(
         }
 
         mimeType = r.data.mime_type;
-        title = r.data.title;
+        title = r.data.title.trim();
       } else {
         // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
         if (r.data.timestamp) {
@@ -329,16 +329,10 @@ async function handler(
         // Otherwise, we default to either:
         // - the title tag if any
         // - the name of the table
-        if (r.data.title && r.data.title.trim()) {
-          title = r.data.title.trim();
-        } else {
-          const titleTag = tags?.find((t) => t.startsWith("title:"));
-          if (titleTag) {
-            title = titleTag.substring(6);
-          } else {
-            title = name;
-          }
-        }
+        const titleInTags = tags
+          ?.find((t) => t.startsWith("title:"))
+          ?.substring(6);
+        title = r.data.title?.trim() || titleInTags || name;
       }
 
       const tableId = maybeTableId || generateRandomModelSId();
