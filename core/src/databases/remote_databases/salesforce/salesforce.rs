@@ -535,6 +535,14 @@ impl SalesforceRemoteDatabase {
         // RecordType should always be allowed
         allowed_objects.insert("RecordType".to_lowercase());
 
+        // Check if primary object is allowed, same as for relationships
+        if !allowed_objects.contains(&primary_object.to_lowercase()) {
+            return Err(QueryDatabaseError::ExecutionError(format!(
+                "Primary object '{}' is not allowed. You don't have access to this object.",
+                primary_object
+            )));
+        }
+
         // Check for objects that aren't directly allowed
         let mut unknown_objects: Vec<&String> = referenced_objects
             .iter()
@@ -557,8 +565,8 @@ impl SalesforceRemoteDatabase {
             tables_to_fetch.push(table.clone());
         }
 
-        // Add primary object if not already in tables_to_fetch
-        if !tables_to_fetch.contains(&primary_object.to_lowercase()) {
+        // Add primary object if not already in allowed tables
+        if !allowed_tables.contains(&primary_object.to_lowercase()) {
             tables_to_fetch.push(primary_object.to_lowercase());
         }
 
@@ -642,13 +650,7 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
         }
 
         // Extract all objects referenced in the query
-        let mut referenced_objects = extract_objects(&parsed_query);
-
-        // Ensure the primary object is always included in the referenced objects
-        // This guarantees validation even for aggregated queries with simple field names
-        if !referenced_objects.contains(&parsed_query.object) {
-            referenced_objects.push(parsed_query.object.clone());
-        }
+        let referenced_objects = extract_objects(&parsed_query);
 
         // Get the tables allowed in the query
         let allowed_tables: HashSet<String> = tables
