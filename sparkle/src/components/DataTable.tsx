@@ -410,67 +410,16 @@ export function ScrollableDataTable<TData extends TBaseData>({
         )}
         ref={tableContainerRef}
       >
-        <DataTable.Root className="s-w-full s-table-fixed">
-          <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <DataTable.Row
-                key={headerGroup.id}
-                widthClassName={widthClassName}
-              >
-                {headerGroup.headers.map((header) => {
-                  const breakpoint = columnsBreakpoints[header.id];
-                  if (
-                    !windowSize.width ||
-                    !shouldRenderColumn(windowSize.width, breakpoint)
-                  ) {
-                    return null;
-                  }
-
-                  return (
-                    <DataTable.Head
-                      column={header.column}
-                      key={header.id}
-                      className="s-max-w-0"
-                      style={{
-                        width: columnSizing[header.id],
-                        minWidth: columnSizing[header.id],
-                      }}
-                    >
-                      <div className="s-flex s-w-full s-items-center s-space-x-1">
-                        <span className="s-truncate">
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </span>
-                      </div>
-                    </DataTable.Head>
-                  );
-                })}
-              </DataTable.Row>
-            ))}
-          </DataTable.Header>
-          <DataTable.Body
-            className="s-relative s-w-full"
-            style={{
-              height: `${rowVirtualizer.getTotalSize()}px`,
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              return (
+        <div className="s-relative">
+          <DataTable.Root className="s-w-full s-table-fixed">
+            <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
+              {table.getHeaderGroups().map((headerGroup) => (
                 <DataTable.Row
-                  key={row.id}
-                  id={row.id}
+                  key={headerGroup.id}
                   widthClassName={widthClassName}
-                  onClick={row.original.onClick}
-                  className="s-absolute s-w-full"
-                  style={{
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const breakpoint = columnsBreakpoints[cell.column.id];
+                  {headerGroup.headers.map((header) => {
+                    const breakpoint = columnsBreakpoints[header.id];
                     if (
                       !windowSize.width ||
                       !shouldRenderColumn(windowSize.width, breakpoint)
@@ -479,38 +428,90 @@ export function ScrollableDataTable<TData extends TBaseData>({
                     }
 
                     return (
-                      <DataTable.Cell
-                        column={cell.column}
-                        key={cell.id}
-                        id={cell.id}
+                      <DataTable.Head
+                        column={header.column}
+                        key={header.id}
                         className="s-max-w-0"
                         style={{
-                          width: columnSizing[cell.column.id],
-                          minWidth: columnSizing[cell.column.id],
+                          width: columnSizing[header.id],
+                          minWidth: columnSizing[header.id],
                         }}
                       >
-                        <div className="s-flex s-items-center s-space-x-1">
+                        <div className="s-flex s-w-full s-items-center s-space-x-1">
                           <span className="s-truncate">
                             {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
+                              header.column.columnDef.header,
+                              header.getContext()
                             )}
                           </span>
                         </div>
-                      </DataTable.Cell>
+                      </DataTable.Head>
                     );
                   })}
                 </DataTable.Row>
-              );
-            })}
+              ))}
+            </DataTable.Header>
+            <DataTable.Body
+              className="s-relative s-w-full"
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <DataTable.Row
+                    key={row.id}
+                    id={row.id}
+                    widthClassName={widthClassName}
+                    onClick={row.original.onClick}
+                    className="s-absolute s-w-full"
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const breakpoint = columnsBreakpoints[cell.column.id];
+                      if (
+                        !windowSize.width ||
+                        !shouldRenderColumn(windowSize.width, breakpoint)
+                      ) {
+                        return null;
+                      }
 
-            {/*sentinel div used for the intersection observer*/}
-            <div
-              ref={loadMoreRef}
-              className="s-absolute s-bottom-0 s-h-1 s-w-full"
-            />
-          </DataTable.Body>
-        </DataTable.Root>
+                      return (
+                        <DataTable.Cell
+                          column={cell.column}
+                          key={cell.id}
+                          id={cell.id}
+                          className="s-max-w-0"
+                          style={{
+                            width: columnSizing[cell.column.id],
+                            minWidth: columnSizing[cell.column.id],
+                          }}
+                        >
+                          <div className="s-flex s-items-center s-space-x-1">
+                            <span className="s-truncate">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </span>
+                          </div>
+                        </DataTable.Cell>
+                      );
+                    })}
+                  </DataTable.Row>
+                );
+              })}
+            </DataTable.Body>
+          </DataTable.Root>
+          {/*sentinel div used for the intersection observer*/}
+          <div
+            ref={loadMoreRef}
+            className="s-absolute s-bottom-0 s-h-1 s-w-full"
+          />
+        </div>
 
         {isLoading && (
           <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
