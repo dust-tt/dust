@@ -114,9 +114,10 @@ async function handler(
       if (upsertRes.isErr()) {
         switch (upsertRes.error.code) {
           case "invalid_csv_and_file":
-          case "invalid_parents":
           case "invalid_parent_id":
+          case "invalid_parents":
           case "invalid_url":
+          case "title_is_empty":
           case "title_too_long":
           case "missing_csv":
             return apiError(req, res, {
