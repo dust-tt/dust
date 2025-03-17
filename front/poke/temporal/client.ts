@@ -6,7 +6,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
-import { Err } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import {
   deleteWorkspaceWorkflow,
@@ -68,18 +68,27 @@ export async function launchScrubSpaceWorkflow(
 
 export async function launchDeleteWorkspaceWorkflow({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
   const client = await getTemporalClient();
 
-  await client.workflow.start(deleteWorkspaceWorkflow, {
-    args: [
-      {
-        workspaceId,
-      },
-    ],
-    taskQueue: "poke-queue",
-    workflowId: `poke-${workspaceId}-delete-workspace`,
-  });
+  try {
+    await client.workflow.start(deleteWorkspaceWorkflow, {
+      args: [
+        {
+          workspaceId,
+          workspaceHasBeenRelocated,
+        },
+      ],
+      taskQueue: "poke-queue",
+      workflowId: `poke-${workspaceId}-delete-workspace`,
+    });
+
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }
