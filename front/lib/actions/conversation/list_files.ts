@@ -18,7 +18,7 @@ import type {
 } from "@app/types";
 
 export type ConversationFileType = {
-  contentFragmentId: string;
+  resourceId: string;
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
