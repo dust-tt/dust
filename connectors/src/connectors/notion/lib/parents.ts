@@ -11,10 +11,12 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
-import logger from "@connectors/logger/logger";
+import parentLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
+
+const logger = parentLogger.child({ provider: "notion" });
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -22,7 +24,7 @@ import { cacheWithRedis } from "@connectors/types";
  * core](https://github.com/dust-tt/dust/blob/main/core/src/data_sources/data_source.rs)
  * for relevant details
  *
- * @param memoizationKey optional key to control memoization of this function (not actually used by the functio)
+ * @param memoizationKey optional key to control memoization of this function (not effectively used by the function)
  *
  */
 async function _getParents(
@@ -79,7 +81,7 @@ async function _getParents(
             pageOrDbId,
             parentId: pageOrDb.parentId,
           },
-          "getParents parentId is undefined"
+          "getParents: parentId is undefined"
         );
         throw new Error("getParent parentId is undefined");
       }
@@ -91,7 +93,7 @@ async function _getParents(
             seen,
             parentId: pageOrDb.parentId,
           },
-          "getParents infinite loop"
+          "getParents: Infinite loop"
         );
         return parents.concat(seen);
       }
@@ -150,7 +152,7 @@ export async function updateAllParentsFields(
       connectorId,
       pageIdsToUpdateCount: pageAndDatabaseIdsToUpdate.size,
     },
-    "Updating parents field for pages and databases"
+    "updateAllParentsFields: Updating parents field for pages and databases"
   );
 
   // Update everybody's parents field. Use of a memoization key to control
@@ -178,6 +180,7 @@ export async function updateAllParentsFields(
           if (page && page.parentId !== "workspace") {
             logger.warn(
               {
+                connectorId,
                 parents,
                 parentType: page.parentType,
                 parentId: page.parentId,
@@ -192,6 +195,7 @@ export async function updateAllParentsFields(
             if (database && database.parentId !== "workspace") {
               logger.warn(
                 {
+                  connectorId,
                   parents,
                   parentType: database?.parentType,
                   parentId: database?.parentId,
