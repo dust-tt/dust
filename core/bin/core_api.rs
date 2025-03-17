@@ -1853,6 +1853,7 @@ async fn data_sources_documents_upsert(
         None => false,
     };
 
+    // TODO(2025-03-17 aubin) - Add generic validation on node upserts instead of duplicating it for folders, tables, documents.
     if payload.parents.get(0) != Some(&payload.document_id) {
         return error_response(
             StatusCode::BAD_REQUEST,
@@ -1883,6 +1884,15 @@ async fn data_sources_documents_upsert(
                 );
             }
         }
+    }
+
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert document - title is empty",
+            None,
+        );
     }
 
     match state
@@ -2452,6 +2462,15 @@ async fn tables_upsert(
                     );
             }
         }
+    }
+
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert table - title is empty",
+            None,
+        );
     }
 
     match state
@@ -3290,6 +3309,15 @@ async fn folders_upsert(
                     );
             }
         }
+    }
+
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert folder - title is empty",
+            None,
+        );
     }
 
     match state
