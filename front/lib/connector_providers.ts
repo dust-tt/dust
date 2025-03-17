@@ -72,7 +72,7 @@ export type ConnectorProviderConfiguration = {
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
-  isSearchEnabled: boolean;
+  isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
@@ -113,7 +113,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return ConfluenceLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -135,7 +134,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return NotionLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -158,7 +156,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return DriveLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -181,7 +178,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: SlackBotEnableView,
     isNested: false,
-    isSearchEnabled: true,
+    isTitleFilterEnabled: true,
     permissions: {
       selected: "read_write",
       unselected: "write",
@@ -205,7 +202,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -229,7 +225,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: IntercomConfigView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -252,7 +247,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -272,7 +266,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GlobeAltIcon;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -291,7 +284,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SnowflakeLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     permissions: {
@@ -317,7 +309,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     optionsComponent: ZendeskConfigView,
     oauthExtraConfigComponent: ZendeskOAuthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -336,7 +327,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return BigQueryLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
@@ -360,7 +350,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     oauthExtraConfigComponent: SalesforceOauthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -381,7 +370,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GongLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",

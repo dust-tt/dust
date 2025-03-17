@@ -1,11 +1,11 @@
 import {
   Button,
   Div3D,
+  DustLogo,
+  DustLogoLayer1,
+  DustLogoLayer2,
   Hover3D,
   LoginIcon,
-  LogoHorizontalColorLayer1Logo,
-  LogoHorizontalColorLayer2Logo,
-  LogoHorizontalColorLogo,
 } from "@dust-tt/sparkle";
 import Head from "next/head";
 import Link from "next/link";
@@ -87,17 +87,17 @@ export default function LandingLayout({
             <Link href="/home">
               <Hover3D className="relative h-[24px] w-[96px]">
                 <Div3D depth={0} className="h-[24px] w-[96px]">
-                  <LogoHorizontalColorLayer1Logo className="h-[24px] w-[96px]" />
+                  <DustLogoLayer1 className="h-[24px] w-[96px]" />
                 </Div3D>
                 <Div3D depth={25} className="absolute top-0">
-                  <LogoHorizontalColorLayer2Logo className="h-[24px] w-[96px]" />
+                  <DustLogoLayer2 className="h-[24px] w-[96px]" />
                 </Div3D>
               </Hover3D>
             </Link>
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <LogoHorizontalColorLogo className="h-[24px] w-[96px]" />
+            <DustLogo className="h-[24px] w-[96px]" />
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
@@ -120,8 +120,8 @@ export default function LandingLayout({
           </div>
         </div>
       </ScrollingHeader>
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-slate-900" />
-      <div className="fixed inset-0 -z-30 bg-slate-900/50" />
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-primary-950" />
+      <div className="fixed inset-0 -z-30 bg-primary-950/50" />
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div>

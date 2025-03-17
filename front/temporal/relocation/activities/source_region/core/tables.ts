@@ -68,7 +68,7 @@ export async function getDataSourceTables({
 
   if (searchResults.isErr()) {
     localLogger.error(
-      { error: searchResults.error },
+      { cursor: pageCursor, error: searchResults.error },
       "[Core] Failed to search nodes with cursor"
     );
 

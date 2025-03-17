@@ -1,3 +1,4 @@
+import { cn } from "@dust-tt/sparkle";
 import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
@@ -145,7 +146,13 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-slate-950 dark:text-slate-50">
+        <div
+          className={cn(
+            "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
+            "bg-background text-foreground",
+            "dark:bg-background-night dark:text-foreground"
+          )}
+        >
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(

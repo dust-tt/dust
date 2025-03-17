@@ -106,7 +106,7 @@ const useContentNodeTreeContext = () => {
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
@@ -115,7 +115,7 @@ interface ContentNodeTreeChildrenProps {
 function ContentNodeTreeChildren({
   depth,
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   parentId,
   parentIds,
   parentIsSelected,
@@ -124,7 +124,7 @@ function ContentNodeTreeChildren({
     useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
-  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("");
   // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
@@ -143,7 +143,7 @@ function ContentNodeTreeChildren({
   } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
+    (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
   // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
   const hiddenNodesCount = totalResourceCount
@@ -321,22 +321,22 @@ function ContentNodeTreeChildren({
 
   return (
     <>
-      {isSearchEnabled && setSelectedNodes && (
+      {isTitleFilterEnabled && setSelectedNodes && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
               <SearchInput
                 name="search"
-                placeholder="Search..."
-                value={search}
+                placeholder="Search"
+                value={filter}
                 onChange={(v) => {
-                  setSearch(v);
+                  setFilter(v);
                   setSelectAllClicked(false);
                 }}
               />
             </div>
 
-            {search.trim().length > 0 && (
+            {filter.trim().length > 0 && (
               <Button
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
@@ -384,7 +384,7 @@ interface ContentNodeTreeProps {
   /**
    * If true, a search bar will be displayed at the top of the tree.
    */
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   /**
    * Whole tree will be considered selected and disabled.
    */
@@ -424,7 +424,7 @@ interface ContentNodeTreeProps {
 
 export function ContentNodeTree({
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   onDocumentViewClick,
   parentIsSelected,
   selectedNodes,
@@ -449,7 +449,7 @@ export function ContentNodeTree({
       <ContentNodeTreeChildren
         depth={0}
         isRoundedBackground={isRoundedBackground}
-        isSearchEnabled={isSearchEnabled}
+        isTitleFilterEnabled={isTitleFilterEnabled}
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}

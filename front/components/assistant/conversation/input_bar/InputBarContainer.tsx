@@ -56,6 +56,7 @@ export interface InputBarContainerProps {
   disableSendButton: boolean;
   fileUploaderService: FileUploaderService;
   onNodeSelect?: (node: DataSourceViewContentNode) => void;
+  attachedNodes: DataSourceViewContentNode[];
 }
 
 const InputBarContainer = ({
@@ -70,6 +71,7 @@ const InputBarContainer = ({
   disableSendButton,
   fileUploaderService,
   onNodeSelect,
+  attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
@@ -232,6 +234,7 @@ const InputBarContainer = ({
                     onNodeSelect ||
                     ((node) => console.log(`Selected ${node.title}`))
                   }
+                  attachedNodes={attachedNodes}
                 />
               ) : (
                 <Button

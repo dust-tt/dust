@@ -11,7 +11,7 @@ export function ExtensibilitySection({ page = "default" }) {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-red-400" to="to-pink-200">
+            <H2 from="from-red-200" to="to-red-200">
               Push further with custom code
             </H2>
             <P size="lg">
