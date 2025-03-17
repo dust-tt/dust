@@ -43,11 +43,13 @@ struct AzureOpenAIDeployment {
     created_at: u64,
     updated_at: u64,
     object: String,
+    capabilities: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIDeployments {
     data: Vec<AzureOpenAIDeployment>,
+    object: Option<String>,
 }
 
 async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenAIDeployment>> {
@@ -60,10 +62,12 @@ async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenA
         .await?;
 
     let status = res.status();
+    let body = res.text().await?;
     if status != StatusCode::OK {
         Err(anyhow!(
-            "Failed to retrieve `azure_openai` Deployments: status_code={}",
-            status
+            "Failed to retrieve `azure_openai` Deployments: status_code={}, {}",
+            status,
+            body
         ))?;
     }
 
