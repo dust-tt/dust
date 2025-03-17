@@ -105,6 +105,14 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         await installationIdFromConnectionId(connectionId);
 
       if (connectorState?.installationId !== newGithubInstallationId) {
+        logger.info(
+          {
+            previousInstallationId: connectorState?.installationId,
+            newInstallationId: newGithubInstallationId,
+          },
+          "Github connector installationId mismatch"
+        );
+
         return new Err(
           new ConnectorManagerError(
             "CONNECTOR_OAUTH_TARGET_MISMATCH",

@@ -5,6 +5,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getConnectorManager } from "@connectors/connectors";
+import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
@@ -68,6 +69,11 @@ const _postConnectorUpdateAPIHandler = async (
   });
 
   if (updateRes.isErr()) {
+    logger.error(
+      { connectionId, updateRes: updateRes.error },
+      "Error updating connector"
+    );
+
     switch (updateRes.error.code) {
       case "CONNECTOR_OAUTH_TARGET_MISMATCH":
         return apiError(req, res, {

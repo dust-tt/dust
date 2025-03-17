@@ -93,10 +93,12 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     execute,
     newRegion,
     rateLimitThreshold,
+    skipUsersWithMultipleMemberships,
   }: {
     execute: boolean;
     newRegion: RegionType;
     rateLimitThreshold: number;
+    skipUsersWithMultipleMemberships: boolean;
   }
 ): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -104,7 +106,7 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   const members = await MembershipResource.getMembershipsForWorkspace({
     workspace,
   });
-  const userIds = [
+  let userIds = [
     ...new Set(removeNulls(members.memberships.map((m) => m.userId))),
   ];
   const allMemberships = await MembershipResource.fetchByUserIds(userIds);
@@ -120,10 +122,18 @@ export async function updateAllWorkspaceUsersRegionMetadata(
           workspaceId: m.workspaceId,
         })),
       },
-      "Some users have mutiple memberships"
+      "Some users have multiple memberships. Can be ignored by setting the " +
+        "skipUsersWithMultipleMemberships flag."
     );
 
-    return new Err(new Error("Some users have mutiple memberships"));
+    // Filter out the users with multiple memberships if option is set.
+    if (skipUsersWithMultipleMemberships) {
+      userIds = userIds.filter(
+        (id) => !externalMemberships.some((m) => m.userId === id)
+      );
+    } else {
+      return new Err(new Error("Some users have mutiple memberships"));
+    }
   }
 
   const users = await UserResource.fetchByModelIds(userIds);
@@ -173,9 +183,20 @@ if (require.main === module) {
         required: false,
         default: 3,
       },
+      skipUsersWithMultipleMemberships: {
+        type: "boolean",
+        required: false,
+        default: false,
+      },
     },
     async (
-      { destinationRegion, workspaceId, rateLimitThreshold, execute },
+      {
+        destinationRegion,
+        workspaceId,
+        rateLimitThreshold,
+        skipUsersWithMultipleMemberships,
+        execute,
+      },
       logger
     ) => {
       const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -184,6 +205,7 @@ if (require.main === module) {
         execute,
         newRegion: destinationRegion as RegionType,
         rateLimitThreshold,
+        skipUsersWithMultipleMemberships,
       });
 
       if (res.isErr()) {
