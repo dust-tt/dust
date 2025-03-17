@@ -151,9 +151,16 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  async updateAuth0Sub(sub: string) {
+  async updateAuth0Sub({
+    sub,
+    provider,
+  }: {
+    sub: string;
+    provider: UserProviderType;
+  }) {
     return this.update({
       auth0Sub: sub,
+      provider,
     });
   }
 

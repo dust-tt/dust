@@ -70,15 +70,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getMembershipsForWorkspace({
     workspace,
     transaction,
+    includeUser = false,
   }: {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
+    includeUser?: boolean;
   }): Promise<MembershipsWithTotal> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
         .map(
-          (resource) => new MembershipResource(MembershipModel, resource.get())
+          (resource) =>
+            new MembershipResource(MembershipModel, resource.get(), {
+              user: resource.user?.get(),
+            })
         );
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
@@ -88,6 +93,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
       where: whereClause,
       transaction,
+      include: includeUser ? [{ model: UserModel, required: true }] : [],
     };
 
     const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
