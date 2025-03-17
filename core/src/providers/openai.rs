@@ -16,12 +16,12 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use humantime::parse_duration;
 use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
 use lazy_static::lazy_static;
 use parking_lot::{Mutex, RwLock};
-use parse_duration::parse;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_json::Value;
@@ -618,7 +618,9 @@ pub async fn embed(
     };
 
     let reset_tokens = match res_headers.get("x-ratelimit-reset-tokens") {
-        Some(reset_tokens) => parse(reset_tokens.to_str()?).ok().map(|d| d.as_millis()),
+        Some(reset_tokens) => parse_duration(reset_tokens.to_str()?)
+            .ok()
+            .map(|d| d.as_millis()),
         None => None,
     };
     match (remaining_tokens, reset_tokens) {
