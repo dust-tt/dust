@@ -373,7 +373,7 @@ export async function deleteWorkspace(
 
   await launchDeleteWorkspaceWorkflow({
     workspaceId: owner.sId,
-    workspaceHasBeenRelocated: true,
+    workspaceHasBeenRelocated,
   });
 
   return new Ok(undefined);
