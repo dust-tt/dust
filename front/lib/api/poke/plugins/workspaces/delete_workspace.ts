@@ -1,5 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { deleteWorkspace } from "@app/lib/api/workspace";
+import {
+  deleteWorkspace,
+  isWorkspaceRelocationDone,
+} from "@app/lib/api/workspace";
 import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { Ok } from "@app/types";
@@ -41,6 +44,15 @@ export const deleteWorkspacePlugin = createPlugin({
 
     // If the workspace has been relocated, we can delete it immediately.
     if (workspaceHasBeenRelocated) {
+      // Ensure that the workspace has been relocated.
+      if (!isWorkspaceRelocationDone(workspace)) {
+        return new Err(
+          new Error(
+            "Workspace has not been relocated, please relocate the workspace before deleting it."
+          )
+        );
+      }
+
       await deleteWorkspace(workspace, { workspaceHasBeenRelocated });
     } else {
       // If the workspace has not been relocated, we need to check if it has data sources or a
