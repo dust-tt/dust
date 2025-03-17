@@ -1,7 +1,6 @@
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -16,6 +15,7 @@ import type {
   LightWorkspaceType,
   Result,
   SubscriptionType,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { Err, isDevelopment, Ok } from "@app/types";
@@ -77,24 +77,17 @@ async function getDefautPriceFromMetadata(
  * to go through the checkout process.
  */
 export const createProPlanCheckoutSession = async ({
-  auth,
+  owner,
+  user,
   billingPeriod,
   planCode,
 }: {
-  auth: Authenticator;
+  owner: WorkspaceType;
+  user: UserType;
   billingPeriod: BillingPeriod;
   planCode: string;
 }): Promise<string | null> => {
   const stripe = getStripeClient();
-
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("No workspace found");
-  }
-  const user = auth.user();
-  if (!user) {
-    throw new Error("No user found");
-  }
 
   const plan = await Plan.findOne({ where: { code: planCode } });
   if (!plan) {

@@ -19,10 +19,10 @@ import {
   createCustomerPortalSession,
   getStripeClient,
 } from "@app/lib/plans/stripe";
-import { maybeCancelInactiveTrials } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -704,7 +704,7 @@ async function handler(
             return res.status(200).json({ success: true });
           }
 
-          await maybeCancelInactiveTrials(
+          await SubscriptionResource.maybeCancelInactiveTrials(
             await Authenticator.internalAdminForWorkspace(
               trialingSubscription.workspace.sId
             ),

@@ -28,7 +28,6 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
@@ -45,15 +44,17 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscription = auth.subscription();
+  const subscriptionResource = auth.subscriptionResource();
   const user = auth.user();
-  if (!owner || !auth.isAdmin() || !subscription || !user) {
+  if (!owner || !auth.isAdmin() || !user || !subscriptionResource) {
     return {
       notFound: true,
     };
   }
 
   let trialDaysRemaining = null;
+  const subscription = subscriptionResource.toJSON();
+
   if (subscription.trialing && subscription.stripeSubscriptionId) {
     const stripeSubscription = await getStripeSubscription(
       subscription.stripeSubscriptionId
@@ -73,8 +74,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
-
+  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   return {
     props: {
       owner,
