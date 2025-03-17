@@ -67,6 +67,7 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
                             | FieldType::Interval => TableSchemaFieldType::Text,
                         },
                         possible_values: None,
+                        filterable: true,
                     })
                     .collect(),
             )),
