@@ -12,7 +12,7 @@ import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
 // TODO(2025-03-17): share this variable between connectors and front.
-const RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
+const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
 function checkIsPositiveInteger(value: string) {
   return /^[0-9]+$/.test(value);
@@ -32,7 +32,7 @@ export function GongOptionComponent({
   const { configValue, mutateConfig } = useConnectorConfig({
     owner,
     dataSource,
-    configKey: RETENTION_PERIOD_CONFIG_KEY,
+    configKey: GONG_RETENTION_PERIOD_CONFIG_KEY,
   });
 
   const [retentionPeriod, setRetentionPeriod] = useState<string>(
@@ -55,7 +55,7 @@ export function GongOptionComponent({
 
     setLoading(true);
     const res = await fetch(
-      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${RETENTION_PERIOD_CONFIG_KEY}`,
+      `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${GONG_RETENTION_PERIOD_CONFIG_KEY}`,
       {
         headers: { "Content-Type": "application/json" },
         method: "POST",
