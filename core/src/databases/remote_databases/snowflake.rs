@@ -68,6 +68,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             name: col.name,
             value_type: col_type,
             possible_values: None,
+            filterable: true,
         })
     }
 }
