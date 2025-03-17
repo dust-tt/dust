@@ -1885,7 +1885,7 @@ async fn data_sources_documents_upsert(
         }
     }
 
-    if payload.title.is_empty() {
+    if payload.title.trim().is_empty() {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_title",
@@ -2463,7 +2463,7 @@ async fn tables_upsert(
         }
     }
 
-    if payload.title.is_empty() {
+    if payload.title.trim().is_empty() {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_title",
@@ -3310,7 +3310,7 @@ async fn folders_upsert(
         }
     }
 
-    if payload.title.is_empty() {
+    if payload.title.trim().is_empty() {
         return error_response(
             StatusCode::BAD_REQUEST,
             "invalid_title",
