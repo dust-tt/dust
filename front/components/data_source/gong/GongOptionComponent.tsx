@@ -15,7 +15,8 @@ import type { DataSourceType, WorkspaceType } from "@app/types";
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
 function checkIsPositiveInteger(value: string) {
-  return /^[0-9]+$/.test(value);
+  const integerValue = parseInt(value, 10);
+  return Number.isFinite(integerValue) && integerValue >= 0;
 }
 
 interface GongOptionComponentProps {
