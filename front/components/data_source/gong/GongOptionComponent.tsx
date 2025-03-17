@@ -18,17 +18,19 @@ function checkIsPositiveInteger(value: string) {
   return /^[0-9]+$/.test(value);
 }
 
+interface GongOptionComponentProps {
+  owner: WorkspaceType;
+  readOnly: boolean;
+  isAdmin: boolean;
+  dataSource: DataSourceType;
+}
+
 export function GongOptionComponent({
   owner,
   readOnly,
   isAdmin,
   dataSource,
-}: {
-  owner: WorkspaceType;
-  readOnly: boolean;
-  isAdmin: boolean;
-  dataSource: DataSourceType;
-}) {
+}: GongOptionComponentProps) {
   const { configValue, mutateConfig } = useConnectorConfig({
     owner,
     dataSource,
