@@ -15,6 +15,8 @@ import type { EditorSuggestions } from "@app/components/assistant/conversation/i
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { isMobile } from "@app/lib/utils";
 
+import { URLStorageExtension } from "./extensions/URLStorageExtension";
+
 export interface EditorMention {
   id: string;
   label: string;
@@ -192,7 +194,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (url: string, nodeId: string | null) => void;
+  onUrlDetected?: (nodeId: string | null) => void;
 }
 
 const useCustomEditor = ({
@@ -223,18 +225,16 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
+    URLStorageExtension,
   ];
   if (onUrlDetected) {
     extensions.push(
       URLDetectionExtension.configure({
-        onUrlDetected: (url, nodeId) => {
-          if (nodeId) {
-            onUrlDetected(url, nodeId);
-          }
-        },
+        onUrlDetected,
       })
     );
   }
+
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
