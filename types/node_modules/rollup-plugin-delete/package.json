@@ -1,0 +1,56 @@
+{
+  "name": "rollup-plugin-delete",
+  "description": "Delete files and folders using Rollup",
+  "version": "2.0.0",
+  "author": "Vlad Shcherbin <vlad.shcherbin@gmail.com>",
+  "repository": "vladshcherbin/rollup-plugin-delete",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.es.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "clean": "rimraf coverage dist",
+    "build": "rollup -c",
+    "lint": "eslint src tests",
+    "postpublish": "yarn clean",
+    "prepublishOnly": "yarn lint && yarn test && yarn clean && yarn build",
+    "test": "jest"
+  },
+  "dependencies": {
+    "del": "^5.1.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.10.2",
+    "@babel/preset-env": "^7.10.2",
+    "babel-jest": "^26.0.1",
+    "codecov": "^3.7.0",
+    "eslint": "^6.8.0",
+    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint-plugin-import": "^2.21.2",
+    "fs-extra": "^9.0.1",
+    "jest": "^26.0.1",
+    "replace-in-file": "^6.1.0",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.15.0",
+    "rollup-plugin-auto-external": "^2.0.0"
+  },
+  "files": [
+    "dist",
+    "index.d.ts",
+    "readme.md"
+  ],
+  "keywords": [
+    "rollup",
+    "rollup-plugin",
+    "delete",
+    "clear",
+    "clean",
+    "remove",
+    "file",
+    "folder",
+    "directory"
+  ],
+  "engines": {
+    "node": ">=10"
+  },
+  "license": "MIT"
+}

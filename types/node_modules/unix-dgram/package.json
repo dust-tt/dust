@@ -1,0 +1,32 @@
+{
+  "author": {
+    "name": "Ben Noordhuis",
+    "email": "info@bnoordhuis.nl",
+    "url": "http://bnoordhuis.nl/"
+  },
+  "name": "unix-dgram",
+  "version": "2.0.6",
+  "description": "Unix datagram socket",
+  "main": "lib/unix_dgram",
+  "homepage": "https://github.com/bnoordhuis/node-unix-dgram",
+  "license": {
+    "type": "ISC",
+    "url": "https://github.com/bnoordhuis/node-unix-dgram/LICENSE"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/bnoordhuis/node-unix-dgram.git"
+  },
+  "engines": {
+    "node": ">=0.10.48"
+  },
+  "dependencies": {
+    "bindings": "^1.5.0",
+    "nan": "^2.16.0"
+  },
+  "devDependencies": {},
+  "optionalDependencies": {},
+  "scripts": {
+    "test": "node test/test-dgram-unix.js && node test/test-connect.js && node test/test-connect-callback.js && node test/test-send-error.js"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "rollup-plugin-dts",
+  "version": "5.3.1",
+  "description": "A rollup plugin that will bundle up your .d.ts definition files.",
+  "keywords": [
+    "rollup-plugin",
+    "typescript",
+    "dts",
+    "@types"
+  ],
+  "author": "Arpad Borsos <arpad.borsos@googlemail.com>",
+  "license": "LGPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Swatinem/rollup-plugin-dts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Swatinem/rollup-plugin-dts/issues"
+  },
+  "funding": {
+    "url": "https://github.com/sponsors/Swatinem"
+  },
+  "homepage": "https://github.com/Swatinem/rollup-plugin-dts#readme",
+  "engines": {
+    "node": ">=v14.21.3"
+  },
+  "type": "module",
+  "main": "./dist/rollup-plugin-dts.cjs",
+  "types": "./dist/rollup-plugin-dts.d.cts",
+  "exports": {
+    "import": "./dist/rollup-plugin-dts.mjs",
+    "require": "./dist/rollup-plugin-dts.cjs"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "node -e \"(async () => { try { await require('fs/promises').rm('dist', { recursive: true }); } catch {} })()\"",
+    "prebuild": "npm run clean",
+    "build": "tsc && rollup --config .build/rollup.config.js",
+    "prepublishOnly": "npm run test",
+    "pretest": "npm run build",
+    "test": "c8 node .build/tests/index.js"
+  },
+  "prettier": {
+    "printWidth": 120,
+    "trailingComma": "all"
+  },
+  "devDependencies": {
+    "@babel/code-frame": "^7.22.5",
+    "@types/babel__code-frame": "^7.0.3",
+    "@types/d3-drag": "^3.0.2",
+    "@types/estree": "1.0.1",
+    "@types/node": "^20.4.5",
+    "@types/react": "^18.2.17",
+    "c8": "^8.0.1",
+    "rollup": "3.27.0",
+    "typescript": "5.1.6"
+  },
+  "peerDependencies": {
+    "rollup": "^3.0",
+    "typescript": "^4.1 || ^5.0"
+  },
+  "optionalDependencies": {
+    "@babel/code-frame": "^7.22.5"
+  },
+  "dependencies": {
+    "magic-string": "^0.30.2"
+  }
+}

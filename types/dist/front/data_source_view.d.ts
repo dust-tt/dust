@@ -1,0 +1,41 @@
+import { ModelId } from "../shared/model_id";
+import { DataSourceViewCategory } from "./api_handlers/public/spaces";
+import { ConnectorStatusDetails, DataSourceType, DataSourceWithAgentsUsageType, EditedByUser } from "./data_source";
+import { ContentNodeWithParent } from "./lib/connectors_api";
+export interface DataSourceViewType {
+    category: DataSourceViewCategory;
+    createdAt: number;
+    dataSource: DataSourceType;
+    editedByUser?: EditedByUser | null;
+    id: ModelId;
+    kind: DataSourceViewKind;
+    parentsIn: string[] | null;
+    sId: string;
+    updatedAt: number;
+    spaceId: string;
+}
+export type DataSourceViewsWithDetails = DataSourceViewType & {
+    dataSource: DataSourceType & ConnectorStatusDetails;
+    usage: DataSourceWithAgentsUsageType;
+};
+export type DataSourceViewContentNode = ContentNodeWithParent & {
+    dataSourceView: DataSourceViewType;
+};
+export type DataSourceViewSelectionConfiguration = {
+    dataSourceView: DataSourceViewType;
+    selectedResources: DataSourceViewContentNode[];
+    isSelectAll: boolean;
+    tagsFilter: TagsFilter;
+};
+export type TagsFilter = {
+    in: string[];
+    not: string[];
+    mode: "custom" | "auto";
+} | null;
+export declare function defaultSelectionConfiguration(dataSourceView: DataSourceViewType): DataSourceViewSelectionConfiguration;
+export type DataSourceViewSelectionConfigurations = Record<string, // DataSourceView.sId
+DataSourceViewSelectionConfiguration>;
+declare const DATA_SOURCE_VIEW_KINDS: readonly ["default", "custom"];
+export type DataSourceViewKind = (typeof DATA_SOURCE_VIEW_KINDS)[number];
+export {};
+//# sourceMappingURL=data_source_view.d.ts.map

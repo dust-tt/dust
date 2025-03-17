@@ -1,0 +1,29 @@
+{
+  "name": "jpjs",
+  "version": "1.2.1",
+  "main": "dist/jpjs.js",
+  "umd:main": "dist/jpjs.umd.js",
+  "module": "dist/jpjs.esm.js",
+  "source": "src/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "npm run build",
+    "test": "echo \"yolo\"",
+    "build": "microbundle --typescript && cp ./dist/src/* ./dist/ && rm -rf ./dist/src",
+    "start": "microbundle watch --typescript"
+  },
+  "devDependencies": {
+    "microbundle": "^0.9.0",
+    "tslint": "^5.12.0",
+    "tslint-config-palmerhq": "^1.0.2",
+    "tslint-config-prettier": "^1.17.0",
+    "tslint-react": "^3.6.0",
+    "typescript": "^3.2.2"
+  },
+  "prettier": {
+    "printWidth": 80,
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "es5"
+  }
+}

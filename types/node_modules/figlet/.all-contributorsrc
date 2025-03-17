@@ -1,0 +1,177 @@
+{
+  "projectName": "figlet.js",
+  "projectOwner": "patorjk",
+  "files": [
+    "README.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "patorjk",
+      "name": "patorjk",
+      "avatar_url": "https://avatars.githubusercontent.com/u/521224?v=4",
+      "profile": "http://patorjk.com/",
+      "contributions": [
+        "code",
+        "doc",
+        "test",
+        "infra",
+        "example"
+      ]
+    },
+    {
+      "login": "jcubic",
+      "name": "Jakub T. Jankiewicz",
+      "avatar_url": "https://avatars.githubusercontent.com/u/280241?v=4",
+      "profile": "https://jcu.bi",
+      "contributions": [
+        "code",
+        "doc",
+        "test"
+      ]
+    },
+    {
+      "login": "tracker1",
+      "name": "Michael J. Ryan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/444316?v=4",
+      "profile": "https://tracker1.dev/",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "seriousManual",
+      "name": "Manuel Ernst",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1330022?v=4",
+      "profile": "https://github.com/seriousManual",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "eiriksm",
+      "name": "Eirik Stanghelle Morland",
+      "avatar_url": "https://avatars.githubusercontent.com/u/865153?v=4",
+      "profile": "https://github.com/eiriksm",
+      "contributions": [
+        "infra"
+      ]
+    },
+    {
+      "login": "Horhik",
+      "name": "George",
+      "avatar_url": "https://avatars.githubusercontent.com/u/46262811?v=4",
+      "profile": "http://und.ooo",
+      "contributions": [
+        "example",
+        "doc"
+      ]
+    },
+    {
+      "login": "websemantics",
+      "name": "Adnan M.Sagar, PhD",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2190455?v=4",
+      "profile": "http://websemantics.ca",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "shreemaan-abhishek",
+      "name": "Abhishek Choudhary",
+      "avatar_url": "https://avatars.githubusercontent.com/u/61597896?v=4",
+      "profile": "http://abhishekchoudhary.com.np",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "JasonGoemaat",
+      "name": "Jason",
+      "avatar_url": "https://avatars.githubusercontent.com/u/114062?v=4",
+      "profile": "https://github.com/JasonGoemaat",
+      "contributions": [
+        "code",
+        "doc"
+      ]
+    },
+    {
+      "login": "mbodomi",
+      "name": "mbodomi",
+      "avatar_url": "https://avatars.githubusercontent.com/u/390802?v=4",
+      "profile": "https://github.com/mbodomi",
+      "contributions": [
+        "design",
+        "code"
+      ]
+    },
+    {
+      "login": "orkhan-huseyn",
+      "name": "Orkhan Huseynli",
+      "avatar_url": "https://avatars.githubusercontent.com/u/21221412?v=4",
+      "profile": "https://orkhan-huseyn.github.io",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "LetsMelon",
+      "name": "Domenic Melcher",
+      "avatar_url": "https://avatars.githubusercontent.com/u/35605787?v=4",
+      "profile": "https://melcher.io",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "a-raccoon",
+      "name": "a-raccoon",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1052090?v=4",
+      "profile": "https://github.com/a-raccoon",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "pdehaan",
+      "name": "Peter deHaan",
+      "avatar_url": "https://avatars.githubusercontent.com/u/557895?v=4",
+      "profile": "http://about.me/peterdehaan",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "IonicaBizau",
+      "name": "Ionică Bizău (Johnny B.)",
+      "avatar_url": "https://avatars.githubusercontent.com/u/2864371?v=4",
+      "profile": "https://ionicabizau.net",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "t1st3",
+      "name": "t1st3",
+      "avatar_url": "https://avatars.githubusercontent.com/u/1469638?v=4",
+      "profile": "https://www.t1st3.com/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "timhudson",
+      "name": "Tim Hudson",
+      "avatar_url": "https://avatars.githubusercontent.com/u/122594?v=4",
+      "profile": "https://github.com/timhudson",
+      "contributions": [
+        "code"
+      ]
+    }
+  ]
+}

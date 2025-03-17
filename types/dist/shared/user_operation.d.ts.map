@@ -1,0 +1,1 @@
+{"version":3,"file":"user_operation.d.ts","sourceRoot":"","sources":["../../src/shared/user_operation.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,eAAe,EAAE,MAAM,UAAU,CAAC;AAE3C,wBAAsB,wBAAwB,CAAC,EAC7C,OAAO,EACP,MAAM,EACN,OAAO,GACR,EAAE;IACD,OAAO,EAAE,MAAM,CAAC;IAChB,MAAM,EAAE,eAAe,CAAC;IACxB,OAAO,CAAC,EAAE,MAAM,CAAC;CAClB,iBAwCA"}

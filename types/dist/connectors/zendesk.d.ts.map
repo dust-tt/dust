@@ -1,0 +1,1 @@
+{"version":3,"file":"zendesk.d.ts","sourceRoot":"","sources":["../../src/connectors/zendesk.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAAE,MAAM,oBAAoB,CAAC;AAE7C,wBAAgB,wBAAwB,CAAC,WAAW,EAAE,OAAO,GAAG,MAAM,CAErE;AAED,wBAAgB,qCAAqC,CACnD,WAAW,EAAE,OAAO,GACnB,MAAM,CAER"}

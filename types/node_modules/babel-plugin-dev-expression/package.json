@@ -1,0 +1,37 @@
+{
+  "name": "babel-plugin-dev-expression",
+  "version": "0.2.3",
+  "description": "A mirror of Facebook's dev-expression Babel plugin",
+  "files": [
+    "*.js"
+  ],
+  "main": "dev-expression.js",
+  "scripts": {
+    "test": "jest --coverage"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/4Catalyzer/babel-plugin-dev-expression.git"
+  },
+  "keywords": [
+    "facebook",
+    "react",
+    "babel",
+    "dev-expression"
+  ],
+  "author": "Jimmy Jia",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/4Catalyzer/babel-plugin-dev-expression/issues"
+  },
+  "homepage": "https://github.com/4Catalyzer/babel-plugin-dev-expression#readme",
+  "peerDependencies": {
+    "@babel/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.15.4",
+    "codecov": "^3.8.1",
+    "jest": "^26.6.3",
+    "prettier": "^2.4.1"
+  }
+}

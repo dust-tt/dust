@@ -15,6 +15,7 @@ const ANIMATED_TEXT_VARIANTS = [
   "sky",
   "pink",
   "red",
+  "white",
 ] as const;
 
 type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
@@ -37,6 +38,10 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
     "dark:s-from-amber-800-night dark:s-via-amber-950-night dark:s-via-50% dark:s-to-amber-800-night"
   ),
   slate: cn(
+    "s-from-slate-600 s-via-slate-950 s-via-50% s-to-slate-600",
+    "dark:s-from-slate-600-night dark:s-via-slate-950-night dark:s-via-50% dark:s-to-slate-600-night"
+  ),
+  white: cn(
     "s-from-slate-600 s-via-slate-950 s-via-50% s-to-slate-600",
     "dark:s-from-slate-600-night dark:s-via-slate-950-night dark:s-via-50% dark:s-to-slate-600-night"
   ),
@@ -80,6 +85,7 @@ const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   emerald: "s-text-emerald-800 dark:s-text-emerald-800-night",
   amber: "s-text-amber-800 dark:s-text-amber-800-night",
   slate: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+  white: "s-text-muted-foreground dark:s-text-muted-foreground-night",
   purple: "s-text-purple-800 dark:s-text-purple-800-night",
   warning: "s-text-warning-800 dark:s-text-warning-800-night",
   sky: "s-text-sky-800 dark:s-text-sky-800-night",

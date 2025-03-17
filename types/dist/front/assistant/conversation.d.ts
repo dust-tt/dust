@@ -1,0 +1,213 @@
+import { BrowseActionType } from "../../front/assistant/actions/browse";
+import { ConversationIncludeFileActionType } from "../../front/assistant/actions/conversation/include_file";
+import { ConversationListFilesActionType } from "../../front/assistant/actions/conversation/list_files";
+import { DustAppRunActionType } from "../../front/assistant/actions/dust_app_run";
+import { ProcessActionType } from "../../front/assistant/actions/process";
+import { ReasoningActionType } from "../../front/assistant/actions/reasoning";
+import { RetrievalActionType } from "../../front/assistant/actions/retrieval";
+import { TablesQueryActionType } from "../../front/assistant/actions/tables_query";
+import { WebsearchActionType } from "../../front/assistant/actions/websearch";
+import { LightAgentConfigurationType } from "../../front/assistant/agent";
+import { UserType, WorkspaceType } from "../../front/user";
+import { ModelId } from "../../shared/model_id";
+import { ContentFragmentType } from "../content_fragment";
+import { SearchLabelsActionType } from "./actions/search_labels";
+/**
+ * Mentions
+ */
+export type AgentMention = {
+    configurationId: string;
+};
+export type MentionType = AgentMention;
+export type MessageVisibility = "visible" | "deleted";
+export declare function isAgentMention(arg: MentionType): arg is AgentMention;
+export type ConversationMessageReactions = {
+    messageId: string;
+    reactions: MessageReactionType[];
+}[];
+export type MessageReactionType = {
+    emoji: string;
+    users: {
+        userId: ModelId | null;
+        username: string;
+        fullName: string | null;
+    }[];
+};
+export type MessageType = AgentMessageType | UserMessageType | ContentFragmentType;
+export type MessageWithContentFragmentsType = AgentMessageType | (UserMessageType & {
+    contenFragments?: ContentFragmentType[];
+});
+export type WithRank<T> = T & {
+    rank: number;
+};
+export type MessageWithRankType = WithRank<MessageType>;
+/**
+ * User messages
+ */
+export type UserMessageOrigin = "slack" | "web" | "api" | "email" | "gsheet" | "zapier" | "n8n" | "make" | "zendesk" | "raycast" | "github-copilot-chat" | "extension" | "email";
+export type UserMessageContext = {
+    username: string;
+    timezone: string;
+    fullName: string | null;
+    email: string | null;
+    profilePictureUrl: string | null;
+    origin?: UserMessageOrigin | null;
+};
+export type UserMessageType = {
+    id: ModelId;
+    created: number;
+    type: "user_message";
+    sId: string;
+    visibility: MessageVisibility;
+    version: number;
+    user: UserType | null;
+    mentions: MentionType[];
+    content: string;
+    context: UserMessageContext;
+};
+export type UserMessageWithRankType = WithRank<UserMessageType>;
+export declare function isUserMessageType(arg: MessageType): arg is UserMessageType;
+/**
+ * Agent messages
+ */
+export type ConfigurableAgentActionType = RetrievalActionType | DustAppRunActionType | TablesQueryActionType | ProcessActionType | WebsearchActionType | BrowseActionType | ReasoningActionType;
+export type ConversationAgentActionType = ConversationListFilesActionType | ConversationIncludeFileActionType;
+export type AgentActionType = ConfigurableAgentActionType | ConversationAgentActionType | SearchLabelsActionType;
+export type AgentMessageStatus = "created" | "succeeded" | "failed" | "cancelled";
+export declare const ACTION_RUNNING_LABELS: Record<AgentActionType["type"], string>;
+/**
+ * Both `action` and `message` are optional (we could have a no-op agent basically).
+ *
+ * Since `action` and `message` are bundled together, it means that we will only be able to retry
+ * them together in case of error of either. We store an error only here whether it's an error
+ * coming from the action or from the message generation.
+ */
+export type AgentMessageType = {
+    id: ModelId;
+    agentMessageId: ModelId;
+    created: number;
+    type: "agent_message";
+    sId: string;
+    visibility: MessageVisibility;
+    version: number;
+    parentMessageId: string | null;
+    configuration: LightAgentConfigurationType;
+    status: AgentMessageStatus;
+    actions: AgentActionType[];
+    content: string | null;
+    chainOfThought: string | null;
+    rawContents: Array<{
+        step: number;
+        content: string;
+    }>;
+    error: {
+        code: string;
+        message: string;
+    } | null;
+};
+export type AgentMessageWithRankType = WithRank<AgentMessageType>;
+export declare function isAgentMessageType(arg: MessageType): arg is AgentMessageType;
+/**
+ * Conversations
+ */
+/**
+ * Visibility of a conversation. Test visibility is for conversations happening
+ * when a user 'tests' an agent not in their list using the "test" button:
+ * those conversations do not show in users' histories.
+ */
+export type ConversationVisibility = "unlisted" | "workspace" | "deleted" | "test";
+/**
+ * A lighter version of Conversation without the content (for menu display).
+ */
+export type ConversationWithoutContentType = {
+    id: ModelId;
+    created: number;
+    updated?: number;
+    owner: WorkspaceType;
+    sId: string;
+    title: string | null;
+    visibility: ConversationVisibility;
+    requestedGroupIds: string[][];
+    groupIds?: string[];
+};
+/**
+ * content [][] structure is intended to allow retries (of agent messages) or edits (of user
+ * messages).
+ */
+export type ConversationType = ConversationWithoutContentType & {
+    content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+};
+export type UserParticipant = {
+    username: string;
+    fullName: string | null;
+    pictureUrl: string | null;
+};
+export type AgentParticipant = {
+    configurationId: string;
+    name: string;
+    pictureUrl: string | null;
+};
+export type ParticipantActionType = "posted" | "reacted" | "subscribed";
+/**
+ * Conversation participants.
+ */
+export interface AgentParticipantType {
+    configurationId: string;
+    name: string;
+    pictureUrl: string;
+}
+export interface UserParticipantType {
+    fullName: string | null;
+    pictureUrl: string | null;
+    username: string;
+}
+export interface ConversationParticipantsType {
+    agents: AgentParticipant[];
+    users: UserParticipant[];
+}
+export declare const CONVERSATION_ERROR_TYPES: readonly ["conversation_not_found", "conversation_access_restricted", "conversation_with_unavailable_agent"];
+export type ConversationErrorType = (typeof CONVERSATION_ERROR_TYPES)[number];
+export declare class ConversationError extends Error {
+    readonly type: ConversationErrorType;
+    constructor(type: ConversationErrorType);
+}
+export type SubmitMessageError = {
+    type: "user_not_found" | "attachment_upload_error" | "message_send_error" | "plan_limit_reached_error" | "content_too_large";
+    title: string;
+    message: string;
+};
+export interface FetchConversationMessagesResponse {
+    hasMore: boolean;
+    lastValue: number | null;
+    messages: MessageWithRankType[];
+}
+/**
+ * Conversation events.
+ */
+export type UserMessageNewEvent = {
+    type: "user_message_new";
+    created: number;
+    messageId: string;
+    message: UserMessageWithRankType;
+};
+export type UserMessageErrorEvent = {
+    type: "user_message_error";
+    created: number;
+    error: {
+        code: string;
+        message: string;
+    };
+};
+export type AgentMessageNewEvent = {
+    type: "agent_message_new";
+    created: number;
+    configurationId: string;
+    messageId: string;
+    message: AgentMessageWithRankType;
+};
+export type ConversationTitleEvent = {
+    type: "conversation_title";
+    created: number;
+    title: string;
+};
+//# sourceMappingURL=conversation.d.ts.map

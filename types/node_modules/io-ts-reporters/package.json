@@ -1,0 +1,69 @@
+{
+  "name": "io-ts-reporters",
+  "version": "2.0.1",
+  "description": "Formatting of io-ts validation errors",
+  "main": "./target/src/index.js",
+  "typings": "./target/src/index.d.ts",
+  "sideEffects": false,
+  "scripts": {
+    "fmt": "prettier --write '**/*.{json,md,ts,js}'",
+    "fmt:check": "prettier --check '**/*.{json,md,ts,js}'",
+    "docs": "yarn docs-ts",
+    "lint": "npm run typecheck && npm run lint:only",
+    "lint:only": "xo",
+    "typecheck": "tsc --noEmit",
+    "compile": "rm -rf ./target/* && tsc",
+    "test": "npm run fmt:check && npm run lint && npm run test:unit && yarn docs",
+    "test:unit": "ava",
+    "prepublishOnly": "npm run compile && npm run lint"
+  },
+  "files": [
+    "target/src",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gillchristian/io-ts-reporters.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gillchristian/io-ts-reporters/issues"
+  },
+  "homepage": "https://github.com/gillchristian/io-ts-reporters",
+  "dependencies": {
+    "@scarf/scarf": "^1.1.1"
+  },
+  "peerDependencies": {
+    "fp-ts": "^2.10.5",
+    "io-ts": "^2.2.16"
+  },
+  "devDependencies": {
+    "@types/tape": "^4.2.34",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "@typescript-eslint/parser": "^4.28.3",
+    "ava": "^3.8.2",
+    "docs-ts": "^0.6.10",
+    "eslint-config-xo-typescript": "^0.43.0",
+    "fp-ts": "^2.10.5",
+    "io-ts": "^2.2.16",
+    "io-ts-types": "^0.5.16",
+    "prettier": "^2.3.2",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5",
+    "xo": "^0.41.0"
+  },
+  "tags": [
+    "typescript",
+    "runtime",
+    "decoder",
+    "encoder",
+    "schema"
+  ],
+  "keywords": [
+    "typescript",
+    "runtime",
+    "decoder",
+    "encoder",
+    "schema"
+  ]
+}

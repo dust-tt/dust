@@ -3,7 +3,7 @@ import React from "react";
 
 import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
-import { Chip, UserGroupIcon } from "../index_with_tw_base";
+import { Chip, DriveLogo, UserGroupIcon } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
@@ -79,4 +79,16 @@ export const RemovableChip = () => (
     label="Remove me"
     onRemove={() => alert("Removed")}
   />
+);
+
+export const RessourceChip = () => (
+  <div className="s-flex s-flex-wrap s-gap-2 s-bg-muted-background s-p-12">
+    <Chip
+      size="xs"
+      color="white"
+      label="Remove me"
+      icon={DriveLogo}
+      onRemove={() => alert("Removed")}
+    />
+  </div>
 );

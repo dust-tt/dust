@@ -19,6 +19,7 @@ export const CHIP_COLORS = [
   "warning",
   "sky",
   "pink",
+  "white",
   "red",
 ] as const;
 
@@ -53,6 +54,10 @@ const backgroundVariants: Record<ChipColorType, string> = {
     "s-bg-muted-background s-border-border",
     "dark:s-bg-muted-background-night dark:s-border-border-night"
   ),
+  white: cn(
+    "s-bg-background s-border-border",
+    "dark:s-bg-muted-background-night dark:s-border-border-night"
+  ),
   purple: cn(
     "s-bg-purple-100 s-border-purple-200",
     "dark:s-bg-purple-100-night dark:s-border-purple-200-night"
@@ -79,6 +84,7 @@ const textVariants: Record<ChipColorType, string> = {
   emerald: "s-text-emerald-900 dark:s-text-emerald-900-night",
   amber: "s-text-amber-900 dark:s-text-amber-900-night",
   slate: "s-text-foreground dark:s-text-foreground-night",
+  white: "s-text-foreground dark:s-text-foreground-night",
   purple: "s-text-purple-900 dark:s-text-purple-900-night",
   warning: "s-text-warning-900 dark:s-text-warning-900-night",
   sky: "s-text-sky-900 dark:s-text-sky-900-night",

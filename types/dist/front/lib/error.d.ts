@@ -1,0 +1,31 @@
+import { ConnectorsAPIError } from "../../connectors/api";
+import { CoreAPIError } from "./core_api";
+export type InternalErrorWithStatusCode = {
+    status_code: number;
+};
+declare const API_ERROR_TYPES: readonly ["not_authenticated", "sso_enforced", "missing_authorization_header_error", "malformed_authorization_header_error", "invalid_basic_authorization_error", "invalid_oauth_token_error", "expired_oauth_token_error", "invalid_api_key_error", "internal_server_error", "invalid_request_error", "invalid_rows_request_error", "user_not_found", "content_too_large", "data_source_error", "data_source_not_found", "data_source_view_not_found", "data_source_auth_error", "data_source_quota_error", "data_source_document_not_found", "data_source_not_managed", "run_error", "app_not_found", "app_auth_error", "provider_auth_error", "provider_not_found", "dataset_not_found", "workspace_not_found", "workspace_auth_error", "workspace_user_not_found", "method_not_supported_error", "personal_workspace_not_found", "action_unknown_error", "action_api_error", "membership_not_found", "invitation_not_found", "plan_limit_error", "template_not_found", "chat_message_not_found", "connector_not_found_error", "connector_update_error", "connector_update_unauthorized", "connector_oauth_target_mismatch", "connector_oauth_user_missing_rights", "connector_provider_not_supported", "connector_credentials_error", "agent_configuration_not_found", "agent_message_error", "message_not_found", "plan_message_limit_exceeded", "global_agent_error", "stripe_invalid_product_id_error", "rate_limit_error", "subscription_payment_failed", "subscription_not_found", "subscription_state_invalid", "service_unavailable", "assistant_saving_error", "unexpected_error_format", "unexpected_response_format", "unexpected_network_error", "action_failed", "unexpected_action_response", "feature_flag_not_found", "feature_flag_already_exists", "invalid_pagination_parameters", "table_not_found", "template_not_found", "invitation_already_sent_recently", "dust_app_secret_not_found", "key_not_found", "transcripts_configuration_not_found", "transcripts_configuration_default_not_allowed", "transcripts_configuration_already_exists", "file_not_found", "file_too_large", "file_type_not_supported", "file_is_empty", "run_not_found", "space_already_exists", "space_not_found", "group_not_found", "plugin_not_found", "plugin_execution_failed", "tracker_not_found", "conversation_not_found", "conversation_access_restricted", "conversation_with_unavailable_agent"];
+export type APIErrorType = (typeof API_ERROR_TYPES)[number];
+export type APIError = {
+    type: APIErrorType;
+    message: string;
+    data_source_error?: CoreAPIError;
+    run_error?: CoreAPIError;
+    app_error?: CoreAPIError;
+    connectors_error?: ConnectorsAPIError;
+};
+export declare function isAPIError(obj: unknown): obj is APIError;
+/**
+ * Type to transport a HTTP error with its http status code (eg: 404)
+ * and the error object returned by our public API endpoints (api/v1/*)
+ */
+export type APIErrorWithStatusCode = {
+    api_error: APIError;
+    status_code: number;
+};
+export type APIErrorResponse = {
+    error: APIError;
+};
+export declare function isAPIErrorResponse(obj: unknown): obj is APIErrorResponse;
+export type WithAPIErrorResponse<T> = T | APIErrorResponse;
+export {};
+//# sourceMappingURL=error.d.ts.map
