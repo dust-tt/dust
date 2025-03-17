@@ -74,11 +74,16 @@ export function SalesforceOauthExtraConfig({
     );
   }, [extraConfig, setIsExtraConfigValid]);
 
+  const isErrorUrl =
+    typeof extraConfig.instance_url === "string" &&
+    extraConfig.instance_url.length > 0 &&
+    !isValidSalesforceDomain(extraConfig.instance_url);
+
   return (
     <>
       <Input
         label="Salesforce instance URL"
-        message="The URL of your Salesforce organization instance."
+        message="Must be a valid Salesforce domain in https and ending with .salesforce.com or .force.com"
         name="instance_url"
         value={extraConfig.instance_url ?? ""}
         placeholder="https://my-org.salesforce.com"
@@ -88,6 +93,8 @@ export function SalesforceOauthExtraConfig({
             instance_url: e.target.value,
           }));
         }}
+        isError={isErrorUrl}
+        messageStatus={isErrorUrl ? "error" : "default"}
       />
       <Input
         label="Client ID"
