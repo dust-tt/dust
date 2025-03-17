@@ -7,7 +7,7 @@ import {
   ShapesIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import {
@@ -53,6 +53,9 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
     null
   );
   const [isModelProvider, setIsModelProvider] = useState(true);
+  const [providerFormStates, setProviderFormStates] = useState<
+    Record<string, Record<string, string>>
+  >({});
 
   const appWhiteListedProviders = owner.whiteListedProviders
     ? [...owner.whiteListedProviders, "azure_openai"]
@@ -85,6 +88,21 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
     filteredProvidersIdSet.has(p.providerId)
   );
 
+  const handleProviderSetupClose = useCallback(() => {
+    setSelectedProviderId(null);
+    setProviderFormStates({});
+  }, []);
+
+  const handleFormStateChange = useCallback(
+    (providerId: string, values: Record<string, string>) => {
+      setProviderFormStates((prev) => ({
+        ...prev,
+        [providerId]: values,
+      }));
+    },
+    []
+  );
+
   const selectedConfig = selectedProviderId
     ? isModelProvider
       ? MODEL_PROVIDER_CONFIGS[selectedProviderId]
@@ -96,8 +114,12 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
       ? !!configs[selectedProviderId]
       : false;
 
-  const configForSelected =
-    (selectedProviderId && configs[selectedProviderId]) || {};
+  const configForSelected = selectedProviderId
+    ? {
+        ...(configs[selectedProviderId] || {}),
+        ...(providerFormStates[selectedProviderId] || {}),
+      }
+    : {};
 
   return (
     <>
@@ -111,7 +133,10 @@ export function Providers({ owner }: { owner: WorkspaceType }) {
           config={configForSelected}
           enabled={enabled}
           isOpen={true}
-          onClose={() => setSelectedProviderId(null)}
+          onClose={handleProviderSetupClose}
+          onFormStateChange={(values) =>
+            handleFormStateChange(selectedProviderId, values)
+          }
         />
       )}
 

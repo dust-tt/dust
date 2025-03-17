@@ -265,6 +265,7 @@ export interface ProviderSetupProps {
   testSuccessMessage?: string;
   isOpen: boolean;
   onClose: () => void;
+  onFormStateChange?: (values: Record<string, string>) => void;
 }
 
 export function ProviderSetup({
@@ -278,6 +279,7 @@ export function ProviderSetup({
   testSuccessMessage,
   isOpen,
   onClose,
+  onFormStateChange,
 }: ProviderSetupProps) {
   const { mutate } = useSWRConfig();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -342,6 +344,15 @@ export function ProviderSetup({
     onClose();
   };
 
+  const handleFieldChange = (fieldName: string, value: string) => {
+    const newValues = {
+      ...values,
+      [fieldName]: value,
+    };
+    setValues(newValues);
+    onFormStateChange?.(newValues);
+  };
+
   const renderFields = () =>
     fields.map((field) => (
       <div key={field.name}>
@@ -357,7 +368,7 @@ export function ProviderSetup({
           onChange={(e) => {
             setTestSuccessful(false);
             const val = e.target.value;
-            setValues((prev) => ({ ...prev, [field.name]: val }));
+            handleFieldChange(field.name, val);
           }}
         />
       </div>
