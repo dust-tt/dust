@@ -20,11 +20,13 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
 
   addProseMirrorPlugins() {
     const { onUrlDetected } = this.options;
+    const storage = this.editor.storage.URLStorage;
 
     return [
       new Plugin({
         key: new PluginKey("urlDetection"),
         props: {
+          // Handle paste events to detect URLs
           handlePaste: (view, event) => {
             if (!onUrlDetected) {
               return false;
@@ -39,16 +41,20 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
             // Check for URLs in pasted content
             const urls = text.match(URL_REGEX);
             if (urls) {
-              const pos = view.state.selection.from;
-              const storage = this.editor.storage.urlReplacementStorage;
-
               // For each URL found, check if it has a node ID
               urls.forEach((url) => {
                 const nodeId = nodeIdFromUrl(url);
                 if (nodeId) {
-                  storage.addReplacement(url, nodeId, pos + text.indexOf(url));
-                  onUrlDetected(url, nodeId || null);
+                  const { from } = view.state.selection;
+                  // Store URL position for later replacement
+                  storage.pendingUrls.set(nodeId, {
+                    url,
+                    nodeId,
+                    from,
+                    to: from + url.length,
+                  });
                 }
+                onUrlDetected(url, nodeId || null);
               });
             }
 

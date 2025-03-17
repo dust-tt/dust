@@ -20,6 +20,7 @@ import useAssistantSuggestions from "@app/components/assistant/conversation/inpu
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -34,7 +35,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
-import { PendingReplacement } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLReplacementStorage";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -78,6 +78,8 @@ const InputBarContainer = ({
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] =
+    useState<DataSourceViewContentNode | null>(null);
 
   const handleUrlDetected = useCallback(
     (url: string, nodeId: string | null) => {
@@ -103,6 +105,8 @@ const InputBarContainer = ({
     }),
   });
 
+  useUrlHandler(editor, selectedNode);
+
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
@@ -118,42 +122,6 @@ const InputBarContainer = ({
       isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
     spaceIds: spaces.map((s) => s.sId),
   });
-
-  useEffect(() => {
-    if (!searchResultNodes.length || !editor) {
-      return;
-    }
-
-    const storage = editor.storage.urlReplacementStorage;
-    const pendingReplacements: PendingReplacement[] = storage.getReplacements();
-
-    if (pendingReplacements.length > 0) {
-      const tr = editor.state.tr;
-      let success = false;
-
-      pendingReplacements.forEach(({ url, position }) => {
-        try {
-          const node = searchResultNodes[0];
-          const text = `${node.title} - `;
-
-          tr.replaceWith(
-            position,
-            position + url.length,
-            editor.schema.text(text)
-          );
-          success = true;
-        } catch (e) {
-          console.debug("Position update failed", e);
-        }
-      });
-
-      if (success) {
-        editor.view.dispatch(tr);
-      }
-
-      storage.clearReplacements();
-    }
-  }, [searchResultNodes, editor, spacesMap]);
 
   useEffect(() => {
     if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
@@ -174,7 +142,9 @@ const InputBarContainer = ({
         const sortedNodes = nodesWithViews.sort(
           (a, b) => b.spacePriority - a.spacePriority
         );
-        onNodeSelect(sortedNodes[0]);
+        const node = sortedNodes[0];
+        onNodeSelect(node);
+        setSelectedNode(node);
       }
 
       // Reset node candidate after processing

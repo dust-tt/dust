@@ -14,7 +14,8 @@ import { createMarkdownSerializer } from "@app/components/assistant/conversation
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { isMobile } from "@app/lib/utils";
-import { URLReplacementStorage } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLReplacementStorage";
+
+import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
 export interface EditorMention {
   id: string;
@@ -194,7 +195,6 @@ export interface CustomEditorProps {
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
   onUrlDetected?: (url: string, nodeId: string | null) => void;
-  onNodeResolved?: (nodeTitle: string, nodeSpace: string) => string;
 }
 
 const useCustomEditor = ({
@@ -203,7 +203,6 @@ const useCustomEditor = ({
   suggestions,
   disableAutoFocus,
   onUrlDetected,
-  onNodeResolved,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -226,19 +225,16 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
+    URLStorageExtension,
   ];
   if (onUrlDetected) {
     extensions.push(
       URLDetectionExtension.configure({
-        onUrlDetected: (url, nodeId) => {
-          if (nodeId) {
-            onUrlDetected(url, nodeId);
-          }
-        },
+        onUrlDetected,
       })
     );
-    extensions.push(URLReplacementStorage);
   }
+
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,
