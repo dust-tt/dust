@@ -37,7 +37,6 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import type {
   PlanType,
   SubscriptionPerSeatPricing,
@@ -60,9 +59,9 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const plan = auth.plan();
   const owner = auth.workspace();
   const user = auth.user()?.toJSON();
-  const subscription = auth.subscription();
+  const subscriptionResource = auth.subscriptionResource();
 
-  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
+  if (!owner || !user || !auth.isAdmin() || !plan || !subscriptionResource) {
     return {
       notFound: true,
     };
@@ -81,7 +80,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
+  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
+  const subscription = subscriptionResource.toJSON();
 
   return {
     props: {

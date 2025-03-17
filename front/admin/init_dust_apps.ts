@@ -3,12 +3,12 @@ import parseArgs from "minimist";
 
 import { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
-import { internalSubscribeWorkspaceToFreePlan } from "@app/lib/plans/subscription";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -32,7 +32,7 @@ async function main() {
       name: argv.name || DEFAULT_WORKSPACE_NAME,
     });
 
-    await internalSubscribeWorkspaceToFreePlan({
+    await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
       workspaceId: w.sId,
       planCode: "FREE_UPGRADED_PLAN",
     });

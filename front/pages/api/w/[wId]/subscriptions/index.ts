@@ -9,10 +9,7 @@ import {
   cancelSubscriptionImmediately,
   skipSubscriptionFreeTrial,
 } from "@app/lib/plans/stripe";
-import {
-  getCheckoutUrlForUpgrade,
-  getSubscriptions,
-} from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -68,7 +65,9 @@ async function handler(
   switch (req.method) {
     case "GET": {
       try {
-        const subscriptions = await getSubscriptions(auth);
+        const fetchedSubscriptions =
+          await SubscriptionResource.fetchByAuthenticator(auth);
+        const subscriptions = fetchedSubscriptions.map((s) => s.toJSON());
         return res.status(200).json({ subscriptions });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");
@@ -95,10 +94,13 @@ async function handler(
       }
 
       try {
-        const { checkoutUrl, plan: newPlan } = await getCheckoutUrlForUpgrade(
-          auth,
-          bodyValidation.right.billingPeriod
-        );
+        const { checkoutUrl, plan: newPlan } = await auth
+          .getNonNullableSubscriptionResource()
+          .getCheckoutUrlForUpgrade(
+            auth.getNonNullableWorkspace(),
+            auth.getNonNullableUser().toJSON(),
+            bodyValidation.right.billingPeriod
+          );
         return res.status(200).json({ checkoutUrl, plan: newPlan });
       } catch (error) {
         logger.error({ error }, "Error while subscribing workspace to plan");

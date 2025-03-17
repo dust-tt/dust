@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -37,7 +37,7 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      await internalSubscribeWorkspaceToFreeNoPlan({
+      await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: owner.sId,
       });
 

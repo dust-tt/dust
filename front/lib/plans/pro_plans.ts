@@ -5,7 +5,7 @@ import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
-import { isDevelopment } from "@app/types";
+import { isDevelopment, isTest } from "@app/types";
 
 export type PlanAttributes = Omit<
   Attributes<Plan>,
@@ -29,7 +29,7 @@ export type PlanAttributes = Omit<
 
 const PRO_PLANS_DATA: PlanAttributes[] = [];
 
-if (isDevelopment()) {
+if (isDevelopment() || isTest()) {
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_29_CODE,
     name: "Pro",
