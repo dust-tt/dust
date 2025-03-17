@@ -606,6 +606,7 @@ export async function upsertTable({
         | "table_not_found"
         | "file_not_found"
         | "title_too_long"
+        | "title_is_empty"
         | "invalid_parent_id"
         | "invalid_parents"
         | "internal_error";

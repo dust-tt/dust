@@ -116,6 +116,7 @@ async function handler(
           case "invalid_csv_and_file":
           case "invalid_parents":
           case "invalid_parent_id":
+          case "title_is_empty":
           case "invalid_url":
           case "title_too_long":
           case "missing_csv":
