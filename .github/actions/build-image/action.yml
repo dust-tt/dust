@@ -73,6 +73,7 @@ runs:
         depot build \
           --project 3vz0lnf16v \
           --platform linux/amd64 \
+          --provenance=false \
           --cache-from type=gha,scope=${{ inputs.component }} \
           --cache-to type=gha,mode=max,scope=${{ inputs.component }} \
           -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
