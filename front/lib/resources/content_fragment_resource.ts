@@ -16,7 +16,10 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceNameAndIdFromSId,
+} from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   ContentFragmentMessageTypeModel,
@@ -373,63 +376,36 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-export async function renderFromFragmentId(
+export async function renderFromResourceId(
   workspace: WorkspaceType,
   {
     contentType,
     excludeImages,
-    contentFragmentId,
+    resourceId,
     model,
     title,
     contentFragmentVersion,
   }: {
     contentType: SupportedContentFragmentType;
     excludeImages: boolean;
-    contentFragmentId: string;
+    resourceId: string;
     model: ModelConfigurationType;
     title: string;
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  // TODO(pr,attach) this is a hack to fix incident here: https://dust4ai.slack.com/archives/C05B529FHV1/p1741976168265989
-  // to be properly fixed.
-  // if starting with fil_, it's not a content fragment id but a file id directly
-  const isOldFileId = contentFragmentId.startsWith("fil_");
-
-  let contentFragment: ContentFragmentResource | null = null;
-  if (!isOldFileId) {
-    contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
-      contentFragmentId,
-      contentFragmentVersion
-    );
-    if (!contentFragment) {
-      throw new Error(
-        `Content fragment not found for sId ${contentFragmentId}`
-      );
-    }
-  }
-
-  const {
-    fileId: fileModelId,
-    nodeId,
-    nodeDataSourceViewId,
-  } = contentFragment ?? {
-    fileId: -1,
-    nodeId: null,
-    nodeDataSourceViewId: null,
+  // At time of writing, passed resourceId can be either a file or a content fragment.
+  const { resourceName } = getResourceNameAndIdFromSId(resourceId) ?? {
+    resourceName: "content_fragment",
   };
 
-  let fileStringId;
-  if (isOldFileId) {
-    fileStringId = contentFragmentId;
-  } else {
-    fileStringId = fileModelId
-      ? FileResource.modelIdToSId({
-          id: fileModelId,
-          workspaceId: workspace.id,
-        })
-      : null;
-  }
+  const { fileStringId, nodeId, nodeDataSourceViewId } =
+    resourceName === "file"
+      ? { fileStringId: resourceId, nodeId: null, nodeDataSourceViewId: null }
+      : await getIncludeFileIdsFromContentFragmentResourceId(
+          workspace,
+          resourceId
+        );
 
   if (isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
@@ -517,7 +493,7 @@ export async function renderFromFragmentId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            contentFragmentId,
+            contentFragmentId: resourceId,
             contentType,
             title,
             version: contentFragmentVersion,
@@ -548,7 +524,7 @@ export async function renderFromFragmentId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            contentFragmentId,
+            contentFragmentId: resourceId,
             contentType,
             title,
             version: contentFragmentVersion,
@@ -672,4 +648,32 @@ function renderContentFragmentXml({
     tag += "/>";
   }
   return tag;
+}
+
+async function getIncludeFileIdsFromContentFragmentResourceId(
+  workspace: WorkspaceType,
+  resourceId: string
+) {
+  const contentFragment = await ContentFragmentResource.fromStringIdAndVersion(
+    resourceId,
+    "latest"
+  );
+  if (!contentFragment) {
+    throw new Error(`Content fragment not found for sId ${resourceId}`);
+  }
+
+  if (!contentFragment.fileId) {
+    return {
+      fileStringId: null,
+      nodeId: contentFragment.nodeId,
+      nodeDataSourceViewId: contentFragment.nodeDataSourceViewId,
+    };
+  }
+
+  const fileStringId = FileResource.modelIdToSId({
+    id: contentFragment.fileId,
+    workspaceId: workspace.id,
+  });
+
+  return { fileStringId, nodeId: null, nodeDataSourceViewId: null };
 }

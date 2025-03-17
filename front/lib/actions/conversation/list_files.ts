@@ -18,7 +18,7 @@ import type {
 } from "@app/types";
 
 export type ConversationFileType = {
-  contentFragmentId: string;
+  resourceId: string;
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
@@ -69,7 +69,7 @@ export class ConversationListFilesActionType extends BaseAction {
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
-      content += `<file id="${f.contentFragmentId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
+      content += `<file id="${f.resourceId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;
