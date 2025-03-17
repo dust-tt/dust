@@ -71,12 +71,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
     if let Some(fields) = group_by_fields {
         for field in fields {
             // If the field is not in the fields or in the aggregates, add it to the select parts
-            if !query.fields.contains(field)
-                && !query
-                    .aggregates
-                    .iter()
-                    .any(|agg| agg.field.as_str() == field)
-            {
+            if !select_parts.contains(field) {
                 select_parts.push(field.clone());
             }
         }
