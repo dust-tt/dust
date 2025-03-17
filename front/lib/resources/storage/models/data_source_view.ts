@@ -1,12 +1,13 @@
-import type { DataSourceViewKind } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { DataSourceViewKind } from "@app/types";
 
 export class DataSourceViewModel extends SoftDeletableWorkspaceAwareModel<DataSourceViewModel> {
   declare id: CreationOptional<number>;
@@ -92,4 +93,11 @@ DataSourceViewModel.belongsTo(DataSourceModel, {
 DataSourceViewModel.belongsTo(UserModel, {
   as: "editedByUser",
   foreignKey: { name: "editedByUserId", allowNull: true },
+});
+
+DataSourceViewModel.hasMany(ContentFragmentModel, {
+  foreignKey: { name: "nodeDataSourceViewId", allowNull: true },
+});
+ContentFragmentModel.belongsTo(DataSourceViewModel, {
+  foreignKey: { name: "nodeDataSourceViewId", allowNull: true },
 });

@@ -5,7 +5,8 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
+
+import { WebCrawlerHeaderRedactedValue } from "@app/types";
 
 type Header = { key: string; value: string };
 

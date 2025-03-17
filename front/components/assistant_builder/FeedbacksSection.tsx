@@ -11,10 +11,6 @@ import {
   NavigationListLabel,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { memo, useCallback, useEffect } from "react";
 import { useInView } from "react-intersection-observer";
 
@@ -24,6 +20,10 @@ import {
   useAgentConfigurationHistory,
 } from "@app/lib/swr/assistants";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 const FEEDBACKS_PAGE_SIZE = 50;
 

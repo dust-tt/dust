@@ -4,6 +4,7 @@ use crate::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
+        credential::Credential,
         providers::utils::execute_request,
     },
     utils,
@@ -41,6 +42,7 @@ impl Provider for ConfluenceConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -97,7 +99,11 @@ impl Provider for ConfluenceConnectionProvider {
     /// Note: Confluence hard expires refresh_tokens after 360 days.
     ///       Confluence expires access_tokens after 1 hour.
     ///       Confluence expires refresh_tokens after 30 days of inactivity.
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
             Ok(None) => Err(anyhow!("Missing `refresh_token` in Confluence connection"))?,

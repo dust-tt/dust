@@ -2,7 +2,7 @@ import type {
   ConnectorPermission,
   ContentNode,
   MIME_TYPES,
-} from "@dust-tt/types";
+} from "@connectors/types";
 
 /**
  * 3 types of nodes in a remote database content tree:

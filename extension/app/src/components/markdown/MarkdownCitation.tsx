@@ -4,6 +4,7 @@ import {
   DocumentTextIcon,
   DriveLogo,
   GithubLogo,
+  GongLogo,
   ImageIcon,
   IntercomLogo,
   MicrosoftLogo,
@@ -48,6 +49,7 @@ export const citationIconMap: Record<
   snowflake: SnowflakeLogo,
   bigquery: BigQueryLogo,
   salesforce: SalesforceLogo,
+  gong: GongLogo,
 };
 
 export interface MarkdownCitation {

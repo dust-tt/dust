@@ -1,10 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  CheckFileGenericResponseType,
-  GoogleDriveCommandType,
-} from "@dust-tt/types";
-import { googleDriveIncrementalSyncWorkflowId } from "@dust-tt/types";
-
 import { getConnectorManager } from "@connectors/connectors";
 import {
   fixParentsConsistency,
@@ -34,6 +27,12 @@ import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  CheckFileGenericResponseType,
+  GoogleDriveCommandType,
+} from "@connectors/types";
+import { googleDriveIncrementalSyncWorkflowId } from "@connectors/types";
 
 const getConnector = async (args: GoogleDriveCommandType["args"]) => {
   if (!args.wId) {
@@ -92,7 +91,7 @@ export const google_drive = async ({
     case "list-labels": {
       const connector = await getConnector(args);
       const authCredentials = await getAuthObject(connector.connectionId);
-      const labels = await _getLabels(authCredentials);
+      const labels = await _getLabels(connector.id, authCredentials);
       return { status: 200, content: labels, type: typeof labels };
     }
     case "check-file": {
@@ -129,6 +128,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },
@@ -146,6 +146,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },
@@ -173,6 +174,7 @@ export const google_drive = async ({
         });
         if (!file) {
           const parentDriveObject = await getGoogleDriveObject({
+            connectorId: connector.id,
             authCredentials,
             driveObjectId: getDriveFileId(parent),
             cacheKey: { connectorId: connector.id, ts: now },
@@ -205,6 +207,7 @@ export const google_drive = async ({
       const now = Date.now();
       const authCredentials = await getAuthObject(connector.connectionId);
       const driveObject = await getGoogleDriveObject({
+        connectorId: connector.id,
         authCredentials,
         driveObjectId: getDriveFileId(fileId),
         cacheKey: { connectorId: connector.id, ts: now },

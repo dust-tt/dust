@@ -16,6 +16,15 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
+
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -23,15 +32,8 @@ import type {
   PlanType,
   WhitelistableFeature,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import type { ComponentType } from "react";
-
-import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
-import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
-import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
-import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -39,6 +41,16 @@ interface ConnectorOptionsProps {
   isAdmin: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
+}
+
+export interface ConnectorOauthExtraConfigProps {
+  extraConfig: Record<string, string>;
+  setExtraConfig: (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>)
+  ) => void;
+  setIsExtraConfigValid: (valid: boolean) => void;
 }
 
 export type ConnectorProviderConfiguration = {
@@ -54,10 +66,13 @@ export type ConnectorProviderConfiguration = {
   description: string;
   mismatchError: string;
   limitations: string | null;
+  oauthExtraConfigComponent?: (
+    props: ConnectorOauthExtraConfigProps
+  ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
-  isSearchEnabled: boolean;
+  isTitleFilterEnabled?: boolean;
   isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
@@ -98,7 +113,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return ConfluenceLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -120,7 +134,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return NotionLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -143,7 +156,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return DriveLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -166,7 +178,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: SlackBotEnableView,
     isNested: false,
-    isSearchEnabled: true,
+    isTitleFilterEnabled: true,
     permissions: {
       selected: "read_write",
       unselected: "write",
@@ -190,7 +202,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -214,7 +225,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: IntercomConfigView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -237,7 +247,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -257,7 +266,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GlobeAltIcon;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -276,7 +284,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SnowflakeLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     permissions: {
@@ -300,8 +307,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
     optionsComponent: ZendeskConfigView,
+    oauthExtraConfigComponent: ZendeskOAuthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -320,7 +327,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return BigQueryLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
@@ -342,8 +348,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return SalesforceLogo;
     },
+    oauthExtraConfigComponent: SalesforceOauthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -364,7 +370,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GongLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",

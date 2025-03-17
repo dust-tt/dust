@@ -1,4 +1,4 @@
-// import { EnvironmentConfig } from "@dust-tt/types";
+// import { EnvironmentConfig } from "@app/types";
 // import { QueryTypes, Sequelize } from "sequelize";
 //
 // import { getDataSource } from "@app/lib/api/data_sources";

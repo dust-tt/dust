@@ -1,4 +1,3 @@
-import type { MessageReactionType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,6 +12,7 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { MessageReactionType, WithAPIErrorResponse } from "@app/types";
 
 export const MessageReactionRequestBodySchema = t.type({
   reaction: t.string,
@@ -79,10 +79,10 @@ async function handler(
       const created = await createMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });
@@ -103,10 +103,10 @@ async function handler(
       const deleted = await deleteMessageReaction(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         context: {
           username: user.username,
-          fullName: user.fullName,
+          fullName: user.fullName(),
         },
         reaction: bodyValidation.right.reaction,
       });

@@ -1,5 +1,3 @@
-import { sendInitDbMessage } from "@dust-tt/types";
-
 import {
   AgentBrowseAction,
   AgentBrowseConfiguration,
@@ -11,10 +9,10 @@ import {
   AgentDustAppRunConfiguration,
 } from "@app/lib/models/assistant/actions/dust_app_run";
 import {
-  AgentGithubCreateIssueAction,
-  AgentGithubGetPullRequestAction,
-} from "@app/lib/models/assistant/actions/github";
-import { AgentGithubConfiguration } from "@app/lib/models/assistant/actions/github";
+  AgentMCPAction,
+  AgentMCPActionOutputItem,
+  AgentMCPServerConfiguration,
+} from "@app/lib/models/assistant/actions/mcp";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -88,7 +86,6 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
@@ -101,6 +98,7 @@ import {
   UserModel,
 } from "@app/lib/resources/storage/models/user";
 import logger from "@app/logger/logger";
+import { sendInitDbMessage } from "@app/types";
 
 async function main() {
   await sendInitDbMessage({
@@ -156,8 +154,8 @@ async function main() {
   await AgentProcessConfiguration.sync({ alter: true });
   await AgentWebsearchConfiguration.sync({ alter: true });
   await AgentBrowseConfiguration.sync({ alter: true });
-  await AgentGithubConfiguration.sync({ alter: true });
   await AgentReasoningConfiguration.sync({ alter: true });
+  await AgentMCPServerConfiguration.sync({ alter: true });
 
   await AgentDataSourceConfiguration.sync({ alter: true });
 
@@ -172,8 +170,6 @@ async function main() {
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });
   await AgentDustAppRunAction.sync({ alter: true });
-  await AgentGithubCreateIssueAction.sync({ alter: true });
-  await AgentGithubGetPullRequestAction.sync({ alter: true });
   await AgentMessageContent.sync({ alter: true });
   await AgentProcessAction.sync({ alter: true });
   await AgentReasoningAction.sync({ alter: true });
@@ -181,14 +177,13 @@ async function main() {
   await AgentSearchLabelsAction.sync({ alter: true });
   await AgentTablesQueryAction.sync({ alter: true });
   await AgentWebsearchAction.sync({ alter: true });
-
+  await AgentMCPAction.sync({ alter: true });
+  await AgentMCPActionOutputItem.sync({ alter: true });
   await RetrievalDocument.sync({ alter: true });
   await RetrievalDocumentChunk.sync({ alter: true });
 
   await FeatureFlag.sync({ alter: true });
   await KillSwitchModel.sync({ alter: true });
-
-  await PlatformActionsConfigurationModel.sync({ alter: true });
 
   // Labs - Can be removed at all times if a solution is dropped
   await LabsTranscriptsConfigurationModel.sync({ alter: true });

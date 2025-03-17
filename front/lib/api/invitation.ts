@@ -1,14 +1,3 @@
-import type {
-  ActiveRoleType,
-  APIErrorWithStatusCode,
-  LightWorkspaceType,
-  MembershipInvitationType,
-  Result,
-  SubscriptionType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import sgMail from "@sendgrid/mail";
 import { sign } from "jsonwebtoken";
 import { Op } from "sequelize";
@@ -24,6 +13,17 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { isEmailValid } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type {
+  ActiveRoleType,
+  APIErrorWithStatusCode,
+  LightWorkspaceType,
+  MembershipInvitationType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok, sanitizeString } from "@app/types";
 
 // Make token expires after 7 days
 const INVITATION_EXPIRATION_TIME_SEC = 60 * 60 * 24 * 7;

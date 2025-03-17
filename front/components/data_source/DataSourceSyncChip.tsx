@@ -1,10 +1,10 @@
 import { Chip, Tooltip } from "@dust-tt/sparkle";
-import type { ConnectorType, DataSourceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { useConnector } from "@app/lib/swr/connectors";
 import { timeAgoFrom } from "@app/lib/utils";
+import type { ConnectorType, DataSourceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 export default function ConnectorSyncingChip({
   workspaceId,

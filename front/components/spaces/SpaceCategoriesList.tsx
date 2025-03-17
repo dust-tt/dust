@@ -16,12 +16,6 @@ import {
   RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceWithAgentsUsageType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import React from "react";
@@ -31,6 +25,12 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import type {
+  DataSourceWithAgentsUsageType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
 
 type RowData = {
   category: string;
@@ -107,8 +107,7 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
 
-  const { searchTerm: dataSourceSearch, setIsSearchDisabled } =
-    React.useContext(SpaceSearchContext);
+  const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
   const rows: RowData[] = spaceInfo
     ? removeNulls(
@@ -210,8 +209,6 @@ export const SpaceCategoriesList = ({
           data={rows}
           columns={getTableColumns()}
           className="pb-4"
-          filter={dataSourceSearch}
-          filterColumn="name"
           columnsBreakpoints={{
             usage: "md",
           }}

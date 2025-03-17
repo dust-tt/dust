@@ -1,5 +1,6 @@
-import type { Diff } from "@dust-tt/types";
 import diff from "fast-diff";
+
+import type { Diff } from "@app/types";
 
 export function diffStrings(text1: string, text2: string): Diff[] {
   return diff(text1, text2).map(([type, value]) => ({

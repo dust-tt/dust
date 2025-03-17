@@ -1,9 +1,10 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
   workflowInfo,
 } from "@temporalio/workflow";
+
+import type { ModelId } from "@app/types";
 
 import type * as activities from "./activities";
 import { makeProcessTranscriptWorkflowId } from "./utils";

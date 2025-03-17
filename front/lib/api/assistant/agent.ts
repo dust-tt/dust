@@ -1,8 +1,42 @@
+import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
-  AgentActionsEvent,
   AgentActionSpecification,
   AgentActionSpecificEvent,
+} from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import { getCitationsCount } from "@app/lib/actions/utils";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  constructPromptMultiActions,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/generation";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import config from "@app/lib/api/config";
+import { getRedisClient } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import logger from "@app/logger/logger";
+import type {
+  AgentActionsEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
@@ -18,46 +52,13 @@ import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   assertNever,
-  isBrowseConfiguration,
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isSearchLabelsConfiguration,
-  isTablesQueryConfiguration,
   isTextContent,
   isUserMessageTypeModel,
-  isWebsearchConfiguration,
   SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-
-import { runActionStreamed } from "@app/lib/actions/server";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
-import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
-import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import config from "@app/lib/api/config";
-import { getRedisClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -693,7 +694,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
-    if (typeof output.generation === "string") {
+    if (typeof output.generation === "string" && contentParser.getContent()) {
       yield {
         type: "agent_message_content",
         created: Date.now(),
@@ -1215,100 +1216,6 @@ async function* runAction(
           };
           return;
         case "conversation_include_file_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isGithubGetPullRequestConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "github_get_pull_request_params":
-          yield event;
-          break;
-        case "github_get_pull_request_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        case "github_get_pull_request_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isGithubCreateIssueConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "github_create_issue_params":
-          yield event;
-          break;
-        case "github_create_issue_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        case "github_create_issue_success":
           yield {
             type: "agent_action_success",
             created: event.created,

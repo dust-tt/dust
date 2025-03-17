@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { synchronizeDustApps } from "@app/lib/utils/apps";
+import { Err, Ok } from "@app/types";
 
 export const syncAppsPlugin = createPlugin({
   manifest: {

@@ -1,4 +1,3 @@
-import { setupGlobalErrorHandler } from "@dust-tt/types";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
@@ -19,6 +18,7 @@ import {
 import { runUpsertQueueWorker } from "@app/temporal/upsert_queue/worker";
 import { runUpsertTableQueueWorker } from "@app/temporal/upsert_tables/worker";
 import { runUpdateWorkspaceUsageWorker } from "@app/temporal/usage_queue/worker";
+import { setupGlobalErrorHandler } from "@app/types";
 
 setupGlobalErrorHandler(logger);
 

@@ -8,12 +8,12 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { MouseEvent } from "react";
 import React, { useEffect, useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { checkProvider } from "@app/lib/providers";
+import type { WorkspaceType } from "@app/types";
 
 export type ProviderField = {
   name: string;
@@ -406,7 +406,9 @@ export function ProviderSetup({
             {renderFields()}
             <div className="text-sm">
               {testError ? (
-                <span className="text-red-500">Error: {testError}</span>
+                <span className="text-red-500">
+                  Error: {JSON.stringify(testError)}
+                </span>
               ) : testSuccessful ? (
                 <span className="text-green-600">
                   {testSuccessMessage ||

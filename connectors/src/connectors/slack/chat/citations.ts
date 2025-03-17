@@ -1,6 +1,9 @@
 import type { AgentActionPublicType } from "@dust-tt/client";
-import { isRetrievalActionType, isWebsearchActionType } from "@dust-tt/client";
-import { getTitleFromRetrievedDocument } from "@dust-tt/types";
+import {
+  getTitleFromRetrievedDocument,
+  isRetrievalActionType,
+  isWebsearchActionType,
+} from "@dust-tt/client";
 
 interface SlackMessageFootnote {
   index: number;

@@ -1,4 +1,4 @@
-import type { ActiveRoleType, RoleType } from "@dust-tt/types";
+import type { ActiveRoleType, RoleType } from "@app/types";
 
 export function displayRole(role: RoleType): string {
   return role === "user" ? "member" : role;

@@ -1,7 +1,3 @@
-import type { ConnectorType } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
-import type { PokeItemBase } from "@dust-tt/types/dist/front/lib/poke";
-
 import config from "@app/lib/api/config";
 import {
   getWorkspaceInfos,
@@ -16,6 +12,9 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type { PokeItemBase } from "@app/types";
+import type { ConnectorType } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 async function searchPokeWorkspaces(
   searchTerm: string

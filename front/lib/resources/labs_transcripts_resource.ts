@@ -1,10 +1,3 @@
-import type {
-  LabsTranscriptsConfigurationType,
-  LabsTranscriptsProviderType,
-  LightWorkspaceType,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { CreationAttributes } from "sequelize";
 import type {
   Attributes,
@@ -19,6 +12,15 @@ import { LabsTranscriptsConfigurationModel } from "@app/lib/resources/storage/mo
 import { LabsTranscriptsHistoryModel } from "@app/lib/resources/storage/models/labs_transcripts";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type {
+  LabsTranscriptsConfigurationType,
+  LabsTranscriptsProviderType,
+  LightWorkspaceType,
+  Result,
+} from "@app/types";
+import type { LabsTranscriptsProviderType, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

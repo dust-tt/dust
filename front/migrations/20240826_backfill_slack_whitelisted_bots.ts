@@ -1,4 +1,3 @@
-import { EnvironmentConfig } from "@dust-tt/types";
 import { QueryTypes, Sequelize } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
@@ -6,6 +5,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
+import { EnvironmentConfig } from "@app/types";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectorDB = new Sequelize(

@@ -6,14 +6,6 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { DocumentDeletionKey, DocumentViewRawContentKey } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -31,6 +23,14 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -38,7 +38,8 @@ export type UploadOrEditContentActionKey =
 
 export type ContentActionKey =
   | UploadOrEditContentActionKey
-  | "MultipleDocumentsUpload";
+  | "MultipleDocumentsUpload"
+  | "DeleteContentNode";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -138,7 +139,7 @@ export const ContentActions = React.forwardRef<
         <DocumentOrTableDeleteDialog
           dataSourceView={dataSourceView}
           owner={owner}
-          contentNode={contentNode ?? null}
+          contentNode={currentAction.contentNode ?? null}
         />
         <DataSourceViewDocumentModal
           owner={owner}
@@ -202,9 +203,18 @@ export const getMenuItems = (
       icon: TrashIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
+
         setQueryParam(router, DocumentDeletionKey, "true");
+
+        // If a setter if provided, use it to set the contentNode.
         if (setEffectiveContentNode) {
           setEffectiveContentNode(contentNode);
+        } else {
+          // Otherwise, use the ref to set the contentNode in the delete dialog.
+          contentActionsRef.current?.callAction(
+            "DeleteContentNode",
+            contentNode
+          );
         }
         if (onOpenDocument) {
           onOpenDocument(contentNode);

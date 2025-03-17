@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import {
   ScheduleAlreadyRunning,
   ScheduleOverlapPolicy,
@@ -9,6 +7,8 @@ import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { getPurgeRunExecutionsScheduleId } from "@app/temporal/hard_delete/utils";
 import { purgeRunExecutionsCronWorkflow } from "@app/temporal/hard_delete/workflows";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 

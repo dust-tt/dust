@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -13,6 +12,7 @@ import {
   MAX_PENDING_UPSERT_ACTIVITIES_PER_CHILD_WORKFLOW,
 } from "@connectors/connectors/notion/temporal/config";
 import { upsertDatabase } from "@connectors/connectors/notion/temporal/workflows/upserts";
+import type { ModelId } from "@connectors/types";
 
 const {
   cachePage,

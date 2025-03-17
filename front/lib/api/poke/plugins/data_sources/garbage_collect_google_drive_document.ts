@@ -1,10 +1,9 @@
-import type { Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 export async function garbageCollectGoogleDriveDocument(
   dataSource: DataSourceResource,

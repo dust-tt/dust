@@ -15,13 +15,6 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentUsageType,
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, pluralize } from "@dust-tt/types";
 import type { CellContext, Row } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
@@ -33,6 +26,13 @@ import {
 } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant_builder/Sharing";
 import { classNames, formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type {
+  AgentConfigurationScope,
+  AgentUsageType,
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { isBuilder, pluralize } from "@app/types";
 
 export const ASSISTANT_MANAGER_TABS = [
   // default shown tab = earliest in this list with non-empty agents

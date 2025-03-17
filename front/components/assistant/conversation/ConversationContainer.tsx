@@ -1,15 +1,4 @@
 import { Page, useSendNotification } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  MentionType,
-  Result,
-  SubscriptionType,
-  UploadedContentFragment,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
@@ -32,6 +21,17 @@ import {
   useConversationMessages,
   useConversations,
 } from "@app/lib/swr/conversations";
+import type {
+  AgentMention,
+  ContentFragmentsType,
+  LightAgentConfigurationType,
+  MentionType,
+  Result,
+  SubscriptionType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 interface ConversationContainerProps {
   owner: WorkspaceType;
@@ -99,7 +99,7 @@ export function ConversationContainer({
   const handleSubmit = async (
     input: string,
     mentions: MentionType[],
-    contentFragments: UploadedContentFragment[]
+    contentFragments: ContentFragmentsType
   ): Promise<Result<undefined, DustError>> => {
     if (!activeConversationId) {
       return new Err({
@@ -192,7 +192,7 @@ export function ConversationContainer({
     async (
       input: string,
       mentions: MentionType[],
-      contentFragments: UploadedContentFragment[]
+      contentFragments: ContentFragmentsType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({

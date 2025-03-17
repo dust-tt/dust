@@ -1,9 +1,12 @@
-import { CitationIndex, Separator } from "@dust-tt/sparkle";
-import { Citation, CitationIcons, CitationTitle } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
   Chip,
+  Citation,
+  CitationIcons,
+  CitationIndex,
+  CitationTitle,
+  ClipboardCheckIcon,
   ClipboardIcon,
   ContentMessage,
   ConversationMessage,
@@ -12,29 +15,9 @@ import {
   Markdown,
   Page,
   Popover,
+  Separator,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentActionType,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  RetrievalActionType,
-  UserType,
-  WebsearchActionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isRetrievalActionType,
-  isWebsearchActionType,
-  removeNulls,
-} from "@dust-tt/types";
 import { marked } from "marked";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -71,8 +54,28 @@ import {
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
 import { useEventSource } from "@app/hooks/useEventSource";
+import type { RetrievalActionType } from "@app/lib/actions/retrieval";
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
+import {
+  isRetrievalActionType,
+  isWebsearchActionType,
+} from "@app/lib/actions/types/guards";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
+import type {
+  AgentActionSuccessEvent,
+  AgentActionType,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageSuccessEvent,
+  AgentMessageType,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, GLOBAL_AGENTS_SID, removeNulls } from "@app/types";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -153,6 +156,7 @@ export function AgentMessage({
   const [activeReferences, setActiveReferences] = useState<
     { index: number; document: MarkdownCitation }[]
   >([]);
+  const [isCopied, copy] = useCopyToClipboard();
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(
@@ -242,8 +246,6 @@ export function AgentMessage({
       case "conversation_include_file_params":
       case "dust_app_run_block":
       case "dust_app_run_params":
-      case "github_create_issue_params":
-      case "github_get_pull_request_params":
       case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":
@@ -418,7 +420,7 @@ export function AgentMessage({
       : [
           <Button
             key="copy-msg-button"
-            tooltip="Copy to clipboard"
+            tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
             variant="outline"
             size="xs"
             onClick={async () => {
@@ -428,16 +430,16 @@ export function AgentMessage({
               // Convert markdown to HTML
               const htmlContent = await marked(markdownText);
 
-              void navigator.clipboard.write([
+              await copy(
                 new ClipboardItem({
                   "text/plain": new Blob([markdownText], {
                     type: "text/plain",
                   }),
                   "text/html": new Blob([htmlContent], { type: "text/html" }),
-                }),
-              ]);
+                })
+              );
             }}
-            icon={ClipboardIcon}
+            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
             className="text-muted-foreground"
           />,
           <Button

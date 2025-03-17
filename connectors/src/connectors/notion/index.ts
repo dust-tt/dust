@@ -1,10 +1,5 @@
-import type { ContentNode, ContentNodesViewType, Result } from "@dust-tt/types";
-import {
-  Err,
-  getOAuthConnectionAccessToken,
-  MIME_TYPES,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import _ from "lodash";
 
 import type {
@@ -32,7 +27,9 @@ import {
 } from "@connectors/lib/models/notion";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ContentNode, ContentNodesViewType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { getOAuthConnectionAccessToken, MIME_TYPES } from "@connectors/types";
 
 import { getOrphanedCount, hasChildren } from "./lib/parents";
 
@@ -549,6 +546,15 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
     });
 
     return new Ok(nodes.concat(folderNodes));
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions(): Promise<Result<void, Error>> {

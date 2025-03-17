@@ -1,17 +1,3 @@
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-  isTextExtractionSupportedContentType,
-  Ok,
-  TextExtraction,
-} from "@dust-tt/types";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import { Readable } from "stream";
@@ -23,6 +9,17 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
+import {
+  assertNever,
+  Err,
+  isDustMimeType,
+  isSupportedDelimitedTextContentType,
+  isSupportedImageContentType,
+  isTextExtractionSupportedContentType,
+  Ok,
+  TextExtraction,
+} from "@app/types";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 
@@ -242,6 +239,8 @@ const getProcessingFunction = ({
     case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
     case "application/vnd.ms-powerpoint":
     case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    case "application/vnd.google-apps.document":
+    case "application/vnd.google-apps.presentation":
     case "application/pdf":
       if (["conversation", "upsert_document"].includes(useCase)) {
         return extractTextFromFileAndUpload;
@@ -289,8 +288,16 @@ const getProcessingFunction = ({
         return storeRawText;
       }
       break;
-
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return storeRawText;
+      }
+      break;
+    // Processing is assumed to be irrelevant for internal mime types.
     default:
+      if (isDustMimeType(contentType)) {
+        break;
+      }
       assertNever(contentType);
   }
 

@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dust-tt/types": "file:../types",
     "dd-trace": "^5.1.0",
     "html-to-image": "^1.11.11",
     "lucide-react": "^0.446.0",

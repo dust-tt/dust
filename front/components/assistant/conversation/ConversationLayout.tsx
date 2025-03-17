@@ -1,4 +1,3 @@
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
@@ -16,6 +15,7 @@ import { AssistantSidebarMenu } from "@app/components/assistant/conversation/Sid
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import { useConversation } from "@app/lib/swr/conversations";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export interface ConversationLayoutProps {
   baseUrl: string;

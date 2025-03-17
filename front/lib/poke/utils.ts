@@ -1,14 +1,13 @@
-import type {
-  PokeDataSourceType,
-  PokeDataSourceViewType,
-  PokeSpaceType,
-} from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
+import type {
+  PokeDataSourceType,
+  PokeDataSourceViewType,
+  PokeSpaceType,
+} from "@app/types";
 
 export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
   return {

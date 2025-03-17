@@ -1,9 +1,7 @@
-import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
@@ -28,7 +26,8 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
-import { DataSourceViewForConversation } from "@app/lib/resources/storage/models/data_source_view_conversation";
+import type { ConversationWithoutContentType, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -149,15 +148,8 @@ async function destroyConversationDataSource(
   );
 
   if (dataSource) {
-    // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
-    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
-      auth,
-      dataSource
-    );
-
-    if (r.isErr()) {
-      throw new Error(`Failed to delete data source: ${r.error.message}`);
-    }
+    // Directly delete the data source.
+    await hardDeleteDataSource(auth, dataSource);
   }
 }
 
@@ -235,10 +227,6 @@ export async function destroyConversation(
   }
 
   await ConversationParticipant.destroy({
-    where: { conversationId: conversation.id },
-  });
-
-  await DataSourceViewForConversation.destroy({
     where: { conversationId: conversation.id },
   });
 

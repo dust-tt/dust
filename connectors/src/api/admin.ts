@@ -1,15 +1,12 @@
-import type {
-  AdminCommandType,
-  AdminResponseType,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import { AdminCommandSchema } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 
 import { runCommand } from "@connectors/lib/cli";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
+import type { AdminCommandType, AdminResponseType } from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { AdminCommandSchema } from "@connectors/types";
 
 const whitelistedCommands = [
   {

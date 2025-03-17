@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Connection } from "jsforce";
 import jsforce from "jsforce";
 

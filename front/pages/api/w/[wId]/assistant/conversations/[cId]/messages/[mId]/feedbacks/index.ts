@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -14,6 +13,7 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export const MessageFeedbackRequestBodySchema = t.type({
   thumbDirection: t.string,
@@ -83,7 +83,7 @@ async function handler(
       const created = await upsertMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
         thumbDirection: bodyValidation.right
           .thumbDirection as AgentMessageFeedbackDirection,
         content: bodyValidation.right.feedbackContent || "",
@@ -106,7 +106,7 @@ async function handler(
       const deleted = await deleteMessageFeedback(auth, {
         messageId,
         conversation,
-        user,
+        user: user.toJSON(),
       });
 
       if (deleted) {

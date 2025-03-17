@@ -1,5 +1,3 @@
-import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import assert from "assert";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
@@ -24,7 +22,6 @@ import {
   AgentProcessConfiguration,
 } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
-import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import {
   AgentTablesQueryAction,
   AgentTablesQueryConfiguration,
@@ -59,13 +56,12 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
+import { CoreAPI } from "@app/types";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -96,34 +92,6 @@ export async function scrubDataSourceActivity({
       "Data source is not soft deleted."
     );
     throw new Error("Data source is not soft deleted.");
-  }
-
-  const { dustAPIProjectId } = dataSource;
-
-  const storage = new Storage({ keyFilename: config.getServiceAccount() });
-
-  const [files] = await storage
-    .bucket(config.getDustDataSourcesBucket())
-    .getFiles({ prefix: dustAPIProjectId });
-
-  const chunkSize = 32;
-  const chunks = [];
-  for (let i = 0; i < files.length; i += chunkSize) {
-    chunks.push(files.slice(i, i + chunkSize));
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((f) => {
-        return (async () => {
-          await f.delete();
-        })();
-      })
-    );
   }
 
   await hardDeleteDataSource(auth, dataSource);
@@ -457,11 +425,6 @@ export async function deleteMembersActivity({
 
       // If the user we're removing the membership of only has one membership, we delete the user.
       if (membershipsOfUser.length === 1) {
-        await UserMetadataModel.destroy({
-          where: {
-            userId: user.id,
-          },
-        });
         hardDeleteLogger.info(
           {
             membershipId: membership.id,
@@ -550,11 +513,6 @@ export async function deleteWorkspaceActivity({
     },
   });
   await FeatureFlag.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-  await PlatformActionsConfigurationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

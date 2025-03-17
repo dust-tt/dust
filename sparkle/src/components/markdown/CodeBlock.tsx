@@ -1,6 +1,6 @@
 import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
-import { amber, emerald, pink, sky, slate, violet } from "tailwindcss/colors";
+import { amber, emerald, pink, sky, violet } from "tailwindcss/colors";
 
 const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
@@ -9,7 +9,7 @@ const SyntaxHighlighter = React.lazy(
 export const codeBlockVariants = cva(
   [
     "s-mx-0.5 s-cursor-text s-rounded-lg s-border s-px-1.5 s-py-1",
-    "s-border-border-dark dark:s-border-border-dark-night",
+    "s-border-border dark:s-border-border-night",
   ],
   {
     variants: {
@@ -82,7 +82,7 @@ export function CodeBlock({
     },
     "hljs-variable": {
       // Regular variables
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-literal": {
       // true, false, null
@@ -102,11 +102,11 @@ export function CodeBlock({
     },
     "hljs-property": {
       // Object properties
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-punctuation": {
       // Brackets, dots, etc
-      color: slate[900],
+      color: "var(--s-foreground)",
     },
     "hljs-operator": {
       // =, +, -, etc

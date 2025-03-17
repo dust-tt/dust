@@ -1,16 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import {
-  Err,
-  getGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
@@ -21,6 +10,7 @@ import {
   GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
 } from "@connectors/connectors/google_drive/lib/consts";
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
+import { getFileParentsMemoized } from "@connectors/connectors/google_drive/lib/hierarchy";
 import { getPermissionViewType } from "@connectors/connectors/google_drive/lib/permissions";
 import {
   folderHasChildren,
@@ -64,9 +54,18 @@ import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  getGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
+} from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -378,6 +377,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             drives.map(async (d): Promise<ContentNode> => {
               const driveObject = await getGoogleDriveObject({
+                connectorId: c.id,
                 authCredentials,
                 driveObjectId: d.id,
               });
@@ -477,6 +477,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             remoteFolders.map(async (rf): Promise<ContentNode> => {
               const driveObject = await driveObjectToDustType(
+                this.connectorId,
                 rf,
                 authCredentials
               );
@@ -678,6 +679,56 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+    memoizationKey,
+  }: {
+    internalId: string;
+    memoizationKey: string;
+  }): Promise<Result<string[], Error>> {
+    try {
+      const connector = await ConnectorResource.fetchById(this.connectorId);
+      if (!connector) {
+        return new Err(
+          new Error(`Connector not found with id ${this.connectorId}`)
+        );
+      }
+
+      if (
+        internalId === getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
+      ) {
+        return new Ok([]);
+      }
+
+      const authCredentials = await getAuthObject(connector.connectionId);
+
+      const driveObject = await getGoogleDriveObject({
+        connectorId: this.connectorId,
+        authCredentials,
+        driveObjectId: getDriveFileId(internalId),
+        cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
+      });
+
+      if (!driveObject) {
+        return new Err(
+          new Error(`Drive object not found with id ${internalId}`)
+        );
+      }
+
+      const parents = await getFileParentsMemoized(
+        this.connectorId,
+        authCredentials,
+        driveObject,
+        memoizationKey,
+        { includeAllRemoteParents: true }
+      );
+
+      return new Ok(parents.map((p) => getInternalId(p)));
+    } catch (err) {
+      return new Err(err as Error);
+    }
+  }
+
   async getConfigurationKey({
     configKey,
   }: {
@@ -804,6 +855,7 @@ async function getFoldersAsContentNodes({
     folders,
     async (f): Promise<ContentNode | null> => {
       const fd = await getGoogleDriveObject({
+        connectorId: f.connectorId,
         authCredentials,
         driveObjectId: f.folderId,
       });

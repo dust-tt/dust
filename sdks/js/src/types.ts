@@ -73,6 +73,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unknown_connector_provider"
   | "invalid_request_error"
+  | "connector_authorization_error"
   | "connector_not_found"
   | "connector_configuration_not_found"
   | "connector_update_error"
@@ -90,11 +91,25 @@ const ConnectorsAPIErrorSchema = z.object({
   message: z.string(),
 });
 
+export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
+
 const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
+
+export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string" &&
+    ConnectorsAPIErrorSchema.safeParse(obj).success
+  );
+}
 
 // Supported content types that are plain text and can be sent as file-less content fragment.
 export const supportedOtherFileFormats = {
@@ -108,11 +123,14 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.google-apps.document": [],
+  "application/vnd.google-apps.presentation": [],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
   ],
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
+  "application/vnd.dust.section.json": [".json"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -286,6 +304,11 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
+export const isConnectorProvider = (
+  provider: string
+): provider is ConnectorProvider =>
+  ConnectorProvidersSchema.safeParse(provider).success;
+
 const EditedByUserSchema = z.object({
   editedAt: z.number().nullable(),
   fullName: z.string().nullable(),
@@ -355,6 +378,8 @@ const CoreAPIRowSchema = z.object({
   row_id: z.string(),
   value: z.record(CoreAPIRowValueSchema),
 });
+
+export type CoreAPIRowType = z.infer<typeof CoreAPIRowSchema>;
 
 const CoreAPITableSchema = z.array(
   z.object({
@@ -722,6 +747,7 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
   resultsFileId: z.string().nullable(),
   resultsFileSnippet: z.string().nullable(),
+  sectionFileId: z.string().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
@@ -729,69 +755,6 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("tables_query_action"),
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
-
-const GithubGetPullRequestParamsSchema = z.object({
-  owner: z.string(),
-  repo: z.string(),
-  pullNumber: z.number(),
-});
-
-const GithubPullCommitSchema = z.object({
-  sha: z.string(),
-  message: z.string(),
-  author: z.string(),
-});
-
-const GithubPullCommentSchema = z.object({
-  createdAt: z.number(),
-  author: z.string(),
-  body: z.string(),
-});
-
-const GithubPullReviewCommentSchema = z.object({
-  body: z.string(),
-  path: z.string(),
-  line: z.number(),
-});
-
-const GithubPullReviewSchema = z.object({
-  createdAt: z.number(),
-  author: z.string(),
-  body: z.string(),
-  state: z.string(),
-  comments: GithubPullReviewCommentSchema.array(),
-});
-
-const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
-  params: GithubGetPullRequestParamsSchema,
-  pullBody: z.string().nullable(),
-  pullDiff: z.string().nullable(),
-  pullCommits: GithubPullCommitSchema.array().nullable(),
-  pullComments: GithubPullCommentSchema.array().nullable(),
-  pullReviews: GithubPullReviewSchema.array().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("github_get_pull_request_action"),
-});
-
-const GithubCreateIssueParamsSchema = z.object({
-  owner: z.string(),
-  repo: z.string(),
-  title: z.string(),
-  body: z.string(),
-});
-
-const GithubCreateIssueActionSchema = BaseActionSchema.extend({
-  params: GithubCreateIssueParamsSchema,
-  issueNumber: z.number().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("github_create_issue_action"),
-});
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
@@ -816,6 +779,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
   | "search_knowledge_builder"
   | "attach_from_datasources"
+  | "force_gdrive_labels_scope"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -1046,8 +1010,6 @@ const AgentActionTypeSchema = z.union([
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  GithubGetPullRequestActionSchema,
-  GithubCreateIssueActionSchema,
   ReasoningActionTypeSchema,
   SearchLabelsActionTypeSchema,
 ]);
@@ -1187,22 +1149,6 @@ const DustAppRunBlockEventSchema = z.object({
   action: DustAppRunActionTypeSchema,
 });
 
-const GithubGetPullRequestParamsEventSchema = z.object({
-  type: z.literal("github_get_pull_request_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: GithubGetPullRequestActionSchema,
-});
-
-const GithubCreateIssueParamsEventSchema = z.object({
-  type: z.literal("github_create_issue_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: GithubCreateIssueActionSchema,
-});
-
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1304,8 +1250,6 @@ const AgentActionSpecificEventSchema = z.union([
   ConversationIncludeFileParamsEventSchema,
   DustAppRunBlockEventSchema,
   DustAppRunParamsEventSchema,
-  GithubCreateIssueParamsEventSchema,
-  GithubGetPullRequestParamsEventSchema,
   ProcessParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
@@ -1423,6 +1367,8 @@ export const CoreAPIErrorSchema = z.object({
   code: z.string(),
 });
 
+export type CoreAPIError = z.infer<typeof CoreAPIErrorSchema>;
+
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
@@ -1524,6 +1470,8 @@ export const WorkspaceDomainSchema = z.object({
   domain: z.string(),
   domainAutoJoinEnabled: z.boolean(),
 });
+
+export type WorkspaceDomainType = z.infer<typeof WorkspaceDomainSchema>;
 
 export const DustAppTypeSchema = z.object({
   appHash: z.string(),
@@ -2136,6 +2084,10 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   title: z.string().nullable().optional(),
 });
 
+export type PostDataSourceDocumentRequestType = z.infer<
+  typeof PostDataSourceDocumentRequestSchema
+>;
+
 const GetDocumentResponseSchema = z.object({
   document: CoreAPIDocumentSchema,
 });
@@ -2611,3 +2563,20 @@ export const AppsCheckResponseSchema = z.object({
 });
 
 export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
+
+// TODO(mcp) move directly in the action type ?
+export const ACTION_RUNNING_LABELS: Record<
+  AgentActionPublicType["type"],
+  string
+> = {
+  browse_action: "Browsing page",
+  conversation_include_file_action: "Reading file",
+  conversation_list_files_action: "Listing files",
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  reasoning_action: "Reasoning",
+  retrieval_action: "Searching data",
+  search_labels_action: "Searching labels",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+};

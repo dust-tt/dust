@@ -1,4 +1,19 @@
 import { CircleIcon, SquareIcon, TriangleIcon } from "@dust-tt/sparkle";
+import { uniqueId } from "lodash";
+import type { SVGProps } from "react";
+import type React from "react";
+
+import {
+  DEFAULT_PROCESS_ACTION_NAME,
+  DEFAULT_REASONING_ACTION_DESCRIPTION,
+  DEFAULT_REASONING_ACTION_NAME,
+  DEFAULT_RETRIEVAL_ACTION_NAME,
+  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
+  DEFAULT_TABLES_QUERY_ACTION_NAME,
+  DEFAULT_WEBSEARCH_ACTION_NAME,
+} from "@app/lib/actions/constants";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
   AgentConfigurationScope,
   AgentReasoningEffort,
@@ -7,35 +22,16 @@ import type {
   ModelIdType,
   ModelProviderIdType,
   PlanType,
-  ProcessSchemaPropertyType,
   SubscriptionType,
   SupportedModel,
   TimeframeUnit,
   WorkspaceType,
-} from "@dust-tt/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@dust-tt/types";
+} from "@app/types";
+import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-} from "@dust-tt/types";
-import { uniqueId } from "lodash";
-import type { SVGProps } from "react";
-import type React from "react";
-
-import {
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-  DEFAULT_PROCESS_ACTION_NAME,
-  DEFAULT_REASONING_ACTION_DESCRIPTION,
-  DEFAULT_REASONING_ACTION_NAME,
-  DEFAULT_RETRIEVAL_ACTION_NAME,
-  DEFAULT_RETRIEVAL_NO_QUERY_ACTION_NAME,
-  DEFAULT_TABLES_QUERY_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+} from "@app/types";
 
 export const ACTION_MODES = [
   "GENERIC",
@@ -114,9 +110,6 @@ export type AssistantBuilderProcessConfiguration = {
 // Websearch configuration (no configuraiton)
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 
-// Github configuration (no configuraiton)
-export type AssistantBuilderGithubConfiguration = Record<string, never>;
-
 // Reasoning configuration
 export type AssistantBuilderReasoningConfiguration = {
   modelId: ModelIdType | null;
@@ -151,14 +144,6 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "WEB_NAVIGATION";
       configuration: AssistantBuilderWebNavigationConfiguration;
-    }
-  | {
-      type: "GITHUB_GET_PULL_REQUEST";
-      configuration: AssistantBuilderGithubConfiguration;
-    }
-  | {
-      type: "GITHUB_CREATE_ISSUE";
-      configuration: AssistantBuilderGithubConfiguration;
     }
   | {
       type: "REASONING";
@@ -341,26 +326,6 @@ export function getDefaultWebsearchActionConfiguration(): AssistantBuilderAction
   };
 }
 
-export function getDefaultGithubGetPullRequestActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "GITHUB_GET_PULL_REQUEST",
-    configuration: {},
-    name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-    description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-    noConfigurationRequired: true,
-  };
-}
-
-export function getDefaultGithubCreateIssueActionConfiguration(): AssistantBuilderActionConfiguration {
-  return {
-    type: "GITHUB_CREATE_ISSUE",
-    configuration: {},
-    name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-    description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-    noConfigurationRequired: true,
-  };
-}
-
 export function getDefaultReasoningActionConfiguration(): AssistantBuilderActionConfiguration {
   return {
     type: "REASONING",
@@ -395,10 +360,6 @@ export function getDefaultActionConfiguration(
         return getDefaultProcessActionConfiguration();
       case "WEB_NAVIGATION":
         return getDefaultWebsearchActionConfiguration();
-      case "GITHUB_GET_PULL_REQUEST":
-        return getDefaultGithubGetPullRequestActionConfiguration();
-      case "GITHUB_CREATE_ISSUE":
-        return getDefaultGithubCreateIssueActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
       default:

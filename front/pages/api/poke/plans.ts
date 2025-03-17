@@ -1,4 +1,3 @@
-import type { PlanType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,6 +9,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
+import type { PlanType, WithAPIErrorResponse } from "@app/types";
 
 export const PlanTypeSchema = t.type({
   code: t.string,

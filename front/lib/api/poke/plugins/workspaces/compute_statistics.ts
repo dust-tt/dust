@@ -1,14 +1,15 @@
-import {
-  concurrentExecutor,
-  Err,
-  maxFileSizeToHumanReadable,
-  Ok,
-} from "@dust-tt/types";
 import assert from "assert";
 
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import {
+  concurrentExecutor,
+  Err,
+  maxFileSizeToHumanReadable,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 type WorkspaceStats = {
   dataSources: {
@@ -48,7 +49,9 @@ export const computeWorkspaceStatsPlugin = createPlugin({
     if (hasError) {
       return new Err(
         new Error("Error computing statistics.", {
-          cause: results.filter((r) => r.isErr()).map((r) => r.error),
+          cause: removeNulls(
+            results.map((r) => (r.isErr() ? r.error.message : null))
+          ),
         })
       );
     }

@@ -1,8 +1,9 @@
 import type { NotificationType } from "@dust-tt/sparkle";
 import { IconButton, SliderToggle } from "@dust-tt/sparkle";
-import type { WhitelistableFeature, WorkspaceType } from "@dust-tt/types";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
+
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
 
 type FeatureFlagsDisplayType = {
   name: WhitelistableFeature;

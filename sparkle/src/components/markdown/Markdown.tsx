@@ -255,7 +255,7 @@ function LinkBlock({
       rel="noopener noreferrer"
       className={cn(
         "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-        "dark:s-text-highlight-night s-text-highlight",
+        "s-text-highlight dark:s-text-highlight-night",
         "hover:s-text-action-400 dark:hover:s-text-action-400-night",
         "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
       )}

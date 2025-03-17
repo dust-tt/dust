@@ -1,4 +1,10 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Provider } from "@app/lib/resources/storage/models/apps";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
@@ -13,13 +19,7 @@ import {
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-} from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
-import { apiError } from "@app/logger/withlogging";
+} from "@app/types";
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;
@@ -166,6 +166,7 @@ async function handler(
                     m.model.startsWith("o3")) &&
                   (!chat ||
                     m.model.startsWith("o1-") ||
+                    m.model.startsWith("o3") ||
                     m.model.startsWith("gpt-3.5-turbo") ||
                     m.model.startsWith("gpt-4"))
                 );

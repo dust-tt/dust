@@ -4,14 +4,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  ModelId,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isProviderWithDefaultWorkspaceConfiguration } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
@@ -29,6 +21,22 @@ import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_tr
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import type { WhitelistableFeature, WorkspaceType } from "@app/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
+import { setupOAuthConnection } from "@app/types";
+
+const defaultTranscriptConfigurationState = {
+  provider: "",
+  isGDriveConnected: false,
+  isGongConnected: false,
+  isModjoConnected: false,
+  assistantSelected: null,
+  isActive: false,
+  dataSourceView: null,
+  credentialId: null,
+  hasDefaultConfiguration: false,
+};
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

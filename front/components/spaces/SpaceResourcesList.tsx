@@ -12,16 +12,6 @@ import {
   TrashIcon,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
 import React, {
@@ -33,7 +23,7 @@ import React, {
 } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
@@ -56,6 +46,16 @@ import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategory,
+  DataSourceViewsWithDetails,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isWebsiteOrFolderCategory } from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -300,11 +300,8 @@ export const SpaceResourcesList = ({
     category,
   });
 
-  const {
-    searchTerm: dataSourceSearch,
-    setIsSearchDisabled,
-    setTargetDataSourceViews,
-  } = useContext(SpaceSearchContext);
+  const { setIsSearchDisabled, setTargetDataSourceViews } =
+    useContext(SpaceSearchContext);
 
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
@@ -536,8 +533,6 @@ export const SpaceResourcesList = ({
             isWebsite,
             space
           )}
-          filter={dataSourceSearch}
-          filterColumn="name"
           sorting={sorting}
           setSorting={setSorting}
           pagination={pagination}

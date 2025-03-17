@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { EnterpriseUpgradeFormSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -17,6 +15,8 @@ import {
   pokeUpgradeWorkspaceToEnterprise,
 } from "@app/lib/plans/subscription";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { EnterpriseUpgradeFormSchema } from "@app/types";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
   success: boolean;

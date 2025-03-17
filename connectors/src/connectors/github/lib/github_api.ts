@@ -1,10 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import {
-  EnvironmentConfig,
-  Err,
-  getOAuthConnectionAccessToken,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -55,6 +50,10 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  EnvironmentConfig,
+  getOAuthConnectionAccessToken,
+} from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
 

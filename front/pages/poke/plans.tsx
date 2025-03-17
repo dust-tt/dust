@@ -8,7 +8,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { PlanType } from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { ReactElement } from "react";
 import React from "react";
@@ -26,6 +25,7 @@ import PokeLayout from "@app/components/poke/PokeLayout";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
+import type { PlanType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<object>(
   async () => {

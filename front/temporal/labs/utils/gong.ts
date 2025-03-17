@@ -1,11 +1,11 @@
-import type { ConnectorType } from "@dust-tt/types";
-import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import type { ConnectorType } from "@app/types";
+import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@app/types";
+import { getOAuthConnectionAccessToken } from "@app/types";
 
 const getGongAccessToken = async (connectionId: string, logger: Logger) => {
   const tokRes = await getOAuthConnectionAccessToken({

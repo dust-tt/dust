@@ -1,10 +1,4 @@
 import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import {
-  assertNever,
-  dustManagedCredentials,
-  isEmptyString,
-  isProviderWithDefaultWorkspaceConfiguration,
-} from "@dust-tt/types";
 import { Err } from "@dust-tt/types";
 import { CoreAPI } from "@dust-tt/types";
 import { marked } from "marked";
@@ -40,6 +34,16 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/utils/modjo";
+import type { AgentMessageType, ModelId } from "@app/types";
+import {
+  assertNever,
+  dustManagedCredentials,
+  isEmptyString,
+  isProviderWithDefaultWorkspaceConfiguration,
+} from "@app/types";
+import { assertNever, dustManagedCredentials, isEmptyString } from "@app/types";
+import { Err } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -89,11 +93,17 @@ export async function retrieveNewTranscriptsActivity(
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
-      const googleTranscriptsIds = await retrieveGoogleTranscripts(
+      const googleTranscriptsRes = await retrieveGoogleTranscripts(
         auth,
         transcriptsConfiguration,
         localLogger
       );
+      if (googleTranscriptsRes.isErr()) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+        await transcriptsConfiguration.setIsActive(false);
+        throw googleTranscriptsRes.error;
+      }
+      const googleTranscriptsIds = googleTranscriptsRes.value;
       transcriptsIdsToProcess.push(...googleTranscriptsIds);
       break;
 

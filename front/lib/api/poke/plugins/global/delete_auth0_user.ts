@@ -1,11 +1,10 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import {
   getAuth0ManagemementClient,
   getAuth0UsersFromEmail,
 } from "@app/lib/api/auth0";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
 export const deleteAuth0UserPlugin = createPlugin({
   manifest: {

@@ -9,21 +9,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  MoreIcon,
   Page,
   ShapesIcon,
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
@@ -41,6 +31,11 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
+import type {
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -319,17 +314,11 @@ export default function Subscription({
                   <Chip size="sm" color={chipColor} label={planLabel} />
                   {!subscription.trialing &&
                     subscription.stripeSubscriptionId && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button icon={MoreIcon} variant="ghost" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Manage my subscription"
-                            onClick={handleGoToStripePortal}
-                          />
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button
+                        label="Manage my subscription"
+                        onClick={handleGoToStripePortal}
+                        variant="outline"
+                      />
                     )}
                 </Page.Horizontal>
               </>

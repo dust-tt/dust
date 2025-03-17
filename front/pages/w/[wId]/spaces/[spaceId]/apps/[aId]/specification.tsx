@@ -1,6 +1,4 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { AppType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -13,6 +11,8 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { dumpSpecification } from "@app/lib/specification";
 import logger from "@app/logger/logger";
+import type { AppType, SubscriptionType, WorkspaceType } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

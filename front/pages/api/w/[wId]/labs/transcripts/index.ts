@@ -1,12 +1,3 @@
-import type {
-  LabsTranscriptsConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  isCredentialProvider,
-  isProviderWithDefaultWorkspaceConfiguration,
-  OAuthAPI,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -19,6 +10,17 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  LabsTranscriptsConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  isCredentialProvider,
+  isProviderWithDefaultWorkspaceConfiguration,
+  OAuthAPI,
+} from "@app/types";
+import { isCredentialProvider, OAuthAPI } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationType | null;

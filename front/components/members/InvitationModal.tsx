@@ -13,11 +13,6 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ActiveRoleType,
-  SubscriptionPerSeatPricing,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 import { mutate } from "swr";
 
@@ -31,6 +26,11 @@ import {
   sendInvitations,
 } from "@app/lib/invitations";
 import { isEmailValid } from "@app/lib/utils";
+import type {
+  ActiveRoleType,
+  SubscriptionPerSeatPricing,
+  WorkspaceType,
+} from "@app/types";
 
 export function InviteEmailModal({
   owner,

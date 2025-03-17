@@ -1,11 +1,10 @@
 import {
   BarHeader,
   Button,
+  DustLogoSquare,
   Icon,
-  LogoSquareColorLogo,
   Page,
 } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -17,6 +16,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
@@ -144,7 +144,7 @@ export default function NoWorkspace({
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
         <div className="flex flex-col gap-2">
           <div className="items-left justify-left flex flex-row">
-            <Icon visual={LogoSquareColorLogo} size="md" />
+            <Icon visual={DustLogoSquare} size="md" />
           </div>
           <span className="text-2xl font-bold text-foreground dark:text-foreground-night">
             Hello {userFirstName}!

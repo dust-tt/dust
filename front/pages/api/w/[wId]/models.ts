@@ -1,11 +1,3 @@
-import type {
-  ModelConfigurationType,
-  PlanType,
-  WhitelistableFeature,
-  WithAPIErrorResponse,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isProviderWhitelisted } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import {
@@ -17,6 +9,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ModelConfigurationType,
+  PlanType,
+  WhitelistableFeature,
+  WithAPIErrorResponse,
+  WorkspaceType,
+} from "@app/types";
+import { isProviderWhitelisted } from "@app/types";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];

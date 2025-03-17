@@ -1,19 +1,15 @@
-import type {
-  Result,
-  UserMetadataType,
-  UserType,
-  UserTypeWithExtensionWorkspaces,
-  UserTypeWithWorkspaces,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  Result,
+  UserTypeWithExtensionWorkspaces,
+  UserTypeWithWorkspaces,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 import { MembershipResource } from "../resources/membership_resource";
 
@@ -47,63 +43,6 @@ export async function getUserForWorkspace(
   }
 
   return user;
-}
-
-/**
- * Server-side interface to get user metadata.
- * @param user UserType the user to get metadata for.
- * @param key string the key of the metadata to get.
- * @returns UserMetadataType | null
- */
-export async function getUserMetadata(
-  user: UserType,
-  key: string
-): Promise<UserMetadataType | null> {
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key,
-    },
-  });
-
-  if (!metadata) {
-    return null;
-  }
-
-  return {
-    key: metadata.key,
-    value: metadata.value,
-  };
-}
-
-/**
- * Server-side interface to set user metadata.
- * @param user UserType the user to get metadata for.
- * @param update UserMetadata the metadata to set for the user.
- * @returns UserMetadataType | null
- */
-export async function setUserMetadata(
-  user: UserType,
-  update: UserMetadataType
-): Promise<void> {
-  const metadata = await UserMetadataModel.findOne({
-    where: {
-      userId: user.id,
-      key: update.key,
-    },
-  });
-
-  if (!metadata) {
-    await UserMetadataModel.create({
-      userId: user.id,
-      key: update.key,
-      value: update.value,
-    });
-    return;
-  }
-
-  metadata.value = update.value;
-  await metadata.save();
 }
 
 export async function fetchRevokedWorkspace(

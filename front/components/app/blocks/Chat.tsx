@@ -7,6 +7,11 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
+import { useState } from "react";
+
+import ModelPicker from "@app/components/app/ModelPicker";
+import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -14,12 +19,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import dynamic from "next/dynamic";
-import { useState } from "react";
-
-import ModelPicker from "@app/components/app/ModelPicker";
-import { classNames, shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 

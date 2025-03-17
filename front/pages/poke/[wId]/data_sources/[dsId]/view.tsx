@@ -1,6 +1,4 @@
 import { Input, Page, TextArea } from "@dust-tt/sparkle";
-import type { CoreAPIDocument } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -10,6 +8,8 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { CoreAPIDocument } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;

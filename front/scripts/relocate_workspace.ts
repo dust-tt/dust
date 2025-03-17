@@ -1,5 +1,3 @@
-import { assertNever } from "@dust-tt/types";
-
 import { updateAllWorkspaceUsersRegionMetadata } from "@app/admin/relocate_users";
 import {
   pauseAllManagedDataSources,
@@ -19,6 +17,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
+import { assertNever } from "@app/types";
 
 const RELOCATION_STEPS = [
   "relocate",
@@ -60,9 +59,21 @@ makeScript(
       choices: RELOCATION_STEPS,
       demandOption: true,
     },
+    skipUsersWithMultipleMemberships: {
+      type: "boolean",
+      required: false,
+      default: false,
+    },
   },
   async (
-    { destinationRegion, sourceRegion, step, workspaceId, execute },
+    {
+      destinationRegion,
+      sourceRegion,
+      step,
+      workspaceId,
+      execute,
+      skipUsersWithMultipleMemberships,
+    },
     logger
   ) => {
     if (!isRegionType(sourceRegion) || !isRegionType(destinationRegion)) {
@@ -133,6 +144,7 @@ makeScript(
               execute,
               newRegion: destinationRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+              skipUsersWithMultipleMemberships,
             });
           if (updateUsersRegionToDestRes.isErr()) {
             logger.error(
@@ -159,9 +171,11 @@ makeScript(
             return;
           }
 
-          // 2) Resume all connectors in the destination region.
-          const resumeDestConnectorsRes =
-            await resumeAllManagedDataSources(auth);
+          // 2) Resume all webcrawler connectors in the destination region.
+          const resumeDestConnectorsRes = await resumeAllManagedDataSources(
+            auth,
+            ["webcrawler"]
+          );
           if (resumeDestConnectorsRes.isErr()) {
             logger.error(
               `Failed to resume connectors: ${resumeDestConnectorsRes.error.message}`
@@ -200,6 +214,7 @@ makeScript(
               execute,
               newRegion: sourceRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
+              skipUsersWithMultipleMemberships: false,
             });
           if (updateUsersRegionToSrcRes.isErr()) {
             logger.error(

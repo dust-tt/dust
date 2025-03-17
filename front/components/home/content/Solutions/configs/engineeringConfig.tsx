@@ -26,7 +26,7 @@ export const pageSettings: pageSettingsProps = {
   uptitle: "Engineering",
   title: <>Ship Better Code, Reduce Interruptions</>,
   from: "from-blue-200",
-  to: "to-blue-500",
+  to: "to-blue-200",
   description: (
     <>
       Streamline incident response, automate documentation, and keep your team

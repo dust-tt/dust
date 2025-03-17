@@ -1,8 +1,8 @@
-import { safeParseJSON } from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
+import { safeParseJSON } from "@app/types";
 
 // client-side counterpart of persisted_navigation_selection.ts
 

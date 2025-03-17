@@ -1,10 +1,5 @@
-import type {
-  ConnectorProvider,
-  ModelId,
-  SlackConfigurationType,
-  WebCrawlerConfigurationType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import type { CreationAttributes, Model, Transaction } from "sequelize";
 
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
@@ -34,6 +29,11 @@ import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snow
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import { ZendeskConnectorStrategy } from "@connectors/resources/connector/zendesk";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  SlackConfigurationType,
+  WebCrawlerConfigurationType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 import type { BaseResource } from "../base_resource";
 

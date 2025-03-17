@@ -1,10 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 export async function syncSalesforceConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes =

@@ -1,14 +1,14 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { mergeUserIdentities } from "@app/lib/iam/users";
+import { Err, Ok } from "@app/types";
 
 export const userIdentityMergePlugin = createPlugin({
   manifest: {
     id: "merge-user-identities",
     name: "Merge user identities",
     description:
-      "Merge two user identities with the same email into a single identity, consolidating all related data.",
+      "Merge two user identities with the same email (or not) into a single identity, " +
+      "consolidating all related data.",
     resourceTypes: ["workspaces"],
     args: {
       primaryUserId: {
@@ -22,6 +22,13 @@ export const userIdentityMergePlugin = createPlugin({
         label: "Secondary user ID",
         description:
           "User ID of the secondary user (the one that won't be kept after the merge)",
+      },
+      ignoreEmailMatch: {
+        type: "boolean",
+        label: "Ignore email match",
+        description:
+          "If true, the secondary user's email will not be checked against the primary user's email.",
+        default: false,
       },
     },
   },
@@ -37,6 +44,7 @@ export const userIdentityMergePlugin = createPlugin({
       auth,
       primaryUserId,
       secondaryUserId,
+      enforceEmailMatch: !args.ignoreEmailMatch,
     });
 
     if (mergeResult.isErr()) {

@@ -1,7 +1,3 @@
-import type {
-  APIErrorWithStatusCode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import tracer from "dd-trace";
 import StatsD from "hot-shots";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +7,7 @@ import type {
   CustomGetServerSideProps,
   UserPrivilege,
 } from "@app/lib/iam/session";
+import type { APIErrorWithStatusCode, WithAPIErrorResponse } from "@app/types";
 
 import logger from "./logger";
 

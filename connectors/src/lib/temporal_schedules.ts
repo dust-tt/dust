@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, normalizeError, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   Client,
   ScheduleHandle,
@@ -16,10 +16,11 @@ import type { Duration } from "@temporalio/common";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { normalizeError } from "@connectors/types";
 
 /**
  * Terminates running workflows spawned by the given schedule.
- * Throw a `ScheduleNotFoundError` if the schedule does not exist.
+ * Throws a `ScheduleNotFoundError` if the schedule does not exist.
  */
 async function terminateWorkflowsForSchedule(
   scheduleHandle: ScheduleHandle,
@@ -48,16 +49,15 @@ async function terminateWorkflowsForSchedule(
  */
 export async function createSchedule({
   scheduleId,
-  connector,
   action,
   policies = {
     overlap: ScheduleOverlapPolicy.BUFFER_ONE,
     catchupWindow: "1 day",
   },
   spec,
+  connector,
 }: {
   scheduleId: string;
-  connector: ConnectorResource;
   action: ScheduleOptionsAction;
   policies: {
     overlap?: ScheduleOverlapPolicy;
@@ -65,6 +65,7 @@ export async function createSchedule({
     pauseOnFailure?: boolean;
   };
   spec: ScheduleSpec;
+  connector?: ConnectorResource;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
@@ -81,7 +82,7 @@ export async function createSchedule({
   } catch (error) {
     logger.error(
       {
-        connectorId: connector.id,
+        connectorId: connector?.id,
         scheduleId,
         error,
       },
@@ -137,7 +138,7 @@ export async function triggerSchedule({
   connector,
 }: {
   scheduleId: string;
-  connector: ConnectorResource;
+  connector?: ConnectorResource;
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
@@ -155,7 +156,7 @@ export async function triggerSchedule({
     if (!(error instanceof ScheduleNotFoundError)) {
       logger.error(
         {
-          connectorId: connector.id,
+          connectorId: connector?.id,
           scheduleId,
           error,
         },
@@ -202,4 +203,22 @@ export async function pauseSchedule({
   }
 
   return new Ok(undefined);
+}
+
+export async function scheduleExists({ scheduleId }: { scheduleId: string }) {
+  const client = await getTemporalClient();
+
+  try {
+    const scheduleHandle = client.schedule.getHandle(scheduleId);
+
+    // This will actually throw an error if the schedule does not exist.
+    await scheduleHandle.describe();
+
+    return true;
+  } catch (error) {
+    if (!(error instanceof ScheduleNotFoundError)) {
+      throw error;
+    }
+    return false;
+  }
 }

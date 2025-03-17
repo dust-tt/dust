@@ -14,27 +14,10 @@ import {
   DropdownMenuTrigger,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  LightWorkspaceType,
-  PlanType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
-import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
+import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -47,6 +30,23 @@ import {
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  LightWorkspaceType,
+  PlanType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@app/types";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -401,7 +401,7 @@ export const AddConnectionMenu = ({
             case "webcrawler":
             case "gong":
               return (
-                <CreateConnectionConfirmationModal
+                <CreateConnectionOAuthModal
                   key={`${c}-${isOpen}`}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}

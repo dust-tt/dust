@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
 import PQueue from "p-queue";
 import { Sequelize } from "sequelize";
 
@@ -15,6 +13,8 @@ import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 /** Compute the parents field for a notion pageOrDb See the [Design
  * Doc](https://www.notion.so/dust-tt/Engineering-e0f834b5be5a43569baaf76e9c41adf2?p=3d26536a4e0a464eae0c3f8f27a7af97&pm=s)
@@ -175,18 +175,31 @@ export async function updateAllParentsFields(
             connectorId,
             pageOrDbId
           );
-          const database = await getNotionDatabaseFromConnectorsDb(
-            connectorId,
-            pageOrDbId
-          );
-          logger.warn(
-            {
-              parents,
-              parentType: page?.parentType ?? database?.parentType,
-              parentId: page?.parentId ?? database?.parentId,
-            },
-            "notionUpdateAllParentsFields: Page or database has no parent."
-          );
+          if (page && page.parentId !== "workspace") {
+            logger.warn(
+              {
+                parents,
+                parentType: page.parentType,
+                parentId: page.parentId,
+              },
+              "notionUpdateAllParentsFields: Page has no parent."
+            );
+          } else if (!page) {
+            const database = await getNotionDatabaseFromConnectorsDb(
+              connectorId,
+              pageOrDbId
+            );
+            if (database && database.parentId !== "workspace") {
+              logger.warn(
+                {
+                  parents,
+                  parentType: database?.parentType,
+                  parentId: database?.parentId,
+                },
+                "notionUpdateAllParentsFields: Database has no parent."
+              );
+            }
+          }
         }
         await updateDataSourceDocumentParents({
           dataSourceConfig: dataSourceConfigFromConnector(connector),

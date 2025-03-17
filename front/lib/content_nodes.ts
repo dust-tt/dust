@@ -7,10 +7,10 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
-import type { ContentNode, DataSourceViewContentNode } from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { ContentNode, DataSourceViewContentNode } from "@app/types";
+import { assertNever, MIME_TYPES } from "@app/types";
 
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;

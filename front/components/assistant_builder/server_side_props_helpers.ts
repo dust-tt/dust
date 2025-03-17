@@ -1,34 +1,6 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-  slugify,
-} from "@dust-tt/types";
-
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubCreateIssueActionConfiguration,
-  getDefaultGithubGetPullRequestActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -37,12 +9,34 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  AgentConfigurationType,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  TemplateAgentConfigurationType,
+} from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleSpaces = (
@@ -113,10 +107,6 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubGetPullRequestActionConfiguration();
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else {

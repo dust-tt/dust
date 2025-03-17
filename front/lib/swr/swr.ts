@@ -1,4 +1,3 @@
-import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
@@ -10,6 +9,7 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const DEFAULT_SWR_CONFIG: SWRConfiguration = {
   errorRetryCount: 16,

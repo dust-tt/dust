@@ -16,20 +16,6 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  CreateTemplateFormType,
-  TemplateTagCodeType,
-} from "@dust-tt/types";
-import {
-  ASSISTANT_CREATIVITY_LEVELS,
-  CreateTemplateFormSchema,
-  generateTailwindBackgroundColors,
-  GPT_4_TURBO_MODEL_CONFIG,
-  MULTI_ACTION_PRESETS,
-  removeNulls,
-  TEMPLATE_VISIBILITIES,
-  TEMPLATES_TAGS_CONFIG,
-} from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -61,6 +47,17 @@ import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
+import type { CreateTemplateFormType, TemplateTagCodeType } from "@app/types";
+import {
+  ASSISTANT_CREATIVITY_LEVELS,
+  CreateTemplateFormSchema,
+  generateTailwindBackgroundColors,
+  GPT_4_TURBO_MODEL_CONFIG,
+  MULTI_ACTION_PRESETS,
+  removeNulls,
+  TEMPLATE_VISIBILITIES,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   templateId: string;

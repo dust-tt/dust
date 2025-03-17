@@ -4,13 +4,13 @@ import {
   Page,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useRef } from "react";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

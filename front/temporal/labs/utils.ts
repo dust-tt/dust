@@ -1,6 +1,5 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import type { ModelId } from "@app/types";
 
 export function makeRetrieveTranscriptWorkflowId(
   transcriptsConfiguration: LabsTranscriptsConfigurationResource

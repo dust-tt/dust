@@ -1,9 +1,4 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  ConnectorsAPI,
-  sendUserOperationMessage,
-  UpdateConnectorRequestBodySchema,
-} from "@dust-tt/types";
+import { isConnectorsAPIError } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -16,6 +11,13 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  ConnectorsAPI,
+  isAPIError,
+  sendUserOperationMessage,
+  UpdateConnectorRequestBodySchema,
+} from "@app/types";
 
 export type GetDataSourceUpdateResponseBody = {
   connectorId: string;
@@ -111,13 +113,14 @@ async function handler(
       }
 
       if (updateRes.isErr()) {
-        if (updateRes.error.type === "connector_oauth_target_mismatch") {
+        if (
+          isConnectorsAPIError(updateRes.error) &&
+          isAPIError(updateRes.error)
+        ) {
           return apiError(req, res, {
             api_error: {
               type: updateRes.error.type,
-              // The error message is meant to be user friendly and explannative, customized for the
-              // connection being updated.
-              message: `OAuth mismatch: ${updateRes.error.message}`,
+              message: updateRes.error.message,
               connectors_error: updateRes.error,
             },
             status_code: 401,
@@ -127,7 +130,7 @@ async function handler(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
-              message: `Could not update the connector`,
+              message: "Could not update the connector",
               connectors_error: updateRes.error,
             },
           });

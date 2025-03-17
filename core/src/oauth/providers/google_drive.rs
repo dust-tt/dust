@@ -4,6 +4,7 @@ use crate::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
+        credential::Credential,
         providers::utils::execute_request,
     },
     utils,
@@ -41,6 +42,7 @@ impl Provider for GoogleDriveConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -102,7 +104,11 @@ impl Provider for GoogleDriveConnectionProvider {
     // Google Drive does not automatically expire refresh tokens for published apps,
     // unless they have been unused for six months.
     // Acess tokens expire after 1 hour.
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
             Ok(None) => Err(anyhow!(
