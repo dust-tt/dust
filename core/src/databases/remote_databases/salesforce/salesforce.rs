@@ -405,10 +405,6 @@ impl SalesforceRemoteDatabase {
                     QueryDatabaseError::GenericError(anyhow!("Field `soapType` not found"))
                 })?;
 
-                let filterable = field["filterable"].as_bool().ok_or_else(|| {
-                    QueryDatabaseError::GenericError(anyhow!("Field `filterable` not found"))
-                })?;
-
                 let value_type = match soap_type.to_lowercase().as_str() {
                     "tns:id" => match field["relationshipName"].as_str() {
                         Some(rel_name) => TableSchemaFieldType::Reference(rel_name.to_string()),
@@ -453,7 +449,6 @@ impl SalesforceRemoteDatabase {
                     name,
                     value_type,
                     possible_values: possible_values,
-                    filterable,
                 })
             })
             .collect::<Result<Vec<_>>>()?;
