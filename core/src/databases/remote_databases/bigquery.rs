@@ -261,7 +261,10 @@ impl BigQueryRemoteDatabase {
                         ResponseError {
                             error: NestedResponseError { message, code, .. },
                         },
-                } => QueryDatabaseError::ExecutionError(format!("{} (code={})", message, code)),
+                } => QueryDatabaseError::ExecutionError(
+                    format!("{} (code={})", message, code),
+                    Some(query.to_string()),
+                ),
                 _ => QueryDatabaseError::GenericError(anyhow!("Error inserting job: {}", e)),
             })?;
 
@@ -312,9 +315,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         let plan = self.get_query_plan(query).await?;
 
         if !plan.is_select_query {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query is not a SELECT query"
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!("Query is not a SELECT query"),
+                Some(query.to_string()),
+            ))?
         }
 
         let used_tables: HashSet<&str> = plan
@@ -331,10 +335,13 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables that are not allowed: {}",
+                    used_forbidden_tables.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         self.execute_query(query).await
