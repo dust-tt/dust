@@ -18,7 +18,6 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   generateRandomModelSId,
-  getResourceIdFromSId,
   getResourceNameAndIdFromSId,
 } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -395,7 +394,7 @@ export async function renderFromResourceId(
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
-  // At time of writing, passe resourceId can be either a file or a content fragment.
+  // At time of writing, passed resourceId can be either a file or a content fragment.
   const { resourceName } = getResourceNameAndIdFromSId(resourceId) ?? {
     resourceName: "content_fragment",
   };
