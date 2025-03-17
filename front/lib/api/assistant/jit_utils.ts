@@ -74,7 +74,7 @@ export function listFiles(
         const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
 
         files.push({
-          contentFragmentId: m.contentFragmentId,
+          resourceId: m.contentFragmentId,
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
@@ -104,7 +104,7 @@ export function listFiles(
         const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
 
         files.push({
-          contentFragmentId: f.fileId,
+          resourceId: f.fileId,
           contentType: f.contentType,
           title: f.title,
           snippet: f.snippet,
