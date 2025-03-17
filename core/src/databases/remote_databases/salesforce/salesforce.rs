@@ -222,10 +222,10 @@ impl SalesforceRemoteDatabase {
                     QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
                 })?;
 
-                return Err(QueryDatabaseError::ExecutionError(format!(
-                    "Query failed: {}",
-                    error_text
-                )));
+                return Err(QueryDatabaseError::ExecutionError(
+                    format!("Query failed: {}", error_text),
+                    Some(query.to_string()),
+                ));
             }
 
             let response_text = response.text().await.map_err(|e| {
@@ -335,10 +335,10 @@ impl SalesforceRemoteDatabase {
                 QueryDatabaseError::GenericError(anyhow!("Error getting response text: {}", e))
             })?;
 
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Failed to describe object {}: {}",
-                sobject, error_text
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!("Failed to describe object {}: {}", sobject, error_text),
+                None,
+            ));
         }
 
         let response_text = response.text().await.map_err(|e| {
@@ -606,14 +606,17 @@ impl SalesforceRemoteDatabase {
 
         // If we still have unknown objects, they're not allowed
         if !unknown_objects.is_empty() {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables/relationships that are not allowed: {}",
-                unknown_objects
-                    .iter()
-                    .map(|s| s.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables/relationships that are not allowed: {}",
+                    unknown_objects
+                        .iter()
+                        .map(|s| s.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+                None,
+            ));
         }
 
         Ok(())
@@ -633,15 +636,15 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Parse the JSON query
         let parsed_query = serde_json::from_str::<StructuredQuery>(query).map_err(|e| {
-            QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e))
+            QueryDatabaseError::ExecutionError(format!("Failed to parse JSON query: {}", e), None)
         })?;
 
         // Validate the structured query
         if let Err(e) = parsed_query.validate() {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Invalid structured query: {}",
-                e
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!("Invalid structured query: {}", e),
+                None,
+            ));
         }
 
         // Extract all objects referenced in the query
@@ -671,10 +674,10 @@ impl RemoteDatabase for SalesforceRemoteDatabase {
 
         // Convert the structured query to SOQL
         let soql_query = convert_to_soql(&parsed_query).map_err(|e| {
-            QueryDatabaseError::ExecutionError(format!(
-                "Error converting JSON query to SOQL: {}",
-                e
-            ))
+            QueryDatabaseError::ExecutionError(
+                format!("Error converting JSON query to SOQL: {}", e),
+                None,
+            )
         })?;
 
         // Execute the SOQL query
