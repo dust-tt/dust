@@ -172,8 +172,12 @@ export const ssoDedupePlugin = createPlugin({
     }
 
     return new Ok({
-      display: "text",
-      value: `Processed ${changes.length} duplicate account sets`,
+      display: "json",
+      value: {
+        status: "success",
+        message: `Processed ${changes.length} duplicate account sets`,
+        changes,
+      },
     });
   },
 });
