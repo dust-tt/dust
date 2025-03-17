@@ -537,10 +537,13 @@ impl SalesforceRemoteDatabase {
 
         // Check if primary object is allowed, same as for relationships
         if !allowed_objects.contains(&primary_object.to_lowercase()) {
-            return Err(QueryDatabaseError::ExecutionError(format!(
-                "Primary object '{}' is not allowed. You don't have access to this object.",
-                primary_object
-            )));
+            return Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Primary object '{}' is not allowed. You don't have access to this object.",
+                    primary_object
+                ),
+                None,
+            ));
         }
 
         // Check for objects that aren't directly allowed
