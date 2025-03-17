@@ -1,3 +1,4 @@
+import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
@@ -17,18 +18,6 @@ import {
   TextArea,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type {
-  BigQueryCredentialsWithLocation,
-  CheckBigQueryCredentials,
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CheckBigQueryCredentialsSchema,
-  isConnectorsAPIError,
-} from "@dust-tt/types";
 import { isRight } from "fp-ts/lib/Either";
 import { formatValidationErrors } from "io-ts-reporters";
 import { useEffect, useMemo, useState } from "react";
@@ -37,6 +26,15 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
+import type {
+  BigQueryCredentialsWithLocation,
+  CheckBigQueryCredentials,
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  WorkspaceType,
+} from "@app/types";
+import { CheckBigQueryCredentialsSchema } from "@app/types";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;

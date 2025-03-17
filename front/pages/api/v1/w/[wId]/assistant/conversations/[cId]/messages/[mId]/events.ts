@@ -1,5 +1,4 @@
 import type { AgentMessageEventType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
@@ -9,6 +8,7 @@ import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @swagger
@@ -159,6 +159,9 @@ async function handler(
         controller.abort();
       });
 
+      // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
+      // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
+      // @ts-expect-error cf above
       const eventStream: AsyncGenerator<AgentMessageEventType> =
         getMessagesEvents(auth, { messageId: mId, lastEventId, signal });
 

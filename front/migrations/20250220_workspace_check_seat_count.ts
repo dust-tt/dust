@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
 import { Plan, Subscription } from "@app/lib/models/plan";
 import {
@@ -9,6 +7,7 @@ import {
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 async function checkWorkspaceSeatCount(
   workspace: LightWorkspaceType,

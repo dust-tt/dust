@@ -1,4 +1,4 @@
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
+import { cn } from "@dust-tt/sparkle";
 import Head from "next/head";
 import type { NextRouter } from "next/router";
 import Script from "next/script";
@@ -12,6 +12,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 // This function is used to navigate back to the previous page (eg modal like page close) and
 // fallback to the landing if we linked directly to that modal.
@@ -145,7 +146,13 @@ export default function AppLayout({
           navChildren={navChildren}
           subNavigation={subNavigation}
         />
-        <div className="relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden dark:bg-slate-950 dark:text-slate-50">
+        <div
+          className={cn(
+            "relative h-full w-full flex-1 flex-col overflow-x-hidden overflow-y-hidden",
+            "bg-background text-foreground",
+            "dark:bg-background-night dark:text-foreground-night"
+          )}
+        >
           <main
             id={CONVERSATION_PARENT_SCROLL_DIV_ID.page}
             className={classNames(

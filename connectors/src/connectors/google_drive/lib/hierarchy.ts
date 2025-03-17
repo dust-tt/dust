@@ -1,12 +1,12 @@
-import type { ModelId } from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
 import type { OAuth2Client } from "googleapis-common";
 import { Op } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
 import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
 import mainLogger from "@connectors/logger/logger";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 // TODO(nodes-core): monitor and follow-up with either normalizing
 // the situation or throwing an error
@@ -32,6 +32,7 @@ async function getFileParents(
   let currentObject = driveFile;
   while (currentObject.parent) {
     const parent = await getGoogleDriveObject({
+      connectorId,
       authCredentials,
       driveObjectId: currentObject.parent,
       cacheKey: { connectorId, ts: startSyncTs },

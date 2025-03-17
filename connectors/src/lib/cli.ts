@@ -1,18 +1,5 @@
-import type {
-  AdminCommandType,
-  AdminSuccessResponseType,
-  BatchAllResponseType,
-  BatchCommandType,
-  ConnectorPermission,
-  ConnectorsCommandType,
-  GetParentsResponseType,
-  Result,
-  TemporalCheckQueueResponseType,
-  TemporalCommandType,
-  TemporalUnprocessedWorkflowsResponseType,
-  WebcrawlerCommandType,
-} from "@dust-tt/types";
-import { assertNever, isConnectorError } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import PQueue from "p-queue";
 import readline from "readline";
 
@@ -29,6 +16,20 @@ import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminCommandType,
+  AdminSuccessResponseType,
+  BatchAllResponseType,
+  BatchCommandType,
+  ConnectorPermission,
+  ConnectorsCommandType,
+  GetParentsResponseType,
+  TemporalCheckQueueResponseType,
+  TemporalCommandType,
+  TemporalUnprocessedWorkflowsResponseType,
+  WebcrawlerCommandType,
+} from "@connectors/types";
+import { isConnectorError } from "@connectors/types";
 
 const { INTERACTIVE_CLI } = process.env;
 

@@ -1,9 +1,9 @@
-import type { OAuthConnectionType, WithAPIErrorResponse } from "@dust-tt/types";
-import { isOAuthProvider } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { finalizeConnection } from "@app/lib/api/oauth";
+import type { OAuthConnectionType, WithAPIErrorResponse } from "@app/types";
+import { isOAuthProvider } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

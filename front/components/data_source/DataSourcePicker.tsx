@@ -6,17 +6,13 @@ import {
   ScrollArea,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type { DataSourceViewType, SpaceType, WorkspaceType } from "@app/types";
 
 export default function DataSourcePicker({
   owner,

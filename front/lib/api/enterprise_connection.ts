@@ -1,5 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { Connection } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
@@ -9,6 +7,8 @@ import type {
   IdpSpecificConnectionTypeDetails,
   SAMLConnectionTypeDetails,
 } from "@app/pages/api/w/[wId]/enterprise-connection";
+import type { LightWorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;

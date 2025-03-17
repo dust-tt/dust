@@ -1,9 +1,9 @@
 import { ChatBubbleThoughtIcon, ContentMessage } from "@dust-tt/sparkle";
 import { Markdown } from "@dust-tt/sparkle";
-import type { ReasoningActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { ReasoningActionType } from "@app/lib/actions/reasoning";
 
 export function ReasoningActionDetails({
   action,

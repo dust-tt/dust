@@ -1,12 +1,12 @@
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { useAgentUsage } from "@app/lib/swr/assistants";
 import { timeAgoFrom } from "@app/lib/utils";
+import type {
+  LightAgentConfigurationType,
+  LightWorkspaceType,
+} from "@app/types";
 
 interface AssistantUsageSectionProps {
   agentConfiguration: LightAgentConfigurationType;

@@ -1,13 +1,4 @@
-import type { ContentNodesViewType, ModelId } from "@dust-tt/types";
-import {
-  cacheWithRedis,
-  concurrentExecutor,
-  getGoogleIdsFromSheetContentNodeInternalId,
-  getGoogleSheetTableId,
-  isGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
-  removeNulls,
-} from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/client";
 import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
@@ -40,6 +31,16 @@ import {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type { ContentNodesViewType } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import {
+  cacheWithRedis,
+  concurrentExecutor,
+  getGoogleIdsFromSheetContentNodeInternalId,
+  getGoogleSheetTableId,
+  isGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
+} from "@connectors/types";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -257,6 +258,7 @@ export async function fixParentsConsistency({
         files,
         async (file) =>
           getGoogleDriveObject({
+            connectorId: connector.id,
             authCredentials,
             driveObjectId: file.driveFileId,
             cacheKey: {
@@ -328,6 +330,7 @@ export async function fixParentsConsistency({
           if (execute) {
             for (const missingFolderId of missing) {
               const missingFolder = await getGoogleDriveObject({
+                connectorId: connector.id,
                 authCredentials,
                 driveObjectId: getDriveFileId(missingFolderId),
               });

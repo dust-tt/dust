@@ -6,17 +6,17 @@ import {
   ScrollArea,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 
 import { useDataSourceViewTables } from "@app/lib/swr/data_source_view_tables";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type {
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface TablePickerProps {
   owner: LightWorkspaceType;

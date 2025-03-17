@@ -1,7 +1,5 @@
 import type { PostMessagesResponseBody } from "@dust-tt/client";
 import { PublicPostMessagesRequestBodySchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isEmptyString } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -11,6 +9,8 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isEmptyString } from "@app/types";
 
 /**
  * @swagger
@@ -128,6 +128,9 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
+        // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
+        // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
+        // @ts-expect-error cf above
         agentMessages: messageRes.value.agentMessages ?? undefined,
       });
       return;

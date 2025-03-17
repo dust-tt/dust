@@ -1,7 +1,3 @@
-import type {
-  ConversationWithoutContentType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -16,6 +12,10 @@ import { getConversationWithoutContent } from "@app/lib/api/assistant/conversati
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ConversationWithoutContentType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export const PatchConversationsRequestBodySchema = t.type({
   title: t.union([t.string, t.null]),

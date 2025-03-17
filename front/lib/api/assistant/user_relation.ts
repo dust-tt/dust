@@ -1,9 +1,8 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function setAgentUserFavorite({
   auth,

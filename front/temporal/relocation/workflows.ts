@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   continueAsNew,
   executeChild,
@@ -19,6 +18,7 @@ import type {
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import type { ModelId } from "@app/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
@@ -57,6 +57,20 @@ export async function workspaceRelocationWorkflow({
     workflowId: `workspaceRelocateCoreWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
     args: [{ sourceRegion, destRegion, workspaceId }],
+  });
+
+  // 4) Relocate the apps to the destination region.
+  await executeChild(workspaceRelocateAppsWorkflow, {
+    workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        workspaceId,
+        sourceRegion,
+        destRegion,
+      },
+    ],
+    memo,
   });
 }
 
@@ -723,4 +737,45 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
 
     pageCursor = nextPageCursor;
   } while (pageCursor);
+}
+
+export async function workspaceRelocateAppsWorkflow({
+  workspaceId,
+  lastProcessedId,
+  sourceRegion,
+  destRegion,
+}: RelocationWorkflowBase & { lastProcessedId?: ModelId }) {
+  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getCoreDestinationRegionActivities(destRegion);
+
+  let hasMoreRows = true;
+  let currentId: ModelId | undefined = lastProcessedId;
+
+  do {
+    const { dustAPIProjectIds, hasMore, lastId } =
+      await sourceRegionActivities.retrieveAppsCoreIdsBatch({
+        lastId: currentId,
+        workspaceId,
+      });
+
+    hasMoreRows = hasMore;
+    currentId = lastId;
+
+    for (const dustAPIProjectId of dustAPIProjectIds) {
+      const { dataPath } = await sourceRegionActivities.getApp({
+        dustAPIProjectId,
+        workspaceId,
+        sourceRegion,
+      });
+
+      await destinationRegionActivities.processApp({
+        dustAPIProjectId,
+        dataPath,
+        destRegion,
+        sourceRegion,
+        workspaceId,
+      });
+    }
+  } while (hasMoreRows);
 }

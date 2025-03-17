@@ -1,14 +1,3 @@
-import type {
-  ContentNodesViewType,
-  CoreAPIContentNode,
-  CoreAPIDatasourceViewFilter,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PatchDataSourceViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import {
   FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
@@ -19,6 +8,16 @@ import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import type {
+  ContentNodesViewType,
+  CoreAPIContentNode,
+  CoreAPIDatasourceViewFilter,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PatchDataSourceViewType,
+  Result,
+} from "@app/types";
+import { assertNever, CoreAPI, Err, Ok } from "@app/types";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 

@@ -1,14 +1,13 @@
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConnectorProvider,
   CoreAPIDocument,
   DataSourceType,
   DataSourceViewType,
   WithConnector,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export function getDisplayNameForDocument(document: CoreAPIDocument): string {
   const titleTagPrefix = "title:";

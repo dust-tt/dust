@@ -23,14 +23,6 @@ import {
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  PlanType,
-  SupportedEnterpriseConnectionStrategies,
-  WorkspaceDomain,
-  WorkspaceEnterpriseConnection,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, connectionStrategyToHumanReadable } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
@@ -44,6 +36,14 @@ import type {
   PostCreateEnterpriseConnectionRequestBodySchemaType,
   SAMLConnectionTypeDetails,
 } from "@app/pages/api/w/[wId]/enterprise-connection";
+import type {
+  PlanType,
+  SupportedEnterpriseConnectionStrategies,
+  WorkspaceDomain,
+  WorkspaceEnterpriseConnection,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, connectionStrategyToHumanReadable } from "@app/types";
 
 interface EnterpriseConnectionDetailsProps {
   owner: WorkspaceType;

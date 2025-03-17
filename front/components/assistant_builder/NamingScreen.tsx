@@ -9,14 +9,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  BuilderEmojiSuggestionsType,
-  BuilderSuggestionsType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import React, {
   useCallback,
   useContext,
@@ -37,6 +29,14 @@ import {
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
 import { debounce } from "@app/lib/utils/debounce";
+import type {
+  APIError,
+  BuilderEmojiSuggestionsType,
+  BuilderSuggestionsType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function removeLeadingAt(handle: string) {
   return handle.startsWith("@") ? handle.slice(1) : handle;

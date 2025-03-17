@@ -1,9 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type { KeyType, ModelId } from "@dust-tt/types";
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { formatUserFullName, redactString } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import type {
   Attributes,
@@ -20,6 +17,9 @@ import type { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { KeyType, ModelId } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { formatUserFullName, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;

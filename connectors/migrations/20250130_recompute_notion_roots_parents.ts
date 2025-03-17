@@ -1,5 +1,6 @@
-import type { ModelId } from "@dust-tt/types";
-import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
+/*
+// Disabled as CoreAPI is not available, for now, in connectors.
+
 import { makeScript } from "scripts/helpers";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -13,7 +14,9 @@ import {
 import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { CoreAPI, EnvironmentConfig } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 const PAGE_SIZE = 1000;
 const { FRONT_DATABASE_URI } = process.env;
@@ -120,9 +123,8 @@ async function updateNodeParents({
   }
 }
 
-/**
- * Computes the extra nodes given the IDs returned by core.
- */
+
+// Computes the extra nodes given the IDs returned by core.
 async function getExtraNodes(
   coreNotionIds: string[],
   connector: ConnectorResource
@@ -145,9 +147,8 @@ async function getExtraNodes(
   return [...pages, ...databases];
 }
 
-/**
- * Computes the missing nodes given the IDs returned by core.
- */
+
+// Computes the missing nodes given the IDs returned by core.
 async function getMissingNodes(
   notionIds: string[],
   connector: ConnectorResource
@@ -367,3 +368,4 @@ makeScript(
     logger.info("Finished processing all connectors");
   }
 );
+*/

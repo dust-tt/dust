@@ -9,11 +9,11 @@ import {
   Separator,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface SearchMembersPopoverProps {
   owner: LightWorkspaceType;

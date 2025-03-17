@@ -1,12 +1,3 @@
-import type {
-  AgentParticipantType,
-  ConversationParticipantsType,
-  ConversationWithoutContentType,
-  ModelId,
-  Result,
-  UserParticipantType,
-} from "@dust-tt/types";
-import { ConversationError, Err, formatUserFullName, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
@@ -18,6 +9,15 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import type {
+  AgentParticipantType,
+  ConversationParticipantsType,
+  ConversationWithoutContentType,
+  ModelId,
+  Result,
+  UserParticipantType,
+} from "@app/types";
+import { ConversationError, Err, formatUserFullName, Ok } from "@app/types";
 
 async function fetchAllUsersById(
   userIds: ModelId[]

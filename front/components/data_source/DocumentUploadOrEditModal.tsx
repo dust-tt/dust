@@ -17,15 +17,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  CoreAPIDocument,
-  CoreAPILightDocument,
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, getSupportedNonImageFileExtensions } from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -35,6 +26,15 @@ import {
   useUpdateDataSourceViewDocument,
 } from "@app/lib/swr/data_source_view_documents";
 import { useFileProcessedContent } from "@app/lib/swr/file";
+import type {
+  CoreAPIDocument,
+  CoreAPILightDocument,
+  DataSourceViewType,
+  LightContentNode,
+  PlanType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, getSupportedNonImageFileExtensions } from "@app/types";
 
 const MAX_NAME_CHARS = 32;
 

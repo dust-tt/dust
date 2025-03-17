@@ -1,4 +1,3 @@
-import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
@@ -10,6 +9,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import { concurrentExecutor, MIME_TYPES } from "@connectors/types";
 
 async function migrateConnector(
   connector: ConnectorResource,

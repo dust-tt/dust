@@ -1,5 +1,5 @@
-import type { ModelMessageTypeMultiActions } from "@dust-tt/types";
-import { isTextContent } from "@dust-tt/types";
+import type { ModelMessageTypeMultiActions } from "@app/types";
+import { isTextContent } from "@app/types";
 
 export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions

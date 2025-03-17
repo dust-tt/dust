@@ -1,5 +1,6 @@
-import type { DataSourceViewType } from "@dust-tt/types";
 import { createContext } from "react";
+
+import type { DataSourceViewType } from "@app/types";
 
 // Temporary context to share the search term between the SpaceLayout and the
 // descendants. Will be removed once the keyword search is implemented.

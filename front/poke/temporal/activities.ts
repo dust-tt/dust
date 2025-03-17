@@ -1,4 +1,3 @@
-import { CoreAPI } from "@dust-tt/types";
 import assert from "assert";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
@@ -62,6 +61,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
+import { CoreAPI } from "@app/types";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 

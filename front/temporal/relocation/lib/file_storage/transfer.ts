@@ -1,11 +1,11 @@
-import type { Result } from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { protos } from "@google-cloud/storage-transfer";
 import { StorageTransferServiceClient } from "@google-cloud/storage-transfer";
 import type { google } from "@google-cloud/storage-transfer/build/protos/protos";
 
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import type { Result } from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 interface TransferConfig {
   destBucket: string;

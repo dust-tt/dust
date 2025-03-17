@@ -1,10 +1,10 @@
-import type { AppType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDatasetsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets";
 import type { GetDatasetResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/datasets/[name]";
+import type { AppType, LightWorkspaceType } from "@app/types";
 
 export function useDatasets({
   owner,

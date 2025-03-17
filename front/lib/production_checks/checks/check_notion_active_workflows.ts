@@ -1,5 +1,3 @@
-import { getNotionWorkflowId } from "@dust-tt/types";
-import { withRetries } from "@dust-tt/types";
 import type { Client } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
@@ -7,6 +5,8 @@ import type { CheckFunction } from "@app/lib/production_checks/types";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { getTemporalConnectorsNamespaceConnection } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import { getNotionWorkflowId } from "@app/types";
+import { withRetries } from "@app/types";
 
 interface NotionConnector {
   id: number;

@@ -22,14 +22,14 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
 import { BugIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { UserType, WorkspaceType } from "@app/types";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,

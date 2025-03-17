@@ -1,16 +1,15 @@
-import type {
-  Result,
-  UserTypeWithExtensionWorkspaces,
-  UserTypeWithWorkspaces,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-
 import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import type {
+  Result,
+  UserTypeWithExtensionWorkspaces,
+  UserTypeWithWorkspaces,
+} from "@app/types";
+import { Err, Ok } from "@app/types";
 
 import { MembershipResource } from "../resources/membership_resource";
 

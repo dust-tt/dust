@@ -1,9 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  SlackCommandType,
-} from "@dust-tt/types";
-import { isSlackbotWhitelistType, MIME_TYPES } from "@dust-tt/types";
-
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
 import {
   getSlackChannelSourceUrl,
@@ -21,6 +15,11 @@ import { SlackChannel } from "@connectors/lib/models/slack";
 import { default as topLogger } from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  SlackCommandType,
+} from "@connectors/types";
+import { isSlackbotWhitelistType, MIME_TYPES } from "@connectors/types";
 
 export async function maybeLaunchSlackSyncWorkflowForChannelId(
   connectorId: number,

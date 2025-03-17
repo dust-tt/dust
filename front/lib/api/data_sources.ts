@@ -2,39 +2,6 @@ import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
-import type {
-  AdminCommandType,
-  ConnectorProvider,
-  ConnectorType,
-  ConversationWithoutContentType,
-  CoreAPIDataSource,
-  CoreAPIDocument,
-  CoreAPIError,
-  CoreAPILightDocument,
-  CoreAPITable,
-  DataSourceType,
-  DataSourceWithConnectorDetailsType,
-  FrontDataSourceDocumentSectionType,
-  PlanType,
-  Result,
-  WithConnector,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  concurrentExecutor,
-  ConnectorsAPI,
-  CoreAPI,
-  DEFAULT_EMBEDDING_PROVIDER_ID,
-  DEFAULT_QDRANT_CLUSTER,
-  dustManagedCredentials,
-  EMBEDDING_CONFIGS,
-  Err,
-  isDataSourceNameValid,
-  Ok,
-  sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
@@ -58,6 +25,39 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+import type {
+  AdminCommandType,
+  ConnectorProvider,
+  ConnectorType,
+  ConversationWithoutContentType,
+  CoreAPIDataSource,
+  CoreAPIDocument,
+  CoreAPIError,
+  CoreAPILightDocument,
+  CoreAPITable,
+  DataSourceType,
+  DataSourceWithConnectorDetailsType,
+  FrontDataSourceDocumentSectionType,
+  PlanType,
+  Result,
+  WithConnector,
+  WorkspaceType,
+} from "@app/types";
+import { validateUrl } from "@app/types";
+import {
+  assertNever,
+  concurrentExecutor,
+  ConnectorsAPI,
+  CoreAPI,
+  DEFAULT_EMBEDDING_PROVIDER_ID,
+  DEFAULT_QDRANT_CLUSTER,
+  dustManagedCredentials,
+  EMBEDDING_CONFIGS,
+  Err,
+  isDataSourceNameValid,
+  Ok,
+  sectionFullText,
+} from "@app/types";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -759,11 +759,21 @@ export async function upsertTable({
       },
     });
     if (enqueueRes.isErr()) {
+      logger.error(
+        {
+          error: enqueueRes.error,
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          tableId,
+        },
+        "Error enqueueing the table for asynchronous upsert."
+      );
+
       return new Err({
         name: "dust_error",
         code: "data_source_error",
         message:
-          "There was an error enqueueing the the document for asynchronous upsert.",
+          "There was an error enqueueing the table for asynchronous upsert.",
       });
     }
     return new Ok({

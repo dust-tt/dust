@@ -1,9 +1,3 @@
-import {
-  assertNever,
-  ConnectorsAPI,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
 import parseArgs from "minimist";
 
 import { getConversation } from "@app/lib/api/assistant/conversation";
@@ -35,6 +29,12 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
+import {
+  assertNever,
+  ConnectorsAPI,
+  removeNulls,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {

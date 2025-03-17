@@ -1,10 +1,9 @@
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import { getOAuthConnectionAccessToken } from "@app/types";
 
 const getGongAccessToken = async (
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,

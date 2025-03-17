@@ -1,6 +1,5 @@
 import type { DustAppConfigType, DustAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import { Err, getHeaderFromGroupIds, Ok } from "@dust-tt/types";
 
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +8,7 @@ import type { DustRegistryActionName } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
+import { Err, getHeaderFromGroupIds, Ok } from "@app/types";
 
 // Record an event and a log for the action error.
 const logActionError = (

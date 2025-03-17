@@ -5,13 +5,6 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { DocumentViewRawContentKey } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
@@ -30,6 +23,13 @@ import {
 } from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;

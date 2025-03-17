@@ -1,6 +1,7 @@
 import { Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
-import type { DataSourceTag } from "@dust-tt/types";
 import React from "react";
+
+import type { DataSourceTag } from "@app/types";
 
 export interface TagSearchProps {
   searchInputValue: string;

@@ -11,17 +11,15 @@ import {
   Icon,
   TableIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DustAppRunActionType,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import { getDustAppRunResultsFileTitle } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
+import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
+import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
+import type { SupportedFileContentType } from "@app/types";
 
 function ContentTypeIcon({
   contentType,

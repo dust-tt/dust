@@ -1,8 +1,3 @@
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { sendUserOperationMessage } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -15,6 +10,8 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
+import { sendUserOperationMessage } from "@app/types";
 
 export type PostUserMetadataResponseBody = {
   success: boolean;

@@ -9,12 +9,6 @@ import {
   TabsTrigger,
   useHashParam,
 } from "@dust-tt/sparkle";
-import type {
-  AgentsGetViewType,
-  LightAgentConfigurationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -32,6 +26,12 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { subFilter } from "@app/lib/utils";
+import type {
+  AgentsGetViewType,
+  LightAgentConfigurationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

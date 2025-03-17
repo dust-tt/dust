@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
@@ -10,6 +9,7 @@ import type {
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import type { ModelId } from "@app/types";
 
 export async function getAllConnectorsForWorkspace({
   workspaceId,

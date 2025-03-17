@@ -1,6 +1,7 @@
 import { Popup } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, PlanType } from "@dust-tt/types";
 import { useRouter } from "next/router";
+
+import type { LightWorkspaceType, PlanType } from "@app/types";
 
 type DocumentLimitPopupProps = {
   isOpen: boolean;

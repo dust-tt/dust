@@ -1,5 +1,4 @@
 import { ArrowUpOnSquareIcon, Button } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import type { ChangeEvent } from "react";
 import { useImperativeHandle, useRef, useState } from "react";
 import React from "react";
@@ -9,6 +8,7 @@ import { centerCrop, makeAspectCrop, ReactCrop } from "react-image-crop";
 import type { AvatarPickerTabElement } from "@app/components/assistant_builder/avatar_picker/types";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { classNames } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 
 const DEFAULT_CROP: Crop = {
   unit: "%",

@@ -1,16 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import {
-  Err,
-  getGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse, OAuth2Client } from "googleapis-common";
 import type { InferAttributes, WhereOptions } from "sequelize";
@@ -65,9 +54,18 @@ import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
-import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types/google_drive";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  getGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
+} from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -379,6 +377,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             drives.map(async (d): Promise<ContentNode> => {
               const driveObject = await getGoogleDriveObject({
+                connectorId: c.id,
                 authCredentials,
                 driveObjectId: d.id,
               });
@@ -478,6 +477,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           const nodes: ContentNode[] = await Promise.all(
             remoteFolders.map(async (rf): Promise<ContentNode> => {
               const driveObject = await driveObjectToDustType(
+                this.connectorId,
                 rf,
                 authCredentials
               );
@@ -703,6 +703,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       const authCredentials = await getAuthObject(connector.connectionId);
 
       const driveObject = await getGoogleDriveObject({
+        connectorId: this.connectorId,
         authCredentials,
         driveObjectId: getDriveFileId(internalId),
         cacheKey: { connectorId: this.connectorId, ts: memoizationKey },
@@ -854,6 +855,7 @@ async function getFoldersAsContentNodes({
     folders,
     async (f): Promise<ContentNode | null> => {
       const fd = await getGoogleDriveObject({
+        connectorId: f.connectorId,
         authCredentials,
         driveObjectId: f.folderId,
       });

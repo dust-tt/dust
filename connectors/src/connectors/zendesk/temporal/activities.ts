@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -42,6 +40,8 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.

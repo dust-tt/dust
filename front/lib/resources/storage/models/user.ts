@@ -1,9 +1,9 @@
-import type { UserProviderType } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+import type { UserProviderType } from "@app/types";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;

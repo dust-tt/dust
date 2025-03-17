@@ -4,15 +4,6 @@ import type {
   UpsertDocumentResponseType,
 } from "@dust-tt/client";
 import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  CoreAPI,
-  dustManagedCredentials,
-  rateLimiter,
-  safeSubstring,
-  sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -24,8 +15,17 @@ import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { validateUrl } from "@app/types";
+import {
+  CoreAPI,
+  dustManagedCredentials,
+  safeSubstring,
+  sectionFullText,
+} from "@app/types";
 
 export const config = {
   api: {

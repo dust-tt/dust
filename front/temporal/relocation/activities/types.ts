@@ -1,12 +1,13 @@
-import type {
-  CoreAPIContentNode,
-  CoreAPIDocumentBlob,
-  CoreAPITableBlob,
-  ModelId,
-} from "@dust-tt/types";
 import { isPlainObject } from "lodash";
 
 import type { RegionType } from "@app/lib/api/regions/config";
+import type {
+  CoreAPIContentNode,
+  CoreAPIDataset,
+  CoreAPIDocumentBlob,
+  CoreAPITableBlob,
+  ModelId,
+} from "@app/types";
 
 export interface RelocationBlob<T extends string = string> {
   statements: Record<T, { sql: string; params: any[] }[]>;
@@ -61,6 +62,14 @@ export type CoreFolderAPIRelocationBlob = APIRelocationBlob<
 export type CoreTableAPIRelocationBlob = APIRelocationBlob<
   "tables",
   CoreAPITableBlob
+>;
+
+export type CoreAppAPIRelocationBlob = APIRelocationBlob<
+  "apps",
+  {
+    coreSpecifications: Record<string, string>;
+    datasets: CoreAPIDataset[];
+  }
 >;
 
 export function isArrayOfPlainObjects(value: unknown) {

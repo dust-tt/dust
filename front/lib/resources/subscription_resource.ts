@@ -1,10 +1,3 @@
-import type {
-  LightWorkspaceType,
-  PlanType,
-  Result,
-  SubscriptionType,
-} from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
 import _ from "lodash";
 import type {
   Attributes,
@@ -24,6 +17,13 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  PlanType,
+  Result,
+  SubscriptionType,
+} from "@app/types";
+import { Ok } from "@app/types";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;

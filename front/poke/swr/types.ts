@@ -1,4 +1,4 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
+import type { LightWorkspaceType } from "@app/types";
 
 export interface PokeConditionalFetchProps {
   disabled?: boolean;

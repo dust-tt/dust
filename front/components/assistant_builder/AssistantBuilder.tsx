@@ -14,18 +14,6 @@ import {
   useHashParam,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  GPT_4O_MINI_MODEL_CONFIG,
-  isBuilder,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
 import { uniqueId } from "lodash";
 import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -68,6 +56,18 @@ import {
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useModels } from "@app/lib/swr/models";
+import type {
+  AgentConfigurationScope,
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
+} from "@app/types";
+import {
+  assertNever,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  GPT_4O_MINI_MODEL_CONFIG,
+  isBuilder,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 function isValidTab(tab: string): tab is BuilderScreen {
   return BUILDER_SCREENS.includes(tab as BuilderScreen);

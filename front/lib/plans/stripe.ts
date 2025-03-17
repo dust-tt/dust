@@ -1,11 +1,3 @@
-import type {
-  BillingPeriod,
-  LightWorkspaceType,
-  Result,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, isDevelopment, Ok } from "@dust-tt/types";
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
@@ -19,6 +11,14 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import type {
+  BillingPeriod,
+  LightWorkspaceType,
+  Result,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 export function getProPlanStripeProductId(owner: WorkspaceType) {
   const isBusiness = owner.metadata?.isBusiness;

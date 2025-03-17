@@ -16,7 +16,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, SpaceType, UserType } from "@dust-tt/types";
 import type {
   CellContext,
   PaginationState,
@@ -37,6 +36,7 @@ import {
   useSpaceInfo,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
+import type { LightWorkspaceType, SpaceType, UserType } from "@app/types";
 
 const MIN_MEMBERS_FOR_BATCH_OPTION = 50;
 

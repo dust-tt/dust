@@ -10,22 +10,6 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
-import type {
-  ContentNodesViewType,
-  DataSourceViewContentNode,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SearchWarningCode,
-  SpaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  defaultSelectionConfiguration,
-  MIN_SEARCH_QUERY_SIZE,
-  removeNulls,
-} from "@dust-tt/types";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -53,6 +37,22 @@ import {
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useSpaceSearch } from "@app/lib/swr/spaces";
+import type {
+  ContentNodesViewType,
+  DataSourceViewContentNode,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import {
+  assertNever,
+  defaultSelectionConfiguration,
+  MIN_SEARCH_QUERY_SIZE,
+  removeNulls,
+} from "@app/types";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 

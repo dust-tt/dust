@@ -6,13 +6,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  RunType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -27,6 +20,13 @@ import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;

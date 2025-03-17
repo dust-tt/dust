@@ -1,9 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  ConfluenceClientError,
-  isConfluenceNotFoundError,
-  MIME_TYPES,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -50,7 +44,13 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  ConfluenceClientError,
+  isConfluenceNotFoundError,
+  MIME_TYPES,
+} from "@connectors/types";
 
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.

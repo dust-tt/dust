@@ -1,15 +1,15 @@
+import { isLeft } from "fp-ts/lib/Either";
+
+import config from "@app/lib/api/config";
+import { createPlugin } from "@app/lib/api/poke/types";
+import logger from "@app/logger/logger";
 import {
   concurrentExecutor,
   ConnectorsAPI,
   Err,
   NotionFindUrlResponseSchema,
   Ok,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-
-import config from "@app/lib/api/config";
-import { createPlugin } from "@app/lib/api/poke/types";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 

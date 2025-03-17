@@ -23,7 +23,7 @@ const textAreaVariants = cva(
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-ring-offset-background",
     "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
-    "focus-visible:s-border-border-dark focus-visible:s-ring"
+    "focus-visible:s-border-border focus-visible:s-ring"
   ),
   {
     variants: {
@@ -41,7 +41,7 @@ const textAreaVariants = cva(
           "dark:s-ring-warning-200-night dark:focus:s-ring-warning-300-night"
         ),
         false: cn(
-          "s-border-border-dark/50",
+          "s-border-border/50",
           "focus:s-ring-border-focus/10",
           "focus-visible:s-border-border-focus",
           "dark:s-ring-structure-300-night",

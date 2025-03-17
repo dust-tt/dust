@@ -1,12 +1,12 @@
-import type {
-  ConnectorPermission,
-  DataSourceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useCallback } from "react";
 
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { usePokeConnectorPermissions } from "@app/lib/swr/poke";
+import type {
+  ConnectorPermission,
+  DataSourceType,
+  WorkspaceType,
+} from "@app/types";
 
 const getUseResourceHook =
   (
@@ -49,7 +49,6 @@ export function PokePermissionTree({
         showExpand={showExpand}
         onDocumentViewClick={onDocumentViewClick}
         useResourcesHook={useResourcesHook}
-        isSearchEnabled={false}
       />
     </div>
   );

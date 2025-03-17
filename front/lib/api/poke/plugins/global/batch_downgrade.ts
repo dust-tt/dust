@@ -1,10 +1,10 @@
-import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Workspace } from "@app/lib/models/workspace";
 import { internalSubscribeWorkspaceToFreeNoPlan } from "@app/lib/plans/subscription";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { Err, Ok } from "@app/types";
 
 export const batchDowngradePlugin = createPlugin({
   manifest: {

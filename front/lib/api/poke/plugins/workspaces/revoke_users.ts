@@ -1,8 +1,7 @@
-import { concurrentExecutor, Err, Ok } from "@dust-tt/types";
-
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor, Err, Ok } from "@app/types";
 
 export const revokeUsersPlugin = createPlugin({
   manifest: {

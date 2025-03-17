@@ -1,8 +1,8 @@
-import type { ConversationErrorType } from "@dust-tt/types";
-import { ConversationError } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { apiError } from "@app/logger/withlogging";
+import type { ConversationErrorType } from "@app/types";
+import { ConversationError } from "@app/types";
 
 const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_access_restricted: 403,

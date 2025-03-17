@@ -6,13 +6,6 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  LightWorkspaceType,
-  SpecificationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -30,6 +23,13 @@ import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpecificationType,
+  WorkspaceType,
+} from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   app: AppType;

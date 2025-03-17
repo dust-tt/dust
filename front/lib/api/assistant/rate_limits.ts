@@ -1,10 +1,6 @@
-import type {
-  LightWorkspaceType,
-  MaxMessagesTimeframeType,
-} from "@dust-tt/types";
-import { expireRateLimiterKey } from "@dust-tt/types";
-
 import type { Authenticator } from "@app/lib/auth";
+import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
+import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
 
 export const makeMessageRateLimitKeyForWorkspace = (
   owner: LightWorkspaceType

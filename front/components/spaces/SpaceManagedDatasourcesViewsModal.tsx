@@ -6,17 +6,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useMultipleDataSourceViewsContentNodes } from "@app/lib/swr/data_source_views";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 // We need to stabilize the initial state of the selection configurations,
 // to avoid resetting state when swr revalidates initialSelectedDataSources

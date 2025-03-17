@@ -5,11 +5,11 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
-import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 
 export function ZendeskConfigView({
   owner,

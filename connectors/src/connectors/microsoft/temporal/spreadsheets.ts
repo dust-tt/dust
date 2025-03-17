@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok, slugify } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
@@ -29,7 +29,8 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types";
+import { MIME_TYPES, slugify } from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 

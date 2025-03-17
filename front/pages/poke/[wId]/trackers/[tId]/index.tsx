@@ -1,5 +1,4 @@
 import { ContextItem, Page, Spinner, TextArea } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
@@ -9,6 +8,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeTracker } from "@app/poke/swr/trackers";
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;

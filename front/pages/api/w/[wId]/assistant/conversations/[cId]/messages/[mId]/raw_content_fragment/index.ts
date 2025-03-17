@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { isContentFragmentType } from "@dust-tt/types";
 import { IncomingForm } from "formidable";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,6 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileAttachmentLocation } from "@app/lib/resources/content_fragment_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isContentFragmentType } from "@app/types";
 
 export const config = {
   api: {

@@ -1,6 +1,7 @@
-import type { LightAgentConfigurationType } from "@dust-tt/types";
 import { isEqual } from "lodash";
 import { v4 as uuidv4 } from "uuid";
+
+import type { LightAgentConfigurationType } from "@app/types";
 
 export const MODELS_STRING_MAX_LENGTH = 255;
 

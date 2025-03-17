@@ -7,13 +7,6 @@ import {
   Spinner,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  ConnectorType,
-  LightWorkspaceType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { sortBy } from "lodash";
 import Link from "next/link";
@@ -28,6 +21,13 @@ import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ActionApp } from "@app/lib/registry";
 import { useApps, useSavedRunStatus } from "@app/lib/swr/apps";
+import type {
+  AppType,
+  ConnectorType,
+  LightWorkspaceType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
 
 type RowData = {
   app: AppType;
