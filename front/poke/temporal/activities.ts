@@ -133,9 +133,16 @@ export async function scrubSpaceActivity({
 
 export async function isWorkflowDeletableActivity({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
+  // If the workspace has been relocated, we don't expect subscriptions to be canceled.
+  if (workspaceHasBeenRelocated) {
+    return true;
+  }
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
@@ -399,11 +406,7 @@ export async function deleteMembersActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
+  const workspace = auth.getNonNullableWorkspace();
 
   await MembershipInvitation.destroy({
     where: {

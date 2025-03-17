@@ -69,7 +69,7 @@ export default function Finalize({
       }
     }
     void finalizeOAuth();
-  }, [queryParams, provider]);
+  }, [queryParams, doFinalize, provider]);
 
   return error ? <p>{error}</p> : null; // Render nothing.
 }
