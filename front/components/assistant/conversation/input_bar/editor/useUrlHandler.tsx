@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/core";
 import { useEffect } from "react";
+
 import type { DataSourceViewContentNode } from "@app/types";
 
 const useUrlHandler = (
