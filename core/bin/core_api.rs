@@ -1885,6 +1885,15 @@ async fn data_sources_documents_upsert(
         }
     }
 
+    if payload.title.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_title",
+            "Failed to upsert document - title is empty",
+            None,
+        );
+    }
+
     match state
         .store
         .load_data_source(&project, &data_source_id)
@@ -2452,6 +2461,15 @@ async fn tables_upsert(
                     );
             }
         }
+    }
+
+    if payload.title.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_title",
+            "Failed to upsert table - title is empty",
+            None,
+        );
     }
 
     match state
@@ -3290,6 +3308,15 @@ async fn folders_upsert(
                     );
             }
         }
+    }
+
+    if payload.title.is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "invalid_title",
+            "Failed to upsert folder - title is empty",
+            None,
+        );
     }
 
     match state
