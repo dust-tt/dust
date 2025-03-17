@@ -13,12 +13,8 @@ export const DataSourceLinkComponent = ({ node }: { node: { attrs: any } }) => {
     : FolderIcon;
 
   return (
-    <NodeViewWrapper className="inline-flex">
-      <Chip
-        label={title}
-        icon={IconComponent}
-        className="flex items-center border bg-white dark:bg-slate-950"
-      />
+    <NodeViewWrapper className="inline-flex align-middle">
+      <Chip label={title} size="xs" icon={IconComponent} />
     </NodeViewWrapper>
   );
 };
