@@ -85,11 +85,17 @@ export async function retrieveNewTranscriptsActivity(
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
-      const googleTranscriptsIds = await retrieveGoogleTranscripts(
+      const googleTranscriptsRes = await retrieveGoogleTranscripts(
         auth,
         transcriptsConfiguration,
         localLogger
       );
+      if (googleTranscriptsRes.isErr()) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+        await transcriptsConfiguration.setIsActive(false);
+        throw googleTranscriptsRes.error;
+      }
+      const googleTranscriptsIds = googleTranscriptsRes.value;
       transcriptsIdsToProcess.push(...googleTranscriptsIds);
       break;
 
