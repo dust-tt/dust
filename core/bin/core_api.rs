@@ -1853,6 +1853,7 @@ async fn data_sources_documents_upsert(
         None => false,
     };
 
+    // TODO(2025-03-17 aubin) - Add generic validation on node upserts instead of duplicating it for folders, tables, documents.
     if payload.parents.get(0) != Some(&payload.document_id) {
         return error_response(
             StatusCode::BAD_REQUEST,
