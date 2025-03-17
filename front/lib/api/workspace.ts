@@ -371,10 +371,14 @@ export async function deleteWorkspace(
     }
   }
 
-  await launchDeleteWorkspaceWorkflow({
+  const res = await launchDeleteWorkspaceWorkflow({
     workspaceId: owner.sId,
     workspaceHasBeenRelocated,
   });
+
+  if (res.isErr()) {
+    return new Err(res.error);
+  }
 
   return new Ok(undefined);
 }
