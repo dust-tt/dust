@@ -4,10 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import {
-  deleteWorkspace,
-  setInternalWorkspaceSegmentation,
-} from "@app/lib/api/workspace";
+import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
