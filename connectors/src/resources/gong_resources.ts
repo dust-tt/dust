@@ -6,6 +6,7 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import {
   GongConfigurationModel,
@@ -15,6 +16,12 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+
+function daysToMs(days: number) {
+  return days * 24 * 60 * 60 * 1000;
+}
+
+const GC_FREQUENCY_MS = daysToMs(1); // Every day.
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -68,6 +75,9 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
       lastSyncTimestamp: this.lastSyncTimestamp,
+      baseUrl: this.baseUrl,
+      retentionPeriodDays: this.retentionPeriodDays,
+      lastGarbageCollectionTimestamp: this.lastGarbageCollectionTimestamp,
     };
   }
 
@@ -85,11 +95,63 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   }
 
   async resetLastSyncTimestamp(): Promise<void> {
-    await this.update({ lastSyncTimestamp: null });
+    await this.update({
+      lastSyncTimestamp: null,
+    });
   }
 
   async setLastSyncTimestamp(timestamp: number): Promise<void> {
-    await this.update({ lastSyncTimestamp: timestamp });
+    await this.update({
+      lastSyncTimestamp: timestamp,
+    });
+  }
+
+  async setRetentionPeriodDays(
+    retentionPeriodDays: number | null
+  ): Promise<void> {
+    await this.update({
+      retentionPeriodDays,
+    });
+  }
+
+  // Returns the timestamp to start syncing from.
+  getSyncStartTimestamp() {
+    if (this.retentionPeriodDays) {
+      if (!this.lastSyncTimestamp) {
+        return Date.now() - daysToMs(this.retentionPeriodDays);
+      }
+      return Math.max(
+        this.lastSyncTimestamp,
+        Date.now() - daysToMs(this.retentionPeriodDays)
+      );
+    }
+    return this.lastSyncTimestamp;
+  }
+
+  checkGarbageCollectionState({
+    currentTimestamp,
+  }: {
+    currentTimestamp: number;
+  }): { shouldRunGarbageCollection: boolean } {
+    // If we have no retention period policy, we never run the garbage collection.
+    if (this.retentionPeriodDays === null) {
+      return { shouldRunGarbageCollection: false };
+    }
+    // If we never ran the GC, we run it (handles retention period changes).
+    if (this.lastGarbageCollectionTimestamp === null) {
+      return { shouldRunGarbageCollection: true };
+    }
+    return {
+      shouldRunGarbageCollection:
+        currentTimestamp - this.lastGarbageCollectionTimestamp >
+        GC_FREQUENCY_MS,
+    };
+  }
+
+  async setLastGarbageCollectionTimestamp(timestamp: number): Promise<void> {
+    await this.update({
+      lastGarbageCollectionTimestamp: timestamp,
+    });
   }
 }
 
@@ -272,5 +334,44 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
     }
 
     return new this(this.model, transcript.get());
+  }
+
+  static async fetchOutdated(
+    connector: ConnectorResource,
+    configuration: GongConfigurationResource,
+    {
+      garbageCollectionStartTs,
+      limit,
+    }: { garbageCollectionStartTs: number; limit: number }
+  ): Promise<GongTranscriptResource[]> {
+    // If the retention period is not defined, we keep all transcripts.
+    if (configuration.retentionPeriodDays === null) {
+      return [];
+    }
+
+    const retentionPeriodStart =
+      garbageCollectionStartTs - daysToMs(configuration.retentionPeriodDays);
+    const transcripts = await GongTranscriptModel.findAll({
+      where: {
+        connectorId: connector.id,
+        callDate: {
+          [Op.lt]: retentionPeriodStart,
+        },
+      },
+      limit,
+    });
+    return transcripts.map((t) => new this(this.model, t.get()));
+  }
+
+  static async batchDelete(
+    connector: ConnectorResource,
+    transcripts: GongTranscriptResource[]
+  ): Promise<void> {
+    await GongTranscriptModel.destroy({
+      where: {
+        callId: transcripts.map((t) => t.callId),
+        connectorId: connector.id,
+      },
+    });
   }
 }
