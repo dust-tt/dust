@@ -326,11 +326,11 @@ async function handler(
         mimeType = "application/vnd.dust.table";
 
         // If the request is from a regular API key, and the title is provided, we use it.
-        // Otherwise we default to either:
+        // Otherwise, we default to either:
         // - the title tag if any
         // - the name of the table
-        if (r.data.title) {
-          title = r.data.title;
+        if (r.data.title && r.data.title.trim()) {
+          title = r.data.title.trim();
         } else {
           const titleTag = tags?.find((t) => t.startsWith("title:"));
           if (titleTag) {
