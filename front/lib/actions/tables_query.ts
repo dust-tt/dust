@@ -322,7 +322,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
       sectionFileId: sectionFile ? sectionFile.fileId : null,
-      generatedFiles: resultsFile ? [resultsFile] : [],
+      generatedFiles: removeNulls([resultsFile, sectionFile]),
       type: "tables_query_action",
     });
   });
