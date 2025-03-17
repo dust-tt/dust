@@ -322,6 +322,13 @@ export default function DatasetView({
 
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
+
+    // Check that the new key is not already in the dataset
+    // If it is, append a number to the new key otherwise it will mess up the dataset since keys and data are not linked.
+    if (datasetKeys.includes(newKey)) {
+      newKey = newKey + "_1";
+    }
+
     const data = datasetData.map((d) => {
       d[newKey] = d[oldKey];
       delete d[oldKey];
@@ -643,7 +650,7 @@ export default function DatasetView({
                           "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
                           readOnly
                             ? "text-gray-500"
-                            : "text-gray-700 dark:text-gray-700-night"
+                            : "dark:text-gray-700-night text-gray-700"
                         )}
                         readOnly={readOnly}
                         placeholder="Property description"
@@ -762,7 +769,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500 dark:text-gray-300-night"
+                              className="dark:text-gray-300-night h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
                               onClick={() => {
                                 handleDeleteEntry(i);
                               }}
@@ -771,7 +778,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500 dark:text-gray-300-night"
+                            className="dark:text-gray-300-night h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
                             onClick={() => {
                               handleNewEntry(i);
                             }}
