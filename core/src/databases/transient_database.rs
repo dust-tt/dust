@@ -21,7 +21,7 @@ impl From<SqliteWorkerError> for QueryDatabaseError {
         match &e {
             SqliteWorkerError::TooManyResultRows => QueryDatabaseError::TooManyResultRows,
             SqliteWorkerError::QueryExecutionError(msg) => {
-                QueryDatabaseError::ExecutionError(msg.clone())
+                QueryDatabaseError::ExecutionError(msg.clone(), None)
             }
             _ => QueryDatabaseError::GenericError(e.into()),
         }

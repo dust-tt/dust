@@ -25,7 +25,7 @@ pub enum QueryDatabaseError {
     #[error("Result is too large: {0}")]
     ResultTooLarge(String),
     #[error("Query execution error: {0}")]
-    ExecutionError(String),
+    ExecutionError(String, Option<String>),
 }
 
 #[derive(Serialize)]

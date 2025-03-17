@@ -3718,7 +3718,7 @@ async fn databases_query_run(
                         "The query returned too many rows",
                         None,
                     ),
-                    Err(QueryDatabaseError::ExecutionError(s)) => {
+                    Err(QueryDatabaseError::ExecutionError(s, _)) => {
                         error_response(StatusCode::BAD_REQUEST, "query_execution_error", &s, None)
                     }
                     Err(e) => error_response(
