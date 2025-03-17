@@ -4,7 +4,11 @@ import { getSupportedNonImageMimeTypes } from "../../files";
 import { MIME_TYPES_VALUES } from "../../shared/internal_mime_types";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
-  content: t.string,
+  content: t.refinement(
+    t.string,
+    (s): s is string => s.length > 0,
+    "NonEmptyString"
+  ),
   mentions: t.array(t.type({ configurationId: t.string })),
   context: t.type({
     timezone: t.string,
