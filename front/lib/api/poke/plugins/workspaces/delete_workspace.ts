@@ -19,8 +19,10 @@ export const deleteWorkspacePlugin = createPlugin({
       },
       workspaceHasBeenRelocated: {
         type: "boolean",
-        description: "Whether the workspace has been relocated",
-        label: "Purge workspace data in this region following a relocation",
+        description:
+          "Purge workspace data in this region following a relocation. If true, will ignore " +
+          "data sources and subscription checks.",
+        label: "Workspace has been relocated?",
       },
     },
   },
