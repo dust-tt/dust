@@ -14,7 +14,7 @@ import type { DataSourceType, WorkspaceType } from "@app/types";
 // TODO(2025-03-17): share this variable between connectors and front.
 const GONG_RETENTION_PERIOD_CONFIG_KEY = "gongRetentionPeriodDays";
 
-function checkIsNonNegativeInteger(value: string) {
+function checkIsPositiveInteger(value: string) {
   const integerValue = parseInt(value, 10);
   return Number.isFinite(integerValue) && integerValue >= 0;
 }
@@ -46,7 +46,7 @@ export function GongOptionComponent({
 
   const handleSetNewConfig = async (newValue: string) => {
     // Validate that the value is either empty or a positive integer
-    if (newValue !== "" && !checkIsNonNegativeInteger(newValue)) {
+    if (newValue !== "" && !checkIsPositiveInteger(newValue)) {
       sendNotification({
         type: "error",
         title: "Invalid retention period",
@@ -104,7 +104,7 @@ export function GongOptionComponent({
                 onChange={(e) => {
                   // Only allow positive integer values.
                   const value = e.target.value;
-                  if (value === "" || checkIsNonNegativeInteger(value)) {
+                  if (value === "" || checkIsPositiveInteger(value)) {
                     setRetentionPeriod(value);
                   }
                 }}
