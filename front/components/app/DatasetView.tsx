@@ -8,6 +8,7 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
+  useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
@@ -188,6 +189,7 @@ export default function DatasetView({
   viewType: DatasetViewType;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sendNotification = useSendNotification();
 
   if (!dataset) {
     dataset = {
@@ -327,6 +329,11 @@ export default function DatasetView({
     // If it is, append a number to the new key otherwise it will mess up the dataset since keys and data are not linked.
     if (datasetKeys.includes(newKey)) {
       newKey = newKey + "_1";
+      sendNotification({
+        title: "Key already exists",
+        description: "Please choose a different key",
+        type: "error",
+      });
     }
 
     const data = datasetData.map((d) => {
@@ -650,7 +657,7 @@ export default function DatasetView({
                           "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
                           readOnly
                             ? "text-gray-500"
-                            : "dark:text-gray-700-night text-gray-700"
+                            : "text-gray-700 dark:text-gray-700-night"
                         )}
                         readOnly={readOnly}
                         placeholder="Property description"
@@ -769,7 +776,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="dark:text-gray-300-night h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
+                              className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500 dark:text-gray-300-night"
                               onClick={() => {
                                 handleDeleteEntry(i);
                               }}
@@ -778,7 +785,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="dark:text-gray-300-night h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
+                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500 dark:text-gray-300-night"
                             onClick={() => {
                               handleNewEntry(i);
                             }}
