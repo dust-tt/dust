@@ -312,6 +312,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         },
       ],
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
@@ -425,6 +426,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {},
       {
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
           dataSourceId: dataSource.id,
         },
