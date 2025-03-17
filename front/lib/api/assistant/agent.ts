@@ -53,12 +53,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  isTextContent,
-  isUserMessageTypeModel,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
