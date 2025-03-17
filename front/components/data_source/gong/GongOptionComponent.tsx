@@ -6,10 +6,10 @@ import {
   Input,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { DataSourceType, WorkspaceType } from "@app/types";
 
 function checkIsPositiveInteger(value: string) {
   return /^[0-9]+$/.test(value);
