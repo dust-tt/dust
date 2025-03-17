@@ -4,7 +4,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { nodeIdFromUrl } from "@app/lib/connectors";
 
 type URLFormatOptions = {
-  onUrlDetected?: (url: string, nodeId: string | null) => void;
+  onUrlDetected?: (nodeId: string | null) => void;
 };
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/gi;
@@ -54,7 +54,7 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                     to: from + url.length,
                   });
                 }
-                onUrlDetected(url, nodeId || null);
+                onUrlDetected(nodeId || null);
               });
             }
 

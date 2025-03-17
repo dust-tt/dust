@@ -81,14 +81,11 @@ const InputBarContainer = ({
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
-  const handleUrlDetected = useCallback(
-    (url: string, nodeId: string | null) => {
-      if (nodeId) {
-        setNodeCandidate(nodeId);
-      }
-    },
-    []
-  );
+  const handleUrlDetected = useCallback((nodeId: string | null) => {
+    if (nodeId) {
+      setNodeCandidate(nodeId);
+    }
+  }, []);
 
   // TODO: remove once attach from datasources is released
   const isAttachedFromDataSourceActivated = featureFlags.includes(
@@ -100,7 +97,7 @@ const InputBarContainer = ({
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
-    ...(featureFlags.includes("attach_from_datasources") && {
+    ...(isAttachedFromDataSourceActivated && {
       onUrlDetected: handleUrlDetected,
     }),
   });
