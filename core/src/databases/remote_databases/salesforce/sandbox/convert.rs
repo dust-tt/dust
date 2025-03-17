@@ -29,7 +29,7 @@ pub fn convert_to_soql(query: &StructuredQuery) -> Result<String, SoqlError> {
 
     // Add regular fields
     if !query.fields.is_empty() {
-        select_parts.push(query.fields.join(", "));
+        select_parts.extend(query.fields.iter().cloned());
     }
 
     // Add parent fields if present
