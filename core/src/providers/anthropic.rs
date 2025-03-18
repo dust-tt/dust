@@ -1110,8 +1110,7 @@ impl AnthropicLLM {
                                                 StreamContent::AnthropicStreamRedactedThinking(
                                                     _,
                                                 ) => {
-                                                    // TODO(2025-03-18) - we skip these as there do not contain anything human-readable
-                                                    // but we need to pass these back to the API in subsequent calls.
+                                                    // We skip these as these do not contain anything human-readable.
                                                 }
                                             }
                                         }
