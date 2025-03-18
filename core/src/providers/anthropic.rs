@@ -344,7 +344,7 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                         .redacted_thinking
                         .as_ref()
                         .map(|redacted_thinking| AnthropicContent {
-                            r#type: AnthropicContentType::Thinking,
+                            r#type: AnthropicContentType::RedactedThinking,
                             text: None,
                             thinking: None,
                             redacted_thinking: Some(redacted_thinking.clone()),
