@@ -116,8 +116,8 @@ export const Metrics: MetricProps = {
       description: <> brand-compliant copy generation</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-500",
 };
 
 export const UseCases: UseCaseProps = {
