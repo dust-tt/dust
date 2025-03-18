@@ -55,6 +55,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isTextContent,
   isUserMessageTypeModel,
   SUPPORTED_MODEL_CONFIGS,
@@ -506,7 +507,38 @@ async function* runMultiActionsAgent(
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
-  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+  let anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+
+  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
+  if (
+    model.modelId.startsWith("claude-3-7-sonnet") &&
+    availableActions.find(
+      (a) =>
+        a.type === "reasoning_configuration" &&
+        a.providerId === "anthropic" &&
+        a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+    )
+  ) {
+    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
+    runConfig.MODEL.thinking = {
+      type: "enabled",
+      budget_tokens: 32000,
+    };
+
+    // Remove the tool (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
+    availableActions = availableActions.filter(
+      (a) =>
+        !(
+          a.type === "reasoning_configuration" &&
+          a.providerId === "anthropic" &&
+          a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+        )
+    );
+    // Add the beta flag.
+    anthropicBetaFlags ||= [];
+    anthropicBetaFlags.push("output-128k-2025-02-19");
+  }
+
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
