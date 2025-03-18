@@ -248,19 +248,16 @@ export async function upsertCollectionWithChildren({
 
   await concurrentExecutor(
     childrenCollectionsOnIntercom,
-    async (collectionOnIntercom) => {
-      await upsertCollectionWithChildren({
+    async (collectionOnIntercom) =>
+      upsertCollectionWithChildren({
         connectorId,
         connectionId,
         helpCenterId,
         collection: collectionOnIntercom,
         region,
         currentSyncMs,
-      });
-    },
-    {
-      concurrency: 10,
-    }
+      }),
+    { concurrency: 10 }
   );
 }
 
