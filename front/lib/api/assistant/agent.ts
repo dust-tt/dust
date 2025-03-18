@@ -366,6 +366,27 @@ async function* runMultiActionsAgent(
     availableActions = availableActions.concat(jitActions);
   }
 
+  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
+  if (
+    model.modelId.startsWith("claude-3-7-sonnet") &&
+    availableActions.find(
+      (a) =>
+        a.type === "reasoning_configuration" &&
+        a.providerId === "anthropic" &&
+        a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+    )
+  ) {
+    // Remove the tool (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
+    availableActions = availableActions.filter(
+      (a) =>
+        !(
+          a.type === "reasoning_configuration" &&
+          a.providerId === "anthropic" &&
+          a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+        )
+    );
+  }
+
   let fallbackPrompt = "You are a conversational agent";
   if (
     agentConfiguration.actions.length ||
@@ -524,16 +545,6 @@ async function* runMultiActionsAgent(
       type: "enabled",
       budget_tokens: 32000,
     };
-
-    // Remove the tool (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
-    availableActions = availableActions.filter(
-      (a) =>
-        !(
-          a.type === "reasoning_configuration" &&
-          a.providerId === "anthropic" &&
-          a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
-        )
-    );
     // Add the beta flag.
     anthropicBetaFlags ||= [];
     anthropicBetaFlags.push("output-128k-2025-02-19");
