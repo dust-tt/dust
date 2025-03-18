@@ -246,34 +246,22 @@ export async function upsertCollectionWithChildren({
     parentId: collection.id,
   });
 
-  const errors = await concurrentExecutor(
+  await concurrentExecutor(
     childrenCollectionsOnIntercom,
     async (collectionOnIntercom) => {
-      try {
-        await upsertCollectionWithChildren({
-          connectorId,
-          connectionId,
-          helpCenterId,
-          collection: collectionOnIntercom,
-          region,
-          currentSyncMs,
-        });
-      } catch (error) {
-        return error;
-      }
+      await upsertCollectionWithChildren({
+        connectorId,
+        connectionId,
+        helpCenterId,
+        collection: collectionOnIntercom,
+        region,
+        currentSyncMs,
+      });
     },
     {
       concurrency: 10,
     }
   );
-
-  if (errors.length > 0) {
-    throw new Error(
-      `Failed to upsert ${errors.length} collections:\n${errors
-        .map((e) => normalizeError(e))
-        .join("\n")}`
-    );
-  }
 }
 
 /**
