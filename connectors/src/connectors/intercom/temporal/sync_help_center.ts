@@ -31,8 +31,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   concurrentExecutor,
   MIME_TYPES,
@@ -231,7 +230,7 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name,
+    title: collection.name.trim() || "Untitled Collection",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
     mimeType: MIME_TYPES.INTERCOM.COLLECTION,
