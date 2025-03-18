@@ -2,8 +2,8 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export const REMOTE_MCP_SERVER_STATUS = [
   "synchronized", // The server is synchronized with the local data
@@ -26,7 +26,7 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare description: string | null;
   declare cachedActions: string[];
 
-  declare status: typeof REMOTE_MCP_SERVER_STATUS[number];
+  declare status: (typeof REMOTE_MCP_SERVER_STATUS)[number];
   declare lastSyncAt: Date | null;
   declare connectionToken: string;
 }
@@ -86,7 +86,6 @@ RemoteMCPServer.init(
   }
 );
 
-
 SpaceModel.hasMany(RemoteMCPServer, {
   foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
@@ -94,5 +93,3 @@ SpaceModel.hasMany(RemoteMCPServer, {
 RemoteMCPServer.belongsTo(SpaceModel, {
   foreignKey: { allowNull: false, name: "vaultId" },
 });
-
-
