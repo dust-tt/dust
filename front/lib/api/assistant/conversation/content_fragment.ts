@@ -1,8 +1,5 @@
-import type {
-  ProcessAndStoreFileError} from "@app/lib/api/files/upload";
-import {
-  processAndStoreFile
-} from "@app/lib/api/files/upload";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
