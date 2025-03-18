@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+import { MIME_TYPES_VALUES } from "./mime_types";
+
 type StringLiteral<T> = T extends string
   ? string extends T
     ? never
@@ -211,6 +213,12 @@ const SupportedInlinedContentFragmentTypeSchema =
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+>();
+
+type DustMimeTypeValues = (typeof MIME_TYPES_VALUES)[number];
+
+const SupportedContentNodeContentTypeSchema = FlexibleEnumSchema<
+  keyof typeof supportedOtherFileFormats | DustMimeTypeValues
 >();
 
 export function isSupportedFileContentType(
@@ -1835,6 +1843,8 @@ export const PublicContentFragmentWithContentSchema = z.object({
   content: z.string(),
   contentType: SupportedInlinedContentFragmentTypeSchema,
   fileId: z.undefined().nullable(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1850,6 +1860,8 @@ export const PublicContentFragmentWithFileIdSchema = z.object({
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
   fileId: z.string(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1859,9 +1871,22 @@ export type PublicContentFragmentWithFileId = z.infer<
   typeof PublicContentFragmentWithFileIdSchema
 >;
 
+const PublicContentFragmentWithContentNodeSchema = z.object({
+  title: z.string(),
+  url: z.string().optional().nullable(),
+  content: z.undefined().nullable(),
+  contentType: SupportedContentNodeContentTypeSchema,
+  fileId: z.undefined().nullable(),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  context: ContentFragmentContextSchema.optional().nullable(),
+  supersededContentFragmentId: z.string().optional().nullable(),
+});
+
 export const PublicPostContentFragmentRequestBodySchema = z.union([
   PublicContentFragmentWithContentSchema,
   PublicContentFragmentWithFileIdSchema,
+  PublicContentFragmentWithContentNodeSchema,
 ]);
 
 export type PublicPostContentFragmentRequestBody = z.infer<
@@ -1897,6 +1922,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     contentFragment: z.union([
       PublicContentFragmentWithContentSchema,
       PublicContentFragmentWithFileIdSchema,
+      PublicContentFragmentWithContentNodeSchema,
       z.undefined(),
     ]),
     contentFragments: z.union([
@@ -1904,6 +1930,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
         .union([
           PublicContentFragmentWithContentSchema,
           PublicContentFragmentWithFileIdSchema,
+          PublicContentFragmentWithContentNodeSchema,
         ])
         .array(),
       z.undefined(),
@@ -2624,7 +2651,7 @@ export const ContentNodeSchema = z.object({
   expandable: z.boolean(),
   internalId: z.string(),
   lastUpdatedAt: z.number().nullable(),
-  mimeType: z.string(),
+  mimeType: SupportedContentNodeContentTypeSchema,
   // The direct parent ID of this content node
   parentInternalId: z.string().nullable(),
   // permission: ConnectorPermissionSchema,

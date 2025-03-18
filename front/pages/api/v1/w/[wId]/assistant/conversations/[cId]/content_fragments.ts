@@ -13,7 +13,10 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isContentFragmentInputWithContentType } from "@app/types";
+import {
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
+} from "@app/types";
 
 /**
  * @swagger
@@ -118,7 +121,10 @@ async function handler(
 
       // If we receive a content fragment that is not file based, we transform it to a file-based
       // one.
-      if (isContentFragmentInputWithContentType(contentFragment)) {
+      if (
+        !isContentFragmentInputWithFileId(contentFragment) &&
+        !isContentFragmentInputWithContentNode(contentFragment)
+      ) {
         const contentFragmentRes = await toFileContentFragment(auth, {
           contentFragment,
         });

@@ -72,8 +72,8 @@ import {
   UpsertFolderResponseSchema,
 } from "./types";
 
+export * from "./mime_types";
 export * from "./types";
-
 interface DustResponse {
   status: number;
   ok: boolean;

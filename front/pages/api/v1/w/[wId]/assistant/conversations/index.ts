@@ -25,7 +25,8 @@ import type {
 } from "@app/types";
 import {
   ConversationError,
-  isContentFragmentInputWithContentType,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
   isEmptyString,
 } from "@app/types";
 
@@ -172,7 +173,10 @@ async function handler(
         const { context, ...rest } = resolvedFragment;
         let contentFragment = rest;
 
-        if (isContentFragmentInputWithContentType(contentFragment)) {
+        if (
+          !isContentFragmentInputWithFileId(contentFragment) &&
+          !isContentFragmentInputWithContentNode(contentFragment)
+        ) {
           const contentFragmentRes = await toFileContentFragment(auth, {
             contentFragment,
           });
@@ -181,7 +185,7 @@ async function handler(
           }
           contentFragment = contentFragmentRes.value;
         }
-
+        contentFragment;
         const cfRes = await postNewContentFragment(
           auth,
           conversation,

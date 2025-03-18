@@ -19,7 +19,7 @@ import { useDustAPI } from "@extension/lib/dust_api";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
 import { sendInputBarStatus } from "@extension/lib/messages";
 import { getSpaceIcon } from "@extension/lib/spaces";
-import type { UploadedFileWithKind } from "@extension/lib/types";
+import type { ContentFragmentsType } from "@extension/lib/types";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
@@ -44,7 +44,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: UploadedFileWithKind[]
+    contentFragments: ContentFragmentsType
   ) => void;
   stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -264,7 +264,10 @@ export function AssistantInputBar({
       }
     }
 
-    void onSubmit(markdown, mentions, newFiles);
+    void onSubmit(markdown, mentions, {
+      uploaded: newFiles,
+      contentNodes: attachedNodes,
+    });
     setLoading(false);
     resetEditorText();
     resetUpload();

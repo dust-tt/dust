@@ -2,6 +2,7 @@ import type {
   ContentNodeType,
   DataSourceViewContentNodeType,
 } from "@dust-tt/client";
+import { MIME_TYPES } from "@dust-tt/client";
 import {
   assertNever,
   ChatBubbleLeftRightIcon,
@@ -13,7 +14,6 @@ import {
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 import { CONNECTOR_CONFIGURATIONS } from "@extension/lib/connector_providers";
-import { MIME_TYPES } from "@extension/lib/internal_mime_types";
 
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
@@ -61,7 +61,6 @@ export function getVisualForDataSourceViewContentNode(
   // Handle data sources with connector providers.
   if (
     node.mimeType &&
-    node.mimeType === DATA_SOURCE_MIME_TYPE &&
     node.dataSourceView?.dataSource?.connectorProvider &&
     CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
   ) {
