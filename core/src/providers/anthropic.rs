@@ -1793,7 +1793,7 @@ impl LLM for AnthropicLLM {
             },
         };
 
-        let thinking_type = match &extras {
+        let thinking = match &extras {
             None => None,
             Some(v) => match v.get("anthropic_beta_thinking") {
                 Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
@@ -1842,7 +1842,7 @@ impl LLM for AnthropicLLM {
                     },
                     &beta_flags,
                     es,
-                    thinking_type,
+                    thinking,
                 )
                 .await?
             }
