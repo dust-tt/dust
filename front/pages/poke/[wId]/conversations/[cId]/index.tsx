@@ -186,7 +186,7 @@ const ConversationPage = ({
   return (
     <>
       {conversation && (
-        <div className="mx-auto max-w-4xl pt-8">
+        <div className="max-w-4xl">
           <h3 className="text-xl font-bold">
             Conversation of workspace:{" "}
             <a href={`/poke/${workspaceId}`} className="text-action-500">
