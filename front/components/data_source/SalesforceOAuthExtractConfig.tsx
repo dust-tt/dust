@@ -100,7 +100,7 @@ export function SalesforceOauthExtraConfig({
         message={
           isPkceError
             ? "Error loading Salesforce OAuth credentials. Check if your url is correct and try again or contact us at support@dust.tt."
-            : "Must be a valid Salesforce domain in https and ending with .salesforce.com or .force.com"
+            : "Must be a valid Salesforce domain in https and ending with .salesforce.com"
         }
         name="instance_url"
         value={extraConfig.instance_url ?? ""}
