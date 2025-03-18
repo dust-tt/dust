@@ -550,7 +550,7 @@ export const CLAUDE_3_7_SONNET_REASONING_MODEL_CONFIG: ModelConfigurationType =
     supportsVision: true,
     toolUseMetaPrompt: ANTHROPIC_TOOL_USE_META_PROMPT,
     tokenCountAdjustment: 1.15,
-    featureFlag: "claude_3.7_reasoning",
+    featureFlag: "claude_3_7_reasoning",
   };
 export const CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "anthropic",
