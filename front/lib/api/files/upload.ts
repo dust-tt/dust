@@ -91,7 +91,6 @@ const resizeAndUploadToFileStorage: ProcessingFunction = async (
 
   try {
     await pipeline(readStream, resizedImageStream, writeStream);
-
     return new Ok(undefined);
   } catch (err) {
     logger.error(
@@ -333,25 +332,21 @@ const maybeApplyProcessing: ProcessingFunction = async (
   }
 };
 
+export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
+  code:
+    | "internal_server_error"
+    | "invalid_request_error"
+    | "file_too_large"
+    | "file_type_not_supported"
+    | "file_is_empty";
+};
 export async function processAndStoreFile(
   auth: Authenticator,
   {
     file,
     reqOrString,
   }: { file: FileResource; reqOrString: IncomingMessage | string }
-): Promise<
-  Result<
-    FileResource,
-    Omit<DustError, "code"> & {
-      code:
-        | "internal_server_error"
-        | "invalid_request_error"
-        | "file_too_large"
-        | "file_type_not_supported"
-        | "file_is_empty";
-    }
-  >
-> {
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   if (file.isReady || file.isFailed) {
     return new Err({
       name: "dust_error",
@@ -389,10 +384,16 @@ export async function processAndStoreFile(
   const processingRes = await maybeApplyProcessing(auth, file);
   if (processingRes.isErr()) {
     await file.markAsFailed();
+    // Unfortunately, there is no better way to catch this image format error.
+    const code = processingRes.error.message.includes(
+      "Input buffer contains unsupported image format"
+    )
+      ? "file_type_not_supported"
+      : "internal_server_error";
 
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code,
       message: `Failed to process the file : ${processingRes.error}`,
     });
   }
