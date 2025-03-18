@@ -276,7 +276,6 @@ async function handler(
       } = r.data;
 
       let mimeType: string;
-      let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
         if (!r.data.mime_type) {
@@ -299,20 +298,7 @@ async function handler(
         }
 
         mimeType = r.data.mime_type;
-        title = r.data.title;
       } else {
-        // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
-        if (r.data.timestamp) {
-          logger.info(
-            {
-              workspaceId: owner.id,
-              dataSourceId: dataSource.sId,
-              timestamp: r.data.timestamp,
-              currentDate: Date.now(),
-            },
-            "[ContentNode] User-set timestamp."
-          );
-        }
         // If the request is from a regular API key, the request must not provide mimeType.
         if (r.data.mime_type) {
           return apiError(req, res, {
@@ -324,22 +310,15 @@ async function handler(
           });
         }
         mimeType = "application/vnd.dust.table";
-
-        // If the request is from a regular API key, and the title is provided, we use it.
-        // Otherwise we default to either:
-        // - the title tag if any
-        // - the name of the table
-        if (r.data.title) {
-          title = r.data.title;
-        } else {
-          const titleTag = tags?.find((t) => t.startsWith("title:"));
-          if (titleTag) {
-            title = titleTag.substring(6);
-          } else {
-            title = name;
-          }
-        }
       }
+      // If the title is provided, we use it.
+      // Otherwise, we default to either:
+      // - the title tag if any
+      // - the name of the table
+      const titleInTags = tags
+        ?.find((t) => t.startsWith("title:"))
+        ?.substring(6);
+      const title = r.data.title?.trim() || titleInTags || name;
 
       const tableId = maybeTableId || generateRandomModelSId();
 
