@@ -25,7 +25,7 @@
  * THE SOFTWARE.
  */
 
-import type { CaptureFullPageMessage } from "@extension/lib/messages";
+import type { CaptureFullPageMessage } from "@app/shared/lib/messages";
 
 declare global {
   interface Window {

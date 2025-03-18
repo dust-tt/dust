@@ -1,17 +1,18 @@
-import path from "path";
-import fs from "fs";
-import { promisify } from "util";
-import webpack, { Configuration } from "webpack";
+import { execSync } from "child_process";
 import CopyPlugin from "copy-webpack-plugin";
 import Dotenv from "dotenv-webpack";
-import ZipPlugin from "zip-webpack-plugin";
-import WebpackBar from "webpackbar";
-import ExtReloader from "webpack-ext-reloader";
+import fs from "fs";
+import path from "path";
 import TerserPlugin from "terser-webpack-plugin";
+import { promisify } from "util";
+import type { Configuration } from "webpack";
+import webpack from "webpack";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import ExtReloader from "webpack-ext-reloader";
+import WebpackBar from "webpackbar";
+import ZipPlugin from "zip-webpack-plugin";
 
-import { Environment } from "./env";
-import { execSync } from "child_process";
+import type { Environment } from "../../config/env";
 
 const rootDir = path.resolve(__dirname, "../");
 
@@ -84,7 +85,7 @@ export const getConfig = async ({
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
-        "@extension": path.resolve("./app/src"),
+        "@app": path.resolve(__dirname, "./"),
         redis: false,
         // stream: "stream-browserify",
         // next: false,
