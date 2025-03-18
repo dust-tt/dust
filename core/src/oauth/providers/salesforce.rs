@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use serde_json::json;
 
 pub struct SalesforceConnectionProvider {}
 
