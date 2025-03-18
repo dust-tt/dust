@@ -708,6 +708,7 @@ struct AnthropicStreamToolInputDelta {
 enum StreamContentDelta {
     AnthropicStreamContent(AnthropicStreamContent),
     AnthropicStreamThinkingDelta(AnthropicStreamThinkingDelta),
+    // TODO(2025-03-18) - see what we need to do about these
     AnthropicStreamSignatureDelta(AnthropicStreamSignatureDelta),
     AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
@@ -1160,6 +1161,19 @@ impl AnthropicLLM {
                                                         "type": "tokens",
                                                         "content": {
                                                         "text": delta.text,
+                                                        }
+
+                                                    }));
+                                                }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(content)) => {
+                                                content.thinking.push_str(delta.thinking_delta.as_str());
+                                                if delta.thinking_delta.len() > 0 {
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                        "text": delta.thinking_delta,
                                                         }
 
                                                     }));
