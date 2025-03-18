@@ -22,9 +22,9 @@
     "noImplicitAny": true,
     "types": ["chrome", "react", "react-dom"],
     "paths": {
-      "@extension/*": ["./src/*"]
+      "@app/*": ["./*"]
     }
   },
-  "include": ["./shared/**/*", "./platforms/**/*"],
+  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*"],
   "exclude": ["node_modules", "build"]
 }
