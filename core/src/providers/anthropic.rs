@@ -1973,14 +1973,18 @@ impl LLM for AnthropicLLM {
 
         let thinking = match &extras {
             None => None,
-            Some(v) => match v.get("anthropic_beta_thinking") {
-                Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
-                    (Some(Value::String(t)), Some(Value::Number(b))) => {
-                        Some((t.clone(), b.as_u64().unwrap_or(1024)))
-                    }
+            // We don't pass the thinking parameters in tool use.
+            Some(v) => match tool_choice.is_some() {
+                true => None,
+                false => match v.get("anthropic_beta_thinking") {
+                    Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
+                        (Some(Value::String(t)), Some(Value::Number(b))) => {
+                            Some((t.clone(), b.as_u64().unwrap_or(1024)))
+                        }
+                        _ => None,
+                    },
                     _ => None,
                 },
-                _ => None,
             },
         };
 
