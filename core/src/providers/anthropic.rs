@@ -135,6 +135,8 @@ impl TryFrom<&ToolUse> for ChatFunctionCall {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 enum AnthropicResponseContent {
+    Thinking { thinking: String },
+    RedactedThinking { data: String },
     Text { text: String },
     ToolUse(ToolUse),
 }
@@ -147,11 +149,11 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamContent(content) => {
                 Ok(AnthropicResponseContent::Text { text: content.text })
             }
-            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Text {
-                text: content.thinking,
+            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Thinking {
+                thinking: content.thinking,
             }),
             StreamContent::AnthropicStreamRedactedThinking(content) => {
-                Ok(AnthropicResponseContent::Text { text: content.data })
+                Ok(AnthropicResponseContent::RedactedThinking { data: content.data })
             }
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
@@ -184,6 +186,8 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
 impl AnthropicResponseContent {
     fn get_text(&self) -> Option<&String> {
         match self {
+            AnthropicResponseContent::Thinking { .. } => None,
+            AnthropicResponseContent::RedactedThinking { .. } => None,
             AnthropicResponseContent::Text { text } => Some(text),
             AnthropicResponseContent::ToolUse { .. } => None,
         }
@@ -191,8 +195,19 @@ impl AnthropicResponseContent {
 
     fn get_tool_use(&self) -> Option<&ToolUse> {
         match self {
+            AnthropicResponseContent::Thinking { .. } => None,
+            AnthropicResponseContent::RedactedThinking { .. } => None,
             AnthropicResponseContent::Text { .. } => None,
             AnthropicResponseContent::ToolUse(tu) => Some(tu),
+        }
+    }
+
+    fn get_thinking(&self) -> Option<&String> {
+        match self {
+            AnthropicResponseContent::Thinking { thinking } => Some(thinking),
+            AnthropicResponseContent::RedactedThinking { data } => Some(data),
+            AnthropicResponseContent::Text { .. } => None,
+            AnthropicResponseContent::ToolUse { .. } => None,
         }
     }
 }
@@ -534,6 +549,11 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             _ => None,
         });
 
+        let thinking_content = cr.content.iter().find_map(|item| match item.get_thinking() {
+            Some(thinking) => Some(thinking.clone()),
+            _ => None,
+        });
+
         let tool_uses: Vec<&ToolUse> = cr
             .content
             .iter()
@@ -568,7 +588,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
-            reasoning_content: None,
+            reasoning_content: thinking_content,
             function_call,
             function_calls,
         })
@@ -1103,7 +1123,7 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                            "text": thinking.thinking,
+                                                            "thinking": thinking.thinking,
                                                         },
                                                     }));
                                                 }
@@ -1168,7 +1188,7 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                        "text": delta.thinking,
+                                                        "thinking": delta.thinking,
                                                         }
 
                                                     }));
