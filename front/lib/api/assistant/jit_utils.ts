@@ -64,13 +64,16 @@ export function listFiles(
       m.contentFragmentVersion === "latest"
     ) {
       if (m.fileId || m.nodeId) {
+        // Here, snippet not null is actually to detect file attachments that
+        // are prior to the JIT actions, and differentiate them from the newer
+        // file attachments that do have a snippet. Former ones cannot be used
+        // in JIT. But for content node fragments, with a node id rather than a
+        // file id, we don't care about the snippet.
         const canDoJIT = m.snippet !== null || !!m.nodeId;
         const isIncludable = isConversationIncludableFileContentType(
           m.contentType
         );
-        // TODO(attach-ds) remove the m.fileId check once we manage table queries
-        const isQueryable =
-          canDoJIT && !!m.fileId && isQueryableContentType(m.contentType);
+        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
         const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
 
         files.push({
@@ -82,11 +85,15 @@ export function listFiles(
           generatedTables:
             m.generatedTables.length > 0
               ? m.generatedTables
-              : // TODO(attach-ds) remove the m.fileId check once we manage table queries
-                isQueryable && m.fileId
-                ? [m.fileId]
+              : isQueryable
+                ? [
+                    m.fileId ||
+                      m.nodeId ||
+                      "unreachable_either_file_id_or_node_id_must_be_present",
+                  ]
                 : [],
           contentFragmentVersion: m.contentFragmentVersion,
+          nodeDataSourceViewId: m.nodeDataSourceViewId,
           isIncludable,
           isQueryable,
           isSearchable,
@@ -108,6 +115,7 @@ export function listFiles(
           contentType: f.contentType,
           title: f.title,
           snippet: f.snippet,
+          nodeDataSourceViewId: null,
           // For simplicity later, we always set the generatedTables to the fileId if the file is queryable for agent generated files.
           generatedTables: isQueryable ? [f.fileId] : [],
           contentFragmentVersion: "latest",

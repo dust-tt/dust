@@ -22,6 +22,8 @@ export type ConversationFileType = {
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
+  // If the file is a content node, we set the node's data source view id.
+  nodeDataSourceViewId: string | null;
   snippet: string | null;
   generatedTables: string[];
   isIncludable: boolean;

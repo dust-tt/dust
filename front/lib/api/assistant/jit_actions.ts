@@ -99,7 +99,7 @@ async function getJITActions(
           tables: filesUsableAsTableQuery.flatMap((f) =>
             f.generatedTables.map((tableId) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: dataSourceView.sId,
+              dataSourceViewId: f.nodeDataSourceViewId ?? dataSourceView.sId,
               tableId: tableId,
             }))
           ),
