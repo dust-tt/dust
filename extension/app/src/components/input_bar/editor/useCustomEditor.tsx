@@ -1,6 +1,8 @@
 import { MarkdownStyleExtension } from "@extension/components/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@extension/components/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@extension/components/input_bar/editor/extensions/MentionWithPasteExtension";
+import { URLDetectionExtension } from "@extension/components/input_bar/editor/extensions/URLDetectionExtension";
+import { URLStorageExtension } from "@extension/components/input_bar/editor/extensions/URLStorageExtension";
 import { createMarkdownSerializer } from "@extension/components/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@extension/components/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@extension/components/input_bar/editor/suggestion";
@@ -195,37 +197,49 @@ export interface CustomEditorProps {
   ) => void;
   suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
+  onUrlDetected?: (nodeId: string | null) => void;
 }
 
 const useCustomEditor = ({
   onEnterKeyDown,
   suggestions,
   disableAutoFocus,
+  onUrlDetected,
 }: CustomEditorProps) => {
+  const extensions = [
+    StarterKit.configure({
+      hardBreak: false, // Disable the built-in Shift+Enter.
+      paragraph: false,
+      strike: false,
+    }),
+    MentionStorageExtension,
+    MentionWithPasteExtension.configure({
+      HTMLAttributes: {
+        class:
+          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
+      },
+      suggestion: makeGetAssistantSuggestions(),
+    }),
+    Placeholder.configure({
+      placeholder: "Ask a question or get some @help",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
+    }),
+    MarkdownStyleExtension,
+    ParagraphExtension,
+    URLStorageExtension,
+  ];
+  if (onUrlDetected) {
+    extensions.push(
+      URLDetectionExtension.configure({
+        onUrlDetected,
+      })
+    );
+  }
+
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
-    extensions: [
-      StarterKit.configure({
-        hardBreak: false, // Disable the built-in Shift+Enter.
-        paragraph: false,
-        strike: false,
-      }),
-      MentionStorageExtension,
-      MentionWithPasteExtension.configure({
-        HTMLAttributes: {
-          class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
-        },
-        suggestion: makeGetAssistantSuggestions(),
-      }),
-      Placeholder.configure({
-        placeholder: "Ask a question or get some @help",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:float-left first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:h-0",
-      }),
-      MarkdownStyleExtension,
-      ParagraphExtension,
-    ],
+    extensions,
   });
 
   // Sync the extension's MentionStorage suggestions whenever the local suggestions state updates.

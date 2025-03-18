@@ -1,21 +1,26 @@
 import type {
   AgentMentionType,
+  DataSourceViewContentNodeType,
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { SplitButton } from "@dust-tt/sparkle";
 import { AssistantPicker } from "@extension/components/assistants/AssistantPicker";
-import { AttachFile } from "@extension/components/conversation/AttachFile";
 import { AttachFragment } from "@extension/components/conversation/AttachFragment";
 import type { CustomEditorProps } from "@extension/components/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@extension/components/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@extension/components/input_bar/editor/useHandleMentions";
 import { usePublicAssistantSuggestions } from "@extension/components/input_bar/editor/usePublicAssistantSuggestions";
+import useUrlHandler from "@extension/components/input_bar/editor/useUrlHandler";
+import { InputBarAttachmentsPicker } from "@extension/components/input_bar/InputBarAttachmentPicker";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import type { FileUploaderService } from "@extension/hooks/useFileUploaderService";
+import { useSpaces } from "@extension/hooks/useSpaces";
+import { useSpacesSearch } from "@extension/hooks/useSpacesSearch";
+import { getSpaceAccessPriority } from "@extension/lib/spaces";
 import { classNames } from "@extension/lib/utils";
 import { EditorContent } from "@tiptap/react";
-import { useContext, useEffect } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export interface InputBarContainerProps {
   allAssistants: LightAgentConfigurationType[];
@@ -28,6 +33,8 @@ export interface InputBarContainerProps {
   isTabIncluded: boolean;
   setIncludeTab: (includeTab: boolean) => void;
   fileUploaderService: FileUploaderService;
+  onNodeSelect?: (node: DataSourceViewContentNodeType) => void;
+  attachedNodes: DataSourceViewContentNodeType[];
   isSubmitting: boolean;
 }
 
@@ -42,15 +49,82 @@ export const InputBarContainer = ({
   isTabIncluded,
   setIncludeTab,
   fileUploaderService,
+  onNodeSelect,
+  attachedNodes,
   isSubmitting,
 }: InputBarContainerProps) => {
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
+
+  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] =
+    useState<DataSourceViewContentNodeType | null>(null);
+
+  const handleUrlDetected = useCallback((nodeId: string | null) => {
+    if (nodeId) {
+      setNodeCandidate(nodeId);
+    }
+  }, []);
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     disableAutoFocus,
+    onUrlDetected: handleUrlDetected,
   });
+
+  useUrlHandler(editor, selectedNode);
+
+  const { spaces, isSpacesLoading } = useSpaces();
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
+    [spaces]
+  );
+
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+    includeDataSources: true,
+    viewType: "all",
+    nodeIds: nodeCandidate ? [nodeCandidate] : [],
+    disabled: isSpacesLoading || !nodeCandidate,
+    spaceIds: spaces.map((s) => s.sId),
+  });
+
+  useEffect(() => {
+    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
+      return;
+    }
+
+    if (searchResultNodes.length > 0) {
+      const nodesWithViews = searchResultNodes.flatMap((node) => {
+        const { dataSourceViews, ...rest } = node;
+        return dataSourceViews.map((view) => ({
+          ...rest,
+          dataSourceView: view,
+          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+        }));
+      });
+
+      if (nodesWithViews.length > 0) {
+        const sortedNodes = nodesWithViews.sort(
+          (a, b) => b.spacePriority - a.spacePriority
+        );
+        const node = sortedNodes[0];
+        onNodeSelect(node);
+        setSelectedNode(node);
+      }
+
+      // Reset node candidate after processing
+      setNodeCandidate(null);
+    } else {
+      setNodeCandidate(null);
+    }
+  }, [
+    searchResultNodes,
+    nodeCandidate,
+    onNodeSelect,
+    isSearchLoading,
+    editorService,
+    spacesMap,
+  ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
@@ -114,10 +188,14 @@ export const InputBarContainer = ({
           )}
         />
         <div className="flex items-start pt-1">
-          <AttachFile
+          <InputBarAttachmentsPicker
             fileUploaderService={fileUploaderService}
-            editorService={editorService}
-            isLoading={isSubmitting}
+            owner={owner}
+            isLoading={false}
+            onNodeSelect={
+              onNodeSelect || ((node) => console.log(`Selected ${node.title}`))
+            }
+            attachedNodes={attachedNodes}
           />
           <AssistantPicker
             owner={owner}

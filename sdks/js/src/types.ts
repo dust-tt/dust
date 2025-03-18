@@ -331,6 +331,8 @@ const DataSourceTypeSchema = z.object({
   editedByUser: EditedByUserSchema.nullable().optional(),
 });
 
+export type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
+
 const CoreAPIDocumentChunkSchema = z.object({
   text: z.string(),
   hash: z.string(),
@@ -1620,11 +1622,14 @@ const SpaceKindSchema = FlexibleEnumSchema<
 const SpaceTypeSchema = z.object({
   createdAt: z.number(),
   groupIds: z.array(z.string()),
+  isRestricted: z.boolean(),
   kind: SpaceKindSchema,
   name: z.string(),
   sId: z.string(),
   updatedAt: z.number(),
 });
+
+export type SpaceType = z.infer<typeof SpaceTypeSchema>;
 
 const DatasetSchemaEntryType = FlexibleEnumSchema<
   "string" | "number" | "boolean" | "json"
@@ -2564,6 +2569,117 @@ export const AppsCheckResponseSchema = z.object({
 });
 
 export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
+
+export const GetSpacesResponseSchema = z.object({
+  spaces: z.array(SpaceTypeSchema),
+});
+
+export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
+
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+export const BaseSearchBodySchema = z.object({
+  viewType: ContentNodesViewTypeSchema,
+  spaceIds: z.union([z.array(z.string()), z.undefined()]),
+  includeDataSources: z.boolean(),
+  limit: z.number(),
+});
+
+const TextSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    query: z.string(),
+    nodeIds: z.undefined().optional(),
+  })
+);
+
+const NodeIdSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    nodeIds: z.array(z.string()),
+    query: z.undefined().optional(),
+  })
+);
+
+export const SearchRequestBodySchema = z.union([
+  TextSearchBodySchema,
+  NodeIdSearchBodySchema,
+]);
+
+export type SearchRequestBodyType = z.infer<typeof SearchRequestBodySchema>;
+
+export const ContentNodeSchema = z.object({
+  expandable: z.boolean(),
+  internalId: z.string(),
+  lastUpdatedAt: z.number().nullable(),
+  mimeType: z.string(),
+  // The direct parent ID of this content node
+  parentInternalId: z.string().nullable(),
+  // permission: ConnectorPermissionSchema,
+  preventSelection: z.boolean().optional(),
+  providerVisibility: ProviderVisibilitySchema.nullable().optional(),
+  sourceUrl: z.string().nullable().optional(),
+  title: z.string(),
+  type: ContentNodeTypeSchema,
+});
+
+export type ContentNodeType = z.infer<typeof ContentNodeSchema>;
+
+export const ContentNodeWithParentSchema = z.intersection(
+  ContentNodeSchema,
+  z.object({
+    parentsInternalIds: z.array(z.string()).optional(),
+    parentTitle: z.string().optional(),
+  })
+);
+
+export const DataSourceContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSource: DataSourceTypeSchema,
+    dataSourceViews: DataSourceViewSchema.array(),
+  })
+);
+
+export type DataSourceContentNodeType = z.infer<
+  typeof DataSourceContentNodeSchema
+>;
+
+export const DataSourceViewContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSourceView: DataSourceViewSchema,
+  })
+);
+
+export type DataSourceViewContentNodeType = z.infer<
+  typeof DataSourceViewContentNodeSchema
+>;
+
+export const SearchWarningCodeSchema = z.literal("truncated-query-clauses");
+
+export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
+
+export const PostWorkspaceSearchResponseBodySchema = z.object({
+  nodes: DataSourceContentNodeSchema.array(),
+  warningCode: SearchWarningCodeSchema.optional().nullable(),
+});
+
+export type PostWorkspaceSearchResponseBodyType = z.infer<
+  typeof PostWorkspaceSearchResponseBodySchema
+>;
 
 // TODO(mcp) move directly in the action type ?
 export const ACTION_RUNNING_LABELS: Record<

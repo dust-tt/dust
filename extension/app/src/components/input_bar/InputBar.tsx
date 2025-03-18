@@ -1,6 +1,7 @@
 import type {
   AgentMentionType,
   ConversationPublicType,
+  DataSourceViewContentNodeType,
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
@@ -8,14 +9,16 @@ import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
 import { usePublicAgentConfigurations } from "@extension/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@extension/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@extension/components/conversation/GenerationContextProvider";
-import { InputBarCitations } from "@extension/components/input_bar/InputBarCitations";
+import { InputBarAttachments } from "@extension/components/input_bar/InputBarAttachment";
 import type { InputBarContainerProps } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@extension/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@extension/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@extension/hooks/useFileUploaderService";
+import { useSpaces } from "@extension/hooks/useSpaces";
 import { useDustAPI } from "@extension/lib/dust_api";
 import type { AttachSelectionMessage } from "@extension/lib/messages";
 import { sendInputBarStatus } from "@extension/lib/messages";
+import { getSpaceIcon } from "@extension/lib/spaces";
 import type { UploadedFileWithKind } from "@extension/lib/types";
 import { classNames, compareAgentsForSort } from "@extension/lib/utils";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -55,6 +58,28 @@ export function AssistantInputBar({
 
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
+
+  const [attachedNodes, setAttachedNodes] = useState<
+    DataSourceViewContentNodeType[]
+  >([]);
+
+  const { spaces } = useSpaces();
+
+  console.log({ spaces });
+
+  const spacesMap = useMemo(
+    () =>
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
+    [spaces]
+  );
 
   const fileUploaderService = useFileUploaderService(conversation?.sId);
   const {
@@ -138,6 +163,16 @@ export function AssistantInputBar({
       }
     };
   }, []);
+
+  const handleNodesAttachmentSelect = (node: DataSourceViewContentNodeType) => {
+    setAttachedNodes((prev) => [...prev, node]);
+  };
+
+  const handleNodesAttachmentRemove = (node: DataSourceViewContentNodeType) => {
+    setAttachedNodes((prev) =>
+      prev.filter((n) => n.internalId !== node.internalId)
+    );
+  };
 
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
@@ -288,11 +323,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              <InputBarCitations
-                fileUploaderService={fileUploaderService}
-                disabled={isSubmitting ?? false}
+              <InputBarAttachments
+                files={{ service: fileUploaderService }}
+                nodes={{
+                  items: attachedNodes,
+                  spacesMap,
+                  onRemove: handleNodesAttachmentRemove,
+                }}
               />
-
               <InputBarContainer
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
@@ -305,6 +343,8 @@ export function AssistantInputBar({
                 setIncludeTab={setIncludeTab}
                 fileUploaderService={fileUploaderService}
                 isSubmitting={isSubmitting ?? false}
+                onNodeSelect={handleNodesAttachmentSelect}
+                attachedNodes={attachedNodes}
               />
             </div>
           </div>
