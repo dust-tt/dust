@@ -174,7 +174,7 @@ async function handler(
         timestamp: timestamp || null,
         parentId: parentId || null,
         parents: parents || [fId],
-        title: title,
+        title: title.trim() || "Untitled Folder",
         mimeType: mime_type,
         sourceUrl: source_url ?? null,
         providerVisibility: provider_visibility,
