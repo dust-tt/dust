@@ -521,13 +521,14 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     const stripeSubscription = await getStripeSubscription(
-      this.stripeSubscriptionId
+      this.stripeSubscriptionId,
+      { expandPriceCurrencyOptions: true }
     );
     if (!stripeSubscription) {
       return null;
     }
 
-    const { items } = stripeSubscription;
+    const { items, currency } = stripeSubscription;
     if (!items) {
       return null;
     }
@@ -536,13 +537,15 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (!item || !item.price) {
       return null;
     }
+    const { recurring, metadata } = item.price;
 
-    const {
-      unit_amount: unitAmount,
-      currency,
-      recurring,
-      metadata,
-    } = item.price;
+    if (
+      !item.price.currency_options ||
+      !item.price.currency_options[currency]
+    ) {
+      return null;
+    }
+    const { unit_amount: unitAmount } = item.price.currency_options[currency];
 
     const isPricedPerSeat = unitAmount !== null;
     if (!isPricedPerSeat) {

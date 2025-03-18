@@ -94,7 +94,7 @@ async function handler(
 
       logger.info(
         { sig, stripeError: false, event },
-        "Processing Strip event."
+        "Processing Stripe event."
       );
 
       let subscription;
