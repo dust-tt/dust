@@ -9,9 +9,9 @@
     "declaration": false,
     "noEmit": false,
     "isolatedModules": true,
-    "baseUrl": "./app",
+    "baseUrl": "./",
     "outDir": "./build",
-    "rootDir": "./app",
+    "rootDir": "./",
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -25,6 +25,6 @@
       "@extension/*": ["./src/*"]
     }
   },
-  "include": ["app/**/*"],
+  "include": ["./shared/**/*", "./platforms/**/*"],
   "exclude": ["node_modules", "build"]
 }

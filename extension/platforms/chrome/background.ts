@@ -5,8 +5,8 @@ import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
   DUST_API_AUDIENCE,
-} from "./src/lib/config";
-import { extractPage } from "./src/lib/extraction";
+} from "../../app/src/lib/config";
+import { extractPage } from "../../app/src/lib/extraction";
 import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
@@ -16,8 +16,8 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "./src/lib/messages";
-import { generatePKCE } from "./src/lib/utils";
+} from "../../app/src/lib/messages";
+import { generatePKCE } from "../../app/src/lib/utils";
 
 const log = console.error;
 
