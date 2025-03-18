@@ -120,8 +120,8 @@ export const Metrics: MetricProps = {
       description: <> saved weekly per rep for selling</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {

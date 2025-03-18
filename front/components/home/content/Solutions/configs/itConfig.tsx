@@ -114,8 +114,8 @@ export const Metrics: MetricProps = {
       description: <> saved weekly filling RFP</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {

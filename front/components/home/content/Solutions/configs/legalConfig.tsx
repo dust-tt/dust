@@ -115,8 +115,8 @@ export const Metrics: MetricProps = {
       description: <>first level legal answers deflected</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
