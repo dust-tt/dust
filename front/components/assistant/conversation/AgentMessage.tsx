@@ -35,6 +35,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { makeDocumentCitation } from "@app/components/actions/retrieval/utils";
 import { makeWebsearchResultsCitation } from "@app/components/actions/websearch/utils";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
+import { useActionValidation } from "@app/components/assistant/conversation/ActionValidationProvider";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -67,6 +68,7 @@ import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
   AgentActionSuccessEvent,
   AgentActionType,
+  AgentActionValidateExecutionEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
@@ -212,11 +214,14 @@ export function AgentMessage({
     [conversationId, message.sId, owner.sId]
   );
 
+  const actionValidation = useActionValidation();
+
   const onEventCallback = useCallback((eventStr: string) => {
     const eventPayload: {
       eventId: string;
       data:
         | AgentErrorEvent
+        | AgentActionValidateExecutionEvent
         | AgentActionSpecificEvent
         | AgentActionSuccessEvent
         | GenerationTokensEvent
@@ -244,6 +249,19 @@ export function AgentMessage({
         });
         setLastAgentStateClassification("thinking");
         break;
+
+      case "action_validate_execution":
+        // Show the validation dialog when this event is received
+        actionValidation.showValidationDialog({
+          workspaceId: owner.sId,
+          messageId: message.sId,
+          conversationId: conversationId,
+          action: event.action,
+          inputs: event.inputs,
+        });
+        setLastAgentStateClassification("acting");
+        break;
+
       case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":

@@ -9,6 +9,7 @@ import { createCallbackPromise } from "@app/lib/utils";
 import { wakeLock } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
 import type {
+  AgentActionValidateExecutionEvent,
   AgentDisabledErrorEvent,
   AgentMessageType,
   ConversationType,
@@ -132,6 +133,7 @@ async function handleUserMessageEvents({
     | AgentMessageNewEvent
     | AgentErrorEvent
     | AgentDisabledErrorEvent
+    | AgentActionValidateExecutionEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -191,6 +193,7 @@ async function handleUserMessageEvents({
               }
               break;
             }
+            case "action_validate_execution":
             case "agent_action_success":
             case "agent_error":
             case "agent_generation_cancelled":
@@ -356,6 +359,7 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
+              case "action_validate_execution":
               case "agent_action_success":
               case "agent_error":
               case "agent_generation_cancelled":

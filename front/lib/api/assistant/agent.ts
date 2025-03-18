@@ -42,6 +42,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
   AgentActionSuccessEvent,
+  AgentActionValidateExecutionEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
@@ -72,6 +73,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionValidateExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -116,6 +118,7 @@ async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionValidateExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -187,6 +190,19 @@ async function* runMultiActionsAgentLoop(
           // which is very high. Over that the latency will just be too high. This is a guardrail
           // against the model outputing something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
+
+          // Emit validation events for each action before execution
+          for (const actionEvent of event.actions) {
+            console.log("getting an action, trying to validate");
+            yield {
+              type: "action_validate_execution",
+              created: Date.now(),
+              configurationId: configuration.sId,
+              messageId: agentMessage.sId,
+              action: actionEvent.action,
+              inputs: actionEvent.inputs,
+            };
+          }
 
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId, specification }, index) => {
@@ -853,6 +869,152 @@ async function* runAction(
   void
 > {
   const now = Date.now();
+
+  // Check Redis for action validation status before proceeding
+  try {
+    const redis = await getRedisClient({ origin: "assistant_generation" });
+    const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}`;
+    const validationStatus = await redis.get(validationKey);
+
+    // If validation status exists and starts with "rejected", block the action
+    if (validationStatus && validationStatus.startsWith("rejected:")) {
+      const rejectionMessage = validationStatus.substring("rejected:".length);
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: actionConfiguration.id,
+          message: rejectionMessage,
+        },
+        "Action execution rejected by user"
+      );
+
+      yield {
+        type: "agent_error",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "action_rejected_by_user",
+          message: rejectionMessage,
+        },
+      };
+      return;
+    }
+
+    // If no validation status is found or it's not "approved", wait for validation (or timeout)
+    if (!validationStatus || validationStatus !== "approved") {
+      let attempts = 0;
+      const maxAttempts = 60; // Wait up to 30 seconds (60 * 500ms)
+
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: actionConfiguration.id,
+        },
+        "Waiting for action validation"
+      );
+
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
+
+        const checkStatus = await redis.get(validationKey);
+        if (checkStatus === "approved") {
+          logger.info(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              actionId: actionConfiguration.id,
+            },
+            "Action approved by user, continuing execution"
+          );
+          break; // Approved, continue with execution
+        }
+
+        if (checkStatus && checkStatus.startsWith("rejected:")) {
+          const rejectionMessage = checkStatus.substring("rejected:".length);
+          logger.info(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              actionId: actionConfiguration.id,
+              message: rejectionMessage,
+            },
+            "Action execution rejected by user"
+          );
+
+          yield {
+            type: "agent_error",
+            created: now,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "action_rejected_by_user",
+              message: rejectionMessage,
+            },
+          };
+          return;
+        }
+
+        attempts++;
+      }
+
+      // If we timed out waiting for validation
+      if (attempts >= maxAttempts) {
+        logger.warn(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: actionConfiguration.id,
+          },
+          "Action validation timed out"
+        );
+
+        yield {
+          type: "agent_error",
+          created: now,
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "action_validation_timeout",
+            message:
+              "The action validation request timed out. Please try again.",
+          },
+        };
+        return;
+      }
+    }
+
+    // Delete the validation key after it's used to avoid potential issues with reusing validations
+    await redis.del(validationKey);
+
+    logger.info(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+        actionId: actionConfiguration.id,
+      },
+      "Proceeding with action execution after validation"
+    );
+  } catch (error) {
+    logger.error(
+      {
+        workspaceId: conversation.owner.sId,
+        conversationId: conversation.sId,
+        error,
+      },
+      "Error checking action validation status"
+    );
+    // Continue with the action even if there's an error checking validation
+    // to avoid blocking execution due to Redis issues
+  }
 
   if (isRetrievalConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(

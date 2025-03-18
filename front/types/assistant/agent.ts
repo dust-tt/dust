@@ -200,6 +200,16 @@ export type AgentDisabledErrorEvent = {
   };
 };
 
+// Event sent once the action is decided, we need to ask for permission to execute
+export type AgentActionValidateExecutionEvent = {
+  type: "action_validate_execution";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: ActionConfigurationType;
+  inputs: Record<string, string | boolean | number>;
+};
+
 // Event sent once the action is completed, we're moving to generating a message if applicable.
 export type AgentActionSuccessEvent = {
   type: "agent_action_success";

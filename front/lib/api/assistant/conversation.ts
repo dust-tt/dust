@@ -54,6 +54,7 @@ import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentActionSuccessEvent,
+  AgentActionValidateExecutionEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
@@ -667,6 +668,7 @@ export async function* postUserMessage(
 ): AsyncGenerator<
   | UserMessageErrorEvent
   | UserMessageNewEvent
+  | AgentActionValidateExecutionEvent
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
@@ -1101,6 +1103,7 @@ export async function* editUserMessage(
 ): AsyncGenerator<
   | UserMessageNewEvent
   | UserMessageErrorEvent
+  | AgentActionValidateExecutionEvent
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
@@ -1530,6 +1533,7 @@ export async function* retryAgentMessage(
   | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentMessageErrorEvent
+  | AgentActionValidateExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1850,6 +1854,7 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
+    | AgentActionValidateExecutionEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -1861,6 +1866,7 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
+  | AgentActionValidateExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1930,6 +1936,7 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
+      case "action_validate_execution":
       case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":
