@@ -152,11 +152,6 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamRedactedThinking(content) => {
                 Ok(AnthropicResponseContent::Text { text: content.data })
             }
-            StreamContent::AnthropicStreamSignature(content) => {
-                Ok(AnthropicResponseContent::Text {
-                    text: content.signature,
-                })
-            }
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
                 let input_json = if let Value::String(ref json_string) = tool_use.input {
@@ -677,11 +672,6 @@ pub struct AnthropicStreamThinking {
     pub signature: String,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct AnthropicStreamSignature {
-    pub r#type: String,
-    pub signature: String,
-}
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicStreamRedactedThinking {
     // TODO(2025-03-18) - we need to pass these back to the API in subsequent calls.
     pub r#type: String,
@@ -696,9 +686,18 @@ enum StreamContent {
     AnthropicStreamToolUse(AnthropicStreamToolUse),
     AnthropicStreamThinking(AnthropicStreamThinking),
     AnthropicStreamRedactedThinking(AnthropicStreamRedactedThinking),
-    AnthropicStreamSignature(AnthropicStreamSignature),
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamThinkingDelta {
+    pub r#type: String,
+    pub thinking_delta: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamSignatureDelta {
+    pub r#type: String,
+    pub signature: String,
+}
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AnthropicStreamToolInputDelta {
     partial_json: String,
@@ -708,7 +707,8 @@ struct AnthropicStreamToolInputDelta {
 #[serde(untagged)]
 enum StreamContentDelta {
     AnthropicStreamContent(AnthropicStreamContent),
-    AnthropicStreamThinking(AnthropicStreamThinking),
+    AnthropicStreamThinkingDelta(AnthropicStreamThinkingDelta),
+    AnthropicStreamSignatureDelta(AnthropicStreamSignatureDelta),
     AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
 
@@ -1114,16 +1114,6 @@ impl AnthropicLLM {
                                                         "type": "tokens",
                                                         "content": {
                                                             "text": redacted_thinking.data,
-                                                        },
-                                                    }));
-                                                }
-                                                StreamContent::AnthropicStreamSignature(
-                                                    signature,
-                                                ) => {
-                                                    let _ = event_sender.send(json!({
-                                                        "type": "signature",
-                                                        "content": {
-                                                            "signature": signature.signature,
                                                         },
                                                     }));
                                                 }
