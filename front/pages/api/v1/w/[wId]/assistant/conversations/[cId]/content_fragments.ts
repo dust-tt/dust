@@ -114,7 +114,7 @@ async function handler(
         }
       }
       const { context, ...rest } = r.data;
-      let contentFragment = rest;
+      const contentFragment = rest;
 
       // If we receive a content fragment that is not file based, we transform it to a file-based
       // one.
@@ -123,9 +123,17 @@ async function handler(
           contentFragment,
         });
         if (contentFragmentRes.isErr()) {
+          if (contentFragmentRes.error.code === "file_type_not_supported") {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: contentFragmentRes.error.message,
+              },
+            });
+          }
           throw new Error(contentFragmentRes.error.message);
         }
-        contentFragment = contentFragmentRes.value;
       }
 
       const contentFragmentRes = await postNewContentFragment(
