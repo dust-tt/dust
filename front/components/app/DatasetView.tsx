@@ -8,6 +8,7 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
+  useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
@@ -188,6 +189,7 @@ export default function DatasetView({
   viewType: DatasetViewType;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sendNotification = useSendNotification();
 
   if (!dataset) {
     dataset = {
@@ -322,6 +324,18 @@ export default function DatasetView({
 
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
+
+    // Check that the new key is not already in the dataset
+    // If it is, append a number to the new key otherwise it will mess up the dataset since keys and data are not linked.
+    if (datasetKeys.includes(newKey)) {
+      newKey = newKey + "_1";
+      sendNotification({
+        title: "Key already exists",
+        description: "Please choose a different key",
+        type: "error",
+      });
+    }
+
     const data = datasetData.map((d) => {
       d[newKey] = d[oldKey];
       delete d[oldKey];
