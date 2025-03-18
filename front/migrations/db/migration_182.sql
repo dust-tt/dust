@@ -1,4 +1,4 @@
--- Migration created on Mar 17, 2025
+-- Migration created on Mar 18, 2025
 CREATE TABLE IF NOT EXISTS "remote_mcp_servers" (
     "createdAt" timestamp with time zone NOT NULL,
     "updatedAt" timestamp with time zone NOT NULL,
@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS "remote_mcp_servers" (
     "connectionToken" varchar(255) NOT NULL,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id" bigserial,
+    "vaultId" bigint NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
 
