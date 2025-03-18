@@ -68,14 +68,17 @@ pub struct TableSchemaColumn {
     pub name: String,
     pub value_type: TableSchemaFieldType,
     pub possible_values: Option<Vec<String>>,
+    // Set to true if this field can't be used in a where clause. False by default
+    pub non_filterable: Option<bool>,
 }
 
 impl TableSchemaColumn {
-    pub fn new(name: &str, field_type: TableSchemaFieldType) -> Self {
+    pub fn new(name: &str, field_type: TableSchemaFieldType, non_filterable: Option<bool>) -> Self {
         Self {
             name: name.to_string(),
             value_type: field_type,
             possible_values: None,
+            non_filterable,
         }
     }
 
@@ -88,6 +91,11 @@ impl TableSchemaColumn {
                 dbml.push_str("']");
             }
         }
+
+        if self.non_filterable.unwrap_or(false) {
+            dbml.push_str(" [note: non filterable - this field cannot be used in a where clause]");
+        }
+
         dbml
     }
 }
@@ -219,6 +227,7 @@ impl TableSchema {
                             name: k.clone(),
                             value_type,
                             possible_values: Some(vec![]),
+                            non_filterable: None,
                         };
                         Self::accumulate_value(&mut column, v);
                         schema_map.insert(k.clone(), column);
@@ -472,26 +481,31 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: Some(vec!["1".to_string(), "2".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: Some(vec!["1.2".to_string(), "2.4".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: Some(vec!["TRUE".to_string(), "FALSE".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field5".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: Some(vec!["\"not null anymore\"".to_string()]),
+                non_filterable: None,
             },
         ]);
 
@@ -673,21 +687,25 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: None,
+                non_filterable: None,
             },
         ])
     }
@@ -738,10 +756,12 @@ mod tests {
                 Some(TableSchemaColumn::new(
                     "no_possible_values",
                     TableSchemaFieldType::Text,
+                    None,
                 )),
                 Some(TableSchemaColumn::new(
                     "no_possible_values",
                     TableSchemaFieldType::Text,
+                    None,
                 )),
                 TableSchemaFieldType::Text,
                 None,
@@ -873,6 +893,7 @@ mod tests {
                 "2000-01-01 00:00:00".to_string(),
                 "2000-01-02 00:00:00".to_string(),
             ]),
+            non_filterable: None,
         }]);
 
         assert_eq!(schema, expected_schema);
@@ -925,6 +946,7 @@ mod tests {
             name: name.to_string(),
             value_type,
             possible_values: Some(possible_values),
+            non_filterable: None,
         }
     }
 }
