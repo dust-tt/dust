@@ -32,11 +32,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import {
-  concurrentExecutor,
-  MIME_TYPES,
-  normalizeError,
-} from "@connectors/types";
+import { concurrentExecutor, MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -246,34 +242,19 @@ export async function upsertCollectionWithChildren({
     parentId: collection.id,
   });
 
-  const errors = await concurrentExecutor(
+  await concurrentExecutor(
     childrenCollectionsOnIntercom,
-    async (collectionOnIntercom) => {
-      try {
-        await upsertCollectionWithChildren({
-          connectorId,
-          connectionId,
-          helpCenterId,
-          collection: collectionOnIntercom,
-          region,
-          currentSyncMs,
-        });
-      } catch (error) {
-        return error;
-      }
-    },
-    {
-      concurrency: 10,
-    }
+    async (collectionOnIntercom) =>
+      upsertCollectionWithChildren({
+        connectorId,
+        connectionId,
+        helpCenterId,
+        collection: collectionOnIntercom,
+        region,
+        currentSyncMs,
+      }),
+    { concurrency: 10 }
   );
-
-  if (errors.length > 0) {
-    throw new Error(
-      `Failed to upsert ${errors.length} collections:\n${errors
-        .map((e) => normalizeError(e))
-        .join("\n")}`
-    );
-  }
 }
 
 /**
