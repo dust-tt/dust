@@ -187,14 +187,14 @@ export function AssistantInputBar({
 
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
-    textAndMentions,
+    markdownAndMentions,
     resetEditorText,
     setLoading
   ) => {
     if (isEmpty) {
       return;
     }
-    const { mentions: rawMentions, text } = textAndMentions;
+    const { mentions: rawMentions, markdown } = markdownAndMentions;
     const mentions: AgentMentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
@@ -229,7 +229,7 @@ export function AssistantInputBar({
       }
     }
 
-    await onSubmit(text, mentions, newFiles);
+    void onSubmit(markdown, mentions, newFiles);
     setLoading(false);
     resetEditorText();
     resetUpload();

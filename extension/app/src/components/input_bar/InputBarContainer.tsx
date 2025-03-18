@@ -76,10 +76,9 @@ export const InputBarContainer = ({
   );
 
   const onClick = async () => {
-    const jsonContent = editorService.getTextAndMentions();
     onEnterKeyDown(
       editorService.isEmpty(),
-      jsonContent,
+      editorService.getMarkdownAndMentions(),
       () => {
         editorService.clearEditor();
       },
