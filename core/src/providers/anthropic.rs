@@ -148,9 +148,11 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamContent(content) => {
                 Ok(AnthropicResponseContent::Text { text: content.text })
             }
-            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Thinking {
-                thinking: content.thinking,
-            }),
+            StreamContent::AnthropicStreamThinking(content) => {
+                Ok(AnthropicResponseContent::Thinking {
+                    thinking: content.thinking,
+                })
+            }
             StreamContent::AnthropicStreamRedactedThinking(content) => {
                 Ok(AnthropicResponseContent::RedactedThinking { data: content.data })
             }
@@ -714,6 +716,11 @@ pub struct AnthropicStreamThinkingDelta {
     pub thinking: String,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamRedactedThinkingDelta {
+    pub r#type: String,
+    pub data: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicStreamSignatureDelta {
     pub r#type: String,
     pub signature: String,
@@ -728,6 +735,7 @@ struct AnthropicStreamToolInputDelta {
 enum StreamContentDelta {
     AnthropicStreamContent(AnthropicStreamContent),
     AnthropicStreamThinkingDelta(AnthropicStreamThinkingDelta),
+    AnthropicStreamRedactedThinkingDelta(AnthropicStreamRedactedThinkingDelta),
     AnthropicStreamSignatureDelta(AnthropicStreamSignatureDelta),
     AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
@@ -1191,6 +1199,11 @@ impl AnthropicLLM {
 
                                                     }));
                                                 }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamRedactedThinking(content)) => {
+                                                content.data.push_str(delta.data.as_str());
+                                                // We don't send an event, the redacted thinking data is not human-readable.
                                             }
                                             (StreamContentDelta::AnthropicStreamSignatureDelta(delta),
                                                 StreamContent::AnthropicStreamThinking(content)) => {
