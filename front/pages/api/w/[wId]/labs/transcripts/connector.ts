@@ -48,10 +48,10 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const bodyValidation =
+      const queryValidation =
         GetDefaultTranscriptsConfigurationBodySchema.decode(req.query);
 
-      if (isLeft(bodyValidation)) {
+      if (isLeft(queryValidation)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -61,7 +61,7 @@ async function handler(
         });
       }
 
-      const { provider } = bodyValidation.right;
+      const { provider } = queryValidation.right;
 
       const allDataSources = await getDataSources(auth);
 
