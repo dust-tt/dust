@@ -2,9 +2,11 @@
 
 import type { Fetcher } from "swr";
 
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { WorkspaceType } from "@app/types";
+import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
+import type { LightWorkspaceType } from "@app/types";
 
 // Transcripts
 export function useLabsTranscriptsConfiguration({
@@ -32,7 +34,7 @@ export function useLabsTranscriptsDefaultConfiguration({
   owner,
   provider,
 }: {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   provider: string;
 }) {
   const defaultConfigurationFetcher: Fetcher<GetLabsTranscriptsConfigurationResponseBody> =
@@ -48,5 +50,54 @@ export function useLabsTranscriptsDefaultConfiguration({
     isDefaultConfigurationLoading: !error && !data,
     isDefaultConfigurationError: error,
     mutateDefaultConfiguration: mutate,
+  };
+}
+
+export function useLabsTranscriptsIsConnectorConnected({
+  owner,
+  provider,
+}: {
+  owner: LightWorkspaceType;
+  provider: string;
+}) {
+  const isConnectorConnectedFetcher: Fetcher<{
+    isConnected: boolean;
+    dataSource: DataSourceResource | null;
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/labs/transcripts/connector?provider=${provider}`,
+    isConnectorConnectedFetcher
+  );
+
+  return {
+    isConnectorConnected: data?.isConnected ?? false,
+    dataSource: data?.dataSource ?? null,
+    isConnectorConnectedLoading: !error && !data,
+    isConnectorConnectedError: error,
+    mutateIsConnectorConnected: mutate,
+  };
+}
+
+export function useUpdateTranscriptsConfiguration({
+  workspaceId,
+  transcriptConfigurationId,
+}: {
+  workspaceId: string;
+  transcriptConfigurationId: number;
+}) {
+  return async (data: Partial<PatchTranscriptsConfiguration>) => {
+    const response = await fetch(
+      `/api/w/${workspaceId}/labs/transcripts/${transcriptConfigurationId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    return response.ok;
   };
 }

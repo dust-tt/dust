@@ -10,7 +10,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import { acceptableTranscriptProvidersCodec } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isProviderWithWorkspaceConfiguration } from "@app/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: acceptableTranscriptProvidersCodec,
@@ -67,7 +67,7 @@ async function handler(
       }
 
       // Whitelist providers that allow workspace-wide configuration.
-      if (!isProviderWithWorkspaceConfiguration(provider)) {
+      if (!isProviderWithDefaultWorkspaceConfiguration(provider)) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
