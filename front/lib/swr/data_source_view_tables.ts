@@ -10,13 +10,13 @@ import {
 } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
+import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
   PatchDataSourceTableRequestBody,
 } from "@app/types";
-import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 
 export function useDataSourceViewTable({
   dataSourceView,
