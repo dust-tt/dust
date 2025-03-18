@@ -2,6 +2,7 @@ import { useRouter } from "next/router";
 import React, { useMemo } from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
+import { ActionValidationProvider } from "@app/components/assistant/conversation/ActionValidationProvider";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import {
   ConversationsNavigationProvider,
@@ -37,13 +38,15 @@ export default function ConversationLayout({
     <ConversationsNavigationProvider
       initialConversationId={pageProps.conversationId}
     >
-      <ConversationLayoutContent
-        owner={owner}
-        subscription={subscription}
-        baseUrl={baseUrl}
-      >
-        {children}
-      </ConversationLayoutContent>
+      <ActionValidationProvider>
+        <ConversationLayoutContent
+          owner={owner}
+          subscription={subscription}
+          baseUrl={baseUrl}
+        >
+          {children}
+        </ConversationLayoutContent>
+      </ActionValidationProvider>
     </ConversationsNavigationProvider>
   );
 }
