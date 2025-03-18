@@ -70,11 +70,19 @@ export function listFiles(
         // in JIT. But for content node fragments, with a node id rather than a
         // file id, we don't care about the snippet.
         const canDoJIT = m.snippet !== null || !!m.nodeId;
-        const isIncludable = isConversationIncludableFileContentType(
-          m.contentType
-        );
+
         const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
-        const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
+        const isIncludable =
+          isConversationIncludableFileContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they
+          // cannot be included.
+          !(!!m.nodeId && isQueryable);
+        const isSearchable =
+          canDoJIT &&
+          isSearchableContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they
+          // cannot be searched.
+          !(!!m.nodeId && isQueryable);
 
         files.push({
           resourceId: m.contentFragmentId,
