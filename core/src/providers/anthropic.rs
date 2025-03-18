@@ -674,7 +674,6 @@ pub struct AnthropicStreamThinking {
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicStreamRedactedThinking {
-    // TODO(2025-03-18) - we need to pass these back to the API in subsequent calls.
     pub r#type: String,
     // Note that the data field is an encrypted string that is not human-readable.
     pub data: String,
@@ -1109,15 +1108,10 @@ impl AnthropicLLM {
                                                     }));
                                                 }
                                                 StreamContent::AnthropicStreamRedactedThinking(
-                                                    redacted_thinking,
+                                                    _,
                                                 ) => {
-                                                    // TODO(2025-03-18) - see how these happen using the magic string
-                                                    let _ = event_sender.send(json!({
-                                                        "type": "tokens",
-                                                        "content": {
-                                                            "text": redacted_thinking.data,
-                                                        },
-                                                    }));
+                                                    // TODO(2025-03-18) - we skip these as there do not contain anything human-readable
+                                                    // but we need to pass these back to the API in subsequent calls.
                                                 }
                                             }
                                         }
