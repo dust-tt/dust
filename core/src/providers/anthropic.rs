@@ -691,7 +691,8 @@ enum StreamContent {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicStreamThinkingDelta {
     pub r#type: String,
-    pub thinking_delta: String,
+    // The documentation seems to tell we should get "thinking_delta" here but we don't for some reason.
+    pub thinking: String,
 }
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct AnthropicStreamSignatureDelta {
@@ -1168,12 +1169,12 @@ impl AnthropicLLM {
                                             }
                                             (StreamContentDelta::AnthropicStreamThinkingDelta(delta),
                                                 StreamContent::AnthropicStreamThinking(content)) => {
-                                                content.thinking.push_str(delta.thinking_delta.as_str());
-                                                if delta.thinking_delta.len() > 0 {
+                                                content.thinking.push_str(delta.thinking.as_str());
+                                                if delta.thinking.len() > 0 {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                        "text": delta.thinking_delta,
+                                                        "text": delta.thinking,
                                                         }
 
                                                     }));
