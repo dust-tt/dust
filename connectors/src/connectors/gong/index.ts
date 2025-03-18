@@ -322,7 +322,10 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
           ? parseInt(configValue, 10)
           : null;
 
-        if (!Number.isFinite(retentionPeriodDays)) {
+        if (
+          retentionPeriodDays !== null &&
+          !Number.isFinite(retentionPeriodDays)
+        ) {
           logger.error(
             {
               connectorId: connector.id,
