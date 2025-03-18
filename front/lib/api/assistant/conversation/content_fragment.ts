@@ -1,3 +1,4 @@
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -38,7 +39,9 @@ export async function toFileContentFragment(
     contentFragment: ContentFragmentInputWithContentType;
     fileName?: string;
   }
-): Promise<Result<ContentFragmentInputWithFileIdType, { message: string }>> {
+): Promise<
+  Result<ContentFragmentInputWithFileIdType, ProcessAndStoreFileError>
+> {
   const file = await FileResource.makeNew({
     contentType: contentFragment.contentType,
     fileName:
@@ -58,8 +61,10 @@ export async function toFileContentFragment(
 
   if (processRes.isErr()) {
     return new Err({
+      name: "dust_error",
       message:
         `Error creating file for content fragment: ` + processRes.error.message,
+      code: processRes.error.code,
     });
   }
 
