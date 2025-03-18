@@ -7,8 +7,8 @@ import type {
 } from "@viz/app/types";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
-import { toBlob } from "html-to-image";
-import { Download, SquareTerminal } from "lucide-react";
+import { toBlob, toSvg } from "html-to-image";
+import { ImageDown, ImageUpscale, SquareTerminal } from "lucide-react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -235,7 +235,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [fetchCode, fetchFile]);
+  }, [fetchCode, fetchFile, memoizedDownloadFile]);
 
   const { ref } = useResizeDetector({
     handleHeight: true,
@@ -258,7 +258,23 @@ export function VisualizationWrapper({
         console.error("Failed to convert to Blob", err);
       }
     }
-  }, [ref, downloadFile]);
+  }, [ref, downloadFile, identifier]);
+
+  const handleSVGDownload = useCallback(async () => {
+    if (ref.current) {
+      try {
+        const dataUrl = await toSvg(ref.current, {
+          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
+          skipFonts: true,
+        });
+        const svgText = decodeURIComponent(dataUrl.split(",")[1]);
+        const blob = new Blob([svgText], { type: "image/svg+xml" });
+        await downloadFile(blob, `visualization-${identifier}.svg`);
+      } catch (err) {
+        console.error("Failed to convert to Blob", err);
+      }
+    }
+  }, [ref, downloadFile, identifier]);
 
   const handleDisplayCode = useCallback(async () => {
     await displayCode();
@@ -282,10 +298,19 @@ export function VisualizationWrapper({
   return (
     <div className="relative font-sans group/viz">
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-        <button onClick={handleScreenshotDownload} className="">
-          <Download size={17} className="text-slate-500 hover:text-slate-900" />
+        <button onClick={handleScreenshotDownload} title="Download screenshot">
+          <ImageDown
+            size={17}
+            className="text-slate-500 hover:text-slate-900"
+          />
         </button>
-        <button className="" onClick={handleDisplayCode}>
+        <button onClick={handleSVGDownload} title="Download SVG">
+          <ImageUpscale
+            size={17}
+            className="text-slate-500 hover:text-slate-900"
+          />
+        </button>
+        <button title="Show code" onClick={handleDisplayCode}>
           <SquareTerminal
             size={17}
             className="text-slate-500 hover:text-slate-900"
