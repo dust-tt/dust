@@ -6,9 +6,9 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 
 export const REMOTE_MCP_SERVER_STATUS = [
-  "synchronized",
-  "pending",
-  "unreachable",
+  "synchronized", // The server is synchronized with the local data
+  "pending", // The server is waiting for the first synchronization
+  "unreachable", // The server is unreachable
 ] as const;
 
 export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
@@ -16,8 +16,8 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
-  declare vaultId: ForeignKey<SpaceModel["id"]>;
 
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare space: NonAttribute<SpaceModel>;
 
   declare name: string;
