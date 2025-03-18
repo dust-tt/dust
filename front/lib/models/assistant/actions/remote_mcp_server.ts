@@ -1,14 +1,24 @@
-import type { CreationOptional } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+
+export const REMOTE_MCP_SERVER_STATUS = [
+  "synchronized",
+  "pending",
+  "unreachable",
+] as const;
 
 export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
+
+  declare space: NonAttribute<SpaceModel>;
 
   declare name: string;
   declare url: string;
@@ -16,7 +26,7 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare description: string | null;
   declare cachedActions: string[];
 
-  declare status: "synchronized" | "pending" | "unreachable";
+  declare status: typeof REMOTE_MCP_SERVER_STATUS[number];
   declare lastSyncAt: Date | null;
   declare connectionToken: string;
 }
@@ -58,7 +68,7 @@ RemoteMCPServer.init(
       type: DataTypes.STRING,
       allowNull: false,
       validate: {
-        isIn: [["synchronized", "pending", "unreachable"]],
+        isIn: [REMOTE_MCP_SERVER_STATUS],
       },
     },
     lastSyncAt: {
@@ -75,3 +85,14 @@ RemoteMCPServer.init(
     modelName: "remote_mcp_server",
   }
 );
+
+
+SpaceModel.hasMany(RemoteMCPServer, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+  onDelete: "RESTRICT",
+});
+RemoteMCPServer.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
+});
+
+
