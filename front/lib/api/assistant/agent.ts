@@ -64,6 +64,14 @@ import {
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
 
+function actionIsClaudeReasoning(action: ActionConfigurationType) {
+  return (
+    action.type === "reasoning_configuration" &&
+    action.providerId === "anthropic" &&
+    action.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+  );
+}
+
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
 export async function* runAgent(
@@ -367,23 +375,10 @@ async function* runMultiActionsAgent(
   }
 
   // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
-  if (
-    model.modelId.startsWith("claude-3-7-sonnet") &&
-    availableActions.find(
-      (a) =>
-        a.type === "reasoning_configuration" &&
-        a.providerId === "anthropic" &&
-        a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
-    )
-  ) {
-    // Remove the tool (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
+  if (model.modelId.startsWith("claude-3-7-sonnet")) {
+    // Remove Sonnet 3.7 as a reasoning tool if it exists (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
     availableActions = availableActions.filter(
-      (a) =>
-        !(
-          a.type === "reasoning_configuration" &&
-          a.providerId === "anthropic" &&
-          a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
-        )
+      (a) => !actionIsClaudeReasoning(a)
     );
   }
 
@@ -533,12 +528,7 @@ async function* runMultiActionsAgent(
   // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
   if (
     model.modelId.startsWith("claude-3-7-sonnet") &&
-    availableActions.find(
-      (a) =>
-        a.type === "reasoning_configuration" &&
-        a.providerId === "anthropic" &&
-        a.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
-    )
+    availableActions.find(actionIsClaudeReasoning)
   ) {
     // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
     runConfig.MODEL.thinking = {
