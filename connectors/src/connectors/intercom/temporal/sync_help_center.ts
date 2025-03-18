@@ -32,11 +32,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import {
-  concurrentExecutor,
-  MIME_TYPES,
-  normalizeError,
-} from "@connectors/types";
+import { concurrentExecutor, MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
