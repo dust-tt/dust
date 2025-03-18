@@ -29,6 +29,7 @@ use std::io::prelude::*;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::log::info;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -709,7 +710,6 @@ struct AnthropicStreamToolInputDelta {
 enum StreamContentDelta {
     AnthropicStreamContent(AnthropicStreamContent),
     AnthropicStreamThinkingDelta(AnthropicStreamThinkingDelta),
-    // TODO(2025-03-18) - see what we need to do about these
     AnthropicStreamSignatureDelta(AnthropicStreamSignatureDelta),
     AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
@@ -1136,6 +1136,7 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
+                                    info!("Received delta: {:?}", event.delta);
 
                                     match final_response.as_mut() {
                                     None => {
@@ -1179,6 +1180,11 @@ impl AnthropicLLM {
 
                                                     }));
                                                 }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamSignatureDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(content)) => {
+                                                // We just add to the signature and don't push any event.
+                                                content.signature.push_str(delta.signature.as_str());
                                             }
                                             (StreamContentDelta::AnthropicStreamToolInputDelta(
                                                 input_json_delta,
