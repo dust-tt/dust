@@ -214,6 +214,15 @@ impl AnthropicResponseContent {
     fn get_thinking(&self) -> Option<&String> {
         match self {
             AnthropicResponseContent::Thinking { thinking } => Some(thinking),
+            AnthropicResponseContent::RedactedThinking { .. } => None,
+            AnthropicResponseContent::Text { .. } => None,
+            AnthropicResponseContent::ToolUse { .. } => None,
+        }
+    }
+
+    fn get_redacted_thinking(&self) -> Option<&String> {
+        match self {
+            AnthropicResponseContent::Thinking { .. } => None,
             AnthropicResponseContent::RedactedThinking { data } => Some(data),
             AnthropicResponseContent::Text { .. } => None,
             AnthropicResponseContent::ToolUse { .. } => None,
@@ -611,6 +620,14 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                 _ => None,
             });
 
+        let redacted_thinking_content =
+            cr.content
+                .iter()
+                .find_map(|item| match item.get_redacted_thinking() {
+                    Some(redacted_thinking) => Some(redacted_thinking.clone()),
+                    _ => None,
+                });
+
         let tool_uses: Vec<&ToolUse> = cr
             .content
             .iter()
@@ -645,7 +662,9 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
-            reasoning_content: thinking_content,
+            thinking: thinking_content,
+            redacted_thinking: redacted_thinking_content,
+            reasoning_content: None,
             function_call,
             function_calls,
         })
