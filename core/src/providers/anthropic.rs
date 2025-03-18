@@ -659,12 +659,27 @@ struct AnthropicStreamToolUse {
     input: Value,
     id: String,
 }
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamThinking {
+    pub r#type: String,
+    pub thinking: String,
+    pub signature: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamRedactedThinking {
+    // TODO(2025-03-18) - we need to pass these back to the API in subsequent calls.
+    pub r#type: String,
+    // Note that the data field is an encrypted string that is not human-readable.
+    pub data: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum StreamContent {
     AnthropicStreamContent(AnthropicStreamContent),
     AnthropicStreamToolUse(AnthropicStreamToolUse),
+    AnthropicStreamThinking(AnthropicStreamThinking),
+    AnthropicStreamRedactedThinking(AnthropicStreamRedactedThinking),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
