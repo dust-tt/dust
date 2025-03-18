@@ -546,6 +546,8 @@ impl LLMChatRequest {
                             .to_string())
                         .collect::<Vec<_>>()
                         .join(","),
+                    thinking = c.completions.iter().map(|c| c.clone().thinking.unwrap_or("not thinking".into())).collect::<Vec<_>>().join(","),
+                    redacted_thinking = c.completions.iter().map(|c| c.clone().redacted_thinking.unwrap_or("not thinking".into())).collect::<Vec<_>>().join(","),
                     "Success querying",
                 );
                 Ok(c)

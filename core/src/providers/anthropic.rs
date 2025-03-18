@@ -1205,7 +1205,7 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                            "thinking": thinking.thinking,
+                                                            "text": thinking.thinking,
                                                         },
                                                     }));
                                                 }
@@ -1256,7 +1256,7 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                        "text": delta.text,
+                                                            "text": delta.text,
                                                         }
 
                                                     }));
@@ -1269,7 +1269,7 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                        "thinking": delta.thinking,
+                                                            "text": delta.thinking,
                                                         }
 
                                                     }));
@@ -1558,7 +1558,7 @@ impl AnthropicLLM {
                                 let _ = event_sender.send(json!({
                                     "type":"tokens",
                                     "content": {
-                                        "text":response.completion,
+                                        "text": response.completion,
                                     }
 
                                 }));
