@@ -2,9 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import { ArrowUpIcon, ChevronDownIcon } from "@sparkle/icons";
 
 import {
+  Button,
   CameraIcon,
+  FlexSplitButton,
   PlusIcon,
   RobotIcon,
   SplitButton,
@@ -68,4 +71,43 @@ export const ExampleButton: Story = {
       },
     ],
   },
+};
+
+export const FlexSplitButtonVariants: Story = {
+  render: () => (
+    <div className="s-flex s-gap-3">
+      <FlexSplitButton
+        label="Send"
+        variant="highlight"
+        icon={ArrowUpIcon}
+        splitAction={
+          <Button size="mini" variant="highlight" icon={ChevronDownIcon} />
+        }
+      />
+      <FlexSplitButton
+        label="Send"
+        variant="primary"
+        icon={ArrowUpIcon}
+        splitAction={
+          <Button size="mini" variant="primary" icon={ChevronDownIcon} />
+        }
+      />
+      <FlexSplitButton
+        label="Send"
+        variant="outline"
+        icon={ArrowUpIcon}
+        splitAction={
+          <Button size="mini" variant="outline" icon={ChevronDownIcon} />
+        }
+      />
+      <FlexSplitButton
+        label="Send"
+        variant="ghost"
+        icon={ArrowUpIcon}
+        splitAction={
+          <Button size="mini" variant="ghost" icon={ChevronDownIcon} />
+        }
+      />
+    </div>
+  ),
 };
