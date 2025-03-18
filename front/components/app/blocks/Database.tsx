@@ -260,7 +260,6 @@ export default function Database({
               minHeight={80}
               className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
               style={{
-                color: "rgb(55 65 81)",
                 fontSize: 13,
                 fontFamily:
                   "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
