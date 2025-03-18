@@ -44,6 +44,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -67,11 +68,9 @@ const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
 export async function scrubDataSourceActivity({
   dataSourceId,
-  ignoreSoftDelete = false,
   workspaceId,
 }: {
   dataSourceId: string;
-  ignoreSoftDelete?: boolean;
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -89,26 +88,20 @@ export async function scrubDataSourceActivity({
 
   // Ensure the data source has been soft deleted.
   if (!dataSource.deletedAt) {
-    if (ignoreSoftDelete) {
-      await dataSource.delete(auth, { hardDelete: false });
-    } else {
-      hardDeleteLogger.info(
-        { dataSource: { sId: dataSourceId } },
-        "Data source is not soft deleted."
-      );
-      throw new Error("Data source is not soft deleted.");
-    }
+    hardDeleteLogger.info(
+      { dataSource: { sId: dataSourceId } },
+      "Data source is not soft deleted."
+    );
+    throw new Error("Data source is not soft deleted.");
   }
 
   await hardDeleteDataSource(auth, dataSource);
 }
 
 export async function scrubSpaceActivity({
-  ignoreSoftDelete = false,
   spaceId,
   workspaceId,
 }: {
-  ignoreSoftDelete?: boolean;
   spaceId: string;
   workspaceId: string;
 }) {
@@ -130,7 +123,6 @@ export async function scrubSpaceActivity({
   for (const ds of dataSources) {
     await scrubDataSourceActivity({
       dataSourceId: ds.sId,
-      ignoreSoftDelete,
       workspaceId,
     });
   }
@@ -486,9 +478,22 @@ export async function deleteSpacesActivity({
       throw res.error;
     }
 
-    // When deleting a workspace, we ignore soft deletion protection.
+    // Soft delete all the data source views of the space.
+    const dataSourceViews = await DataSourceViewResource.listBySpace(
+      auth,
+      space
+    );
+    for (const ds of dataSourceViews) {
+      await ds.delete(auth, { hardDelete: false });
+    }
+
+    // Soft delete all the data sources of the space.
+    const dataSources = await DataSourceResource.listBySpace(auth, space);
+    for (const ds of dataSources) {
+      await ds.delete(auth, { hardDelete: false });
+    }
+
     await scrubSpaceActivity({
-      ignoreSoftDelete: true,
       spaceId: space.sId,
       workspaceId,
     });
