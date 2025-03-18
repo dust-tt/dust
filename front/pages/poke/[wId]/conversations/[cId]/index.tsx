@@ -82,16 +82,18 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
 const AgentMessageView = ({
   message,
   multiActionsApp,
+  workspaceId,
 }: {
   message: PokeAgentMessageType;
   multiActionsApp: Action;
+  workspaceId: string;
 }) => {
   return (
     <div className="ml-4 pt-2 text-sm text-element-700">
       <div className="font-bold">
         [agent] @{message.configuration.name} {"(sId="}
         <a
-          href={`/poke/${multiActionsApp.app.workspaceId}/assistants/${message.configuration.sId}`}
+          href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
           className="text-action-500"
         >
@@ -220,6 +222,7 @@ const ConversationPage = ({
                             key={`message-${i}-${j}`}
                             multiActionsApp={multiActionsApp}
                             message={m}
+                            workspaceId={workspaceId}
                           />
                         );
                       }
