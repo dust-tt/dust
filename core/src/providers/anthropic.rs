@@ -29,7 +29,6 @@ use std::io::prelude::*;
 use std::str::FromStr;
 use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
-use tracing::log::info;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -1149,7 +1148,6 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
-                                    info!("Received delta: {:?}", event.delta);
 
                                     match final_response.as_mut() {
                                     None => {
