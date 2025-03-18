@@ -1871,7 +1871,7 @@ impl LLM for AnthropicLLM {
             Some(v) => match v.get("anthropic_beta_thinking") {
                 Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
                     (Some(Value::String(t)), Some(Value::Number(b))) => {
-                        Some((t.clone(), b.as_u64().unwrap_or(32000)))
+                        Some((t.clone(), b.as_u64().unwrap_or(1024)))
                     }
                     _ => None,
                 },

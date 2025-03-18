@@ -538,7 +538,7 @@ async function* runMultiActionsAgent(
     // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
     runConfig.MODEL.anthropic_beta_thinking = {
       type: "enabled",
-      budget_tokens: 32000,
+      budget_tokens: 3200,
     };
     // Add the beta flag.
     anthropicBetaFlags ||= [];
