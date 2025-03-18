@@ -536,7 +536,7 @@ async function* runMultiActionsAgent(
     hasClaudeAsReasoningTool
   ) {
     // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
-    runConfig.MODEL.thinking = {
+    runConfig.MODEL.anthropic_beta_thinking = {
       type: "enabled",
       budget_tokens: 32000,
     };

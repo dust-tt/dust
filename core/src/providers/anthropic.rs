@@ -875,6 +875,7 @@ impl AnthropicLLM {
         max_tokens: i32,
         beta_flags: &Vec<&str>,
         event_sender: UnboundedSender<Value>,
+        thinking: Option<(String, u64)>,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
@@ -922,6 +923,13 @@ impl AnthropicLLM {
                 //not using the tool-choice-none beta flag
                 body["tools"] = json!(vec![self.placehodler_tool()]);
             }
+        }
+
+        if let Some((thinking_type, thinking_budget_tokens)) = thinking {
+            body["thinking"] = json!({
+                "type": thinking_type,
+                "budget_tokens": thinking_budget_tokens,
+            });
         }
 
         let url = self.messages_uri()?.to_string();
@@ -1785,6 +1793,19 @@ impl LLM for AnthropicLLM {
             },
         };
 
+        let thinking_type = match &extras {
+            None => None,
+            Some(v) => match v.get("anthropic_beta_thinking") {
+                Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
+                    (Some(Value::String(t)), Some(Value::Number(b))) => {
+                        Some((t.clone(), b.as_u64().unwrap_or(32000)))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            },
+        };
+
         // Error if toolchoice is of type AnthropicToolChoiceType::None and we aren't using the tool-choice-none beta flag
         if let Some(AnthropicToolChoice {
             r#type: AnthropicToolChoiceType::None,
@@ -1821,6 +1842,7 @@ impl LLM for AnthropicLLM {
                     },
                     &beta_flags,
                     es,
+                    thinking_type,
                 )
                 .await?
             }
