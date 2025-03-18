@@ -282,17 +282,14 @@ export function VisualizationWrapper({
   return (
     <div className="relative font-sans group/viz">
       <div className="flex flex-row gap-2 absolute top-2 right-2 bg-white rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
-        <button
-          onClick={handleScreenshotDownload}
-          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
-        >
-          <Download size={20} />
+        <button onClick={handleScreenshotDownload} className="">
+          <Download size={17} className="text-slate-500 hover:text-slate-900" />
         </button>
-        <button
-          className="hover:bg-slate-200 rounded p-2 border border-slate-200"
-          onClick={handleDisplayCode}
-        >
-          <SquareTerminal size={20} />
+        <button className="" onClick={handleDisplayCode}>
+          <SquareTerminal
+            size={17}
+            className="text-slate-500 hover:text-slate-900"
+          />
         </button>
       </div>
       <div ref={ref}>
