@@ -28,16 +28,6 @@ async function handler(
   auth: Authenticator,
   { dataSourceView }: { dataSourceView: DataSourceViewResource }
 ): Promise<void> {
-  if (!dataSourceView.canReadOrAdministrate(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "The data source you requested was not found.",
-      },
-    });
-  }
-
   if (req.method !== "GET") {
     return apiError(req, res, {
       status_code: 405,
@@ -55,6 +45,16 @@ async function handler(
       api_error: {
         type: "invalid_request_error",
         message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
+      },
+    });
+  }
+
+  if (!dataSourceView.canReadOrAdministrate(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_not_found",
+        message: "The data source you requested was not found.",
       },
     });
   }
