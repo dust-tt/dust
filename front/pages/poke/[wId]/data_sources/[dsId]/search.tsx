@@ -125,10 +125,10 @@ export default function DataSourceView({
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mt-8 flex flex-col">
+    <div className="max-w-4xl">
+      <div className="flex flex-col">
         <div className="sm:col-span-6">
-          <div className="mt-1 flex rounded-md shadow-sm">
+          <div className="mt-1 flex rounded-md">
             <Input
               type="text"
               autoComplete="off"

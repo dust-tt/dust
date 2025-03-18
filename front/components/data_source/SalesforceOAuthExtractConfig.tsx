@@ -13,52 +13,64 @@ export function SalesforceOauthExtraConfig({
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
-  const [pkceLoadingStatus, setPkceLoadingStatus] = useState<
-    "idle" | "loading" | "error"
-  >("idle");
+  const [pkceStatus, setPkceStatus] = useState<{
+    url: string;
+    status: "success" | "loading" | "error" | "idle";
+  }>({
+    url: "",
+    status: "idle",
+  });
 
   useEffect(() => {
     async function generatePKCE() {
-      if (
-        isValidSalesforceDomain(extraConfig.instance_url) &&
-        !extraConfig.code_verifier &&
-        pkceLoadingStatus === "idle"
-      ) {
-        setPkceLoadingStatus("loading");
-        try {
-          const response = await fetch(
-            `/api/oauth/pkce?domain=${extraConfig.instance_url}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          );
-          if (!response.ok) {
-            throw new Error("Failed to generate PKCE challenge");
+      try {
+        setPkceStatus({
+          url: extraConfig.instance_url,
+          status: "loading",
+        });
+        const response = await fetch(
+          `/api/oauth/pkce?domain=${extraConfig.instance_url}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
           }
-          const { code_verifier, code_challenge } = await response.json();
-          setExtraConfig((extraConfig) => ({
-            ...extraConfig,
-            code_verifier,
-            code_challenge,
-          }));
-          setPkceLoadingStatus("idle");
-        } catch (error) {
-          console.error("Error generating PKCE challenge:", error);
-          setPkceLoadingStatus("error");
+        );
+        if (!response.ok) {
+          throw new Error("Failed to generate PKCE challenge");
         }
+        const { code_verifier, code_challenge } = await response.json();
+        setExtraConfig((extraConfig) => ({
+          ...extraConfig,
+          code_verifier,
+          code_challenge,
+        }));
+        setPkceStatus({
+          url: extraConfig.instance_url,
+          status: "success",
+        });
+      } catch (error) {
+        console.error("Error generating PKCE challenge:", error);
+        setPkceStatus({
+          url: extraConfig.instance_url,
+          status: "error",
+        });
       }
     }
 
-    void generatePKCE();
+    if (
+      isValidSalesforceDomain(extraConfig.instance_url) &&
+      pkceStatus.url !== extraConfig.instance_url
+    ) {
+      void generatePKCE();
+    }
   }, [
     extraConfig.instance_url,
     extraConfig.code_verifier,
-    pkceLoadingStatus,
+    pkceStatus,
     setExtraConfig,
-    setPkceLoadingStatus,
+    setPkceStatus,
   ]);
 
   useEffect(() => {
@@ -74,11 +86,22 @@ export function SalesforceOauthExtraConfig({
     );
   }, [extraConfig, setIsExtraConfigValid]);
 
+  const isErrorUrl =
+    typeof extraConfig.instance_url === "string" &&
+    extraConfig.instance_url.length > 0 &&
+    !isValidSalesforceDomain(extraConfig.instance_url);
+
+  const isPkceError = pkceStatus.status === "error";
+
   return (
     <>
       <Input
         label="Salesforce instance URL"
-        message="The URL of your Salesforce organization instance."
+        message={
+          isPkceError
+            ? "Error loading Salesforce OAuth credentials. Check if your url is correct and try again or contact us at support@dust.tt."
+            : "Must be a valid Salesforce domain in https and ending with .salesforce.com or .force.com"
+        }
         name="instance_url"
         value={extraConfig.instance_url ?? ""}
         placeholder="https://my-org.salesforce.com"
@@ -88,6 +111,7 @@ export function SalesforceOauthExtraConfig({
             instance_url: e.target.value,
           }));
         }}
+        messageStatus={isErrorUrl || isPkceError ? "error" : "default"}
       />
       <Input
         label="Client ID"

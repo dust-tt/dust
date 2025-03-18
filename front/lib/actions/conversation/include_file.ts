@@ -16,7 +16,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
-  renderFromFragmentId,
+  renderFromResourceId,
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -116,7 +116,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
     // message).
     const files = listFiles(conversation);
     for (const f of files) {
-      if (f.contentFragmentId === fileId && f.isIncludable) {
+      if (f.resourceId === fileId && f.isIncludable) {
         if (f.contentFragmentVersion === "superseded") {
           return new Ok({
             fileId,
@@ -125,10 +125,10 @@ export class ConversationIncludeFileActionType extends BaseAction {
           });
         }
 
-        const r = await renderFromFragmentId(conversation.owner, {
+        const r = await renderFromResourceId(conversation.owner, {
           contentType: f.contentType,
           excludeImages: true,
-          contentFragmentId: f.contentFragmentId,
+          resourceId: f.resourceId,
           model,
           title: f.title,
           contentFragmentVersion: f.contentFragmentVersion,

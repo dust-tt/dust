@@ -49,7 +49,6 @@ const useUrlHandler = (
         })
         .insertContent(" ")
         .run();
-
       // Remove from pending URLs
       storage.pendingUrls.delete(nodeId);
     }

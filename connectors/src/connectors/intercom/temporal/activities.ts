@@ -340,6 +340,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     region: intercomWorkspace.region,
     currentSyncMs,
   });
+
   return {
     collectionId,
     action: "upserted",

@@ -18,11 +18,11 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
   declare isActive: boolean;
 
   declare isDefaultWorkspaceConfiguration: boolean; // For default provider
-  declare isDefaultFullStorage: boolean;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare credentialId: string | null;
+  declare useConnectorConnection: boolean;
 }
 
 LabsTranscriptsConfigurationModel.init(
@@ -59,14 +59,14 @@ LabsTranscriptsConfigurationModel.init(
       allowNull: false,
       defaultValue: false,
     },
-    isDefaultFullStorage: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
     credentialId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    useConnectorConnection: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {

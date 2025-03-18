@@ -77,10 +77,7 @@ export function isValidSalesforceClientSecret(s: unknown): s is string {
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = [
-  "gong",
-  "modjo",
-] as const;
+export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["modjo"] as const;
 
 export type ProvidersWithWorkspaceConfigurations =
   (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
@@ -97,8 +94,8 @@ export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
 }
 
-export function isProviderWithWorkspaceConfiguration(
-  obj: unknown
+export function isProviderWithDefaultWorkspaceConfiguration(
+  obj: string
 ): obj is ProvidersWithWorkspaceConfigurations {
   return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
     obj as ProvidersWithWorkspaceConfigurations

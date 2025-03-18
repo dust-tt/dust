@@ -14,6 +14,7 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationResource | null;
@@ -22,7 +23,7 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
   isActive: t.boolean,
-  dataSourceViewId: t.union([t.string, t.null]),
+  dataSourceViewId: t.union([t.number, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
   typeof PatchLabsTranscriptsConfigurationBodySchema
@@ -128,16 +129,20 @@ async function handler(
       }
 
       if (dataSourceViewId !== undefined) {
-        await transcriptsConfiguration.setDataSourceViewId(
-          auth,
-          dataSourceViewId
-        );
+        await transcriptsConfiguration.setDataSourceViewId(dataSourceViewId);
 
-        const flags = await getFeatureFlags(owner);
-        if (flags.includes("labs_transcripts_full_storage")) {
-          await transcriptsConfiguration.setIsDefaultFullStorage(
-            !!dataSourceViewId
-          );
+        if (
+          isProviderWithDefaultWorkspaceConfiguration(
+            transcriptsConfiguration.provider
+          )
+        ) {
+          const defaultFullStorageConfiguration =
+            await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+              auth.getNonNullableWorkspace()
+            );
+          if (defaultFullStorageConfiguration === null) {
+            await transcriptsConfiguration.setIsDefault(!!dataSourceViewId);
+          }
         }
       }
 
