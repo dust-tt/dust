@@ -153,9 +153,6 @@ const config = {
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
   },
-  getOAuthSalesforceClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SALESFORCE_CLIENT_ID");
-  },
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");

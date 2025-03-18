@@ -63,7 +63,7 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   return (
     typeof s === "string" &&
     s.startsWith("https://") &&
-    (s.endsWith(".salesforce.com") || s.endsWith(".force.com"))
+    s.endsWith(".salesforce.com")
   );
 }
 
