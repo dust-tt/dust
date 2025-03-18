@@ -453,7 +453,7 @@ impl SalesforceRemoteDatabase {
                     name,
                     value_type,
                     possible_values: possible_values,
-                    filterable: Some(filterable),
+                    non_filterable: Some(!filterable),
                 })
             })
             .collect::<Result<Vec<_>>>()?;
