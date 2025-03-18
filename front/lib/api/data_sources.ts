@@ -378,19 +378,6 @@ export async function upsertDocument({
     );
   }
 
-  // Add selection of tags as prefix to the section if they are present.
-  let tagsPrefix = "";
-  ["title", "author"].forEach((t) => {
-    nonNullTags.forEach((tag) => {
-      if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
-        tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
-      }
-    });
-  });
-  if (tagsPrefix && generatedSection) {
-    generatedSection.prefix = tagsPrefix;
-  }
-
   if (!generatedSection) {
     return new Err(
       new DustError(
