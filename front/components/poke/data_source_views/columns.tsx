@@ -67,6 +67,10 @@ export function makeColumnsForDataSourceViews(): ColumnDef<DataSourceView>[] {
       header: "Last edited by",
     },
     {
+      accessorKey: "kind",
+      header: "Kind",
+    },
+    {
       accessorKey: "editedAt",
       header: "Last edited at",
       cell: ({ row }) => {
