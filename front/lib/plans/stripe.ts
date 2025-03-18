@@ -237,11 +237,18 @@ export const getProduct = async (
  * Calls the Stripe API to retrieve a subscription by its ID.
  */
 export const getStripeSubscription = async (
-  stripeSubscriptionId: string
+  stripeSubscriptionId: string,
+  { expandPriceCurrencyOptions }: { expandPriceCurrencyOptions?: boolean } = {}
 ): Promise<Stripe.Subscription | null> => {
   const stripe = getStripeClient();
   try {
-    return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    if (expandPriceCurrencyOptions) {
+      return await stripe.subscriptions.retrieve(stripeSubscriptionId, {
+        expand: ["items.data.price.currency_options"],
+      });
+    } else {
+      return await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    }
   } catch (error) {
     return null;
   }
