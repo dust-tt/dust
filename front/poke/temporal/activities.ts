@@ -297,6 +297,13 @@ export async function deleteAgentsActivity({
         },
       },
     });
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        processConfigurationId: {
+          [Op.in]: agentProcessConfigurations.map((r) => r.id),
+        },
+      },
+    });
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
