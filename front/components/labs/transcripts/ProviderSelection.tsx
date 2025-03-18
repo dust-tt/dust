@@ -6,12 +6,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LabsTranscriptsConfigurationType,
-  LabsTranscriptsProviderType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import { setupOAuthConnection } from "@dust-tt/types";
 import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
@@ -20,6 +14,12 @@ import {
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type {
+  LabsTranscriptsConfigurationType,
+  LabsTranscriptsProviderType,
+  LightWorkspaceType,
+} from "@app/types";
+import { setupOAuthConnection } from "@app/types";
 
 interface ProviderSelectionProps {
   transcriptsConfiguration: LabsTranscriptsConfigurationType | null;

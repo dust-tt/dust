@@ -14,7 +14,6 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { WithAPIErrorResponse } from "@app/types";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {

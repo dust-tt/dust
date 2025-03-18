@@ -18,8 +18,6 @@ import type {
   LightWorkspaceType,
   Result,
 } from "@app/types";
-import type { LabsTranscriptsProviderType, Result } from "@app/types";
-import { Err, Ok } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

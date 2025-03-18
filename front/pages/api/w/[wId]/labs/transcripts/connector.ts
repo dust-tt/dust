@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -13,6 +12,7 @@ import {
   acceptableTranscriptProvidersCodec,
   acceptableTranscriptsWithConnectorProvidersCodec,
 } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type { WithAPIErrorResponse } from "@app/types";
 
 export const GetDefaultTranscriptsConfigurationBodySchema = t.type({
   provider: t.union([

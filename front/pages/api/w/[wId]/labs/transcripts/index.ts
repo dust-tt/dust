@@ -14,13 +14,11 @@ import type {
   LabsTranscriptsConfigurationType,
   WithAPIErrorResponse,
 } from "@app/types";
-import type { WithAPIErrorResponse } from "@app/types";
 import {
   isCredentialProvider,
   isProviderWithDefaultWorkspaceConfiguration,
   OAuthAPI,
 } from "@app/types";
-import { isCredentialProvider, OAuthAPI } from "@app/types";
 
 export type GetLabsTranscriptsConfigurationResponseBody = {
   configuration: LabsTranscriptsConfigurationType | null;

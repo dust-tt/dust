@@ -1,4 +1,4 @@
-import type { ModelId } from "../shared/model_id";
+import type { ModelId } from "@app/types";
 
 export type LabsTranscriptsConfigurationType = {
   id: ModelId;

@@ -5,13 +5,6 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LabsTranscriptsConfigurationType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
@@ -19,6 +12,13 @@ import type { KeyedMutator } from "swr";
 import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LabsTranscriptsConfigurationType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface StorageConfigurationProps {
   owner: LightWorkspaceType;
