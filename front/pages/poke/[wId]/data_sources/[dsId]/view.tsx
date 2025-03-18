@@ -58,6 +58,18 @@ export default function DataSourceDocumentView({
       <div className="pt-6">
         <Page.Vertical align="stretch">
           <div className="pt-4">
+            <Page.SectionHeader title="Document ID" />
+            <div className="pt-4">
+              <Input
+                placeholder="Document ID"
+                name="document"
+                disabled={true}
+                value={document.document_id}
+              />
+            </div>
+          </div>
+
+          <div className="pt-4">
             <Page.SectionHeader title="Document title" />
             <div className="pt-4">
               <Input
