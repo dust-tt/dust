@@ -50,82 +50,84 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceUpsert({
+export default function DataSourceDocumentView({
   document,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="pt-6">
-        <Page.Vertical align="stretch">
-          <div className="pt-4">
-            <Page.SectionHeader title="Document title" />
+    <div className="w-full">
+      <div className="mx-auto max-w-4xl">
+        <div className="pt-6">
+          <Page.Vertical align="stretch">
             <div className="pt-4">
-              <Input
-                placeholder="Document title"
-                name="document"
-                disabled={true}
-                value={document.document_id}
-              />
+              <Page.SectionHeader title="Document title" />
+              <div className="pt-4">
+                <Input
+                  placeholder="Document title"
+                  name="document"
+                  disabled={true}
+                  value={document.document_id}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="pt-4">
-            <Page.SectionHeader title="Source URL" />
             <div className="pt-4">
-              <Input
-                placeholder=""
-                name="document"
-                disabled={true}
-                value={document.source_url || ""}
-              />
+              <Page.SectionHeader title="Source URL" />
+              <div className="pt-4">
+                <Input
+                  placeholder=""
+                  name="document"
+                  disabled={true}
+                  value={document.source_url || ""}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="pt-4">
-            <Page.SectionHeader title="Text content" />
             <div className="pt-4">
-              <TextArea
-                name="text"
-                id="text"
-                rows={20}
-                readOnly={true}
-                className={classNames(
-                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
-                  "border-structure-200 bg-structure-50",
-                  "focus:border-gray-300 focus:ring-0"
-                )}
-                disabled={true}
-                value={document.text || ""}
-              />
+              <Page.SectionHeader title="Text content" />
+              <div className="pt-4">
+                <TextArea
+                  name="text"
+                  id="text"
+                  rows={20}
+                  readOnly={true}
+                  className={classNames(
+                    "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                    "border-structure-200 bg-structure-50",
+                    "focus:border-gray-300 focus:ring-0"
+                  )}
+                  disabled={true}
+                  value={document.text || ""}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="pt-4">
-            <Page.SectionHeader title="Tags" />
             <div className="pt-4">
-              {document.tags.map((tag, index) => (
-                <div key={index} className="flex flex-grow flex-row">
-                  <div className="flex flex-1 flex-row gap-8">
-                    <div className="flex flex-1 flex-col">
-                      <Input
-                        className="w-full"
-                        placeholder="Tag"
-                        name="tag"
-                        disabled={true}
-                        value={tag}
-                      />
+              <Page.SectionHeader title="Tags" />
+              <div className="pt-4">
+                {document.tags.map((tag, index) => (
+                  <div key={index} className="flex flex-grow flex-row">
+                    <div className="flex flex-1 flex-row gap-8">
+                      <div className="flex flex-1 flex-col">
+                        <Input
+                          className="w-full"
+                          placeholder="Tag"
+                          name="tag"
+                          disabled={true}
+                          value={tag}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </Page.Vertical>
+          </Page.Vertical>
+        </div>
       </div>
     </div>
   );
 }
 
-DataSourceUpsert.getLayout = (page: ReactElement) => {
+DataSourceDocumentView.getLayout = (page: ReactElement) => {
   return <PokeLayout title="View Document">{page}</PokeLayout>;
 };
