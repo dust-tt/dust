@@ -565,7 +565,8 @@ async function handler(
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
-        ?.substring(6);
+        ?.substring(6)
+        ?.trim();
 
       // Use titleInTags if no title is provided.
       const title = r.data.title?.trim() || titleInTags || "Untitled Document";
