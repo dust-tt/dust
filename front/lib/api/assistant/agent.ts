@@ -374,8 +374,13 @@ async function* runMultiActionsAgent(
     availableActions = availableActions.concat(jitActions);
   }
 
+  const hasClaudeAsReasoningTool =
+    availableActions.find(actionIsClaudeReasoning) !== undefined;
   // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
-  if (model.modelId.startsWith("claude-3-7-sonnet")) {
+  if (
+    model.modelId.startsWith("claude-3-7-sonnet") &&
+    hasClaudeAsReasoningTool
+  ) {
     // Remove Sonnet 3.7 as a reasoning tool if it exists (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
     availableActions = availableActions.filter(
       (a) => !actionIsClaudeReasoning(a)
@@ -528,7 +533,7 @@ async function* runMultiActionsAgent(
   // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
   if (
     model.modelId.startsWith("claude-3-7-sonnet") &&
-    availableActions.find(actionIsClaudeReasoning)
+    hasClaudeAsReasoningTool
   ) {
     // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
     runConfig.MODEL.thinking = {
