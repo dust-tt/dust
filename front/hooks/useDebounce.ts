@@ -6,43 +6,34 @@ interface UseDebounceOptions {
   minLength?: number;
 }
 
-export function useDebounce<T>(
-  initialValue: T,
+export function useDebounce(
+  initialValue: string,
   options: UseDebounceOptions = {}
 ) {
   const { delay = 300, minLength = 0 } = options;
 
-  // Input value (immediate)
-  const [inputValue, setInputValue] = useState<T>(initialValue);
-  // Debounced value (delayed)
-  const [debouncedValue, setDebouncedValue] = useState<T>(initialValue);
-  // Loading state during debounce
+  const [inputValue, setInputValue] = useState<string>(initialValue);
+  const [debouncedValue, setDebouncedValue] = useState<string>(initialValue);
   const [isDebouncing, setIsDebouncing] = useState(false);
 
   // Create debounced function
   const debouncedUpdate = useRef(
-    debounce((value: T) => {
+    debounce((value: string) => {
       setDebouncedValue(value);
       setIsDebouncing(false);
     }, delay)
   ).current;
 
   // Update function
-  const setValue = (value: T) => {
+  const setValue = (value: string) => {
     setInputValue(value);
 
-    // String length check if applicable
-    if (
-      typeof value === "string" &&
-      minLength > 0 &&
-      value.length < minLength
-    ) {
-      setDebouncedValue("" as unknown as T);
+    if (minLength > 0 && value.length < minLength) {
+      setDebouncedValue("");
       setIsDebouncing(false);
       debouncedUpdate.cancel();
       return;
     }
-
     setIsDebouncing(true);
     debouncedUpdate(value);
   };
@@ -55,11 +46,11 @@ export function useDebounce<T>(
   }, [debouncedUpdate]);
 
   return {
-    inputValue, // Immediate value (for UI)
-    debouncedValue, // Delayed value (for operations)
-    isDebouncing, // Loading state
-    setValue, // Update function
-    flush: debouncedUpdate.flush, // Force update immediately
-    cancel: debouncedUpdate.cancel, // Cancel pending update
+    inputValue,
+    debouncedValue,
+    isDebouncing,
+    setValue,
+    flush: debouncedUpdate.flush,
+    cancel: debouncedUpdate.cancel,
   };
 }
