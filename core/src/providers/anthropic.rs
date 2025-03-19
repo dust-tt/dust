@@ -87,8 +87,6 @@ struct AnthropicImageContent {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum AnthropicContentType {
-    Thinking,
-    RedactedThinking,
     Text,
     Image,
     ToolUse,
