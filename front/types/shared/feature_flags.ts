@@ -20,6 +20,7 @@ export const WHITELISTABLE_FEATURES = [
   "advanced_notion_management",
   "attach_from_datasources",
   "force_gdrive_labels_scope",
+  "claude_3_7_reasoning",
 ] as const;
 export type WhitelistableFeature = (typeof WHITELISTABLE_FEATURES)[number];
 export function isWhitelistableFeature(
