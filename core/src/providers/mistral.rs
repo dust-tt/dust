@@ -237,7 +237,6 @@ impl TryFrom<&MistralChatMessage> for AssistantChatMessage {
 
         Ok(AssistantChatMessage {
             content,
-            reasoning_content: None,
             role,
             name: None,
             function_call,
