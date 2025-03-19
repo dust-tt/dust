@@ -1,7 +1,6 @@
+import type { DataSourceViewContentNode } from "@app/types";
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
-
-import type { DataSourceViewContentNode } from "@app/types";
 
 import type { URLState } from "./extensions/URLStorageExtension";
 
