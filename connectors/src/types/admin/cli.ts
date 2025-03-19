@@ -552,6 +552,9 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskFetchBrandResponseSchema,
+  SnowflakeFetchDatabaseResponseSchema,
+  SnowflakeFetchSchemaResponseSchema,
+  SnowflakeFetchTableResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
