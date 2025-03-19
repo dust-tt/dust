@@ -20,6 +20,7 @@ import type {
 } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
@@ -134,9 +135,15 @@ export function DataSourceViewsSelector({
   const [searchResult, setSearchResult] = useState<
     DataSourceViewContentNode | undefined
   >();
-  const [searchSpaceText, setSearchSpaceText] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [isDebouncing, setIsDebouncing] = useState(false);
+  const {
+    inputValue: searchSpaceText,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchSpaceText,
+  } = useDebounce("", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
 
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
     dataSourceViews,
@@ -146,20 +153,6 @@ export function DataSourceViewsSelector({
     viewType,
     space,
   });
-
-  useEffect(() => {
-    setIsDebouncing(true);
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(
-        searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE ? searchSpaceText : ""
-      );
-      setIsDebouncing(false);
-    }, 300);
-    return () => {
-      clearTimeout(timeout);
-      setIsDebouncing(false);
-    };
-  }, [searchSpaceText]);
 
   useEffect(() => {
     if (searchResult) {
