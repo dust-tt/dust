@@ -168,7 +168,7 @@ export default function Subscription({
     submit: handleGoToStripePortal,
     isSubmitting: isGoingToStripePortal,
   } = useSubmitFunction(async () => {
-    await router.push(`/w/${owner.sId}/subscription/manage`);
+    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
