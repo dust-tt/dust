@@ -130,6 +130,7 @@ export const supportedOtherFileFormats = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
   ],
+  "application/vnd.google-apps.spreadsheet": [],
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "application/vnd.dust.section.json": [".json"],
