@@ -50,7 +50,7 @@ export function useSpacesSearch({
       viewType,
       includeDataSources,
       ...(nodeIds ? { nodeIds } : { query: search }),
-      spaceIds,
+      spaceIds: spaceIds || [],
       limit: 100,
     }),
     [viewType, includeDataSources, nodeIds, search, spaceIds]
