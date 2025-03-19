@@ -1,7 +1,7 @@
+import { MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
-import { MIME_TYPES_VALUES } from "../../shared/internal_mime_types";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
   content: t.string,
