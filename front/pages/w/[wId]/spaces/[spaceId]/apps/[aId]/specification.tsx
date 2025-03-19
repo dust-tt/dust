@@ -138,13 +138,13 @@ export default function Specification({
         </Tabs>
         <div className="mt-8 flex flex-col gap-4">
           <h3>Current specifications : </h3>
-          <div className="font-mono whitespace-pre text-sm text-gray-700">
+          <div className="whitespace-pre font-mono text-sm text-gray-700">
             {specification}
           </div>
           {specificationFromCore && (
             <>
               <h3>Saved specifications {specificationFromCore.hash}: </h3>
-              <div className="font-mono whitespace-pre text-sm text-gray-700">
+              <div className="whitespace-pre font-mono text-sm text-gray-700">
                 {specificationFromCore.data}
               </div>
             </>
