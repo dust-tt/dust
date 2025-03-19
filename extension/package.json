@@ -4,7 +4,7 @@
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
-    "dev:chrome": "npm run clean && tsx run/watch.ts --platform=chrome",
+    "dev:chrome": "npm run clean && tsx run/watch.ts --platform=chrome --mode=development",
     "package:chrome:production": "tsx run/build.ts --platform=chrome",
     "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
     "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
