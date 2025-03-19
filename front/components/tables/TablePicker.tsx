@@ -39,7 +39,7 @@ interface TablePickerProps {
   excludeTables?: Array<{ dataSourceId: string; tableId: string }>;
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 25;
 
 export default function TablePicker({
   owner,
