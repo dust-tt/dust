@@ -2610,7 +2610,7 @@ export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
 
 export const BaseSearchBodySchema = z.object({
   viewType: ContentNodesViewTypeSchema,
-  spaceIds: z.union([z.array(z.string()), z.undefined()]),
+  spaceIds: z.array(z.string()),
   includeDataSources: z.boolean(),
   limit: z.number(),
 });
