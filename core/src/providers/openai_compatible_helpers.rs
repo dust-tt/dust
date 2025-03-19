@@ -369,6 +369,8 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
         Ok(AssistantChatMessage {
             content,
             reasoning_content,
+            thinking: None,
+            redacted_thinking: None,
             role,
             name,
             function_call,

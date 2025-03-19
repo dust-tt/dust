@@ -142,6 +142,8 @@ impl TryFrom<&ToolUse> for ChatFunctionCall {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case", tag = "type")]
 enum AnthropicResponseContent {
+    Thinking { thinking: String },
+    RedactedThinking { data: String },
     Text { text: String },
     ToolUse(ToolUse),
 }
@@ -154,12 +156,13 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
             StreamContent::AnthropicStreamContent(content) => {
                 Ok(AnthropicResponseContent::Text { text: content.text })
             }
-            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Text {
-                text: content.thinking,
-            }),
-            StreamContent::AnthropicStreamRedactedThinking(_) => {
-                // We exclude these from the response as they are not human-readable and don't have anything useful for subsequent messages.
-                Ok(AnthropicResponseContent::Text { text: "".into() })
+            StreamContent::AnthropicStreamThinking(content) => {
+                Ok(AnthropicResponseContent::Thinking {
+                    thinking: content.thinking,
+                })
+            }
+            StreamContent::AnthropicStreamRedactedThinking(content) => {
+                Ok(AnthropicResponseContent::RedactedThinking { data: content.data })
             }
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
@@ -192,6 +195,8 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
 impl AnthropicResponseContent {
     fn get_text(&self) -> Option<&String> {
         match self {
+            AnthropicResponseContent::Thinking { .. } => None,
+            AnthropicResponseContent::RedactedThinking { .. } => None,
             AnthropicResponseContent::Text { text } => Some(text),
             AnthropicResponseContent::ToolUse { .. } => None,
         }
@@ -199,8 +204,28 @@ impl AnthropicResponseContent {
 
     fn get_tool_use(&self) -> Option<&ToolUse> {
         match self {
+            AnthropicResponseContent::Thinking { .. } => None,
+            AnthropicResponseContent::RedactedThinking { .. } => None,
             AnthropicResponseContent::Text { .. } => None,
             AnthropicResponseContent::ToolUse(tu) => Some(tu),
+        }
+    }
+
+    fn get_thinking(&self) -> Option<&String> {
+        match self {
+            AnthropicResponseContent::Thinking { thinking } => Some(thinking),
+            AnthropicResponseContent::RedactedThinking { .. } => None,
+            AnthropicResponseContent::Text { .. } => None,
+            AnthropicResponseContent::ToolUse { .. } => None,
+        }
+    }
+
+    fn get_redacted_thinking(&self) -> Option<&String> {
+        match self {
+            AnthropicResponseContent::Thinking { .. } => None,
+            AnthropicResponseContent::RedactedThinking { data } => Some(data),
+            AnthropicResponseContent::Text { .. } => None,
+            AnthropicResponseContent::ToolUse { .. } => None,
         }
     }
 }
@@ -299,6 +324,35 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
 
         match cm {
             ChatMessage::Assistant(assistant_msg) => {
+                // Handling thinking content (CoT).
+                let thinking = assistant_msg
+                    .thinking
+                    .as_ref()
+                    .map(|thinking| AnthropicContent {
+                        r#type: AnthropicContentType::Thinking,
+                        text: None,
+                        thinking: Some(thinking.clone()),
+                        redacted_thinking: None,
+                        tool_result: None,
+                        tool_use: None,
+                        source: None,
+                    });
+
+                // Handling redacted_thinking content (CoT, not human-readable part, should be preserved for the model to use).
+                let redacted_thinking =
+                    assistant_msg
+                        .redacted_thinking
+                        .as_ref()
+                        .map(|redacted_thinking| AnthropicContent {
+                            r#type: AnthropicContentType::RedactedThinking,
+                            text: None,
+                            thinking: None,
+                            redacted_thinking: Some(redacted_thinking.clone()),
+                            tool_result: None,
+                            tool_use: None,
+                            source: None,
+                        });
+
                 // Handling tool_uses.
                 let tool_uses = match assistant_msg.function_calls.as_ref() {
                     Some(fc) => Some(
@@ -337,8 +391,10 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 });
 
                 // Combining all content into one vector using iterators.
-                let content_vec = text
+                let content_vec = thinking
                     .into_iter()
+                    .chain(redacted_thinking.into_iter())
+                    .chain(text.into_iter())
                     .chain(tool_uses.into_iter().flatten())
                     .collect::<Vec<AnthropicContent>>();
 
@@ -556,6 +612,22 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             _ => None,
         });
 
+        let thinking_content = cr
+            .content
+            .iter()
+            .find_map(|item| match item.get_thinking() {
+                Some(thinking) => Some(thinking.clone()),
+                _ => None,
+            });
+
+        let redacted_thinking_content =
+            cr.content
+                .iter()
+                .find_map(|item| match item.get_redacted_thinking() {
+                    Some(redacted_thinking) => Some(redacted_thinking.clone()),
+                    _ => None,
+                });
+
         let tool_uses: Vec<&ToolUse> = cr
             .content
             .iter()
@@ -590,6 +662,8 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
+            thinking: thinking_content,
+            redacted_thinking: redacted_thinking_content,
             reasoning_content: None,
             function_call,
             function_calls,

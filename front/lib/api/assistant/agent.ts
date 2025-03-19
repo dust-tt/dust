@@ -55,6 +55,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
+  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isTextContent,
   isUserMessageTypeModel,
   SUPPORTED_MODEL_CONFIGS,
@@ -62,6 +63,14 @@ import {
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
+
+function actionIsClaudeReasoning(action: ActionConfigurationType) {
+  return (
+    action.type === "reasoning_configuration" &&
+    action.providerId === "anthropic" &&
+    action.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
+  );
+}
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
@@ -365,6 +374,19 @@ async function* runMultiActionsAgent(
     availableActions = availableActions.concat(jitActions);
   }
 
+  const hasClaudeAsReasoningTool =
+    availableActions.find(actionIsClaudeReasoning) !== undefined;
+  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
+  if (
+    model.modelId.startsWith("claude-3-7-sonnet") &&
+    hasClaudeAsReasoningTool
+  ) {
+    // Remove Sonnet 3.7 as a reasoning tool if it exists (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
+    availableActions = availableActions.filter(
+      (a) => !actionIsClaudeReasoning(a)
+    );
+  }
+
   let fallbackPrompt = "You are a conversational agent";
   if (
     agentConfiguration.actions.length ||
@@ -506,7 +528,26 @@ async function* runMultiActionsAgent(
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
-  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+  let anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
+
+  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
+  if (
+    model.modelId.startsWith("claude-3-7-sonnet") &&
+    hasClaudeAsReasoningTool
+  ) {
+    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
+    runConfig.MODEL.anthropic_beta_thinking = {
+      type: "enabled",
+      budget_tokens: 6400,
+    };
+    // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+    runConfig.MODEL.temperature = 1.0;
+    delete runConfig.MODEL.top_p;
+    // Add the beta flag.
+    anthropicBetaFlags ||= [];
+    anthropicBetaFlags.push("output-128k-2025-02-19");
+  }
+
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
