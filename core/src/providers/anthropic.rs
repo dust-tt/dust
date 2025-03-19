@@ -102,12 +102,6 @@ struct AnthropicContent {
     #[serde(skip_serializing_if = "Option::is_none")]
     text: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    thinking: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    redacted_thinking: Option<String>,
-
     #[serde(skip_serializing_if = "Option::is_none", flatten)]
     tool_use: Option<AnthropicContentToolUse>,
 
@@ -309,8 +303,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                                 Ok(AnthropicContent {
                                     r#type: AnthropicContentType::ToolUse,
                                     text: None,
-                                    thinking: None,
-                                    redacted_thinking: None,
                                     tool_use: Some(AnthropicContentToolUse {
                                         name: function_call.name.clone(),
                                         id: function_call.id.clone(),
@@ -329,8 +321,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 let text = assistant_msg.content.as_ref().map(|text| AnthropicContent {
                     r#type: AnthropicContentType::Text,
                     text: Some(text.clone()),
-                    thinking: None,
-                    redacted_thinking: None,
                     tool_result: None,
                     tool_use: None,
                     source: None,
@@ -358,8 +348,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                         content: Some(function_msg.content.clone()),
                     }),
                     text: None,
-                    thinking: None,
-                    redacted_thinking: None,
                     source: None,
                 };
 
@@ -376,8 +364,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                             MixedContent::TextContent(tc) => Ok(AnthropicContent {
                                 r#type: AnthropicContentType::Text,
                                 text: Some(tc.text.clone()),
-                                thinking: None,
-                                redacted_thinking: None,
                                 tool_result: None,
                                 tool_use: None,
                                 source: None,
@@ -388,8 +374,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                                         r#type: AnthropicContentType::Image,
                                         source: Some(base64_data.clone()),
                                         text: None,
-                                        thinking: None,
-                                        redacted_thinking: None,
                                         tool_use: None,
                                         tool_result: None,
                                     })
@@ -409,8 +393,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                     content: vec![AnthropicContent {
                         r#type: AnthropicContentType::Text,
                         text: Some(t.clone()),
-                        thinking: None,
-                        redacted_thinking: None,
                         tool_result: None,
                         tool_use: None,
                         source: None,
@@ -422,8 +404,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 content: vec![AnthropicContent {
                     r#type: AnthropicContentType::Text,
                     text: Some(system_msg.content.clone()),
-                    thinking: None,
-                    redacted_thinking: None,
                     tool_result: None,
                     tool_use: None,
                     source: None,
