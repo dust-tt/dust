@@ -1,3 +1,4 @@
+import { DataSourceLinkExtension } from "@app/ui/components/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/ui/components/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/ui/components/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/ui/components/input_bar/editor/extensions/MentionWithPasteExtension";
@@ -213,6 +214,7 @@ const useCustomEditor = ({
       strike: false,
     }),
     MentionStorageExtension,
+    DataSourceLinkExtension,
     MentionWithPasteExtension.configure({
       HTMLAttributes: {
         class:
