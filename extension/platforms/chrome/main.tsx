@@ -139,7 +139,7 @@ void initializeTheme();
 
 platformService.storage.onChanged((changes) => {
   if (changes.theme) {
-    const newTheme = changes.theme.newValue;
+    const newTheme = changes.theme;
     if (!newTheme || newTheme === "system") {
       setupSystemTheme();
     } else {

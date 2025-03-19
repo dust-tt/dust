@@ -78,7 +78,7 @@ export const useAuthHook = () => {
   // Listen for changes in storage to make sure we always have the latest user and tokens.
   useEffect(() => {
     const unsub = platform.storage.onChanged((changes) => {
-      if (changes.accessToken && !changes.accessToken.newValue) {
+      if (!changes.accessToken) {
         log("Access token removed from storage.");
         setTokens(null);
         setUser(null);
