@@ -1,5 +1,4 @@
 import assert from "assert";
-import _ from "lodash";
 
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
@@ -18,7 +17,6 @@ import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import logger from "@app/logger/logger";
 import type {
   AgentActionType,
   AgentMessageType,
@@ -68,24 +66,6 @@ async function getJITActions(
         conversation
       );
 
-      // TODO(pr,attach) remove this if when tackling table query / semantic search action
-      if (!dataSourceView) {
-        logger.warn(
-          {
-            conversationId: conversation.sId,
-            fileIds: _.uniq(
-              filesUsableAsTableQuery
-                .map((f) => f.resourceId)
-                .concat(filesUsableAsRetrievalQuery.map((f) => f.resourceId))
-            ),
-            workspaceId: conversation.owner.sId,
-          },
-          "No default datasource view found for conversation when trying to get JIT actions"
-        );
-
-        return actions;
-      }
-
       if (filesUsableAsTableQuery.length > 0) {
         // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
@@ -96,18 +76,41 @@ async function getJITActions(
           id: -1,
           name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
           sId: generateRandomModelSId(),
-          tables: filesUsableAsTableQuery.flatMap((f) =>
-            f.generatedTables.map((tableId) => ({
+          tables: filesUsableAsTableQuery.flatMap((f) => {
+            if (!dataSourceView && !f.nodeDataSourceViewId) {
+              throw new Error(
+                "No datasource view found for table when trying to get JIT actions"
+              );
+            }
+            return f.generatedTables.map((tableId) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
+              // @ts-expect-error the if above ensures that dataSourceView and
+              // f.nodeDataSourceViewId are not null at this point, but typescript
+              // does not know that.
               dataSourceViewId: f.nodeDataSourceViewId ?? dataSourceView.sId,
-              tableId: tableId,
-            }))
-          ),
+              tableId,
+            }));
+          }),
         };
         actions.push(action);
       }
 
       if (filesUsableAsRetrievalQuery.length > 0) {
+        const dataSources = filesUsableAsRetrievalQuery
+          .filter((f) => f.nodeDataSourceViewId)
+          .map((f) => ({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            // Cast ok here because of the filter, f.nodeDataSourceViewId is not null
+            dataSourceViewId: f.nodeDataSourceViewId as string,
+            filter: { parents: null, tags: null },
+          }));
+        if (dataSourceView) {
+          dataSources.push({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: dataSourceView.sId,
+            filter: { parents: null, tags: null },
+          });
+        }
         const action: RetrievalConfigurationType = {
           description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
           type: "retrieval_configuration",
@@ -117,13 +120,7 @@ async function getJITActions(
           topK: "auto",
           query: "auto",
           relativeTimeFrame: "auto",
-          dataSources: [
-            {
-              workspaceId: conversation.owner.sId,
-              dataSourceViewId: dataSourceView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
+          dataSources,
         };
         actions.push(action);
       }
