@@ -168,27 +168,7 @@ export default function Subscription({
     submit: handleGoToStripePortal,
     isSubmitting: isGoingToStripePortal,
   } = useSubmitFunction(async () => {
-    const res = await fetch("/api/stripe/portal", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        workspaceId: owner.sId,
-      }),
-    });
-    if (!res.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to open billing dashboard",
-        description: "Failed to open billing dashboard.",
-      });
-    } else {
-      const content = await res.json();
-      if (content.portalUrl) {
-        window.open(content.portalUrl, "_blank");
-      }
-    }
+    window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
