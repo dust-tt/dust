@@ -23,7 +23,7 @@ const textAreaVariants = cva(
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-ring-offset-background",
     "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
-    "focus-visible:s-border-border focus-visible:s-ring"
+    "focus-visible:s-border-border dark:focus-visible:s-border-border-night focus-visible:s-ring"
   ),
   {
     variants: {
@@ -35,17 +35,18 @@ const textAreaVariants = cva(
       },
       error: {
         true: cn(
-          "s-border-border-warning/30",
-          "focus:s-ring-warning/10",
-          "focus-visible:s-border-border-warning",
-          "dark:s-ring-warning-200-night dark:focus:s-ring-warning-300-night"
+          "s-border-border-warning/30 dark:s-border-border-warning-night/60",
+          "s-ring-warning/0 dark:s-ring-warning-night/0",
+          "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
+          "focus-visible:s-outline-none focus-visible:s-ring-2",
+          "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/30"
         ),
         false: cn(
-          "s-border-border/50",
-          "focus:s-ring-border-focus/10",
-          "focus-visible:s-border-border-focus",
-          "dark:s-ring-structure-300-night",
-          "dark:focus:s-ring-highlight-200-night"
+          "s-border-border dark:s-border-border-night",
+          "s-ring-highlight/0 dark:s-ring-highlight-night/0",
+          "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
+          "focus-visible:s-outline-none focus-visible:s-ring-2",
+          "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
         ),
       },
       disabled: {

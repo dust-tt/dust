@@ -126,7 +126,7 @@ export function PriceTable({
         }}
         className={classNames(
           "s-flex s-h-full s-flex-col s-overflow-hidden s-shadow-md",
-          "s-bg-white dark:s-bg-structure-50-night"
+          "s-bg-background dark:s-bg-muted-background-night"
         )}
       >
         {childrenWithProps}
@@ -142,9 +142,9 @@ const iconTable = {
 };
 
 const iconColorTable = {
-  check: "s-text-emerald-500",
-  dash: "s-text-amber-500",
-  xmark: "s-text-red-500",
+  check: "s-text-green-500",
+  dash: "s-text-golden-500",
+  xmark: "s-text-rose-500",
 };
 
 interface PriceTableItemProps {

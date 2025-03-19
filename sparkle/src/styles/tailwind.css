@@ -17,7 +17,7 @@
 @keyframes bgblink {
   0%,
   100% {
-    @apply s-bg-structure-0;
+    @apply s-bg-background;
   }
 
   50% {
