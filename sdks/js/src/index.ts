@@ -1142,7 +1142,6 @@ export class DustAPI {
   }
 
   async getSpaces() {
-    console.log("getSpaces");
     const res = await this.request({
       method: "GET",
       path: "spaces",

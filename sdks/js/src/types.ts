@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+import { MIME_TYPES_VALUES } from "./mime_types";
+
 type StringLiteral<T> = T extends string
   ? string extends T
     ? never
@@ -201,6 +203,7 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | (typeof MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
 >();
@@ -590,7 +593,7 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
 });
 
 const ConversationFileTypeSchema = z.object({
-  fileId: z.string(),
+  resourceId: z.string(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
 });
