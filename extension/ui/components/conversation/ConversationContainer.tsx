@@ -1,3 +1,4 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import {
   createPlaceholderUserMessage,
   postConversation,
@@ -8,10 +9,8 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
 import type { StoredUser } from "@app/shared/lib/storage";
 import {
-  getConversationContext,
   getFileContentFragmentId,
   saveFilesContentFragmentIds,
-  setConversationsContext,
 } from "@app/shared/lib/storage";
 import type {
   UploadedFileWithKind,
@@ -45,6 +44,7 @@ export function ConversationContainer({
   user,
 }: ConversationContainerProps) {
   const navigate = useNavigate();
+  const platform = usePlatform();
 
   const [includeContent, setIncludeContent] = useState<boolean | undefined>();
 
@@ -52,7 +52,7 @@ export function ConversationContainer({
     if (includeContent === undefined) {
       return;
     }
-    void setConversationsContext({
+    void platform.setConversationsContext({
       [conversationId ?? "new"]: {
         includeCurrentPage: includeContent,
       },
@@ -61,7 +61,9 @@ export function ConversationContainer({
 
   useEffect(() => {
     const doAsync = async () => {
-      const context = await getConversationContext(conversationId ?? "new");
+      const context = await platform.getConversationContext(
+        conversationId ?? "new"
+      );
       setIncludeContent(context.includeCurrentPage);
     };
     void doAsync();
@@ -219,7 +221,7 @@ export function ConversationContainer({
             createdContentFragments: contentFragments,
           });
 
-          await setConversationsContext({
+          await platform.setConversationsContext({
             [conversationRes.value.sId]: {
               includeCurrentPage: !!includeContent,
             },

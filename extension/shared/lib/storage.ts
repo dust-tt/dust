@@ -1,4 +1,4 @@
-import type { Auth0AuthorizeResponse } from "@app/shared/lib/messages";
+import type { Auth0AuthorizeResponse } from "@app/platforms/chrome/messages";
 import type { UploadedFileWithKind } from "@app/shared/lib/types";
 import type {
   ContentFragmentType,
@@ -210,15 +210,4 @@ export const getFileContentFragmentId = async (
   const key = getTabContentKey(conversationId, file.url, file.title);
   const result = await chrome.storage.local.get([key]);
   return result[key] ?? null;
-};
-
-const DEFAULT_THEME = "system";
-
-export const getTheme = async (): Promise<string> => {
-  const result = await chrome.storage.local.get(["theme"]);
-  return result.theme ?? DEFAULT_THEME;
-};
-
-export const saveTheme = async (theme: string) => {
-  await chrome.storage.local.set({ theme });
 };

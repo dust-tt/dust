@@ -7,7 +7,9 @@ import "../../ui/css/components.css";
 // Local custom styles
 import "../../ui/css/custom.css";
 
-import { PortProvider } from "@app/platforms/chrome/contextes/PortContext";
+import { PortProvider } from "@app/platforms/chrome/context/PortContext";
+import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
+import { PlatformProvider } from "@app/shared/context/PlatformContext";
 import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
 import { routes } from "@app/ui/pages/routes";
 import { Notification } from "@dust-tt/sparkle";
@@ -17,14 +19,18 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 const router = createBrowserRouter(routes);
 
 const App = () => {
+  const platformService = new ChromePlatformService();
+
   return (
-    <PortProvider>
-      <AuthProvider>
-        <Notification.Area>
-          <RouterProvider router={router} />
-        </Notification.Area>
-      </AuthProvider>
-    </PortProvider>
+    <PlatformProvider platformService={platformService}>
+      <PortProvider>
+        <AuthProvider>
+          <Notification.Area>
+            <RouterProvider router={router} />
+          </Notification.Area>
+        </AuthProvider>
+      </PortProvider>
+    </PlatformProvider>
   );
 };
 const rootElement = document.getElementById("root");

@@ -1,4 +1,4 @@
-import type { RouteChangeMesssage } from "@app/shared/lib/messages";
+import type { RouteChangeMesssage } from "@app/platforms/chrome/messages";
 import type { StoredUser } from "@app/shared/lib/storage";
 import { getPendingUpdate } from "@app/shared/lib/storage";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";

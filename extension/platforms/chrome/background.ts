@@ -1,9 +1,3 @@
-import {
-  AUTH0_CLIENT_DOMAIN,
-  AUTH0_CLIENT_ID,
-  DUST_API_AUDIENCE,
-} from "@app/shared/lib/config";
-import { extractPage } from "@app/shared/lib/extraction";
 import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
@@ -13,7 +7,13 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "@app/shared/lib/messages";
+} from "@app/platforms/chrome/messages";
+import {
+  AUTH0_CLIENT_DOMAIN,
+  AUTH0_CLIENT_ID,
+  DUST_API_AUDIENCE,
+} from "@app/shared/lib/config";
+import { extractPage } from "@app/shared/lib/extraction";
 import type { PendingUpdate } from "@app/shared/lib/storage";
 import { getStoredUser, savePendingUpdate } from "@app/shared/lib/storage";
 import { generatePKCE } from "@app/shared/lib/utils";

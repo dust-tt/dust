@@ -1,14 +1,14 @@
 import {
+  sendAuthMessage,
+  sendRefreshTokenMessage,
+  sentLogoutMessage,
+} from "@app/platforms/chrome/messages";
+import {
   AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
   DUST_US_URL,
 } from "@app/shared/lib/config";
-import {
-  sendAuthMessage,
-  sendRefreshTokenMessage,
-  sentLogoutMessage,
-} from "@app/shared/lib/messages";
 import type {
   StoredTokens,
   StoredUser,
@@ -25,7 +25,7 @@ import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
 
 const REGIONS = ["europe-west1", "us-central1"] as const;
-export type RegionType = (typeof REGIONS)[number];
+type RegionType = (typeof REGIONS)[number];
 
 const isRegionType = (region: string): region is RegionType =>
   REGIONS.includes(region as RegionType);

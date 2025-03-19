@@ -1,6 +1,6 @@
+import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
+import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
 import { getAccessToken } from "@app/shared/lib/auth";
-import type { GetActiveTabOptions } from "@app/shared/lib/messages";
-import { sendGetActiveTabMessage } from "@app/shared/lib/messages";
 import { getStoredUser } from "@app/shared/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@app/shared/lib/types";
 import type {
