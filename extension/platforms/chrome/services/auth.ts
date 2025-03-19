@@ -6,7 +6,7 @@ import {
 import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
 import {
   AuthError,
-  BaseAuthService,
+  AuthService,
   getConnectionDetails,
   getDustDomain,
 } from "@app/shared/services/auth";
@@ -17,7 +17,7 @@ import { jwtDecode } from "jwt-decode";
 
 const log = console.error;
 
-export class ChromeAuthService extends BaseAuthService {
+export class ChromeAuthService extends AuthService {
   constructor(storage: StorageService) {
     super(storage);
   }

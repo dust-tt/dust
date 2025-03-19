@@ -27,7 +27,7 @@ export type StoredTokens = {
 export type StoredUser = UserTypeWithExtensionWorkspaces & {
   selectedWorkspace: string | null;
   dustDomain: string;
-  connectionStrategy: SupportedEnterpriseConnectionStrategy;
+  connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
   connection?: string;
 };
 
@@ -48,81 +48,15 @@ export class AuthError extends Error {
   }
 }
 
-export interface AuthService {
-  login({
-    isForceLogin,
-    forcedConnection,
-  }: {
-    isForceLogin?: boolean;
-    forcedConnection?: string;
-  }): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>>;
-  logout(): Promise<boolean>;
+export abstract class AuthService {
+  protected storage: StorageService;
 
-  getAccessToken(): Promise<string | null>;
-  getStoredTokens(): Promise<StoredTokens | null>;
-  getStoredUser(): Promise<StoredUser | null>;
-
-  saveTokens(tokens: Auth0AuthorizeResponse): Promise<StoredTokens>;
-
-  fetchMe({
-    accessToken,
-    dustDomain,
-  }: {
-    accessToken: string;
-    dustDomain: string;
-  }): Promise<Result<{ user: UserTypeWithExtensionWorkspaces }, AuthError>>;
-}
-
-export class BaseAuthService implements AuthService {
-  constructor(protected storage: StorageService) {}
-
-  // Fetch me sends a request to the /me route to get the user info.
-  async fetchMe({
-    accessToken,
-    dustDomain,
-  }: {
-    accessToken: string;
-    dustDomain: string;
-  }) {
-    const response = await fetch(`${dustDomain}/api/v1/me`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "X-Request-Origin": "extension",
-      },
-    });
-    const me = await response.json();
-
-    if (!response.ok) {
-      return new Err(new AuthError(me.error.type, me.error.message));
-    }
-    return new Ok(me);
+  constructor(storage: StorageService) {
+    this.storage = storage;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async login(args: {
-    isForceLogin?: boolean;
-    forcedConnection?: string;
-  }): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  async logout(): Promise<boolean> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  async getAccessToken(): Promise<string | null> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  async getStoredTokens(): Promise<StoredTokens | null> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  async getStoredUser(): Promise<StoredUser | null> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  async saveTokens(rawTokens: Auth0AuthorizeResponse): Promise<StoredTokens> {
+  // Shared methods with implementation
+  async saveTokens(rawTokens: Auth0AuthorizeResponse) {
     const tokens: StoredTokens = {
       accessToken: rawTokens.accessToken,
       refreshToken: rawTokens.refreshToken,
@@ -134,6 +68,68 @@ export class BaseAuthService implements AuthService {
     }
 
     return tokens;
+  }
+
+  async saveUser(user: StoredUser): Promise<StoredUser> {
+    await this.storage.set("user", user);
+    return user;
+  }
+
+  async getStoredTokens(): Promise<StoredTokens | null> {
+    const accessToken = await this.storage.get<string>("accessToken");
+    const refreshToken = await this.storage.get<string>("refreshToken");
+    const expiresAt = await this.storage.get<number>("expiresAt");
+
+    if (!accessToken || !expiresAt) {
+      return null;
+    }
+
+    return {
+      accessToken,
+      refreshToken: refreshToken || "",
+      expiresAt,
+    };
+  }
+
+  async getStoredUser(): Promise<StoredUser | null> {
+    const result = await this.storage.get<StoredUser>("user");
+    return result ?? null;
+  }
+
+  // Abstract methods that must be implemented by platform-specific services
+  abstract login(args: {
+    isForceLogin?: boolean;
+    forcedConnection?: string;
+  }): Promise<Result<{ tokens: StoredTokens; user: StoredUser }, AuthError>>;
+
+  abstract logout(): Promise<boolean>;
+
+  abstract getAccessToken(): Promise<string | null>;
+
+  abstract refreshToken(
+    tokens: StoredTokens | null
+  ): Promise<Result<StoredTokens, AuthError>>;
+
+  protected async fetchMe({
+    accessToken,
+    dustDomain,
+  }: {
+    accessToken: string;
+    dustDomain: string;
+  }): Promise<Result<{ user: StoredUser }, AuthError>> {
+    const response = await fetch(`${dustDomain}/api/v1/me`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Request-Origin": "extension",
+      },
+    });
+    const me = await response.json();
+
+    if (!response.ok) {
+      return new Err(new AuthError(me.error.type, me.error.message));
+    }
+
+    return new Ok(me);
   }
 }
 
@@ -158,7 +154,11 @@ export function getConnectionDetails(claims: Record<string, string>) {
   const connectionStrategy = claims[CONNECTION_STRATEGY_CLAIM];
   const ws = claims[WORKSPACE_ID_CLAIM];
   return {
-    connectionStrategy,
+    connectionStrategy: isSupportedEnterpriseConnectionStrategy(
+      connectionStrategy
+    )
+      ? connectionStrategy
+      : undefined,
     connection: ws ? makeEnterpriseConnectionName(ws) : undefined,
   };
 }
@@ -171,6 +171,14 @@ export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
 export type SupportedEnterpriseConnectionStrategy =
   (typeof SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES)[number];
 
+function isSupportedEnterpriseConnectionStrategy(
+  connectionStrategy: string
+): connectionStrategy is SupportedEnterpriseConnectionStrategy {
+  return SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(
+    connectionStrategy as SupportedEnterpriseConnectionStrategy
+  );
+}
+
 export function isValidEnterpriseConnection(
   user: StoredUser,
   workspace: WorkspaceType
@@ -180,9 +188,9 @@ export function isValidEnterpriseConnection(
   }
 
   return (
-    SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES.includes(
-      user.connectionStrategy as SupportedEnterpriseConnectionStrategy
-    ) && makeEnterpriseConnectionName(workspace.sId) === user.connection
+    user.connectionStrategy &&
+    isSupportedEnterpriseConnectionStrategy(user.connectionStrategy) &&
+    makeEnterpriseConnectionName(workspace.sId) === user.connection
   );
 }
 

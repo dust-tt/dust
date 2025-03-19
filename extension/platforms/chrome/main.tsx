@@ -138,13 +138,15 @@ const initializeTheme = async () => {
 void initializeTheme();
 
 platformService.storage.onChanged((changes) => {
-  if (changes.theme) {
-    const newTheme = changes.theme;
-    if (!newTheme || newTheme === "system") {
-      setupSystemTheme();
-    } else {
-      removeSystemTheme();
-      updateTheme(newTheme === "dark");
+  if ("theme" in changes) {
+    if (changes.theme) {
+      const newTheme = changes.theme;
+      if (!newTheme || newTheme === "system") {
+        setupSystemTheme();
+      } else {
+        removeSystemTheme();
+        updateTheme(newTheme === "dark");
+      }
     }
   }
 });
