@@ -25,6 +25,7 @@ export function renderPlanFromModel({
         isGithubAllowed: plan.isManagedGithubAllowed,
         isIntercomAllowed: plan.isManagedIntercomAllowed,
         isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+        isSalesforceAllowed: plan.isManagedSalesforceAllowed,
       },
       dataSources: {
         count: plan.maxDataSourcesCount,

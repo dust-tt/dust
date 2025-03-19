@@ -355,7 +355,8 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       unselected: "none",
     },
     isDeletable: true,
-    guideLink: "https://docs.dust.tt/docs/salesforce-connection",
+    guideLink:
+      "https://www.notion.so/dust-tt/Dust-Salesforce-Connection-Admin-Guide-for-beta-testers-1b428599d94180508c17ed762af5ef90",
   },
   gong: {
     name: "Gong",
@@ -430,11 +431,12 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isIntercomAllowed;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
+    case "salesforce":
+      return plan.limits.connections.isSalesforceAllowed;
     case "microsoft":
     case "snowflake":
     case "zendesk":
     case "bigquery":
-    case "salesforce":
     case "gong":
       return true;
     default:

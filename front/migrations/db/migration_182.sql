@@ -1,21 +1,10 @@
--- Migration created on Mar 18, 2025
-CREATE TABLE IF NOT EXISTS "remote_mcp_servers" (
-    "createdAt" timestamp with time zone NOT NULL,
-    "updatedAt" timestamp with time zone NOT NULL,
-    "sId" varchar(255) NOT NULL,
-    "name" varchar(255) NOT NULL,
-    "url" varchar(255) NOT NULL,
-    "description" varchar(255),
-    "cachedActions" varchar(255)[] DEFAULT ARRAY[] ::varchar(255)[],
-    "status" varchar(255) NOT NULL,
-    "lastSyncAt" timestamp with time zone,
-    "connectionToken" varchar(255) NOT NULL,
-    "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    "id" bigserial,
-    "vaultId" bigint NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    PRIMARY KEY ("id")
-);
+-- Migration created on Mar 12, 2025
+ALTER TABLE "public"."labs_transcripts_configurations" ADD COLUMN "useConnectorConnection" BOOLEAN NOT NULL DEFAULT false;
 
-ALTER TABLE "public"."agent_mcp_server_configurations"
-    ADD COLUMN "remoteMCPServerId" bigint REFERENCES "remote_mcp_servers" ("id") ON DELETE SET NULL ON UPDATE CASCADE;
+UPDATE "public"."labs_transcripts_configurations"
+SET "useConnectorConnection" = true 
+WHERE "provider" = 'gong';
 
+UPDATE "public"."labs_transcripts_configurations" 
+SET "isDefaultWorkspaceConfiguration" = true 
+WHERE "isDefaultFullStorage" = true;

@@ -322,7 +322,7 @@ export async function tableQueryTypesFromAgentMessageIds(
       resultsFileId: resultsFile ? resultsFile.fileId : null,
       resultsFileSnippet: action.resultsFileSnippet,
       sectionFileId: sectionFile ? sectionFile.fileId : null,
-      generatedFiles: resultsFile ? [resultsFile] : [],
+      generatedFiles: removeNulls([resultsFile, sectionFile]),
       type: "tables_query_action",
     });
   });
@@ -663,12 +663,18 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     let generatedResultFile: ActionGeneratedFileType | null = null;
     let generatedsectionFile: ActionGeneratedFileType | null = null;
 
-    if (
-      "results" in sanitizedOutput &&
-      Array.isArray(sanitizedOutput.results) &&
-      sanitizedOutput.results.length > 0
-    ) {
-      const results = sanitizedOutput.results;
+    const rawResults =
+      "results" in sanitizedOutput ? sanitizedOutput.results : [];
+    let results: CSVRecord[] = [];
+
+    if (Array.isArray(rawResults)) {
+      results = rawResults.filter(
+        (record) =>
+          record !== undefined && record !== null && typeof record === "object"
+      );
+    }
+
+    if (results.length > 0) {
       const queryTitle = getTablesQueryResultsFileTitle({
         output: sanitizedOutput,
       });

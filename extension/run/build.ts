@@ -1,7 +1,24 @@
+import type { PlatformType } from "@app/shared/services/platform";
+import { isValidPlatform } from "@app/shared/services/platform";
 import webpack from "webpack";
-import { getConfig } from "../config/webpack";
+
+import { getConfig as getChromeConfig } from "../platforms/chrome/webpack.config";
+
+const configPerPlatform: Record<PlatformType, any> = {
+  chrome: getChromeConfig,
+};
 
 async function main() {
+  const platform = process.argv
+    .find((arg) => arg.startsWith("--platform="))
+    ?.split("=")[1];
+
+  if (!isValidPlatform(platform)) {
+    throw new Error(`Unknown platform: ${platform}`);
+  }
+
+  const getConfig = configPerPlatform[platform];
+
   const config = await getConfig({
     env: process.argv.includes("--release") ? "release" : "production",
     shouldBuild: process.argv.includes("--analyze") ? "analyze" : "prod",

@@ -30,7 +30,7 @@ async function fetchUserWithLegacyProvider(
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
-    await user.updateAuth0Sub(sub);
+    await user.updateAuth0Sub({ sub, provider });
   }
 
   return user;

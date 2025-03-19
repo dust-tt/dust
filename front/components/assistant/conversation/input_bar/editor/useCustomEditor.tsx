@@ -5,6 +5,7 @@ import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
+import { DataSourceLinkExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
@@ -14,6 +15,8 @@ import { createMarkdownSerializer } from "@app/components/assistant/conversation
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { isMobile } from "@app/lib/utils";
+
+import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
 export interface EditorMention {
   id: string;
@@ -192,7 +195,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (url: string, nodeId: string | null) => void;
+  onUrlDetected?: (nodeId: string | null) => void;
 }
 
 const useCustomEditor = ({
@@ -209,6 +212,7 @@ const useCustomEditor = ({
       strike: false,
     }),
     MentionStorageExtension,
+    DataSourceLinkExtension,
     MentionWithPasteExtension.configure({
       HTMLAttributes: {
         class:
@@ -223,18 +227,16 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
+    URLStorageExtension,
   ];
   if (onUrlDetected) {
     extensions.push(
       URLDetectionExtension.configure({
-        onUrlDetected: (url, nodeId) => {
-          if (nodeId) {
-            onUrlDetected(url, nodeId);
-          }
-        },
+        onUrlDetected,
       })
     );
   }
+
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
     extensions,

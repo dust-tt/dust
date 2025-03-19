@@ -44,6 +44,7 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -133,9 +134,16 @@ export async function scrubSpaceActivity({
 
 export async function isWorkflowDeletableActivity({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
+  // If the workspace has been relocated, we don't expect subscriptions to be canceled.
+  if (workspaceHasBeenRelocated) {
+    return true;
+  }
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
@@ -290,6 +298,13 @@ export async function deleteAgentsActivity({
         },
       },
     });
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        processConfigurationId: {
+          [Op.in]: agentProcessConfigurations.map((r) => r.id),
+        },
+      },
+    });
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
@@ -399,11 +414,7 @@ export async function deleteMembersActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
+  const workspace = auth.getNonNullableWorkspace();
 
   await MembershipInvitation.destroy({
     where: {
@@ -465,6 +476,21 @@ export async function deleteSpacesActivity({
     const res = await space.delete(auth, { hardDelete: false });
     if (res.isErr()) {
       throw res.error;
+    }
+
+    // Soft delete all the data source views of the space.
+    const dataSourceViews = await DataSourceViewResource.listBySpace(
+      auth,
+      space
+    );
+    for (const ds of dataSourceViews) {
+      await ds.delete(auth, { hardDelete: false });
+    }
+
+    // Soft delete all the data sources of the space.
+    const dataSources = await DataSourceResource.listBySpace(auth, space);
+    for (const ds of dataSources) {
+      await ds.delete(auth, { hardDelete: false });
     }
 
     await scrubSpaceActivity({

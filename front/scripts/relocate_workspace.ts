@@ -10,6 +10,8 @@ import {
   SUPPORTED_REGIONS,
 } from "@app/lib/api/regions/config";
 import {
+  deleteWorkspace,
+  isWorkspaceRelocationDone,
   setWorkspaceRelocated,
   setWorkspaceRelocating,
   updateWorkspaceMetadata,
@@ -24,6 +26,7 @@ const RELOCATION_STEPS = [
   "cutover",
   "resume-in-destination",
   "rollback",
+  "purge-in-source",
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
@@ -223,6 +226,29 @@ makeScript(
             return;
           }
 
+          break;
+
+        case "purge-in-source":
+          assertCorrectRegion(sourceRegion);
+
+          // 1) Ensure workspace is fully relocated.
+          if (!isWorkspaceRelocationDone(owner)) {
+            logger.error("Workspace is not fully relocated.");
+            return;
+          }
+
+          // 2) Delete the workspace in the source region.
+          const deleteWorkspaceRes = await deleteWorkspace(owner, {
+            workspaceHasBeenRelocated: true,
+          });
+          if (deleteWorkspaceRes.isErr()) {
+            logger.error(
+              `Failed to delete workspace: ${deleteWorkspaceRes.error.message}`
+            );
+            return;
+          }
+
+          logger.info("Workspace marked for deletion in source region.");
           break;
 
         default:

@@ -19,12 +19,12 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { validateUrl } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
   safeSubstring,
   sectionFullText,
+  validateUrl,
 } from "@app/types";
 
 export const config = {
@@ -565,10 +565,11 @@ async function handler(
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
-        ?.substring(6);
+        ?.substring(6)
+        ?.trim();
 
       // Use titleInTags if no title is provided.
-      const title = r.data.title || titleInTags || "Untitled Document";
+      const title = r.data.title?.trim() || titleInTags || "Untitled Document";
 
       if (!titleInTags) {
         tags.push(`title:${title}`);

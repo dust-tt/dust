@@ -7,7 +7,13 @@ import { getFeatureFlags } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { OAuthAPIError, OAuthConnectionType, Result } from "@app/types";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { Err, isValidZendeskSubdomain, OAuthAPI, Ok } from "@app/types";
+import {
+  Err,
+  isValidSalesforceDomain,
+  isValidZendeskSubdomain,
+  OAuthAPI,
+  Ok,
+} from "@app/types";
 
 export type OAuthError = {
   code:
@@ -369,14 +375,7 @@ const PROVIDER_STRATEGIES: Record<
       ) {
         return false;
       }
-      try {
-        const url = new URL(extraConfig.instance_url);
-        return (
-          url.protocol === "https:" && url.hostname.endsWith(".salesforce.com")
-        );
-      } catch {
-        return false;
-      }
+      return isValidSalesforceDomain(extraConfig.instance_url);
     },
     getRelatedCredential: (extraConfig, workspaceId, userId) => {
       const { client_id, client_secret, ...restConfig } = extraConfig;

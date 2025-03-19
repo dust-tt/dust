@@ -50,13 +50,25 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceUpsert({
+export default function DataSourceDocumentView({
   document,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="max-w-4xl">
       <div className="pt-6">
         <Page.Vertical align="stretch">
+          <div className="pt-4">
+            <Page.SectionHeader title="Document ID" />
+            <div className="pt-4">
+              <Input
+                placeholder="Document ID"
+                name="document"
+                disabled={true}
+                value={document.document_id}
+              />
+            </div>
+          </div>
+
           <div className="pt-4">
             <Page.SectionHeader title="Document title" />
             <div className="pt-4">
@@ -126,6 +138,6 @@ export default function DataSourceUpsert({
   );
 }
 
-DataSourceUpsert.getLayout = (page: ReactElement) => {
+DataSourceDocumentView.getLayout = (page: ReactElement) => {
   return <PokeLayout title="View Document">{page}</PokeLayout>;
 };

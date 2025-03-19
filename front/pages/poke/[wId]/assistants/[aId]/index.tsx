@@ -41,7 +41,7 @@ const AssistantDetailsPage = ({
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const { isDark } = useTheme();
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
       <h3 className="text-xl font-bold">
         Assistant of workspace:{" "}
         <a href={`/poke/${workspace.sId}`} className="text-action-500">
@@ -96,7 +96,10 @@ const AssistantDetailsPage = ({
                     {a.actions.map((action, index) => (
                       <div key={index}>
                         <div className="font-bold">
-                          Action {index + 1}: {action.type}
+                          Action {index + 1}: {action.type} (
+                          {action.type === "retrieval_configuration" &&
+                            (action.query === "auto" ? "search" : "include")}
+                          )
                         </div>
                         <JsonViewer
                           theme={isDark ? "dark" : "light"}

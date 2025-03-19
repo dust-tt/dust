@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
 import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
@@ -46,7 +46,7 @@ async function handler(
         });
       }
 
-      await pokeUpgradeWorkspaceToPlan(auth, planCode);
+      await SubscriptionResource.pokeUpgradeWorkspaceToPlan(auth, planCode);
 
       return res.status(200).json({
         workspace: renderLightWorkspaceType({

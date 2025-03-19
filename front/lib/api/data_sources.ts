@@ -598,17 +598,18 @@ export async function upsertTable({
       },
     Omit<DustError, "code"> & {
       code:
-        | "invalid_csv_and_file"
-        | "missing_csv"
         | "data_source_error"
-        | "invalid_csv_content"
-        | "invalid_url"
-        | "table_not_found"
         | "file_not_found"
-        | "title_too_long"
+        | "internal_error"
+        | "invalid_csv_and_file"
+        | "invalid_csv_content"
         | "invalid_parent_id"
         | "invalid_parents"
-        | "internal_error";
+        | "invalid_url"
+        | "missing_csv"
+        | "table_not_found"
+        | "title_is_empty"
+        | "title_too_long";
     }
   >
 > {

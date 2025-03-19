@@ -731,6 +731,22 @@ export class Authenticator {
     return subscription;
   }
 
+  subscriptionResource(): SubscriptionResource | null {
+    return this._subscription;
+  }
+
+  getNonNullableSubscriptionResource(): SubscriptionResource {
+    const subscriptionResource = this.subscriptionResource();
+
+    if (!subscriptionResource) {
+      throw new Error(
+        "Unexpected unauthenticated call to `getNonNullableSubscriptionResource`."
+      );
+    }
+
+    return subscriptionResource;
+  }
+
   plan(): PlanType | null {
     return this._subscription ? this._subscription.getPlan() : null;
   }

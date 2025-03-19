@@ -4,10 +4,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
-import {
-  deleteWorkspace,
-  setInternalWorkspaceSegmentation,
-} from "@app/lib/api/workspace";
+import { setInternalWorkspaceSegmentation } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -74,21 +71,6 @@ async function handler(
       return res.status(200).json({
         workspace,
       });
-
-    case "DELETE": {
-      const deleteRes = await deleteWorkspace(owner);
-      if (deleteRes.isErr()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: deleteRes.error.message,
-          },
-        });
-      }
-
-      return res.status(200).json({ success: true });
-    }
 
     default:
       return apiError(req, res, {

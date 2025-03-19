@@ -2,8 +2,8 @@ import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { Plan } from "@app/lib/models/plan";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { pokeUpgradeWorkspaceToPlan } from "@app/lib/plans/subscription";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Logger } from "@app/logger/logger";
 import { createAndLogMembership } from "@app/pages/api/login";
@@ -76,7 +76,10 @@ async function createTestWorkspaces(
       workspace.sId
     );
 
-    await pokeUpgradeWorkspaceToPlan(authenticator, FREE_UPGRADED_PLAN_CODE);
+    await SubscriptionResource.pokeUpgradeWorkspaceToPlan(
+      authenticator,
+      FREE_UPGRADED_PLAN_CODE
+    );
   }
 }
 

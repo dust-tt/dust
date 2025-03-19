@@ -68,6 +68,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             name: col.name,
             value_type: col_type,
             possible_values: None,
+            non_filterable: None,
         })
     }
 }
@@ -225,13 +226,16 @@ impl SnowflakeRemoteDatabase {
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
-            Err(snowflake_connector_rs::Error::TimedOut) => Err(
-                QueryDatabaseError::ExecutionError("Query execution timed out".to_string()),
-            ),
-            Err(e) => Err(QueryDatabaseError::ExecutionError(format!(
-                "Error executing query: {}",
-                e
-            ))),
+            Err(snowflake_connector_rs::Error::TimedOut) => {
+                Err(QueryDatabaseError::ExecutionError(
+                    "Query execution timed out".to_string(),
+                    Some(query.to_string()),
+                ))
+            }
+            Err(e) => Err(QueryDatabaseError::ExecutionError(
+                format!("Error executing query: {}", e),
+                Some(query.to_string()),
+            )),
         }?;
 
         let mut query_result_rows: usize = 0;
@@ -310,10 +314,13 @@ impl SnowflakeRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables that are not allowed: {}",
+                    used_forbidden_tables.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         let used_forbidden_operations = plan
@@ -331,10 +338,13 @@ impl SnowflakeRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_operations.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query contains forbidden operations: {}",
-                used_forbidden_operations.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query contains forbidden operations: {}",
+                    used_forbidden_operations.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         Ok(())

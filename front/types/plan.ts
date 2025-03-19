@@ -23,6 +23,7 @@ export type ManageDataSourcesLimitsType = {
   isGithubAllowed: boolean;
   isIntercomAllowed: boolean;
   isWebCrawlerAllowed: boolean;
+  isSalesforceAllowed: boolean;
 };
 export type LimitsType = {
   assistant: {
@@ -96,6 +97,7 @@ export const CreatePlanFormSchema = t.type({
   isIntercomAllowed: t.boolean,
   isConfluenceAllowed: t.boolean,
   isWebCrawlerAllowed: t.boolean,
+  isSalesforceAllowed: t.boolean,
   maxMessages: t.union([t.number, NumberFromString]),
   maxMessagesTimeframe: t.keyof({
     day: null,
@@ -118,3 +120,8 @@ export const EnterpriseUpgradeFormSchema = t.type({
 export type EnterpriseUpgradeFormType = t.TypeOf<
   typeof EnterpriseUpgradeFormSchema
 >;
+
+export type CheckoutUrlResult = {
+  checkoutUrl: string;
+  plan: PlanType;
+};
