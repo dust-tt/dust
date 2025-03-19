@@ -1,3 +1,5 @@
+import type { DustMimeType } from "@dust-tt/client";
+
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,7 +9,6 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
-  DustMimeType,
   ModelId,
   Result,
   SupportedFileContentType,
