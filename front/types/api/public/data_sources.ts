@@ -46,20 +46,9 @@ export type PostDataSourceDocumentRequestBody = t.TypeOf<
   typeof PostDataSourceDocumentRequestBodySchema
 >;
 
-export const PostDataSourceWithNameDocumentRequestBodySchema = t.intersection([
-  t.type({
-    name: t.string,
-  }),
-  PostDataSourceDocumentRequestBodySchema,
-]);
-
-export type PostDataSourceWithNameDocumentRequestBody = t.TypeOf<
-  typeof PostDataSourceWithNameDocumentRequestBodySchema
->;
-
 // Post and Patch require the same request body
-export type PatchDataSourceWithNameDocumentRequestBody = t.TypeOf<
-  typeof PostDataSourceWithNameDocumentRequestBodySchema
+export type PatchDataSourceDocumentRequestBody = t.TypeOf<
+  typeof PostDataSourceDocumentRequestBodySchema
 >;
 
 export const PatchDataSourceTableRequestBodySchema = t.type({

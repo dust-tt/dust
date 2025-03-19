@@ -364,31 +364,15 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.substring(6);
-  if (!titleInTags) {
-    nonNullTags.push(`title:${title}`);
-  }
-
   if (titleInTags && titleInTags !== title) {
     logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
       "Inconsistency between tags and title."
     );
-  }
-
-  // Add selection of tags as prefix to the section if they are present.
-  let tagsPrefix = "";
-  ["title", "author"].forEach((t) => {
-    nonNullTags.forEach((tag) => {
-      if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
-        tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
-      }
-    });
-  });
-  if (tagsPrefix && generatedSection) {
-    generatedSection.prefix = tagsPrefix;
   }
 
   if (!generatedSection) {
@@ -650,11 +634,18 @@ export async function upsertTable({
   }
 
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
+  if (
+    params.title &&
+    (params.title.length > MAX_NODE_TITLE_LENGTH || params.title.length === 0)
+  ) {
     return new Err({
       name: "dust_error",
-      code: "title_too_long",
-      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+      code: params.title.length === 0 ? "title_is_empty" : "title_too_long",
+      message:
+        "Invalid title:" +
+        (params.title.length === 0
+          ? "title cannot be empty"
+          : `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`),
     });
   }
 
