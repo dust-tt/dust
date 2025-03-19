@@ -171,8 +171,8 @@ export const fetchDatabases = async ({
 };
 
 /**
- * Fetch the tables available in the Snowflake account. We have no guarantee to get all the schemas
- * from all the DBs so we generaly want to have fromDatabase defined.
+ * Fetch the tables available in the Snowflake account. `fromDatabase` is required because there is
+ * no guarantee to get all schemas otherwise.
  */
 export const fetchSchemas = async ({
   credentials,
@@ -180,12 +180,10 @@ export const fetchSchemas = async ({
   connection,
 }: {
   credentials: SnowflakeCredentials;
-  fromDatabase?: string;
+  fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = fromDatabase
-    ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
-    : "SHOW SCHEMAS";
+  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -251,13 +249,32 @@ export const fetchTree = async (
     (db) => !EXCLUDE_DATABASES.includes(db.name)
   );
 
-  const schemasRes = await fetchSchemas({ credentials, connection });
-  if (schemasRes.isErr()) {
-    return schemasRes;
+  const allSchemas: RemoteDBSchema[] = [];
+  const allTables: RemoteDBTable[] = [];
+
+  for (const db of databases) {
+    const schemasRes = await fetchSchemas({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (schemasRes.isErr()) {
+      return schemasRes;
+    }
+    allSchemas.push(...schemasRes.value);
+
+    const tablesRes = await fetchTables({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (tablesRes.isErr()) {
+      return tablesRes;
+    }
+    allTables.push(...tablesRes.value);
   }
-  const schemas = schemasRes.value.filter(
-    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
-  );
+
+  const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
   localLogger.info(
     {
       schemasCount: schemas.length,
@@ -265,11 +282,7 @@ export const fetchTree = async (
     "Found schemas in Snowflake"
   );
 
-  const tablesRes = await fetchTables({ credentials, connection });
-  if (tablesRes.isErr()) {
-    return tablesRes;
-  }
-  const tables = tablesRes.value;
+  const tables = allTables;
   localLogger.info(
     {
       tablesCount: tables.length,
