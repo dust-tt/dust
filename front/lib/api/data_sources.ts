@@ -650,11 +650,18 @@ export async function upsertTable({
   }
 
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
+  if (
+    params.title &&
+    (params.title.length > MAX_NODE_TITLE_LENGTH || params.title.length === 0)
+  ) {
     return new Err({
       name: "dust_error",
-      code: "title_too_long",
-      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+      code: params.title.length === 0 ? "title_is_empty" : "title_too_long",
+      message:
+        "Invalid title:" +
+        (params.title.length === 0
+          ? "title cannot be empty"
+          : `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`),
     });
   }
 
