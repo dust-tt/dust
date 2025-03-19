@@ -136,10 +136,10 @@ export const fetchAvailableChildrenInSnowflake = async ({
 };
 
 /**
- * Retrieves the selected content nodes for a parent in our database.
- * They are the content nodes that we were given access to by the admin.
+ * Retrieves the selected content nodes in our database. They are the content nodes that we were
+ * given access to by the admin.
  */
-export const fetchReadNodes = async ({
+export const fetchSelectedNodes = async ({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -193,9 +193,9 @@ export const fetchSyncedChildren = async ({
 
   // We want to fetch all the schemas for which we have access to at least one table.
   if (parentType === "database") {
-    // If the database is in db with permission: "selected" we have full access to it (it means the user selected this node).
-    // That means we have access to all schemas and tables.
-    // In that case we loop on all schemas.
+    // If the database is in db with permission: "selected" we have full access to it (it means the
+    // user selected this node). That means we have access to all schemas and tables.  In that case
+    // we loop on all schemas.
     const availableDatabase = await RemoteDatabaseModel.findOne({
       where: {
         connectorId,
@@ -221,9 +221,9 @@ export const fetchSyncedChildren = async ({
       return new Ok(schemaContentNodes);
     }
 
-    // Otherwise, we will fetch all the schemas we have full access to,
-    // which are the ones in db with permission: "selected" (the ones with "inherited" are absorbed in the case above).
-    // + the schemas for the tables that were explicitly selected.
+    // Otherwise, we will fetch all the schemas we have full access to, which are the ones in db
+    // with permission: "selected" (the ones with "inherited" are absorbed in the case above) +
+    // the schemas for the tables that were explicitly selected.
     const [availableSchemas, availableTables] = await Promise.all([
       RemoteSchemaModel.findAll({
         where: {
@@ -262,7 +262,8 @@ export const fetchSyncedChildren = async ({
     return new Ok(schemas);
   }
 
-  // Since we have all tables in the database, we can just return all the tables we have for this schema.
+  // Since we have all tables in the database, we can just return all the tables we have for this
+  // schema.
   if (parentType === "schema") {
     const [databaseName, schemaName] = parentInternalId.split(".");
     const availableTables = await RemoteTableModel.findAll({
