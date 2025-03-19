@@ -21,6 +21,7 @@ import {
   AgentReasoningAction,
   AgentReasoningConfiguration,
 } from "@app/lib/models/assistant/actions/reasoning";
+import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import {
   AgentRetrievalAction,
   AgentRetrievalConfiguration,
@@ -146,6 +147,8 @@ async function main() {
   await AgentConfiguration.sync({ alter: true });
   await AgentUserRelation.sync({ alter: true });
   await GlobalAgentSettings.sync({ alter: true });
+
+  await RemoteMCPServer.sync({ alter: true });
 
   await AgentRetrievalConfiguration.sync({ alter: true });
   await AgentDustAppRunConfiguration.sync({ alter: true });
