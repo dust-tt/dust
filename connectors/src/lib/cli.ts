@@ -11,7 +11,7 @@ import { intercom } from "@connectors/connectors/intercom/lib/cli";
 import { microsoft } from "@connectors/connectors/microsoft/lib/cli";
 import { notion } from "@connectors/connectors/notion/lib/cli";
 import { slack } from "@connectors/connectors/slack/lib/cli";
-import {snowflake} from "@connectors/connectors/snowflake/lib/cli";
+import { snowflake } from "@connectors/connectors/snowflake/lib/cli";
 import { launchCrawlWebsiteScheduler } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
 import { getTemporalClient } from "@connectors/lib/temporal";
