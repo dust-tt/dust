@@ -99,9 +99,7 @@ export default function TablePicker({
           const newTablesMap = new Map(prevTablesMap);
 
           tables.forEach((table) => {
-            if (!prevTablesMap.has(table.internalId)) {
-              newTablesMap.set(table.internalId, table);
-            }
+            newTablesMap.set(table.internalId, table);
           });
 
           return newTablesMap;
