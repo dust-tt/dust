@@ -114,6 +114,7 @@ AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
 
 RemoteMCPServer.hasMany(AgentMCPServerConfiguration, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
+  onDelete: "RESTRICT",
 });
 AgentMCPServerConfiguration.belongsTo(RemoteMCPServer, {
   foreignKey: { name: "remoteMCPServerId", allowNull: true },
