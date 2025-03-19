@@ -55,7 +55,6 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   isTextContent,
   isUserMessageTypeModel,
   SUPPORTED_MODEL_CONFIGS,
@@ -63,14 +62,6 @@ import {
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
-
-function actionIsClaudeReasoning(action: ActionConfigurationType) {
-  return (
-    action.type === "reasoning_configuration" &&
-    action.providerId === "anthropic" &&
-    action.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID
-  );
-}
 
 // This interface is used to execute an agent. It is not in charge of creating the AgentMessage,
 // nor updating it (responsability of the caller based on the emitted events).
