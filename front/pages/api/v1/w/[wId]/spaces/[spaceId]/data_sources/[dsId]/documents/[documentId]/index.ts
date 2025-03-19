@@ -569,7 +569,8 @@ async function handler(
         ?.trim();
 
       // Use titleInTags if no title is provided.
-      const title = r.data.title?.trim() || titleInTags || "Untitled Document";
+      const title =
+        r.data.title?.trim() || titleInTags?.trim() || "Untitled Document";
 
       if (!titleInTags) {
         tags.push(`title:${title}`);
