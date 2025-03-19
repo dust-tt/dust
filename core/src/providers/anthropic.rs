@@ -315,21 +315,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
 
         match cm {
             ChatMessage::Assistant(assistant_msg) => {
-                // Handling thinking content (CoT).
-                let thinking =
-                    assistant_msg
-                        .reasoning_content
-                        .as_ref()
-                        .map(|thinking| AnthropicContent {
-                            r#type: AnthropicContentType::Thinking,
-                            text: None,
-                            thinking: Some(thinking.clone()),
-                            redacted_thinking: None,
-                            tool_result: None,
-                            tool_use: None,
-                            source: None,
-                        });
-
                 // Handling tool_uses.
                 let tool_uses = match assistant_msg.function_calls.as_ref() {
                     Some(fc) => Some(
@@ -368,9 +353,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 });
 
                 // Combining all content into one vector using iterators.
-                let content_vec = thinking
+                let content_vec = text
                     .into_iter()
-                    .chain(text.into_iter())
                     .chain(tool_uses.into_iter().flatten())
                     .collect::<Vec<AnthropicContent>>();
 
