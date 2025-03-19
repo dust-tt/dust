@@ -199,7 +199,7 @@ export function Markdown({
       input: Input,
       blockquote: BlockquoteBlock,
       hr: () => (
-        <div className="s-my-6 s-border-b s-border-structure-200 dark:s-border-structure-200-night" />
+        <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
@@ -256,7 +256,7 @@ function LinkBlock({
       className={cn(
         "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
         "s-text-highlight dark:s-text-highlight-night",
-        "hover:s-text-action-400 dark:hover:s-text-action-400-night",
+        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
         "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
       )}
     >

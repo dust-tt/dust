@@ -216,7 +216,7 @@ const useCustomEditor = ({
     MentionWithPasteExtension.configure({
       HTMLAttributes: {
         class:
-          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-brand font-medium",
+          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-medium",
       },
       suggestion: makeGetAssistantSuggestions(),
     }),
