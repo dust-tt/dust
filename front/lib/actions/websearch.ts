@@ -28,6 +28,7 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
+import { getRedisClient } from "../api/redis";
 
 export type WebsearchConfigurationType = {
   id: ModelId;
@@ -290,6 +291,127 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
     );
 
     config.SEARCH.num = numResults;
+
+    // Check Redis for action validation status before proceeding
+    try {
+      const redis = await getRedisClient({ origin: "assistant_generation" });
+      const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}`;
+      const validationStatus = await redis.get(validationKey);
+ 
+      if (!validationStatus || validationStatus !== "approved") {
+        let attempts = 0;
+        const maxAttempts = 60; // Wait up to 30 seconds (60 * 500ms)
+
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: actionConfiguration.id,
+          },
+          "Waiting for action validation"
+        );
+
+        while (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
+
+          const checkStatus = await redis.get(validationKey);
+          if (checkStatus === "approved") {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                messageId: agentMessage.sId,
+                actionId: actionConfiguration.id,
+              },
+              "Action approved by user, continuing execution"
+            );
+            break; // Approved, continue with execution
+          }
+
+          if (checkStatus && checkStatus === "rejected") {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                messageId: agentMessage.sId,
+                actionId: actionConfiguration.id,
+              },
+              "Action execution rejected by user"
+            );
+
+            yield {
+              type: "websearch_success",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: new WebsearchActionType({
+                id: action.id,
+                agentMessageId: agentMessage.agentMessageId,
+                query,
+                output: {
+                  results: [],
+                  error: `The user rejected this specific action execution. Searching the web for "${query}" is hence forbidden for this message.`,
+                },
+                functionCallId: action.functionCallId,
+                functionCallName: action.functionCallName,
+                step: action.step,
+                type: "websearch_action",
+                generatedFiles: [],
+              }),
+            };
+            return;
+          }
+
+          attempts++;
+        }
+
+        // If we timed out waiting for validation
+        if (attempts >= maxAttempts) {
+          logger.warn(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              actionId: actionConfiguration.id,
+            },
+            "Action validation timed out"
+          );
+
+          yield {
+            type: "websearch_error",
+            created: now,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "action_validation_timeout",
+              message:
+                "The action validation request timed out. Please try again.",
+            },
+          };
+          return;
+        }
+      }
+
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: actionConfiguration.id,
+        },
+        "Proceeding with action execution after validation"
+      );
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error,
+        },
+        "Error checking action validation status"
+      );
+    }
 
     // Execute the websearch action.
     const websearchRes = await runActionStreamed(
