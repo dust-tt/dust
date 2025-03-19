@@ -12,7 +12,7 @@ import {
 } from "@connectors/connectors/interface";
 import {
   fetchAvailableChildrenInSnowflake,
-  fetchReadNodes,
+  fetchSelectedNodes,
   fetchSyncedChildren,
 } from "@connectors/connectors/snowflake/lib/permissions";
 import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
@@ -272,13 +272,10 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const { connector, credentials } = connectorAndCredentialsRes.value;
 
-    // I don't understand why but connector expects all the selected node
-    // no matter if they are at the root level if we filter on read + parentInternalId === null.
-    // This really sucks because for Snowflake it's easy to build the real tree.
-    // It means that we get a weird behavior on the tree displayed in the UI sidebar.
-    // TODO(SNOWFLAKE): Fix this, even if with a hack.
+    // When asked for the content nodes we have read access to with parentInternalId === null, we
+    // return the selected nodes (independently of their level (db/schema/table)).
     if (filterPermission === "read" && parentInternalId === null) {
-      const fetchRes = await fetchReadNodes({
+      const fetchRes = await fetchSelectedNodes({
         connectorId: connector.id,
       });
       if (fetchRes.isErr()) {
@@ -287,8 +284,8 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       return fetchRes;
     }
 
-    // We display the nodes that we were given access to by the admin.
-    // We display the db/schemas if we have access to at least one table within those.
+    // We display the nodes that we were given access to by the admin. We display the db/schemas if
+    // we have access to at least one table within those.
     if (filterPermission === "read") {
       const fetchRes = await fetchSyncedChildren({
         connectorId: connector.id,
