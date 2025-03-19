@@ -13,7 +13,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 const ValidateActionSchema = z.object({
   actionId: z.number(),
   approved: z.boolean(),
-  message: z.string().optional(),
 });
 
 type ValidateActionResponse = {
@@ -72,7 +71,7 @@ async function handler(
     });
   }
 
-  const { actionId, approved, message } = parseResult.data;
+  const { actionId, approved } = parseResult.data;
 
   try {
     const redis = await getRedisClient({ origin: "assistant_generation" });
@@ -109,8 +108,7 @@ async function handler(
       );
     } else {
       // For rejected actions, store the rejection message if provided
-      const rejectionMessage = message || "Action rejected by user";
-      await redis.set(validationKey, `rejected:${rejectionMessage}`, {
+      await redis.set(validationKey, `rejected`, {
         EX: 3600, // 1 hour expiration
       });
       logger.info(
@@ -119,7 +117,6 @@ async function handler(
           conversationId: cId,
           messageId: mId,
           actionId,
-          rejectionMessage,
         },
         "Action rejected by user"
       );

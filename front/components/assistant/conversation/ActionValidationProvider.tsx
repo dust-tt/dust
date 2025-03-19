@@ -109,7 +109,6 @@ export function ActionValidationProvider({
           body: JSON.stringify({
             actionId: pendingValidation.action.id,
             approved: false,
-            message: `You are not allowed to use the ${pendingValidation.action.name || pendingValidation.action.type} tool. Please continue helping the user without using this tool.`,
           }),
         }
       );
