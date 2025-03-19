@@ -12,6 +12,7 @@ import React, { useEffect, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useCursorPagination } from "@app/hooks/useCursorPagination";
+import { useDebounce } from "@app/hooks/useDebounce";
 import {
   useDataSourceViewTable,
   useDataSourceViewTables,
@@ -51,10 +52,21 @@ export default function TablePicker({
   excludeTables,
 }: TablePickerProps) {
   void dataSource;
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [open, setOpen] = useState(false);
   const [allTablesMap, setallTablesMap] = useState<
     Map<string, DataSourceViewContentNode>
   >(new Map());
+
+  const {
+    inputValue: searchFilter,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchFilter,
+  } = useDebounce("", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
+
   const [currentTable, setCurrentTable] = useState<CoreAPITable>();
   const {
     cursorPagination,
@@ -62,6 +74,10 @@ export default function TablePicker({
     handleLoadNext,
     pageIndex,
   } = useCursorPagination(PAGE_SIZE);
+
+  useEffect(() => {
+    resetPagination();
+  }, [debouncedSearch, resetPagination]);
 
   const { spaceDataSourceViews } = useSpaceDataSourceViews({
     spaceId: space.sId,
@@ -114,21 +130,6 @@ export default function TablePicker({
     }
   }, [isTableError, isTableLoading, table]);
 
-  const [searchFilter, setSearchFilter] = useState("");
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      const newSearchTerm =
-        searchFilter.length >= MIN_SEARCH_QUERY_SIZE ? searchFilter : "";
-      if (newSearchTerm !== debouncedSearch) {
-        resetPagination();
-        setDebouncedSearch(newSearchTerm);
-      }
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [searchFilter, debouncedSearch, resetPagination]);
-
   return (
     <div className="flex items-center">
       <div className="flex items-center">
@@ -180,7 +181,7 @@ export default function TablePicker({
                 name="search"
                 placeholder="Search for tables"
                 value={searchFilter}
-                onChange={(e) => setSearchFilter(e)}
+                onChange={setSearchFilter}
               />
               <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col">
                 <div className="w-full space-y-1">
@@ -219,10 +220,10 @@ export default function TablePicker({
                     handleLoadNext(nextPageCursor);
                   }}
                   hasMore={!!nextPageCursor}
-                  isValidating={isTablesLoading}
-                  isLoading={isTablesLoading}
+                  isValidating={isTablesLoading || isDebouncing}
+                  isLoading={isTablesLoading || isDebouncing}
                 >
-                  {isTablesLoading && !allTablesMap.size && (
+                  {(isTablesLoading || isDebouncing) && !allTablesMap.size && (
                     <div className="py-2 text-center text-sm text-element-700">
                       Loading tables...
                     </div>
