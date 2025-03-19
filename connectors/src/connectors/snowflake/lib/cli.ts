@@ -52,6 +52,9 @@ export const snowflake = async ({
     }
 
     case "fetch-schemas": {
+      if (args.database === undefined) {
+        throw new Error("Database is required for fetching schemas");
+      }
       const schemas = await fetchSchemas({
         credentials,
         fromDatabase: args.database,
@@ -63,6 +66,9 @@ export const snowflake = async ({
     }
 
     case "fetch-tables": {
+      if (args.database === undefined && args.schema === undefined) {
+        throw new Error("Database or Schema is required for fetching tables");
+      }
       const tables = await fetchTables({
         credentials,
         fromDatabase: args.database,
