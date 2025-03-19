@@ -37,6 +37,7 @@ export class Plan extends BaseModel<Plan> {
   declare isManagedGithubAllowed: boolean;
   declare isManagedIntercomAllowed: boolean;
   declare isManagedWebCrawlerAllowed: boolean;
+  declare isManagedSalesforceAllowed: boolean;
   declare maxDataSourcesCount: number;
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
@@ -117,6 +118,10 @@ Plan.init(
       defaultValue: false,
     },
     isManagedWebCrawlerAllowed: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    isManagedSalesforceAllowed: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },

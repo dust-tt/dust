@@ -7,6 +7,7 @@ import {
   IntercomLogo,
   NotionLogo,
   Page,
+  SalesforceLogo,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -204,6 +205,9 @@ export function ActiveSubscriptionTable({
                       ) : null}
                       {activePlan.limits.connections.isWebCrawlerAllowed ? (
                         <GlobeAltIcon />
+                      ) : null}
+                      {activePlan.limits.connections.isSalesforceAllowed ? (
+                        <SalesforceLogo />
                       ) : null}
                     </div>
                   </PokeTableCell>
