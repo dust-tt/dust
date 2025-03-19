@@ -311,6 +311,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
       // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
       config.MODEL.temperature = 1.0;
+      delete config.MODEL.top_p;
       // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
       config.MODEL.anthropic_beta_thinking = {
         type: "enabled",
