@@ -1,5 +1,8 @@
-/* Only tailwind globals here, components and utilities in other file to handle priority */
+@import "./fonts.css";
+
 @tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 html,
 body,
