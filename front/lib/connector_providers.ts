@@ -432,7 +432,7 @@ export const isConnectorProviderAllowedForPlan = (
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
     case "salesforce":
-      return true; // @todo Daph 2025-03-18: remove this once we have updated plans to allow salesforce. Replace with: return plan.limits.connections.isSalesforceAllowed;
+      return plan.limits.connections.isSalesforceAllowed;
     case "microsoft":
     case "snowflake":
     case "zendesk":
