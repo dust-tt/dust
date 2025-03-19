@@ -31,9 +31,8 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
+import { concurrentExecutor, MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -227,7 +226,7 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name,
+    title: collection.name.trim() || "Untitled Collection",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
     mimeType: MIME_TYPES.INTERCOM.COLLECTION,
@@ -243,17 +242,18 @@ export async function upsertCollectionWithChildren({
     parentId: collection.id,
   });
 
-  await Promise.all(
-    childrenCollectionsOnIntercom.map(async (collectionOnIntercom) => {
-      await upsertCollectionWithChildren({
+  await concurrentExecutor(
+    childrenCollectionsOnIntercom,
+    async (collectionOnIntercom) =>
+      upsertCollectionWithChildren({
         connectorId,
         connectionId,
         helpCenterId,
         collection: collectionOnIntercom,
         region,
         currentSyncMs,
-      });
-    })
+      }),
+    { concurrency: 10 }
   );
 }
 

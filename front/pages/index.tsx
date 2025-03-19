@@ -50,6 +50,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       url = `/w/${selection.lastWorkspaceId}`;
     }
 
+    // This allows linking to the workspace subscription page from the documentation.
+    if (context.query.goto === "subscription") {
+      url = url + "/subscription/manage";
+    }
+
     if (context.query.inviteToken) {
       url = `/api/login?inviteToken=${inviteToken}`;
     }

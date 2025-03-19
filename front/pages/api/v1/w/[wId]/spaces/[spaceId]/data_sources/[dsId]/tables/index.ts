@@ -317,7 +317,8 @@ async function handler(
       // - the name of the table
       const titleInTags = tags
         ?.find((t) => t.startsWith("title:"))
-        ?.substring(6);
+        ?.substring(6)
+        ?.trim();
       const title = r.data.title?.trim() || titleInTags || name;
 
       const tableId = maybeTableId || generateRandomModelSId();

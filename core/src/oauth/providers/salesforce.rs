@@ -10,7 +10,6 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use serde_json::json;
 
 pub struct SalesforceConnectionProvider {}
 
@@ -79,19 +78,19 @@ impl Provider for SalesforceConnectionProvider {
         // Get Salesforce client_id and client_secret using the helper
         let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let body = json!({
-            "grant_type": "authorization_code",
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "code": code,
-            "redirect_uri": redirect_uri,
-            "code_verifier": code_verifier,
-        });
+        // Use a HashMap instead of json! for form data
+        let mut form_data = std::collections::HashMap::new();
+        form_data.insert("grant_type", "authorization_code");
+        form_data.insert("client_id", &client_id);
+        form_data.insert("client_secret", &client_secret);
+        form_data.insert("code", code);
+        form_data.insert("redirect_uri", redirect_uri);
+        form_data.insert("code_verifier", code_verifier);
 
         let req = reqwest::Client::new()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&body);
+            .form(&form_data);
 
         let raw_json = execute_request(ConnectionProvider::Salesforce, req)
             .await
@@ -128,17 +127,17 @@ impl Provider for SalesforceConnectionProvider {
 
         let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let body = json!({
-            "grant_type": "refresh_token",
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-        });
+        // Use a HashMap instead of json! for form data
+        let mut form_data = std::collections::HashMap::new();
+        form_data.insert("grant_type", "refresh_token");
+        form_data.insert("client_id", &client_id);
+        form_data.insert("client_secret", &client_secret);
+        form_data.insert("refresh_token", &refresh_token);
 
         let req = reqwest::Client::new()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&body);
+            .form(&form_data);
 
         let raw_json = execute_request(ConnectionProvider::Salesforce, req)
             .await

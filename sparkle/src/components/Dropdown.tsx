@@ -98,6 +98,7 @@ type MutuallyExclusiveProps<BaseProps, ExtraProps> = Simplify<
 interface ItemWithLabelIconAndDescriptionProps {
   label?: string;
   icon?: React.ComponentType;
+  extraIcon?: React.ComponentType;
   description?: string;
   children?: React.ReactNode;
 }
@@ -107,21 +108,27 @@ const ItemWithLabelIconAndDescription = <
 >({
   label,
   icon,
+  extraIcon,
   description,
   children,
 }: T) => {
   return (
     <>
       {label && (
-        <div className="s-grid s-grid-cols-[auto,1fr] s-items-center s-gap-x-1.5">
-          {icon && (
+        <div className="s-grid s-grid-cols-[auto,1fr,auto] s-items-center s-gap-x-1.5">
+          {(icon || extraIcon) && (
             <div
               className={cn(
                 "s-flex",
                 description ? "s-items-start s-pt-0.5" : "s-items-center"
               )}
             >
-              <Icon size="xs" visual={icon} />
+              {icon && <Icon size="xs" visual={icon} />}
+              {extraIcon && (
+                <div className="-s-ml-1.5 s-mt-1.5">
+                  <Icon size="xs" visual={extraIcon} />
+                </div>
+              )}
             </div>
           )}
           <div className="s-flex s-flex-col">
@@ -217,6 +224,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
+    extraIcon?: React.ComponentType;
   }
 >;
 
@@ -232,6 +240,7 @@ const DropdownMenuItem = React.forwardRef<
       className,
       inset,
       icon,
+      extraIcon,
       label,
       href,
       target,
@@ -266,6 +275,7 @@ const DropdownMenuItem = React.forwardRef<
           <ItemWithLabelIconAndDescription
             label={label}
             icon={icon}
+            extraIcon={extraIcon}
             description={description}
           >
             {children}

@@ -4,19 +4,27 @@ import {
   PopoverRoot,
   PopoverTrigger,
   ScrollArea,
+  ScrollBar,
   SearchInput,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
-import { useDataSourceViewTables } from "@app/lib/swr/data_source_view_tables";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useCursorPagination } from "@app/hooks/useCursorPagination";
+import {
+  useDataSourceViewTable,
+  useDataSourceViewTables,
+} from "@app/lib/swr/data_source_view_tables";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
+  CoreAPITable,
   DataSourceViewContentNode,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 interface TablePickerProps {
   owner: LightWorkspaceType;
@@ -31,6 +39,8 @@ interface TablePickerProps {
   excludeTables?: Array<{ dataSourceId: string; tableId: string }>;
 }
 
+const PAGE_SIZE = 25;
+
 export default function TablePicker({
   owner,
   dataSource,
@@ -41,42 +51,83 @@ export default function TablePicker({
   excludeTables,
 }: TablePickerProps) {
   void dataSource;
+  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
+  const [allTablesMap, setallTablesMap] = useState<
+    Map<string, DataSourceViewContentNode>
+  >(new Map());
+  const [currentTable, setCurrentTable] = useState<CoreAPITable>();
+  const {
+    cursorPagination,
+    reset: resetPagination,
+    handleLoadNext,
+    pageIndex,
+  } = useCursorPagination(PAGE_SIZE);
 
   const { spaceDataSourceViews } = useSpaceDataSourceViews({
     spaceId: space.sId,
     workspaceId: owner.sId,
   });
 
-  // Look for the selected data source view in the list - data_source_id can contain either dsv sId
-  // or dataSource name, try to find a match
   const selectedDataSourceView = spaceDataSourceViews.find(
     (dsv) =>
       dsv.sId === dataSource.data_source_id ||
-      // Legacy behavior.
       dsv.dataSource.name === dataSource.data_source_id
   );
 
-  const { tables } = useDataSourceViewTables({
+  const { tables, nextPageCursor, isTablesLoading } = useDataSourceViewTables({
     owner,
     dataSourceView: selectedDataSourceView ?? null,
+    searchQuery: debouncedSearch,
+    pagination: cursorPagination,
+    disabled: !debouncedSearch,
   });
 
-  const currentTable = currentTableId
-    ? tables.find((t) => t.internalId === currentTableId)
-    : null;
+  const { table, isTableLoading, isTableError } = useDataSourceViewTable({
+    owner: owner,
+    dataSourceView: selectedDataSourceView ?? null,
+    tableId: currentTableId ?? null,
+    disabled: !currentTableId,
+  });
+
+  useEffect(() => {
+    if (tables && !isTablesLoading) {
+      setallTablesMap((prevTablesMap) => {
+        if (pageIndex === 0) {
+          return new Map(tables.map((table) => [table.internalId, table]));
+        } else {
+          // Create a new Map to avoid mutating the previous state
+          const newTablesMap = new Map(prevTablesMap);
+
+          tables.forEach((table) => {
+            newTablesMap.set(table.internalId, table);
+          });
+
+          return newTablesMap;
+        }
+      });
+    }
+  }, [tables, isTablesLoading, pageIndex]);
+
+  useEffect(() => {
+    if (!isTableLoading && !isTableError) {
+      setCurrentTable(table);
+    }
+  }, [isTableError, isTableLoading, table]);
 
   const [searchFilter, setSearchFilter] = useState("");
-  const [filteredTables, setFilteredTables] = useState(tables);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const newTables = searchFilter
-      ? tables.filter((t) =>
-          t.title.toLowerCase().includes(searchFilter.toLowerCase())
-        )
-      : tables;
-    setFilteredTables(newTables.slice(0, 30));
-  }, [tables, searchFilter]);
+    const timeout = setTimeout(() => {
+      const newSearchTerm =
+        searchFilter.length >= MIN_SEARCH_QUERY_SIZE ? searchFilter : "";
+      if (newSearchTerm !== debouncedSearch) {
+        resetPagination();
+        setDebouncedSearch(newSearchTerm);
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchFilter, debouncedSearch, resetPagination]);
 
   return (
     <div className="flex items-center">
@@ -91,7 +142,7 @@ export default function TablePicker({
           )
         ) : (
           <PopoverRoot open={open} onOpenChange={setOpen}>
-            <PopoverTrigger>
+            <PopoverTrigger asChild>
               {currentTable ? (
                 <div
                   className={classNames(
@@ -105,7 +156,7 @@ export default function TablePicker({
                   </div>
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </div>
-              ) : tables && tables.length > 0 ? (
+              ) : allTablesMap.size > 0 ? (
                 <Button
                   variant="outline"
                   label="Select Table"
@@ -124,16 +175,16 @@ export default function TablePicker({
               )}
             </PopoverTrigger>
 
-            {(tables || []).length > 0 && (
-              <PopoverContent className="mr-2 p-4">
-                <SearchInput
-                  name="search"
-                  placeholder="Search"
-                  value={searchFilter}
-                  onChange={(e) => setSearchFilter(e)}
-                />
-                <ScrollArea className="flex max-h-[300px] flex-col">
-                  {(filteredTables || [])
+            <PopoverContent className="mr-2">
+              <SearchInput
+                name="search"
+                placeholder="Search for tables"
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e)}
+              />
+              <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col">
+                <div className="w-full space-y-1">
+                  {Array.from(allTablesMap.values())
                     .filter(
                       (t) =>
                         !excludeTables?.some(
@@ -145,7 +196,7 @@ export default function TablePicker({
                     .map((t) => (
                       <div
                         key={t.internalId}
-                        className="flex cursor-pointer flex-col items-start hover:opacity-80"
+                        className="flex cursor-pointer flex-col items-start px-1 hover:opacity-80"
                         onClick={() => {
                           onTableUpdate(t);
                           setSearchFilter("");
@@ -157,14 +208,31 @@ export default function TablePicker({
                         </div>
                       </div>
                     ))}
-                  {filteredTables.length === 0 && (
-                    <span className="block px-4 py-2 text-sm text-gray-700">
+                  {allTablesMap.size === 0 && (
+                    <span className="block px-4 pt-2 text-sm text-gray-700">
                       No tables found
                     </span>
                   )}
-                </ScrollArea>
-              </PopoverContent>
-            )}
+                </div>
+                <InfiniteScroll
+                  nextPage={() => {
+                    handleLoadNext(nextPageCursor);
+                  }}
+                  hasMore={!!nextPageCursor}
+                  isValidating={isTablesLoading}
+                  isLoading={isTablesLoading}
+                >
+                  {isTablesLoading && !allTablesMap.size && (
+                    <div className="py-2 text-center text-sm text-element-700">
+                      Loading tables...
+                    </div>
+                  )}
+                </InfiniteScroll>
+                {/*sentinel div to trigger the infinite scroll*/}
+                <div className="min-h-0.5 text-xs text-gray-400"></div>
+                <ScrollBar className="py-0" />
+              </ScrollArea>
+            </PopoverContent>
           </PopoverRoot>
         )}
       </div>

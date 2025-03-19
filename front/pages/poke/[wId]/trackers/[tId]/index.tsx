@@ -48,7 +48,7 @@ export default function TrackerDetailPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
       <Page.Vertical align="stretch">
         <ContextItem.List>
           <ContextItem title={`${data.name} (${data.sId})`} visual={<></>}>

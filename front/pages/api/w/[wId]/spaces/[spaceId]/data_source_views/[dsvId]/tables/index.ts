@@ -14,6 +14,7 @@ import type {
 
 export type ListTablesResponseBody = {
   tables: DataSourceViewContentNode[];
+  nextPageCursor: string | null;
 };
 
 async function handler(
@@ -66,7 +67,10 @@ async function handler(
         });
       }
 
-      return res.status(200).json({ tables: contentNodes.value.nodes });
+      return res.status(200).json({
+        tables: contentNodes.value.nodes,
+        nextPageCursor: contentNodes.value.nextPageCursor,
+      });
 
     default:
       return apiError(req, res, {

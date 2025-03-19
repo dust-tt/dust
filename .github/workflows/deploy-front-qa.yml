@@ -1,0 +1,77 @@
+name: Deploy Front QA
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy_front_qa
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.short_sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Get short sha
+        id: short_sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  build:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Image
+        uses: ./.github/actions/build-image
+        with:
+          project_id: ${{ secrets.GCLOUD_US_PROJECT_ID }}
+          region: "us-central1"
+          component: "front-qa"
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          depot_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
+
+  deploy:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Trigger dust-infra workflow
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            await github.rest.repos.createDispatchEvent({
+              owner: '${{ github.repository_owner }}',
+              repo: 'dust-infra',
+              event_type: 'trigger-component-deploy',
+              client_payload: {
+                regions: 'us-central1',
+                component: 'front-qa',
+                image_tag: '${{ needs.prepare.outputs.short_sha }}',
+                run_playwright: true,
+                playwright_sha: '${{ github.sha }}'
+              }
+            })

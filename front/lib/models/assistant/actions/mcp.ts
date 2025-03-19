@@ -3,6 +3,7 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 import type { z } from "zod";
 
+import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -24,8 +25,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare serverType: "internal" | "remote";
   declare internalMCPServerId: string | null;
-
-  //TODO(mcp): Add a reference to the MCP server in case of remote host type.
+  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
 }
 
 AgentMCPServerConfiguration.init(
@@ -79,8 +79,18 @@ AgentMCPServerConfiguration.init(
                 "internalMCPServerId is required for serverType internal"
               );
             }
+            if (config.remoteMCPServerId) {
+              throw new Error(
+                "remoteMCPServerId is not allowed for serverType internal"
+              );
+            }
             break;
           case "remote":
+            if (!config.remoteMCPServerId) {
+              throw new Error(
+                "remoteMCPServerId is required for serverType remote"
+              );
+            }
             if (config.internalMCPServerId) {
               throw new Error(
                 "internalMCPServerId is not allowed for serverType remote"
@@ -100,6 +110,14 @@ AgentConfiguration.hasMany(AgentMCPServerConfiguration, {
 });
 AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
+});
+
+RemoteMCPServer.hasMany(AgentMCPServerConfiguration, {
+  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentMCPServerConfiguration.belongsTo(RemoteMCPServer, {
+  foreignKey: { name: "remoteMCPServerId", allowNull: true },
 });
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {

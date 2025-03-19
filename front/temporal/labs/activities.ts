@@ -13,7 +13,6 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -33,7 +32,12 @@ import {
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/utils/modjo";
 import type { AgentMessageType, ModelId } from "@app/types";
-import { assertNever, dustManagedCredentials, isEmptyString } from "@app/types";
+import {
+  assertNever,
+  dustManagedCredentials,
+  isEmptyString,
+  isProviderWithDefaultWorkspaceConfiguration,
+} from "@app/types";
 import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
 
@@ -354,17 +358,15 @@ export async function processTranscriptActivity(
     throw error;
   }
 
-  // FF enables storing all Gong/Modjo transcripts in a single datasource view
-  let fullStorageFF = false;
   let fullStorageDataSourceViewId = null;
+  const fullStorage = isProviderWithDefaultWorkspaceConfiguration(
+    transcriptsConfiguration.provider
+  );
 
-  const featureFlags = await getFeatureFlags(owner);
-  fullStorageFF = featureFlags.includes("labs_transcripts_full_storage");
-
-  if (fullStorageFF) {
+  if (fullStorage) {
     const defaultTranscriptsStorageConfiguration =
-      await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-        auth
+      await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+        auth.getNonNullableWorkspace()
       );
 
     fullStorageDataSourceViewId =
@@ -374,7 +376,7 @@ export async function processTranscriptActivity(
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
     (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
-    (fullStorageFF && !!fullStorageDataSourceViewId);
+    (fullStorage && !!fullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
@@ -386,7 +388,7 @@ export async function processTranscriptActivity(
       userParticipated,
       transcriptsConfigurationDataSourceViewId:
         transcriptsConfiguration.dataSourceViewId,
-      fullStorageFF,
+      fullStorage,
       fullStorageDataSourceViewId,
       shouldStoreTranscript,
       shouldProcessTranscript,
@@ -398,7 +400,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
-        fullStorageFF,
+        fullStorage,
         fullStorageDataSourceViewId,
         transcriptsConfiguration,
         transcriptTitle,

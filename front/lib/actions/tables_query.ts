@@ -663,12 +663,18 @@ export class TablesQueryConfigurationServerRunner extends BaseActionConfiguratio
     let generatedResultFile: ActionGeneratedFileType | null = null;
     let generatedsectionFile: ActionGeneratedFileType | null = null;
 
-    if (
-      "results" in sanitizedOutput &&
-      Array.isArray(sanitizedOutput.results) &&
-      sanitizedOutput.results.length > 0
-    ) {
-      const results = sanitizedOutput.results;
+    const rawResults =
+      "results" in sanitizedOutput ? sanitizedOutput.results : [];
+    let results: CSVRecord[] = [];
+
+    if (Array.isArray(rawResults)) {
+      results = rawResults.filter(
+        (record) =>
+          record !== undefined && record !== null && typeof record === "object"
+      );
+    }
+
+    if (results.length > 0) {
       const queryTitle = getTablesQueryResultsFileTitle({
         output: sanitizedOutput,
       });

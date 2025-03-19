@@ -63,7 +63,7 @@ export function isValidSalesforceDomain(s: unknown): s is string {
   return (
     typeof s === "string" &&
     s.startsWith("https://") &&
-    (s.endsWith(".salesforce.com") || s.endsWith(".force.com"))
+    s.endsWith(".salesforce.com")
   );
 }
 
@@ -97,7 +97,7 @@ export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
 }
 
-export function isProviderWithWorkspaceConfiguration(
+export function isProviderWithDefaultWorkspaceConfiguration(
   obj: unknown
 ): obj is ProvidersWithWorkspaceConfigurations {
   return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(

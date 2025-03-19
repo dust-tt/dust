@@ -354,7 +354,7 @@ export const DocumentUploadOrEditModal = ({
               ) : (
                 <div className="space-y-4 p-4">
                   <div>
-                    <Page.SectionHeader title="Document name" />
+                    <Page.SectionHeader title="Document title" />
                     <Input
                       placeholder="Document title"
                       name="name"
@@ -472,7 +472,7 @@ export const DocumentUploadOrEditModal = ({
                       <div className="pt-4">
                         <Page.SectionHeader
                           title=""
-                          description="Labels can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                          description="Labels can be set to filter Data Source retrieval."
                           action={{
                             label: "Add label",
                             variant: "ghost",
