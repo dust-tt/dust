@@ -590,7 +590,6 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
-            reasoning_content: None,
             function_call,
             function_calls,
         })
