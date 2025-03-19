@@ -65,8 +65,6 @@ export function AssistantInputBar({
 
   const { spaces } = useSpaces();
 
-  console.log({ spaces });
-
   const spacesMap = useMemo(
     () =>
       Object.fromEntries(

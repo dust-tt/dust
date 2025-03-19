@@ -168,7 +168,6 @@ async function handler(
           !isContentFragmentInputWithFileId(fragment) &&
           !isContentFragmentInputWithContentNode(fragment)
         ) {
-          console.log(fragment);
           return apiError(req, res, {
             status_code: 400,
             api_error: {

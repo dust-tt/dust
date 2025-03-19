@@ -8,7 +8,6 @@ type SpacesKey = ["getSpaces", string];
 export function useSpaces() {
   const dustAPI = useDustAPI();
   const spacesFetcher = async () => {
-    console.log("spacesFetcher");
     const res = await dustAPI.getSpaces();
     if (res.isOk()) {
       return res.value;
