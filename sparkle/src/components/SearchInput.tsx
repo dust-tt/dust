@@ -80,7 +80,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               className={cn(
                 "s-px-2",
                 disabled
-                  ? "s-text-element-600 dark:s-text-element-600-night"
+                  ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
                   : "s-text-foreground dark:s-text-foreground-night"
               )}
             >

@@ -120,7 +120,7 @@ export const TreeExample = () => {
                     type="leaf"
                     actions={
                       <>
-                        <div className="s-text-sm s-text-element-700">
+                        <div className="s-text-sm s-text-muted-foreground">
                           hello
                         </div>
                         <IconButton
@@ -736,7 +736,7 @@ export const SelectDataSourceExample = () => {
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-element-700">
+                    <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
@@ -756,7 +756,7 @@ export const SelectDataSourceExample = () => {
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-element-700">
+                    <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
@@ -775,7 +775,7 @@ export const SelectDataSourceExample = () => {
                 areActionsFading={false}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-element-700">
+                    <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
@@ -803,7 +803,7 @@ export const SelectDataSourceExample = () => {
                 defaultCollapsed={true}
                 actions={
                   <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-element-700">
+                    <span className="s-text-sm s-text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="pink" label="Syncing (235)" />
@@ -929,7 +929,7 @@ const TreeItem = ({
       visual={FolderIcon}
       actions={
         <div className="s-flex s-flex-row s-justify-center s-gap-2">
-          <span className="s-text-xs s-text-element-700">
+          <span className="s-text-xs s-text-muted-foreground">
             last updated Jan 6
           </span>
           <IconButton icon={CloudArrowDownIcon} size="xs" variant="outline" />

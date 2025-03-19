@@ -10,9 +10,9 @@ const meta: Meta<typeof Markdown> = {
   argTypes: {
     textColor: {
       options: [
-        "s-text-element-800",
-        "s-text-element-600",
-        "s-text-purple-800",
+        "s-text-foreground",
+        "s-text-muted-foreground",
+        "s-text-green-700",
       ],
       control: { type: "radio" },
     },
