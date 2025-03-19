@@ -1,30 +1,4 @@
-import type { ExtensionWorkspaceType, UserType } from "@dust-tt/client";
-
-export type UserTypeWithExtensionWorkspaces = UserType & {
-  workspaces: ExtensionWorkspaceType[];
-};
-
-export type StoredTokens = {
-  accessToken: string;
-  expiresAt: number;
-  refreshToken: string;
-};
-
-export type StoredUser = UserTypeWithExtensionWorkspaces & {
-  connection?: string;
-  connectionStrategy: string;
-  dustDomain: string;
-  selectedWorkspace: string | null;
-};
-
-// Common keys shared across all platforms.
-export interface BaseStorageData {
-  theme?: string;
-  tokens?: StoredTokens;
-  user?: StoredUser;
-}
-
-export interface StorageService<T extends BaseStorageData = BaseStorageData> {
+export interface StorageService {
   get<T>(key: string): Promise<T | undefined>;
   set<T>(key: string, value: T): Promise<void>;
   delete(key: string): Promise<void>;

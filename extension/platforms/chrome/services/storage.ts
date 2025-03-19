@@ -1,18 +1,4 @@
-import type { PendingUpdate } from "@app/shared/lib/storage";
-import type {
-  BaseStorageData,
-  StorageService,
-} from "@app/shared/services/storage";
-
-export interface ChromeStorageData extends BaseStorageData {
-  accessToken?: string;
-  refreshToken?: string;
-  expiresAt?: number;
-  pendingUpdate?: PendingUpdate;
-  // conversationContext?: Record<string, ConversationContext>;
-  // Tab content mapping
-  [key: `tabContentContentFragmentId_${string}_${string}_${string}`]: string;
-}
+import type { StorageService } from "@app/shared/services/storage";
 
 export class ChromeStorageService implements StorageService {
   private storage = chrome.storage.local;
