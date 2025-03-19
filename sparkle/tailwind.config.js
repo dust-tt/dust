@@ -467,8 +467,8 @@ module.exports = {
           DEFAULT: colors.gray[50],
           night: colors.gray[950],
           foreground: {
-            DEFAULT: colors.gray[600],
-            night: colors.gray[400],
+            DEFAULT: colors.gray[500],
+            night: colors.gray[500],
           },
           background: {
             DEFAULT: colors.gray[50],
