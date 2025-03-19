@@ -28,6 +28,7 @@ const getCommitHash = () => {
   try {
     return execSync("git rev-parse --short HEAD").toString().trim();
   } catch (e) {
+    console.error(e);
     return "development";
   }
 };
@@ -187,7 +188,7 @@ export const getConfig = async ({
           })
         : null,
       isDevelopment
-        ? // @ts-ignore (it's working)
+        ? // @ts-expect-error (it's working)
           new ExtReloader({
             port: 9090,
             reloadPage: true,

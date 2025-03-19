@@ -1,7 +1,7 @@
-import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
+import type { StoredUser } from "@app/shared/lib/storage";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
-import type { StoredUser } from "@app/shared/lib/storage";
+import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
 
 type AssistantFavoritesProps = {
