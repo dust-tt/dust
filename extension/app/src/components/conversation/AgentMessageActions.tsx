@@ -4,9 +4,8 @@ import type {
   LightWorkspaceType,
 } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
-import { Chip, Spinner } from "@dust-tt/sparkle";
+import { Chip } from "@dust-tt/sparkle";
 import type { AgentStateClassification } from "@extension/components/conversation/AgentMessage";
-import { classNames } from "@extension/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 interface AgentMessageActionsProps {
   agentMessage: AgentMessagePublicType;
