@@ -228,6 +228,7 @@ export function AssistantInputBar({
 
       resetEditorText();
       fileUploaderService.resetUpload();
+      setAttachedNodes([]);
     }
   };
 
