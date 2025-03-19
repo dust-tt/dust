@@ -1257,8 +1257,12 @@ impl AnthropicLLM {
                                     // Check if the stopping block is a thinking block
                                     match final_response.as_ref() {
                                         Some(response) => {
-                                            if let Some(content) = response.content.get(stop_event.index as usize) {
-                                                if let StreamContent::AnthropicStreamThinking(_) = content {
+                                            if let Some(content) =
+                                                response.content.get(stop_event.index as usize)
+                                            {
+                                                if let StreamContent::AnthropicStreamThinking(_) =
+                                                    content
+                                                {
                                                     // Send </thinking> tag at the end of a thinking block
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
@@ -1268,7 +1272,7 @@ impl AnthropicLLM {
                                                     }));
                                                 }
                                             }
-                                        },
+                                        }
                                         None => {}
                                     }
                                 }
