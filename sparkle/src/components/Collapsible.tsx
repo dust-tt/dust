@@ -12,13 +12,13 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        primary: "s-text-action-600 dark:s-text-action-600-night",
+        primary: "s-text-highlight-600 dark:s-text-highlight-600-night",
         secondary: "s-text-foreground dark:s-text-foreground-night",
       },
       disabled: {
         true: "s-text-muted dark:s-text-muted-night",
         false:
-          "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night active:s-text-action-700 dark:active:s-text-action-700-night",
+          "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
       },
     },
     defaultVariants: {
@@ -37,7 +37,7 @@ const chevronVariants = cva("s-transition-transform s-duration-150", {
     disabled: {
       true: "s-text-muted dark:s-text-muted-night",
       false:
-        "group-hover/col:s-text-action-500 dark:group-hover/col:s-text-action-500-night active:s-text-action-700 dark:active:s-text-action-700-night",
+        "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
     },
   },
   defaultVariants: {

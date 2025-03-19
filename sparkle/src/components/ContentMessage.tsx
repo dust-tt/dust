@@ -27,15 +27,15 @@ const contentMessageVariants = cva(
   {
     variants: {
       variant: {
-        emerald: "s-bg-emerald-100 dark:s-bg-emerald-100-night",
-        amber: "s-bg-amber-100 dark:s-bg-amber-100-night",
+        emerald: "s-bg-green-100 dark:s-bg-green-100-night",
+        amber: "s-bg-golden-100 dark:s-bg-golden-100-night",
         slate:
           "s-bg-muted-background dark:s-bg-muted-background-night s-border s-border-border dark:s-border-border-night",
         purple: "s-bg-purple-100 dark:s-bg-purple-100-night",
         warning: "s-bg-warning-100 dark:s-bg-warning-100-night",
         sky: "s-bg-sky-100 dark:s-bg-sky-100-night",
         pink: "s-bg-pink-100 dark:s-bg-pink-100-night",
-        action: "s-bg-action-100 dark:s-bg-action-100-night",
+        action: "s-bg-highlight-100 dark:s-bg-highlight-100-night",
         red: "s-bg-red-100 dark:s-bg-red-100-night",
       },
       size: {
@@ -54,14 +54,14 @@ const contentMessageVariants = cva(
 const iconVariants = cva("s-shrink-0", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800 dark:s-text-emerald-800-night",
-      amber: "s-text-amber-800 dark:s-text-amber-800-night",
-      slate: "s-text-slate-800 dark:s-text-slate-800-night",
+      emerald: "s-text-green-800 dark:s-text-green-800-night",
+      amber: "s-text-golden-800 dark:s-text-golden-800-night",
+      slate: "s-text-primary-800 dark:s-text-primary-800-night",
       purple: "s-text-purple-800 dark:s-text-purple-800-night",
       warning: "s-text-warning-800 dark:s-text-warning-800-night",
       sky: "s-text-sky-800 dark:s-text-sky-800-night",
       pink: "s-text-pink-800 dark:s-text-pink-800-night",
-      action: "s-text-action-800 dark:s-text-action-800-night",
+      action: "s-text-highlight-800 dark:s-text-highlight-800-night",
       red: "s-text-red-800 dark:s-text-red-800-night",
     },
   },
@@ -70,14 +70,14 @@ const iconVariants = cva("s-shrink-0", {
 const titleVariants = cva("s-text-sm s-font-semibold", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-800 dark:s-text-emerald-800-night",
-      amber: "s-text-amber-800 dark:s-text-amber-800-night",
+      emerald: "s-text-green-800 dark:s-text-green-800-night",
+      amber: "s-text-golden-800 dark:s-text-golden-800-night",
       slate: "s-text-foreground dark:s-text-foreground-night",
       purple: "s-text-purple-800 dark:s-text-purple-800-night",
       warning: "s-text-warning-800 dark:s-text-warning-800-night",
       sky: "s-text-sky-800 dark:s-text-sky-800-night",
       pink: "s-text-pink-800 dark:s-text-pink-800-night",
-      action: "s-text-action-800 dark:s-text-action-800-night",
+      action: "s-text-highlight-800 dark:s-text-highlight-800-night",
       red: "s-text-red-800 dark:s-text-red-800-night",
     },
   },
@@ -86,14 +86,14 @@ const titleVariants = cva("s-text-sm s-font-semibold", {
 const textVariants = cva("s-text-sm", {
   variants: {
     variant: {
-      emerald: "s-text-emerald-950 dark:s-text-emerald-950-night",
-      amber: "s-text-amber-950 dark:s-text-amber-950-night",
+      emerald: "s-text-green-950 dark:s-text-green-950-night",
+      amber: "s-text-golden-950 dark:s-text-golden-950-night",
       slate: "s-text-muted-foreground dark:s-text-muted-foreground-night",
       purple: "s-text-purple-950 dark:s-text-purple-950-night",
       warning: "s-text-warning-950 dark:s-text-warning-950-night",
       sky: "s-text-sky-950 dark:s-text-sky-950-night",
       pink: "s-text-pink-950 dark:s-text-pink-950-night",
-      action: "s-text-action-950 dark:s-text-action-950-night",
+      action: "s-text-highlight-950 dark:s-text-highlight-950-night",
       red: "s-text-red-950 dark:s-text-red-950-night",
     },
   },

@@ -30,7 +30,7 @@ export const Basic: Story = {
     className: "s-w-fit",
     content: (
       <div className="s-flex s-items-center s-gap-2">
-        <div className="s-text-lg s-font-semibold s-text-element-900">847</div>
+        <div className="s-text-lg s-font-semibold s-text-foreground">847</div>
       </div>
     ),
   },
@@ -48,8 +48,8 @@ export const WithIcons: Story = {
     title: "Reactions",
     content: (
       <div className="s-flex s-items-center s-gap-2">
-        <HandThumbUpIcon className="s-h-4 s-w-4 s-text-element-600" />
-        <div className="s-text-lg s-font-semibold s-text-element-900">12</div>
+        <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
+        <div className="s-text-lg s-font-semibold s-text-foreground">12</div>
       </div>
     ),
     className: "s-w-fit",
@@ -65,7 +65,7 @@ export const Composable: Story = {
       </ComposableCard.Header>
       <ComposableCard.Content>
         <div className="s-flex s-items-center s-gap-2">
-          <HandThumbUpIcon className="s-h-4 s-w-4 s-text-element-600" />
+          <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
           <div className="s-text-lg s-font-semibold">847</div>
         </div>
       </ComposableCard.Content>
