@@ -97,7 +97,9 @@ export default function LandingLayout({
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <DustLogo className="h-[24px] w-[96px]" />
+            <Link href="/">
+              <DustLogo className="h-[24px] w-[96px]" />
+            </Link>
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">

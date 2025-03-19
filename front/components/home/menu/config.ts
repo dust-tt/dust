@@ -326,7 +326,7 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: "Pricing",
@@ -371,7 +371,7 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/home",
+          href: "/home/product",
         },
         {
           title: "Pricing",
