@@ -141,7 +141,7 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         startOnLoad: false,
         theme: "base",
         themeVariables: {
-          fontFamily: "darkmode-off-cc",
+          fontFamily: "Geist",
           fontSize: "14px",
           textColor: palette.gray[800],
           primaryColor: palette.sky[100],
