@@ -65,6 +65,7 @@ export const snowflake = async ({
     case "fetch-tables": {
       const tables = await fetchTables({
         credentials,
+        fromDatabase: args.database,
         fromSchema: args.schema,
       });
       if (tables.isErr()) {
