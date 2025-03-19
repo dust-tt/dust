@@ -89,9 +89,6 @@ async function handler(
         controller.abort();
       });
 
-      // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
-      // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
-      // @ts-expect-error cf above
       const eventStream: AsyncGenerator<ConversationEventType> =
         getConversationEvents({
           conversationId: conversation.sId,

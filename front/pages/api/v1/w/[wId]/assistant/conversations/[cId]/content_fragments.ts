@@ -13,7 +13,10 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isContentFragmentInputWithContentType } from "@app/types";
+import {
+  isContentFragmentInput,
+  isContentFragmentInputWithInlinedContent,
+} from "@app/types";
 
 /**
  * @swagger
@@ -116,9 +119,19 @@ async function handler(
       const { context, ...rest } = r.data;
       let contentFragment = rest;
 
+      if (!isContentFragmentInput(contentFragment)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Unsupported content fragment type.",
+          },
+        });
+      }
+
       // If we receive a content fragment that is not file based, we transform it to a file-based
       // one.
-      if (isContentFragmentInputWithContentType(contentFragment)) {
+      if (isContentFragmentInputWithInlinedContent(contentFragment)) {
         const contentFragmentRes = await toFileContentFragment(auth, {
           contentFragment,
         });
@@ -136,7 +149,6 @@ async function handler(
         }
         contentFragment = contentFragmentRes.value;
       }
-
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,
@@ -159,9 +171,6 @@ async function handler(
         });
       }
 
-      // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
-      // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
-      // @ts-expect-error cf above
       res.status(200).json({ contentFragment: contentFragmentRes.value });
       return;
     default:

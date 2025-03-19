@@ -1,3 +1,4 @@
+import { isDustMimeType } from "@dust-tt/client";
 import type { IncomingMessage } from "http";
 import sharp from "sharp";
 import { Readable } from "stream";
@@ -13,7 +14,6 @@ import type { FileUseCase, Result, SupportedFileContentType } from "@app/types";
 import {
   assertNever,
   Err,
-  isDustMimeType,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
   isTextExtractionSupportedContentType,

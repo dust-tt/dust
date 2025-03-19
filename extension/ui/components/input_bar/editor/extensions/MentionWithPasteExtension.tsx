@@ -7,7 +7,7 @@ const escapeRegExp = (string: string): string => {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 };
 
-export const MentionWithPaste = Mention.extend({
+export const MentionWithPasteExtension = Mention.extend({
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {

@@ -1,9 +1,9 @@
+import type { DustMimeType } from "@dust-tt/client";
+
 import type { MessageType, MessageVisibility } from "./assistant/conversation";
 import type { DataSourceViewContentNode } from "./data_source_view";
 import type { SupportedFileContentType } from "./files";
-import type { DustMimeType } from "./shared/internal_mime_types";
 import type { ModelId } from "./shared/model_id";
-
 export type ContentFragmentContextType = {
   username: string | null;
   fullName: string | null;

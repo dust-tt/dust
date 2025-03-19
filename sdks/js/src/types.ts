@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+import { MIME_TYPES_VALUES } from "./internal_mime_types";
+
 type StringLiteral<T> = T extends string
   ? string extends T
     ? never
@@ -201,12 +203,10 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | (typeof MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
 >();
-
-const SupportedInlinedContentFragmentTypeSchema =
-  FlexibleEnumSchema<keyof typeof supportedOtherFileFormats>();
 
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
@@ -330,6 +330,21 @@ const DataSourceTypeSchema = z.object({
   connectorProvider: ConnectorProvidersSchema.nullable(),
   editedByUser: EditedByUserSchema.nullable().optional(),
 });
+
+export type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
+
+export function isFolder(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: null } {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function isWebsite(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: "webcrawler" } {
+  return ds.connectorProvider === "webcrawler";
+}
 
 const CoreAPIDocumentChunkSchema = z.object({
   text: z.string(),
@@ -591,7 +606,7 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
 });
 
 const ConversationFileTypeSchema = z.object({
-  fileId: z.string(),
+  resourceId: z.string(),
   title: z.string(),
   contentType: SupportedContentFragmentTypeSchema,
 });
@@ -1619,11 +1634,14 @@ const SpaceKindSchema = FlexibleEnumSchema<
 const SpaceTypeSchema = z.object({
   createdAt: z.number(),
   groupIds: z.array(z.string()),
+  isRestricted: z.boolean(),
   kind: SpaceKindSchema,
   name: z.string(),
   sId: z.string(),
   updatedAt: z.number(),
 });
+
+export type SpaceType = z.infer<typeof SpaceTypeSchema>;
 
 const DatasetSchemaEntryType = FlexibleEnumSchema<
   "string" | "number" | "boolean" | "json"
@@ -1827,8 +1845,10 @@ export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
   url: z.string().optional().nullable(),
   content: z.string(),
-  contentType: SupportedInlinedContentFragmentTypeSchema,
+  contentType: z.string(),
   fileId: z.undefined().nullable(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1844,6 +1864,8 @@ export const PublicContentFragmentWithFileIdSchema = z.object({
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
   fileId: z.string(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1853,9 +1875,22 @@ export type PublicContentFragmentWithFileId = z.infer<
   typeof PublicContentFragmentWithFileIdSchema
 >;
 
+const PublicContentFragmentWithContentNodeSchema = z.object({
+  title: z.string(),
+  url: z.string().optional().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.string(),
+  fileId: z.undefined().nullable(),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  context: ContentFragmentContextSchema.optional().nullable(),
+  supersededContentFragmentId: z.string().optional().nullable(),
+});
+
 export const PublicPostContentFragmentRequestBodySchema = z.union([
   PublicContentFragmentWithContentSchema,
   PublicContentFragmentWithFileIdSchema,
+  PublicContentFragmentWithContentNodeSchema,
 ]);
 
 export type PublicPostContentFragmentRequestBody = z.infer<
@@ -1891,6 +1926,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     contentFragment: z.union([
       PublicContentFragmentWithContentSchema,
       PublicContentFragmentWithFileIdSchema,
+      PublicContentFragmentWithContentNodeSchema,
       z.undefined(),
     ]),
     contentFragments: z.union([
@@ -1898,6 +1934,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
         .union([
           PublicContentFragmentWithContentSchema,
           PublicContentFragmentWithFileIdSchema,
+          PublicContentFragmentWithContentNodeSchema,
         ])
         .array(),
       z.undefined(),
@@ -2563,6 +2600,117 @@ export const AppsCheckResponseSchema = z.object({
 });
 
 export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
+
+export const GetSpacesResponseSchema = z.object({
+  spaces: z.array(SpaceTypeSchema),
+});
+
+export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
+
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+export const BaseSearchBodySchema = z.object({
+  viewType: ContentNodesViewTypeSchema,
+  spaceIds: z.array(z.string()),
+  includeDataSources: z.boolean(),
+  limit: z.number(),
+});
+
+const TextSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    query: z.string(),
+    nodeIds: z.undefined().optional(),
+  })
+);
+
+const NodeIdSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    nodeIds: z.array(z.string()),
+    query: z.undefined().optional(),
+  })
+);
+
+export const SearchRequestBodySchema = z.union([
+  TextSearchBodySchema,
+  NodeIdSearchBodySchema,
+]);
+
+export type SearchRequestBodyType = z.infer<typeof SearchRequestBodySchema>;
+
+export const ContentNodeSchema = z.object({
+  expandable: z.boolean(),
+  internalId: z.string(),
+  lastUpdatedAt: z.number().nullable(),
+  mimeType: z.string(),
+  // The direct parent ID of this content node
+  parentInternalId: z.string().nullable(),
+  // permission: ConnectorPermissionSchema,
+  preventSelection: z.boolean().optional(),
+  providerVisibility: ProviderVisibilitySchema.nullable().optional(),
+  sourceUrl: z.string().nullable().optional(),
+  title: z.string(),
+  type: ContentNodeTypeSchema,
+});
+
+export type ContentNodeType = z.infer<typeof ContentNodeSchema>;
+
+export const ContentNodeWithParentSchema = z.intersection(
+  ContentNodeSchema,
+  z.object({
+    parentsInternalIds: z.array(z.string()).optional(),
+    parentTitle: z.string().optional().nullable(),
+  })
+);
+
+export const DataSourceContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSource: DataSourceTypeSchema,
+    dataSourceViews: DataSourceViewSchema.array(),
+  })
+);
+
+export type DataSourceContentNodeType = z.infer<
+  typeof DataSourceContentNodeSchema
+>;
+
+export const DataSourceViewContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSourceView: DataSourceViewSchema,
+  })
+);
+
+export type DataSourceViewContentNodeType = z.infer<
+  typeof DataSourceViewContentNodeSchema
+>;
+
+export const SearchWarningCodeSchema = z.literal("truncated-query-clauses");
+
+export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
+
+export const PostWorkspaceSearchResponseBodySchema = z.object({
+  nodes: DataSourceContentNodeSchema.array(),
+  warningCode: SearchWarningCodeSchema.optional().nullable(),
+});
+
+export type PostWorkspaceSearchResponseBodyType = z.infer<
+  typeof PostWorkspaceSearchResponseBodySchema
+>;
 
 // TODO(mcp) move directly in the action type ?
 export const ACTION_RUNNING_LABELS: Record<

@@ -1,5 +1,11 @@
+import { CONNECTOR_CONFIGURATIONS } from "@app/shared/lib/connector_providers";
+import type {
+  ContentNodeType,
+  DataSourceViewContentNodeType,
+} from "@dust-tt/client";
 import { MIME_TYPES } from "@dust-tt/client";
 import {
+  assertNever,
   ChatBubbleLeftRightIcon,
   DocumentIcon,
   DocumentPileIcon,
@@ -9,9 +15,6 @@ import {
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
 
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ContentNode, DataSourceViewContentNode } from "@app/types";
-import { assertNever } from "@app/types";
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
 
@@ -42,7 +45,9 @@ export const SPREADSHEET_MIME_TYPES = [
 // Mime type that represents a datasource.
 export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource";
 
-function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
+function getVisualForFileContentNode(
+  node: ContentNodeType & { type: "document" }
+) {
   if (node.expandable) {
     return DocumentPileIcon;
   }
@@ -51,7 +56,7 @@ function getVisualForFileContentNode(node: ContentNode & { type: "document" }) {
 }
 
 export function getVisualForDataSourceViewContentNode(
-  node: DataSourceViewContentNode
+  node: DataSourceViewContentNodeType
 ) {
   // Handle data sources with connector providers.
   if (
@@ -69,7 +74,7 @@ export function getVisualForDataSourceViewContentNode(
   return getVisualForContentNode(node);
 }
 
-export function getVisualForContentNode(node: ContentNode) {
+export function getVisualForContentNode(node: ContentNodeType) {
   // Check mime type first for special icon handling.
   if (node.mimeType) {
     // Handle private channels with lock icon.
@@ -87,7 +92,7 @@ export function getVisualForContentNode(node: ContentNode) {
     // Handle file-like content that isn't a document type.
     if (FILE_MIME_TYPES.includes(node.mimeType)) {
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "document" }
+        node as ContentNodeType & { type: "document" }
       );
     }
 
@@ -107,7 +112,7 @@ export function getVisualForContentNode(node: ContentNode) {
 
     case "document":
       return getVisualForFileContentNode(
-        node as ContentNode & { type: "document" }
+        node as ContentNodeType & { type: "document" }
       );
 
     default:
@@ -116,7 +121,7 @@ export function getVisualForContentNode(node: ContentNode) {
 }
 
 export function getLocationForDataSourceViewContentNode(
-  node: DataSourceViewContentNode
+  node: DataSourceViewContentNodeType
 ) {
   const { dataSource } = node.dataSourceView;
   const { connectorProvider } = dataSource;

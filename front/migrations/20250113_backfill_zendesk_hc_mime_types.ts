@@ -1,3 +1,4 @@
+import { MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
@@ -6,7 +7,6 @@ import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { MIME_TYPES } from "@app/types";
 
 const { CORE_DATABASE_URI } = process.env;
 const BATCH_SIZE = 16;

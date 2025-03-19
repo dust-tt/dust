@@ -1,3 +1,5 @@
+import { MIME_TYPES } from "@dust-tt/client";
+
 import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
@@ -6,7 +8,7 @@ import type {
   CoreAPIContentNode,
   DataSourceViewType,
 } from "@app/types";
-import { assertNever, MIME_TYPES } from "@app/types";
+import { assertNever } from "@app/types";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   MIME_TYPES.SLACK.CHANNEL,

@@ -1,5 +1,5 @@
 import type { Auth0AuthorizeResponse } from "@app/shared/lib/messages";
-import type { UploadedFileWithKind } from "@app/shared/lib/types";
+import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type {
   ContentFragmentType,
   ExtensionWorkspaceType,
@@ -168,7 +168,7 @@ export const saveFilesContentFragmentIds = async ({
   createdContentFragments,
 }: {
   conversationId: string;
-  uploadedFiles: UploadedFileWithKind[];
+  uploadedFiles: UploadedContentFragmentTypeWithKind[];
   createdContentFragments: ContentFragmentType[];
 }) => {
   const tabContentFileIds = new Set(
@@ -202,7 +202,7 @@ export const saveFilesContentFragmentIds = async ({
  */
 export const getFileContentFragmentId = async (
   conversationId: string,
-  file: UploadedFileWithKind
+  file: UploadedContentFragmentTypeWithKind
 ): Promise<string | null> => {
   if (file.kind !== "tab_content" || !file.url) {
     return null;

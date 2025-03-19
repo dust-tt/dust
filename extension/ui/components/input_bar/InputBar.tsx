@@ -1,19 +1,22 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { AttachSelectionMessage } from "@app/shared/lib/messages";
 import { sendInputBarStatus } from "@app/shared/lib/messages";
-import type { UploadedFileWithKind } from "@app/shared/lib/types";
+import { getSpaceIcon } from "@app/shared/lib/spaces";
+import type { ContentFragmentsType } from "@app/shared/lib/types";
 import { classNames, compareAgentsForSort } from "@app/shared/lib/utils";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
-import { InputBarCitations } from "@app/ui/components/input_bar/InputBarCitations";
+import { InputBarAttachments } from "@app/ui/components/input_bar/InputBarAttachment";
 import type { InputBarContainerProps } from "@app/ui/components/input_bar/InputBarContainer";
 import { InputBarContainer } from "@app/ui/components/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { useFileUploaderService } from "@app/ui/hooks/useFileUploaderService";
+import { useSpaces } from "@app/ui/hooks/useSpaces";
 import type {
   AgentMentionType,
   ConversationPublicType,
+  DataSourceViewContentNodeType,
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
@@ -41,7 +44,7 @@ export function AssistantInputBar({
   onSubmit: (
     input: string,
     mentions: AgentMentionType[],
-    contentFragments: UploadedFileWithKind[]
+    contentFragments: ContentFragmentsType
   ) => void;
   stickyMentions?: AgentMentionType[];
   additionalAgentConfiguration?: LightAgentConfigurationType;
@@ -55,6 +58,26 @@ export function AssistantInputBar({
 
   const { agentConfigurations: baseAgentConfigurations } =
     usePublicAgentConfigurations();
+
+  const [attachedNodes, setAttachedNodes] = useState<
+    DataSourceViewContentNodeType[]
+  >([]);
+
+  const { spaces } = useSpaces();
+
+  const spacesMap = useMemo(
+    () =>
+      Object.fromEntries(
+        spaces?.map((space) => [
+          space.sId,
+          {
+            name: space.kind === "global" ? "Company Data" : space.name,
+            icon: getSpaceIcon(space),
+          },
+        ]) || []
+      ),
+    [spaces]
+  );
 
   const fileUploaderService = useFileUploaderService(conversation?.sId);
   const {
@@ -139,6 +162,16 @@ export function AssistantInputBar({
     };
   }, []);
 
+  const handleNodesAttachmentSelect = (node: DataSourceViewContentNodeType) => {
+    setAttachedNodes((prev) => [...prev, node]);
+  };
+
+  const handleNodesAttachmentRemove = (node: DataSourceViewContentNodeType) => {
+    setAttachedNodes((prev) =>
+      prev.filter((n) => n.internalId !== node.internalId)
+    );
+  };
+
   // GenerationContext: to know if we are generating or not
   const generationContext = useContext(GenerationContext);
   if (!generationContext) {
@@ -187,14 +220,14 @@ export function AssistantInputBar({
 
   const handleSubmit: InputBarContainerProps["onEnterKeyDown"] = async (
     isEmpty,
-    textAndMentions,
+    markdownAndMentions,
     resetEditorText,
     setLoading
   ) => {
     if (isEmpty) {
       return;
     }
-    const { mentions: rawMentions, text } = textAndMentions;
+    const { mentions: rawMentions, markdown } = markdownAndMentions;
     const mentions: AgentMentionType[] = [
       ...new Set(rawMentions.map((mention) => mention.id)),
     ].map((id) => ({ configurationId: id }));
@@ -229,7 +262,10 @@ export function AssistantInputBar({
       }
     }
 
-    await onSubmit(text, mentions, newFiles);
+    void onSubmit(markdown, mentions, {
+      uploaded: newFiles,
+      contentNodes: attachedNodes,
+    });
     setLoading(false);
     resetEditorText();
     resetUpload();
@@ -288,11 +324,14 @@ export function AssistantInputBar({
             )}
           >
             <div className="relative flex w-full flex-1 flex-col">
-              <InputBarCitations
-                fileUploaderService={fileUploaderService}
-                disabled={isSubmitting ?? false}
+              <InputBarAttachments
+                files={{ service: fileUploaderService }}
+                nodes={{
+                  items: attachedNodes,
+                  spacesMap,
+                  onRemove: handleNodesAttachmentRemove,
+                }}
               />
-
               <InputBarContainer
                 disableAutoFocus={disableAutoFocus}
                 allAssistants={activeAgents}
@@ -305,6 +344,8 @@ export function AssistantInputBar({
                 setIncludeTab={setIncludeTab}
                 fileUploaderService={fileUploaderService}
                 isSubmitting={isSubmitting ?? false}
+                onNodeSelect={handleNodesAttachmentSelect}
+                attachedNodes={attachedNodes}
               />
             </div>
           </div>
