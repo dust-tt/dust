@@ -1,11 +1,5 @@
 import * as t from "io-ts";
 
-import {
-  remoteDBDatabaseCodec,
-  remoteDBSchemaCodec,
-  remoteDBTableCodec,
-} from "@connectors/lib/remote_databases/utils";
-
 import { NumberAsStringCodec } from "../shared/utils/iots_utils";
 
 export const ConnectorsCommandSchema = t.type({
@@ -380,18 +374,31 @@ export const SnowflakeCommandSchema = t.type({
 export type SnowflakeCommandType = t.TypeOf<typeof SnowflakeCommandSchema>;
 
 export const SnowflakeFetchDatabaseResponseSchema = t.array(
-  remoteDBDatabaseCodec
+  t.type({
+    name: t.string,
+  })
 );
 export type SnowflakeFetchDatabaseResponseType = t.TypeOf<
   typeof SnowflakeFetchDatabaseResponseSchema
 >;
 
-export const SnowflakeFetchSchemaResponseSchema = t.array(remoteDBSchemaCodec);
+export const SnowflakeFetchSchemaResponseSchema = t.array(
+  t.type({
+    name: t.string,
+    database_name: t.string,
+  })
+);
 export type SnowflakeFetchSchemaResponseType = t.TypeOf<
   typeof SnowflakeFetchSchemaResponseSchema
 >;
 
-export const SnowflakeFetchTableResponseSchema = t.array(remoteDBTableCodec);
+export const SnowflakeFetchTableResponseSchema = t.array(
+  t.type({
+    name: t.string,
+    database_name: t.string,
+    schema_name: t.string,
+  })
+);
 export type SnowflakeFetchTableResponseType = t.TypeOf<
   typeof SnowflakeFetchTableResponseSchema
 >;
