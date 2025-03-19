@@ -1,4 +1,4 @@
-import type { ConnectorProvider } from "../data_source";
+import { ConnectorProvider } from "./types";
 
 /**
  * This is a utility type that indicates that we removed all underscores from a string.
@@ -25,7 +25,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  */
 function generateMimeTypes<
   P extends ConnectorProvider,
-  T extends Uppercase<string>[],
+  T extends Uppercase<string>[]
 >({
   provider,
   resourceTypes,

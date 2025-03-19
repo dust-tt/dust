@@ -361,6 +361,14 @@
  *           type: string
  *           description: The id of the previously uploaded file (optional if `content` and `contentType` are set)
  *           example: fil_123456
+ *         nodeId:
+ *           type: string
+ *           description: The id of the content node (optional if `content` and `contentType` are set)
+ *           example: node_123456
+ *         nodeDataSourceViewId:
+ *           type: string
+ *           description: The id of the data source view (optional if `content` and `contentType` are set)
+ *           example: dsv_123456
  *         context:
  *           $ref: '#/components/schemas/Context'
  *     Space:
