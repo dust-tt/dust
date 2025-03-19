@@ -171,7 +171,8 @@ export const fetchDatabases = async ({
 };
 
 /**
- * Fetch the tables available in the Snowflake account.
+ * Fetch the tables available in the Snowflake account. We have no guarantee to get all the schemas
+ * from all the DBs so we generaly want to have fromDatabase defined.
  */
 export const fetchSchemas = async ({
   credentials,
@@ -198,16 +199,22 @@ export const fetchSchemas = async ({
  */
 export const fetchTables = async ({
   credentials,
+  fromDatabase,
   fromSchema,
   connection,
 }: {
   credentials: SnowflakeCredentials;
+  fromDatabase?: string;
   fromSchema?: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  // We fetch the tables in the schema provided if defined, otherwise in the database provided if
+  // defined, otherwise globally.
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : "SHOW TABLES";
+    : fromDatabase
+      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
+      : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
