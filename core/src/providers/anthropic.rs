@@ -87,6 +87,8 @@ struct AnthropicImageContent {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum AnthropicContentType {
+    Thinking,
+    RedactedThinking,
     Text,
     Image,
     ToolUse,
@@ -99,6 +101,12 @@ struct AnthropicContent {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     text: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    thinking: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    redacted_thinking: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none", flatten)]
     tool_use: Option<AnthropicContentToolUse>,
@@ -145,6 +153,13 @@ impl TryFrom<StreamContent> for AnthropicResponseContent {
         match value {
             StreamContent::AnthropicStreamContent(content) => {
                 Ok(AnthropicResponseContent::Text { text: content.text })
+            }
+            StreamContent::AnthropicStreamThinking(content) => Ok(AnthropicResponseContent::Text {
+                text: content.thinking,
+            }),
+            StreamContent::AnthropicStreamRedactedThinking(_) => {
+                // We exclude these from the response as they are not human-readable and don't have anything useful for subsequent messages.
+                Ok(AnthropicResponseContent::Text { text: "".into() })
             }
             StreamContent::AnthropicStreamToolUse(tool_use) => {
                 // Attempt to parse the input as JSON if it's a string.
@@ -294,6 +309,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                                 Ok(AnthropicContent {
                                     r#type: AnthropicContentType::ToolUse,
                                     text: None,
+                                    thinking: None,
+                                    redacted_thinking: None,
                                     tool_use: Some(AnthropicContentToolUse {
                                         name: function_call.name.clone(),
                                         id: function_call.id.clone(),
@@ -312,6 +329,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 let text = assistant_msg.content.as_ref().map(|text| AnthropicContent {
                     r#type: AnthropicContentType::Text,
                     text: Some(text.clone()),
+                    thinking: None,
+                    redacted_thinking: None,
                     tool_result: None,
                     tool_use: None,
                     source: None,
@@ -339,6 +358,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                         content: Some(function_msg.content.clone()),
                     }),
                     text: None,
+                    thinking: None,
+                    redacted_thinking: None,
                     source: None,
                 };
 
@@ -355,6 +376,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                             MixedContent::TextContent(tc) => Ok(AnthropicContent {
                                 r#type: AnthropicContentType::Text,
                                 text: Some(tc.text.clone()),
+                                thinking: None,
+                                redacted_thinking: None,
                                 tool_result: None,
                                 tool_use: None,
                                 source: None,
@@ -365,6 +388,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                                         r#type: AnthropicContentType::Image,
                                         source: Some(base64_data.clone()),
                                         text: None,
+                                        thinking: None,
+                                        redacted_thinking: None,
                                         tool_use: None,
                                         tool_result: None,
                                     })
@@ -384,6 +409,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                     content: vec![AnthropicContent {
                         r#type: AnthropicContentType::Text,
                         text: Some(t.clone()),
+                        thinking: None,
+                        redacted_thinking: None,
                         tool_result: None,
                         tool_use: None,
                         source: None,
@@ -395,6 +422,8 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 content: vec![AnthropicContent {
                     r#type: AnthropicContentType::Text,
                     text: Some(system_msg.content.clone()),
+                    thinking: None,
+                    redacted_thinking: None,
                     tool_result: None,
                     tool_use: None,
                     source: None,
@@ -659,14 +688,44 @@ struct AnthropicStreamToolUse {
     input: Value,
     id: String,
 }
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamThinking {
+    pub r#type: String,
+    pub thinking: String,
+    pub signature: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamRedactedThinking {
+    pub r#type: String,
+    // Note that the data field is an encrypted string that is not human-readable.
+    pub data: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(untagged)]
 enum StreamContent {
     AnthropicStreamContent(AnthropicStreamContent),
     AnthropicStreamToolUse(AnthropicStreamToolUse),
+    AnthropicStreamThinking(AnthropicStreamThinking),
+    AnthropicStreamRedactedThinking(AnthropicStreamRedactedThinking),
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamThinkingDelta {
+    pub r#type: String,
+    // The documentation seems to tell we should get "thinking_delta" here but we don't for some reason.
+    pub thinking: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamRedactedThinkingDelta {
+    pub r#type: String,
+    pub data: String,
+}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct AnthropicStreamSignatureDelta {
+    pub r#type: String,
+    pub signature: String,
+}
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AnthropicStreamToolInputDelta {
     partial_json: String,
@@ -676,6 +735,9 @@ struct AnthropicStreamToolInputDelta {
 #[serde(untagged)]
 enum StreamContentDelta {
     AnthropicStreamContent(AnthropicStreamContent),
+    AnthropicStreamThinkingDelta(AnthropicStreamThinkingDelta),
+    AnthropicStreamRedactedThinkingDelta(AnthropicStreamRedactedThinkingDelta),
+    AnthropicStreamSignatureDelta(AnthropicStreamSignatureDelta),
     AnthropicStreamToolInputDelta(AnthropicStreamToolInputDelta),
 }
 
@@ -875,6 +937,7 @@ impl AnthropicLLM {
         max_tokens: i32,
         beta_flags: &Vec<&str>,
         event_sender: UnboundedSender<Value>,
+        thinking: Option<(String, u64)>,
     ) -> Result<(ChatResponse, Option<String>)> {
         assert!(self.api_key.is_some());
 
@@ -922,6 +985,16 @@ impl AnthropicLLM {
                 //not using the tool-choice-none beta flag
                 body["tools"] = json!(vec![self.placehodler_tool()]);
             }
+        }
+
+        if let Some((thinking_type, thinking_budget_tokens)) = thinking {
+            body["thinking"] = json!({
+                "type": thinking_type,
+                "budget_tokens": thinking_budget_tokens,
+            });
+            // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+            body["temperature"] = 1.0f32.into();
+            body.as_object_mut().unwrap().remove("top_p");
         }
 
         let url = self.messages_uri()?.to_string();
@@ -1051,6 +1124,21 @@ impl AnthropicLLM {
                                                         },
                                                     }));
                                                 }
+                                                StreamContent::AnthropicStreamThinking(
+                                                    thinking,
+                                                ) => {
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": thinking.thinking,
+                                                        },
+                                                    }));
+                                                }
+                                                StreamContent::AnthropicStreamRedactedThinking(
+                                                    _,
+                                                ) => {
+                                                    // We skip these as these do not contain anything human-readable.
+                                                }
                                             }
                                         }
                                     }
@@ -1093,11 +1181,34 @@ impl AnthropicLLM {
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
-                                                        "text": delta.text,
+                                                            "text": delta.text,
                                                         }
 
                                                     }));
                                                 }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(content)) => {
+                                                content.thinking.push_str(delta.thinking.as_str());
+                                                if delta.thinking.len() > 0 {
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": delta.thinking,
+                                                        }
+
+                                                    }));
+                                                }
+                                            }
+                                            (StreamContentDelta::AnthropicStreamRedactedThinkingDelta(delta),
+                                                StreamContent::AnthropicStreamRedactedThinking(content)) => {
+                                                content.data.push_str(delta.data.as_str());
+                                                // We don't send an event, the redacted thinking data is not human-readable.
+                                            }
+                                            (StreamContentDelta::AnthropicStreamSignatureDelta(delta),
+                                                StreamContent::AnthropicStreamThinking(content)) => {
+                                                // We just add to the signature and don't push any event.
+                                                content.signature.push_str(delta.signature.as_str());
                                             }
                                             (StreamContentDelta::AnthropicStreamToolInputDelta(
                                                 input_json_delta,
@@ -1372,7 +1483,7 @@ impl AnthropicLLM {
                                 let _ = event_sender.send(json!({
                                     "type":"tokens",
                                     "content": {
-                                        "text":response.completion,
+                                        "text": response.completion,
                                     }
 
                                 }));
@@ -1785,6 +1896,23 @@ impl LLM for AnthropicLLM {
             },
         };
 
+        let thinking = match &extras {
+            None => None,
+            // We don't pass the thinking parameters in tool use.
+            Some(v) => match tool_choice.is_some() {
+                true => None,
+                false => match v.get("anthropic_beta_thinking") {
+                    Some(Value::Object(s)) => match (s.get("type"), s.get("budget_tokens")) {
+                        (Some(Value::String(t)), Some(Value::Number(b))) => {
+                            Some((t.clone(), b.as_u64().unwrap_or(1024)))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                },
+            },
+        };
+
         // Error if toolchoice is of type AnthropicToolChoiceType::None and we aren't using the tool-choice-none beta flag
         if let Some(AnthropicToolChoice {
             r#type: AnthropicToolChoiceType::None,
@@ -1821,6 +1949,7 @@ impl LLM for AnthropicLLM {
                     },
                     &beta_flags,
                     es,
+                    thinking,
                 )
                 .await?
             }

@@ -13,8 +13,9 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
+import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
@@ -41,36 +42,31 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [isDebouncing, setIsDebouncing] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+
+  const {
+    inputValue: search,
+    debouncedValue: searchQuery,
+    isDebouncing,
+    setValue: setSearch,
+  } = useDebounce("", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const { searchResultNodes, isSearchLoading } = useSpacesSearch({
     includeDataSources: true,
     owner,
-    search: debouncedSearch,
+    search: searchQuery,
     viewType: "all",
-    disabled: isSpacesLoading || !debouncedSearch,
+    disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
   });
 
-  const atachedNodeIds = useMemo(() => {
+  const attachedNodeIds = useMemo(() => {
     return attachedNodes.map((node) => node.internalId);
   }, [attachedNodes]);
-
-  useEffect(() => {
-    setIsDebouncing(true);
-    const timeout = setTimeout(() => {
-      setDebouncedSearch(search.length >= MIN_SEARCH_QUERY_SIZE ? search : "");
-      setIsDebouncing(false);
-    }, 300);
-    return () => {
-      clearTimeout(timeout);
-      setIsDebouncing(false);
-    };
-  }, [search]);
 
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
@@ -88,8 +84,6 @@ export const InputBarAttachmentsPicker = ({
       }),
     [searchResultNodes]
   );
-
-  const showSearchResults = search.length >= MIN_SEARCH_QUERY_SIZE;
 
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
@@ -149,7 +143,7 @@ export const InputBarAttachmentsPicker = ({
           disabled={isLoading}
         />
 
-        {showSearchResults && (
+        {searchQuery && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
@@ -169,7 +163,7 @@ export const InputBarAttachmentsPicker = ({
                           item.dataSourceView.dataSource.connectorProvider,
                       })}
                       disabled={
-                        atachedNodeIds.includes(item.internalId) ||
+                        attachedNodeIds.includes(item.internalId) ||
                         item.type !== "document"
                       }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}

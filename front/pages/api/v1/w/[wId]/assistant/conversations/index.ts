@@ -25,7 +25,10 @@ import type {
 } from "@app/types";
 import {
   ConversationError,
-  isContentFragmentInputWithContentType,
+  isContentFragmentInput,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentInputWithFileId,
+  isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
 
@@ -160,6 +163,18 @@ async function handler(
         }
       }
 
+      for (const fragment of resolvedFragments) {
+        if (!isContentFragmentInput(fragment)) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid content fragment type.",
+            },
+          });
+        }
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
         visibility,
@@ -172,7 +187,7 @@ async function handler(
         const { context, ...rest } = resolvedFragment;
         let contentFragment = rest;
 
-        if (isContentFragmentInputWithContentType(contentFragment)) {
+        if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
             contentFragment,
           });
@@ -190,29 +205,33 @@ async function handler(
           }
           contentFragment = contentFragmentRes.value;
         }
-
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          contentFragment,
-          {
-            username: context?.username ?? null,
-            fullName: context?.fullName ?? null,
-            email: context?.email ?? null,
-            profilePictureUrl: context?.profilePictureUrl ?? null,
+        if (
+          isContentFragmentInputWithFileId(contentFragment) ||
+          isContentFragmentInputWithContentNode(contentFragment)
+        ) {
+          const cfRes = await postNewContentFragment(
+            auth,
+            conversation,
+            contentFragment,
+            {
+              username: context?.username ?? null,
+              fullName: context?.fullName ?? null,
+              email: context?.email ?? null,
+              profilePictureUrl: context?.profilePictureUrl ?? null,
+            }
+          );
+          if (cfRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: cfRes.error.message,
+              },
+            });
           }
-        );
-        if (cfRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: cfRes.error.message,
-            },
-          });
+          newContentFragment = cfRes.value;
         }
 
-        newContentFragment = cfRes.value;
         const updatedConversationRes = await getConversation(
           auth,
           conversation.sId
@@ -282,14 +301,8 @@ async function handler(
       }
 
       res.status(200).json({
-        // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
-        // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
-        // @ts-expect-error cf above
         conversation,
         message: newMessage ?? undefined,
-        // TODO(pr, attach-ds): remove this once type support for content node fragment is added in the public API.
-        // Will be tackled by https://github.com/dust-tt/tasks/issues/2388.
-        // @ts-expect-error cf above
         contentFragment: newContentFragment ?? undefined,
       });
       return;

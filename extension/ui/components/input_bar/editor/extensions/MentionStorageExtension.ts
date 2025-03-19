@@ -3,7 +3,7 @@ import { Extension } from "@tiptap/react";
 
 // Storage extension to manage mention suggestions.
 // This prevents content editable from re-rendering when suggestions change.
-export const MentionStorage = Extension.create({
+export const MentionStorageExtension = Extension.create({
   name: "MentionStorage",
 
   addStorage() {

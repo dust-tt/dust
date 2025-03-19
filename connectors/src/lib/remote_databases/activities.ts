@@ -499,7 +499,7 @@ export async function sync({
 
         i++;
         if (i % 25 === 0) {
-          await heartbeat();
+          heartbeat();
         }
       }
     }

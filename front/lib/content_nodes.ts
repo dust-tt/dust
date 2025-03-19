@@ -1,3 +1,4 @@
+import { MIME_TYPES } from "@dust-tt/client";
 import {
   ChatBubbleLeftRightIcon,
   DocumentIcon,
@@ -10,8 +11,7 @@ import {
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ContentNode, DataSourceViewContentNode } from "@app/types";
-import { assertNever, MIME_TYPES } from "@app/types";
-
+import { assertNever } from "@app/types";
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
 

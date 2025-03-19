@@ -35,14 +35,18 @@ export const RunPage = () => {
         messageData: {
           input: params.text,
           mentions: [{ configurationId: params.configurationId }],
+          contentFragments: {
+            uploaded: files
+              ? files.map((cf) => ({
+                  title: cf.filename,
+                  fileId: cf.fileId || "",
+                  url: cf.publicUrl,
+                  kind: cf.kind,
+                }))
+              : [],
+            contentNodes: [],
+          },
         },
-        contentFragments: files
-          ? files.map((cf) => ({
-              title: cf.filename,
-              fileId: cf.fileId || "",
-              url: cf.publicUrl,
-            }))
-          : [],
       });
 
       fileUploaderService.resetUpload();
