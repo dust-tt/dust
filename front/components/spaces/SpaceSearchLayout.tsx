@@ -235,7 +235,6 @@ function BackendSearch({
     viewType,
   });
 
-  // Combined loading state
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
 
   React.useEffect(() => {
@@ -271,7 +270,7 @@ function BackendSearch({
       setIsChanging(true);
       const timer = setTimeout(() => {
         setShowSearch(shouldShowSearchResults);
-        // Small delay to start fade-in after content change
+        // Small delay to start fade-in after content change.
         setTimeout(() => setIsChanging(false), 50);
       }, 150);
 
