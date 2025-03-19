@@ -374,19 +374,6 @@ async function* runMultiActionsAgent(
     availableActions = availableActions.concat(jitActions);
   }
 
-  const hasClaudeAsReasoningTool =
-    availableActions.find(actionIsClaudeReasoning) !== undefined;
-  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
-  if (
-    model.modelId.startsWith("claude-3-7-sonnet") &&
-    hasClaudeAsReasoningTool
-  ) {
-    // Remove Sonnet 3.7 as a reasoning tool if it exists (testing what happens when you always pass 'thinking' for now, will test it as a tool later on).
-    availableActions = availableActions.filter(
-      (a) => !actionIsClaudeReasoning(a)
-    );
-  }
-
   let fallbackPrompt = "You are a conversational agent";
   if (
     agentConfiguration.actions.length ||
@@ -528,23 +515,7 @@ async function* runMultiActionsAgent(
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
-  let anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
-
-  // TODO(2025-03-18 aubin) - experimental: remove this after reaching a conclusion on what works best with 3.7 reasoning.
-  if (
-    model.modelId.startsWith("claude-3-7-sonnet") &&
-    hasClaudeAsReasoningTool
-  ) {
-    // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
-    runConfig.MODEL.anthropic_beta_thinking = {
-      type: "enabled",
-      budget_tokens: 6400,
-    };
-    // Add the beta flag.
-    anthropicBetaFlags ||= [];
-    anthropicBetaFlags.push("output-128k-2025-02-19");
-  }
-
+  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }

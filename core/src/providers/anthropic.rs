@@ -992,10 +992,6 @@ impl AnthropicLLM {
                 "type": thinking_type,
                 "budget_tokens": thinking_budget_tokens,
             });
-            // We can't pass a temperature different than 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
-            // TODO(2025-03-18 aubin): we should surface this sooner
-            body["temperature"] = 1.0f32.into();
-            body.as_object_mut().unwrap().remove("top_p");
         }
 
         let url = self.messages_uri()?.to_string();
