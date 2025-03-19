@@ -1,8 +1,6 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-// import { MIME_TYPES_VALUES } from "./mime_types";
-
 type StringLiteral<T> = T extends string
   ? string extends T
     ? never
