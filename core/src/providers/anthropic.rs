@@ -219,15 +219,6 @@ impl AnthropicResponseContent {
             AnthropicResponseContent::ToolUse { .. } => None,
         }
     }
-
-    fn get_redacted_thinking(&self) -> Option<&String> {
-        match self {
-            AnthropicResponseContent::Thinking { .. } => None,
-            AnthropicResponseContent::RedactedThinking { data } => Some(data),
-            AnthropicResponseContent::Text { .. } => None,
-            AnthropicResponseContent::ToolUse { .. } => None,
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -325,29 +316,15 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
         match cm {
             ChatMessage::Assistant(assistant_msg) => {
                 // Handling thinking content (CoT).
-                let thinking = assistant_msg
-                    .thinking
-                    .as_ref()
-                    .map(|thinking| AnthropicContent {
-                        r#type: AnthropicContentType::Thinking,
-                        text: None,
-                        thinking: Some(thinking.clone()),
-                        redacted_thinking: None,
-                        tool_result: None,
-                        tool_use: None,
-                        source: None,
-                    });
-
-                // Handling redacted_thinking content (CoT, not human-readable part, should be preserved for the model to use).
-                let redacted_thinking =
+                let thinking =
                     assistant_msg
-                        .redacted_thinking
+                        .reasoning_content
                         .as_ref()
-                        .map(|redacted_thinking| AnthropicContent {
-                            r#type: AnthropicContentType::RedactedThinking,
+                        .map(|thinking| AnthropicContent {
+                            r#type: AnthropicContentType::Thinking,
                             text: None,
-                            thinking: None,
-                            redacted_thinking: Some(redacted_thinking.clone()),
+                            thinking: Some(thinking.clone()),
+                            redacted_thinking: None,
                             tool_result: None,
                             tool_use: None,
                             source: None,
@@ -393,7 +370,6 @@ impl<'a> TryFrom<&'a ChatMessageConversionInput<'a>> for AnthropicChatMessage {
                 // Combining all content into one vector using iterators.
                 let content_vec = thinking
                     .into_iter()
-                    .chain(redacted_thinking.into_iter())
                     .chain(text.into_iter())
                     .chain(tool_uses.into_iter().flatten())
                     .collect::<Vec<AnthropicContent>>();
@@ -620,14 +596,6 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
                 _ => None,
             });
 
-        let redacted_thinking_content =
-            cr.content
-                .iter()
-                .find_map(|item| match item.get_redacted_thinking() {
-                    Some(redacted_thinking) => Some(redacted_thinking.clone()),
-                    _ => None,
-                });
-
         let tool_uses: Vec<&ToolUse> = cr
             .content
             .iter()
@@ -662,9 +630,7 @@ impl TryFrom<ChatResponse> for AssistantChatMessage {
             role: ChatMessageRole::Assistant,
             name: None,
             content: text_content,
-            thinking: thinking_content,
-            redacted_thinking: redacted_thinking_content,
-            reasoning_content: None,
+            reasoning_content: thinking_content,
             function_call,
             function_calls,
         })

@@ -40,8 +40,6 @@ pub fn strip_tools_fromn_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMe
                     role: message.role.clone(),
                     // Unused for r1:
                     reasoning_content: None,
-                    thinking: None,
-                    redacted_thinking: None,
                     function_call: None,
                     function_calls: None,
                 }));
