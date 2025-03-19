@@ -3,9 +3,9 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/shared/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/shared/lib/data_sources";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type { DataSourceViewContentNodeType } from "@dust-tt/client";
+import { isFolder, isWebsite } from "@dust-tt/client";
 import {
   Citation,
   CitationClose,

@@ -333,6 +333,19 @@ const DataSourceTypeSchema = z.object({
 
 export type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
 
+export function isFolder(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: null } {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function isWebsite(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: "webcrawler" } {
+  return ds.connectorProvider === "webcrawler";
+}
+
 const CoreAPIDocumentChunkSchema = z.object({
   text: z.string(),
   hash: z.string(),
