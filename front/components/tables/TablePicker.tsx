@@ -52,7 +52,9 @@ export default function TablePicker({
 }: TablePickerProps) {
   void dataSource;
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const [allTables, setAllTables] = useState<DataSourceViewContentNode[]>([]);
+  const [allTablesMap, setallTablesMap] = useState<
+    Map<string, DataSourceViewContentNode>
+  >(new Map());
   const [currentTable, setCurrentTable] = useState<CoreAPITable>();
   const {
     cursorPagination,
@@ -89,17 +91,20 @@ export default function TablePicker({
 
   useEffect(() => {
     if (tables && !isTablesLoading) {
-      setAllTables((prevTables) => {
+      setallTablesMap((prevTablesMap) => {
         if (pageIndex === 0) {
-          return tables;
+          return new Map(tables.map((table) => [table.internalId, table]));
         } else {
-          const newTables = tables.filter(
-            (table) =>
-              !prevTables.some(
-                (prevTable) => prevTable.internalId === table.internalId
-              )
-          );
-          return [...prevTables, ...newTables];
+          // Create a new Map to avoid mutating the previous state
+          const newTablesMap = new Map(prevTablesMap);
+
+          tables.forEach((table) => {
+            if (!prevTablesMap.has(table.internalId)) {
+              newTablesMap.set(table.internalId, table);
+            }
+          });
+
+          return newTablesMap;
         }
       });
     }
@@ -153,7 +158,7 @@ export default function TablePicker({
                   </div>
                   <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
                 </div>
-              ) : allTables.length > 0 ? (
+              ) : allTablesMap.size > 0 ? (
                 <Button
                   variant="outline"
                   label="Select Table"
@@ -181,7 +186,7 @@ export default function TablePicker({
               />
               <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col">
                 <div className="w-full space-y-1">
-                  {allTables
+                  {Array.from(allTablesMap.values())
                     .filter(
                       (t) =>
                         !excludeTables?.some(
@@ -205,7 +210,7 @@ export default function TablePicker({
                         </div>
                       </div>
                     ))}
-                  {allTables.length === 0 && (
+                  {allTablesMap.size === 0 && (
                     <span className="block px-4 pt-2 text-sm text-gray-700">
                       No tables found
                     </span>
@@ -219,7 +224,7 @@ export default function TablePicker({
                   isValidating={isTablesLoading}
                   isLoading={isTablesLoading}
                 >
-                  {isTablesLoading && !allTables.length && (
+                  {isTablesLoading && !allTablesMap.size && (
                     <div className="py-2 text-center text-sm text-element-700">
                       Loading tables...
                     </div>
