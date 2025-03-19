@@ -111,7 +111,7 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 bg-white pt-5">
+      <div className="shrink-0 pt-5">
         <Tabs
           value={rightPanelStatus.tab ?? "Preview"}
           onValueChange={(t) =>
