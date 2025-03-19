@@ -160,7 +160,8 @@ module.exports = {
       "2xl": "1536px",
     },
     fontFamily: {
-      sans: ["'darkmode-off-cc'", "sans-serif"],
+      sans: ["'Geist'", "sans-serif"],
+      mono: ["'Geist Mono'", "monospace"],
       objektiv: ["'objektiv-mk1'", "sans-serif"],
     },
     extend: {
