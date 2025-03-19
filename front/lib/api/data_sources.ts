@@ -364,13 +364,10 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.substring(6);
-  if (!titleInTags) {
-    nonNullTags.push(`title:${title}`);
-  }
-
   if (titleInTags && titleInTags !== title) {
     logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
