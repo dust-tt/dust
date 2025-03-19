@@ -14,8 +14,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import {
-  isContentFragmentInputWithContentNode,
-  isContentFragmentInputWithFileId,
+  isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
 } from "@app/types";
 
@@ -120,11 +119,7 @@ async function handler(
       const { context, ...rest } = r.data;
       let contentFragment = rest;
 
-      if (
-        !isContentFragmentInputWithFileId(contentFragment) &&
-        !isContentFragmentInputWithContentNode(contentFragment) &&
-        !isContentFragmentInputWithInlinedContent(contentFragment)
-      ) {
+      if (!isContentFragmentInput(contentFragment)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

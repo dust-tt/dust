@@ -25,6 +25,7 @@ import type {
 } from "@app/types";
 import {
   ConversationError,
+  isContentFragmentInput,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
   isContentFragmentInputWithInlinedContent,
@@ -163,11 +164,7 @@ async function handler(
       }
 
       for (const fragment of resolvedFragments) {
-        if (
-          !isContentFragmentInputWithInlinedContent(fragment) &&
-          !isContentFragmentInputWithFileId(fragment) &&
-          !isContentFragmentInputWithContentNode(fragment)
-        ) {
+        if (!isContentFragmentInput(fragment)) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {

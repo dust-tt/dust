@@ -108,6 +108,18 @@ export type ContentFragmentInputType =
   | ContentFragmentInputWithFileIdType
   | ContentFragmentInputWithContentNode;
 
+export function isContentFragmentInput(
+  fragment: Omit<ContentFragmentInputType, "contentType"> & {
+    contentType?: string | undefined | null;
+  }
+): fragment is ContentFragmentInputType {
+  return (
+    isContentFragmentInputWithInlinedContent(fragment) ||
+    isContentFragmentInputWithFileId(fragment) ||
+    isContentFragmentInputWithContentNode(fragment)
+  );
+}
+
 export function isContentFragmentInputWithInlinedContent(
   fragment: Omit<ContentFragmentInputType, "contentType"> & {
     contentType?: string | undefined | null;
