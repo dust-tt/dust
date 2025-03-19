@@ -47,6 +47,18 @@ export type SupportedContentNodeContentType = t.TypeOf<
   ReturnType<typeof getSupportedContentNodeContentTypeSchema>
 >;
 
+export type SupportedInlinedContentFragmentTypeSchema = t.TypeOf<
+  ReturnType<typeof getSupportedInlinedContentType>
+>;
+
+export const isSupportedInlinedFragmentContentType = (
+  contentType: string
+): contentType is SupportedInlinedContentFragmentTypeSchema => {
+  return (
+    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+  ).includes(contentType);
+};
+
 export const isSupportedContentNodeFragmentContentType = (
   contentType: string
 ): contentType is SupportedContentNodeContentType => {
@@ -63,7 +75,7 @@ const ContentFragmentInputWithContentSchema = t.intersection([
   }),
 ]);
 
-export type ContentFragmentInputWithContentType = t.TypeOf<
+export type ContentFragmentInputWithInlinedContent = t.TypeOf<
   typeof ContentFragmentInputWithContentSchema
 >;
 
@@ -91,27 +103,39 @@ export type ContentFragmentInputWithFileIdType = t.TypeOf<
   typeof ContentFragmentInputWithFileIdSchema
 >;
 
-type ContentFragmentInputType =
-  | ContentFragmentInputWithContentType
+export type ContentFragmentInputType =
+  | ContentFragmentInputWithInlinedContent
   | ContentFragmentInputWithFileIdType
   | ContentFragmentInputWithContentNode;
 
-export function isContentFragmentInputWithContentType(
-  fragment: ContentFragmentInputType
-): fragment is ContentFragmentInputWithContentType {
-  return "contentType" in fragment;
+export function isContentFragmentInputWithInlinedContent(
+  fragment: Omit<ContentFragmentInputType, "contentType"> & {
+    contentType?: string | undefined | null;
+  }
+): fragment is ContentFragmentInputWithInlinedContent {
+  return (
+    "content" in fragment &&
+    !!fragment.contentType &&
+    isSupportedInlinedFragmentContentType(fragment.contentType)
+  );
 }
 
 export function isContentFragmentInputWithFileId(
-  fragment: ContentFragmentInputType
+  fragment: Omit<ContentFragmentInputType, "contentType">
 ): fragment is ContentFragmentInputWithFileIdType {
   return "fileId" in fragment;
 }
 
 export function isContentFragmentInputWithContentNode(
-  fragment: ContentFragmentInputType
+  fragment: Omit<ContentFragmentInputType, "contentType"> & {
+    contentType?: string | undefined | null;
+  }
 ): fragment is ContentFragmentInputWithContentNode {
-  return "nodeId" in fragment;
+  return (
+    "nodeId" in fragment &&
+    !!fragment.contentType &&
+    isSupportedContentNodeFragmentContentType(fragment.contentType)
+  );
 }
 
 export const InternalPostContentFragmentRequestBodySchema = t.intersection([

@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-import { MIME_TYPES_VALUES } from "./mime_types";
+// import { MIME_TYPES_VALUES } from "./mime_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -207,18 +207,9 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | "dust-application/slack"
 >();
 
-const SupportedInlinedContentFragmentTypeSchema =
-  FlexibleEnumSchema<keyof typeof supportedOtherFileFormats>();
-
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
->();
-
-type DustMimeTypeValues = (typeof MIME_TYPES_VALUES)[number];
-
-const SupportedContentNodeContentTypeSchema = FlexibleEnumSchema<
-  keyof typeof supportedOtherFileFormats | DustMimeTypeValues
 >();
 
 export function isSupportedFileContentType(
@@ -1841,7 +1832,7 @@ export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
   url: z.string().optional().nullable(),
   content: z.string(),
-  contentType: SupportedInlinedContentFragmentTypeSchema,
+  contentType: z.string(),
   fileId: z.undefined().nullable(),
   nodeId: z.undefined().nullable(),
   nodeDataSourceViewId: z.undefined().nullable(),
@@ -1875,7 +1866,7 @@ const PublicContentFragmentWithContentNodeSchema = z.object({
   title: z.string(),
   url: z.string().optional().nullable(),
   content: z.undefined().nullable(),
-  contentType: SupportedContentNodeContentTypeSchema,
+  contentType: z.string(),
   fileId: z.undefined().nullable(),
   nodeId: z.string(),
   nodeDataSourceViewId: z.string(),
@@ -2651,7 +2642,7 @@ export const ContentNodeSchema = z.object({
   expandable: z.boolean(),
   internalId: z.string(),
   lastUpdatedAt: z.number().nullable(),
-  mimeType: SupportedContentNodeContentTypeSchema,
+  mimeType: z.string(),
   // The direct parent ID of this content node
   parentInternalId: z.string().nullable(),
   // permission: ConnectorPermissionSchema,
@@ -2668,7 +2659,7 @@ export const ContentNodeWithParentSchema = z.intersection(
   ContentNodeSchema,
   z.object({
     parentsInternalIds: z.array(z.string()).optional(),
-    parentTitle: z.string().optional(),
+    parentTitle: z.string().optional().nullable(),
   })
 );
 

@@ -27,6 +27,7 @@ import {
   ConversationError,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
+  isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
 
@@ -161,6 +162,23 @@ async function handler(
         }
       }
 
+      for (const fragment of resolvedFragments) {
+        if (
+          !isContentFragmentInputWithInlinedContent(fragment) &&
+          !isContentFragmentInputWithFileId(fragment) &&
+          !isContentFragmentInputWithContentNode(fragment)
+        ) {
+          console.log(fragment);
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Invalid content fragment type.",
+            },
+          });
+        }
+      }
+
       let conversation = await createConversation(auth, {
         title: title ?? null,
         visibility,
@@ -173,10 +191,7 @@ async function handler(
         const { context, ...rest } = resolvedFragment;
         let contentFragment = rest;
 
-        if (
-          !isContentFragmentInputWithFileId(contentFragment) &&
-          !isContentFragmentInputWithContentNode(contentFragment)
-        ) {
+        if (isContentFragmentInputWithInlinedContent(contentFragment)) {
           const contentFragmentRes = await toFileContentFragment(auth, {
             contentFragment,
           });
@@ -185,29 +200,33 @@ async function handler(
           }
           contentFragment = contentFragmentRes.value;
         }
-        contentFragment;
-        const cfRes = await postNewContentFragment(
-          auth,
-          conversation,
-          contentFragment,
-          {
-            username: context?.username ?? null,
-            fullName: context?.fullName ?? null,
-            email: context?.email ?? null,
-            profilePictureUrl: context?.profilePictureUrl ?? null,
+        if (
+          isContentFragmentInputWithFileId(contentFragment) ||
+          isContentFragmentInputWithContentNode(contentFragment)
+        ) {
+          const cfRes = await postNewContentFragment(
+            auth,
+            conversation,
+            contentFragment,
+            {
+              username: context?.username ?? null,
+              fullName: context?.fullName ?? null,
+              email: context?.email ?? null,
+              profilePictureUrl: context?.profilePictureUrl ?? null,
+            }
+          );
+          if (cfRes.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: cfRes.error.message,
+              },
+            });
           }
-        );
-        if (cfRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: cfRes.error.message,
-            },
-          });
+          newContentFragment = cfRes.value;
         }
 
-        newContentFragment = cfRes.value;
         const updatedConversationRes = await getConversation(
           auth,
           conversation.sId

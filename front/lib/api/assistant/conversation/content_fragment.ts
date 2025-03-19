@@ -4,8 +4,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithContentType,
   ContentFragmentInputWithFileIdType,
+  ContentFragmentInputWithInlinedContent,
   DustMimeType,
   ModelId,
   Result,
@@ -35,7 +35,7 @@ export async function toFileContentFragment(
     contentFragment,
     fileName,
   }: {
-    contentFragment: ContentFragmentInputWithContentType;
+    contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
   }
 ): Promise<Result<ContentFragmentInputWithFileIdType, { message: string }>> {

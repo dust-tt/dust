@@ -16,6 +16,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 import {
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
+  isContentFragmentInputWithInlinedContent,
 } from "@app/types";
 
 /**
@@ -119,12 +120,23 @@ async function handler(
       const { context, ...rest } = r.data;
       let contentFragment = rest;
 
-      // If we receive a content fragment that is not file based, we transform it to a file-based
-      // one.
       if (
         !isContentFragmentInputWithFileId(contentFragment) &&
-        !isContentFragmentInputWithContentNode(contentFragment)
+        !isContentFragmentInputWithContentNode(contentFragment) &&
+        !isContentFragmentInputWithInlinedContent(contentFragment)
       ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Unsupported content fragment type.",
+          },
+        });
+      }
+
+      // If we receive a content fragment that is not file based, we transform it to a file-based
+      // one.
+      if (isContentFragmentInputWithInlinedContent(contentFragment)) {
         const contentFragmentRes = await toFileContentFragment(auth, {
           contentFragment,
         });
@@ -133,7 +145,6 @@ async function handler(
         }
         contentFragment = contentFragmentRes.value;
       }
-
       const contentFragmentRes = await postNewContentFragment(
         auth,
         conversation,

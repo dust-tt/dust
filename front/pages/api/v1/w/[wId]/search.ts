@@ -1,15 +1,9 @@
 import type { PostWorkspaceSearchResponseBodyType } from "@dust-tt/client";
 import { SearchRequestBodySchema } from "@dust-tt/client";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
-import {
-  withPublicAPIAuthentication,
-  withSessionAuthenticationForWorkspace,
-} from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
@@ -25,6 +19,65 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { CoreAPI, removeNulls } from "@app/types";
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/search:
+ *   post:
+ *     summary: Search for nodes in the workspace
+ *     description: Search for nodes in the workspace
+ *     tags:
+ *       - Search
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - query
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 description: The search query
+ *               includeDataSources:
+ *                 type: array
+ *                 description: List of data source IDs to include in search
+ *                 items:
+ *                   type: string
+ *               viewType:
+ *                 type: string
+ *                 description: Type of view to filter results
+ *               spaceIds:
+ *                 type: array
+ *                 description: List of space IDs to search in
+ *                 items:
+ *                   type: string
+ *               nodeIds:
+ *                 type: array
+ *                 description: List of specific node IDs to search
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Search results retrieved successfully
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Space not found
+ *       405:
+ *         description: Method not allowed
+ */
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<

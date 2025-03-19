@@ -61,6 +61,7 @@ export function getVisualForDataSourceViewContentNode(
   // Handle data sources with connector providers.
   if (
     node.mimeType &&
+    node.mimeType === DATA_SOURCE_MIME_TYPE &&
     node.dataSourceView?.dataSource?.connectorProvider &&
     CONNECTOR_CONFIGURATIONS[node.dataSourceView.dataSource.connectorProvider]
   ) {
