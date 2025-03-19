@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
@@ -115,23 +116,44 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-125"
+        className="w-100"
         side="bottom"
         onInteractOutside={() => setIsOpen(false)}
       >
-        <div className="items-end pb-2">
-          <DropdownMenuSearchbar
-            ref={searchbarRef}
-            name="search-files"
-            placeholder="Search knowledge or attach files"
-            value={search}
-            onChange={setSearch}
-            disabled={isLoading}
-          />
-          <DropdownMenuSeparator />
-          <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-            {showSearchResults ? (
-              <div className="pt-2">
+        <Input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            setIsOpen(false);
+            await fileUploaderService.handleFileChange(e);
+            if (fileInputRef.current) {
+              fileInputRef.current.value = "";
+            }
+          }}
+          multiple={true}
+        />
+        <DropdownMenuItem
+          key="upload-item"
+          label="Upload file"
+          icon={CloudArrowUpIcon}
+          onClick={() => fileInputRef.current?.click()}
+        />
+        <DropdownMenuSeparator />
+        <DropdownMenuSearchbar
+          ref={searchbarRef}
+          name="search-files"
+          placeholder="Search knowledge or attach files"
+          value={search}
+          onChange={setSearch}
+          disabled={isLoading}
+        />
+
+        {showSearchResults && (
+          <>
+            <DropdownMenuSeparator />
+            <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+              <div className="pt-0">
                 {unfoldedNodes.length > 0 ? (
                   unfoldedNodes.map((item, index) => (
                     <DropdownMenuItem
@@ -142,6 +164,10 @@ export const InputBarAttachmentsPicker = ({
                           className: "min-w-4",
                         })
                       }
+                      extraIcon={getConnectorProviderLogoWithFallback({
+                        provider:
+                          item.dataSourceView.dataSource.connectorProvider,
+                      })}
                       disabled={
                         atachedNodeIds.includes(item.internalId) ||
                         item.type !== "document"
@@ -164,32 +190,10 @@ export const InputBarAttachmentsPicker = ({
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col items-end gap-4 pr-1">
-                <Input
-                  type="file"
-                  ref={fileInputRef}
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    setIsOpen(false);
-                    await fileUploaderService.handleFileChange(e);
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                  }}
-                  multiple={true}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isLoading}
-                  icon={CloudArrowUpIcon}
-                  label="Upload file"
-                />
-              </div>
-            )}
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </div>
+              <ScrollBar className="py-0" />
+            </ScrollArea>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
