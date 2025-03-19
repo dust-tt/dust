@@ -10,9 +10,13 @@ import {
 } from "@app/lib/swr/swr";
 import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
 import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
+import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
 import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
-import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
-import type { PatchDataSourceTableRequestBody } from "@app/types";
+import type {
+  DataSourceViewType,
+  LightWorkspaceType,
+  PatchDataSourceTableRequestBody,
+} from "@app/types";
 
 export function useDataSourceViewTable({
   dataSourceView,
@@ -51,28 +55,54 @@ export function useDataSourceViewTable({
 export function useDataSourceViewTables({
   dataSourceView,
   owner,
+  pagination,
+  searchQuery,
+  disabled,
 }: {
   dataSourceView: DataSourceViewType | null;
   owner: LightWorkspaceType;
+  pagination?: { cursor: string | null; limit: number };
+  searchQuery?: string;
+  disabled?: boolean;
 }) {
-  const tablesFetcher: Fetcher<ListTablesResponseBody> = fetcher;
-  const disabled = !dataSourceView;
+  const isDisabled = !dataSourceView || disabled;
+  const params = new URLSearchParams();
 
-  const url = dataSourceView
+  if (pagination?.cursor) {
+    params.set("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.set("limit", pagination.limit.toString());
+  }
+  if (searchQuery) {
+    params.set("query", searchQuery);
+  }
+
+  const baseUrl = dataSourceView
     ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/tables`
     : null;
+
+  const url =
+    baseUrl && `${baseUrl}${searchQuery ? "/search" : ""}?${params.toString()}`;
+
+  const tablesFetcher: Fetcher<
+    ListTablesResponseBody | SearchTablesResponseBody
+  > = fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : url,
-    tablesFetcher
+    isDisabled ? null : url,
+    tablesFetcher,
+    { disabled: isDisabled }
   );
 
   return {
     tables: useMemo(() => (data ? data.tables : []), [data]),
-    isTablesLoading: !disabled && !error && !data,
+    nextPageCursor: data?.nextPageCursor || null,
+    isTablesLoading: !isDisabled && !error && !data,
     isTablesError: error,
     mutateTables: mutate,
   };
 }
+
 export function useUpdateDataSourceViewTable(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
