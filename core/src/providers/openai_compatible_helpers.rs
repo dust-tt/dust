@@ -252,8 +252,6 @@ pub struct OpenAIChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<OpenAIChatMessageContent>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_calls: Option<Vec<OpenAIToolCall>>,
@@ -265,8 +263,6 @@ pub struct OpenAIChatMessage {
 pub struct OpenAICompletionChatMessage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reasoning_content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub role: OpenAIChatMessageRole,
@@ -335,10 +331,6 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
             Some(c) => Some(c.clone()),
             None => None,
         };
-        let reasoning_content = match cm.reasoning_content.as_ref() {
-            Some(c) => Some(c.clone()),
-            None => None,
-        };
 
         let function_calls = if let Some(tool_calls) = cm.tool_calls.as_ref() {
             let cfc = tool_calls
@@ -368,7 +360,6 @@ impl TryFrom<&OpenAICompletionChatMessage> for AssistantChatMessage {
 
         Ok(AssistantChatMessage {
             content,
-            reasoning_content,
             role,
             name,
             function_call,
@@ -438,7 +429,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
                     Some(c) => Some(OpenAIChatMessageContent::try_from(c)?),
                     None => None,
                 },
-                reasoning_content: None,
                 name: assistant_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&assistant_msg.role),
                 tool_calls: match assistant_msg.function_calls.as_ref() {
@@ -453,7 +443,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::Function(function_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&function_msg.content)?),
-                reasoning_content: None,
                 name: None,
                 role: OpenAIChatMessageRole::Tool,
                 tool_calls: None,
@@ -461,7 +450,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::System(system_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&system_msg.content)?),
-                reasoning_content: None,
                 name: None,
                 role: OpenAIChatMessageRole::from(&system_msg.role),
                 tool_calls: None,
@@ -469,7 +457,6 @@ impl TryFrom<&ChatMessage> for OpenAIChatMessage {
             }),
             ChatMessage::User(user_msg) => Ok(OpenAIChatMessage {
                 content: Some(OpenAIChatMessageContent::try_from(&user_msg.content)?),
-                reasoning_content: None,
                 name: user_msg.name.clone(),
                 role: OpenAIChatMessageRole::from(&user_msg.role),
                 tool_calls: None,
@@ -819,7 +806,6 @@ fn to_openai_messages(
                         // Case 3: there's more than one content, the content isn't text or we don't want to squash them => keep structured format
                         (_, _, _) => Some(OpenAIChatMessageContent::Structured(contents)),
                     },
-                    reasoning_content: None,
                 }
             }
         })
@@ -843,7 +829,6 @@ fn to_openai_messages(
                         .collect()
                 }),
                 content: m.content,
-                reasoning_content: None,
             }
         })
         // Remove system messages if requested.
@@ -1230,7 +1215,6 @@ async fn streamed_chat_completion(
                 .map(|c| OpenAIChatChoice {
                     message: OpenAICompletionChatMessage {
                         content: Some("".to_string()),
-                        reasoning_content: None,
                         name: None,
                         role: OpenAIChatMessageRole::System,
                         tool_calls: None,
@@ -1286,14 +1270,6 @@ async fn streamed_chat_completion(
                             ));
                         }
                     },
-                };
-
-                match a.choices[j].delta.get("reasoning_content") {
-                    None => (),
-                    Some(reasoning_content) => {
-                        c.choices[j].message.reasoning_content =
-                            Some(reasoning_content.as_str().unwrap_or("").to_string());
-                    }
                 };
 
                 if let Some(tool_calls) = a.choices[j]
@@ -1367,10 +1343,6 @@ async fn streamed_chat_completion(
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
-            None => None,
-            Some(c) => Some(c.trim().to_string()),
-        };
-        m.message.reasoning_content = match m.message.reasoning_content.as_ref() {
             None => None,
             Some(c) => Some(c.trim().to_string()),
         };
@@ -1522,10 +1494,6 @@ async fn chat_completion(
     // for all messages, edit the content and strip leading and trailing spaces and \n
     for m in completion.choices.iter_mut() {
         m.message.content = match m.message.content.as_ref() {
-            None => None,
-            Some(c) => Some(c.trim().to_string()),
-        };
-        m.message.reasoning_content = match m.message.reasoning_content.as_ref() {
             None => None,
             Some(c) => Some(c.trim().to_string()),
         };

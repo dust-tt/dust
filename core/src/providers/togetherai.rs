@@ -16,7 +16,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::helpers::strip_tools_fromn_chat_history;
+use super::helpers::strip_tools_from_chat_history;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, TransformSystemMessages,
 };
@@ -138,7 +138,7 @@ impl LLM for TogetherAILLM {
             self.api_key.clone().unwrap(),
             // Pre-process messages if model is one of the supported models.
             match MODEL_IDS_WITH_TOOLS_SUPPORT.contains(&self.id.as_str()) {
-                false => Some(strip_tools_fromn_chat_history(messages)),
+                false => Some(strip_tools_from_chat_history(messages)),
                 true => None,
             }
             .as_ref()

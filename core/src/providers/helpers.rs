@@ -6,7 +6,7 @@ use super::{
 // Useful for models that don't support tools.
 // For assistant messages, we remove function/tool calls (and we format them inside of the "content" field instead).
 // For function/tool result messages, we transform them into user messages.
-pub fn strip_tools_fromn_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMessage> {
+pub fn strip_tools_from_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMessage> {
     let mut new_messages = Vec::new();
     for message in messages {
         match message {
@@ -38,8 +38,6 @@ pub fn strip_tools_fromn_chat_history(messages: &Vec<ChatMessage>) -> Vec<ChatMe
                     content: Some(content),
                     name: message.name.clone(),
                     role: message.role.clone(),
-                    // Unused for r1:
-                    reasoning_content: None,
                     function_call: None,
                     function_calls: None,
                 }));
