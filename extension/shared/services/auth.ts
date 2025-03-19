@@ -168,7 +168,7 @@ export const SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES = [
   "samlp",
   "waad",
 ] as const;
-type SupportedEnterpriseConnectionStrategy =
+export type SupportedEnterpriseConnectionStrategy =
   (typeof SUPPORTED_ENTERPRISE_CONNECTIONS_STRATEGIES)[number];
 
 export function isValidEnterpriseConnection(

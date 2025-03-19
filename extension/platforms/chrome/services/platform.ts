@@ -1,6 +1,6 @@
 import { ChromeAuthService } from "@app/platforms/chrome/services/auth";
 import { ChromeStorageService } from "@app/platforms/chrome/services/storage";
-import type { UploadedFileWithKind } from "@app/shared/lib/types";
+import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import { BasePlatformService } from "@app/shared/services/platform";
 import type { ContentFragmentType } from "@dust-tt/client";
 
@@ -28,7 +28,7 @@ export class ChromePlatformService extends BasePlatformService {
    */
   async getFileContentFragmentId(
     conversationId: string,
-    file: UploadedFileWithKind
+    file: UploadedContentFragmentTypeWithKind
   ) {
     if (file.kind !== "tab_content" || !file.url) {
       return null;
@@ -57,7 +57,7 @@ export class ChromePlatformService extends BasePlatformService {
   }: {
     conversationId: string;
     createdContentFragments: ContentFragmentType[];
-    uploadedFiles: UploadedFileWithKind[];
+    uploadedFiles: UploadedContentFragmentTypeWithKind[];
   }) {
     const tabContentFileIds = new Set(
       uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)

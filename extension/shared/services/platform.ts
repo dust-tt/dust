@@ -1,4 +1,4 @@
-import type { UploadedFileWithKind } from "@app/shared/lib/types";
+import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type {
   AuthService,
   BaseAuthService,
@@ -36,15 +36,11 @@ export interface PlatformService {
   // Content fragments.
   getFileContentFragmentId(
     conversationId: string,
-    file: UploadedFileWithKind
+    file: UploadedContentFragmentTypeWithKind
   ): Promise<string | null>;
-  saveFilesContentFragmentIds({
-    conversationId,
-    uploadedFiles,
-    createdContentFragments,
-  }: {
+  saveFilesContentFragmentIds(args: {
     conversationId: string;
-    uploadedFiles: UploadedFileWithKind[];
+    uploadedFiles: UploadedContentFragmentTypeWithKind[];
     createdContentFragments: ContentFragmentType[];
   }): Promise<void>;
 
@@ -132,7 +128,7 @@ export class BasePlatformService implements PlatformService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _conversationId: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _file: UploadedFileWithKind
+    _file: UploadedContentFragmentTypeWithKind
   ): Promise<string | null> {
     throw new Error("Platform specific implementation required.");
   }
@@ -140,7 +136,7 @@ export class BasePlatformService implements PlatformService {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async saveFilesContentFragmentIds(args: {
     conversationId: string;
-    uploadedFiles: UploadedFileWithKind[];
+    uploadedFiles: UploadedContentFragmentTypeWithKind[];
     createdContentFragments: ContentFragmentType[];
   }): Promise<void> {
     throw new Error("Platform specific implementation required.");
