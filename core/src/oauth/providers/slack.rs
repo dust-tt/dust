@@ -51,7 +51,7 @@ impl Provider for SlackConnectionProvider {
     ) -> Result<FinalizeResult, ProviderError> {
         let req = reqwest::Client::new()
             .post("https://slack.com/api/oauth.v2.access")
-            .header("Content-Type", "application/json; charset=utf-8")
+            .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
             // Very important, this will *not* work with JSON body.
             .form(&[("code", code), ("redirect_uri", redirect_uri)]);
