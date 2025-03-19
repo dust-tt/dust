@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
@@ -23,7 +24,6 @@ import {
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
