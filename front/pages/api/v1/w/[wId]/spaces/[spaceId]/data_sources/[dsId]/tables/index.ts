@@ -104,7 +104,7 @@ import { CoreAPI } from "@app/types";
  *                 description: Description of the table
  *               timestamp:
  *                 type: number
- *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
+ *                 description: Unix timestamp (in milliseconds) for the table (e.g. 1736365559000).
  *               tags:
  *                 type: array
  *                 items:
