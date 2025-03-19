@@ -1,4 +1,4 @@
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import { useTheme } from "@app/ui/hooks/useTheme";
 import {
   Avatar,
@@ -17,8 +17,8 @@ import {
 } from "@dust-tt/sparkle";
 
 interface UserDropdownMenuProps {
-  user: StoredUser;
   handleLogout: () => void;
+  user: StoredUser;
 }
 
 export const UserDropdownMenu = ({

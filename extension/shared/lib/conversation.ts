@@ -1,8 +1,7 @@
 import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
 import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
-import { getAccessToken } from "@app/shared/lib/auth";
-import { getStoredUser } from "@app/shared/lib/storage";
 import type { UploadedFileWithSupersededContentFragmentId } from "@app/shared/lib/types";
+import type { PlatformService } from "@app/shared/services/platform";
 import type {
   AgentMentionType,
   AgentMessageNewEvent,
@@ -120,22 +119,25 @@ export function updateConversationWithOptimisticData(
   return conversation;
 }
 
-export async function postConversation({
-  dustAPI,
-  messageData,
-  visibility = "unlisted",
-  contentFragments,
-}: {
-  dustAPI: DustAPI;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  visibility?: ConversationVisibility;
-  contentFragments: UploadedContentFragmentType[];
-}): Promise<Result<ConversationPublicType, SubmitMessageError>> {
+export async function postConversation(
+  platform: PlatformService,
+  {
+    dustAPI,
+    messageData,
+    visibility = "unlisted",
+    contentFragments,
+  }: {
+    dustAPI: DustAPI;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+    };
+    visibility?: ConversationVisibility;
+    contentFragments: UploadedContentFragmentType[];
+  }
+): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions } = messageData;
-  const user = await getStoredUser();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -192,27 +194,30 @@ export async function postConversation({
   return new Ok(conversationData.conversation);
 }
 
-export async function postMessage({
-  dustAPI,
-  conversationId,
-  messageData,
-  files,
-}: {
-  dustAPI: DustAPI;
-  conversationId: string;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  files: UploadedFileWithSupersededContentFragmentId[];
-}): Promise<
+export async function postMessage(
+  platform: PlatformService,
+  {
+    dustAPI,
+    conversationId,
+    messageData,
+    files,
+  }: {
+    dustAPI: DustAPI;
+    conversationId: string;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+    };
+    files: UploadedFileWithSupersededContentFragmentId[];
+  }
+): Promise<
   Result<
     { message: UserMessageType; contentFragments: ContentFragmentType[] },
     SubmitMessageError
   >
 > {
   const { input, mentions } = messageData;
-  const user = await getStoredUser();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -287,17 +292,20 @@ export async function postMessage({
   return new Ok({ message: mRes.value, contentFragments });
 }
 
-export async function retryMessage({
-  owner,
-  conversationId,
-  messageId,
-}: {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
-}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
-  const token = await getAccessToken();
-  const user = await getStoredUser();
+export async function retryMessage(
+  platform: PlatformService,
+  {
+    owner,
+    conversationId,
+    messageId,
+  }: {
+    owner: LightWorkspaceType;
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+  const token = await platform.auth.getAccessToken();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.

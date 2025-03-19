@@ -1,4 +1,11 @@
+import type { UploadedFileWithKind } from "@app/shared/lib/types";
+import type {
+  AuthService,
+  BaseAuthService,
+  StoredUser,
+} from "@app/shared/services/auth";
 import type { StorageService } from "@app/shared/services/storage";
+import type { ContentFragmentType } from "@dust-tt/client";
 
 // TODO(2025-03-19 flav): Add front platform.
 const PLATFORM_TYPES = ["chrome"] as const;
@@ -12,24 +19,57 @@ export type Theme = "light" | "dark" | "system";
 export const DEFAULT_THEME: Theme = "system";
 
 export interface PlatformService {
+  auth: AuthService;
   platform: PlatformType;
   storage: StorageService;
 
+  // Conversations.
   getConversationContext(conversationId: string): Promise<ConversationContext>;
   setConversationsContext(
     conversationsWithContext: Record<string, ConversationContext>
   ): Promise<void>;
 
+  // Theme.
   getTheme(): Promise<Theme>;
   saveTheme(theme: Theme): Promise<void>;
+
+  // Content fragments.
+  getFileContentFragmentId(
+    conversationId: string,
+    file: UploadedFileWithKind
+  ): Promise<string | null>;
+  saveFilesContentFragmentIds({
+    conversationId,
+    uploadedFiles,
+    createdContentFragments,
+  }: {
+    conversationId: string;
+    uploadedFiles: UploadedFileWithKind[];
+    createdContentFragments: ContentFragmentType[];
+  }): Promise<void>;
+
+  // Workspace.
+  saveSelectedWorkspace({
+    workspaceId,
+  }: {
+    workspaceId: string;
+  }): Promise<StoredUser>;
+
+  clearStoredData(): Promise<void>;
 }
 
 // Shared logic that works across all platforms
 export class BasePlatformService implements PlatformService {
+  auth: AuthService;
   platform: PlatformType;
   storage: StorageService;
 
-  constructor(platform: PlatformType, storage: StorageService) {
+  constructor(
+    platform: PlatformType,
+    authCls: new (storage: StorageService) => BaseAuthService,
+    storage: StorageService
+  ) {
+    this.auth = new authCls(storage);
     this.platform = platform;
     this.storage = storage;
   }
@@ -61,6 +101,49 @@ export class BasePlatformService implements PlatformService {
   async saveTheme(theme: string) {
     console.log("saveTheme", theme);
     await this.storage.set("theme", theme);
+  }
+
+  // Workspace.
+  async saveSelectedWorkspace({ workspaceId }: { workspaceId: string }) {
+    const storedUser = await this.auth.getStoredUser();
+    if (!storedUser) {
+      throw new Error("No user found.");
+    }
+
+    storedUser.selectedWorkspace = workspaceId;
+    await this.storage.set("user", storedUser);
+
+    return storedUser;
+  }
+
+  // Helpers.
+
+  async clearStoredData() {
+    await Promise.all([
+      this.storage.delete("accessToken"),
+      this.storage.delete("expiresAt"),
+      this.storage.delete("refreshToken"),
+      this.storage.delete("user"),
+    ]);
+  }
+
+  // Content fragments.
+  async getFileContentFragmentId(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _conversationId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _file: UploadedFileWithKind
+  ): Promise<string | null> {
+    throw new Error("Platform specific implementation required.");
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async saveFilesContentFragmentIds(args: {
+    conversationId: string;
+    uploadedFiles: UploadedFileWithKind[];
+    createdContentFragments: ContentFragmentType[];
+  }): Promise<void> {
+    throw new Error("Platform specific implementation required.");
   }
 }
 

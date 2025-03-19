@@ -7,15 +7,11 @@ import {
 } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
-import type { StoredUser } from "@app/shared/lib/storage";
-import {
-  getFileContentFragmentId,
-  saveFilesContentFragmentIds,
-} from "@app/shared/lib/storage";
 import type {
   UploadedFileWithKind,
   UploadedFileWithSupersededContentFragmentId,
 } from "@app/shared/lib/types";
+import type { StoredUser } from "@app/shared/services/auth";
 import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
@@ -105,7 +101,7 @@ export function ConversationContainer({
             // Get the content fragment ID to supersede for a given file.
             // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
             const supersededContentFragmentId: string | undefined =
-              (await getFileContentFragmentId(conversationId, file)) ??
+              (await platform.getFileContentFragmentId(conversationId, file)) ??
               undefined;
 
             contentFragmentFiles.push({
@@ -116,7 +112,7 @@ export function ConversationContainer({
             });
           }
 
-          const result = await postMessage({
+          const result = await postMessage(platform, {
             dustAPI,
             conversationId,
             messageData,
@@ -127,7 +123,7 @@ export function ConversationContainer({
             const { message, contentFragments } = result.value;
 
             // Save content fragment IDs for tab contents to the local storage.
-            await saveFilesContentFragmentIds({
+            await platform.saveFilesContentFragmentIds({
               conversationId,
               uploadedFiles: files,
               createdContentFragments: contentFragments,
@@ -183,7 +179,7 @@ export function ConversationContainer({
         mentions: AgentMentionType[],
         files: UploadedFileWithKind[]
       ) => {
-        const conversationRes = await postConversation({
+        const conversationRes = await postConversation(platform, {
           dustAPI,
           messageData: {
             input,
@@ -215,7 +211,7 @@ export function ConversationContainer({
             }
           }
           // Save the content fragment IDs for tab contents to the local storage.
-          await saveFilesContentFragmentIds({
+          await platform.saveFilesContentFragmentIds({
             conversationId: conversationRes.value.sId,
             uploadedFiles: files,
             createdContentFragments: contentFragments,

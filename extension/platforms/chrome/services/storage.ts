@@ -14,14 +14,22 @@ export class ChromeStorageService implements StorageService {
   }
 
   async delete(key: string): Promise<void> {
-    await this.storage.remove([key]);
+    return new Promise((resolve, reject) => {
+      this.storage.remove([key], () => {
+        if (chrome.runtime.lastError) {
+          return reject(chrome.runtime.lastError);
+        }
+
+        return resolve();
+      });
+    });
   }
 
-  async clear(): Promise<void> {
+  async clear() {
     await this.storage.clear();
   }
 
-  onChange(callback: (changes: Record<string, any>) => void): () => void {
+  onChanged(callback: (changes: Record<string, any>) => void): () => void {
     const listener = (
       changes: Record<string, chrome.storage.StorageChange>
     ) => {
