@@ -14,7 +14,7 @@ import {
   RobotIcon,
   ScrollArea,
 } from "@dust-tt/sparkle";
-import { filterAndSortAgents } from "@extension/lib/utils";
+import { filterAndSortAgents } from "@app/shared/lib/utils";
 import { useEffect, useState } from "react";
 
 export function AssistantPicker({

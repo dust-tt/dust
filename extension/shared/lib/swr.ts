@@ -1,4 +1,4 @@
-import { useAuthErrorCheck } from "@extension/hooks/useAuthErrorCheck";
+import { useAuthErrorCheck } from "@app/ui/hooks/useAuthErrorCheck";
 import { useCallback } from "react";
 import type { Fetcher, Key, SWRConfiguration } from "swr";
 import useSWR, { useSWRConfig } from "swr";

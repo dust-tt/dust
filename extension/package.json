@@ -4,11 +4,11 @@
   "description": "Dust Chrome Extension",
   "scripts": {
     "clean": "rm -rf build/*",
-    "dev": "npm run clean && tsx run/watch.ts --mode=development",
-    "package:production": "tsx run/build.ts",
-    "package:release": "tsx run/build.ts --release",
-    "analyze": "tsx run/build.ts --analyze",
-    "lint": "eslint app",
+    "dev:chrome": "npm run clean && tsx run/watch.ts --platform=chrome",
+    "package:chrome:production": "tsx run/build.ts --platform=chrome",
+    "package:chrome:release": "tsx run/build.ts --platform=chrome --release",
+    "analyze:chrome": "tsx run/build.ts --platform=chrome --analyze",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

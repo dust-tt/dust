@@ -14,7 +14,7 @@ import ZipPlugin from "zip-webpack-plugin";
 
 import type { Environment } from "../../config/env";
 
-const rootDir = path.resolve(__dirname, "../");
+const rootDir = path.resolve(__dirname);
 
 const resolvePath = (...segments: string[]) =>
   path.resolve(rootDir, ...segments);
@@ -40,8 +40,8 @@ export const getConfig = async ({
   shouldBuild: "none" | "prod" | "analyze";
 }): Promise<Configuration> => {
   const isDevelopment = env === "development";
-  const baseManifestPath = resolvePath("./config/manifest.base.json");
-  const envManifestPath = resolvePath(`./config/manifest.${env}.json`);
+  const baseManifestPath = resolvePath("./manifests/manifest.base.json");
+  const envManifestPath = resolvePath(`./manifests/manifest.${env}.json`);
 
   const baseManifest = JSON.parse(await readFileAsync(baseManifestPath));
   const envManifest = JSON.parse(await readFileAsync(envManifestPath));
@@ -51,7 +51,7 @@ export const getConfig = async ({
   const buildDirPath = resolvePath("./build");
 
   const packageDirPath =
-    shouldBuild === "prod" ? resolvePath("./packages") : null;
+    shouldBuild === "prod" ? resolvePath("../../packages") : null;
 
   return {
     mode: isDevelopment ? "development" : "production",
@@ -73,9 +73,9 @@ export const getConfig = async ({
     performance: false,
     devtool: isDevelopment ? "inline-source-map" : undefined,
     entry: {
-      main: resolvePath("./app/main.tsx"),
-      background: resolvePath("./app/background.ts"),
-      page: resolvePath("./app/page.ts"),
+      main: resolvePath("./main.tsx"),
+      background: resolvePath("./background.ts"),
+      page: resolvePath("./page.ts"),
     },
     output: {
       path: buildDirPath,
@@ -85,10 +85,8 @@ export const getConfig = async ({
     resolve: {
       extensions: [".js", ".json", ".mjs", ".jsx", ".ts", ".tsx"],
       alias: {
-        "@app": path.resolve(__dirname, "./"),
+        "@app": path.resolve(__dirname, "../../"),
         redis: false,
-        // stream: "stream-browserify",
-        // next: false,
       },
       fallback: {
         url: false,
@@ -115,7 +113,7 @@ export const getConfig = async ({
               loader: "postcss-loader",
               options: {
                 postcssOptions: {
-                  config: path.resolve(__dirname, "postcss.config.js"),
+                  config: resolvePath("../../config/postcss.config.js"),
                 },
               },
             },
@@ -126,7 +124,7 @@ export const getConfig = async ({
           use: {
             loader: "ts-loader",
             options: {
-              configFile: resolvePath("./tsconfig.json"),
+              configFile: resolvePath("../../tsconfig.json"),
             },
           },
           exclude: /node_modules/,
@@ -149,7 +147,9 @@ export const getConfig = async ({
         Buffer: ["buffer", "Buffer"],
       }),
       new Dotenv({
-        path: isDevelopment ? "./.env.development" : "./.env.production",
+        path: isDevelopment
+          ? resolvePath("../../.env.development")
+          : resolvePath("../../.env.production"),
       }),
       new CopyPlugin({
         patterns: [
@@ -165,11 +165,11 @@ export const getConfig = async ({
             to: path.join(buildDirPath, "manifest.json"),
           },
           {
-            from: resolvePath("./app/main.html"),
+            from: resolvePath("../../ui/main.html"),
             to: path.join(buildDirPath, "main.html"),
           },
           {
-            context: resolvePath("./app/images"),
+            context: resolvePath("../../ui/images"),
             from: "**/*.png",
             to: path.resolve(buildDirPath, "images"),
           },

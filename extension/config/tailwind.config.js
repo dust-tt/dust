@@ -420,7 +420,7 @@ module.exports = {
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
   ],
-  content: ["./app/**/*.tsx"],
+  content: ["./ui/**/*.tsx"],
   safelist: [
     {
       pattern: /^bg-/,

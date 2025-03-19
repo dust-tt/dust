@@ -25,6 +25,6 @@
       "@app/*": ["./*"]
     }
   },
-  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*"],
+  "include": ["./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
   "exclude": ["node_modules", "build"]
 }

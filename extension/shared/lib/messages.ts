@@ -1,4 +1,4 @@
-import { saveTokens } from "@extension/lib/storage";
+import { saveTokens } from "@app/shared/lib/storage";
 
 export type Auth0AuthorizeResponse = {
   accessToken: string;

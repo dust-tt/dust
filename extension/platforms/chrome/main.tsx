@@ -1,14 +1,14 @@
 // Tailwind base globals
-import "../css/global.css";
+import "../../ui/css/global.css";
 // Use sparkle styles, override local globals
 import "@dust-tt/sparkle/dist/sparkle.css";
 // Local tailwind components override sparkle styles
-import "../css/components.css";
+import "../../ui/css/components.css";
 // Local custom styles
-import "../css/custom.css";
+import "../../ui/css/custom.css";
 
+import { PortProvider } from "@app/platforms/chrome/contextes/PortContext";
 import { AuthProvider } from "@app/ui/components/auth/AuthProvider";
-import { PortProvider } from "@app/ui/contextes/PortContext";
 import { routes } from "@app/ui/pages/routes";
 import { Notification } from "@dust-tt/sparkle";
 import ReactDOM from "react-dom/client";

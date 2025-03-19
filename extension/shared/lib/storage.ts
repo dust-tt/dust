@@ -1,10 +1,10 @@
+import type { Auth0AuthorizeResponse } from "@app/shared/lib/messages";
+import type { UploadedFileWithKind } from "@app/shared/lib/types";
 import type {
   ContentFragmentType,
   ExtensionWorkspaceType,
   UserType,
 } from "@dust-tt/client";
-import type { Auth0AuthorizeResponse } from "@extension/lib/messages";
-import type { UploadedFileWithKind } from "@extension/lib/types";
 
 export type UserTypeWithExtensionWorkspaces = UserType & {
   workspaces: ExtensionWorkspaceType[];

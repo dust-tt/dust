@@ -1,12 +1,9 @@
-import type { PendingUpdate } from "shared/lib/storage";
-import { getStoredUser, savePendingUpdate } from "shared/lib/storage";
-
 import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
   DUST_API_AUDIENCE,
-} from "../../shared/lib/config";
-import { extractPage } from "../../shared/lib/extraction";
+} from "@app/shared/lib/config";
+import { extractPage } from "@app/shared/lib/extraction";
 import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
@@ -16,8 +13,10 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "../../shared/lib/messages";
-import { generatePKCE } from "../../shared/lib/utils";
+} from "@app/shared/lib/messages";
+import type { PendingUpdate } from "@app/shared/lib/storage";
+import { getStoredUser, savePendingUpdate } from "@app/shared/lib/storage";
+import { generatePKCE } from "@app/shared/lib/utils";
 
 const log = console.error;
 

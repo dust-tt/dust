@@ -1,27 +1,27 @@
-import type { Result, WorkspaceType } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
 import {
   AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
   DUST_EU_URL,
   DUST_US_URL,
-} from "@extension/lib/config";
+} from "@app/shared/lib/config";
 import {
   sendAuthMessage,
   sendRefreshTokenMessage,
   sentLogoutMessage,
-} from "@extension/lib/messages";
+} from "@app/shared/lib/messages";
 import type {
   StoredTokens,
   StoredUser,
   UserTypeWithExtensionWorkspaces,
-} from "@extension/lib/storage";
+} from "@app/shared/lib/storage";
 import {
   clearStoredData,
   getStoredTokens,
   saveTokens,
   saveUser,
-} from "@extension/lib/storage";
+} from "@app/shared/lib/storage";
+import type { Result, WorkspaceType } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
 
 const REGIONS = ["europe-west1", "us-central1"] as const;

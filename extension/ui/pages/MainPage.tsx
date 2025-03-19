@@ -2,6 +2,7 @@ import { getTheme, saveTheme } from "@app/shared/lib/storage";
 import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
+import { ConversationContainer } from "@app/ui/components/conversation/ConversationContainer";
 import { ConversationsListButton } from "@app/ui/components/conversation/ConversationsListButton";
 import { FileDropProvider } from "@app/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@app/ui/components/DropzoneContainer";
@@ -10,7 +11,6 @@ import {
   Avatar,
   BarHeader,
   Button,
-  ConversationContainer,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

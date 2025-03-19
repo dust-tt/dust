@@ -1,6 +1,6 @@
 import type { AgentConfigurationViewType } from "@dust-tt/client";
-import { useDustAPI } from "@extension/lib/dust_api";
-import { useSWRWithDefaults } from "@extension/lib/swr";
+import { useDustAPI } from "@app/shared/lib/dust_api";
+import { useSWRWithDefaults } from "@app/shared/lib/swr";
 import { useMemo } from "react";
 
 export function usePublicAgentConfigurations(
