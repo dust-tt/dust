@@ -13,8 +13,8 @@ import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[s
 import type {
   DataSourceViewType,
   LightWorkspaceType,
-  PatchDataSourceWithNameDocumentRequestBody,
-  PostDataSourceWithNameDocumentRequestBody,
+  PatchDataSourceDocumentRequestBody,
+  PostDataSourceDocumentRequestBody,
 } from "@app/types";
 
 export function useDataSourceViewDocument({
@@ -32,7 +32,8 @@ export function useDataSourceViewDocument({
     fetcher;
   const url =
     dataSourceView && documentId
-      ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
+      ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/` +
+        `${dataSourceView.sId}/documents/${encodeURIComponent(documentId)}`
       : null;
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -54,7 +55,7 @@ export function useDataSourceViewDocument({
 export function useUpdateDataSourceViewDocument(
   owner: LightWorkspaceType,
   dataSourceView: DataSourceViewType,
-  documentName: string
+  documentId: string
 ) {
   const { mutateRegardlessOfQueryParams: mutateContentNodes } =
     useDataSourceViewContentNodes({
@@ -67,14 +68,16 @@ export function useUpdateDataSourceViewDocument(
   const { mutateDocument } = useDataSourceViewDocument({
     owner,
     dataSourceView,
-    documentId: documentName,
+    documentId,
     disabled: true, // Needed just to create
   });
 
   const sendNotification = useSendNotification();
 
-  const doUpdate = async (body: PatchDataSourceWithNameDocumentRequestBody) => {
-    const patchUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentName)}`;
+  const doUpdate = async (body: PatchDataSourceDocumentRequestBody) => {
+    const patchUrl =
+      `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/` +
+      `data_sources/${dataSourceView.dataSource.sId}/documents/${encodeURIComponent(documentId)}`;
     const res = await fetch(patchUrl, {
       method: "PATCH",
       headers: {
@@ -121,8 +124,10 @@ export function useCreateDataSourceViewDocument(
 
   const sendNotification = useSendNotification();
 
-  const doCreate = async (body: PostDataSourceWithNameDocumentRequestBody) => {
-    const createUrl = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/documents`;
+  const doCreate = async (body: PostDataSourceDocumentRequestBody) => {
+    const createUrl =
+      `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/` +
+      `data_sources/${dataSourceView.dataSource.sId}/documents`;
     const res = await fetch(createUrl, {
       method: "POST",
       headers: {
