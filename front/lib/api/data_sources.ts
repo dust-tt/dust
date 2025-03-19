@@ -656,7 +656,7 @@ export async function upsertTable({
   ) {
     return new Err({
       name: "dust_error",
-      code: "title_too_long",
+      code: params.title.length === 0 ? "title_is_empty" : "title_too_long",
       message:
         "Invalid title:" +
         (params.title.length === 0
