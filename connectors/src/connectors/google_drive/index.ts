@@ -247,20 +247,6 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new ConnectorManagerError("CONNECTOR_NOT_FOUND", "Connector not found")
       );
     }
-    let authCredentials;
-    try {
-      authCredentials = await getAuthObject(c.connectionId);
-    } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
-        return new Err(
-          new ConnectorManagerError(
-            "EXTERNAL_OAUTH_TOKEN_ERROR",
-            `Google Drive authorization error, please re-authorize. Error: ${e.message}`
-          )
-        );
-      }
-      throw e;
-    }
 
     if (isTablesView && filterPermission !== "read") {
       return new Err(
@@ -272,6 +258,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     }
 
     try {
+      const authCredentials = await getAuthObject(c.connectionId);
       const parentDriveId =
         parentInternalId && getDriveFileId(parentInternalId);
       if (filterPermission === "read") {
@@ -539,7 +526,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
-            "Google Drive authorization error, please re-authorize."
+            `Google Drive authorization error, please re-authorize. Error: ${e.message}`
           )
         );
       }
