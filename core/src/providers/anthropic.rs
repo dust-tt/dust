@@ -1127,6 +1127,14 @@ impl AnthropicLLM {
                                                 StreamContent::AnthropicStreamThinking(
                                                     thinking,
                                                 ) => {
+                                                    // Send <thinking> tag at the start of a thinking block
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": "<thinking>",
+                                                        },
+                                                    }));
+                                                    // Then send the actual thinking content
                                                     let _ = event_sender.send(json!({
                                                         "type": "tokens",
                                                         "content": {
@@ -1233,7 +1241,7 @@ impl AnthropicLLM {
                                 }
                                 }
                                 "content_block_stop" => {
-                                    let _: StreamContentBlockStop =
+                                    let stop_event: StreamContentBlockStop =
                                         match serde_json::from_str(event.data.as_str()) {
                                             Ok(event) => event,
                                             Err(error) => {
@@ -1245,6 +1253,24 @@ impl AnthropicLLM {
                                                 break 'stream;
                                             }
                                         };
+
+                                    // Check if the stopping block is a thinking block
+                                    match final_response.as_ref() {
+                                        Some(response) => {
+                                            if let Some(content) = response.content.get(stop_event.index as usize) {
+                                                if let StreamContent::AnthropicStreamThinking(_) = content {
+                                                    // Send </thinking> tag at the end of a thinking block
+                                                    let _ = event_sender.send(json!({
+                                                        "type": "tokens",
+                                                        "content": {
+                                                            "text": "</thinking>",
+                                                        },
+                                                    }));
+                                                }
+                                            }
+                                        },
+                                        None => {}
+                                    }
                                 }
                                 "message_delta" => {
                                     let event: StreamMessageDelta =
