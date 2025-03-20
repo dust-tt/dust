@@ -51,7 +51,7 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Handle CORS for public API endpoints
+  // Handle CORS only for public API endpoints.
   if (url.startsWith("/v1")) {
     if (request.method === "OPTIONS") {
       const response = new NextResponse(null, { status: 200 });
@@ -64,25 +64,16 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // Handle development environment CORS
-  if (process.env.NODE_ENV === "development") {
-    if (request.method === "OPTIONS") {
-      const response = new NextResponse(null, { status: 200 });
-      setDevCorsHeaders(response);
-      return response;
-    }
-
-    const response = NextResponse.next();
-    setDevCorsHeaders(response);
-    return response;
-  }
-
   return NextResponse.next();
 }
 
 function setCorsHeaders(response: NextResponse, request: NextRequest) {
   const origin = request.headers.get("origin");
-  if (origin && isAllowedOrigin(origin)) {
+
+  if (process.env.NODE_ENV === "development" && origin === DEV_ORIGIN) {
+    response.headers.set("Access-Control-Allow-Origin", DEV_ORIGIN);
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  } else if (origin && isAllowedOrigin(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   }
@@ -95,16 +86,6 @@ function setCorsHeaders(response: NextResponse, request: NextRequest) {
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type, X-Request-Origin, x-Commit-Hash, X-Dust-Extension-Version"
   );
-}
-
-function setDevCorsHeaders(response: NextResponse) {
-  response.headers.set("Access-Control-Allow-Origin", DEV_ORIGIN);
-  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.headers.set(
-    "Access-Control-Allow-Headers",
-    "Authorization, X-Request-Origin, x-Commit-Hash, X-Dust-Extension-Version, Content-Type"
-  );
-  response.headers.set("Access-Control-Allow-Credentials", "true");
 }
 
 export const config = {
