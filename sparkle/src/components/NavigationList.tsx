@@ -177,7 +177,7 @@ const variantStyles = cva("", {
     isSticky: {
       true: cn(
         "s-sticky s-top-0 s-z-10 s-border-b s-bg-background dark:s-bg-background-night",
-        "s-border-border/60 dark:s-border-border-night/60"
+        "s-border-border dark:s-border-border-night"
       ),
     },
   },

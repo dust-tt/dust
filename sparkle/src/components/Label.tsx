@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@sparkle/lib/utils";
 
 const labelVariants = cn(
-  "s-text-sm s-font-medium s-leading-none",
+  "s-text-sm s-font-semibold s-leading-none",
   "s-text-foreground dark:s-text-foreground-night",
   "peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
 );

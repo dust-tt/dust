@@ -65,7 +65,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
           >
             <Icon
               visual={item.icon}
-              className="s-text-foreground dark:s-text-muted-foreground-night"
+              className="s-text-muted-foreground dark:s-text-muted-foreground-night"
             />
             {item.label === ELLIPSIS_STRING ? (
               <DropdownMenu>
@@ -119,7 +119,7 @@ export function Breadcrumbs({ items, className }: BreadcrumbProps) {
               </div>
             )}
             {index === itemsShown.length - 1 ? null : (
-              <ChevronRightIcon className="s-text-primary-300 dark:s-text-primary-400-night" />
+              <ChevronRightIcon className="s-text-primary-300 dark:s-text-primary-700" />
             )}
           </div>
         );
