@@ -54,7 +54,11 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfiguration(
+    auth,
+    req.query.aId as string,
+    "light"
+  );
 
   if (
     !assistant ||

@@ -521,7 +521,11 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(auth, agentConfigurationId);
+    const agent = await getAgentConfiguration(
+      auth,
+      agentConfigurationId,
+      "light"
+    );
 
     if (!agent) {
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);

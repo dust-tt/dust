@@ -84,7 +84,7 @@ async function updateAgent(
   execute: boolean,
   logger: Logger
 ) {
-  const assistant = await getAgentConfiguration(auth, agent.sId);
+  const assistant = await getAgentConfiguration(auth, agent.sId, "full");
   if (!assistant) {
     logger.error(
       {

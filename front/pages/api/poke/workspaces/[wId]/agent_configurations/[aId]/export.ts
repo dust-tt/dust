@@ -53,7 +53,7 @@ async function handler(
     });
   }
 
-  const agentConfiguration = await getAgentConfiguration(auth, aId);
+  const agentConfiguration = await getAgentConfiguration(auth, aId, "full");
   if (!agentConfiguration) {
     return apiError(req, res, {
       status_code: 404,

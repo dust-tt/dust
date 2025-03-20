@@ -82,7 +82,8 @@ export async function* runAgent(
 > {
   const fullConfiguration = await getAgentConfiguration(
     auth,
-    configuration.sId
+    configuration.sId,
+    "full"
   );
   if (!fullConfiguration) {
     throw new Error(

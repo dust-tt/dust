@@ -20,7 +20,8 @@ async function handler(
     case "GET":
       const agentConfiguration = await getAgentConfiguration(
         auth,
-        req.query.aId as string
+        req.query.aId as string,
+        "light"
       );
       if (!agentConfiguration) {
         return apiError(req, res, {

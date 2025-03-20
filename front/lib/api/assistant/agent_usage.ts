@@ -15,7 +15,6 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getAssistantUsageData } from "@app/lib/workspace_usage";
 import { launchMentionsCountWorkflow } from "@app/temporal/mentions_count_queue/client";
 import type {
-  AgentConfigurationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
@@ -107,7 +106,7 @@ export async function getAgentUsage(
     rankingUsageDays = RANKING_USAGE_DAYS,
   }: {
     workspaceId: string;
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: LightAgentConfigurationType;
     providedRedis?: RedisClientType;
     rankingUsageDays?: number;
   }
@@ -157,16 +156,16 @@ export async function agentMentionsCount(
   const mentions = await readReplica.query(
     `
     WITH message_counts AS (
-      SELECT 
+      SELECT
         mentions."agentConfigurationId",
         COUNT(DISTINCT mentions.id) as message_count,
-        COUNT(DISTINCT c.id) as conversation_count, 
+        COUNT(DISTINCT c.id) as conversation_count,
         COUNT(DISTINCT um."userId") as user_count
       FROM conversations c
-      INNER JOIN messages m ON m."conversationId" = c.id 
+      INNER JOIN messages m ON m."conversationId" = c.id
       INNER JOIN mentions ON mentions."messageId" = m.id
       INNER JOIN user_messages um ON um.id = m."userMessageId"
-      WHERE 
+      WHERE
         c."workspaceId" = :workspaceId
         AND mentions."workspaceId" = :workspaceId
         AND mentions."createdAt" > NOW() - INTERVAL '${rankingUsageDays} days'
@@ -174,7 +173,7 @@ export async function agentMentionsCount(
       GROUP BY mentions."agentConfigurationId"
       ORDER BY message_count DESC
     )
-    SELECT 
+    SELECT
       "agentConfigurationId",
       message_count as "messageCount",
       conversation_count as "conversationCount",

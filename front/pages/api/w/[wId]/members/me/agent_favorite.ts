@@ -48,7 +48,11 @@ async function handler(
 
       const { agentId, userFavorite } = bodyValidation.right;
 
-      const agentConfiguration = await getAgentConfiguration(auth, agentId);
+      const agentConfiguration = await getAgentConfiguration(
+        auth,
+        agentId,
+        "light"
+      );
       if (!agentConfiguration) {
         return apiError(req, res, {
           status_code: 404,
