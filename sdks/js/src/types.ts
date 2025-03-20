@@ -2620,6 +2620,12 @@ export const ContentNodesViewTypeSchema = z.union([
   z.literal("all"),
 ]);
 
+export const ContentNodeSearchUseCase = z.union([
+  z.literal("pasteUrl"),
+  z.literal("searchNode"),
+  z.undefined()
+])
+
 export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
 
 export const BaseSearchBodySchema = z.object({
@@ -2627,6 +2633,7 @@ export const BaseSearchBodySchema = z.object({
   spaceIds: z.array(z.string()),
   includeDataSources: z.boolean(),
   limit: z.number(),
+  useCase: ContentNodeSearchUseCase
 });
 
 const TextSearchBodySchema = z.intersection(
