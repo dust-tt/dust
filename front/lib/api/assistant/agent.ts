@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -16,7 +18,6 @@ import {
   isTablesQueryConfiguration,
   isWebsearchConfiguration,
 } from "@app/lib/actions/types/guards";
-import _ from "lodash";
 import { getCitationsCount } from "@app/lib/actions/utils";
 import {
   AgentMessageContentParser,
@@ -54,6 +55,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
@@ -401,28 +403,6 @@ async function* runMultiActionsAgent(
   | AgentChainOfThoughtEvent
   | AgentContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
-
-  if (!model) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "model_does_not_support_multi_actions",
-        message:
-          `The model you selected (${agentConfiguration.model.modelId}) ` +
-          `does not support multi-actions.`,
-      },
-    };
-    return;
-  }
-
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
     availableActions,
     agentMessage,
