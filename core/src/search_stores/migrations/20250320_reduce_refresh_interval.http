@@ -1,0 +1,6 @@
+PUT core.data_sources_nodes_4/_settings
+{
+  "index" : {
+    "refresh_interval" : "5s"
+  }
+}
