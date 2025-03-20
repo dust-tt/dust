@@ -19,7 +19,7 @@ const {
   fetchDatabaseChildPages,
   upsertDatabaseStructuredDataFromCache,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
+  startToCloseTimeout: "15 minutes",
 });
 
 export async function upsertDatabase({
