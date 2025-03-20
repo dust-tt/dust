@@ -201,3 +201,26 @@ export function compareAgentsForSort(
   // default: sort alphabetically
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
+
+export function getWeeklyDateRange(date: Date): {
+  startDate: Date;
+  endDate: Date;
+} {
+  const startDate = getWeekStart(date);
+  const endDate = getWeekEnd(startDate);
+  return { startDate, endDate };
+}
+
+function getWeekEnd(startDate: Date): Date {
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 7);
+  return endDate;
+}
+
+function getWeekStart(date: Date): Date {
+  const dateCopy = new Date(date);
+  dateCopy.setHours(0, 0, 0, 0);
+  const diff =
+    dateCopy.getDate() - dateCopy.getDay() + (dateCopy.getDay() === 0 ? -6 : 1);
+  return new Date(dateCopy.setDate(diff));
+}
