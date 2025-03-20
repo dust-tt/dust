@@ -113,6 +113,7 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   isLoading?: boolean;
   contentMessage?: ContentMessageProps;
   displayItemCount?: boolean;
+  totalItems?: number;
 };
 
 function BaseSearchInputWithPopover<T>(
@@ -133,6 +134,7 @@ function BaseSearchInputWithPopover<T>(
     isLoading,
     contentMessage,
     displayItemCount = false,
+    totalItems,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -220,7 +222,10 @@ function BaseSearchInputWithPopover<T>(
             <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
               <div>
                 {displayItemCount && (
-                  <span>{items.length} search results.</span>
+                  <span>
+                    {items.length} search results
+                    {totalItems && ` (out of ${totalItems})`}.
+                  </span>
                 )}
               </div>
               {onSelectAll && (

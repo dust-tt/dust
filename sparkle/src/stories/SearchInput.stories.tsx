@@ -102,6 +102,7 @@ export function SearchInputWithPopoverScrollableExample() {
         size: "lg",
       }}
       displayItemCount={true}
+      totalItems={100}
       renderItem={(item, selected) => (
         <div
           key={item}
