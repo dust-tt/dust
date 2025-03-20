@@ -48,7 +48,9 @@ const useUrlHandler = (
                 title: node.title,
                 provider: node.dataSourceView.dataSource.connectorProvider,
                 spaceId: node.dataSourceView.spaceId,
+                url: pendingUrl.url,
               },
+              text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
             },
             { type: "text", text: " " },
           ];
