@@ -1,4 +1,5 @@
 import type { RouteChangeMesssage } from "@app/platforms/chrome/messages";
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import type { StoredUser } from "@app/shared/services/auth";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
@@ -18,6 +19,7 @@ export interface ProtectedRouteChildrenProps {
 }
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  const platform = usePlatform();
   const {
     isLoading,
     isAuthenticated,
@@ -30,16 +32,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const listener = (message: RouteChangeMesssage) => {
-      const { type } = message;
-      if (type === "EXT_ROUTE_CHANGE") {
-        navigate({ pathname: message.pathname, search: message.search });
-        return false;
+    const cleanup = platform.messaging.addMessageListener(
+      (message: RouteChangeMesssage) => {
+        const { type } = message;
+        if (type === "EXT_ROUTE_CHANGE") {
+          navigate({ pathname: message.pathname, search: message.search });
+        }
       }
-    };
-    chrome.runtime.onMessage.addListener(listener);
+    );
+
     return () => {
-      chrome.runtime.onMessage.removeListener(listener);
+      cleanup();
     };
   }, [navigate]);
 

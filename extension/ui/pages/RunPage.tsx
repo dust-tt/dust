@@ -12,7 +12,7 @@ export const RunPage = () => {
   const location = useLocation();
   const dustAPI = useDustAPI();
 
-  const fileUploaderService = useFileUploaderService();
+  const fileUploaderService = useFileUploaderService(platform.capture);
 
   useEffect(() => {
     const run = async () => {
