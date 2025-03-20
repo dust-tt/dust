@@ -72,7 +72,6 @@ async function getJITActions(
       );
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
           // The description here is the description of the data, a meta description of the action is prepended automatically.
           description:
