@@ -314,7 +314,7 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   lightDocumentOutput?: boolean;
   title: string;
   mimeType: string;
-  forceRefresh?: boolean;
+  forceSearchIndexRefresh?: boolean;
 }
 
 interface CoreAPIUpsertTablePayload {
@@ -332,7 +332,7 @@ interface CoreAPIUpsertTablePayload {
   title: string;
   mimeType: string;
   sourceUrl: string | null;
-  forceRefresh?: boolean;
+  forceSearchIndexRefresh?: boolean;
 }
 
 interface CoreAPIUpsertDataSourceFolderPayload {
@@ -346,7 +346,7 @@ interface CoreAPIUpsertDataSourceFolderPayload {
   mimeType: string;
   sourceUrl?: string | null;
   providerVisibility: ProviderVisibility | null | undefined;
-  forceRefresh?: boolean;
+  forceSearchIndexRefresh?: boolean;
 }
 
 // TODO(keyword-search): Until we remove the `managed-` prefix, we need to
@@ -1103,7 +1103,7 @@ export class CoreAPI {
     lightDocumentOutput = false,
     title,
     mimeType,
-    forceRefresh,
+    forceSearchIndexRefresh,
   }: CoreAPIUpsertDataSourceDocumentPayload): Promise<
     CoreAPIResponse<{
       document:
@@ -1135,7 +1135,7 @@ export class CoreAPI {
           light_document_output: lightDocumentOutput,
           title: title,
           mime_type: mimeType,
-          force_refresh: forceRefresh,
+          force_search_index_refresh: forceSearchIndexRefresh,
         }),
       }
     );
@@ -1422,7 +1422,7 @@ export class CoreAPI {
     title,
     mimeType,
     sourceUrl,
-    forceRefresh,
+    forceSearchIndexRefresh,
   }: CoreAPIUpsertTablePayload): Promise<
     CoreAPIResponse<{ table: CoreAPITable }>
   > {
@@ -1448,7 +1448,7 @@ export class CoreAPI {
           title,
           mime_type: mimeType,
           source_url: sourceUrl,
-          force_refresh: forceRefresh,
+          force_search_index_refresh: forceSearchIndexRefresh,
         }),
       }
     );
@@ -1989,7 +1989,7 @@ export class CoreAPI {
     mimeType,
     sourceUrl,
     providerVisibility,
-    forceRefresh,
+    forceSearchIndexRefresh,
   }: CoreAPIUpsertDataSourceFolderPayload): Promise<
     CoreAPIResponse<{ folder: CoreAPIFolder }>
   > {
@@ -2011,7 +2011,7 @@ export class CoreAPI {
           mime_type: mimeType,
           source_url: sourceUrl,
           provider_visibility: providerVisibility,
-          force_refresh: forceRefresh,
+          force_search_index_refresh: forceSearchIndexRefresh,
         }),
       }
     );
