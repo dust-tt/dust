@@ -43,7 +43,9 @@ function buildNodeSerializers(schema: Schema) {
     state: MarkdownSerializerState,
     node: ProseMirrorNode
   ) => {
-    state.write(`:url_mention[${node.attrs.title}]{url=${node.attrs.url}}`);
+    state.write(
+      `:content_node_mention[${node.attrs.title}]{url=${node.attrs.url}}`
+    );
   };
 
   // Add fallback for any missing nodes in schema.

@@ -1,16 +1,21 @@
 import { Chip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
-export function UrlMentionBlock({ title }: { title: string; url: string }) {
+export function ContentNodeMentionBlock({
+  title,
+}: {
+  title: string;
+  url: string;
+}) {
   return <Chip label={title} size="xs" color="sky" />;
 }
 
-export function urlMentionDirective() {
+export function contentNodeMentionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
-      if (node.name === "url_mention" && node.children[0]) {
+      if (node.name === "content_node_mention" && node.children[0]) {
         const data = node.data || (node.data = {});
-        data.hName = "url_mention";
+        data.hName = "content_node_mention";
         data.hProperties = {
           title: node.children[0].value,
           url: node.attributes.url,
