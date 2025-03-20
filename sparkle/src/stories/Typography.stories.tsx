@@ -201,7 +201,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
       >
         {Object.entries(headingMonoSizes).map(([sizeKey, headingClass]) => (
           <div key={sizeKey} className={headingClass}>
-            <div>{`Mono Heading ${sizeKey}`}</div>
+            <div>{`Heading Mono ${sizeKey}`}</div>
             <p>{loremIpsum}</p>
           </div>
         ))}
