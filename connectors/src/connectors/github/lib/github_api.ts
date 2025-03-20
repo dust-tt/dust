@@ -780,6 +780,8 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
   }
 }
 
+const MAX_REPO_SIZE_GB = 15;
+
 // This function returns file and directories object with parent, internalIds, and sourceUrl
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
@@ -810,12 +812,12 @@ export async function processRepository({
 
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
-  if (data.size > 10 * 1024 * 1024) {
+  if (data.size > MAX_REPO_SIZE_GB * 1024 * 1024 * 1024) {
     // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
     // error to return a syncFailed to the user, or increase this limit if we want some largers
     // repositories).
     throw new Error(
-      `Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
+      `Repository is too large to sync (size: ${data.size}KB, max: ${MAX_REPO_SIZE_GB}GB)`
     );
   }
 
