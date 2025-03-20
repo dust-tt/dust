@@ -289,6 +289,7 @@ export async function upsertDocument({
   auth,
   mime_type,
   title,
+  force_refresh,
 }: UpsertDocumentArgs): Promise<
   Result<
     {
@@ -460,6 +461,7 @@ export async function upsertDocument({
     lightDocumentOutput: light_document_output === true,
     title,
     mimeType: mime_type,
+    forceRefresh: force_refresh,
   });
 
   if (upsertRes.isErr()) {
@@ -792,6 +794,7 @@ export async function upsertTable({
     title: params.title,
     mimeType: params.mimeType,
     sourceUrl: standardizedSourceUrl,
+    forceRefresh: params.force_refresh,
   });
 
   if (tableRes.isErr()) {
