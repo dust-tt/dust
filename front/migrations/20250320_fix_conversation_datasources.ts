@@ -10,8 +10,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
-
-import { makeScript } from "../scripts/helpers";
+import { makeScript } from "@app/scripts/helpers";
 
 interface DuplicateConversation {
   conversationId: number;

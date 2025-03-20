@@ -1,5 +1,7 @@
 import { getRedisClient } from "./api/redis";
 
+const WAIT_BETWEEN_RETRIES = 100;
+
 export class Lock {
   static async executeWithLock<T>(
     lockName: string,
@@ -20,7 +22,7 @@ export class Lock {
         throw new Error(`Lock acquisition timed out for ${lockName}`);
       }
       // Wait a bit before retrying
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, WAIT_BETWEEN_RETRIES));
     }
 
     try {
