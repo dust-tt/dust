@@ -7,6 +7,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
+  NON_PASTABLE_NODES_MIME_TYPES,
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
@@ -34,6 +35,11 @@ const BaseSearchBody = t.type({
   spaceIds: t.union([t.array(t.string), t.undefined]),
   includeDataSources: t.boolean,
   limit: t.number,
+  useCase: t.union([
+    t.literal("pasteUrl"),
+    t.literal("searchNode"),
+    t.undefined,
+  ]),
 });
 
 const TextSearchBody = t.intersection([
@@ -96,7 +102,7 @@ async function handler(
     });
   }
 
-  const { query, includeDataSources, viewType, spaceIds, nodeIds } =
+  const { query, includeDataSources, viewType, spaceIds, nodeIds, useCase } =
     bodyValidation.right;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -139,11 +145,16 @@ async function handler(
     });
   }
 
+  const excludedNodeMimeTypes =
+    useCase === "pasteUrl"
+      ? NON_PASTABLE_NODES_MIME_TYPES
+      : NON_SEARCHABLE_NODES_MIME_TYPES;
+
   const searchFilterResult = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     allDatasourceViews,
     {
-      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
+      excludedNodeMimeTypes,
       includeDataSources,
       viewType,
       nodeIds,
