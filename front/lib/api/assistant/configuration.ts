@@ -106,23 +106,31 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
 
 /**
  * Get an agent configuration
- *
  */
-export async function getAgentConfiguration(
+export async function getAgentConfiguration<V extends "light" | "full">(
   auth: Authenticator,
-  agentId: string
-): Promise<AgentConfigurationType | null> {
+  agentId: string,
+  variant: V
+): Promise<
+  | (V extends "light" ? LightAgentConfigurationType : AgentConfigurationType)
+  | null
+> {
   const res = await getAgentConfigurations({
     auth,
     agentsGetView: { agentIds: [agentId] },
-    variant: "full",
+    variant,
   });
-  return res[0] || null;
+  // `as` is required here because the type collapses to `LightAgentConfigurationType |
+  // AgentConfigurationType` as we access the first element of the array.
+  return (
+    (res[0] as V extends "light"
+      ? LightAgentConfigurationType
+      : AgentConfigurationType) || null
+  );
 }
 
 /**
  * Search agent configurations by name
- *
  */
 export async function searchAgentConfigurationsByName(
   auth: Authenticator,

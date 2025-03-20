@@ -32,7 +32,11 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfiguration(
+    auth,
+    req.query.aId as string,
+    "full"
+  );
   if (
     !assistant ||
     (assistant.scope === "private" &&
