@@ -14,4 +14,30 @@ export class ChromeBrowserMessagingService implements BrowserMessagingService {
   ) {
     chrome.runtime.onMessage.removeListener(listener);
   }
+
+  sendMessage<T = any, R = any>(
+    message: T,
+    callback?: (response: R) => void
+  ): void | Promise<R> {
+    if (!callback) {
+      return chrome.runtime.sendMessage(message);
+    }
+
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.runtime.sendMessage(message, (response: R | undefined) => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else if (response === undefined) {
+            reject(new Error("No response received"));
+          } else {
+            callback(response);
+            resolve(response);
+          }
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
 }

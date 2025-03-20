@@ -1,5 +1,4 @@
 import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
-import { sendInputBarStatus } from "@app/platforms/chrome/messages";
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
@@ -22,7 +21,14 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 /**
  *
@@ -90,6 +96,16 @@ export function AssistantInputBar({
   } = fileUploaderService;
 
   const platform = usePlatform();
+
+  const sendInputBarStatus = useCallback(
+    (available: boolean) => {
+      void platform.browserMessaging.sendMessage({
+        type: "EXT_INPUT_BAR_STATUS",
+        available,
+      });
+    },
+    [platform.browserMessaging]
+  );
 
   useEffect(() => {
     void sendInputBarStatus(true);

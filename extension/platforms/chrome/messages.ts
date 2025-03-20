@@ -1,3 +1,4 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import type { AuthService } from "@app/shared/services/auth";
 
 export type Auth0AuthorizeResponse = {
@@ -172,13 +173,6 @@ export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
   >({
     type: "GET_ACTIVE_TAB",
     ...params,
-  });
-};
-
-export const sendInputBarStatus = (available: boolean) => {
-  void chrome.runtime.sendMessage({
-    type: "INPUT_BAR_STATUS",
-    available,
   });
 };
 

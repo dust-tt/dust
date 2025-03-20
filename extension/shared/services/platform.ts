@@ -29,8 +29,12 @@ export interface CaptureActionsProps {
 export interface BrowserMessagingService {
   addMessageListener: (
     listener: (message: any) => void | Promise<void>
-  ) => () => void; // Returns cleanup function
+  ) => () => void;
   removeMessageListener: (listener: (message: any) => void) => void;
+  sendMessage<T = any, R = any>(
+    message: T,
+    callback?: (response: R) => void
+  ): void | Promise<R>;
 }
 
 export abstract class CorePlatformService {
