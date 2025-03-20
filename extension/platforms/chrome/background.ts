@@ -8,8 +8,8 @@ import type {
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
 } from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/platform";
-import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
+import type { PendingUpdate } from "@app/platforms/chrome/services/core-platform";
+import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core-platform";
 import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
@@ -21,7 +21,7 @@ import { generatePKCE } from "@app/shared/lib/utils";
 const log = console.error;
 
 // Initialize the platform service.
-const platform = new ChromePlatformService();
+const platform = new ChromeCorePlatformService();
 
 const state: {
   refreshingToken: boolean;
