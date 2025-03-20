@@ -272,7 +272,7 @@ export interface UpsertDocumentArgs {
   auth: Authenticator;
   mime_type: string;
   title: string;
-  force_search_index_refresh?: boolean;
+  force_refresh?: boolean;
 }
 
 export async function upsertDocument({
@@ -289,7 +289,7 @@ export async function upsertDocument({
   auth,
   mime_type,
   title,
-  force_search_index_refresh,
+  force_refresh,
 }: UpsertDocumentArgs): Promise<
   Result<
     {
@@ -461,7 +461,7 @@ export async function upsertDocument({
     lightDocumentOutput: light_document_output === true,
     title,
     mimeType: mime_type,
-    forceSearchIndexRefresh: force_search_index_refresh,
+    forceRefresh: force_refresh,
   });
 
   if (upsertRes.isErr()) {

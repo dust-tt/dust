@@ -1841,7 +1841,7 @@ struct DataSourcesDocumentsUpsertPayload {
     mime_type: String,
     provider_visibility: Option<ProviderVisibility>,
     // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_search_index_refresh: Option<bool>,
+    force_refresh: Option<bool>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1932,7 +1932,7 @@ async fn data_sources_documents_upsert(
                         payload.section,
                         true, // preserve system tags
                         state.search_store.clone(),
-                        payload.force_search_index_refresh.unwrap_or(false),
+                        payload.force_refresh.unwrap_or(false),
                     )
                     .await
                 {
@@ -2428,7 +2428,7 @@ struct DatabasesTablesUpsertPayload {
     provider_visibility: Option<ProviderVisibility>,
 
     // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_search_index_refresh: Option<bool>,
+    force_refresh: Option<bool>,
 }
 
 async fn tables_upsert(
@@ -2505,7 +2505,7 @@ async fn tables_upsert(
             .search_store
             .index_node(
                 NodeItem::Table(table.clone()),
-                payload.force_search_index_refresh.unwrap_or(false),
+                payload.force_refresh.unwrap_or(false),
             )
             .await
         {
@@ -3280,7 +3280,7 @@ struct FoldersUpsertPayload {
     source_url: Option<String>,
     provider_visibility: Option<ProviderVisibility>,
     // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_search_index_refresh: Option<bool>,
+    force_refresh: Option<bool>,
 }
 
 async fn folders_upsert(
@@ -3358,7 +3358,7 @@ async fn folders_upsert(
             .search_store
             .index_node(
                 NodeItem::Folder(folder.clone()),
-                payload.force_search_index_refresh.unwrap_or(false),
+                payload.force_refresh.unwrap_or(false),
             )
             .await
         {
