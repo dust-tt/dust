@@ -139,6 +139,77 @@ const providers: Record<string, Provider> = {
       return null;
     },
   },
+  slack: {
+    matcher: (url: URL): boolean => {
+      return (
+        url.hostname.includes("slack.com") &&
+        url.pathname.includes("/archives/")
+      );
+    },
+    extractor: (url: URL): string | null => {
+      // Extract channel ID from the pathname
+      const pathParts = url.pathname.split("/");
+      const channelIndex = pathParts.indexOf("archives");
+      if (channelIndex === -1 || channelIndex + 1 >= pathParts.length) {
+        return null;
+      }
+
+      const channelId = pathParts[channelIndex + 1];
+
+      // Check if this is a thread URL by looking for thread_ts parameter
+      const threadTs = url.searchParams.get("thread_ts");
+      if (threadTs) {
+        return `slack-${channelId}-thread-${threadTs}`;
+      }
+
+      // If not a thread, it's a regular message - extract message timestamp from path
+      if (pathParts.length > channelIndex + 2) {
+        const messagePart = pathParts[channelIndex + 2];
+        if (messagePart && messagePart.startsWith("p")) {
+          // Extract timestamp (remove the 'p' prefix)
+          const timestamp = messagePart.substring(1);
+          const messageDate = new Date(parseInt(timestamp) / 1000);
+
+          // Get week start and end dates
+          const getWeekStart = (date: Date): Date => {
+            const dateCopy = new Date(date);
+            dateCopy.setHours(0);
+            dateCopy.setMinutes(0);
+            dateCopy.setSeconds(0);
+            dateCopy.setMilliseconds(0);
+            const diff =
+              dateCopy.getDate() -
+              dateCopy.getDay() +
+              (dateCopy.getDay() === 0 ? -6 : 1);
+            return new Date(dateCopy.setDate(diff));
+          };
+
+          const getWeekEnd = (date: Date): Date => {
+            const dateCopy = new Date(date);
+            dateCopy.setHours(0);
+            dateCopy.setMinutes(0);
+            dateCopy.setSeconds(0);
+            dateCopy.setMilliseconds(0);
+            const diff =
+              dateCopy.getDate() -
+              dateCopy.getDay() +
+              (dateCopy.getDay() === 0 ? -6 : 1);
+            return new Date(dateCopy.setDate(diff + 7));
+          };
+
+          const startDate = getWeekStart(messageDate);
+          const endDate = getWeekEnd(messageDate);
+
+          const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
+          const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
+
+          return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+        }
+      }
+
+      return null;
+    },
+  },
 };
 
 // Extracts a nodeId from a given url
