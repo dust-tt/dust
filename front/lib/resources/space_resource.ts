@@ -25,7 +25,6 @@ import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_
 import type {
   CombinedResourcePermissions,
   ModelId,
-  ResourcePermission,
   Result,
   SpaceKind,
   SpaceType,
