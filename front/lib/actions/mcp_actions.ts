@@ -1,8 +1,16 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
+import type {
+  Implementation,
+  ListToolsResult,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
+} from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
@@ -12,9 +20,50 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { assertNever } from "@app/types";
+import type { Result } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
+
+// Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
+// See https://github.com/colinhacks/zod/issues/2938
+const ResourceContentsSchema = z.object({
+  uri: z.string(),
+  mimeType: z.optional(z.string()),
+});
+
+const TextResourceContentsSchema = ResourceContentsSchema.extend({
+  text: z.string(),
+});
+
+const BlobResourceContentsSchema = ResourceContentsSchema.extend({
+  blob: z.string().base64(),
+});
+
+const TextContentSchema = z.object({
+  type: z.literal("text"),
+  text: z.string(),
+});
+
+const ImageContentSchema = z.object({
+  type: z.literal("image"),
+  data: z.string().base64(),
+  mimeType: z.string(),
+});
+
+const EmbeddedResourceSchema = z.object({
+  type: z.literal("resource"),
+  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
+});
+
+const Schema = z.union([
+  TextContentSchema,
+  ImageContentSchema,
+  EmbeddedResourceSchema,
+]);
+
+export type MCPToolResultContent = z.infer<typeof Schema>;
 
 function isPropertyCompatibleType(value: unknown): value is {
   title?: string;
@@ -114,7 +163,7 @@ function makeMCPConfigurations({
   });
 }
 
-export const connectToMCPServer = async ({
+const connectToMCPServer = async ({
   serverType,
   internalMCPServerId,
   remoteMCPServerId,
@@ -176,6 +225,120 @@ export const connectToMCPServer = async ({
 
   return mcpClient;
 };
+
+function extractMetadataFromServerVersion(r: Implementation | undefined): {
+  name: string;
+  description: string;
+} {
+  return {
+    name: r?.name ?? DEFAULT_MCP_ACTION_NAME,
+    description:
+      (r && "description" in r && typeof r.description === "string"
+        ? r.description
+        : DEFAULT_MCP_ACTION_DESCRIPTION) ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function updateRemoteMCPServerMetadata(config: {
+  serverType: "remote";
+  remoteMCPServerId: string;
+}) {
+  const remoteMCPServer = await RemoteMCPServer.findOne({
+    where: {
+      sId: config.remoteMCPServerId,
+    },
+  });
+
+  if (!remoteMCPServer) {
+    throw new Error(
+      `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
+    );
+  }
+
+  const mcpClient = await connectToMCPServer(config);
+  const r = await mcpClient.getServerVersion();
+  await mcpClient.close();
+
+  const metadata = extractMetadataFromServerVersion(r);
+
+  await remoteMCPServer.update(metadata);
+}
+
+export async function getMCPServerMetadata(
+  config: AgentMCPServerConfiguration
+): Promise<{
+  name: string;
+  description: string;
+}> {
+  switch (config.serverType) {
+    case "internal":
+      // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
+      const mcpClient = await connectToMCPServer({
+        serverType: config.serverType,
+        internalMCPServerId: config.internalMCPServerId,
+      });
+
+      const r = await mcpClient.getServerVersion();
+      await mcpClient.close();
+
+      return extractMetadataFromServerVersion(r);
+    case "remote":
+      if (!config.remoteMCPServerId) {
+        throw new Error(
+          `Remote MCP server ID is required for remote server type.`
+        );
+      }
+
+      const remoteMCPServer = await RemoteMCPServer.findByPk(
+        config.remoteMCPServerId
+      );
+
+      if (!remoteMCPServer) {
+        throw new Error(
+          `Remote MCP server with remoteMCPServerId ${config.sId} not found.`
+        );
+      }
+
+      // TODO(mcp): add a background job to update the metadata by calling updateRemoteMCPServerMetadata.
+
+      return {
+        name: remoteMCPServer.name,
+        description:
+          remoteMCPServer.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+      };
+
+    default:
+      assertNever(config.serverType);
+  }
+}
+
+export async function callMCPTool({
+  actionConfiguration,
+  rawInputs,
+}: {
+  actionConfiguration: MCPToolConfigurationType;
+  rawInputs: Record<string, unknown> | undefined;
+}): Promise<Result<MCPToolResultContent[], Error>> {
+  const mcpClient = await connectToMCPServer(actionConfiguration);
+
+  const r = await mcpClient.callTool({
+    name: actionConfiguration.name,
+    arguments: rawInputs,
+  });
+
+  await mcpClient.close();
+
+  if (r.isError) {
+    return new Err(new Error(r.content as string));
+  }
+
+  // Type inference is not working here because of them using passthrough in the zod schema.
+  const content: MCPToolResultContent[] = (r.content ??
+    []) as MCPToolResultContent[];
+
+  return new Ok(content);
+}
 
 export async function getMCPActions(
   auth: Authenticator,

@@ -10,6 +10,7 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
@@ -32,6 +33,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -228,8 +230,9 @@ function getMCPServerActionConfiguration(
   }
 
   builderAction.configuration = { ...action };
-  builderAction.name = action.name;
-  builderAction.description = action.description ?? "";
+  builderAction.name = action.name + "_" + generateRandomModelSId();
+  builderAction.description =
+    action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
 
   return builderAction;
 }

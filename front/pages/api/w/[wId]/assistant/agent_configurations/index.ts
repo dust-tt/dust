@@ -3,6 +3,7 @@ import * as reporter from "io-ts-reporters";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -487,8 +488,8 @@ export async function createOrUpgradeAgentConfiguration({
           serverType: action.serverType,
           internalMCPServerId: action.internalMCPServerId,
           remoteMCPServerId: action.remoteMCPServerId,
-          name: action.name ?? null,
-          description: action.description ?? null,
+          name: action.name,
+          description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
         },
         agentConfigurationRes.value
       );

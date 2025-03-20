@@ -1,7 +1,6 @@
-import { z } from "zod";
-
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import { connectToMCPServer } from "@app/lib/actions/mcp_actions";
+import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
+import { callMCPTool } from "@app/lib/actions/mcp_actions";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -24,45 +23,6 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-// Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
-// See https://github.com/colinhacks/zod/issues/2938
-const ResourceContentsSchema = z.object({
-  uri: z.string(),
-  mimeType: z.optional(z.string()),
-});
-
-const TextResourceContentsSchema = ResourceContentsSchema.extend({
-  text: z.string(),
-});
-
-const BlobResourceContentsSchema = ResourceContentsSchema.extend({
-  blob: z.string().base64(),
-});
-
-const TextContentSchema = z.object({
-  type: z.literal("text"),
-  text: z.string(),
-});
-
-const ImageContentSchema = z.object({
-  type: z.literal("image"),
-  data: z.string().base64(),
-  mimeType: z.string(),
-});
-
-const EmbeddedResourceSchema = z.object({
-  type: z.literal("resource"),
-  resource: z.union([TextResourceContentsSchema, BlobResourceContentsSchema]),
-});
-
-const Schema = z.union([
-  TextContentSchema,
-  ImageContentSchema,
-  EmbeddedResourceSchema,
-]);
-
-export type MCPToolResultContent = z.infer<typeof Schema>;
-
 export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
@@ -83,7 +43,6 @@ export type MCPToolConfigurationType = Omit<
   "type"
 > & {
   type: "mcp_configuration";
-  name: string;
   inputs: {
     name: string;
     description: string;
@@ -182,7 +141,7 @@ export class MCPActionType extends BaseAction {
         role: "function" as const,
         name: "missing_function_call_name",
         function_call_id: this.functionCallId ?? "missing_function_call_id",
-        content: `Error: the content was not tokenized`,
+        content: `Error: missing function call name`,
       };
     }
 
@@ -191,7 +150,7 @@ export class MCPActionType extends BaseAction {
         role: "function" as const,
         name: this.functionCallName,
         function_call_id: "missing_function_call_id",
-        content: `Error: the content was not tokenized`,
+        content: `Error: missing function call id`,
       };
     }
 
@@ -220,7 +179,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         "Unexpected unauthenticated call to `runMCPConfiguration`"
       );
     }
-    //TODO(mcp): remove preconfigured inputs
+    //TODO(mcp): remove inputs that have been preconfigured in the agent configuration so we don't show them to the model.
+    // They will be added back in the `run` method.
 
     return new Ok({
       name: this.actionConfiguration.name,
@@ -246,7 +206,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const { actionConfiguration } = this;
 
-    // TODO(mcp): Check that the rawInputs are matching the action configuration ?
+    // TODO(mcp): Check that the rawInputs are matching the action configuration
     for (const input of actionConfiguration.inputs) {
       if (!(input.name in rawInputs)) {
         yield {
@@ -317,24 +277,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         generatedFiles: [],
       }),
     };
+    // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
-    const mcpClient = await connectToMCPServer(actionConfiguration);
-
-    //TODO(mcp): add preconfigured inputs
-    const r = await mcpClient.callTool({
-      name: actionConfiguration.name,
-      arguments: rawInputs,
+    // TODO(mcp): listen to sse events to provide live feedback to the user
+    const r = await callMCPTool({
+      actionConfiguration,
+      rawInputs,
     });
 
-    // Type inference is not working here because of them using passthrough in the zod schema.
-    const content: MCPToolResultContent[] = (r.content ??
-      []) as MCPToolResultContent[];
-
-    // TODO(mcp): listen to sse events to provide live feedback to the user.
-
-    await mcpClient.close();
-
-    if (r.isError) {
+    if (r.isErr()) {
       await action.update({
         isError: true,
       });
@@ -345,38 +296,23 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         error: {
           code: "mcp_error",
-          message: `Error calling tool ${actionConfiguration.name}: ${JSON.stringify(rawInputs)} => ${JSON.stringify(r.content)}`,
+          message: `Error calling tool ${actionConfiguration.name}: ${JSON.stringify(rawInputs)} => ${JSON.stringify(r.error.message)}`,
         },
       };
       return;
     }
 
-    try {
-      await Promise.all(
-        content.map(async (i) => {
-          await AgentMCPActionOutputItem.create({
-            workspaceId: owner.id,
-            agentMCPActionId: action.id,
-            content: i,
-          });
-        })
-      );
-    } catch (e) {
-      await action.update({
-        isError: true,
-      });
-      yield {
-        type: "mcp_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "mcp_error",
-          message: `Error: the content is not valid: ${e}`,
-        },
-      };
-      return;
-    }
+    const content = r.value;
+
+    await Promise.all(
+      content.map(async (i) => {
+        await AgentMCPActionOutputItem.create({
+          workspaceId: owner.id,
+          agentMCPActionId: action.id,
+          content: i,
+        });
+      })
+    );
 
     yield {
       type: "mcp_success",
