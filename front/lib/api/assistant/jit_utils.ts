@@ -1,4 +1,7 @@
-import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
+import type {
+  BaseConversationAttachmentType,
+  ConversationAttachmentType,
+} from "@app/lib/actions/conversation/list_files";
 import type {
   ConversationType,
   SupportedContentFragmentType,
@@ -6,6 +9,8 @@ import type {
 import {
   isAgentMessageType,
   isContentFragmentType,
+  isContentNodeAttachment,
+  isFileAttachment,
   isSupportedDelimitedTextContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -53,8 +58,8 @@ function isListableContentType(
 // Moved to a separate file to avoid circular dependency issue.
 export function listFiles(
   conversation: ConversationType
-): ConversationFileType[] {
-  const files: ConversationFileType[] = [];
+): ConversationAttachmentType[] {
+  const files: ConversationAttachmentType[] = [];
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
@@ -63,34 +68,62 @@ export function listFiles(
       isListableContentType(m.contentType) &&
       m.contentFragmentVersion === "latest"
     ) {
-      if (m.fileId || m.nodeId) {
-        const canDoJIT = m.snippet !== null || !!m.nodeId;
-        const isIncludable = isConversationIncludableFileContentType(
-          m.contentType
-        );
-        // TODO(attach-ds) remove the m.fileId check once we manage table queries
-        const isQueryable =
-          canDoJIT && !!m.fileId && isQueryableContentType(m.contentType);
-        const isSearchable = canDoJIT && isSearchableContentType(m.contentType);
+      if (isFileAttachment(m) || isContentNodeAttachment(m)) {
+        // Here, snippet not null is actually to detect file attachments that
+        // are prior to the JIT actions, and differentiate them from the newer
+        // file attachments that do have a snippet. Former ones cannot be used
+        // in JIT. But for content node fragments, with a node id rather than a
+        // file id, we don't care about the snippet.
+        const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
+        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
+        const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
+        const isIncludable =
+          isConversationIncludableFileContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they
+          // cannot be included.
+          !isContentNodeTable;
+        const isSearchable =
+          canDoJIT &&
+          isSearchableContentType(m.contentType) &&
+          // Tables from knowledge are not materialized as raw content. As such, they
+          // cannot be searched.
+          !isContentNodeTable;
 
-        files.push({
-          resourceId: m.contentFragmentId,
+        const baseAttachment: BaseConversationAttachmentType = {
           title: m.title,
           contentType: m.contentType,
           snippet: m.snippet,
+          contentFragmentVersion: m.contentFragmentVersion,
           // Backward compatibility: we fallback to the fileId if no generated tables are mentionned but the file is queryable.
           generatedTables:
             m.generatedTables.length > 0
               ? m.generatedTables
-              : // TODO(attach-ds) remove the m.fileId check once we manage table queries
-                isQueryable && m.fileId
-                ? [m.fileId]
+              : isQueryable
+                ? [
+                    m.fileId ||
+                      m.nodeId ||
+                      "unreachable_either_file_id_or_node_id_must_be_present",
+                  ]
                 : [],
-          contentFragmentVersion: m.contentFragmentVersion,
           isIncludable,
           isQueryable,
           isSearchable,
-        });
+        };
+
+        if (isContentNodeAttachment(m)) {
+          files.push({
+            ...baseAttachment,
+            nodeDataSourceViewId: m.nodeDataSourceViewId,
+            contentFragmentId: m.contentFragmentId,
+          });
+        }
+
+        if (isFileAttachment(m)) {
+          files.push({
+            ...baseAttachment,
+            fileId: m.fileId,
+          });
+        }
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.getGeneratedFiles());
@@ -104,7 +137,7 @@ export function listFiles(
         const isSearchable = canDoJIT && isSearchableContentType(f.contentType);
 
         files.push({
-          resourceId: f.fileId,
+          fileId: f.fileId,
           contentType: f.contentType,
           title: f.title,
           snippet: f.snippet,

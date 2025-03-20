@@ -9,6 +9,10 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
+  ContentNodeMentionBlock,
+  contentNodeMentionDirective,
+} from "@app/components/markdown/ContentNodeMentionBlock";
+import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
@@ -33,12 +37,13 @@ export function UserMessage({
     () => ({
       sup: CiteBlock,
       mention: MentionBlock,
+      content_node_mention: ContentNodeMentionBlock,
     }),
     []
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
     []
   );
 

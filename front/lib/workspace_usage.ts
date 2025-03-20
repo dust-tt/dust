@@ -14,7 +14,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
-  AgentConfigurationType,
+  LightAgentConfigurationType,
   ModelId,
   WorkspaceType,
 } from "@app/types";
@@ -390,7 +390,7 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentConfiguration: AgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();

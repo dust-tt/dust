@@ -130,6 +130,7 @@ export const supportedOtherFileFormats = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
   ],
+  "application/vnd.google-apps.spreadsheet": [],
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
   "application/vnd.dust.section.json": [".json"],
@@ -605,14 +606,27 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("conversation_include_file_action"),
 });
 
-const ConversationFileTypeSchema = z.object({
-  resourceId: z.string(),
-  title: z.string(),
-  contentType: SupportedContentFragmentTypeSchema,
-});
+const ConversationAttachmentTypeSchema = z.union([
+  // File case
+  z.object({
+    fileId: z.string(),
+    contentFragmentId: z.undefined(),
+    nodeDataSourceViewId: z.undefined(),
+    title: z.string(),
+    contentType: SupportedContentFragmentTypeSchema,
+  }),
+  // Node case
+  z.object({
+    fileId: z.undefined(),
+    contentFragmentId: z.string(),
+    nodeDataSourceViewId: z.string(),
+    title: z.string(),
+    contentType: SupportedContentFragmentTypeSchema,
+  }),
+]);
 
 const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
-  files: z.array(ConversationFileTypeSchema),
+  files: z.array(ConversationAttachmentTypeSchema),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,

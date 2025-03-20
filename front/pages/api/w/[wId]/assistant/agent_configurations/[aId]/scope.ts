@@ -27,7 +27,11 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const assistant = await getAgentConfiguration(auth, req.query.aId as string);
+  const assistant = await getAgentConfiguration(
+    auth,
+    req.query.aId as string,
+    "full"
+  );
   if (
     !assistant ||
     (assistant.scope === "private" &&

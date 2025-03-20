@@ -21,7 +21,11 @@ export async function setAgentUserFavorite({
     Error
   >
 > {
-  const agentConfiguration = await getAgentConfiguration(auth, agentId);
+  const agentConfiguration = await getAgentConfiguration(
+    auth,
+    agentId,
+    "light"
+  );
   if (!agentConfiguration) {
     return new Err(new Error(`Could not find agent configuration ${agentId}`));
   }
