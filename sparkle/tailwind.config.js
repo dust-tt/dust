@@ -163,8 +163,8 @@ module.exports = {
       "2xl": "1536px",
     },
     fontFamily: {
-      sans: ["'Geist'", "sans-serif"],
-      mono: ["'Geist Mono'", "monospace"],
+      sans: ["Geist", "sans-serif"],
+      mono: ["Geist Mono", "monospace"],
     },
     extend: {
       borderRadius: {
