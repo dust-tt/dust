@@ -84,7 +84,7 @@ async function getJITActions(
             if (isConversationFileType(f)) {
               assert(
                 dataSourceView,
-                "No datasource view found for table when trying to get JIT actions"
+                "No conversation datasource view found for table when trying to get JIT actions"
               );
               return f.generatedTables.map((tableId) => ({
                 workspaceId: auth.getNonNullableWorkspace().sId,
@@ -104,10 +104,13 @@ async function getJITActions(
         actions.push(action);
       }
 
-      if (filesUsableAsRetrievalQuery.length > 0) {
+      if (
+        filesUsableAsRetrievalQuery.filter((f) => isConversationFileType(f))
+          .length > 0
+      ) {
         assert(
           dataSourceView,
-          "No datasource view found for retrieval when trying to get JIT actions"
+          "No conversation datasource view found for retrieval when trying to get JIT actions"
         );
         const action: RetrievalConfigurationType = {
           description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
