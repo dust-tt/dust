@@ -60,8 +60,6 @@ export class FrontAuthService extends AuthService {
         expiresIn: Number.parseInt(claims.exp, 10) * 1000,
       });
 
-      console.log(">> tokens:", tokens);
-
       return new Ok(tokens);
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
