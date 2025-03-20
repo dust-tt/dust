@@ -261,7 +261,7 @@ impl Table {
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
             search_store
-                .delete_node(NodeItem::Table(self.clone()), false)
+                .delete_node(NodeItem::Table(self.clone()))
                 .await?;
         }
 
@@ -284,8 +284,7 @@ impl Table {
             .await?;
 
         search_store
-            // We do not need to force a refresh here as the node is already searchable.
-            .index_node(NodeItem::Table(self.clone()), false)
+            .index_node(NodeItem::Table(self.clone()))
             .await?;
         Ok(())
     }
