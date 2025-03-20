@@ -1,5 +1,4 @@
 import type {
-  Auth0AuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
   CaptureMesssage,
@@ -17,6 +16,7 @@ import {
 } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
+import type { Auth0AuthorizeResponse } from "@app/shared/services/auth";
 
 const log = console.error;
 

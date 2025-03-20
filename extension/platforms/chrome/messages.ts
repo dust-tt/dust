@@ -1,11 +1,9 @@
-import type { AuthService } from "@app/shared/services/auth";
+import type {
+  Auth0AuthorizeResponse,
+  AuthService,
+} from "@app/shared/services/auth";
 import type { CaptureOptions } from "@app/shared/services/capture";
 
-export type Auth0AuthorizeResponse = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-};
 export type AuthBackgroundResponse = {
   success: boolean;
 };
