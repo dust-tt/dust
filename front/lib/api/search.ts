@@ -48,11 +48,7 @@ const BaseSearchBody = t.type({
   spaceIds: t.union([t.array(t.string), t.undefined]),
   includeDataSources: t.boolean,
   limit: t.number,
-  useCase: t.union([
-    t.literal("pasteUrl"),
-    t.literal("searchNode"),
-    t.undefined,
-  ]),
+  useCase: t.union([t.literal("pasteUrl"), t.literal("searchNode")]),
 });
 
 const TextSearchBody = t.intersection([

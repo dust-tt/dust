@@ -56,6 +56,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  *                 description: List of specific node IDs to search
  *                 items:
  *                   type: string
+ *
  *     responses:
  *       200:
  *         description: Search results retrieved successfully

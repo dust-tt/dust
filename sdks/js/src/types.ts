@@ -2623,7 +2623,6 @@ export const ContentNodesViewTypeSchema = z.union([
 export const ContentNodeSearchUseCase = z.union([
   z.literal("pasteUrl"),
   z.literal("searchNode"),
-  z.undefined()
 ])
 
 export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
