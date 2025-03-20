@@ -1,8 +1,7 @@
-import { getAccessToken } from "@app/shared/lib/auth";
-import type { GetActiveTabOptions } from "@app/shared/lib/messages";
-import { sendGetActiveTabMessage } from "@app/shared/lib/messages";
-import { getStoredUser } from "@app/shared/lib/storage";
-import type { UploadedFileWithSupersededContentFragmentId } from "@app/shared/lib/types";
+import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
+import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
+import type { ContentFragmentsType } from "@app/shared/lib/types";
+import type { PlatformService } from "@app/shared/services/platform";
 import type {
   AgentMentionType,
   AgentMessageNewEvent,
@@ -13,7 +12,6 @@ import type {
   DustAPI,
   LightWorkspaceType,
   Result,
-  UploadedContentFragmentType,
   UserMessageNewEvent,
   UserMessageType,
   UserMessageWithRankType,
@@ -120,22 +118,24 @@ export function updateConversationWithOptimisticData(
   return conversation;
 }
 
-export async function postConversation({
-  dustAPI,
-  messageData,
-  visibility = "unlisted",
-  contentFragments,
-}: {
-  dustAPI: DustAPI;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  visibility?: ConversationVisibility;
-  contentFragments: UploadedContentFragmentType[];
-}): Promise<Result<ConversationPublicType, SubmitMessageError>> {
-  const { input, mentions } = messageData;
-  const user = await getStoredUser();
+export async function postConversation(
+  platform: PlatformService,
+  {
+    dustAPI,
+    messageData,
+    visibility = "unlisted",
+  }: {
+    dustAPI: DustAPI;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+      contentFragments: ContentFragmentsType;
+    };
+    visibility?: ConversationVisibility;
+  }
+): Promise<Result<ConversationPublicType, SubmitMessageError>> {
+  const { input, mentions, contentFragments } = messageData;
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -162,17 +162,32 @@ export async function postConversation({
       },
       mentions,
     },
-    contentFragments: contentFragments.map((contentFragment) => ({
-      title: contentFragment.title,
-      fileId: contentFragment.fileId,
-      url: contentFragment.url ?? null,
-      context: {
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName,
-        profilePictureUrl: user.image,
-      },
-    })),
+    contentFragments: [
+      ...contentFragments.uploaded.map((contentFragment) => ({
+        title: contentFragment.title,
+        fileId: contentFragment.fileId,
+        url: contentFragment.url ?? null,
+        context: {
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          profilePictureUrl: user.image,
+        },
+      })),
+      ...contentFragments.contentNodes.map((contentNode) => ({
+        title: contentNode.title,
+        nodeId: contentNode.internalId,
+        fileId: undefined,
+        nodeDataSourceViewId: contentNode.dataSourceView.sId,
+        contentType: contentNode.mimeType,
+        context: {
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          profilePictureUrl: user.image,
+        },
+      })),
+    ],
     blocking: false, // We want streaming.
   });
 
@@ -192,27 +207,29 @@ export async function postConversation({
   return new Ok(conversationData.conversation);
 }
 
-export async function postMessage({
-  dustAPI,
-  conversationId,
-  messageData,
-  files,
-}: {
-  dustAPI: DustAPI;
-  conversationId: string;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-  };
-  files: UploadedFileWithSupersededContentFragmentId[];
-}): Promise<
+export async function postMessage(
+  platform: PlatformService,
+  {
+    dustAPI,
+    conversationId,
+    messageData,
+  }: {
+    dustAPI: DustAPI;
+    conversationId: string;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+      contentFragments: ContentFragmentsType;
+    };
+  }
+): Promise<
   Result<
     { message: UserMessageType; contentFragments: ContentFragmentType[] },
     SubmitMessageError
   >
 > {
-  const { input, mentions } = messageData;
-  const user = await getStoredUser();
+  const { input, mentions, contentFragments } = messageData;
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -222,31 +239,67 @@ export async function postMessage({
       message: "Please log in again.",
     });
   }
-  const contentFragments: ContentFragmentType[] = [];
-  for (const file of files) {
-    const res = await dustAPI.postContentFragment({
-      conversationId,
-      contentFragment: {
-        title: file.title,
-        fileId: file.fileId,
-        url: file.url ?? null,
-        context: {
-          username: user.username,
-          email: user.email,
-          fullName: user.fullName,
-          profilePictureUrl: user.image,
-        },
-        supersededContentFragmentId: file.supersededContentFragmentId,
-      },
-    });
-    if (res.isOk()) {
-      contentFragments.push(res.value);
-    } else {
-      return new Err({
-        type: "attachment_upload_error",
-        title: "Your message could not be sent.",
-        message: res.error.message || "Please try again or contact us.",
-      });
+
+  const createdContentFragments: ContentFragmentType[] = [];
+
+  // Create a new content fragment.
+  if (
+    contentFragments.uploaded.length > 0 ||
+    contentFragments.contentNodes.length > 0
+  ) {
+    const contentFragmentsRes = await Promise.all([
+      ...contentFragments.uploaded.map(async (file) => {
+        // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
+        const supersededContentFragmentId: string | undefined =
+          (await platform.getFileContentFragmentId(conversationId, file)) ??
+          undefined;
+
+        return dustAPI.postContentFragment({
+          conversationId,
+          contentFragment: {
+            title: file.title,
+            fileId: file.fileId,
+            url: file.url ?? null,
+            context: {
+              username: user.username,
+              email: user.email,
+              fullName: user.fullName,
+              profilePictureUrl: user.image,
+            },
+            supersededContentFragmentId,
+          },
+        });
+      }),
+      ...contentFragments.contentNodes.map((file) =>
+        dustAPI.postContentFragment({
+          conversationId,
+          contentFragment: {
+            title: file.title,
+            nodeId: file.internalId,
+            nodeDataSourceViewId: file.dataSourceView.sId,
+            contentType: file.mimeType,
+            context: {
+              username: user.username,
+              email: user.email,
+              fullName: user.fullName,
+              profilePictureUrl: user.image,
+            },
+          },
+        })
+      ),
+    ]);
+
+    for (const mcfRes of contentFragmentsRes) {
+      if (mcfRes.isErr()) {
+        console.error("Error creating content fragment", mcfRes.error);
+        return new Err({
+          type: "attachment_upload_error",
+          title: "Error uploading file.",
+          message: mcfRes.error.message || "Please try again or contact us.",
+        });
+      } else {
+        createdContentFragments.push(mcfRes.value);
+      }
     }
   }
 
@@ -283,21 +336,26 @@ export async function postMessage({
       message: mRes.error.message || "Please try again or contact us.",
     });
   }
-
-  return new Ok({ message: mRes.value, contentFragments });
+  return new Ok({
+    message: mRes.value,
+    contentFragments: createdContentFragments,
+  });
 }
 
-export async function retryMessage({
-  owner,
-  conversationId,
-  messageId,
-}: {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
-}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
-  const token = await getAccessToken();
-  const user = await getStoredUser();
+export async function retryMessage(
+  platform: PlatformService,
+  {
+    owner,
+    conversationId,
+    messageId,
+  }: {
+    owner: LightWorkspaceType;
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+  const token = await platform.auth.getAccessToken();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.

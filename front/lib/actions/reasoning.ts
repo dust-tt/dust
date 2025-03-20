@@ -1,9 +1,13 @@
 import { DEFAULT_REASONING_ACTION_NAME } from "@app/lib/actions/constants";
 import { runActionStreamed } from "@app/lib/actions/server";
-import type { ExtractActionBlob } from "@app/lib/actions/types";
-import type { BaseActionRunParams } from "@app/lib/actions/types";
-import { BaseAction } from "@app/lib/actions/types";
-import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
+import type {
+  BaseActionRunParams,
+  ExtractActionBlob,
+} from "@app/lib/actions/types";
+import {
+  BaseAction,
+  BaseActionConfigurationServerRunner,
+} from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
@@ -12,8 +16,7 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
@@ -26,7 +29,12 @@ import type {
   Result,
   TokensClassification,
 } from "@app/types";
-import { isProviderWhitelisted, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import {
+  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
+  isProviderWhitelisted,
+  Ok,
+  SUPPORTED_MODEL_CONFIGS,
+} from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 
@@ -298,6 +306,19 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
     }
     if (actionConfig.reasoningEffort) {
       config.MODEL.reasoning_effort = actionConfig.reasoningEffort;
+    }
+
+    if (supportedModel.modelId === CLAUDE_3_7_SONNET_20250219_MODEL_ID) {
+      // We can't pass a temperature different from 1.0 in thinking mode: https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
+      config.MODEL.temperature = 1.0;
+      delete config.MODEL.top_p;
+      // Pass some extra field: https://docs.anthropic.com/en/docs/about-claude/models/extended-thinking-models#extended-output-capabilities-beta
+      config.MODEL.anthropic_beta_thinking = {
+        type: "enabled",
+        budget_tokens: 6400,
+      };
+      // Add the beta flag for larger outputs.
+      config.MODEL.anthropic_beta_flags = ["output-128k-2025-02-19"];
     }
 
     const inputs = [

@@ -1,3 +1,4 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { postConversation } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { useFileUploaderService } from "@app/ui/hooks/useFileUploaderService";
@@ -6,6 +7,7 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 export const RunPage = () => {
+  const platform = usePlatform();
   const navigate = useNavigate();
   const location = useLocation();
   const dustAPI = useDustAPI();
@@ -28,19 +30,23 @@ export const RunPage = () => {
         updateBlobs: false,
       });
 
-      const conversationRes = await postConversation({
+      const conversationRes = await postConversation(platform, {
         dustAPI,
         messageData: {
           input: params.text,
           mentions: [{ configurationId: params.configurationId }],
+          contentFragments: {
+            uploaded: files
+              ? files.map((cf) => ({
+                  title: cf.filename,
+                  fileId: cf.fileId || "",
+                  url: cf.publicUrl,
+                  kind: cf.kind,
+                }))
+              : [],
+            contentNodes: [],
+          },
         },
-        contentFragments: files
-          ? files.map((cf) => ({
-              title: cf.filename,
-              fileId: cf.fileId || "",
-              url: cf.publicUrl,
-            }))
-          : [],
       });
 
       fileUploaderService.resetUpload();

@@ -1,4 +1,4 @@
-import { saveTokens } from "@app/shared/lib/storage";
+import type { AuthService } from "@app/shared/services/auth";
 
 export type Auth0AuthorizeResponse = {
   accessToken: string;
@@ -124,6 +124,7 @@ export const sendAuthMessage = (
 };
 
 export const sendRefreshTokenMessage = (
+  authService: AuthService,
   refreshToken: string
 ): Promise<Auth0AuthorizeResponse> => {
   return new Promise((resolve, reject) => {
@@ -147,7 +148,7 @@ export const sendRefreshTokenMessage = (
         ) {
           return reject(new Error("Invalid response received."));
         }
-        void saveTokens(response);
+        void authService.saveTokens(response);
         return resolve(response);
       }
     );

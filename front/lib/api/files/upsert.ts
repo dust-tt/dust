@@ -1,4 +1,7 @@
-import { isSupportedPlainTextContentType } from "@dust-tt/client";
+import {
+  isDustMimeType,
+  isSupportedPlainTextContentType,
+} from "@dust-tt/client";
 
 import type {
   UpsertDocumentArgs,
@@ -26,7 +29,6 @@ import type {
 import {
   assertNever,
   Err,
-  isDustMimeType,
   isSupportedImageContentType,
   Ok,
   slugify,

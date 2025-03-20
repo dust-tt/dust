@@ -25,7 +25,7 @@
  * THE SOFTWARE.
  */
 
-import type { CaptureFullPageMessage } from "@app/shared/lib/messages";
+import type { CaptureFullPageMessage } from "@app/platforms/chrome/messages";
 
 declare global {
   interface Window {

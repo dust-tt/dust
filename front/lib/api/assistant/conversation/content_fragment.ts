@@ -1,3 +1,5 @@
+import type { DustMimeType } from "@dust-tt/client";
+
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
@@ -5,9 +7,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   ContentFragmentInputWithContentNode,
-  ContentFragmentInputWithContentType,
   ContentFragmentInputWithFileIdType,
-  DustMimeType,
+  ContentFragmentInputWithInlinedContent,
   ModelId,
   Result,
   SupportedFileContentType,
@@ -36,7 +37,7 @@ export async function toFileContentFragment(
     contentFragment,
     fileName,
   }: {
-    contentFragment: ContentFragmentInputWithContentType;
+    contentFragment: ContentFragmentInputWithInlinedContent;
     fileName?: string;
   }
 ): Promise<

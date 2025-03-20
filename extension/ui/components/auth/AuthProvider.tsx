@@ -1,5 +1,4 @@
-import type { AuthError } from "@app/shared/lib/auth";
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { AuthError, StoredUser } from "@app/shared/services/auth";
 import { useAuthHook } from "@app/ui/components/auth/useAuth";
 import type { ExtensionWorkspaceType, WorkspaceType } from "@dust-tt/client";
 import type { ReactNode } from "react";

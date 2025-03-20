@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
@@ -142,6 +143,8 @@ interface AgentMessageProps {
   user: StoredUser;
 }
 
+export type AgentStateClassification = "thinking" | "acting" | "done";
+
 /**
  *
  * @param isInModal is the conversation happening in a side modal, i.e. when
@@ -156,6 +159,7 @@ export function AgentMessage({
   owner,
   user,
 }: AgentMessageProps) {
+  const platform = usePlatform();
   const sendNotification = useSendNotification();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -190,6 +194,9 @@ export function AgentMessage({
         assertNever(streamedAgentMessage.status);
     }
   })();
+
+  const [lastAgentStateClassification, setLastAgentStateClassification] =
+    useState<AgentStateClassification>(shouldStream ? "thinking" : "done");
 
   const [lastTokenClassification, setLastTokenClassification] = useState<
     null | "tokens" | "chain_of_thought"
@@ -242,36 +249,39 @@ export function AgentMessage({
         setStreamedAgentMessage((m) => {
           return { ...updateMessageWithAction(m, event.action) };
         });
+        setLastAgentStateClassification("thinking");
         break;
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "process_params":
-      case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
+      case "dust_app_run_block":
+      case "dust_app_run_params":
+      case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "retrieval_params":
+      case "search_labels_params":
+      case "tables_query_model_output":
+      case "tables_query_output":
+      case "tables_query_started":
+      case "websearch_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
+        setLastAgentStateClassification("acting");
         break;
       case "agent_error":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "failed", error: event.error };
         });
+        setLastAgentStateClassification("done");
         break;
 
       case "agent_generation_cancelled":
         setStreamedAgentMessage((m) => {
           return { ...m, status: "cancelled" };
         });
+        setLastAgentStateClassification("done");
         break;
       case "agent_message_success": {
         setStreamedAgentMessage((m) => {
@@ -280,6 +290,7 @@ export function AgentMessage({
             ...event.message,
           };
         });
+        setLastAgentStateClassification("done");
         break;
       }
 
@@ -311,6 +322,7 @@ export function AgentMessage({
             assertNeverAndIgnore(event);
             break;
         }
+        setLastAgentStateClassification("thinking");
         break;
       }
 
@@ -595,7 +607,11 @@ export function AgentMessage({
     return (
       <div className="flex flex-col gap-y-4">
         <div className="flex flex-col gap-2">
-          <AgentMessageActions agentMessage={agentMessage} owner={owner} />
+          <AgentMessageActions
+            agentMessage={agentMessage}
+            lastAgentStateClassification={lastAgentStateClassification}
+            owner={owner}
+          />
 
           {agentMessage.chainOfThought?.length ? (
             <ContentMessage title="Agent thoughts" variant="slate">
@@ -643,7 +659,7 @@ export function AgentMessage({
 
   async function retryHandler(agentMessage: AgentMessagePublicType) {
     setIsRetryHandlerProcessing(true);
-    const res = await retryMessage({
+    const res = await retryMessage(platform, {
       owner,
       conversationId,
       messageId: agentMessage.sId,

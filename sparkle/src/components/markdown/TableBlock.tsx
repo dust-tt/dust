@@ -66,7 +66,7 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
   return (
     <ContentBlockWrapper
-      innerClassName="s-relative s-my-2 s-w-full s-border s-border-border s-rounded-2xl"
+      innerClassName="s-relative s-my-2 s-w-full s-border s-border-border dark:s-border-border-night s-rounded-2xl"
       content={tableData}
     >
       <ScrollArea className="s-w-full s-rounded-2xl">

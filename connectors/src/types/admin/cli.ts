@@ -355,6 +355,58 @@ export const MicrosoftCommandSchema = t.type({
 
 export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 
+/**
+ * <Snowflake>
+ */
+export const SnowflakeCommandSchema = t.type({
+  majorCommand: t.literal("snowflake"),
+  command: t.union([
+    t.literal("fetch-databases"),
+    t.literal("fetch-schemas"),
+    t.literal("fetch-tables"),
+  ]),
+  args: t.type({
+    connectorId: t.number,
+    database: t.union([t.string, t.undefined]),
+    schema: t.union([t.string, t.undefined]),
+  }),
+});
+export type SnowflakeCommandType = t.TypeOf<typeof SnowflakeCommandSchema>;
+
+export const SnowflakeFetchDatabaseResponseSchema = t.array(
+  t.type({
+    name: t.string,
+  })
+);
+export type SnowflakeFetchDatabaseResponseType = t.TypeOf<
+  typeof SnowflakeFetchDatabaseResponseSchema
+>;
+
+export const SnowflakeFetchSchemaResponseSchema = t.array(
+  t.type({
+    name: t.string,
+    database_name: t.string,
+  })
+);
+export type SnowflakeFetchSchemaResponseType = t.TypeOf<
+  typeof SnowflakeFetchSchemaResponseSchema
+>;
+
+export const SnowflakeFetchTableResponseSchema = t.array(
+  t.type({
+    name: t.string,
+    database_name: t.string,
+    schema_name: t.string,
+  })
+);
+export type SnowflakeFetchTableResponseType = t.TypeOf<
+  typeof SnowflakeFetchTableResponseSchema
+>;
+
+/**
+ * </Snwoflake>
+ */
+
 export const AdminCommandSchema = t.union([
   BatchCommandSchema,
   ConnectorsCommandSchema,
@@ -368,6 +420,7 @@ export const AdminCommandSchema = t.union([
   TemporalCommandSchema,
   WebcrawlerCommandSchema,
   ZendeskCommandSchema,
+  SnowflakeCommandSchema,
 ]);
 
 export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
@@ -506,6 +559,9 @@ export const AdminResponseSchema = t.union([
   ZendeskCountTicketsResponseSchema,
   ZendeskFetchTicketResponseSchema,
   ZendeskFetchBrandResponseSchema,
+  SnowflakeFetchDatabaseResponseSchema,
+  SnowflakeFetchSchemaResponseSchema,
+  SnowflakeFetchTableResponseSchema,
 ]);
 
 export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;

@@ -319,6 +319,9 @@ impl Block for Chat {
                 if let Some(Value::String(s)) = v.get("reasoning_effort") {
                     extras["reasoning_effort"] = json!(s.clone());
                 }
+                if let Some(Value::Object(s)) = v.get("anthropic_beta_thinking") {
+                    extras["anthropic_beta_thinking"] = json!(s.clone());
+                }
                 if let Some(Value::Array(a)) = v.get("anthropic_beta_flags") {
                     extras["anthropic_beta_flags"] = json!(a
                         .iter()

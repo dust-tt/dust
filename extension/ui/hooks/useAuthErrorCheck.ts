@@ -1,9 +1,11 @@
-import { logout, refreshToken } from "@app/shared/lib/auth";
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
+  const platform = usePlatform();
   const { setAuthError, redirectToSSOLogin, workspace } = useAuth();
+
   useEffect(() => {
     const handleError = async () => {
       if (error) {
@@ -12,22 +14,29 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             if (workspace) {
               return redirectToSSOLogin(workspace);
             }
+
             setAuthError(error);
-            void logout();
+            void platform.auth.logout();
             break;
+
           case "not_authenticated":
           case "invalid_oauth_token_error":
             setAuthError(error);
-            void logout();
+            void platform.auth.logout();
             break;
+
           case "expired_oauth_token_error":
-            const res = await refreshToken();
-            if (res.isOk()) {
-              mutate();
-            } else {
-              void logout();
+            // Attempt to get the access token, it will refresh the token if needed.
+            const accesToken = await platform.auth.getAccessToken();
+            if (!accesToken) {
+              // If we still don't have an access token, we need to logout.
+              setAuthError(error);
+              void platform.auth.logout();
+              break;
             }
+            mutate();
             break;
+
           case "user_not_found":
             setAuthError(error);
             break;

@@ -1,4 +1,3 @@
-import { getTheme, saveTheme } from "@app/shared/lib/storage";
 import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ProtectedRouteChildrenProps } from "@app/ui/components/auth/ProtectedRoute";
@@ -7,25 +6,15 @@ import { ConversationsListButton } from "@app/ui/components/conversation/Convers
 import { FileDropProvider } from "@app/ui/components/conversation/FileUploaderContext";
 import { DropzoneContainer } from "@app/ui/components/DropzoneContainer";
 import { InputBarProvider } from "@app/ui/components/input_bar/InputBarContext";
+import { UserDropdownMenu } from "@app/ui/components/navigation/UserDropdownMenu";
 import {
-  Avatar,
   BarHeader,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  LightModeIcon,
-  LogoutIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
-export type Theme = "light" | "dark" | "system";
 
 export const MainPage = ({
   user,
@@ -36,16 +25,6 @@ export const MainPage = ({
 
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
   const shortcut = isMac ? "⇧⌘E" : "⇧+Ctrl+E";
-
-  const [theme, setTheme] = useState<Theme>("system");
-
-  useEffect(() => {
-    const loadTheme = async () => {
-      const savedTheme = await getTheme();
-      setTheme(savedTheme as Theme);
-    };
-    void loadTheme();
-  }, []);
 
   return (
     <>
@@ -86,61 +65,7 @@ export const MainPage = ({
         rightActions={
           <div className="flex flex-row items-right space-x-1">
             <ConversationsListButton size="sm" />
-
-            <DropdownMenu>
-              <DropdownMenuTrigger>
-                <div>
-                  <Avatar
-                    size="sm"
-                    visual={
-                      user.image
-                        ? user.image
-                        : "https://gravatar.com/avatar/anonymous?d=mp"
-                    }
-                    onClick={() => {
-                      "clickable";
-                    }}
-                  />
-                </div>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuLabel label="Preferences" />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
-                  <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup value={theme}>
-                      <DropdownMenuRadioItem
-                        value="light"
-                        label="Light"
-                        onClick={() => {
-                          void saveTheme("light");
-                        }}
-                      />
-                      <DropdownMenuRadioItem
-                        value="dark"
-                        label="Dark"
-                        onClick={() => {
-                          void saveTheme("dark");
-                        }}
-                      />
-                      <DropdownMenuRadioItem
-                        value="system"
-                        label="System"
-                        onClick={() => {
-                          void saveTheme("system");
-                        }}
-                      />
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuLabel label="Account" />
-                <DropdownMenuItem
-                  icon={LogoutIcon}
-                  label="Sign out"
-                  onClick={handleLogout}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <UserDropdownMenu user={user} handleLogout={handleLogout} />
           </div>
         }
       />

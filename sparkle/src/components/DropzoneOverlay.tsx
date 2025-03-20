@@ -49,8 +49,8 @@ export default function DropzoneOverlay({
     <div
       className={cn(
         "s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0",
-        "dark:s-bg-slate-90/80 s-bg-white/80",
-        "s-text-element-800 dark:s-text-element-800-night"
+        "s-bg-background/80 dark:s-bg-background-night/80",
+        "s-text-foreground dark:s-text-foreground-night"
       )}
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
@@ -75,7 +75,9 @@ export default function DropzoneOverlay({
         </div>
       </div>
       <div className="s-text-xl s-font-bold">{title}</div>
-      <div className="s-font-base s-text-base">{description}</div>
+      <div className="s-font-base s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+        {description}
+      </div>
     </div>
   );
 }

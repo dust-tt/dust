@@ -14,7 +14,7 @@ import type {
   DocumentType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { PostDataSourceWithNameDocumentRequestBodySchema } from "@app/types";
+import { PostDataSourceDocumentRequestBodySchema } from "@app/types";
 
 export const config = {
   api: {
@@ -82,8 +82,9 @@ async function handler(
         });
       }
 
-      const bodyValidation =
-        PostDataSourceWithNameDocumentRequestBodySchema.decode(req.body);
+      const bodyValidation = PostDataSourceDocumentRequestBodySchema.decode(
+        req.body
+      );
 
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);
@@ -97,7 +98,6 @@ async function handler(
       }
 
       const {
-        name,
         source_url,
         text,
         section,
@@ -111,7 +111,10 @@ async function handler(
       } = bodyValidation.right;
 
       const upsertResult = await upsertDocument({
-        document_id: name, // using the name as the document_id since we don't have one here
+        // For folders documents created from the app (this endpoint) we use the document title as
+        // ID. This is inherited behavior that is perfectly valid but we might want to move to
+        // generating IDs in the future.
+        document_id: title,
         source_url,
         text,
         section,
