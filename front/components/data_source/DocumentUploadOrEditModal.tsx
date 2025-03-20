@@ -168,10 +168,10 @@ export const DocumentUploadOrEditModal = ({
       // These mutations do the fetch and mutate, all at once
       let upsertRes;
       if (initialId) {
-        upsertRes = await doCreate({ ...body, force_refresh: false });
-      } else {
         // We want to force a refresh to make the node is visible immediately if we are creating it.
         upsertRes = await doUpdate({ ...body, force_refresh: true });
+      } else {
+        upsertRes = await doCreate({ ...body, force_refresh: false });
       }
 
       // Upsert successful, close and reset the modal
