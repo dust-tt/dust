@@ -7,7 +7,7 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
-import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
+import type { ConversationAttachmentType } from "@app/lib/actions/conversation/list_files";
 import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
@@ -32,7 +32,7 @@ async function getJITActions(
   }: {
     availableActions: ActionConfigurationType[];
     conversation: ConversationType;
-    files: ConversationFileType[];
+    files: ConversationAttachmentType[];
   }
 ): Promise<ActionConfigurationType[]> {
   const actions: ActionConfigurationType[] = [];

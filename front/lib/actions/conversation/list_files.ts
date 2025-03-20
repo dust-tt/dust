@@ -17,7 +17,7 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types";
 
-export type ConversationFileType = {
+export type ConversationAttachmentType = {
   resourceId: string;
   title: string;
   contentType: SupportedContentFragmentType;
@@ -37,7 +37,7 @@ type ConversationListFilesActionBlob =
 export class ConversationListFilesActionType extends BaseAction {
   readonly id: ModelId = -1;
   readonly agentMessageId: ModelId;
-  readonly files: ConversationFileType[];
+  readonly files: ConversationAttachmentType[];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;
@@ -95,7 +95,7 @@ export function makeConversationListFilesAction({
   files,
 }: {
   agentMessage: AgentMessageType;
-  files: ConversationFileType[];
+  files: ConversationAttachmentType[];
 }): ConversationListFilesActionType | null {
   if (files.length === 0) {
     return null;

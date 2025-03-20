@@ -1,4 +1,4 @@
-import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
+import type { ConversationAttachmentType } from "@app/lib/actions/conversation/list_files";
 import type {
   ConversationType,
   SupportedContentFragmentType,
@@ -53,8 +53,8 @@ function isListableContentType(
 // Moved to a separate file to avoid circular dependency issue.
 export function listFiles(
   conversation: ConversationType
-): ConversationFileType[] {
-  const files: ConversationFileType[] = [];
+): ConversationAttachmentType[] {
+  const files: ConversationAttachmentType[] = [];
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
 
