@@ -26,7 +26,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use tokio_stream as stream;
+use tokio_stream::{self as stream};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -539,8 +539,7 @@ impl DataSource {
         match document {
             Some(document) => {
                 search_store
-                    // We never need to force an ES refresh upon updating parents (node already searchable).
-                    .index_node(NodeItem::Document(document), false)
+                    .index_node(NodeItem::Document(document))
                     .await?;
             }
             None => (),
@@ -686,7 +685,6 @@ impl DataSource {
         text: Section,
         preserve_system_tags: bool,
         search_store: Box<dyn SearchStore + Sync + Send>,
-        force_es_refresh: bool,
     ) -> Result<Document> {
         let full_text = text.full_text();
         // Disallow preserve_system_tags=true if tags contains a string starting with the system
@@ -836,7 +834,7 @@ impl DataSource {
 
         // Upsert document in search index.
         search_store
-            .index_node(NodeItem::Document(document), force_es_refresh)
+            .index_node(NodeItem::Document(document))
             .await?;
 
         // Clean-up old superseded versions.
@@ -1840,7 +1838,7 @@ impl DataSource {
 
         // Delete document from search index.
         search_store
-            .delete_node(NodeItem::Document(document), false)
+            .delete_node(NodeItem::Document(document))
             .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version

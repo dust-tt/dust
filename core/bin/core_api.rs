@@ -1840,8 +1840,6 @@ struct DataSourcesDocumentsUpsertPayload {
     title: String,
     mime_type: String,
     provider_visibility: Option<ProviderVisibility>,
-    // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_refresh: Option<bool>,
 }
 
 async fn data_sources_documents_upsert(
@@ -1932,7 +1930,6 @@ async fn data_sources_documents_upsert(
                         payload.section,
                         true, // preserve system tags
                         state.search_store.clone(),
-                        payload.force_refresh.unwrap_or(false),
                     )
                     .await
                 {
@@ -2426,9 +2423,6 @@ struct DatabasesTablesUpsertPayload {
     title: String,
     mime_type: String,
     provider_visibility: Option<ProviderVisibility>,
-
-    // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_refresh: Option<bool>,
 }
 
 async fn tables_upsert(
@@ -2503,10 +2497,7 @@ async fn tables_upsert(
     {
         Ok(table) => match state
             .search_store
-            .index_node(
-                NodeItem::Table(table.clone()),
-                payload.force_refresh.unwrap_or(false),
-            )
+            .index_node(NodeItem::Table(table.clone()))
             .await
         {
             Ok(_) => (
@@ -3279,8 +3270,6 @@ struct FoldersUpsertPayload {
     mime_type: String,
     source_url: Option<String>,
     provider_visibility: Option<ProviderVisibility>,
-    // Force an ES refresh upon indexation to make the node searchable immediately.
-    force_refresh: Option<bool>,
 }
 
 async fn folders_upsert(
@@ -3356,10 +3345,7 @@ async fn folders_upsert(
         ),
         Ok(folder) => match state
             .search_store
-            .index_node(
-                NodeItem::Folder(folder.clone()),
-                payload.force_refresh.unwrap_or(false),
-            )
+            .index_node(NodeItem::Folder(folder.clone()))
             .await
         {
             Ok(_) => (
@@ -3514,7 +3500,7 @@ async fn folders_delete(
             .await?;
         state
             .search_store
-            .delete_node(NodeItem::Folder(folder), false)
+            .delete_node(NodeItem::Folder(folder))
             .await?;
         Ok(())
     }
