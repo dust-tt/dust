@@ -1,5 +1,5 @@
 import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
-import { sendInputBarStatus } from "@app/platforms/chrome/messages";
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
@@ -21,7 +21,14 @@ import type {
   LightAgentConfigurationType,
 } from "@dust-tt/client";
 import { Button, Page, Spinner, StopIcon } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 /**
  *
@@ -54,6 +61,7 @@ export function AssistantInputBar({
   setIncludeTab: (includeTab: boolean) => void;
   isSubmitting?: boolean;
 }) {
+  const platform = usePlatform();
   const dustAPI = useDustAPI();
 
   const { agentConfigurations: baseAgentConfigurations } =
@@ -79,7 +87,10 @@ export function AssistantInputBar({
     [spaces]
   );
 
-  const fileUploaderService = useFileUploaderService(conversation?.sId);
+  const fileUploaderService = useFileUploaderService(
+    platform.capture,
+    conversation?.sId
+  );
   const {
     isCapturing,
     uploadContentTab,
@@ -88,21 +99,33 @@ export function AssistantInputBar({
     resetUpload,
   } = fileUploaderService;
 
+  const sendInputBarStatus = useCallback(
+    (available: boolean) => {
+      void platform.messaging.sendMessage({
+        type: "EXT_INPUT_BAR_STATUS",
+        available,
+      });
+    },
+    [platform.messaging]
+  );
+
   useEffect(() => {
     void sendInputBarStatus(true);
-    const listener = async (message: AttachSelectionMessage) => {
-      const { type } = message;
-      if (type === "EXT_ATTACH_TAB") {
-        // Handle message
-        void uploadContentTab(message);
+
+    const cleanup = platform.messaging.addMessageListener(
+      async (message: AttachSelectionMessage) => {
+        const { type } = message;
+        if (type === "EXT_ATTACH_TAB") {
+          void uploadContentTab(message);
+        }
       }
-    };
-    chrome.runtime.onMessage.addListener(listener);
+    );
+
     return () => {
       void sendInputBarStatus(false);
-      chrome.runtime.onMessage.removeListener(listener);
+      cleanup();
     };
-  }, []);
+  }, [platform.messaging, uploadContentTab]);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 

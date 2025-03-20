@@ -1,3 +1,4 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
 import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
@@ -53,6 +54,7 @@ export const InputBarContainer = ({
   attachedNodes,
   isSubmitting,
 }: InputBarContainerProps) => {
+  const platform = usePlatform();
   const suggestions = usePublicAssistantSuggestions(agentConfigurations);
 
   const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
@@ -168,7 +170,7 @@ export const InputBarContainer = ({
     isLoading: isSubmitting,
   };
   const SendWithContentAction = {
-    label: "Add page text + Send",
+    label: platform.getSendWithActionsLabel(),
     onClick,
     isLoading: isSubmitting,
   };

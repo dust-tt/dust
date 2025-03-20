@@ -1,5 +1,4 @@
 import type {
-  Auth0AuthorizeResponse,
   AuthBackgroundMessage,
   AuthBackgroundResponse,
   CaptureMesssage,
@@ -8,8 +7,8 @@ import type {
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
 } from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/platform";
-import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
+import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
+import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
@@ -17,11 +16,12 @@ import {
 } from "@app/shared/lib/config";
 import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
+import type { Auth0AuthorizeResponse } from "@app/shared/services/auth";
 
 const log = console.error;
 
 // Initialize the platform service.
-const platform = new ChromePlatformService();
+const platform = new ChromeCorePlatformService();
 
 const state: {
   refreshingToken: boolean;
@@ -366,6 +366,7 @@ chrome.runtime.onMessage.addListener(
           state.lastHandler = undefined;
         }
         return false;
+
       default:
         log(`Unknown message: ${message}.`);
     }

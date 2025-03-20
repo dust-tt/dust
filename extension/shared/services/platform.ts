@@ -1,7 +1,13 @@
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type { AuthService, StoredUser } from "@app/shared/services/auth";
+import type { CaptureService } from "@app/shared/services/capture";
 import type { StorageService } from "@app/shared/services/storage";
-import type { ContentFragmentType } from "@dust-tt/client";
+import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
+import type {
+  ContentFragmentType,
+  ExtensionWorkspaceType,
+} from "@dust-tt/client";
+import type { ComponentType } from "react";
 
 // TODO(2025-03-19 flav): Add front platform.
 const PLATFORM_TYPES = ["chrome"] as const;
@@ -14,19 +20,43 @@ interface ConversationContext {
 export type Theme = "light" | "dark" | "system";
 export const DEFAULT_THEME: Theme = "system";
 
-export abstract class PlatformService {
-  auth: AuthService;
-  platform: PlatformType;
-  storage: StorageService;
+export interface CaptureActionsProps {
+  owner: ExtensionWorkspaceType;
+  isBlinking: boolean;
+  isLoading: boolean;
+  fileUploaderService: FileUploaderService;
+}
+
+export interface BrowserMessagingService {
+  addMessageListener: (
+    listener: (message: any) => void | Promise<void>
+  ) => () => void;
+  removeMessageListener: (listener: (message: any) => void) => void;
+  sendMessage<T = any, R = any>(
+    message: T,
+    callback?: (response: R) => void
+  ): void | Promise<R>;
+}
+
+export abstract class CorePlatformService {
+  readonly auth: AuthService;
+  readonly capture: CaptureService;
+  readonly messaging: BrowserMessagingService;
+  readonly platform: PlatformType;
+  readonly storage: StorageService;
 
   constructor(
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
-    storage: StorageService
+    storage: StorageService,
+    browserMessaging: BrowserMessagingService,
+    capture: CaptureService
   ) {
-    this.auth = new authCls(storage);
     this.platform = platform;
+    this.auth = new authCls(storage);
     this.storage = storage;
+    this.messaging = browserMessaging;
+    this.capture = capture;
   }
 
   // Conversations.
@@ -97,34 +127,11 @@ export abstract class PlatformService {
   }): Promise<void>;
 }
 
-// Shared logic that works across all platforms
-export class BasePlatformService extends PlatformService {
-  constructor(
-    platform: PlatformType,
-    authCls: new (storage: StorageService) => AuthService,
-    storage: StorageService
-  ) {
-    super(platform, authCls, storage);
-  }
+export abstract class PlatformService extends CorePlatformService {
+  // Content capture.
+  abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps>;
 
-  // Content fragments.
-  async getFileContentFragmentId(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    conversationId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    file: UploadedContentFragmentTypeWithKind
-  ): Promise<string | null> {
-    throw new Error("Platform specific implementation required.");
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async saveFilesContentFragmentIds(args: {
-    conversationId: string;
-    uploadedFiles: UploadedContentFragmentTypeWithKind[];
-    createdContentFragments: ContentFragmentType[];
-  }): Promise<void> {
-    throw new Error("Platform specific implementation required.");
-  }
+  abstract getSendWithActionsLabel(): string;
 }
 
 export function isValidPlatform(platform: unknown): platform is PlatformType {

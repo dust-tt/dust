@@ -1,4 +1,3 @@
-import type { Auth0AuthorizeResponse } from "@app/platforms/chrome/messages";
 import {
   AUTH0_CLAIM_NAMESPACE,
   DEFAULT_DUST_API_DOMAIN,
@@ -29,6 +28,12 @@ export type StoredUser = UserTypeWithExtensionWorkspaces & {
   dustDomain: string;
   connectionStrategy: SupportedEnterpriseConnectionStrategy | undefined;
   connection?: string;
+};
+
+export type Auth0AuthorizeResponse = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 };
 
 type AuthErrorCode =

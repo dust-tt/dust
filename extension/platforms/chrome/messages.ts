@@ -1,10 +1,9 @@
-import type { AuthService } from "@app/shared/services/auth";
+import type {
+  Auth0AuthorizeResponse,
+  AuthService,
+} from "@app/shared/services/auth";
+import type { CaptureOptions } from "@app/shared/services/capture";
 
-export type Auth0AuthorizeResponse = {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-};
 export type AuthBackgroundResponse = {
   success: boolean;
 };
@@ -16,15 +15,9 @@ export type AuthBackgroundMessage = {
   refreshToken?: string;
 };
 
-export type GetActiveTabOptions = {
-  includeContent: boolean;
-  includeCapture: boolean;
-  includeSelectionOnly?: boolean;
-};
-
 export type GetActiveTabBackgroundMessage = {
   type: "GET_ACTIVE_TAB";
-} & GetActiveTabOptions;
+} & CaptureOptions;
 
 export type GetActiveTabBackgroundResponse = {
   title: string;
@@ -49,7 +42,7 @@ export type CaptureResponse = {
 
 export type AttachSelectionMessage = {
   type: "EXT_ATTACH_TAB";
-} & GetActiveTabOptions;
+} & CaptureOptions;
 
 export type RouteChangeMesssage = {
   type: "EXT_ROUTE_CHANGE";
@@ -165,7 +158,7 @@ export const sentLogoutMessage = (): Promise<AuthBackgroundResponse> => {
  * Message to the background script to get the active tab content.
  */
 
-export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
+export const sendGetActiveTabMessage = (params: CaptureOptions) => {
   return sendMessage<
     GetActiveTabBackgroundMessage,
     GetActiveTabBackgroundResponse
@@ -175,17 +168,10 @@ export const sendGetActiveTabMessage = (params: GetActiveTabOptions) => {
   });
 };
 
-export const sendInputBarStatus = (available: boolean) => {
-  void chrome.runtime.sendMessage({
-    type: "INPUT_BAR_STATUS",
-    available,
-  });
-};
-
 // Messages from background script to content script
 
 export const sendAttachSelection = (
-  opts: GetActiveTabOptions = { includeContent: true, includeCapture: false }
+  opts: CaptureOptions = { includeContent: true, includeCapture: false }
 ) => {
   return sendMessage<AttachSelectionMessage, void>({
     type: "EXT_ATTACH_TAB",
