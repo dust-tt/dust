@@ -40,6 +40,7 @@ export const PostDataSourceDocumentRequestBodySchema = t.type({
   async: t.union([t.boolean, t.undefined, t.null]),
   title: t.string,
   mime_type: t.string,
+  force_refresh: t.union([t.boolean, t.undefined]),
 });
 
 export type PostDataSourceDocumentRequestBody = t.TypeOf<
