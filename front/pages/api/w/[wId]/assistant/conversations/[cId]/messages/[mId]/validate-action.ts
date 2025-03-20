@@ -13,6 +13,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 const ValidateActionSchema = z.object({
   actionId: z.number(),
   approved: z.boolean(),
+  paramsHash: z.any(),
 });
 
 type ValidateActionResponse = {
@@ -71,7 +72,7 @@ async function handler(
     });
   }
 
-  const { actionId, approved } = parseResult.data;
+  const { actionId, approved, paramsHash } = parseResult.data;
 
   try {
     const redis = await getRedisClient({ origin: "assistant_generation" });
@@ -79,7 +80,9 @@ async function handler(
     // Store the validation result in Redis with a key that the backend will check
     // Use a more specific key format that includes the conversation ID to avoid collisions
     // between different conversations
-    const validationKey = `assistant:action:validation:${cId}:${mId}:${actionId}`;
+    const validationKey = `assistant:action:validation:${cId}:${mId}:${actionId}:${paramsHash}`;
+
+    console.log("Validation key in validate-action side:", validationKey);
 
     logger.info(
       {
