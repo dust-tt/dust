@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { DEV_ORIGIN, isAllowedOrigin } from "@app/config/cors";
+import { isDevelopment } from "@app/types";
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
@@ -70,7 +71,7 @@ export function middleware(request: NextRequest) {
 function setCorsHeaders(response: NextResponse, request: NextRequest) {
   const origin = request.headers.get("origin");
 
-  if (process.env.NODE_ENV === "development" && origin === DEV_ORIGIN) {
+  if (isDevelopment() && origin === DEV_ORIGIN) {
     response.headers.set("Access-Control-Allow-Origin", DEV_ORIGIN);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else if (origin && isAllowedOrigin(origin)) {
