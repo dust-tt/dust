@@ -307,6 +307,16 @@ async function handler(
       });
       return;
     case "GET":
+      if (!auth.user()) {
+        return apiError(req, res, {
+          status_code: 401,
+          api_error: {
+            type: "user_not_found",
+            message:
+              "Getting conversations is only available when authenticated as a user.",
+          },
+        });
+      }
       const conversations = await getUserConversations(auth);
       res.status(200).json({ conversations });
       return;
