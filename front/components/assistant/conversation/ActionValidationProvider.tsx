@@ -7,7 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect,useState } from "react";
 
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 
@@ -49,29 +49,93 @@ export function ActionValidationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [pendingValidation, setPendingValidation] =
+  // Queue of validation requests
+  const [validationQueue, setValidationQueue] = useState<
+    PendingValidationRequestType[]
+  >([]);
+
+  // Current validation being processed
+  const [currentValidation, setCurrentValidation] =
     useState<PendingValidationRequestType | null>(null);
+
+  // Dialog open state - controlled separately from currentValidation
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // When currentValidation changes, update dialog open state
+  useEffect(() => {
+    if (currentValidation) {
+      setIsDialogOpen(true);
+    }
+  }, [currentValidation]);
+
+  // Process the next item in the queue when current validation is completed
+  useEffect(() => {
+    if (
+      !isProcessing &&
+      validationQueue.length > 0 &&
+      !currentValidation &&
+      !isDialogOpen
+    ) {
+      // Take the next item from the queue
+      const nextValidation = validationQueue[0];
+      const newQueue = validationQueue.slice(1);
+
+      setValidationQueue(newQueue);
+      setCurrentValidation(nextValidation);
+      setErrorMessage(null);
+    }
+  }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
+
+  const hashInputParams = (params: Record<string, any>): string => {
+    if (!params || Object.keys(params).length === 0) {
+      return "no_params";
+    }
+
+    // Sort keys to ensure consistent hashing
+    const sortedParams = Object.keys(params)
+      .sort()
+      .reduce(
+        (acc, key) => {
+          acc[key] = params[key];
+          return acc;
+        },
+        {} as Record<string, any>
+      );
+
+    return require("crypto")
+      .createHash("sha256")
+      .update(JSON.stringify(sortedParams.query))
+      .digest("hex")
+      .substring(0, 16);
+  };
+
   // Function to handle approval of the action
   const handleApprove = async () => {
-    if (!pendingValidation) {return;}
+    if (!currentValidation) {
+      return;
+    }
+
+    const inputsHash = hashInputParams(currentValidation.inputs);
 
     setErrorMessage(null);
     setIsProcessing(true);
+
     try {
       // Call API to approve the action
       const response = await fetch(
-        `/api/w/${pendingValidation.workspaceId}/assistant/conversations/${pendingValidation.conversationId}/messages/${pendingValidation.messageId}/validate-action`,
+        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            actionId: pendingValidation.action.id,
+            actionId: currentValidation.action.id,
             approved: true,
+            paramsHash: inputsHash,
           }),
         }
       );
@@ -87,28 +151,35 @@ export function ActionValidationProvider({
       setIsProcessing(false);
     }
 
-    // Only clear pending validation if the API call was successful
-    setPendingValidation(null);
+    // Successfully processed - close dialog and clear current validation
+    setIsDialogOpen(false);
+    setCurrentValidation(null);
   };
 
   // Function to handle rejection of the action
   const handleReject = async () => {
-    if (!pendingValidation) {return;}
+    if (!currentValidation) {
+      return;
+    }
+
+    const inputsHash = hashInputParams(currentValidation.inputs);
 
     setErrorMessage(null);
     setIsProcessing(true);
+
     try {
       // Call API to reject the action
       const response = await fetch(
-        `/api/w/${pendingValidation.workspaceId}/assistant/conversations/${pendingValidation.conversationId}/messages/${pendingValidation.messageId}/validate-action`,
+        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            actionId: pendingValidation.action.id,
+            actionId: currentValidation.action.id,
             approved: false,
+            paramsHash: inputsHash,
           }),
         }
       );
@@ -124,11 +195,12 @@ export function ActionValidationProvider({
       setIsProcessing(false);
     }
 
-    // Only clear pending validation if the API call was successful
-    setPendingValidation(null);
+    // Successfully processed - close dialog and clear current validation
+    setIsDialogOpen(false);
+    setCurrentValidation(null);
   };
 
-  // Function to show the validation dialog
+  // Function to add a validation request to the queue
   const showValidationDialog = (props: {
     workspaceId: string;
     messageId: string;
@@ -136,26 +208,33 @@ export function ActionValidationProvider({
     action: ActionConfigurationType;
     inputs: Record<string, string | boolean | number>;
   }) => {
-    setPendingValidation(props);
+    setValidationQueue((prevQueue) => [...prevQueue, props]);
     setErrorMessage(null);
+  };
+
+  // Handle manual dialog close
+  const handleDialogClose = (open: boolean) => {
+    // TODO: need to handle dialog close
+
+    //if (!open && !isProcessing) {
+    // If dialog was manually closed without an action, reject the current validation
+    //if (currentValidation) {
+    //void handleReject();
+    //}
+    //}
+
+    // Only update dialog state if not processing
+    if (!isProcessing) {
+      setIsDialogOpen(open);
+    }
   };
 
   return (
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
       {children}
 
-      {/* Validation Dialog */}
-      <Dialog
-        open={pendingValidation !== null}
-        onOpenChange={(open) => {
-          if (!open && !isProcessing) {
-            // If dialog is closed manually, treat as rejection
-            if (pendingValidation) {
-              void handleReject();
-            }
-          }
-        }}
-      >
+      {/* Validation Dialog - Using isDialogOpen instead of currentValidation !== null */}
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Action Validation Required</DialogTitle>
@@ -164,15 +243,22 @@ export function ActionValidationProvider({
             <div className="flex flex-col gap-4">
               <div>
                 <span className="font-medium">Action:</span>{" "}
-                {pendingValidation?.action.name}
+                {currentValidation?.action.name}
               </div>
               <div>
                 <span className="font-medium">Inputs:</span>
-                <pre className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm">
-                  {JSON.stringify(pendingValidation?.inputs, null, 2)}
+                <pre className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm dark:bg-slate-950">
+                  {JSON.stringify(currentValidation?.inputs, null, 2)}
                 </pre>
               </div>
               <div>Do you want to allow this action to proceed?</div>
+
+              {validationQueue.length > 0 && (
+                <div className="mt-2 text-sm font-medium text-blue-500">
+                  {validationQueue.length} more action
+                  {validationQueue.length > 1 ? "s" : ""} in queue
+                </div>
+              )}
 
               {errorMessage && (
                 <div className="mt-2 text-sm font-medium text-red-500">

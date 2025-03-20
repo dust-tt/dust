@@ -28,6 +28,7 @@ import type {
   Result,
 } from "@app/types";
 import { Ok } from "@app/types";
+
 import { getRedisClient } from "../api/redis";
 
 export type WebsearchConfigurationType = {
@@ -294,10 +295,47 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
 
     // Check Redis for action validation status before proceeding
     try {
+      const hashInputParams = (params: Record<string, any>): string => {
+        if (!params || Object.keys(params).length === 0) {
+          return "no_params";
+        }
+
+        // Sort keys to ensure consistent hashing
+        const sortedParams = Object.keys(params)
+          .sort()
+          .reduce(
+            (acc, key) => {
+              acc[key] = params[key];
+              return acc;
+            },
+            {} as Record<string, any>
+          );
+
+        return require("crypto")
+          .createHash("sha256")
+          .update(JSON.stringify(sortedParams.query))
+          .digest("hex")
+          .substring(0, 16);
+      };
+
+      const inputsHash = hashInputParams({ query });
+
+      console.log(JSON.stringify({ query }));
+      console.log("Getting result for ", inputsHash, "\n\n\n\n\n\n\n\n\n\n");
+
       const redis = await getRedisClient({ origin: "assistant_generation" });
-      const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}`;
+      const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}:${inputsHash}`;
       const validationStatus = await redis.get(validationKey);
- 
+
+      console.log(
+        "validationKey : ",
+        validationKey,
+        " has status",
+        validationStatus,
+        " for query ",
+        inputsHash
+      );
+
       if (!validationStatus || validationStatus !== "approved") {
         let attempts = 0;
         const maxAttempts = 60; // Wait up to 30 seconds (60 * 500ms)
@@ -326,6 +364,8 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
               },
               "Action approved by user, continuing execution"
             );
+
+            console.log("breaking out of loop");
             break; // Approved, continue with execution
           }
 
@@ -363,8 +403,15 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
             return;
           }
 
+          console.log(
+            "attempting to validate action with inputhash",
+            inputsHash
+          );
+
           attempts++;
         }
+
+        console.log("out of loop att/maxAtt ", attempts, maxAttempts);
 
         // If we timed out waiting for validation
         if (attempts >= maxAttempts) {
