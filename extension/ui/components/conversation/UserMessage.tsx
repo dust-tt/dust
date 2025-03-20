@@ -13,6 +13,10 @@ import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+import {
+  UrlMentionBlock,
+  urlMentionDirective,
+} from "@app/ui/components/markdown/UrlMentionBlock";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -33,12 +37,13 @@ export function UserMessage({
     () => ({
       sup: CiteBlock,
       mention: MentionBlock,
+      url_mention: UrlMentionBlock,
     }),
     []
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), mentionDirective, urlMentionDirective],
     []
   );
 

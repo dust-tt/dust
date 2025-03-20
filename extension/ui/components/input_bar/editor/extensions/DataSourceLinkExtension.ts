@@ -15,6 +15,7 @@ export const DataSourceLinkExtension = Node.create({
       title: { default: null },
       provider: { default: null },
       spaceId: { default: null },
+      url: { default: null },
     };
   },
 
