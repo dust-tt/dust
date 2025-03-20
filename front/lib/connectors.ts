@@ -1,6 +1,6 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import type { ConnectorProvider } from "@app/types";
 import { getWeeklyDateRange } from "@app/lib/utils";
+import type { ConnectorProvider } from "@app/types";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
