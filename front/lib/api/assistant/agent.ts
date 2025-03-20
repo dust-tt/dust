@@ -25,7 +25,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfigurationFull } from "@app/lib/api/assistant/configuration";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
   renderConversationForModel,
@@ -84,7 +84,7 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  const fullConfiguration = await getAgentConfigurationFull(
+  const fullConfiguration = await getAgentConfiguration(
     auth,
     configuration.sId,
     "full"

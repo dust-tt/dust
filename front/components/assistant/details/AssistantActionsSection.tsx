@@ -306,11 +306,10 @@ function renderOtherAction(
       </ActionSection>
     );
   } else if (isMCPServerConfiguration(action)) {
-    //TODO(mcp) We want to display a more specific description here
     return (
-      <ActionSection title="Calling a MCP Server" key={`other-${index}`}>
+      <ActionSection title={action.name} key={`other-${index}`}>
         <Icon visual={CommandIcon} size="sm" />
-        <div>Agent can call use MCP Server tools to answer.</div>
+        <div>{action.description}</div>
       </ActionSection>
     );
   } else if (isBrowseConfiguration(action)) {

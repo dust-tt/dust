@@ -2,8 +2,6 @@
  * Model rendering of conversations.
  */
 
-import type { MCPToolResultContent } from "@app/lib/actions/mcp";
-
 export interface ModelMessageType {
   role: "action" | "agent" | "user" | "content_fragment";
   name: string;

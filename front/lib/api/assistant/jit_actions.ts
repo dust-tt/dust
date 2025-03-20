@@ -49,6 +49,8 @@ import { assertNever } from "@app/types";
  * For example, a retrieval action with auto tags may return a search_tags action
  * to help the model find relevant tags, but the model can still use the retrieval
  * action without searching for tags first.
+ *
+ * TODO(mcp): in a MCP world, the supporting actions are part of the MCP server tools for the main action. Should be removed once everything has been migrated to MCP.
  */
 function getSupportingActions(
   agentActions: AgentActionConfigurationType[]

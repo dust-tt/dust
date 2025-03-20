@@ -2,10 +2,8 @@ import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type {
-  MCPServerConfigurationType,
-  MCPToolResultContent,
-} from "@app/lib/actions/mcp";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";

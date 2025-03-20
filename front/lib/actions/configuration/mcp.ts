@@ -1,11 +1,7 @@
 import { Op } from "sequelize";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { connectToMCPServer } from "@app/lib/actions/mcp_actions";
+import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import type { ModelId } from "@app/types";
@@ -55,12 +51,7 @@ export async function fetchMCPServerActionConfigurations({
       actionsByConfigurationId.set(agentConfigurationId, []);
     }
 
-    const mcpClient = await connectToMCPServer({
-      serverType,
-      internalMCPServerId,
-      remoteMCPServerId,
-    });
-    const details = await mcpClient.getServerVersion();
+    const metadata = await getMCPServerMetadata(config);
 
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {
@@ -68,13 +59,8 @@ export async function fetchMCPServerActionConfigurations({
         id,
         sId,
         type: "mcp_server_configuration",
-        name: details?.name ?? DEFAULT_MCP_ACTION_NAME,
-        description:
-          details &&
-          "description" in details &&
-          typeof details.description === "string"
-            ? details.description
-            : DEFAULT_MCP_ACTION_DESCRIPTION,
+        name: metadata.name,
+        description: metadata.description,
         serverType,
         internalMCPServerId,
         remoteMCPServerId,
