@@ -9,13 +9,13 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
-  MentionBlock,
-  mentionDirective,
-} from "@app/components/markdown/MentionBlock";
-import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@app/components/markdown/MentionBlock";
 import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {

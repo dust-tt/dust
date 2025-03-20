@@ -5,13 +5,13 @@ import {
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
 import {
-  MentionBlock,
-  mentionDirective,
-} from "@app/ui/components/markdown/MentionBlock";
-import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/ui/components/markdown/ContentNodeMentionBlock";
+import {
+  MentionBlock,
+  mentionDirective,
+} from "@app/ui/components/markdown/MentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import { useMemo } from "react";
