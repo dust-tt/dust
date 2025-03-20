@@ -1,5 +1,6 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ConnectorProvider } from "@app/types";
+import { getWeeklyDateRange } from "@app/lib/utils";
 
 function getConnectorOrder() {
   return Object.keys(CONNECTOR_CONFIGURATIONS)
@@ -143,74 +144,87 @@ const providers: Record<string, Provider> = {
     matcher: (url: URL): boolean => {
       return (
         url.hostname.includes("slack.com") &&
-        url.pathname.includes("/archives/")
+        (url.pathname.includes("/archives/") ||
+          url.pathname.includes("/client/"))
       );
     },
     extractor: (url: URL): string | null => {
-      // Extract channel ID from the pathname
-      const pathParts = url.pathname.split("/");
-      const channelIndex = pathParts.indexOf("archives");
-      if (channelIndex === -1 || channelIndex + 1 >= pathParts.length) {
-        return null;
-      }
-
-      const channelId = pathParts[channelIndex + 1];
-
-      // Check if this is a thread URL by looking for thread_ts parameter
-      const threadTs = url.searchParams.get("thread_ts");
-      if (threadTs) {
-        return `slack-${channelId}-thread-${threadTs}`;
-      }
-
-      // If not a thread, it's a regular message - extract message timestamp from path
-      if (pathParts.length > channelIndex + 2) {
-        const messagePart = pathParts[channelIndex + 2];
-        if (messagePart && messagePart.startsWith("p")) {
-          // Extract timestamp (remove the 'p' prefix)
-          const timestamp = messagePart.substring(1);
-          const messageDate = new Date(parseInt(timestamp) / 1000);
-
-          // Get week start and end dates
-          const getWeekStart = (date: Date): Date => {
-            const dateCopy = new Date(date);
-            dateCopy.setHours(0);
-            dateCopy.setMinutes(0);
-            dateCopy.setSeconds(0);
-            dateCopy.setMilliseconds(0);
-            const diff =
-              dateCopy.getDate() -
-              dateCopy.getDay() +
-              (dateCopy.getDay() === 0 ? -6 : 1);
-            return new Date(dateCopy.setDate(diff));
-          };
-
-          const getWeekEnd = (date: Date): Date => {
-            const dateCopy = new Date(date);
-            dateCopy.setHours(0);
-            dateCopy.setMinutes(0);
-            dateCopy.setSeconds(0);
-            dateCopy.setMilliseconds(0);
-            const diff =
-              dateCopy.getDate() -
-              dateCopy.getDay() +
-              (dateCopy.getDay() === 0 ? -6 : 1);
-            return new Date(dateCopy.setDate(diff + 7));
-          };
-
-          const startDate = getWeekStart(messageDate);
-          const endDate = getWeekEnd(messageDate);
-
-          const startDateStr = `${startDate.getFullYear()}-${startDate.getMonth()}-${startDate.getDate()}`;
-          const endDateStr = `${endDate.getFullYear()}-${endDate.getMonth()}-${endDate.getDate()}`;
-
-          return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
-        }
-      }
-
-      return null;
+      // Try each type of extraction in order
+      return (
+        extractChannelNodeId(url) ||
+        extractThreadNodeId(url) ||
+        extractMessageNodeId(url) ||
+        null
+      );
     },
   },
 };
+
+// Extract a channel node ID from a Slack client URL
+function extractChannelNodeId(url: URL): string | null {
+  const pathParts = url.pathname.split("/");
+  if (pathParts[1] === "client" && pathParts.length >= 4) {
+    const channelId = pathParts[3];
+    return `slack-channel-${channelId}`;
+  }
+  return null;
+}
+
+// Extract a thread node ID from a Slack archives URL
+function extractThreadNodeId(url: URL): string | null {
+  const pathParts = url.pathname.split("/");
+  const channelIndex = pathParts.indexOf("archives");
+
+  if (channelIndex === -1 || channelIndex + 1 >= pathParts.length) {
+    return null;
+  }
+
+  const threadTs = url.searchParams.get("thread_ts");
+  if (!threadTs) {
+    return null;
+  }
+
+  const channelId = pathParts[channelIndex + 1];
+  return `slack-${channelId}-thread-${threadTs}`;
+}
+
+// Extract a message node ID from a Slack archives URL
+function extractMessageNodeId(url: URL): string | null {
+  function formatDateForId(date: Date): string {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  }
+
+  const pathParts = url.pathname.split("/");
+  const channelIndex = pathParts.indexOf("archives");
+
+  if (
+    channelIndex === -1 ||
+    channelIndex + 1 >= pathParts.length ||
+    pathParts.length <= channelIndex + 2
+  ) {
+    return null;
+  }
+
+  const channelId = pathParts[channelIndex + 1];
+  const messagePart = pathParts[channelIndex + 2];
+
+  if (!messagePart || !messagePart.startsWith("p")) {
+    return null;
+  }
+
+  // Extract timestamp and convert to date
+  const timestamp = messagePart.substring(1);
+  const messageDate = new Date(parseInt(timestamp) / 1000);
+
+  // Calculate week boundaries
+  const { startDate, endDate } = getWeeklyDateRange(messageDate);
+
+  // Format dates for node ID
+  const startDateStr = formatDateForId(startDate);
+  const endDateStr = formatDateForId(endDate);
+
+  return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
+}
 
 // Extracts a nodeId from a given url
 // Currently supports Google Drive documents and Notion pages
