@@ -2,7 +2,7 @@ import { Chip } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 export function UrlMentionBlock({ title }: { title: string; url: string }) {
-  return <Chip label={title} size="xs" color="white" />;
+  return <Chip label={title} size="xs" color="sky" />;
 }
 
 export function urlMentionDirective() {
