@@ -544,14 +544,11 @@ async fn datasets_register(
         Ok(d) => {
             // First retrieve the latest hash of the dataset to avoid registering if it matches the
             // current hash.
-            let current_hash = match state
+            let current_hash = state
                 .store
                 .latest_dataset_hash(&project, &d.dataset_id())
                 .await
-            {
-                Err(_) => None,
-                Ok(hash) => hash,
-            };
+                .unwrap_or_else(|_| None);
             if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
                 match state.store.register_dataset(&project, &d).await {
                     Err(e) => error_response(
@@ -1041,13 +1038,10 @@ async fn runs_create_stream(
             });
         }
         Err((_, api_error)) => {
-            let error = match api_error.0.error {
-                Some(error) => error,
-                None => APIError {
-                    code: "internal_server_error".to_string(),
-                    message: "The app execution failed unexpectedly".to_string(),
-                },
-            };
+            let error = api_error.0.error.unwrap_or_else(|| APIError {
+                code: "internal_server_error".to_string(),
+                message: "The app execution failed unexpectedly".to_string(),
+            });
             let _ = tx.send(json!({
                 "type": "error",
                 "content": {
@@ -1584,14 +1578,8 @@ async fn data_sources_documents_update_tags(
     Json(payload): Json<DataSourcesDocumentsUpdateTagsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let add_tags = match payload.add_tags {
-        Some(tags) => tags,
-        None => vec![],
-    };
-    let remove_tags = match payload.remove_tags {
-        Some(tags) => tags,
-        None => vec![],
-    };
+    let add_tags = payload.add_tags.unwrap_or_else(|| vec![]);
+    let remove_tags = payload.remove_tags.unwrap_or_else(|| vec![]);
     let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
     let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
 
@@ -1848,10 +1836,7 @@ async fn data_sources_documents_upsert(
     Json(payload): Json<DataSourcesDocumentsUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let light_document_output = match payload.light_document_output {
-        Some(v) => v,
-        None => false,
-    };
+    let light_document_output = payload.light_document_output.unwrap_or_else(|| false);
 
     // TODO(2025-03-17 aubin) - Add generic validation on node upserts instead of duplicating it for folders, tables, documents.
     if payload.parents.get(0) != Some(&payload.document_id) {
@@ -2900,10 +2885,7 @@ async fn tables_csv_upsert(
                         state.databases_store.clone(),
                         &payload.bucket,
                         &payload.bucket_csv_path,
-                        match payload.truncate {
-                            Some(v) => v,
-                            None => false,
-                        },
+                        payload.truncate.unwrap_or_else(|| false),
                     )
                     .await
                 {
@@ -2979,10 +2961,7 @@ async fn tables_rows_upsert(
                         state.store.clone(),
                         state.databases_store.clone(),
                         payload.rows,
-                        match payload.truncate {
-                            Some(v) => v,
-                            None => false,
-                        },
+                        payload.truncate.unwrap_or_else(|| false),
                     )
                     .await
                 {
