@@ -1,5 +1,5 @@
 import { Parser } from "htmlparser2";
-import type { Readable} from "stream";
+import type { Readable } from "stream";
 import { Transform } from "stream";
 
 interface ParserState {
