@@ -1,7 +1,6 @@
 import type {
   BaseConversationAttachmentType,
   ConversationAttachmentType,
-  ConversationFileType,
 } from "@app/lib/actions/conversation/list_files";
 import type {
   ConversationType,

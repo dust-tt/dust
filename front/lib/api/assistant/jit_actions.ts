@@ -21,12 +21,12 @@ import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import {
-  assertNever,
-  type AgentActionType,
-  type AgentMessageType,
-  type ConversationType,
+import type {
+  AgentActionType,
+  AgentMessageType,
+  ConversationType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 async function getJITActions(
   auth: Authenticator,
@@ -121,7 +121,7 @@ async function getJITActions(
           relativeTimeFrame: "auto",
           dataSources: [
             {
-              workspaceId: auth.getNonNullableWorkspace().sId,
+              workspaceId: conversation.owner.sId,
               dataSourceViewId: dataSourceView.sId,
               filter: { parents: null, tags: null },
             },
