@@ -4,3 +4,4 @@
 node_modules/
 packages/*
 platforms/chrome/build/*
+platforms/front/build/*

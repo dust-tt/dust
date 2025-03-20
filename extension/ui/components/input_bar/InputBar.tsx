@@ -101,7 +101,7 @@ export function AssistantInputBar({
 
   const sendInputBarStatus = useCallback(
     (available: boolean) => {
-      void platform.messaging.sendMessage({
+      void platform.messaging?.sendMessage({
         type: "EXT_INPUT_BAR_STATUS",
         available,
       });
@@ -112,7 +112,7 @@ export function AssistantInputBar({
   useEffect(() => {
     void sendInputBarStatus(true);
 
-    const cleanup = platform.messaging.addMessageListener(
+    const cleanup = platform.messaging?.addMessageListener(
       async (message: AttachSelectionMessage) => {
         const { type } = message;
         if (type === "EXT_ATTACH_TAB") {
@@ -123,7 +123,7 @@ export function AssistantInputBar({
 
     return () => {
       void sendInputBarStatus(false);
-      cleanup();
+      cleanup?.();
     };
   }, [platform.messaging, uploadContentTab]);
 
