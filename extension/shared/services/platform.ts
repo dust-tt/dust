@@ -1,5 +1,6 @@
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type { AuthService, StoredUser } from "@app/shared/services/auth";
+import type { CaptureService } from "@app/shared/services/capture";
 import type { StorageService } from "@app/shared/services/storage";
 import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
 import type {
@@ -38,21 +39,24 @@ export interface BrowserMessagingService {
 }
 
 export abstract class CorePlatformService {
-  auth: AuthService;
-  browserMessaging: BrowserMessagingService;
-  platform: PlatformType;
-  storage: StorageService;
+  readonly auth: AuthService;
+  readonly capture: CaptureService;
+  readonly messaging: BrowserMessagingService;
+  readonly platform: PlatformType;
+  readonly storage: StorageService;
 
   constructor(
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
     storage: StorageService,
-    browserMessaging: BrowserMessagingService
+    browserMessaging: BrowserMessagingService,
+    capture: CaptureService
   ) {
-    this.auth = new authCls(storage);
     this.platform = platform;
+    this.auth = new authCls(storage);
     this.storage = storage;
-    this.browserMessaging = browserMessaging;
+    this.messaging = browserMessaging;
+    this.capture = capture;
   }
 
   // Conversations.

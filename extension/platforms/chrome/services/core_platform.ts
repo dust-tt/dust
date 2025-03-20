@@ -1,5 +1,6 @@
 import { ChromeAuthService } from "@app/platforms/chrome/services/auth";
 import { ChromeBrowserMessagingService } from "@app/platforms/chrome/services/browser_messaging";
+import { ChromeCaptureService } from "@app/platforms/chrome/services/capture";
 import { ChromeStorageService } from "@app/platforms/chrome/services/storage";
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import { CorePlatformService } from "@app/shared/services/platform";
@@ -24,7 +25,8 @@ export class ChromeCorePlatformService extends CorePlatformService {
       "chrome",
       ChromeAuthService,
       new ChromeStorageService(),
-      new ChromeBrowserMessagingService()
+      new ChromeBrowserMessagingService(),
+      new ChromeCaptureService()
     );
   }
 

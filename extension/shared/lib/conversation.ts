@@ -1,5 +1,3 @@
-import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
-import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import type { PlatformService } from "@app/shared/services/platform";
 import type {
@@ -391,14 +389,3 @@ export async function retryMessage(
 
   return new Ok(await mRes.json());
 }
-
-// TODO: Move to platform specific service.
-export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
-  const backgroundRes = await sendGetActiveTabMessage(params);
-  const error = backgroundRes.error;
-  if (error) {
-    console.error("Failed to get content from the current tab.");
-    return new Err(new Error(error));
-  }
-  return new Ok(backgroundRes);
-};

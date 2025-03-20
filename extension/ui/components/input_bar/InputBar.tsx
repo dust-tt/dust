@@ -61,6 +61,7 @@ export function AssistantInputBar({
   setIncludeTab: (includeTab: boolean) => void;
   isSubmitting?: boolean;
 }) {
+  const platform = usePlatform();
   const dustAPI = useDustAPI();
 
   const { agentConfigurations: baseAgentConfigurations } =
@@ -86,7 +87,10 @@ export function AssistantInputBar({
     [spaces]
   );
 
-  const fileUploaderService = useFileUploaderService(conversation?.sId);
+  const fileUploaderService = useFileUploaderService(
+    platform.capture,
+    conversation?.sId
+  );
   const {
     isCapturing,
     uploadContentTab,
@@ -95,22 +99,20 @@ export function AssistantInputBar({
     resetUpload,
   } = fileUploaderService;
 
-  const platform = usePlatform();
-
   const sendInputBarStatus = useCallback(
     (available: boolean) => {
-      void platform.browserMessaging.sendMessage({
+      void platform.messaging.sendMessage({
         type: "EXT_INPUT_BAR_STATUS",
         available,
       });
     },
-    [platform.browserMessaging]
+    [platform.messaging]
   );
 
   useEffect(() => {
     void sendInputBarStatus(true);
 
-    const cleanup = platform.browserMessaging.addMessageListener(
+    const cleanup = platform.messaging.addMessageListener(
       async (message: AttachSelectionMessage) => {
         const { type } = message;
         if (type === "EXT_ATTACH_TAB") {
@@ -123,7 +125,7 @@ export function AssistantInputBar({
       void sendInputBarStatus(false);
       cleanup();
     };
-  }, [platform.browserMessaging, uploadContentTab]);
+  }, [platform.messaging, uploadContentTab]);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 

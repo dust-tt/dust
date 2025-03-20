@@ -8,7 +8,6 @@ export function ChromeCaptureActions({
   isLoading,
   owner,
 }: CaptureActionsProps) {
-  // Blacklisting logic to disable share buttons.
   const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
   const blacklistedConfig: string[] = owner.blacklistedDomains ?? [];
 
@@ -19,6 +18,13 @@ export function ChromeCaptureActions({
         ? currentUrl.startsWith(d)
         : currentDomain.endsWith(d)
     );
+
+  const handleCapture = () => {
+    void fileUploaderService.uploadContentTab({
+      includeContent: true,
+      includeCapture: false,
+    });
+  };
 
   return (
     <>
@@ -33,12 +39,7 @@ export function ChromeCaptureActions({
           variant="outline"
           size="sm"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={() =>
-            fileUploaderService.uploadContentTab({
-              includeContent: true,
-              includeCapture: false,
-            })
-          }
+          onClick={handleCapture}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -73,12 +74,7 @@ export function ChromeCaptureActions({
           variant="outline"
           size="sm"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={() =>
-            fileUploaderService.uploadContentTab({
-              includeContent: true,
-              includeCapture: false,
-            })
-          }
+          onClick={handleCapture}
           disabled={isLoading || isBlacklisted}
         />
       </div>

@@ -32,7 +32,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const cleanup = platform.browserMessaging.addMessageListener(
+    const cleanup = platform.messaging.addMessageListener(
       (message: RouteChangeMesssage) => {
         const { type } = message;
         if (type === "EXT_ROUTE_CHANGE") {
