@@ -95,7 +95,6 @@ export async function upsertTableFromCsv({
   title,
   mimeType,
   sourceUrl,
-  forceRefresh,
 }: {
   auth: Authenticator;
   dataSource: DataSourceResource;
@@ -111,7 +110,6 @@ export async function upsertTableFromCsv({
   title: string;
   mimeType: string;
   sourceUrl: string | null;
-  forceRefresh?: boolean;
 }): Promise<Result<{ table: CoreAPITable }, TableOperationError>> {
   const owner = auth.getNonNullableWorkspace();
   const file: FileResource | null = fileId
@@ -169,7 +167,6 @@ export async function upsertTableFromCsv({
     title,
     mimeType,
     sourceUrl,
-    forceRefresh,
   });
 
   if (tableRes.isErr()) {

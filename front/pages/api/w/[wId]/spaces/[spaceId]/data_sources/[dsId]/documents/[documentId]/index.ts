@@ -112,7 +112,6 @@ async function handler(
         light_document_output,
         mime_type,
         title,
-        force_refresh,
       } = bodyValidation.right;
 
       const upsertResult = await upsertDocument({
@@ -129,7 +128,6 @@ async function handler(
         title,
         dataSource,
         auth,
-        force_refresh,
       });
 
       if (upsertResult.isErr()) {
