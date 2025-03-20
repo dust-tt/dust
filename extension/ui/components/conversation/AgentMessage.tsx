@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
@@ -158,6 +159,7 @@ export function AgentMessage({
   owner,
   user,
 }: AgentMessageProps) {
+  const platform = usePlatform();
   const sendNotification = useSendNotification();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
@@ -657,7 +659,7 @@ export function AgentMessage({
 
   async function retryHandler(agentMessage: AgentMessagePublicType) {
     setIsRetryHandlerProcessing(true);
-    const res = await retryMessage({
+    const res = await retryMessage(platform, {
       owner,
       conversationId,
       messageId: agentMessage.sId,

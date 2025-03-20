@@ -1,3 +1,4 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import {
   createPlaceholderUserMessage,
   postConversation,
@@ -6,13 +7,8 @@ import {
 } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
-import type { StoredUser } from "@app/shared/lib/storage";
-import {
-  getConversationContext,
-  saveFilesContentFragmentIds,
-  setConversationsContext,
-} from "@app/shared/lib/storage";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
+import type { StoredUser } from "@app/shared/services/auth";
 import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
@@ -41,6 +37,7 @@ export function ConversationContainer({
   user,
 }: ConversationContainerProps) {
   const navigate = useNavigate();
+  const platform = usePlatform();
 
   const [includeContent, setIncludeContent] = useState<boolean | undefined>();
 
@@ -48,7 +45,7 @@ export function ConversationContainer({
     if (includeContent === undefined) {
       return;
     }
-    void setConversationsContext({
+    void platform.setConversationsContext({
       [conversationId ?? "new"]: {
         includeCurrentPage: includeContent,
       },
@@ -57,7 +54,9 @@ export function ConversationContainer({
 
   useEffect(() => {
     const doAsync = async () => {
-      const context = await getConversationContext(conversationId ?? "new");
+      const context = await platform.getConversationContext(
+        conversationId ?? "new"
+      );
       setIncludeContent(context.includeCurrentPage);
     };
     void doAsync();
@@ -92,7 +91,7 @@ export function ConversationContainer({
     try {
       await mutateConversation(
         async (currentConversation) => {
-          const result = await postMessage({
+          const result = await postMessage(platform, {
             dustAPI,
             conversationId,
             messageData,
@@ -103,7 +102,7 @@ export function ConversationContainer({
               result.value;
 
             // Save content fragment IDs for tab contents to the local storage.
-            await saveFilesContentFragmentIds({
+            await platform.saveFilesContentFragmentIds({
               conversationId,
               uploadedFiles: contentFragments.uploaded,
               createdContentFragments,
@@ -159,7 +158,7 @@ export function ConversationContainer({
         mentions: AgentMentionType[],
         contentFragments: ContentFragmentsType
       ) => {
-        const conversationRes = await postConversation({
+        const conversationRes = await postConversation(platform, {
           dustAPI,
           messageData: {
             input,
@@ -187,13 +186,13 @@ export function ConversationContainer({
             }
           }
           // Save the content fragment IDs for tab contents to the local storage.
-          await saveFilesContentFragmentIds({
+          await platform.saveFilesContentFragmentIds({
             conversationId: conversationRes.value.sId,
             uploadedFiles: contentFragments.uploaded,
             createdContentFragments,
           });
 
-          await setConversationsContext({
+          await platform.setConversationsContext({
             [conversationRes.value.sId]: {
               includeCurrentPage: !!includeContent,
             },

@@ -1,7 +1,7 @@
 import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import { AgentMessage } from "@app/ui/components/conversation/AgentMessage";
 import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { UserMessage } from "@app/ui/components/conversation/UserMessage";
@@ -25,11 +25,11 @@ import { useSWRConfig } from "swr";
 
 interface MessageItemProps {
   conversationId: string;
-  messageFeedback: AgentMessageFeedbackType | undefined;
   hideReactions: boolean;
   isInModal: boolean;
   isLastMessage: boolean;
   message: MessageWithContentFragmentsType;
+  messageFeedback: AgentMessageFeedbackType | undefined;
   owner: LightWorkspaceType;
   reactions: ConversationMessageReactionsType;
   user: StoredUser;

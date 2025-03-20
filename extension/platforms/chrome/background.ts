@@ -1,9 +1,3 @@
-import {
-  AUTH0_CLIENT_DOMAIN,
-  AUTH0_CLIENT_ID,
-  DUST_API_AUDIENCE,
-} from "@app/shared/lib/config";
-import { extractPage } from "@app/shared/lib/extraction";
 import type {
   Auth0AuthorizeResponse,
   AuthBackgroundMessage,
@@ -13,12 +7,21 @@ import type {
   GetActiveTabBackgroundMessage,
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
-} from "@app/shared/lib/messages";
-import type { PendingUpdate } from "@app/shared/lib/storage";
-import { getStoredUser, savePendingUpdate } from "@app/shared/lib/storage";
+} from "@app/platforms/chrome/messages";
+import type { PendingUpdate } from "@app/platforms/chrome/services/platform";
+import { ChromePlatformService } from "@app/platforms/chrome/services/platform";
+import {
+  AUTH0_CLIENT_DOMAIN,
+  AUTH0_CLIENT_ID,
+  DUST_API_AUDIENCE,
+} from "@app/shared/lib/config";
+import { extractPage } from "@app/shared/lib/extraction";
 import { generatePKCE } from "@app/shared/lib/utils";
 
 const log = console.error;
+
+// Initialize the platform service.
+const platform = new ChromePlatformService();
 
 const state: {
   refreshingToken: boolean;
@@ -40,14 +43,15 @@ chrome.runtime.onUpdateAvailable.addListener(async (details) => {
     version: details.version,
     detectedAt: Date.now(),
   };
-  await savePendingUpdate(pendingUpdate);
+
+  await platform.savePendingUpdate(pendingUpdate);
 });
 
 /**
  * Listener to open/close the side panel when the user clicks on the extension icon.
  */
 chrome.runtime.onInstalled.addListener(() => {
-  void chrome.storage.local.set({ extensionReady: false });
+  void platform.storage.set("extensionReady", false);
   void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   chrome.contextMenus.create({
     id: "add_tab_content",
@@ -77,7 +81,7 @@ const shouldDisableContextMenuForDomain = async (
     return true;
   }
 
-  const user = await getStoredUser();
+  const user = await platform.auth.getStoredUser();
   if (!user || !user.selectedWorkspace) {
     return false;
   }
@@ -117,13 +121,11 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name === "sidepanel-connection") {
     console.log("Sidepanel is there");
-    void chrome.storage.local.set({ extensionReady: true });
+    void platform.storage.set("extensionReady", true);
     port.onDisconnect.addListener(async () => {
       // This fires when sidepanel closes
       console.log("Sidepanel was closed");
-      await chrome.storage.local.set({
-        extensionReady: false,
-      });
+      await platform.storage.set("extensionReady", false);
       state.lastHandler = undefined;
     });
   }
@@ -183,17 +185,18 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
     return;
   }
 
-  chrome.storage.local.get(["extensionReady"], ({ extensionReady }) => {
-    if (!extensionReady && tab) {
-      // Store the handler for later use when the extension is ready.
-      state.lastHandler = handler;
-      void chrome.sidePanel.open({
-        windowId: tab.windowId,
-      });
-    } else {
-      void handler();
-    }
-  });
+  const isExtensionReady =
+    await platform.storage.get<boolean>("extensionReady");
+
+  if (!isExtensionReady && tab) {
+    // Store the handler for later use when the extension is ready.
+    state.lastHandler = handler;
+    void chrome.sidePanel.open({
+      windowId: tab.windowId,
+    });
+  } else {
+    void handler();
+  }
 });
 
 function capture(sendResponse: (x: CaptureResponse) => void) {

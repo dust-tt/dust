@@ -1,24 +1,18 @@
+import { usePlatform } from "@app/shared/context/PlatformContext";
+import type { StoredTokens, StoredUser } from "@app/shared/services/auth";
 import {
   AuthError,
-  isValidEnterpriseConnectionName as isValidEnterpriseConnection,
-  login,
-  logout,
+  isValidEnterpriseConnection,
   makeEnterpriseConnectionName,
-  refreshToken,
-} from "@app/shared/lib/auth";
-import type { StoredTokens, StoredUser } from "@app/shared/lib/storage";
-import {
-  clearStoredData,
-  getStoredTokens,
-  getStoredUser,
-  saveSelectedWorkspace,
-} from "@app/shared/lib/storage";
+} from "@app/shared/services/auth";
 import type { WorkspaceType } from "@dust-tt/client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const log = console.error;
 
 export const useAuthHook = () => {
+  const platform = usePlatform();
+
   const [tokens, setTokens] = useState<StoredTokens | null>(null);
   const [user, setUser] = useState<StoredUser | null>(null);
   const [authError, setAuthError] = useState<AuthError | null>(null);
@@ -42,7 +36,7 @@ export const useAuthHook = () => {
 
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
-    const success = await logout();
+    const success = await platform.auth.logout();
     if (!success) {
       // TODO(EXT): User facing error message if logout failed.
       setIsLoading(false);
@@ -58,42 +52,40 @@ export const useAuthHook = () => {
   }, []);
 
   const handleRefreshToken = useCallback(async () => {
-    const savedTokens = await refreshToken();
-    if (savedTokens.isErr()) {
-      setAuthError(savedTokens.error);
+    // Call getAccessToken, it will refresh the token if needed.
+    const newAccessToken = await platform.auth.getAccessToken();
+    if (!newAccessToken) {
+      setAuthError(
+        new AuthError("not_authenticated", "No access token received.")
+      );
       log("Refresh token: No access token received.");
       return;
     }
-    setTokens(savedTokens.value);
-    setAuthError(null);
-    scheduleTokenRefresh(savedTokens.value.expiresAt);
-  }, [handleLogout]);
 
-  const scheduleTokenRefresh = useCallback(
-    (expiresAt: number) => {
-      if (refreshTimerRef.current) {
-        clearTimeout(refreshTimerRef.current);
+    setTokens((prev) => {
+      if (!prev) {
+        return null;
       }
-      const refreshTime = Math.max(expiresAt - Date.now() - 60000, 0);
-      refreshTimerRef.current = setTimeout(handleRefreshToken, refreshTime);
-    },
-    [handleRefreshToken]
-  );
+
+      return {
+        ...prev,
+        accessToken: newAccessToken,
+      };
+    });
+    setAuthError(null);
+  }, []);
 
   // Listen for changes in storage to make sure we always have the latest user and tokens.
   useEffect(() => {
-    const handleStorageChange = (changes: {
-      [key: string]: chrome.storage.StorageChange;
-    }) => {
-      if (changes.accessToken && !changes.accessToken.newValue) {
+    const unsub = platform.storage.onChanged((changes) => {
+      if ("accessToken" in changes && !changes.accessToken) {
         log("Access token removed from storage.");
         setTokens(null);
         setUser(null);
       }
-    };
-    chrome.storage.local.onChanged.addListener(handleStorageChange);
-    return () =>
-      chrome.storage.local.onChanged.removeListener(handleStorageChange);
+    });
+
+    return () => unsub();
   }, []);
 
   useEffect(() => {
@@ -101,8 +93,8 @@ export const useAuthHook = () => {
       setIsLoading(true);
 
       // Fetch tokens & user from storage.
-      const storedTokens = await getStoredTokens();
-      const savedUser = await getStoredUser();
+      const storedTokens = await platform.auth.getStoredTokens();
+      const savedUser = await platform.auth.getStoredUser();
 
       if (!storedTokens || !savedUser) {
         // TODO(EXT): User facing error message if no tokens found.
@@ -112,10 +104,8 @@ export const useAuthHook = () => {
       setTokens(storedTokens);
       setUser(savedUser);
 
-      //  Token refresh.
-      if (storedTokens.expiresAt > Date.now()) {
-        scheduleTokenRefresh(storedTokens.expiresAt);
-      } else {
+      // Token refresh.
+      if (storedTokens.expiresAt <= Date.now()) {
         await handleRefreshToken();
       }
 
@@ -127,7 +117,7 @@ export const useAuthHook = () => {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [handleRefreshToken, scheduleTokenRefresh]);
+  }, []);
 
   const workspace = useMemo(
     () => user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
@@ -144,28 +134,34 @@ export const useAuthHook = () => {
         )
       );
       setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
-      await logout();
+      await platform.auth.logout();
     },
     [setAuthError, setForcedConnection]
   );
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
-    const updatedUser = await saveSelectedWorkspace(workspace.sId);
+    const updatedUser = await platform.saveSelectedWorkspace({
+      workspaceId: workspace.sId,
+    });
     if (!isValidEnterpriseConnection(updatedUser, workspace)) {
       await redirectToSSOLogin(workspace);
       return;
     }
+
     setUser(updatedUser);
   };
 
   const handleLogin = useCallback(
     async (isForceLogin?: boolean) => {
       setIsLoading(true);
-      const response = await login(isForceLogin, forcedConnection);
+      const response = await platform.auth.login({
+        isForceLogin,
+        forcedConnection,
+      });
       if (response.isErr()) {
         setAuthError(response.error);
         setIsLoading(false);
-        void clearStoredData();
+        void platform.clearStoredData();
         return;
       }
 
@@ -187,11 +183,10 @@ export const useAuthHook = () => {
 
       setTokens(tokens);
       setAuthError(null);
-      scheduleTokenRefresh(tokens.expiresAt);
       setUser(user);
       setIsLoading(false);
     },
-    [scheduleTokenRefresh, forcedConnection]
+    [forcedConnection]
   );
 
   return {

@@ -1,6 +1,6 @@
-import { getAccessToken } from "@app/shared/lib/auth";
 import { useCallback, useEffect, useRef, useState } from "react";
 const RECONNECT_DELAY = 5000; // 5 seconds.
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
 /**
@@ -86,6 +86,8 @@ export function useEventSource(
   uniqueId: string,
   { isReadyToConsumeStream = true }: { isReadyToConsumeStream?: boolean } = {}
 ) {
+  const platform = usePlatform();
+
   const [isError, setIsError] = useState<Error | null>(null);
   const lastEvent = useRef<string | null>(null);
   const reconnectAttempts = useRef(0);
@@ -173,7 +175,7 @@ export function useEventSource(
       return;
     }
     const call = async () => {
-      const token = await getAccessToken();
+      const token = await platform.auth.getAccessToken();
       if (token) {
         connect(token);
       }

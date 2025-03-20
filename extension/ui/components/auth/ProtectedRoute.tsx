@@ -1,22 +1,21 @@
-import type { RouteChangeMesssage } from "@app/shared/lib/messages";
-import type { StoredUser } from "@app/shared/lib/storage";
-import { getPendingUpdate } from "@app/shared/lib/storage";
+import type { RouteChangeMesssage } from "@app/platforms/chrome/messages";
+import type { StoredUser } from "@app/shared/services/auth";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import type { ExtensionWorkspaceType } from "@dust-tt/client";
-import { Button, classNames, DustLogo, Page, Spinner } from "@dust-tt/sparkle";
+import { classNames, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-type ProtectedRouteProps = {
+interface ProtectedRouteProps {
   children: ReactNode | ((props: ProtectedRouteChildrenProps) => ReactNode);
-};
+}
 
-export type ProtectedRouteChildrenProps = {
+export interface ProtectedRouteChildrenProps {
   user: StoredUser;
   workspace: ExtensionWorkspaceType;
   handleLogout: () => void;
-};
+}
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const {
@@ -29,7 +28,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   } = useAuth();
 
   const navigate = useNavigate();
-  const [isLatestVersion, setIsLatestVersion] = useState(true);
 
   useEffect(() => {
     const listener = (message: RouteChangeMesssage) => {
@@ -52,26 +50,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     }
   }, [navigate, isLoading, isAuthenticated, isUserSetup, user, workspace]);
 
-  const checkIsLatestVersion = async () => {
-    const pendingUpdate = await getPendingUpdate();
-    if (!pendingUpdate) {
-      return null;
-    }
-    if (pendingUpdate.version > chrome.runtime.getManifest().version) {
-      setIsLatestVersion(false);
-    }
-  };
-
-  useEffect(() => {
-    void checkIsLatestVersion();
-
-    chrome.storage.local.onChanged.addListener((changes) => {
-      if (changes.pendingUpdate) {
-        void checkIsLatestVersion();
-      }
-    });
-  }, []);
-
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (
       <div
@@ -82,31 +60,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       >
         <div className="flex h-full w-full items-center justify-center">
           <Spinner />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isLatestVersion) {
-    return (
-      <div
-        className={classNames(
-          "flex h-screen flex-col gap-2 p-4",
-          "dark:bg-slate-950 dark:text-slate-50"
-        )}
-      >
-        <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <DustLogo className="h-6 w-24" />
-            <Page.Header title="Update required" />
-          </div>
-          <Page.SectionHeader title="Panel closes after update. Click Dust icon in toolbar to return." />
-          <Button
-            label="Update now"
-            onClick={async () => {
-              chrome.runtime.reload();
-            }}
-          />
         </div>
       </div>
     );
