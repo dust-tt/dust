@@ -17,19 +17,48 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types";
 
-export type ConversationAttachmentType = {
-  resourceId: string;
+export type BaseConversationAttachmentType = {
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
-  // If the file is a content node, we set the node's data source view id.
-  nodeDataSourceViewId: string | null;
   snippet: string | null;
   generatedTables: string[];
   isIncludable: boolean;
   isSearchable: boolean;
   isQueryable: boolean;
 };
+
+export type ConversationFileType = BaseConversationAttachmentType & {
+  fileId: string;
+};
+
+export type ConversationContentNodeType = BaseConversationAttachmentType & {
+  contentFragmentId: string;
+  nodeDataSourceViewId: string;
+};
+
+export type ConversationAttachmentType =
+  | ConversationFileType
+  | ConversationContentNodeType;
+
+export function isConversationFileType(
+  attachment: ConversationAttachmentType
+): attachment is ConversationFileType {
+  return "fileId" in attachment;
+}
+
+export function isConversationContentNodeType(
+  attachment: ConversationAttachmentType
+): attachment is ConversationContentNodeType {
+  return "contentFragmentId" in attachment;
+}
+
+function resourceId(attachment: ConversationAttachmentType): string {
+  if (isConversationFileType(attachment)) {
+    return attachment.fileId;
+  }
+  return attachment.contentFragmentId;
+}
 
 type ConversationListFilesActionBlob =
   ExtractActionBlob<ConversationListFilesActionType>;
@@ -71,7 +100,7 @@ export class ConversationListFilesActionType extends BaseAction {
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
-      content += `<file id="${f.resourceId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
+      content += `<file id="${resourceId(f)}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;
