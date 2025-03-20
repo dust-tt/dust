@@ -132,14 +132,18 @@ export function generateCSVSnippet({
   // Max number of characters in the snippet.
   const MAX_SNIPPET_CHARS = 16384;
 
+  if (!content || content.trim() === "" || totalRecords === 0) {
+    return "TOTAL_LINES: 0\n(empty result set)\n";
+  }
+
   const records = parse(content, {
     columns: true,
-    skip_empty_lines: true,
+    skip_empty_lines: false,
     trim: true,
     to: 256, // Limit the number of records to parse
   });
 
-  if (totalRecords === 0) {
+  if (!records || !records.length) {
     return "TOTAL_LINES: 0\n(empty result set)\n";
   }
 
