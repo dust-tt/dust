@@ -8,15 +8,15 @@ import {
   MentionBlock,
   mentionDirective,
 } from "@app/ui/components/markdown/MentionBlock";
+import {
+  UrlMentionBlock,
+  urlMentionDirective,
+} from "@app/ui/components/markdown/UrlMentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import {
-  UrlMentionBlock,
-  urlMentionDirective,
-} from "@app/ui/components/markdown/UrlMentionBlock";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
