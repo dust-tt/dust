@@ -202,7 +202,8 @@ export async function getAgentFeedbacks({
   // Make sure the user has access to the agent
   const agentConfiguration = await getAgentConfiguration(
     auth,
-    agentConfigurationId
+    agentConfigurationId,
+    "light"
   );
   if (!agentConfiguration) {
     return new Err(new Error("agent_configuration_not_found"));
