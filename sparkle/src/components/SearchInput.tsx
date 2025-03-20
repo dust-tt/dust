@@ -13,7 +13,7 @@ import {
   Spinner,
 } from "@sparkle/components";
 import { ContentMessageProps } from "@sparkle/components/ContentMessage";
-import { MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
+import { ListCheckIcon, MagnifyingGlassIcon, XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
 export interface SearchInputProps {
@@ -108,9 +108,12 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   items: T[];
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
+  onSelectAll?: () => void;
   noResults?: string;
   isLoading?: boolean;
   contentMessage?: ContentMessageProps;
+  displayItemCount?: boolean;
+  totalItems?: number;
 };
 
 function BaseSearchInputWithPopover<T>(
@@ -118,6 +121,7 @@ function BaseSearchInputWithPopover<T>(
     items,
     renderItem,
     onItemSelect,
+    onSelectAll,
     contentClassName,
     className,
     open,
@@ -129,6 +133,8 @@ function BaseSearchInputWithPopover<T>(
     noResults,
     isLoading,
     contentMessage,
+    displayItemCount = false,
+    totalItems,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
@@ -212,6 +218,27 @@ function BaseSearchInputWithPopover<T>(
         mountPortalContainer={mountPortalContainer}
       >
         <div className="s-flex s-flex-col">
+          {items.length > 0 && (
+            <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
+              <div>
+                {displayItemCount && (
+                  <span>
+                    {items.length} search results
+                    {totalItems && ` (out of ${totalItems})`}.
+                  </span>
+                )}
+              </div>
+              {onSelectAll && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onClick={onSelectAll}
+                  label="Select all"
+                  icon={ListCheckIcon}
+                />
+              )}
+            </div>
+          )}
           <ScrollArea
             role="listbox"
             className="s-flex s-max-h-72 s-flex-col"
