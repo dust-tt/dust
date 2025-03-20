@@ -1,45 +1,39 @@
-export class Lock {
-  private static locks = new Map<string, Promise<void>>();
+import { getRedisClient } from "./api/redis";
 
+const WAIT_BETWEEN_RETRIES = 100;
+
+export class Lock {
   static async executeWithLock<T>(
     lockName: string,
     callback: () => Promise<T>,
     timeoutMs: number = 30000
   ): Promise<T> {
+    const client = await getRedisClient({ origin: "lock" });
+    const lockKey = `lock:${lockName}`;
+    const lockValue = Date.now().toString();
     const start = Date.now();
 
-    if (Lock.locks.has(lockName)) {
-      const currentLock = Lock.locks.get(lockName);
-      if (currentLock) {
-        const remainingTime = timeoutMs - (Date.now() - start);
-        if (remainingTime <= 0) {
-          throw new Error(`Lock acquisition timed out for ${lockName}`);
-        }
-
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error(`Lock acquisition timed out for ${lockName}`));
-          }, remainingTime);
-        });
-
-        await Promise.race([currentLock, timeoutPromise]);
+    // Try to acquire the lock
+    while (
+      !(await client.set(lockKey, lockValue, { NX: true, PX: timeoutMs }))
+    ) {
+      // Check for timeout
+      if (Date.now() - start >= timeoutMs) {
+        throw new Error(`Lock acquisition timed out for ${lockName}`);
       }
+      // Wait a bit before retrying
+      await new Promise((resolve) => setTimeout(resolve, WAIT_BETWEEN_RETRIES));
     }
-
-    // Initialize resolveLock with a no-op function to satisfy TypeScript
-    let resolveLock = () => {};
-    const lockPromise = new Promise<void>((resolve) => {
-      resolveLock = resolve;
-    });
-
-    Lock.locks.set(lockName, lockPromise);
 
     try {
       const result = await callback();
       return result;
     } finally {
-      Lock.locks.delete(lockName);
-      resolveLock();
+      // Release the lock if we still own it
+      const currentValue = await client.get(lockKey);
+      if (currentValue === lockValue) {
+        await client.del(lockKey);
+      }
     }
   }
 }
