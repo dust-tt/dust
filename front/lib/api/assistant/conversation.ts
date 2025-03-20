@@ -2017,15 +2017,15 @@ async function isMessagesLimitReached({
 }
 
 /**
- * Update the conversation requestedGroupIds based on the mentioned agents.
- * This function is purely additive - requirements are never removed.
+ * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
+ * additive - requirements are never removed.
  *
- * Each agent's requestedGroupIds represents a set of requirements that must be
- * satisfied. When an agent is mentioned in a conversation, its requirements are
- * added to the conversation's requirements.
+ * Each agent's requestedGroupIds represents a set of requirements that must be satisfied. When an
+ * agent is mentioned in a conversation, its requirements are added to the conversation's
+ * requirements.
  *
- * Within each requirement (sub-array), groups are combined with OR logic.
- * Different requirements (different sub-arrays) are combined with AND logic.
+ * - Within each requirement (sub-array), groups are combined with OR logic.
+ * - Different requirements (different sub-arrays) are combined with AND logic.
  */
 export async function updateConversationRequestedGroupIds(
   mentionedAgents: LightAgentConfigurationType[],
@@ -2083,9 +2083,8 @@ export async function updateConversationRequestedGroupIds(
 
   // Hotfix: Postgres requires all subarrays to be of the same length
   //
-  // since a requirement (subarray) is a set of groups that are linked with OR
-  // logic we can just repeat the last element of each requirement until all
-  // requirements have the maximal length.
+  // since a requirement (subarray) is a set of groups that are linked with OR logic we can just
+  // repeat the last element of each requirement until all requirements have the maximal length.
   const longestRequirement = allRequirements.reduce(
     (max, req) => Math.max(max, req.length),
     0
