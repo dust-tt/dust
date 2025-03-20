@@ -151,7 +151,7 @@ export const config = {
  *                 description: Tags to associate with the document.
  *               timestamp:
  *                 type: number
- *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
+ *                 description: Unix timestamp (in milliseconds) for the document (e.g. 1736365559000).
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
