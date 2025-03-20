@@ -314,7 +314,6 @@ export interface CoreAPIUpsertDataSourceDocumentPayload {
   lightDocumentOutput?: boolean;
   title: string;
   mimeType: string;
-  forceRefresh?: boolean;
 }
 
 // TODO(keyword-search): Until we remove the `managed-` prefix, we need to
@@ -1071,7 +1070,6 @@ export class CoreAPI {
     lightDocumentOutput = false,
     title,
     mimeType,
-    forceRefresh,
   }: CoreAPIUpsertDataSourceDocumentPayload): Promise<
     CoreAPIResponse<{
       document:
@@ -1103,7 +1101,6 @@ export class CoreAPI {
           light_document_output: lightDocumentOutput,
           title: title,
           mime_type: mimeType,
-          force_refresh: forceRefresh,
         }),
       }
     );
@@ -1390,7 +1387,6 @@ export class CoreAPI {
     title,
     mimeType,
     sourceUrl,
-    forceRefresh,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1406,7 +1402,6 @@ export class CoreAPI {
     title: string;
     mimeType: string;
     sourceUrl: string | null;
-    forceRefresh?: boolean;
   }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
@@ -1430,7 +1425,6 @@ export class CoreAPI {
           title,
           mime_type: mimeType,
           source_url: sourceUrl,
-          force_refresh: forceRefresh,
         }),
       }
     );
@@ -1971,7 +1965,6 @@ export class CoreAPI {
     mimeType,
     sourceUrl,
     providerVisibility,
-    forceRefresh,
   }: {
     projectId: string;
     dataSourceId: string;
@@ -1983,7 +1976,6 @@ export class CoreAPI {
     mimeType: string;
     sourceUrl?: string | null;
     providerVisibility: ProviderVisibility | null | undefined;
-    forceRefresh?: boolean;
   }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
@@ -2003,7 +1995,6 @@ export class CoreAPI {
           mime_type: mimeType,
           source_url: sourceUrl,
           provider_visibility: providerVisibility,
-          force_refresh: forceRefresh,
         }),
       }
     );
