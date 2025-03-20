@@ -53,7 +53,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Handle CORS only for public API endpoints.
-  if (url.startsWith("/v1")) {
+  if (url.startsWith("/api/v1")) {
     if (request.method === "OPTIONS") {
       const response = new NextResponse(null, { status: 200 });
       setCorsHeaders(response, request);
@@ -71,7 +71,9 @@ export function middleware(request: NextRequest) {
 function setCorsHeaders(response: NextResponse, request: NextRequest) {
   const origin = request.headers.get("origin");
 
-  if (isDevelopment() && origin === DEV_ORIGIN) {
+  // Cannot use helper functions like isDevelopment() in Edge Runtime middleware
+  // since they are not bundled. Must check NODE_ENV directly.
+  if (process.env.NODE_ENV === "development" && origin === DEV_ORIGIN) {
     response.headers.set("Access-Control-Allow-Origin", DEV_ORIGIN);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else if (origin && isAllowedOrigin(origin)) {
