@@ -376,35 +376,41 @@ async function getSignedUrlForProcessedContent(
   return getPrivateUploadBucket().getSignedUrl(fileCloudStoragePath);
 }
 
-export async function renderFromResourceId(
+export async function renderFromAttachmentId(
   workspace: WorkspaceType,
   {
     contentType,
     excludeImages,
-    resourceId,
+    conversationAttachmentId,
     model,
     title,
     contentFragmentVersion,
   }: {
     contentType: SupportedContentFragmentType;
     excludeImages: boolean;
-    resourceId: string;
+    conversationAttachmentId: string;
     model: ModelConfigurationType;
     title: string;
     contentFragmentVersion: ContentFragmentVersion;
   }
 ): Promise<Result<ContentFragmentMessageTypeModel, Error>> {
   // At time of writing, passed resourceId can be either a file or a content fragment.
-  const { resourceName } = getResourceNameAndIdFromSId(resourceId) ?? {
+  const { resourceName } = getResourceNameAndIdFromSId(
+    conversationAttachmentId
+  ) ?? {
     resourceName: "content_fragment",
   };
 
   const { fileStringId, nodeId, nodeDataSourceViewId } =
     resourceName === "file"
-      ? { fileStringId: resourceId, nodeId: null, nodeDataSourceViewId: null }
+      ? {
+          fileStringId: conversationAttachmentId,
+          nodeId: null,
+          nodeDataSourceViewId: null,
+        }
       : await getIncludeFileIdsFromContentFragmentResourceId(
           workspace,
-          resourceId
+          conversationAttachmentId
         );
 
   if (isSupportedImageContentType(contentType)) {
@@ -493,7 +499,7 @@ export async function renderFromResourceId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            contentFragmentId: resourceId,
+            contentFragmentId: conversationAttachmentId,
             contentType,
             title,
             version: contentFragmentVersion,
@@ -524,7 +530,7 @@ export async function renderFromResourceId(
         {
           type: "text",
           text: renderContentFragmentXml({
-            contentFragmentId: resourceId,
+            contentFragmentId: conversationAttachmentId,
             contentType,
             title,
             version: contentFragmentVersion,

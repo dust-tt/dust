@@ -173,7 +173,7 @@ export const InputBarAttachmentsPicker = ({
                       })}
                       disabled={
                         attachedNodeIds.includes(item.internalId) ||
-                        item.type !== "document"
+                        item.type === "folder"
                       }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                       onClick={() => {

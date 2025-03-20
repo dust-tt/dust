@@ -17,8 +17,7 @@ import type {
   SupportedContentFragmentType,
 } from "@app/types";
 
-export type ConversationFileType = {
-  resourceId: string;
+export type BaseConversationAttachmentType = {
   title: string;
   contentType: SupportedContentFragmentType;
   contentFragmentVersion: ContentFragmentVersion;
@@ -29,13 +28,47 @@ export type ConversationFileType = {
   isQueryable: boolean;
 };
 
+export type ConversationFileType = BaseConversationAttachmentType & {
+  fileId: string;
+};
+
+export type ConversationContentNodeType = BaseConversationAttachmentType & {
+  contentFragmentId: string;
+  nodeDataSourceViewId: string;
+};
+
+export type ConversationAttachmentType =
+  | ConversationFileType
+  | ConversationContentNodeType;
+
+export function isConversationFileType(
+  attachment: ConversationAttachmentType
+): attachment is ConversationFileType {
+  return "fileId" in attachment;
+}
+
+export function isConversationContentNodeType(
+  attachment: ConversationAttachmentType
+): attachment is ConversationContentNodeType {
+  return "contentFragmentId" in attachment;
+}
+
+export function conversationAttachmentId(
+  attachment: ConversationAttachmentType
+): string {
+  if (isConversationFileType(attachment)) {
+    return attachment.fileId;
+  }
+  return attachment.contentFragmentId;
+}
+
 type ConversationListFilesActionBlob =
   ExtractActionBlob<ConversationListFilesActionType>;
 
 export class ConversationListFilesActionType extends BaseAction {
   readonly id: ModelId = -1;
   readonly agentMessageId: ModelId;
-  readonly files: ConversationFileType[];
+  readonly files: ConversationAttachmentType[];
   readonly functionCallId: string | null;
   readonly functionCallName: string | null;
   readonly step: number = -1;
@@ -69,7 +102,7 @@ export class ConversationListFilesActionType extends BaseAction {
       `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
       `\n`;
     for (const f of this.files) {
-      content += `<file id="${f.resourceId}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
+      content += `<file id="${conversationAttachmentId(f)}" name="${_.escape(f.title)}" type="${f.contentType}" includable="${f.isIncludable}" queryable="${f.isQueryable}" searchable="${f.isSearchable}"`;
 
       if (f.snippet) {
         content += ` snippet="${_.escape(f.snippet)}"`;
@@ -93,7 +126,7 @@ export function makeConversationListFilesAction({
   files,
 }: {
   agentMessage: AgentMessageType;
-  files: ConversationFileType[];
+  files: ConversationAttachmentType[];
 }): ConversationListFilesActionType | null {
   if (files.length === 0) {
     return null;

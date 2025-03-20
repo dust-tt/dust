@@ -55,3 +55,18 @@ export function isContentFragmentType(
 ): arg is ContentFragmentType {
   return arg.type === "content_fragment";
 }
+
+export function isFileAttachment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & { fileId: string } {
+  return !!arg.fileId;
+}
+
+export function isContentNodeAttachment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & {
+  nodeId: string;
+  nodeDataSourceViewId: string;
+} {
+  return !!arg.nodeId && !!arg.nodeDataSourceViewId;
+}
