@@ -1,3 +1,5 @@
+import "../src/styles/fonts.css";
+
 import { withThemeByClassName } from "@storybook/addon-themes";
 import type { Preview } from "@storybook/react";
 
