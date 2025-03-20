@@ -164,6 +164,99 @@ module.exports = {
       mono: ["Geist Mono", "monospace"],
       objektiv: ["Geist", "sans-serif"],
     },
+    fontSize: {
+      xs: [
+        "12px",
+        {
+          lineHeight: "16px",
+          letterSpacing: "normal",
+        },
+      ],
+      sm: [
+        "14px",
+        {
+          lineHeight: "20px",
+          letterSpacing: "-0.28px",
+        },
+      ],
+      base: [
+        "16px",
+        {
+          lineHeight: "24px",
+          letterSpacing: "-0.32px",
+        },
+      ],
+      lg: [
+        "18px",
+        {
+          lineHeight: "28px",
+          letterSpacing: "normal",
+        },
+      ],
+      xl: [
+        "20px",
+        {
+          lineHeight: "26px",
+          letterSpacing: "-0.4px",
+        },
+      ],
+      "2xl": [
+        "24px",
+        {
+          lineHeight: "32px",
+          letterSpacing: "-0.96px",
+        },
+      ],
+      "3xl": [
+        "32px",
+        {
+          lineHeight: "40px",
+          letterSpacing: "-1.28px",
+        },
+      ],
+      "4xl": [
+        "40px",
+        {
+          lineHeight: "48px",
+          letterSpacing: "-2.4px",
+        },
+      ],
+      "5xl": [
+        "48px",
+        {
+          lineHeight: "56px",
+          letterSpacing: "-2.88px",
+        },
+      ],
+      "6xl": [
+        "56px",
+        {
+          lineHeight: "56px",
+          letterSpacing: "-3.36px",
+        },
+      ],
+      "7xl": [
+        "64px",
+        {
+          lineHeight: "64px",
+          letterSpacing: "-3.84px",
+        },
+      ],
+      "8xl": [
+        "72px",
+        {
+          lineHeight: "72px",
+          letterSpacing: "-4.32px",
+        },
+      ],
+      "9xl": [
+        "80px",
+        {
+          lineHeight: "80px",
+          letterSpacing: "-4.8px",
+        },
+      ],
+    },
     extend: {
       borderRadius: {
         "4xl": "2rem",

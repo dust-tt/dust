@@ -1,8 +1,26 @@
-@import "./fonts.css";
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    touch-action: manipulation;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 0;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+  }
+
+  @supports (font-synthesis-weight: none) {
+    html {
+      font-synthesis: initial;
+      font-synthesis-weight: none;
+    }
+  }
+}
 
 .s-blinking-cursor > :not(pre):last-child::after {
   content: "";
