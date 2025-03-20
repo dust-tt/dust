@@ -17,7 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
-  renderFromAttachmentId as renderFromAttachmentId,
+  renderFromAttachmentId,
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
