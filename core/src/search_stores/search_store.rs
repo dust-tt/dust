@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use anyhow::Result;
 use async_trait::async_trait;
 use base64::{engine::general_purpose::URL_SAFE, Engine};
+use elasticsearch::params::Refresh;
 use elasticsearch::{
     auth::Credentials,
     http::transport::{SingleNodeConnectionPool, TransportBuilder},
@@ -132,8 +133,8 @@ pub trait SearchStore {
     )>;
 
     // Data source nodes
-    async fn index_node(&self, node: NodeItem) -> Result<()>;
-    async fn delete_node(&self, node: NodeItem) -> Result<()>;
+    async fn index_node(&self, node: NodeItem, force_refresh: bool) -> Result<()>;
+    async fn delete_node(&self, node: NodeItem, force_refresh: bool) -> Result<()>;
 
     // Data sources.
     async fn get_data_source_stats(
@@ -416,19 +417,19 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     // Data source nodes.
-    async fn index_node(&self, node: NodeItem) -> Result<()> {
+    async fn index_node(&self, node: NodeItem, force_refresh: bool) -> Result<()> {
         match node {
-            NodeItem::Document(node) => self.index_document(&node).await,
-            NodeItem::Folder(node) => self.index_document(&node).await,
-            NodeItem::Table(node) => self.index_document(&node).await,
+            NodeItem::Document(node) => self.index_document(&node, force_refresh).await,
+            NodeItem::Folder(node) => self.index_document(&node, force_refresh).await,
+            NodeItem::Table(node) => self.index_document(&node, force_refresh).await,
         }
     }
 
-    async fn delete_node(&self, node: NodeItem) -> Result<()> {
+    async fn delete_node(&self, node: NodeItem, force_refresh: bool) -> Result<()> {
         match node {
-            NodeItem::Document(node) => self.delete_document(&node).await,
-            NodeItem::Folder(node) => self.delete_document(&node).await,
-            NodeItem::Table(node) => self.delete_document(&node).await,
+            NodeItem::Document(node) => self.delete_document(&node, force_refresh).await,
+            NodeItem::Folder(node) => self.delete_document(&node, force_refresh).await,
+            NodeItem::Table(node) => self.delete_document(&node, force_refresh).await,
         }
     }
 
@@ -477,7 +478,7 @@ impl SearchStore for ElasticsearchSearchStore {
     }
 
     async fn index_data_source(&self, data_source: &DataSource) -> Result<()> {
-        self.index_document(data_source).await
+        self.index_document(data_source, false).await
     }
 
     async fn delete_data_source(&self, data_source: &DataSource) -> Result<()> {
@@ -502,7 +503,7 @@ impl SearchStore for ElasticsearchSearchStore {
         }
 
         // Then, delete the data source document.
-        self.delete_document(data_source).await
+        self.delete_document(data_source, false).await
     }
 
     async fn search_tags(
@@ -1132,7 +1133,7 @@ impl ElasticsearchSearchStore {
 
     // Generic document methods.
 
-    pub async fn index_document<T>(&self, doc: &T) -> Result<()>
+    pub async fn index_document<T>(&self, doc: &T, force_refresh: bool) -> Result<()>
     where
         T: Indexable,
     {
@@ -1142,6 +1143,10 @@ impl ElasticsearchSearchStore {
         let response = self
             .client
             .index(IndexParts::IndexId(doc.index_name(), &doc.unique_id()))
+            .refresh(match force_refresh {
+                true => Refresh::True,
+                false => Refresh::False,
+            })
             .timeout("200ms")
             .body(r)
             .send()
@@ -1175,13 +1180,18 @@ impl ElasticsearchSearchStore {
         }
     }
 
-    pub async fn delete_document<T>(&self, doc: &T) -> Result<()>
+    pub async fn delete_document<T>(&self, doc: &T, force_refresh: bool) -> Result<()>
     where
         T: Indexable,
     {
         let response = self
             .client
             .delete(DeleteParts::IndexId(doc.index_name(), &doc.unique_id()))
+            .refresh(match force_refresh {
+                true => Refresh::True,
+                false => Refresh::False,
+            })
+            .timeout("200ms")
             .send()
             .await?;
 
