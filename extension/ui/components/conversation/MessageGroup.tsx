@@ -1,6 +1,6 @@
 import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
 import type { AgentMessageFeedbackType } from "@app/shared/lib/feedbacks";
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import MessageItem from "@app/ui/components/conversation/MessageItem";
 import type {
   ConversationMessageReactionsType,
@@ -9,12 +9,12 @@ import type {
 import React, { useEffect, useRef } from "react";
 
 interface MessageGroupProps {
-  messages: MessageWithContentFragmentsType[];
-  isLastMessageGroup: boolean;
   conversationId: string;
   feedbacks: AgentMessageFeedbackType[];
   hideReactions: boolean;
   isInModal: boolean;
+  isLastMessageGroup: boolean;
+  messages: MessageWithContentFragmentsType[];
   owner: LightWorkspaceType;
   reactions: ConversationMessageReactionsType;
   user: StoredUser;

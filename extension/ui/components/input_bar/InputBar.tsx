@@ -1,6 +1,6 @@
+import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
+import { sendInputBarStatus } from "@app/platforms/chrome/messages";
 import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { AttachSelectionMessage } from "@app/shared/lib/messages";
-import { sendInputBarStatus } from "@app/shared/lib/messages";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import { classNames, compareAgentsForSort } from "@app/shared/lib/utils";

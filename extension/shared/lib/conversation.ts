@@ -1,11 +1,7 @@
-import { getAccessToken } from "@app/shared/lib/auth";
-import type { GetActiveTabOptions } from "@app/shared/lib/messages";
-import { sendGetActiveTabMessage } from "@app/shared/lib/messages";
-import {
-  getFileContentFragmentId,
-  getStoredUser,
-} from "@app/shared/lib/storage";
+import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
+import { sendGetActiveTabMessage } from "@app/platforms/chrome/messages";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
+import type { PlatformService } from "@app/shared/services/platform";
 import type {
   AgentMentionType,
   AgentMessageNewEvent,
@@ -122,21 +118,24 @@ export function updateConversationWithOptimisticData(
   return conversation;
 }
 
-export async function postConversation({
-  dustAPI,
-  messageData,
-  visibility = "unlisted",
-}: {
-  dustAPI: DustAPI;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-    contentFragments: ContentFragmentsType;
-  };
-  visibility?: ConversationVisibility;
-}): Promise<Result<ConversationPublicType, SubmitMessageError>> {
+export async function postConversation(
+  platform: PlatformService,
+  {
+    dustAPI,
+    messageData,
+    visibility = "unlisted",
+  }: {
+    dustAPI: DustAPI;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+      contentFragments: ContentFragmentsType;
+    };
+    visibility?: ConversationVisibility;
+  }
+): Promise<Result<ConversationPublicType, SubmitMessageError>> {
   const { input, mentions, contentFragments } = messageData;
-  const user = await getStoredUser();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -208,26 +207,29 @@ export async function postConversation({
   return new Ok(conversationData.conversation);
 }
 
-export async function postMessage({
-  dustAPI,
-  conversationId,
-  messageData,
-}: {
-  dustAPI: DustAPI;
-  conversationId: string;
-  messageData: {
-    input: string;
-    mentions: AgentMentionType[];
-    contentFragments: ContentFragmentsType;
-  };
-}): Promise<
+export async function postMessage(
+  platform: PlatformService,
+  {
+    dustAPI,
+    conversationId,
+    messageData,
+  }: {
+    dustAPI: DustAPI;
+    conversationId: string;
+    messageData: {
+      input: string;
+      mentions: AgentMentionType[];
+      contentFragments: ContentFragmentsType;
+    };
+  }
+): Promise<
   Result<
     { message: UserMessageType; contentFragments: ContentFragmentType[] },
     SubmitMessageError
   >
 > {
   const { input, mentions, contentFragments } = messageData;
-  const user = await getStoredUser();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.
@@ -249,7 +251,8 @@ export async function postMessage({
       ...contentFragments.uploaded.map(async (file) => {
         // Only for tab contents, we re-use the content fragment ID based on the URL and conversation ID.
         const supersededContentFragmentId: string | undefined =
-          (await getFileContentFragmentId(conversationId, file)) ?? undefined;
+          (await platform.getFileContentFragmentId(conversationId, file)) ??
+          undefined;
 
         return dustAPI.postContentFragment({
           conversationId,
@@ -339,17 +342,20 @@ export async function postMessage({
   });
 }
 
-export async function retryMessage({
-  owner,
-  conversationId,
-  messageId,
-}: {
-  owner: LightWorkspaceType;
-  conversationId: string;
-  messageId: string;
-}): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
-  const token = await getAccessToken();
-  const user = await getStoredUser();
+export async function retryMessage(
+  platform: PlatformService,
+  {
+    owner,
+    conversationId,
+    messageId,
+  }: {
+    owner: LightWorkspaceType;
+    conversationId: string;
+    messageId: string;
+  }
+): Promise<Result<{ message: UserMessageWithRankType }, SubmitMessageError>> {
+  const token = await platform.auth.getAccessToken();
+  const user = await platform.auth.getStoredUser();
 
   if (!user) {
     // This should never happen.

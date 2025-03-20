@@ -1,12 +1,12 @@
-import type { StoredUser } from "@app/shared/lib/storage";
+import type { StoredUser } from "@app/shared/services/auth";
 import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
 import { InputBarContext } from "@app/ui/components/input_bar/InputBarContext";
 import { AssistantCard, Button, CardGrid, Page } from "@dust-tt/sparkle";
 import { useCallback, useContext } from "react";
 
-type AssistantFavoritesProps = {
+interface AssistantFavoritesProps {
   user: StoredUser;
-};
+}
 
 export function AssistantFavorites({ user }: AssistantFavoritesProps) {
   const {

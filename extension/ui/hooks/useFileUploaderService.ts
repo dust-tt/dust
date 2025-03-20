@@ -1,6 +1,6 @@
+import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
 import { getIncludeCurrentTab } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
-import type { GetActiveTabOptions } from "@app/shared/lib/messages";
 import type { UploadedFileKind } from "@app/shared/lib/types";
 import type {
   ConversationPublicType,

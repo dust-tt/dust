@@ -1,8 +1,9 @@
-import { getAccessToken } from "@app/shared/lib/auth";
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { DustAPI } from "@dust-tt/client";
 
 export const useDustAPI = () => {
+  const platform = usePlatform();
   const { token, isAuthenticated, isUserSetup, user, workspace } = useAuth();
 
   const commitHash = process.env.COMMIT_HASH;
@@ -20,7 +21,7 @@ export const useDustAPI = () => {
       url: user.dustDomain,
     },
     {
-      apiKey: () => getAccessToken(),
+      apiKey: () => platform.auth.getAccessToken(),
       workspaceId: workspace.sId,
       extraHeaders: {
         "X-Dust-Extension-Version": extensionVersion || "development",

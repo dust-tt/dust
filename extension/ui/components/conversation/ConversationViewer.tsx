@@ -1,7 +1,7 @@
 import type { MessageWithContentFragmentsType } from "@app/shared/lib/conversation";
 import { getUpdatedMessagesFromEvent } from "@app/shared/lib/conversation";
-import type { StoredUser } from "@app/shared/lib/storage";
 import { classNames } from "@app/shared/lib/utils";
+import type { StoredUser } from "@app/shared/services/auth";
 import MessageGroup from "@app/ui/components/conversation/MessageGroup";
 import { useConversationFeedbacks } from "@app/ui/components/conversation/useConversationFeedbacks";
 import { usePublicConversation } from "@app/ui/components/conversation/usePublicConversation";
