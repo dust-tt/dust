@@ -129,6 +129,7 @@ export const TableUploadOrEditModal = ({
               name: table.name,
               description: table.description,
               title: table.name,
+              force_refresh: true,
             },
           });
         }

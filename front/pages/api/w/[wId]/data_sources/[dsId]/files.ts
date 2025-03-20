@@ -15,8 +15,14 @@ import type { FileType, WithAPIErrorResponse } from "@app/types";
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
-    | (Pick<UpsertTableArgs, "name" | "title" | "description" | "tags"> & {
+    | Pick<
+        UpsertDocumentArgs,
+        "document_id" | "title" | "tags" | "force_refresh"
+      >
+    | (Pick<
+        UpsertTableArgs,
+        "name" | "title" | "description" | "tags" | "force_refresh"
+      > & {
         tableId: string | undefined;
       }); // we actually don't always have a tableId, this is very dirty, but the refactoring should be done at the level of the whole upsertArgs mechanic
 }
