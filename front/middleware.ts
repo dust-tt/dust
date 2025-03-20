@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { DEV_ORIGIN, isAllowedOrigin } from "@app/config/cors";
+
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
 
@@ -49,7 +51,60 @@ export function middleware(request: NextRequest) {
     });
   }
 
+  // Handle CORS for public API endpoints
+  if (url.startsWith("/v1")) {
+    if (request.method === "OPTIONS") {
+      const response = new NextResponse(null, { status: 200 });
+      setCorsHeaders(response, request);
+      return response;
+    }
+
+    const response = NextResponse.next();
+    setCorsHeaders(response, request);
+    return response;
+  }
+
+  // Handle development environment CORS
+  if (process.env.NODE_ENV === "development") {
+    if (request.method === "OPTIONS") {
+      const response = new NextResponse(null, { status: 200 });
+      setDevCorsHeaders(response);
+      return response;
+    }
+
+    const response = NextResponse.next();
+    setDevCorsHeaders(response);
+    return response;
+  }
+
   return NextResponse.next();
+}
+
+function setCorsHeaders(response: NextResponse, request: NextRequest) {
+  const origin = request.headers.get("origin");
+  if (origin && isAllowedOrigin(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+  }
+
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, X-Request-Origin, x-Commit-Hash, X-Dust-Extension-Version"
+  );
+}
+
+function setDevCorsHeaders(response: NextResponse) {
+  response.headers.set("Access-Control-Allow-Origin", DEV_ORIGIN);
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Authorization, X-Request-Origin, x-Commit-Hash, X-Dust-Extension-Version, Content-Type"
+  );
+  response.headers.set("Access-Control-Allow-Credentials", "true");
 }
 
 export const config = {
