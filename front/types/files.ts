@@ -100,6 +100,7 @@ const FILE_FORMATS = {
   "text/tsv": { cat: "delimited", exts: [".tsv"] },
   "text/tab-separated-values": { cat: "delimited", exts: [".tsv"] },
   "application/vnd.ms-excel": { cat: "delimited", exts: [".xls"] },
+  "application/vnd.google-apps.spreadsheet": { cat: "delimited", exts: [] },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
     cat: "delimited",
     exts: [".xlsx"],
