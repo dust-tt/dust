@@ -921,7 +921,7 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds({
+      await updateConversationRequestedGroupIds(auth, {
         agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
@@ -1406,7 +1406,7 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds({
+      await updateConversationRequestedGroupIds(auth, {
         agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
         t,
@@ -1618,7 +1618,7 @@ export async function* retryAgentMessage(
         }
       );
 
-      await updateConversationRequestedGroupIds({
+      await updateConversationRequestedGroupIds(auth, {
         agents: [message.configuration],
         conversation,
         t,
@@ -1828,7 +1828,7 @@ export async function postNewContentFragment(
       );
 
       if (isContentFragmentInputWithContentNode(cf)) {
-        await updateConversationRequestedGroupIds({
+        await updateConversationRequestedGroupIds(auth, {
           contentFragment: cf,
           conversation,
           t,
