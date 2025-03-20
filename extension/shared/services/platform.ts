@@ -26,19 +26,29 @@ export interface CaptureActionsProps {
   fileUploaderService: FileUploaderService;
 }
 
+export interface BrowserMessagingService {
+  addMessageListener: (
+    listener: (message: any) => void | Promise<void>
+  ) => () => void; // Returns cleanup function
+  removeMessageListener: (listener: (message: any) => void) => void;
+}
+
 export abstract class CorePlatformService {
   auth: AuthService;
+  browserMessaging: BrowserMessagingService;
   platform: PlatformType;
   storage: StorageService;
 
   constructor(
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
-    storage: StorageService
+    storage: StorageService,
+    browserMessaging: BrowserMessagingService
   ) {
     this.auth = new authCls(storage);
     this.platform = platform;
     this.storage = storage;
+    this.browserMessaging = browserMessaging;
   }
 
   // Conversations.
@@ -112,6 +122,8 @@ export abstract class CorePlatformService {
 export abstract class PlatformService extends CorePlatformService {
   // Content capture.
   abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps>;
+
+  abstract getSendWithActionsLabel(): string;
 }
 
 export function isValidPlatform(platform: unknown): platform is PlatformType {

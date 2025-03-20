@@ -1,5 +1,6 @@
 import type { AttachSelectionMessage } from "@app/platforms/chrome/messages";
 import { sendInputBarStatus } from "@app/platforms/chrome/messages";
+import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getSpaceIcon } from "@app/shared/lib/spaces";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
@@ -88,21 +89,25 @@ export function AssistantInputBar({
     resetUpload,
   } = fileUploaderService;
 
+  const platform = usePlatform();
+
   useEffect(() => {
     void sendInputBarStatus(true);
-    const listener = async (message: AttachSelectionMessage) => {
-      const { type } = message;
-      if (type === "EXT_ATTACH_TAB") {
-        // Handle message
-        void uploadContentTab(message);
+
+    const cleanup = platform.browserMessaging.addMessageListener(
+      async (message: AttachSelectionMessage) => {
+        const { type } = message;
+        if (type === "EXT_ATTACH_TAB") {
+          void uploadContentTab(message);
+        }
       }
-    };
-    chrome.runtime.onMessage.addListener(listener);
+    );
+
     return () => {
       void sendInputBarStatus(false);
-      chrome.runtime.onMessage.removeListener(listener);
+      cleanup();
     };
-  }, []);
+  }, [platform.browserMessaging, uploadContentTab]);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 

@@ -1,5 +1,5 @@
-import { ChromeCaptureActions } from "@app/platforms/chrome/components/ChromeCaptureActions";
 import { ChromeAuthService } from "@app/platforms/chrome/services/auth";
+import { ChromeBrowserMessagingService } from "@app/platforms/chrome/services/browser_messaging";
 import { ChromeStorageService } from "@app/platforms/chrome/services/storage";
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import { CorePlatformService } from "@app/shared/services/platform";
@@ -20,7 +20,12 @@ export interface PendingUpdate {
 
 export class ChromeCorePlatformService extends CorePlatformService {
   constructor() {
-    super("chrome", ChromeAuthService, new ChromeStorageService());
+    super(
+      "chrome",
+      ChromeAuthService,
+      new ChromeStorageService(),
+      new ChromeBrowserMessagingService()
+    );
   }
 
   /**

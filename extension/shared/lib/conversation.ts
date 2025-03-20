@@ -392,6 +392,7 @@ export async function retryMessage(
   return new Ok(await mRes.json());
 }
 
+// TODO: Move to platform specific service.
 export const getIncludeCurrentTab = async (params: GetActiveTabOptions) => {
   const backgroundRes = await sendGetActiveTabMessage(params);
   const error = backgroundRes.error;

@@ -8,8 +8,8 @@ import type {
   GetActiveTabBackgroundResponse,
   InputBarStatusMessage,
 } from "@app/platforms/chrome/messages";
-import type { PendingUpdate } from "@app/platforms/chrome/services/core-platform";
-import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core-platform";
+import type { PendingUpdate } from "@app/platforms/chrome/services/core_platform";
+import { ChromeCorePlatformService } from "@app/platforms/chrome/services/core_platform";
 import {
   AUTH0_CLIENT_DOMAIN,
   AUTH0_CLIENT_ID,
