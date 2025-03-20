@@ -43,6 +43,7 @@ import type {
   WithConnector,
   WorkspaceType,
 } from "@app/types";
+import { validateUrl } from "@app/types";
 import {
   assertNever,
   concurrentExecutor,
@@ -56,7 +57,6 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
-  validateUrl,
 } from "@app/types";
 
 export async function getDataSources(
@@ -272,7 +272,6 @@ export interface UpsertDocumentArgs {
   auth: Authenticator;
   mime_type: string;
   title: string;
-  force_refresh?: boolean;
 }
 
 export async function upsertDocument({
@@ -555,7 +554,6 @@ export interface UpsertTableArgs {
   tags?: string[] | null;
   parentId?: string | null;
   parents?: string[] | null;
-  force_refresh?: boolean;
 }
 
 export function isUpsertTableArgs(
