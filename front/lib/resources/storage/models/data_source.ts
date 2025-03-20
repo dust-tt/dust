@@ -85,7 +85,7 @@ DataSourceModel.init(
       { fields: ["workspaceId", "name", "deletedAt"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "conversationId"] },
+      { fields: ["workspaceId", "conversationId"], unique: true },
       { fields: ["dustAPIProjectId"] },
     ],
   }
