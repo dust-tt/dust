@@ -42,6 +42,7 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -141,13 +142,21 @@ export const InputBarAttachmentsPicker = ({
           value={search}
           onChange={setSearch}
           disabled={isLoading}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              const firstMenuItem =
+                itemsContainerRef.current?.querySelector('[role="menuitem"]');
+              (firstMenuItem as HTMLElement)?.focus();
+            }
+          }}
         />
 
         {searchQuery && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-              <div className="pt-0">
+              <div className="pt-0" ref={itemsContainerRef}>
                 {unfoldedNodes.length > 0 ? (
                   unfoldedNodes.map((item, index) => (
                     <DropdownMenuItem
