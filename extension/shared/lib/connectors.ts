@@ -1,12 +1,13 @@
 import { getWeeklyDateRange } from "@app/shared/lib/utils";
+import type { ConnectorProvider } from "@dust-tt/client";
 
 interface Provider {
   matcher: (url: URL) => boolean;
   extractor: (url: URL) => string | null;
 }
 
-const providers: Record<string, Provider> = {
-  googleDrive: {
+const providers: Partial<Record<ConnectorProvider, Provider>> = {
+  google_drive: {
     matcher: (url: URL): boolean => {
       return (
         url.hostname.includes("drive.google.com") ||
@@ -141,7 +142,6 @@ function extractMessageNodeId(url: URL): string | null {
 }
 
 // Extracts a nodeId from a given url
-// Currently supports Google Drive documents and Notion pages
 export function nodeIdFromUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
