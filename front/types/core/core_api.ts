@@ -335,6 +335,20 @@ interface CoreAPIUpsertTablePayload {
   forceRefresh?: boolean;
 }
 
+interface CoreAPIUpsertDataSourceFolderPayload {
+  projectId: string;
+  dataSourceId: string;
+  folderId: string;
+  timestamp: number | null;
+  parentId: string | null;
+  parents: string[];
+  title: string;
+  mimeType: string;
+  sourceUrl?: string | null;
+  providerVisibility: ProviderVisibility | null | undefined;
+  forceRefresh?: boolean;
+}
+
 // TODO(keyword-search): Until we remove the `managed-` prefix, we need to
 // sanitize the search name.
 function formatDataSourceDisplayName(name: string) {
@@ -1976,19 +1990,9 @@ export class CoreAPI {
     sourceUrl,
     providerVisibility,
     forceRefresh,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-    folderId: string;
-    timestamp: number | null;
-    parentId: string | null;
-    parents: string[];
-    title: string;
-    mimeType: string;
-    sourceUrl?: string | null;
-    providerVisibility: ProviderVisibility | null | undefined;
-    forceRefresh?: boolean;
-  }): Promise<CoreAPIResponse<{ folder: CoreAPIFolder }>> {
+  }: CoreAPIUpsertDataSourceFolderPayload): Promise<
+    CoreAPIResponse<{ folder: CoreAPIFolder }>
+  > {
     const response = await this._fetchWithError(
       `${this._url}/projects/${projectId}/data_sources/${encodeURIComponent(
         dataSourceId
