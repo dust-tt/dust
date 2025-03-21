@@ -1,13 +1,22 @@
-const ALLOWED_ORIGINS = [
+const STATIC_ALLOWED_ORIGINS = [
   // Front extension.
   "https://front-ext.dust.tt",
   // Chrome extension.
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
 ] as const;
-type AllowedOriginType = (typeof ALLOWED_ORIGINS)[number];
 
-export function isAllowedOrigin(origin: string): origin is AllowedOriginType {
-  return ALLOWED_ORIGINS.includes(origin as AllowedOriginType);
+const ALLOWED_ORIGIN_PATTERNS = [
+  // Zendesk domains
+  new RegExp("^https://.+\\.zendesk\\.com$"),
+] as const;
+
+type StaticAllowedOriginType = (typeof STATIC_ALLOWED_ORIGINS)[number];
+
+export function isAllowedOrigin(origin: string): boolean {
+  return (
+    STATIC_ALLOWED_ORIGINS.includes(origin as StaticAllowedOriginType) ||
+    ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin))
+  );
 }
 
 export const ALLOWED_HEADERS = [
