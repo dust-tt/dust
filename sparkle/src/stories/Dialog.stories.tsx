@@ -68,14 +68,14 @@ export const WithForm: Story = {
         <DialogContainer>
           <div className="s-grid s-gap-4 s-py-4">
             <div className="s-grid s-gap-2">
-              <label className="s-text-sm s-font-medium">Name</label>
+              <label className="s-text-sm s-font-semibold">Name</label>
               <input
                 className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
                 placeholder="Enter name..."
               />
             </div>
             <div className="s-grid s-gap-2">
-              <label className="s-text-sm s-font-medium">Email</label>
+              <label className="s-text-sm s-font-semibold">Email</label>
               <input
                 className="s-border-input s-rounded-md s-border s-bg-transparent s-px-3 s-py-1 s-text-sm"
                 placeholder="Enter email..."
