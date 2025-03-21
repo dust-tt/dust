@@ -13,7 +13,7 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -25,6 +25,9 @@ import {
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { useCursorPagination } from "@app/hooks/useCursorPagination";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { DataSourceContentNode } from "@app/lib/api/search";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
@@ -32,6 +35,18 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNode[];
+}
+
+const PAGE_SIZE = 25;
+
+function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
+  return resultNodes.flatMap((node) => {
+    const { dataSourceViews, ...rest } = node;
+    return dataSourceViews.map((view) => ({
+      ...rest,
+      dataSourceView: view,
+    }));
+  });
 }
 
 export const InputBarAttachmentsPicker = ({
@@ -43,25 +58,34 @@ export const InputBarAttachmentsPicker = ({
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [currentResultNodes, setCurrentResultNodes] = useState<DataSourceViewContentNode[]>([]);
 
   const {
     inputValue: search,
-    debouncedValue: searchQuery,
+    debouncedValue: debouncedSearch,
     isDebouncing,
     setValue: setSearch,
   } = useDebounce("", {
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
+  
+  const {
+    cursorPagination,
+    reset: resetPagination,
+    handleLoadNext,
+    pageIndex,
+  } = useCursorPagination(PAGE_SIZE);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+  const { searchResultNodes, isSearchLoading, nextPageCursor } = useSpacesSearch({
     includeDataSources: true,
     owner,
-    search: searchQuery,
+    search: debouncedSearch,
     viewType: "all",
-    disabled: isSpacesLoading || !searchQuery,
+    disabled: isSpacesLoading || !debouncedSearch,
     spaceIds: spaces.map((s) => s.sId),
+    pagination: cursorPagination,
   });
 
   const attachedNodeIds = useMemo(() => {
@@ -90,6 +114,23 @@ export const InputBarAttachmentsPicker = ({
       element.focus();
     }
   };
+
+  useEffect(() => {
+    resetPagination();
+  }, [debouncedSearch, resetPagination]);
+
+  useEffect(() => {
+    if (searchResultNodes && !isSearchLoading) {
+      const unfoldedNodes = getUnfoldedNodes(searchResultNodes);
+      setCurrentResultNodes(prevResultNodes => {  
+        if (pageIndex === 0) {
+          return unfoldedNodes;
+        } else {
+          return [...prevResultNodes, ...unfoldedNodes];
+        }
+      });
+    }
+  }, [searchResultNodes, isSearchLoading, pageIndex]);
 
   return (
     <DropdownMenu
@@ -143,13 +184,13 @@ export const InputBarAttachmentsPicker = ({
           disabled={isLoading}
         />
 
-        {searchQuery && (
+        {debouncedSearch && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div className="pt-0">
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
+                {currentResultNodes.length > 0 ? (
+                  currentResultNodes.map((item, index) => (
                     <DropdownMenuItem
                       key={index}
                       label={item.title}
@@ -184,6 +225,14 @@ export const InputBarAttachmentsPicker = ({
                   </div>
                 )}
               </div>
+              <InfiniteScroll
+                  nextPage={() => handleLoadNext(nextPageCursor)}
+                  hasMore={!!nextPageCursor}
+                  isValidating={isSearchLoading || isDebouncing}
+                  isLoading={isSearchLoading || isDebouncing}
+               />
+                {/*sentinel div to trigger the infinite scroll*/}
+                <div className="min-h-0.5 text-xs" />
               <ScrollBar className="py-0" />
             </ScrollArea>
           </>

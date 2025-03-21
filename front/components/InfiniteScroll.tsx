@@ -7,7 +7,7 @@ export type InfiniteScrollProps = {
   hasMore: boolean;
   isValidating: boolean;
   isLoading: boolean;
-  children: ReactNode;
+  children?: ReactNode;
 };
 
 export const InfiniteScroll = ({

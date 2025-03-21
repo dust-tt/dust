@@ -190,5 +190,6 @@ export async function handleSearch(
   return new Ok({
     nodes,
     warningCode: searchRes.value.warning_code,
+    nextPageCursor: searchRes.value.next_page_cursor,
   });
 }
