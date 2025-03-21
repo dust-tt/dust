@@ -7,7 +7,10 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
-import type { ConversationAttachmentType } from "@app/lib/actions/conversation/list_files";
+import type {
+  ConversationAttachmentType,
+  ConversationContentNodeType,
+} from "@app/lib/actions/conversation/list_files";
 import {
   isConversationContentNodeType,
   isConversationFileType,
@@ -108,13 +111,18 @@ async function getJITActions(
       if (filesUsableAsRetrievalQuery.length > 0) {
         const dataSources: DataSourceConfiguration[] =
           filesUsableAsRetrievalQuery
-            .filter((f) => isConversationContentNodeType(f))
             // For each searchable content node, we add its datasourceview with itself as parent filter.
+            .filter((f) => isConversationContentNodeType(f))
             .map((f) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: f.nodeDataSourceViewId,
+              // Cast ok here because of the filter above.
+              dataSourceViewId: (f as ConversationContentNodeType)
+                .nodeDataSourceViewId,
               filter: {
-                parents: { in: [f.contentNodeId], not: [] },
+                parents: {
+                  in: [(f as ConversationContentNodeType).contentNodeId],
+                  not: [],
+                },
                 tags: null,
               },
             }));
