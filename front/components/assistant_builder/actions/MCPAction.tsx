@@ -1,20 +1,31 @@
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
+export function hasErrorActionMCP(
+  action: AssistantBuilderActionConfiguration
+): string | null {
+  return action.type === "MCP" ? null : "Please select a MCP configuration.";
+}
+
 export function ActionMCP({
+  owner,
+  allowedSpaces,
   actionConfiguration,
   updateAction,
   setEdited,
@@ -29,20 +40,55 @@ export function ActionMCP({
   ) => void;
   setEdited: (edited: boolean) => void;
 }) {
-  const [selectedInternalMCPServerId, setSelectedInternalMCPServerId] =
-    useState<(typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null>(
-      actionConfiguration.internalMCPServerId
-    );
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+
+  const handleServerSelection = (serverId: InternalMCPServerIdType) => {
+    setEdited(true);
+    updateAction((previousAction) => ({
+      ...previousAction,
+      serverType: "internal",
+      internalMCPServerId: serverId,
+    }));
+  };
+
+  const handleDataSourceConfigUpdate = (dsConfigs: any) => {
+    setEdited(true);
+    updateAction((previousAction) => ({
+      ...previousAction,
+      resources: {
+        ...previousAction.resources,
+        dataSourceConfigurations: dsConfigs,
+      },
+    }));
+  };
 
   return (
     <>
+      {actionConfiguration.resources.dataSourceConfigurations && (
+        <AssistantBuilderDataSourceModal
+          isOpen={showDataSourcesModal}
+          setOpen={setShowDataSourcesModal}
+          owner={owner}
+          onSave={handleDataSourceConfigUpdate}
+          initialDataSourceConfigurations={
+            actionConfiguration.resources.dataSourceConfigurations
+          }
+          allowedSpaces={allowedSpaces}
+          viewType="document"
+        />
+      )}
+
       <div>Will expose all the tools available via an MCP Server.</div>
       <div>For testing purposes, pick an internal server</div>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             isSelect
-            label={selectedInternalMCPServerId ?? "Select a internal server"}
+            label={
+              actionConfiguration.internalMCPServerId ??
+              "Select a internal server"
+            }
             className="w-48"
           />
         </DropdownMenuTrigger>
@@ -51,25 +97,23 @@ export function ActionMCP({
             <DropdownMenuItem
               key={id}
               label={id}
-              onClick={() => {
-                setSelectedInternalMCPServerId(id);
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  serverType: "internal",
-                  internalMCPServerId: id,
-                }));
-                setEdited(true);
-              }}
+              onClick={() => handleServerSelection(id)}
             />
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {actionConfiguration.resources.dataSourceConfigurations && (
+        <DataSourceSelectionSection
+          owner={owner}
+          dataSourceConfigurations={
+            actionConfiguration.resources.dataSourceConfigurations
+          }
+          openDataSourceModal={() => setShowDataSourcesModal(true)}
+          onSave={handleDataSourceConfigUpdate}
+          viewType="document"
+        />
+      )}
     </>
   );
-}
-
-export function hasErrorActionMCP(
-  action: AssistantBuilderActionConfiguration
-): string | null {
-  return action.type === "MCP" ? null : "Please select a MCP configuration.";
 }
