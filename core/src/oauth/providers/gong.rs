@@ -55,7 +55,8 @@ impl Provider for GongConnectionProvider {
             ("redirect_uri", &redirect_uri),
         ];
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://app.gong.io/oauth2/generate-customer-token")
             .header("Content-Type", "application/json")
             .header("Authorization", authorization)
@@ -113,7 +114,8 @@ impl Provider for GongConnectionProvider {
             ("refresh_token", &refresh_token),
         ];
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://app.gong.io/oauth2/generate-customer-token")
             .header("Content-Type", "application/json")
             .header("Authorization", authorization)
