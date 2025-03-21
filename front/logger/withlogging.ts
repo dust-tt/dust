@@ -51,6 +51,8 @@ export function withLogging<T>(
 
     // Extract commit hash from headers or query params.
     const commitHash = req.headers["x-commit-hash"] ?? req.query.commitHash;
+    const extensionVersion =
+      req.headers["x-dust-extension-version"] ?? req.query.extensionVersion;
 
     try {
       await handler(req, res);
@@ -59,6 +61,7 @@ export function withLogging<T>(
       logger.error(
         {
           commitHash,
+          extensionVersion,
           durationMs: elapsed,
           error: err,
           method: req.method,
