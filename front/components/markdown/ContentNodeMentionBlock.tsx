@@ -3,11 +3,14 @@ import { visit } from "unist-util-visit";
 
 export function ContentNodeMentionBlock({
   title,
+  url,
 }: {
   title: string;
   url: string;
 }) {
-  return <Chip label={title} size="xs" color="sky" />;
+  return (
+    <Chip label={title} size="xs" color="sky" href={url} target="_blank" />
+  );
 }
 
 export function contentNodeMentionDirective() {
