@@ -10,6 +10,9 @@ const fakeDocument = {
     sections: [],
   },
 };
+
+// Some data sources don't have a proper document in GCS, this script uploads a fake one.
+// Relocation workflows expect a document to be present in GCS for each data source document.
 makeScript(
   {
     path: {
