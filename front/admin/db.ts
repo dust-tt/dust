@@ -48,6 +48,7 @@ import {
   AgentMessage,
   AgentMessageFeedback,
   Conversation,
+  ConversationHasMessage,
   ConversationParticipant,
   Mention,
   Message,
@@ -169,6 +170,7 @@ async function main() {
   await Message.sync({ alter: true });
   await MessageReaction.sync({ alter: true });
   await Mention.sync({ alter: true });
+  await ConversationHasMessage.sync({ alter: true });
 
   await AgentBrowseAction.sync({ alter: true });
   await AgentConversationIncludeFileAction.sync({ alter: true });

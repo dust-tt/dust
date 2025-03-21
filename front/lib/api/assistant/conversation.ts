@@ -29,6 +29,7 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   Conversation,
+  ConversationHasMessage,
   ConversationParticipant,
   Mention,
   Message,
@@ -827,6 +828,16 @@ export async function* postUserMessage(
       }
 
       const m = await createMessageAndUserMessage(owner);
+      await ConversationHasMessage.create(
+        {
+          conversationId: conversation.id,
+          messageId: m.id,
+          thread: 0,
+          rank: m.rank,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
+      );
       const userMessage: UserMessageWithRankType = {
         id: m.id,
         created: m.createdAt.getTime(),
@@ -885,6 +896,16 @@ export async function* postUserMessage(
                 {
                   transaction: t,
                 }
+              );
+              await ConversationHasMessage.create(
+                {
+                  conversationId: conversation.id,
+                  messageId: messageRow.id,
+                  thread: 0,
+                  rank: messageRow.rank,
+                  workspaceId: owner.id,
+                },
+                { transaction: t }
               );
 
               return {
@@ -1254,6 +1275,19 @@ export async function* editUserMessage(
         );
       }
       const userMessageRow = messageRow.userMessage;
+
+      const conversationHasMessage = await ConversationHasMessage.findOne({
+        where: {
+          conversationId: conversation.id,
+          messageId: message.id,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+      if (conversationHasMessage) {
+        await conversationHasMessage.destroy({ transaction: t });
+      }
+
       // adding messageRow as param otherwise Ts doesn't get it can't be null
       async function createMessageAndUserMessage(
         workspace: WorkspaceType,
@@ -1299,6 +1333,16 @@ export async function* editUserMessage(
       }
 
       const m = await createMessageAndUserMessage(owner, messageRow);
+      await ConversationHasMessage.create(
+        {
+          conversationId: conversation.id,
+          messageId: m.id,
+          thread: 0,
+          rank: m.rank,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
+      );
 
       const userMessage: UserMessageWithRankType = {
         id: m.id,
@@ -1371,7 +1415,16 @@ export async function* editUserMessage(
                 transaction: t,
               }
             );
-
+            await ConversationHasMessage.create(
+              {
+                conversationId: conversation.id,
+                messageId: messageRow.id,
+                thread: 0,
+                rank: messageRow.rank,
+                workspaceId: owner.id,
+              },
+              { transaction: t }
+            );
             return {
               row: agentMessageRow,
               m: {
@@ -1572,7 +1625,7 @@ export async function* retryAgentMessage(
         ],
         transaction: t,
       });
-
+      const owner = auth.getNonNullableWorkspace();
       if (!messageRow || !messageRow.agentMessage) {
         return null;
       }
@@ -1595,10 +1648,21 @@ export async function* retryAgentMessage(
           agentConfigurationId: messageRow.agentMessage.agentConfigurationId,
           agentConfigurationVersion:
             messageRow.agentMessage.agentConfigurationVersion,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: owner.id,
         },
         { transaction: t }
       );
+      const conversationHasMessage = await ConversationHasMessage.findOne({
+        where: {
+          conversationId: conversation.id,
+          messageId: message.id,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+      if (conversationHasMessage) {
+        await conversationHasMessage.destroy({ transaction: t });
+      }
       const m = await Message.create(
         {
           sId: generateRandomModelSId(),
@@ -1607,13 +1671,22 @@ export async function* retryAgentMessage(
           parentId: messageRow.parentId,
           version: messageRow.version + 1,
           agentMessageId: agentMessageRow.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: owner.id,
         },
         {
           transaction: t,
         }
       );
-
+      await ConversationHasMessage.create(
+        {
+          conversationId: conversation.id,
+          messageId: m.id,
+          thread: 0,
+          rank: m.rank,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
+      );
       await updateConversationRequestedGroupIds(
         [message.configuration],
         conversation,
@@ -1821,6 +1894,16 @@ export async function postNewContentFragment(
         {
           transaction: t,
         }
+      );
+      await ConversationHasMessage.create(
+        {
+          conversationId: conversation.id,
+          messageId: messageRow.id,
+          thread: 0,
+          rank: messageRow.rank,
+          workspaceId: owner.id,
+        },
+        { transaction: t }
       );
       return { contentFragment, messageRow };
     }
