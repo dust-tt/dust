@@ -253,6 +253,7 @@ export async function createConversationWithMessage({
     contentFragments: [
       ...contentFragments.uploaded.map((cf) => ({
         title: cf.title,
+
         context: {
           profilePictureUrl: user.image,
         },
@@ -277,6 +278,7 @@ export async function createConversationWithMessage({
           },
           nodeId: cf.internalId,
           contentType,
+          sourceUrl: cf.sourceUrl,
           nodeDataSourceViewId: cf.dataSourceView.sId,
         };
       }),
