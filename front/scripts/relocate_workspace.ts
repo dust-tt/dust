@@ -3,6 +3,7 @@ import {
   pauseAllManagedDataSources,
   resumeAllManagedDataSources,
 } from "@app/lib/api/data_sources";
+import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config,
@@ -121,7 +122,15 @@ makeScript(
             return;
           }
 
-          // 3) Launch the relocation workflow.
+          // 3) Pause all labs workflows.
+          const pauseLabsRes = await pauseAllLabsWorkflows(auth);
+          if (pauseLabsRes.isErr()) {
+            logger.error(
+              `Failed to pause labs workflows: ${pauseLabsRes.error}`
+            );
+          }
+
+          // 4) Launch the relocation workflow.
           await launchWorkspaceRelocationWorkflow({
             workspaceId: owner.sId,
             sourceRegion,
