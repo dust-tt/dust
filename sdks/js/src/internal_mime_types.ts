@@ -52,7 +52,7 @@ function generateConnectorRelativeMimeTypes<
   );
 }
 
-export const CONTENT_NODE_MIME_TYPES = {
+const CONTENT_NODE_MIME_TYPES = {
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
