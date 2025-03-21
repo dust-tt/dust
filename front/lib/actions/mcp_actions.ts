@@ -4,6 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type {
   Implementation,
   ListToolsResult,
+  Resource,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
@@ -63,6 +64,14 @@ const Schema = z.union([
   ImageContentSchema,
   EmbeddedResourceSchema,
 ]);
+
+export interface MCPServerConnectionDetails {
+  serverType: MCPServerConfigurationType["serverType"];
+  internalMCPServerId?:
+    | MCPServerConfigurationType["internalMCPServerId"]
+    | null;
+  remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
+}
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
@@ -373,4 +382,23 @@ export async function tryGetMCPTools(
   );
 
   return configurations.flat();
+}
+
+export async function getMCPServerResources(
+  connectionDetails: MCPServerConnectionDetails
+): Promise<Resource[]> {
+  const mcpClient = await connectToMCPServer(connectionDetails);
+
+  let serverResources: Resource[] = [];
+  let nextPageCursor;
+  do {
+    const { resources, nextCursor }: z.infer<typeof ListResourcesResultSchema> =
+      await mcpClient.listResources();
+    nextPageCursor = nextCursor;
+    serverResources = [...serverResources, ...resources];
+  } while (nextPageCursor);
+
+  await mcpClient.close();
+
+  return serverResources;
 }
