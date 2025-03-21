@@ -23,7 +23,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  * - The underscores in the provider name are stripped in the generated mime type.
  * - The underscores in the resource type are replaced with dashes in the generated mime type.
  */
-function generateMimeTypes<
+function generateConnectorRelativeMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
 >({
@@ -52,12 +52,12 @@ function generateMimeTypes<
   );
 }
 
-export const MIME_TYPES = {
-  CONFLUENCE: generateMimeTypes({
+const CONTENT_NODE_MIME_TYPES = {
+  CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
   }),
-  GITHUB: generateMimeTypes({
+  GITHUB: generateConnectorRelativeMimeTypes({
     provider: "github",
     resourceTypes: [
       "REPOSITORY",
@@ -74,14 +74,14 @@ export const MIME_TYPES = {
       "DISCUSSION",
     ],
   }),
-  GOOGLE_DRIVE: generateMimeTypes({
+  GOOGLE_DRIVE: generateConnectorRelativeMimeTypes({
     provider: "google_drive",
     // Spreadsheets may contain many sheets, thus resemble folders and are
     // stored as such, but with the special mimeType below.
     // For files and sheets, we keep Google's mime types.
     resourceTypes: ["SHARED_WITH_ME", "FOLDER", "SPREADSHEET"],
   }),
-  INTERCOM: generateMimeTypes({
+  INTERCOM: generateConnectorRelativeMimeTypes({
     provider: "intercom",
     resourceTypes: [
       "COLLECTION",
@@ -92,30 +92,30 @@ export const MIME_TYPES = {
       "HELP_CENTER",
     ],
   }),
-  MICROSOFT: generateMimeTypes({
+  MICROSOFT: generateConnectorRelativeMimeTypes({
     provider: "microsoft",
     // Spreadsheets may contain many sheets, thus resemble folders and are
     // stored as such, but with the special mimeType below.
     // For files and sheets, we keep Microsoft's mime types.
     resourceTypes: ["FOLDER", "SPREADSHEET"],
   }),
-  NOTION: generateMimeTypes({
+  NOTION: generateConnectorRelativeMimeTypes({
     provider: "notion",
     resourceTypes: ["UNKNOWN_FOLDER", "SYNCING_FOLDER", "DATABASE", "PAGE"],
   }),
-  SLACK: generateMimeTypes({
+  SLACK: generateConnectorRelativeMimeTypes({
     provider: "slack",
     resourceTypes: ["CHANNEL", "THREAD", "MESSAGES"],
   }),
-  SNOWFLAKE: generateMimeTypes({
+  SNOWFLAKE: generateConnectorRelativeMimeTypes({
     provider: "snowflake",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  WEBCRAWLER: generateMimeTypes({
+  WEBCRAWLER: generateConnectorRelativeMimeTypes({
     provider: "webcrawler",
     resourceTypes: ["FOLDER"], // pages are upserted as text/html, not an internal mime type
   }),
-  ZENDESK: generateMimeTypes({
+  ZENDESK: generateConnectorRelativeMimeTypes({
     provider: "zendesk",
     resourceTypes: [
       "BRAND",
@@ -128,18 +128,27 @@ export const MIME_TYPES = {
       "TICKET",
     ],
   }),
-  BIGQUERY: generateMimeTypes({
+  BIGQUERY: generateConnectorRelativeMimeTypes({
     provider: "bigquery",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  SALESFORCE: generateMimeTypes({
+  SALESFORCE: generateConnectorRelativeMimeTypes({
     provider: "salesforce",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  GONG: generateMimeTypes({
+  GONG: generateConnectorRelativeMimeTypes({
     provider: "gong",
     resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
+};
+
+const TOOL_INPUT_MIME_TYPES = {
+  DATA_SOURCE_VIEW: "application/vnd.dust.data-source-view",
+};
+
+export const MIME_TYPES = {
+  ...CONTENT_NODE_MIME_TYPES,
+  ...TOOL_INPUT_MIME_TYPES,
 };
 
 export const MIME_TYPES_VALUES = Object.values(MIME_TYPES).flatMap((value) =>
