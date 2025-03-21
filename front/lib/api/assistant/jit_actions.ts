@@ -13,7 +13,10 @@ import {
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -66,10 +69,8 @@ async function getJITActions(
       filesUsableAsRetrievalQuery.length > 0
     ) {
       // Get the datasource view for the conversation.
-      const dataSourceView = await DataSourceViewResource.fetchByConversation(
-        auth,
-        conversation
-      );
+      const conversationDataSourceView =
+        await DataSourceViewResource.fetchByConversation(auth, conversation);
 
       if (filesUsableAsTableQuery.length > 0) {
         const action: TablesQueryConfigurationType = {
@@ -83,12 +84,12 @@ async function getJITActions(
           tables: filesUsableAsTableQuery.flatMap((f) => {
             if (isConversationFileType(f)) {
               assert(
-                dataSourceView,
+                conversationDataSourceView,
                 "No conversation datasource view found for table when trying to get JIT actions"
               );
               return f.generatedTables.map((tableId) => ({
                 workspaceId: auth.getNonNullableWorkspace().sId,
-                dataSourceViewId: dataSourceView.sId,
+                dataSourceViewId: conversationDataSourceView.sId,
                 tableId,
               }));
             } else if (isConversationContentNodeType(f)) {
@@ -105,17 +106,21 @@ async function getJITActions(
       }
 
       if (filesUsableAsRetrievalQuery.length > 0) {
-        const dataSources = filesUsableAsRetrievalQuery
-          .filter((f) => isConversationContentNodeType(f))
-          .map((f) => ({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: f.nodeDataSourceViewId,
-            filter: { parents: null, tags: null },
-          }));
-        if (dataSourceView) {
+        const dataSources: DataSourceConfiguration[] =
+          filesUsableAsRetrievalQuery
+            .filter((f) => isConversationContentNodeType(f))
+            .map((f) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              dataSourceViewId: f.nodeDataSourceViewId,
+              filter: {
+                parents: { in: [f.contentNodeId], not: [] },
+                tags: null,
+              },
+            }));
+        if (conversationDataSourceView) {
           dataSources.push({
             workspaceId: auth.getNonNullableWorkspace().sId,
-            dataSourceViewId: dataSourceView.sId,
+            dataSourceViewId: conversationDataSourceView.sId,
             filter: { parents: null, tags: null },
           });
         }
