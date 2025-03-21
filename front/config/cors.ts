@@ -3,6 +3,8 @@ const ALLOWED_ORIGINS = [
   "https://front-ext.dust.tt",
   // Chrome extension.
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+  // Zendesk.
+  "https://*.zendesk.com",
 ] as const;
 type AllowedOriginType = (typeof ALLOWED_ORIGINS)[number];
 
