@@ -1,0 +1,70 @@
+import { SpaceMCPList } from "@app/components/spaces/mcp/SpaceMCPList";
+import { SpaceLayout, SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { DataSourceViewCategory } from "@app/types";
+import { SpaceType } from "@dust-tt/client";
+import { InferGetServerSidePropsType } from "next";
+import { ReactElement } from "react-markdown/lib/react-markdown";
+
+export const getServerSideProps = withDefaultUserAuthRequirements<
+  SpaceLayoutPageProps & {
+    category: DataSourceViewCategory;
+    isAdmin: boolean;
+    space: SpaceType;
+  }
+>(async (context, auth) => {
+  const owner = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+  const plan = auth.getNonNullablePlan();
+  const isAdmin = auth.isAdmin();
+
+  const { spaceId } = context.query;
+
+  if (!subscription || typeof spaceId !== "string") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space || !systemSpace || !space.canReadOrAdministrate(auth)) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const isBuilder = auth.isBuilder();
+  const canWriteInSpace = space.canWrite(auth);
+
+  return {
+    props: {
+      canReadInSpace: space.canRead(auth),
+      canWriteInSpace,
+      category: "mcp",
+      isAdmin,
+      isBuilder,
+      owner,
+      plan,
+      space: space.toJSON(),
+      subscription,
+    },
+  };
+});
+
+export default function Space({
+  canWriteInSpace,
+  owner,
+  space,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  return <SpaceMCPList 
+    canWriteInSpace={canWriteInSpace}
+    owner={owner}
+    space={space}
+  />;
+}
+
+Space.getLayout = (page: ReactElement, pageProps: any) => {
+  return <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>;
+};

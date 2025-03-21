@@ -36,6 +36,7 @@ export const DATA_SOURCE_VIEW_CATEGORIES = [
   "folder",
   "website",
   "apps",
+  "mcp",
 ] as const;
 
 export type DataSourceViewCategory =
@@ -51,13 +52,13 @@ export function isValidDataSourceViewCategory(
 
 export type DataSourceViewCategoryWithoutApps = Exclude<
   DataSourceViewCategory,
-  "apps"
+  "apps" | "mcp"
 >;
 
 export function isDataSourceViewCategoryWithoutApps(
   category: unknown
 ): category is DataSourceViewCategoryWithoutApps {
-  return isValidDataSourceViewCategory(category) && category !== "apps";
+  return isValidDataSourceViewCategory(category) && category !== "apps" && category !== "mcp";
 }
 
 export function isWebsiteOrFolderCategory(

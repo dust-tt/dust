@@ -119,6 +119,10 @@ export const CATEGORY_DETAILS: {
     label: "Apps",
     icon: CommandLineIcon,
   },
+  mcp: {
+    label: "Remote MCP Servers",
+    icon: ServerIcon
+  },
 };
 
 export const getSpaceAccessPriority = (space: SpaceType) => {
