@@ -54,7 +54,8 @@ impl Provider for MicrosoftConnectionProvider {
             "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
@@ -104,7 +105,8 @@ impl Provider for MicrosoftConnectionProvider {
             "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
