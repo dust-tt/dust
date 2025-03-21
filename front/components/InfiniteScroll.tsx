@@ -24,7 +24,7 @@ export const InfiniteScroll = ({
 
   return (
     <>
-      {hasMore && <div ref={ref} className="bg-pink h-1.5" />}
+      {hasMore && <div ref={ref} />}
       {showLoader && loader}
     </>
   );
