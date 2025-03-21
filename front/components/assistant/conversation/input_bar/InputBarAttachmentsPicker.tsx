@@ -73,7 +73,7 @@ export const InputBarAttachmentsPicker = ({
 
   const {
     inputValue: search,
-    debouncedValue: debouncedSearch,
+    debouncedValue: searchQuery,
     isDebouncing,
     setValue: setSearch,
   } = useDebounce("", {
@@ -93,9 +93,9 @@ export const InputBarAttachmentsPicker = ({
     useSpacesSearch({
       includeDataSources: true,
       owner,
-      search: debouncedSearch,
+      search: searchQuery,
       viewType: "all",
-      disabled: isSpacesLoading || !debouncedSearch,
+      disabled: isSpacesLoading || !searchQuery,
       spaceIds: spaces.map((s) => s.sId),
       pagination: cursorPagination,
     });
@@ -117,7 +117,7 @@ export const InputBarAttachmentsPicker = ({
 
   useEffect(() => {
     resetPagination();
-  }, [debouncedSearch, resetPagination]);
+  }, [searchQuery, resetPagination]);
 
   useEffect(() => {
     if (searchResultNodes && !isSearchLoading) {
@@ -192,7 +192,7 @@ export const InputBarAttachmentsPicker = ({
           }}
         />
 
-        {debouncedSearch && (
+        {searchQuery && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
