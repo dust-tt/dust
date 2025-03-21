@@ -5,29 +5,27 @@ import { useInView } from "react-intersection-observer";
 export type InfiniteScrollProps = {
   nextPage: () => void;
   hasMore: boolean;
-  isValidating: boolean;
-  isLoading: boolean;
-  children?: ReactNode;
+  showLoader: boolean;
+  loader: ReactNode;
 };
 
 export const InfiniteScroll = ({
   nextPage,
   hasMore,
-  isValidating,
-  isLoading,
-  children,
+  showLoader,
+  loader,
 }: InfiniteScrollProps) => {
   const { ref, inView } = useInView();
   useEffect(() => {
-    if (inView && !isValidating && hasMore) {
+    if (inView && hasMore) {
       void nextPage();
     }
-  }, [inView, isValidating, hasMore, nextPage]);
+  }, [inView, hasMore, nextPage]);
 
   return (
     <>
-      {hasMore && !isValidating && <div ref={ref} />}
-      {isValidating && !isLoading && children}
+      {hasMore && <div ref={ref} className="bg-pink h-1.5" />}
+      {showLoader && loader}
     </>
   );
 };

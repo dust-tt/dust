@@ -220,15 +220,15 @@ export default function TablePicker({
                     handleLoadNext(nextPageCursor);
                   }}
                   hasMore={!!nextPageCursor}
-                  isValidating={isTablesLoading || isDebouncing}
-                  isLoading={isTablesLoading || isDebouncing}
-                >
-                  {(isTablesLoading || isDebouncing) && !allTablesMap.size && (
+                  showLoader={
+                    !allTablesMap.size && (isTablesLoading || isDebouncing)
+                  }
+                  loader={
                     <div className="py-2 text-center text-sm text-element-700">
                       Loading tables...
                     </div>
-                  )}
-                </InfiniteScroll>
+                  }
+                />
                 {/*sentinel div to trigger the infinite scroll*/}
                 <div className="min-h-0.5 text-xs text-gray-400"></div>
                 <ScrollBar className="py-0" />

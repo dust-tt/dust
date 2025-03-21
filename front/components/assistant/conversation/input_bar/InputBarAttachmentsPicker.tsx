@@ -49,6 +49,14 @@ function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
   });
 }
 
+function Loader() {
+  return (
+    <div className="flex justify-center py-4">
+      <Spinner variant="dark" size="sm" />
+    </div>
+  );
+}
+
 export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
@@ -58,7 +66,9 @@ export const InputBarAttachmentsPicker = ({
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [currentResultNodes, setCurrentResultNodes] = useState<DataSourceViewContentNode[]>([]);
+  const [currentResultNodes, setCurrentResultNodes] = useState<
+    DataSourceViewContentNode[]
+  >([]);
 
   const {
     inputValue: search,
@@ -69,7 +79,7 @@ export const InputBarAttachmentsPicker = ({
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
-  
+
   const {
     cursorPagination,
     reset: resetPagination,
@@ -78,15 +88,16 @@ export const InputBarAttachmentsPicker = ({
   } = useCursorPagination(PAGE_SIZE);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading, nextPageCursor } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    search: debouncedSearch,
-    viewType: "all",
-    disabled: isSpacesLoading || !debouncedSearch,
-    spaceIds: spaces.map((s) => s.sId),
-    pagination: cursorPagination,
-  });
+  const { searchResultNodes, isSearchLoading, nextPageCursor } =
+    useSpacesSearch({
+      includeDataSources: true,
+      owner,
+      search: debouncedSearch,
+      viewType: "all",
+      disabled: isSpacesLoading || !debouncedSearch,
+      spaceIds: spaces.map((s) => s.sId),
+      pagination: cursorPagination,
+    });
 
   const attachedNodeIds = useMemo(() => {
     return attachedNodes.map((node) => node.internalId);
@@ -95,18 +106,6 @@ export const InputBarAttachmentsPicker = ({
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
     [spaces]
-  );
-
-  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
-    [searchResultNodes]
   );
 
   const searchbarRef = (element: HTMLInputElement) => {
@@ -122,7 +121,7 @@ export const InputBarAttachmentsPicker = ({
   useEffect(() => {
     if (searchResultNodes && !isSearchLoading) {
       const unfoldedNodes = getUnfoldedNodes(searchResultNodes);
-      setCurrentResultNodes(prevResultNodes => {  
+      setCurrentResultNodes((prevResultNodes) => {
         if (pageIndex === 0) {
           return unfoldedNodes;
         } else {
@@ -216,9 +215,7 @@ export const InputBarAttachmentsPicker = ({
                     />
                   ))
                 ) : isSearchLoading || isDebouncing ? (
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
+                  <Loader />
                 ) : (
                   <div className="p-2 text-sm text-gray-500">
                     No results found
@@ -226,13 +223,11 @@ export const InputBarAttachmentsPicker = ({
                 )}
               </div>
               <InfiniteScroll
-                  nextPage={() => handleLoadNext(nextPageCursor)}
-                  hasMore={!!nextPageCursor}
-                  isValidating={isSearchLoading || isDebouncing}
-                  isLoading={isSearchLoading || isDebouncing}
-               />
-                {/*sentinel div to trigger the infinite scroll*/}
-                <div className="min-h-0.5 text-xs" />
+                nextPage={() => handleLoadNext(nextPageCursor)}
+                hasMore={!!nextPageCursor}
+                showLoader={currentResultNodes.length > 0 && isSearchLoading}
+                loader={<Loader />}
+              />
               <ScrollBar className="py-0" />
             </ScrollArea>
           </>
