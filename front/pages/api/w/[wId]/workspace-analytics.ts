@@ -141,7 +141,7 @@ async function getAnalytics(
               JOIN "conversations" ON "messages"."conversationId" = "conversations"."id"
               JOIN "workspaces" ON "conversations"."workspaceId" = "workspaces"."id"
             WHERE
-              "workspaces"."sId" = '0ec9852c2f'
+              "workspaces"."sId" = :wId
               AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '60 days'
           ),
           calculations AS (
@@ -224,7 +224,6 @@ async function getAnalytics(
       ),
     ]);
 
-
   if (memberCountResults.length !== 1) {
     throw new Error("Unexpected number of results for member count query.");
   }
@@ -241,11 +240,11 @@ async function getAnalytics(
     memberCount: memberCountResults[0].member_count,
     monthlyActiveUsers: {
       count: activeUsersResult[0].last_30_days_active_users,
-      growth: activeUsersResult[0].mom_growth_pct,
+      growth: activeUsersResult[0].mom_growth_pct * 100,
     },
     weeklyActiveUsers: {
       count: activeUsersResult[0].last_7_days_active_users,
-      growth: activeUsersResult[0].wow_growth_pct,
+      growth: activeUsersResult[0].wow_growth_pct * 100,
     },
     averageWeeklyDailyActiveUsers: {
       count: averageWeeklyDauResult[0].last_7_days_average_daily_active_users,
