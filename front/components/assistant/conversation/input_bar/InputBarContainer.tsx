@@ -118,7 +118,6 @@ const InputBarContainer = ({
     disabled:
       isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
     spaceIds: spaces.map((s) => s.sId),
-    useCase: "pasteUrl",
   });
 
   useEffect(() => {

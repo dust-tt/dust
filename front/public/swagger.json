@@ -1380,14 +1380,6 @@
                     "items": {
                       "type": "string"
                     }
-                  },
-                  "useCase": {
-                    "type": "string",
-                    "description": "The use case for this search",
-                    "enum": [
-                      "pasteUrl",
-                      "searchNode"
-                    ]
                   }
                 }
               }

@@ -693,7 +693,6 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
-  useCase?: "pasteUrl" | "searchNode";
 };
 
 // Text search variant
@@ -719,7 +718,6 @@ export function useSpacesSearch({
   spaceIds,
   viewType,
   pagination,
-  useCase = "searchNode",
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -744,7 +742,6 @@ export function useSpacesSearch({
     spaceIds,
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
-    useCase,
   };
 
   // Only perform a query if we have a valid search

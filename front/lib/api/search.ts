@@ -3,7 +3,6 @@ import type { NextApiRequest } from "next";
 
 import {
   getContentNodeFromCoreNode,
-  NON_PASTABLE_NODES_MIME_TYPES,
   NON_SEARCHABLE_NODES_MIME_TYPES,
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
@@ -48,7 +47,6 @@ const BaseSearchBody = t.type({
   spaceIds: t.union([t.array(t.string), t.undefined]),
   includeDataSources: t.boolean,
   limit: t.number,
-  useCase: t.union([t.literal("pasteUrl"), t.literal("searchNode")]),
 });
 
 const TextSearchBody = t.intersection([
@@ -80,7 +78,7 @@ export async function handleSearch(
   auth: Authenticator,
   searchParams: SearchRequestBodyType
 ): Promise<Result<SearchResult, SearchError>> {
-  const { query, includeDataSources, viewType, spaceIds, nodeIds, useCase } =
+  const { query, includeDataSources, viewType, spaceIds, nodeIds } =
     searchParams;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -124,10 +122,7 @@ export async function handleSearch(
     });
   }
 
-  const excludedNodeMimeTypes =
-    useCase === "pasteUrl"
-      ? NON_PASTABLE_NODES_MIME_TYPES
-      : NON_SEARCHABLE_NODES_MIME_TYPES;
+  const excludedNodeMimeTypes = nodeIds ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
   const searchFilterResult = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
