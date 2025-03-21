@@ -7,8 +7,8 @@ import {
   DocumentTextIcon,
   Icon,
   SlackLogo,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 

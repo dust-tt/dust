@@ -125,6 +125,7 @@ export async function submitMessage({
               nodeId: contentFragment.internalId,
               nodeDataSourceViewId: contentFragment.dataSourceView.sId,
               contentType: contentFragment.mimeType,
+              sourceUrl: contentFragment.sourceUrl,
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
