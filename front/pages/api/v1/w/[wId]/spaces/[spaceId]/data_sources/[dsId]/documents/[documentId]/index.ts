@@ -9,6 +9,7 @@ import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
@@ -569,7 +570,7 @@ async function handler(
         ?.trim();
 
       // Use titleInTags if no title is provided.
-      const title = r.data.title?.trim() || titleInTags || "Untitled Document";
+      const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
 
       if (!titleInTags) {
         tags.push(`title:${title}`);
