@@ -141,6 +141,34 @@ pub struct RefreshResult {
 pub trait Provider {
     fn id(&self) -> ConnectionProvider;
 
+    fn reqwest_client(&self) -> reqwest::Client {
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            match reqwest::Proxy::all(format!(
+                "http://{}:{}@{}:{}",
+                proxy_user_name, proxy_user_password, proxy_host, proxy_port
+            )) {
+                Ok(proxy) => match reqwest::Client::builder().proxy(proxy).build() {
+                    Ok(client) => client,
+                    Err(e) => {
+                        error!(error = ?e, "Failed to create client with proxy");
+                        reqwest::Client::new()
+                    }
+                },
+                Err(e) => {
+                    error!(error = ?e, "Failed to create proxy, falling back to no proxy");
+                    reqwest::Client::new()
+                }
+            }
+        } else {
+            reqwest::Client::new()
+        }
+    }
+
     async fn finalize(
         &self,
         connection: &Connection,

@@ -62,7 +62,8 @@ impl Provider for ZendeskConnectionProvider {
 
         let url = format!("https://{}.zendesk.com/oauth/tokens", subdomain);
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post(url)
             .header("Content-Type", "application/json")
             .json(&body);

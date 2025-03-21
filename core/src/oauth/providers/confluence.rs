@@ -54,7 +54,8 @@ impl Provider for ConfluenceConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://auth.atlassian.com/oauth/token")
             .header("Content-Type", "application/json")
             .json(&body);
@@ -117,7 +118,8 @@ impl Provider for ConfluenceConnectionProvider {
             "refresh_token": refresh_token,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://auth.atlassian.com/oauth/token")
             .header("Content-Type", "application/json")
             .json(&body);

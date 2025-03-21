@@ -87,7 +87,8 @@ impl Provider for SalesforceConnectionProvider {
         form_data.insert("redirect_uri", redirect_uri);
         form_data.insert("code_verifier", code_verifier);
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
@@ -134,7 +135,8 @@ impl Provider for SalesforceConnectionProvider {
         form_data.insert("client_secret", &client_secret);
         form_data.insert("refresh_token", &refresh_token);
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);

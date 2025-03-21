@@ -46,7 +46,8 @@ impl Provider for IntercomConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://api.intercom.io/auth/eagle/token")
             .header("Content-Type", "application/json")
             .json(&body);
