@@ -13,7 +13,7 @@ export const createServer = (): McpServer => {
       content: [
         {
           type: "text",
-          text: "Coucou aubin!",
+          text: "Hello world !",
         },
       ],
     };

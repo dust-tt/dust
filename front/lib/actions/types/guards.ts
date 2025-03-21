@@ -111,7 +111,7 @@ export function isReasoningConfiguration(
 }
 
 export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
-  return arg.type === "mcp_action";
+  return arg.type === "tool_action";
 }
 
 export function isMCPActionConfiguration(

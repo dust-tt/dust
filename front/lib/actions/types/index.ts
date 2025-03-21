@@ -36,7 +36,7 @@ type BaseActionType =
   | "tables_query_action"
   | "visualization_action"
   | "websearch_action"
-  | "mcp_action"
+  | "tool_action"
   | ConversationBaseActionType;
 
 export abstract class BaseAction {

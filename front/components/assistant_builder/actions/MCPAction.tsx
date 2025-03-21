@@ -14,11 +14,7 @@ import type {
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
-export function ActionMCP({
-  actionConfiguration,
-  updateAction,
-  setEdited,
-}: {
+type ActionMCPProps = {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   actionConfiguration: AssistantBuilderMCPServerConfiguration;
@@ -28,7 +24,13 @@ export function ActionMCP({
     ) => AssistantBuilderMCPServerConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+export function ActionMCP({
+  actionConfiguration,
+  updateAction,
+  setEdited,
+}: ActionMCPProps) {
   const [selectedInternalMCPServerId, setSelectedInternalMCPServerId] =
     useState<(typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null>(
       actionConfiguration.internalMCPServerId

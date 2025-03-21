@@ -51,6 +51,7 @@ export async function fetchMCPServerActionConfigurations({
       actionsByConfigurationId.set(agentConfigurationId, []);
     }
 
+    // Note: this won't attempt to connect to remote servers and will use the cached metadata.
     const metadata = await getMCPServerMetadata(config);
 
     const actions = actionsByConfigurationId.get(agentConfigurationId);

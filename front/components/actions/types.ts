@@ -71,9 +71,9 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: SearchLabelsActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.search_labels_action,
   },
-  mcp_action: {
+  tool_action: {
     detailsComponent: MCPActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.mcp_action,
+    runningLabel: ACTION_RUNNING_LABELS.tool_action,
   },
 };
 

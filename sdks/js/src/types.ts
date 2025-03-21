@@ -897,7 +897,7 @@ export type WebsearchActionPublicType = z.infer<
 const MCPActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   params: z.unknown(),
-  type: z.literal("mcp_action"),
+  type: z.literal("tool_action"),
 });
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
@@ -1272,7 +1272,7 @@ const SearchLabelsParamsEventSchema = z.object({
 });
 
 const MCPParamsEventSchema = z.object({
-  type: z.literal("mcp_params"),
+  type: z.literal("tool_params"),
   created: z.number(),
   configurationId: z.string(),
   messageId: z.string(),
@@ -2759,5 +2759,5 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
-  mcp_action: "Calling MCP Server",
+  tool_action: "Calling MCP Server",
 };

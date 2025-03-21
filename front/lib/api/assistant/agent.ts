@@ -1,4 +1,4 @@
-import { getMCPActions } from "@app/lib/actions/mcp_actions";
+import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -373,7 +373,7 @@ async function* runMultiActionsAgent(
     conversation,
   });
 
-  const mcpActions = await getMCPActions(auth, {
+  const mcpActions = await tryGetMCPTools(auth, {
     agentActions,
   });
 
@@ -1355,7 +1355,7 @@ async function* runAction(
 
     for await (const event of eventStream) {
       switch (event.type) {
-        case "mcp_error":
+        case "tool_error":
           yield {
             type: "agent_error",
             created: event.created,
@@ -1368,11 +1368,11 @@ async function* runAction(
           };
           return;
 
-        case "mcp_params":
+        case "tool_params":
           yield event;
           break;
 
-        case "mcp_success":
+        case "tool_success":
           yield {
             type: "agent_action_success",
             created: event.created,

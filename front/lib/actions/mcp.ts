@@ -1,6 +1,6 @@
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { callMCPTool } from "@app/lib/actions/mcp_actions";
+import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -54,7 +54,7 @@ export type MCPToolConfigurationType = Omit<
 };
 
 type MCPParamsEvent = {
-  type: "mcp_params";
+  type: "tool_params";
   created: number;
   configurationId: string;
   messageId: string;
@@ -62,7 +62,7 @@ type MCPParamsEvent = {
 };
 
 type MCPSuccessEvent = {
-  type: "mcp_success";
+  type: "tool_success";
   created: number;
   configurationId: string;
   messageId: string;
@@ -70,7 +70,7 @@ type MCPSuccessEvent = {
 };
 
 type MCPErrorEvent = {
-  type: "mcp_error";
+  type: "tool_error";
   created: number;
   configurationId: string;
   messageId: string;
@@ -104,7 +104,7 @@ export class MCPActionType extends BaseAction {
   readonly functionCallName: string | null;
   readonly step: number = -1;
   readonly isError: boolean = false;
-  readonly type = "mcp_action" as const;
+  readonly type = "tool_action" as const;
 
   constructor(blob: MCPActionBlob) {
     super(blob.id, blob.type);
@@ -137,21 +137,11 @@ export class MCPActionType extends BaseAction {
 
   async renderForMultiActionsModel(): Promise<FunctionMessageTypeModel> {
     if (!this.functionCallName) {
-      return {
-        role: "function" as const,
-        name: "missing_function_call_name",
-        function_call_id: this.functionCallId ?? "missing_function_call_id",
-        content: `Error: missing function call name`,
-      };
+      throw new Error("MCPAction: functionCallName is required");
     }
 
     if (!this.functionCallId) {
-      return {
-        role: "function" as const,
-        name: this.functionCallName,
-        function_call_id: "missing_function_call_id",
-        content: `Error: missing function call id`,
-      };
+      throw new Error("MCPAction: functionCallId is required");
     }
 
     return {
@@ -210,12 +200,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     for (const input of actionConfiguration.inputs) {
       if (!(input.name in rawInputs)) {
         yield {
-          type: "mcp_error",
+          type: "tool_error",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "mcp_error",
+            code: "tool_error",
             message: `Error: property ${input.name} is required`,
           },
         };
@@ -223,12 +213,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }
       if (typeof rawInputs[input.name] !== input.type) {
         yield {
-          type: "mcp_error",
+          type: "tool_error",
           created: Date.now(),
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           error: {
-            code: "mcp_error",
+            code: "tool_error",
             message: `Error: property ${input.name} is of type ${input.type} but got ${typeof rawInputs[input.name]}`,
           },
         };
@@ -255,7 +245,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     });
 
     yield {
-      type: "mcp_params",
+      type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
@@ -273,14 +263,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "pending",
         isError: false,
-        type: "mcp_action",
+        type: "tool_action",
         generatedFiles: [],
       }),
     };
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await callMCPTool({
+    const r = await tryCallMCPTool({
+      owner,
       actionConfiguration,
       rawInputs,
     });
@@ -290,12 +281,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         isError: true,
       });
       yield {
-        type: "mcp_error",
+        type: "tool_error",
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error: {
-          code: "mcp_error",
+          code: "tool_error",
           message: `Error calling tool ${actionConfiguration.name}: ${JSON.stringify(rawInputs)} => ${JSON.stringify(r.error.message)}`,
         },
       };
@@ -315,7 +306,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     );
 
     yield {
-      type: "mcp_success",
+      type: "tool_success",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
@@ -333,7 +324,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "allowed_explicitely",
         isError: false,
-        type: "mcp_action",
+        type: "tool_action",
         generatedFiles: [],
       }),
     };
@@ -379,7 +370,7 @@ export async function mcpActionTypesFromAgentMessageIds(
       mcpServerConfigurationId: action.mcpServerConfigurationId,
       executionState: action.executionState,
       isError: action.isError,
-      type: "mcp_action",
+      type: "tool_action",
       generatedFiles: [],
     });
   });

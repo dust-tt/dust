@@ -176,7 +176,8 @@ export function getMCPCitationsCount({
     "No MCP actions found in `getMCPCitationsCount`"
   );
 
-  //TODO(mcp) Update based on action
+  //TODO(mcp) as mcp server might want to output multiple citations, here we should inspect the arguments
+  // of the tool to determine the number of actions using citations and compute the citations count accordingly.
   return 0;
 }
 

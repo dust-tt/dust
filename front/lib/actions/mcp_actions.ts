@@ -23,7 +23,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import type { Result } from "@app/types";
+import logger from "@app/logger/logger";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
@@ -265,6 +266,11 @@ async function updateRemoteMCPServerMetadata(config: {
   await remoteMCPServer.update(metadata);
 }
 
+/**
+ * Get the metadata of the MCP server.
+ *
+ * This function is safe to call even if the server is remote as it will not connect to the server and use the cached metadata.
+ */
 export async function getMCPServerMetadata(
   config: AgentMCPServerConfiguration
 ): Promise<{
@@ -313,34 +319,58 @@ export async function getMCPServerMetadata(
   }
 }
 
-export async function callMCPTool({
+/**
+ * Try to call a MCP tool.
+ *
+ * This function will potentially fail if the server is remote as it will try to connect to it.
+ */
+export async function tryCallMCPTool({
+  owner,
   actionConfiguration,
   rawInputs,
 }: {
+  owner: LightWorkspaceType;
   actionConfiguration: MCPToolConfigurationType;
   rawInputs: Record<string, unknown> | undefined;
 }): Promise<Result<MCPToolResultContent[], Error>> {
-  const mcpClient = await connectToMCPServer(actionConfiguration);
+  try {
+    const mcpClient = await connectToMCPServer(actionConfiguration);
 
-  const r = await mcpClient.callTool({
-    name: actionConfiguration.name,
-    arguments: rawInputs,
-  });
+    const r = await mcpClient.callTool({
+      name: actionConfiguration.name,
+      arguments: rawInputs,
+    });
 
-  await mcpClient.close();
+    await mcpClient.close();
 
-  if (r.isError) {
-    return new Err(new Error(r.content as string));
+    if (r.isError) {
+      return new Err(new Error(r.content as string));
+    }
+
+    // Type inference is not working here because of them using passthrough in the zod schema.
+    const content: MCPToolResultContent[] = (r.content ??
+      []) as MCPToolResultContent[];
+
+    return new Ok(content);
+  } catch (error) {
+    logger.error(
+      {
+        workspaceId: owner.id,
+        actionConfiguration,
+        error,
+      },
+      `Error calling MCP tool, returning error.`
+    );
+    return new Err(error as Error);
   }
-
-  // Type inference is not working here because of them using passthrough in the zod schema.
-  const content: MCPToolResultContent[] = (r.content ??
-    []) as MCPToolResultContent[];
-
-  return new Ok(content);
 }
 
-export async function getMCPActions(
+/**
+ * Get the MCP tools for the given agent actions.
+ *
+ * This function will return the MCP tools for the given agent actions by connecting to the MCP server(s).
+ */
+export async function tryGetMCPTools(
   auth: Authenticator,
   {
     agentActions,
@@ -356,18 +386,30 @@ export async function getMCPActions(
   // Discover all the tools exposed by all the mcp server available.
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
-      // Connect to the MCP server.
-      const mcpClient = await connectToMCPServer(action);
+      try {
+        // Connect to the MCP server.
+        const mcpClient = await connectToMCPServer(action);
 
-      const r: ListToolsResult = await mcpClient.listTools();
+        const r: ListToolsResult = await mcpClient.listTools();
 
-      // Close immediately after listing tools.
-      await mcpClient.close();
+        // Close immediately after listing tools.
+        await mcpClient.close();
 
-      return makeMCPConfigurations({
-        config: action,
-        listToolsResult: r,
-      });
+        return makeMCPConfigurations({
+          config: action,
+          listToolsResult: r,
+        });
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: owner.id,
+            action,
+            error,
+          },
+          `Error listing tools for MCP server, returning empty list.`
+        );
+        return [];
+      }
     })
   );
 
