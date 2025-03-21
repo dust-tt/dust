@@ -104,14 +104,21 @@ async function getJITActions(
         actions.push(action);
       }
 
-      if (
-        filesUsableAsRetrievalQuery.filter((f) => isConversationFileType(f))
-          .length > 0
-      ) {
-        assert(
-          dataSourceView,
-          "No conversation datasource view found for retrieval when trying to get JIT actions"
-        );
+      if (filesUsableAsRetrievalQuery.length > 0) {
+        const dataSources = filesUsableAsRetrievalQuery
+          .filter((f) => isConversationContentNodeType(f))
+          .map((f) => ({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: f.nodeDataSourceViewId,
+            filter: { parents: null, tags: null },
+          }));
+        if (dataSourceView) {
+          dataSources.push({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: dataSourceView.sId,
+            filter: { parents: null, tags: null },
+          });
+        }
         const action: RetrievalConfigurationType = {
           description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
           type: "retrieval_configuration",
@@ -121,13 +128,7 @@ async function getJITActions(
           topK: "auto",
           query: "auto",
           relativeTimeFrame: "auto",
-          dataSources: [
-            {
-              workspaceId: conversation.owner.sId,
-              dataSourceViewId: dataSourceView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
+          dataSources,
         };
         actions.push(action);
       }
