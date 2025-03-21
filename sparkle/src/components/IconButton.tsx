@@ -37,7 +37,7 @@ const styleVariants: Record<ButtonVariantType, string> = {
   ),
   outline: cn(
     "s-text-primary-700 dark:s-text-primary-700-night",
-    "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
+    "hover:s-text-primary-400 dark:hover:s-text-primary-400-night",
     "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
     "s-text-primary-500 dark:s-text-primary-500-night"
   ),

@@ -1,7 +1,12 @@
 import { cva } from "class-variance-authority";
 import React, { ComponentType, ReactNode } from "react";
 
-import { AnimatedText } from "@sparkle/components/";
+import {
+  AnimatedText,
+  IconButton,
+  LinkWrapper,
+  LinkWrapperProps,
+} from "@sparkle/components/";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -25,20 +30,9 @@ export const CHIP_COLORS = [
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
-type ChipProps = {
-  size?: ChipSizeType;
-  color?: ChipColorType;
-  label?: string;
-  children?: ReactNode;
-  className?: string;
-  isBusy?: boolean;
-  icon?: ComponentType;
-  onRemove?: () => void;
-};
-
 const sizeVariants: Record<ChipSizeType, string> = {
-  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-2",
-  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-2.5",
+  xs: "s-rounded-lg s-min-h-7 s-text-xs s-font-medium s-px-3 s-gap-1",
+  sm: "s-rounded-xl s-min-h-9 s-text-sm s-font-medium s-px-3 s-gap-1.5",
 };
 
 const backgroundVariants: Record<ChipColorType, string> = {
@@ -105,6 +99,30 @@ const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
   },
 });
 
+type ChipBaseProps = {
+  size?: ChipSizeType;
+  color?: ChipColorType;
+  label?: string;
+  children?: ReactNode;
+  className?: string;
+  isBusy?: boolean;
+  icon?: ComponentType;
+  onRemove?: () => void;
+};
+
+type ChipButtonProps = ChipBaseProps & {
+  onClick?: () => void;
+} & {
+  [K in keyof Omit<LinkWrapperProps, "children">]?: never;
+};
+
+type ChipLinkProps = ChipBaseProps &
+  Omit<LinkWrapperProps, "children"> & {
+    onClick?: never;
+  };
+
+type ChipProps = ChipLinkProps | ChipButtonProps;
+
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
     {
@@ -116,38 +134,57 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
       isBusy,
       icon,
       onRemove,
+      onClick,
+      href,
+      ...linkProps
     }: ChipProps,
     ref
-  ) => (
-    <div
-      className={cn(
-        chipVariants({ size, background: color, text: color }),
-        className,
-        onRemove && "s-cursor-pointer"
-      )}
-      aria-label={label}
-      ref={ref}
-      onClick={onRemove ? () => onRemove() : undefined}
-    >
-      {children}
-      {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
-      {label && (
-        <span
-          className={cn(
-            "s-pointer s-grow s-truncate",
-            onRemove ? "s-cursor-pointer" : "s-cursor-default"
-          )}
-        >
-          {isBusy ? (
-            <AnimatedText variant={color}>{label}</AnimatedText>
-          ) : (
-            label
-          )}
-        </span>
-      )}
-      {onRemove && <Icon visual={XMarkIcon} size={size as IconProps["size"]} />}
-    </div>
-  )
+  ) => {
+    const chipContent = (
+      <div
+        className={cn(
+          chipVariants({ size, background: color, text: color }),
+          className,
+          onRemove && "s-cursor-pointer"
+        )}
+        aria-label={label}
+        ref={ref}
+        onClick={onClick ? () => onClick() : undefined}
+      >
+        {children}
+        {icon && <Icon visual={icon} size={size as IconProps["size"]} />}
+        {label && (
+          <span
+            className={cn(
+              "s-pointer s-grow s-truncate",
+              onClick ? "s-cursor-pointer" : "s-cursor-default"
+            )}
+          >
+            {isBusy ? (
+              <AnimatedText variant={color}>{label}</AnimatedText>
+            ) : (
+              label
+            )}
+          </span>
+        )}
+        {onRemove && (
+          <IconButton
+            variant="outline"
+            icon={XMarkIcon}
+            size={size}
+            onClick={onRemove ?? undefined}
+          />
+        )}
+      </div>
+    );
+    return href ? (
+      <LinkWrapper href={href} {...linkProps}>
+        {chipContent}
+      </LinkWrapper>
+    ) : (
+      chipContent
+    );
+  }
 );
 
 Chip.displayName = "Chip";
