@@ -109,6 +109,7 @@ async function getJITActions(
         const dataSources: DataSourceConfiguration[] =
           filesUsableAsRetrievalQuery
             .filter((f) => isConversationContentNodeType(f))
+            // For each searchable content node, we add its datasourceview with itself as parent filter.
             .map((f) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
               dataSourceViewId: f.nodeDataSourceViewId,
