@@ -103,7 +103,7 @@ export function RunPluginDialog({
                 <div className="mb-4 mt-4">
                   <div className="mb-2 font-medium">Result:</div>
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-800 p-4">
-                    <pre className="whitespace-pre-wrap break-words font-mono text-sm text-slate-200">
+                    <pre className="font-mono whitespace-pre-wrap break-words text-sm text-slate-200">
                       {JSON.stringify(result.value, null, 2)}
                     </pre>
                   </div>

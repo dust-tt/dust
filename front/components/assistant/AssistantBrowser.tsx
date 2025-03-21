@@ -185,6 +185,11 @@ export function AssistantBrowser({
                   value={tab.id}
                   label={tab.label}
                   icon={tab.icon}
+                  className={
+                    assistantSearch !== ""
+                      ? "border-element-700 text-element-700"
+                      : ""
+                  }
                 />
               ))}
             </TabsList>
