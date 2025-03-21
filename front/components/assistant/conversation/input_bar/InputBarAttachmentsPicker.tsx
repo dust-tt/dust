@@ -65,6 +65,7 @@ export const InputBarAttachmentsPicker = ({
   isLoading = false,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [currentResultNodes, setCurrentResultNodes] = useState<
     DataSourceViewContentNode[]
@@ -181,13 +182,21 @@ export const InputBarAttachmentsPicker = ({
           value={search}
           onChange={setSearch}
           disabled={isLoading}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              const firstMenuItem =
+                itemsContainerRef.current?.querySelector('[role="menuitem"]');
+              (firstMenuItem as HTMLElement)?.focus();
+            }
+          }}
         />
 
         {debouncedSearch && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-              <div className="pt-0">
+              <div className="pt-0" ref={itemsContainerRef}>
                 {currentResultNodes.length > 0 ? (
                   currentResultNodes.map((item, index) => (
                     <DropdownMenuItem
@@ -204,7 +213,7 @@ export const InputBarAttachmentsPicker = ({
                       })}
                       disabled={
                         attachedNodeIds.includes(item.internalId) ||
-                        item.type !== "document"
+                        item.type === "folder"
                       }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                       onClick={() => {

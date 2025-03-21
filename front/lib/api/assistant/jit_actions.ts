@@ -1,5 +1,4 @@
 import assert from "assert";
-import _ from "lodash";
 
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
@@ -8,9 +7,19 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
-import type { ConversationFileType } from "@app/lib/actions/conversation/list_files";
-import { makeConversationListFilesAction } from "@app/lib/actions/conversation/list_files";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type {
+  ConversationAttachmentType,
+  ConversationContentNodeType,
+} from "@app/lib/actions/conversation/list_files";
+import {
+  isConversationContentNodeType,
+  isConversationFileType,
+  makeConversationListFilesAction,
+} from "@app/lib/actions/conversation/list_files";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -18,12 +27,12 @@ import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import logger from "@app/logger/logger";
 import type {
   AgentActionType,
   AgentMessageType,
   ConversationType,
 } from "@app/types";
+import { assertNever } from "@app/types";
 
 async function getJITActions(
   auth: Authenticator,
@@ -34,7 +43,7 @@ async function getJITActions(
   }: {
     availableActions: ActionConfigurationType[];
     conversation: ConversationType;
-    files: ConversationFileType[];
+    files: ConversationAttachmentType[];
   }
 ): Promise<ActionConfigurationType[]> {
   const actions: ActionConfigurationType[] = [];
@@ -63,31 +72,10 @@ async function getJITActions(
       filesUsableAsRetrievalQuery.length > 0
     ) {
       // Get the datasource view for the conversation.
-      const dataSourceView = await DataSourceViewResource.fetchByConversation(
-        auth,
-        conversation
-      );
-
-      // TODO(pr,attach) remove this if when tackling table query / semantic search action
-      if (!dataSourceView) {
-        logger.warn(
-          {
-            conversationId: conversation.sId,
-            fileIds: _.uniq(
-              filesUsableAsTableQuery
-                .map((f) => f.resourceId)
-                .concat(filesUsableAsRetrievalQuery.map((f) => f.resourceId))
-            ),
-            workspaceId: conversation.owner.sId,
-          },
-          "No default datasource view found for conversation when trying to get JIT actions"
-        );
-
-        return actions;
-      }
+      const conversationDataSourceView =
+        await DataSourceViewResource.fetchByConversation(auth, conversation);
 
       if (filesUsableAsTableQuery.length > 0) {
-        // TODO(JIT) Shall we look for an existing table query action and update it instead of creating a new one? This would allow join between the tables.
         const action: TablesQueryConfigurationType = {
           // The description here is the description of the data, a meta description of the action is prepended automatically.
           description:
@@ -96,18 +84,55 @@ async function getJITActions(
           id: -1,
           name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
           sId: generateRandomModelSId(),
-          tables: filesUsableAsTableQuery.flatMap((f) =>
-            f.generatedTables.map((tableId) => ({
-              workspaceId: auth.getNonNullableWorkspace().sId,
-              dataSourceViewId: dataSourceView.sId,
-              tableId: tableId,
-            }))
-          ),
+          tables: filesUsableAsTableQuery.flatMap((f) => {
+            if (isConversationFileType(f)) {
+              assert(
+                conversationDataSourceView,
+                "No conversation datasource view found for table when trying to get JIT actions"
+              );
+              return f.generatedTables.map((tableId) => ({
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                dataSourceViewId: conversationDataSourceView.sId,
+                tableId,
+              }));
+            } else if (isConversationContentNodeType(f)) {
+              return f.generatedTables.map((tableId) => ({
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                dataSourceViewId: f.nodeDataSourceViewId,
+                tableId,
+              }));
+            }
+            assertNever(f);
+          }),
         };
         actions.push(action);
       }
 
       if (filesUsableAsRetrievalQuery.length > 0) {
+        const dataSources: DataSourceConfiguration[] =
+          filesUsableAsRetrievalQuery
+            // For each searchable content node, we add its datasourceview with itself as parent filter.
+            .filter((f) => isConversationContentNodeType(f))
+            .map((f) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              // Cast ok here because of the filter above.
+              dataSourceViewId: (f as ConversationContentNodeType)
+                .nodeDataSourceViewId,
+              filter: {
+                parents: {
+                  in: [(f as ConversationContentNodeType).contentNodeId],
+                  not: [],
+                },
+                tags: null,
+              },
+            }));
+        if (conversationDataSourceView) {
+          dataSources.push({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: conversationDataSourceView.sId,
+            filter: { parents: null, tags: null },
+          });
+        }
         const action: RetrievalConfigurationType = {
           description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
           type: "retrieval_configuration",
@@ -117,13 +142,7 @@ async function getJITActions(
           topK: "auto",
           query: "auto",
           relativeTimeFrame: "auto",
-          dataSources: [
-            {
-              workspaceId: conversation.owner.sId,
-              dataSourceViewId: dataSourceView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
+          dataSources,
         };
         actions.push(action);
       }

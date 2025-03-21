@@ -1,4 +1,4 @@
-import type { DataSourceViewContentNode } from "@app/types";
+import type { DataSourceViewContentNodeType } from "@dust-tt/client";
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
 
@@ -6,10 +6,10 @@ import type { URLState } from "./extensions/URLStorageExtension";
 
 const useUrlHandler = (
   editor: Editor | null,
-  selectedNode: DataSourceViewContentNode | null
+  selectedNode: DataSourceViewContentNodeType | null
 ) => {
   const replaceUrl = useCallback(
-    async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
+    async (pendingUrl: URLState, node: DataSourceViewContentNodeType) => {
       if (!editor?.commands) {
         return false;
       }
@@ -48,7 +48,9 @@ const useUrlHandler = (
                 title: node.title,
                 provider: node.dataSourceView.dataSource.connectorProvider,
                 spaceId: node.dataSourceView.spaceId,
+                url: pendingUrl.url,
               },
+              text: `:content_node_mention[${node.title}]{url=${pendingUrl.url}}`,
             },
             { type: "text", text: " " },
           ];

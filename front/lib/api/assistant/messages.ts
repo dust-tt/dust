@@ -142,7 +142,7 @@ async function batchRenderAgentMessages(
       );
       const agents = await Promise.all(
         agentConfigurationIds.map((agentConfigId) => {
-          return getAgentConfiguration(auth, agentConfigId);
+          return getAgentConfiguration(auth, agentConfigId, "light");
         })
       );
       if (agents.some((a) => !a)) {

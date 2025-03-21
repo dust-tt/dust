@@ -66,9 +66,9 @@ export const ThinkingChip = () => (
   <Chip
     size="sm"
     color="slate"
-    label="
-      Thinking, Searching"
+    label="Thinking, Searching"
     isBusy
+    onClick={() => console.log()}
   />
 );
 

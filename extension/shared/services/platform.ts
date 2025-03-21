@@ -1,10 +1,15 @@
 import type { UploadedContentFragmentTypeWithKind } from "@app/shared/lib/types";
 import type { AuthService, StoredUser } from "@app/shared/services/auth";
+import type { CaptureService } from "@app/shared/services/capture";
 import type { StorageService } from "@app/shared/services/storage";
-import type { ContentFragmentType } from "@dust-tt/client";
+import type { FileUploaderService } from "@app/ui/hooks/useFileUploaderService";
+import type {
+  ContentFragmentType,
+  ExtensionWorkspaceType,
+} from "@dust-tt/client";
+import type { ComponentType } from "react";
 
-// TODO(2025-03-19 flav): Add front platform.
-const PLATFORM_TYPES = ["chrome"] as const;
+const PLATFORM_TYPES = ["chrome", "front"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 interface ConversationContext {
@@ -14,19 +19,51 @@ interface ConversationContext {
 export type Theme = "light" | "dark" | "system";
 export const DEFAULT_THEME: Theme = "system";
 
-export abstract class PlatformService {
-  auth: AuthService;
-  platform: PlatformType;
-  storage: StorageService;
+export interface CaptureActionsProps {
+  owner: ExtensionWorkspaceType;
+  isBlinking: boolean;
+  isLoading: boolean;
+  fileUploaderService: FileUploaderService;
+}
+
+export interface BrowserMessagingService {
+  addMessageListener: (
+    listener: (message: any) => void | Promise<void>
+  ) => () => void;
+  removeMessageListener: (listener: (message: any) => void) => void;
+  sendMessage<T = any, R = any>(
+    message: T,
+    callback?: (response: R) => void
+  ): void | Promise<R>;
+}
+
+function getTabContentKey(
+  conversationId: string,
+  rawUrl: string,
+  title: string
+) {
+  return `tabContentContentFragmentId_${conversationId}_${rawUrl}_${title}`;
+}
+
+export abstract class CorePlatformService {
+  readonly auth: AuthService;
+  readonly capture: CaptureService;
+  readonly messaging?: BrowserMessagingService;
+  readonly platform: PlatformType;
+  readonly storage: StorageService;
 
   constructor(
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
-    storage: StorageService
+    storage: StorageService,
+    capture: CaptureService,
+    browserMessaging?: BrowserMessagingService
   ) {
-    this.auth = new authCls(storage);
     this.platform = platform;
+    this.auth = new authCls(storage);
     this.storage = storage;
+    this.messaging = browserMessaging;
+    this.capture = capture;
   }
 
   // Conversations.
@@ -84,47 +121,74 @@ export abstract class PlatformService {
     ]);
   }
 
-  // Abstract methods that must be implemented by platform-specific classes
-  abstract getFileContentFragmentId(
+  /**
+   * Retrieves the content fragment ID to supersede for a given file.
+   * Always returns null if the file is not a tab content.
+   */
+  async getFileContentFragmentId(
     conversationId: string,
     file: UploadedContentFragmentTypeWithKind
-  ): Promise<string | null>;
+  ) {
+    if (file.kind !== "tab_content" || !file.url) {
+      return null;
+    }
 
-  abstract saveFilesContentFragmentIds(args: {
+    const key = getTabContentKey(conversationId, file.url, file.title);
+    const result = await this.storage.get<string>(key);
+    return result ?? null;
+  }
+
+  /**
+   * Saves the mapping between TabContent (based on conversation id and url) and content fragment id.
+   * Doesn't save anything for files that are not tab content.
+   * Needs to be called after calling postMessage or createConversation with:
+   * - the conversation id
+   * - the files that were uploaded (including the "kind", either attachment or tab_content)
+   * - the content fragments that were created
+   *
+   * This mapping is then used such that we superseed existing tab content content fragments
+   * with the newly created ones if it's for the same URL / conversation.
+   */
+  async saveFilesContentFragmentIds({
+    conversationId,
+    createdContentFragments,
+    uploadedFiles,
+  }: {
     conversationId: string;
-    uploadedFiles: UploadedContentFragmentTypeWithKind[];
     createdContentFragments: ContentFragmentType[];
-  }): Promise<void>;
+    uploadedFiles: UploadedContentFragmentTypeWithKind[];
+  }) {
+    const tabContentFileIds = new Set(
+      uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)
+    );
+    if (tabContentFileIds.size === 0) {
+      return;
+    }
+
+    const tabContentContentFragments = createdContentFragments.filter(
+      (cf) =>
+        cf.fileId &&
+        tabContentFileIds.has(cf.fileId) &&
+        cf.contentFragmentVersion === "latest"
+    );
+
+    for (const cf of tabContentContentFragments) {
+      if (!cf.sourceUrl) {
+        continue;
+      }
+      const key = getTabContentKey(conversationId, cf.sourceUrl, cf.title);
+      await this.storage.set(key, cf.contentFragmentId);
+    }
+  }
 }
 
-// Shared logic that works across all platforms
-export class BasePlatformService extends PlatformService {
-  constructor(
-    platform: PlatformType,
-    authCls: new (storage: StorageService) => AuthService,
-    storage: StorageService
-  ) {
-    super(platform, authCls, storage);
-  }
+export abstract class PlatformService extends CorePlatformService {
+  // Abstract methods that must be implemented by platform-specific classes.
 
-  // Content fragments.
-  async getFileContentFragmentId(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    conversationId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    file: UploadedContentFragmentTypeWithKind
-  ): Promise<string | null> {
-    throw new Error("Platform specific implementation required.");
-  }
+  // Content capture.
+  abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps>;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async saveFilesContentFragmentIds(args: {
-    conversationId: string;
-    uploadedFiles: UploadedContentFragmentTypeWithKind[];
-    createdContentFragments: ContentFragmentType[];
-  }): Promise<void> {
-    throw new Error("Platform specific implementation required.");
-  }
+  abstract getSendWithActionsLabel(): string;
 }
 
 export function isValidPlatform(platform: unknown): platform is PlatformType {

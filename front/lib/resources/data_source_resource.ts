@@ -386,11 +386,11 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   }
 
   static async fetchByModelIdWithAuth(auth: Authenticator, id: ModelId) {
-    const [dataSource] = await this.baseFetch(auth, undefined, {
+    const r = await this.baseFetch(auth, undefined, {
       where: { id },
     });
 
-    return dataSource ?? null;
+    return r.length > 0 ? r[0] : null;
   }
 
   protected async softDelete(

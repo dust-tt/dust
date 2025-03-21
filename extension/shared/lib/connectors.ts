@@ -37,15 +37,25 @@ const providers: Record<string, Provider> = {
       const pathParts = url.pathname.split("/");
       const lastPart = pathParts[pathParts.length - 1];
 
-      // Notion IDs are 32 characters, often at the end of the URL path
+      // Notion IDs are 32 characters at the end of the URL path (after last dash).
       if (lastPart) {
-        // Extract the ID part (after the last dash in the page title if present)
         const parts = lastPart.split("-");
-        const idCandidate = parts[parts.length - 1];
+        const candidate = parts[parts.length - 1];
 
-        // If we have a 32-character ID (with or without hyphens)
-        if (idCandidate && idCandidate.replace(/-/g, "").length === 32) {
-          return idCandidate;
+        if (candidate && candidate.length === 32) {
+          // If we have a 32-character ID (without hyphen) we are good to reconstrcut the ID.
+          const id =
+            "notion-" +
+            candidate.slice(0, 8) +
+            "-" +
+            candidate.slice(8, 12) +
+            "-" +
+            candidate.slice(12, 16) +
+            "-" +
+            candidate.slice(16, 20) +
+            "-" +
+            candidate.slice(20);
+          return id;
         }
       }
 

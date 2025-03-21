@@ -7,6 +7,7 @@ import type { Transaction } from "sequelize";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { getMembers } from "@app/lib/api/workspace";
@@ -633,19 +634,15 @@ export async function upsertTable({
     });
   }
 
+  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
-  if (
-    params.title &&
-    (params.title.length > MAX_NODE_TITLE_LENGTH || params.title.length === 0)
-  ) {
+  if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
       name: "dust_error",
-      code: params.title.length === 0 ? "title_is_empty" : "title_too_long",
+      code: "title_too_long",
       message:
         "Invalid title:" +
-        (params.title.length === 0
-          ? "title cannot be empty"
-          : `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`),
+        `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
     });
   }
 
@@ -685,6 +682,8 @@ export async function upsertTable({
     }
     standardizedSourceUrl = standardized;
   }
+
+  const title = titleEmpty ? UNTITLED_TITLE : params.title;
 
   if (async) {
     if (fileId) {
@@ -745,7 +744,7 @@ export async function upsertTable({
         csv: null,
         fileId: fileId ?? null,
         truncate,
-        title: params.title,
+        title,
         mimeType: params.mimeType,
         sourceUrl: standardizedSourceUrl,
       },
@@ -787,7 +786,7 @@ export async function upsertTable({
     tableParents,
     fileId: fileId ?? null,
     truncate,
-    title: params.title,
+    title,
     mimeType: params.mimeType,
     sourceUrl: standardizedSourceUrl,
   });

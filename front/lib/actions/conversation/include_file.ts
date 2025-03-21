@@ -4,6 +4,7 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
@@ -16,7 +17,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
 import {
   CONTENT_OUTDATED_MSG,
-  renderFromResourceId,
+  renderFromAttachmentId,
 } from "@app/lib/resources/content_fragment_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -116,7 +117,7 @@ export class ConversationIncludeFileActionType extends BaseAction {
     // message).
     const files = listFiles(conversation);
     for (const f of files) {
-      if (f.resourceId === fileId && f.isIncludable) {
+      if (conversationAttachmentId(f) === fileId && f.isIncludable) {
         if (f.contentFragmentVersion === "superseded") {
           return new Ok({
             fileId,
@@ -125,10 +126,10 @@ export class ConversationIncludeFileActionType extends BaseAction {
           });
         }
 
-        const r = await renderFromResourceId(conversation.owner, {
+        const r = await renderFromAttachmentId(conversation.owner, {
           contentType: f.contentType,
           excludeImages: true,
-          resourceId: f.resourceId,
+          conversationAttachmentId: conversationAttachmentId(f),
           model,
           title: f.title,
           contentFragmentVersion: f.contentFragmentVersion,

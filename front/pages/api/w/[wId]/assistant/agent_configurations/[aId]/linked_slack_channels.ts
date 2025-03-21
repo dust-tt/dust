@@ -81,7 +81,8 @@ async function handler(
       const agentConfigurationSid = req.query.aId as string;
       const agentConfiguration = await getAgentConfiguration(
         auth,
-        agentConfigurationSid
+        agentConfigurationSid,
+        "light"
       );
       if (!agentConfiguration) {
         return apiError(req, res, {

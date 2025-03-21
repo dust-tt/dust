@@ -81,7 +81,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     context.query
   );
   if (duplicate) {
-    configuration = await getAgentConfiguration(auth, duplicate);
+    configuration = await getAgentConfiguration(auth, duplicate, "full");
 
     if (!configuration) {
       return {

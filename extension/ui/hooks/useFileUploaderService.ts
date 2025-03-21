@@ -1,7 +1,9 @@
-import type { GetActiveTabOptions } from "@app/platforms/chrome/messages";
-import { getIncludeCurrentTab } from "@app/shared/lib/conversation";
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import type { UploadedFileKind } from "@app/shared/lib/types";
+import type {
+  CaptureOptions,
+  CaptureService,
+} from "@app/shared/services/capture";
 import type {
   ConversationPublicType,
   Result,
@@ -51,7 +53,10 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
 const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
 const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
 
-export function useFileUploaderService(conversationId?: string) {
+export function useFileUploaderService(
+  captureService: CaptureService,
+  conversationId?: string
+) {
   const [fileBlobs, setFileBlobs] = useState<FileBlob[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
@@ -292,27 +297,31 @@ export function useFileUploaderService(conversationId?: string) {
     conversation?: ConversationPublicType;
     updateBlobs?: boolean;
     onUpload?: () => void;
-  } & GetActiveTabOptions) => {
-    setIsCapturing(includeCapture);
+  } & CaptureOptions) => {
+    setIsCapturing(includeCapture ?? false);
+
     try {
-      const tabContentRes = await getIncludeCurrentTab({
-        includeContent,
-        includeSelectionOnly,
-        includeCapture,
-      });
+      const contentRes = await captureService.handleOperation(
+        "capture-page-content",
+        {
+          includeContent,
+          includeSelectionOnly,
+          includeCapture,
+        }
+      );
       setIsCapturing(false);
 
-      if (tabContentRes && tabContentRes.isErr()) {
+      if (contentRes && contentRes.isErr()) {
         sendNotification({
           title: "Cannot get page content",
-          description: tabContentRes.error.message,
+          description: contentRes.error.message,
           type: "error",
         });
         return;
       }
 
       const tabContent =
-        tabContentRes && tabContentRes.isOk() ? tabContentRes.value : null;
+        contentRes && contentRes.isOk() ? contentRes.value : null;
 
       const existingTitles = fileBlobs.map((f) => f.filename);
 
