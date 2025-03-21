@@ -56,6 +56,7 @@ const TextSearchBody = t.intersection([
   }),
   t.partial({
     nodeIds: t.undefined,
+    searchSourceUrls: t.boolean,
   }),
 ]);
 
@@ -66,6 +67,7 @@ const NodeIdSearchBody = t.intersection([
   }),
   t.partial({
     query: t.undefined,
+    searchSourceUrls: t.undefined,
   }),
 ]);
 
@@ -78,8 +80,14 @@ export async function handleSearch(
   auth: Authenticator,
   searchParams: SearchRequestBodyType
 ): Promise<Result<SearchResult, SearchError>> {
-  const { query, includeDataSources, viewType, spaceIds, nodeIds } =
-    searchParams;
+  const {
+    query,
+    includeDataSources,
+    viewType,
+    spaceIds,
+    nodeIds,
+    searchSourceUrls,
+  } = searchParams;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   if (!spaces.length) {
@@ -149,8 +157,9 @@ export async function handleSearch(
     query,
     filter: searchFilterResult,
     options: {
-      limit: paginationRes.value?.limit,
       cursor: paginationRes.value?.cursor ?? undefined,
+      limit: paginationRes.value?.limit,
+      search_source_urls: searchSourceUrls,
     },
   });
 
