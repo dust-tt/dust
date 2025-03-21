@@ -208,11 +208,14 @@ export function getWeekBoundaries(date: Date): {
 } {
   const startDate = new Date(date);
   startDate.setHours(0, 0, 0, 0);
-  const diff = startDate.getDate() - startDate.getDay() + (startDate.getDay() === 0 ? -6 : 1);
+  const diff =
+    startDate.getDate() -
+    startDate.getDay() +
+    (startDate.getDay() === 0 ? -6 : 1);
   startDate.setDate(diff);
 
   const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
+  endDate.setDate(startDate.getDate() + 7);
 
   return { startDate, endDate };
 }
