@@ -219,8 +219,9 @@ export type CoreAPISortSpec = {
 };
 
 export type CoreAPISearchOptions = {
-  limit?: number;
   cursor?: string;
+  limit?: number;
+  search_source_urls?: boolean;
   sort?: CoreAPISortSpec[];
 };
 

@@ -63,6 +63,7 @@ export const InputBarAttachmentsPicker = ({
     viewType: "all",
     disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
+    searchSourceUrls: true,
   });
 
   const attachedNodeIds = useMemo(() => {
