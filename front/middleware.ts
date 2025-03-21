@@ -6,6 +6,7 @@ import {
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
+import logger from "@app/logger/logger";
 
 export function middleware(request: NextRequest) {
   const url = request.nextUrl.pathname;
@@ -123,6 +124,8 @@ function setCorsHeaders(
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else {
+    logger.info({ origin }, "Forbidden: Unauthorized Origin");
+
     return new NextResponse(null, {
       status: 403,
       statusText: "Forbidden: Unauthorized Origin",
