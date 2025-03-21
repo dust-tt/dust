@@ -15,8 +15,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useCursorPagination } from "@app/hooks/useCursorPagination";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { DataSourceContentNode } from "@app/lib/api/search";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
@@ -25,9 +28,6 @@ import {
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { useCursorPagination } from "@app/hooks/useCursorPagination";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { DataSourceContentNode } from "@app/lib/api/search";
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
