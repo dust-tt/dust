@@ -1,4 +1,4 @@
-import { getWeeklyDateRange } from "@app/shared/lib/utils";
+import { getWeekBoundaries } from "@app/shared/lib/utils";
 import type { ConnectorProvider } from "@dust-tt/client";
 
 interface Provider {
@@ -132,7 +132,7 @@ function extractMessageNodeId(url: URL): string | null {
   const messageDate = new Date(parseInt(timestamp) / 1000);
 
   // Calculate week boundaries
-  const { startDate, endDate } = getWeeklyDateRange(messageDate);
+  const { startDate, endDate } = getWeekBoundaries(messageDate);
 
   // Format dates for node ID
   const startDateStr = formatDateForId(startDate);

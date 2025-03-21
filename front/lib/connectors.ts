@@ -1,5 +1,5 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { getWeeklyDateRange } from "@app/lib/utils";
+import { getWeekBoundaries } from "@app/lib/utils";
 import type { ConnectorProvider } from "@app/types";
 
 function getConnectorOrder() {
@@ -151,9 +151,9 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     extractor: (url: URL): string | null => {
       // Try each type of extraction in order
       return (
-        extractChannelNodeId(url) ||
-        extractThreadNodeId(url) ||
         extractMessageNodeId(url) ||
+        extractThreadNodeId(url) ||
+        extractChannelNodeId(url) ||
         null
       );
     },
@@ -217,7 +217,7 @@ function extractMessageNodeId(url: URL): string | null {
   const messageDate = new Date(parseInt(timestamp) / 1000);
 
   // Calculate week boundaries
-  const { startDate, endDate } = getWeeklyDateRange(messageDate);
+  const { startDate, endDate } = getWeekBoundaries(messageDate);
 
   // Format dates for node ID
   const startDateStr = formatDateForId(startDate);

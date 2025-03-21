@@ -202,25 +202,17 @@ export function compareAgentsForSort(
   return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
 }
 
-export function getWeeklyDateRange(date: Date): {
+export function getWeekBoundaries(date: Date): {
   startDate: Date;
   endDate: Date;
 } {
-  const startDate = getWeekStart(date);
-  const endDate = getWeekEnd(startDate);
-  return { startDate, endDate };
-}
+  const startDate = new Date(date);
+  startDate.setHours(0, 0, 0, 0);
+  const diff = startDate.getDate() - startDate.getDay() + (startDate.getDay() === 0 ? -6 : 1);
+  startDate.setDate(diff);
 
-function getWeekEnd(startDate: Date): Date {
   const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 7);
-  return endDate;
-}
+  endDate.setDate(startDate.getDate() + 6);
 
-function getWeekStart(date: Date): Date {
-  const dateCopy = new Date(date);
-  dateCopy.setHours(0, 0, 0, 0);
-  const diff =
-    dateCopy.getDate() - dateCopy.getDay() + (dateCopy.getDay() === 0 ? -6 : 1);
-  return new Date(dateCopy.setDate(diff));
+  return { startDate, endDate };
 }
