@@ -7,7 +7,7 @@ const CONTENT_SECURITY_POLICIES = [
   `img-src 'self' data: https:;`,
   `connect-src 'self' blob: *.google-analytics.com cdn.jsdelivr.net *.hsforms.com *.hscollectedforms.net *.hubspot.com *.cr-relay.com;`,
   `frame-src 'self' *.wistia.net eu.viz.dust.tt viz.dust.tt *.hsforms.net;`,
-  `font-src 'self' data: *.dust.tt;`,
+  `font-src 'self' data: dust.tt *.dust.tt;`,
   `object-src 'none';`,
   `form-action 'self';`,
   `base-uri 'self';`,
