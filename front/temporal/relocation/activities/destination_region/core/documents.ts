@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import type {
@@ -75,6 +76,9 @@ export async function processDataSourceDocuments({
         parents = [d.document_id];
       }
 
+      const title =
+        !d.title || d.title.trim().length === 0 ? UNTITLED_TITLE : d.title;
+
       return coreAPI.upsertDataSourceDocument({
         // Override the project and data source ids to the ones in the destination region.
         projectId: destIds.dustAPIProjectId,
@@ -88,7 +92,7 @@ export async function processDataSourceDocuments({
         section: d.section,
         credentials,
         lightDocumentOutput: true,
-        title: d.title,
+        title,
         mimeType: d.mime_type,
       });
     },
