@@ -80,7 +80,7 @@ const avatarVariants = cva(
   }
 );
 
-const textVariants = cva("s-select-none s-font-semibold", {
+const textVariants = cva("s-select-none s-font-medium", {
   variants: {
     size: {
       xs: "s-text-xs",
