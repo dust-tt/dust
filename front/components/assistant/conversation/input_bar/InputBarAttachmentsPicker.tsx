@@ -13,10 +13,13 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useCursorPagination } from "@app/hooks/useCursorPagination";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { DataSourceContentNode } from "@app/lib/api/search";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
@@ -34,6 +37,26 @@ interface InputBarAttachmentsPickerProps {
   attachedNodes: DataSourceViewContentNode[];
 }
 
+const PAGE_SIZE = 25;
+
+function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
+  return resultNodes.flatMap((node) => {
+    const { dataSourceViews, ...rest } = node;
+    return dataSourceViews.map((view) => ({
+      ...rest,
+      dataSourceView: view,
+    }));
+  });
+}
+
+function Loader() {
+  return (
+    <div className="flex justify-center py-4">
+      <Spinner variant="dark" size="sm" />
+    </div>
+  );
+}
+
 export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
@@ -44,6 +67,9 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [currentResultNodes, setCurrentResultNodes] = useState<
+    DataSourceViewContentNode[]
+  >([]);
 
   const {
     inputValue: search,
@@ -55,15 +81,24 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
+  const {
+    cursorPagination,
+    reset: resetPagination,
+    handleLoadNext,
+    pageIndex,
+  } = useCursorPagination(PAGE_SIZE);
+
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    search: searchQuery,
-    viewType: "all",
-    disabled: isSpacesLoading || !searchQuery,
-    spaceIds: spaces.map((s) => s.sId),
-  });
+  const { searchResultNodes, isSearchLoading, nextPageCursor } =
+    useSpacesSearch({
+      includeDataSources: true,
+      owner,
+      search: searchQuery,
+      viewType: "all",
+      disabled: isSpacesLoading || !searchQuery,
+      spaceIds: spaces.map((s) => s.sId),
+      pagination: cursorPagination,
+    });
 
   const attachedNodeIds = useMemo(() => {
     return attachedNodes.map((node) => node.internalId);
@@ -74,23 +109,28 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
-  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
-    [searchResultNodes]
-  );
-
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
       element.focus();
     }
   };
+
+  useEffect(() => {
+    resetPagination();
+  }, [searchQuery, resetPagination]);
+
+  useEffect(() => {
+    if (searchResultNodes && !isSearchLoading) {
+      const unfoldedNodes = getUnfoldedNodes(searchResultNodes);
+      setCurrentResultNodes((prevResultNodes) => {
+        if (pageIndex === 0) {
+          return unfoldedNodes;
+        } else {
+          return [...prevResultNodes, ...unfoldedNodes];
+        }
+      });
+    }
+  }, [searchResultNodes, isSearchLoading, pageIndex]);
 
   return (
     <DropdownMenu
@@ -157,8 +197,8 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div className="pt-0" ref={itemsContainerRef}>
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
+                {currentResultNodes.length > 0 ? (
+                  currentResultNodes.map((item, index) => (
                     <DropdownMenuItem
                       key={index}
                       label={item.title}
@@ -184,15 +224,19 @@ export const InputBarAttachmentsPicker = ({
                     />
                   ))
                 ) : isSearchLoading || isDebouncing ? (
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
+                  <Loader />
                 ) : (
                   <div className="p-2 text-sm text-gray-500">
                     No results found
                   </div>
                 )}
               </div>
+              <InfiniteScroll
+                nextPage={() => handleLoadNext(nextPageCursor)}
+                hasMore={!!nextPageCursor}
+                showLoader={currentResultNodes.length > 0 && isSearchLoading}
+                loader={<Loader />}
+              />
               <ScrollBar className="py-0" />
             </ScrollArea>
           </>
