@@ -76,7 +76,8 @@ export async function processDataSourceDocuments({
         parents = [d.document_id];
       }
 
-      const title = !d.title || d.title.length === 0 ? UNTITLED_TITLE : d.title;
+      const title =
+        !d.title || d.title.trim().length === 0 ? UNTITLED_TITLE : d.title;
 
       return coreAPI.upsertDataSourceDocument({
         // Override the project and data source ids to the ones in the destination region.
