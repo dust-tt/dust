@@ -196,6 +196,7 @@ export function RequestDataSourceModal({
             rightButtonProps: {
               label: "Send",
               onClick: onSave,
+              disabled: message.length === 0,
             },
           })}
         />
