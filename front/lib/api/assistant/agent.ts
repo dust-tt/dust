@@ -1,3 +1,5 @@
+import _ from "lodash";
+
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
@@ -24,16 +26,19 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import {
   constructPromptMultiActions,
+  messageToMultiActionMessages,
   renderConversationForModel,
 } from "@app/lib/api/assistant/generation";
 import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import { getTextRepresentationFromMessages } from "@app/lib/api/assistant/utils";
 import config from "@app/lib/api/config";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
@@ -50,6 +55,7 @@ import type {
   GenerationSuccessEvent,
   GenerationTokensEvent,
   LightAgentConfigurationType,
+  ModelConfigurationType,
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
@@ -131,17 +137,77 @@ async function* runMultiActionsAgentLoop(
   // Citations references offset kept up to date across steps.
   let citationsRefsOffset = 0;
 
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (m) =>
+      m.modelId === configuration.model.modelId &&
+      m.providerId === configuration.model.providerId
+  );
+
+  if (!model) {
+    yield {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: configuration.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "model_does_not_support_multi_actions",
+        message:
+          `The model you selected (${configuration.model.modelId}) ` +
+          `does not support multi-actions.`,
+      },
+    };
+    return;
+  }
+
   let processedContent = "";
+
   for (let i = 0; i < maxStepsPerRun + 1; i++) {
     const localLogger = logger.child({
       workspaceId: conversation.owner.sId,
       conversationId: conversation.sId,
+      agentMessageId: agentMessage.sId,
       multiActionLoopIteration: i,
     });
 
     localLogger.info("Starting multi-action loop iteration");
 
-    const isLastGenerationIteration = i === maxStepsPerRun;
+    let isLastGenerationIteration = i === maxStepsPerRun;
+
+    // If we're not on the first step, we count the total tokens in the agent message.
+    // If the token count is too high, we stop the multi-actions loop.
+    if (i !== 0) {
+      const tokenCount = await tokenCountForTexts(
+        [
+          ...getTextRepresentationFromMessages(
+            await messageToMultiActionMessages(agentMessage, {
+              conversation,
+              model,
+            })
+          ),
+        ],
+        model
+      );
+
+      if (tokenCount.isErr()) {
+        yield {
+          type: "agent_error",
+          created: Date.now(),
+          configurationId: configuration.sId,
+          messageId: agentMessage.sId,
+          error: {
+            code: "token_count_error",
+            message: `Error counting tokens: ${tokenCount.error.message}`,
+          },
+        };
+        return;
+      }
+
+      if (_.sum(tokenCount.value) > model.contextSize * 0.5) {
+        localLogger.info("Max tokens reached, stopping multi-actions loop.");
+        // Stop the multi-actions loop as the agent message is growing too much.
+        isLastGenerationIteration = true;
+      }
+    }
 
     const actions =
       // If we already executed the maximum number of actions, we don't run any more.
@@ -159,6 +225,7 @@ async function* runMultiActionsAgentLoop(
       availableActions: actions,
       isLastGenerationIteration,
       isLegacyAgent,
+      model,
     });
 
     const runIds = [];
@@ -316,6 +383,7 @@ async function* runMultiActionsAgent(
     availableActions,
     isLastGenerationIteration,
     isLegacyAgent,
+    model,
   }: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationType;
@@ -324,6 +392,7 @@ async function* runMultiActionsAgent(
     availableActions: ActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
+    model: ModelConfigurationType;
   }
 ): AsyncGenerator<
   | AgentErrorEvent
@@ -334,28 +403,6 @@ async function* runMultiActionsAgent(
   | AgentChainOfThoughtEvent
   | AgentContentEvent
 > {
-  const model = SUPPORTED_MODEL_CONFIGS.find(
-    (m) =>
-      m.modelId === agentConfiguration.model.modelId &&
-      m.providerId === agentConfiguration.model.providerId
-  );
-
-  if (!model) {
-    yield {
-      type: "agent_error",
-      created: Date.now(),
-      configurationId: agentConfiguration.sId,
-      messageId: agentMessage.sId,
-      error: {
-        code: "model_does_not_support_multi_actions",
-        message:
-          `The model you selected (${agentConfiguration.model.modelId}) ` +
-          `does not support multi-actions.`,
-      },
-    };
-    return;
-  }
-
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
     availableActions,
     agentMessage,
