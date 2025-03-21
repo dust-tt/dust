@@ -37,6 +37,8 @@ export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
   MIME_TYPES.NOTION.SYNCING_FOLDER,
 ] as readonly string[];
 
+export const UNTITLED_TITLE = "Untitled Document";
+
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   tableId: string
@@ -93,9 +95,7 @@ export function getContentNodeFromCoreNode(
     parentInternalId: coreNode.parent_id ?? null,
     // TODO(2025-01-27 aubin): remove this once the corresponding titles are backfilled.
     title:
-      coreNode.title === "Untitled document"
-        ? coreNode.node_id
-        : coreNode.title,
+      coreNode.title === UNTITLED_TITLE ? coreNode.node_id : coreNode.title,
     sourceUrl: coreNode.source_url ?? null,
     permission: "read",
     lastUpdatedAt: coreNode.timestamp,
