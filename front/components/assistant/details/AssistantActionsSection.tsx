@@ -3,6 +3,7 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  CommandIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
@@ -33,6 +34,7 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -301,6 +303,13 @@ function renderOtherAction(
           Agent can perform step by step reasoning to solve complex problems.
           Slow but powerful.
         </div>
+      </ActionSection>
+    );
+  } else if (isMCPServerConfiguration(action)) {
+    return (
+      <ActionSection title={action.name} key={`other-${index}`}>
+        <Icon visual={CommandIcon} size="sm" />
+        <div>{action.description}</div>
       </ActionSection>
     );
   } else if (isBrowseConfiguration(action)) {

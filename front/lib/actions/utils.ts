@@ -1,6 +1,7 @@
 import type { Icon } from "@dust-tt/sparkle";
 import {
   ChatBubbleThoughtIcon,
+  CommandIcon,
   CommandLineIcon,
   MagnifyingGlassIcon,
   PlanetIcon,
@@ -11,6 +12,7 @@ import {
 import assert from "assert";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import type { WebsearchConfigurationType } from "@app/lib/actions/websearch";
@@ -79,6 +81,13 @@ export const ACTION_SPECIFICATIONS: Record<
     cardIcon: ChatBubbleThoughtIcon,
     dropDownIcon: ChatBubbleThoughtIcon,
     flag: null,
+  },
+  MCP: {
+    label: "Calling a MCP Server",
+    description: "Call a tool to answer a question.",
+    cardIcon: CommandIcon,
+    dropDownIcon: CommandIcon,
+    flag: "mcp_actions",
   },
 };
 
@@ -153,6 +162,25 @@ export function getWebsearchNumResults({
   return Math.ceil(Math.max(...numResults) / websearchActions.length);
 }
 
+export function getMCPCitationsCount({
+  stepActions,
+}: {
+  stepActions: ActionConfigurationType[];
+}): number {
+  const mcpActions = stepActions.filter(
+    (action) => action.type === "mcp_configuration"
+  ) as MCPToolConfigurationType[];
+
+  assert(
+    mcpActions.length > 0,
+    "No MCP actions found in `getMCPCitationsCount`"
+  );
+
+  //TODO(mcp) as mcp server might want to output multiple citations, here we should inspect the arguments
+  // of the tool to determine the number of actions using citations and compute the citations count accordingly.
+  return 0;
+}
+
 /**
  * This function computes the number of citations per actions within one step. It is centralized
  * here as it is used from the runners and across runners which leads to circular imports.
@@ -191,6 +219,10 @@ export function getCitationsCount({
     case "search_labels_configuration":
     case "reasoning_configuration":
       return 0;
+    case "mcp_configuration":
+      return getMCPCitationsCount({
+        stepActions,
+      });
     default:
       assertNever(action);
   }
