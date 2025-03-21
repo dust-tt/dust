@@ -1,4 +1,9 @@
-const ALLOWED_ORIGINS = ["https://front-ext.dust.tt"] as const;
+const ALLOWED_ORIGINS = [
+  // Front extension.
+  "https://front-ext.dust.tt",
+  // Chrome extension.
+  "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
+] as const;
 type AllowedOriginType = (typeof ALLOWED_ORIGINS)[number];
 
 export function isAllowedOrigin(origin: string): origin is AllowedOriginType {
