@@ -63,9 +63,9 @@ interface MemberCountQueryResult {
 }
 
 interface ActiveUsersQueryResult {
-  last_7_days_active_users: number;
+  nb_active_users_last_7_days: number;
   wow_growth_pct: number;
-  last_30_days_active_users: number;
+  nb_active_users_last_30_days: number;
   mom_growth_pct: number;
 }
 
@@ -239,11 +239,11 @@ async function getAnalytics(
   return {
     memberCount: memberCountResults[0].member_count,
     monthlyActiveUsers: {
-      count: activeUsersResult[0].last_30_days_active_users,
+      count: activeUsersResult[0].nb_active_users_last_30_days,
       growth: activeUsersResult[0].mom_growth_pct * 100,
     },
     weeklyActiveUsers: {
-      count: activeUsersResult[0].last_7_days_active_users,
+      count: activeUsersResult[0].nb_active_users_last_7_days,
       growth: activeUsersResult[0].wow_growth_pct * 100,
     },
     averageWeeklyDailyActiveUsers: {
