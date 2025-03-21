@@ -9,8 +9,7 @@ import type {
 } from "@dust-tt/client";
 import type { ComponentType } from "react";
 
-// TODO(2025-03-19 flav): Add front platform.
-const PLATFORM_TYPES = ["chrome"] as const;
+const PLATFORM_TYPES = ["chrome", "front"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 interface ConversationContext {
@@ -38,10 +37,18 @@ export interface BrowserMessagingService {
   ): void | Promise<R>;
 }
 
+function getTabContentKey(
+  conversationId: string,
+  rawUrl: string,
+  title: string
+) {
+  return `tabContentContentFragmentId_${conversationId}_${rawUrl}_${title}`;
+}
+
 export abstract class CorePlatformService {
   readonly auth: AuthService;
   readonly capture: CaptureService;
-  readonly messaging: BrowserMessagingService;
+  readonly messaging?: BrowserMessagingService;
   readonly platform: PlatformType;
   readonly storage: StorageService;
 
@@ -49,8 +56,8 @@ export abstract class CorePlatformService {
     platform: PlatformType,
     authCls: new (storage: StorageService) => AuthService,
     storage: StorageService,
-    browserMessaging: BrowserMessagingService,
-    capture: CaptureService
+    capture: CaptureService,
+    browserMessaging?: BrowserMessagingService
   ) {
     this.platform = platform;
     this.auth = new authCls(storage);
@@ -114,20 +121,70 @@ export abstract class CorePlatformService {
     ]);
   }
 
-  // Abstract methods that must be implemented by platform-specific classes
-  abstract getFileContentFragmentId(
+  /**
+   * Retrieves the content fragment ID to supersede for a given file.
+   * Always returns null if the file is not a tab content.
+   */
+  async getFileContentFragmentId(
     conversationId: string,
     file: UploadedContentFragmentTypeWithKind
-  ): Promise<string | null>;
+  ) {
+    if (file.kind !== "tab_content" || !file.url) {
+      return null;
+    }
 
-  abstract saveFilesContentFragmentIds(args: {
+    const key = getTabContentKey(conversationId, file.url, file.title);
+    const result = await this.storage.get<string>(key);
+    return result ?? null;
+  }
+
+  /**
+   * Saves the mapping between TabContent (based on conversation id and url) and content fragment id.
+   * Doesn't save anything for files that are not tab content.
+   * Needs to be called after calling postMessage or createConversation with:
+   * - the conversation id
+   * - the files that were uploaded (including the "kind", either attachment or tab_content)
+   * - the content fragments that were created
+   *
+   * This mapping is then used such that we superseed existing tab content content fragments
+   * with the newly created ones if it's for the same URL / conversation.
+   */
+  async saveFilesContentFragmentIds({
+    conversationId,
+    createdContentFragments,
+    uploadedFiles,
+  }: {
     conversationId: string;
-    uploadedFiles: UploadedContentFragmentTypeWithKind[];
     createdContentFragments: ContentFragmentType[];
-  }): Promise<void>;
+    uploadedFiles: UploadedContentFragmentTypeWithKind[];
+  }) {
+    const tabContentFileIds = new Set(
+      uploadedFiles.filter((f) => f.kind === "tab_content").map((f) => f.fileId)
+    );
+    if (tabContentFileIds.size === 0) {
+      return;
+    }
+
+    const tabContentContentFragments = createdContentFragments.filter(
+      (cf) =>
+        cf.fileId &&
+        tabContentFileIds.has(cf.fileId) &&
+        cf.contentFragmentVersion === "latest"
+    );
+
+    for (const cf of tabContentContentFragments) {
+      if (!cf.sourceUrl) {
+        continue;
+      }
+      const key = getTabContentKey(conversationId, cf.sourceUrl, cf.title);
+      await this.storage.set(key, cf.contentFragmentId);
+    }
+  }
 }
 
 export abstract class PlatformService extends CorePlatformService {
+  // Abstract methods that must be implemented by platform-specific classes.
+
   // Content capture.
   abstract getCaptureActionsComponent(): ComponentType<CaptureActionsProps>;
 
