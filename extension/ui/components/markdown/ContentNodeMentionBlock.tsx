@@ -8,7 +8,9 @@ export function ContentNodeMentionBlock({
   title: string;
   url: string;
 }) {
-  return <Chip label={title} size="xs" color="sky" href={url} />;
+  return (
+    <Chip label={title} size="xs" color="sky" href={url} target="_blank" />
+  );
 }
 
 export function contentNodeMentionDirective() {
