@@ -1933,6 +1933,7 @@ async function* streamRunAgentEvents(
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "tool_params":
         yield event;
         break;
 

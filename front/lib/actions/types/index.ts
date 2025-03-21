@@ -36,6 +36,7 @@ type BaseActionType =
   | "tables_query_action"
   | "visualization_action"
   | "websearch_action"
+  | "tool_action"
   | ConversationBaseActionType;
 
 export abstract class BaseAction {
@@ -126,20 +127,6 @@ export abstract class BaseActionConfigurationServerRunner<
     auth: Authenticator,
     { name, description }: { name: string | null; description: string | null }
   ): Promise<Result<AgentActionSpecification, Error>>;
-
-  /**
-   * Returns a list of supporting actions that should be made available to the model alongside this action.
-   * These actions provide additional functionality that can be useful when using this action,
-   * but they are not required - the model may choose to use them or not.
-   *
-   * For example, a retrieval action with auto tags may return a search_tags action
-   * to help the model find relevant tags, but the model can still use the retrieval
-   * action without searching for tags first.
-   */
-  getSupportingActions(): ActionConfigurationType[] {
-    // By default, no supporting actions are returned.
-    return [];
-  }
 
   // Action execution.
   abstract run(
