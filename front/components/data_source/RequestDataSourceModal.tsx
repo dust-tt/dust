@@ -192,10 +192,12 @@ export function RequestDataSourceModal({
             variant: "outline",
             onClick: onClose,
           }}
-          rightButtonProps={{
-            label: "Send",
-            onClick: onSave,
-          }}
+          {...(dataSources.length > 0 && {
+            rightButtonProps: {
+              label: "Send",
+              onClick: onSave,
+            },
+          })}
         />
       </SheetContent>
     </Sheet>
