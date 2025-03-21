@@ -102,7 +102,7 @@ export default function DataSourceDocumentView({
                 rows={20}
                 readOnly={true}
                 className={classNames(
-                  "text-normal block w-full min-w-0 flex-1 rounded-md font-mono",
+                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
                   "border-structure-200 bg-structure-50",
                   "focus:border-gray-300 focus:ring-0"
                 )}

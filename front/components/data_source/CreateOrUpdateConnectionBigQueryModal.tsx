@@ -322,7 +322,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
 
             <Page.SectionHeader title="BigQuery Credentials" />
             <TextArea
-              className="min-h-[300px] font-mono text-[13px]"
+              className="font-mono min-h-[300px] text-[13px]"
               name="service_account_json"
               value={credentials}
               placeholder="Paste service account JSON here"
