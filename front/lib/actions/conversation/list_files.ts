@@ -34,6 +34,7 @@ export type ConversationFileType = BaseConversationAttachmentType & {
 
 export type ConversationContentNodeType = BaseConversationAttachmentType & {
   contentFragmentId: string;
+  contentNodeId: string;
   nodeDataSourceViewId: string;
 };
 

@@ -7,13 +7,19 @@ import {
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import { makeConversationIncludeFileConfiguration } from "@app/lib/actions/conversation/include_file";
-import type { ConversationAttachmentType } from "@app/lib/actions/conversation/list_files";
+import type {
+  ConversationAttachmentType,
+  ConversationContentNodeType,
+} from "@app/lib/actions/conversation/list_files";
 import {
   isConversationContentNodeType,
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
@@ -66,10 +72,8 @@ async function getJITActions(
       filesUsableAsRetrievalQuery.length > 0
     ) {
       // Get the datasource view for the conversation.
-      const dataSourceView = await DataSourceViewResource.fetchByConversation(
-        auth,
-        conversation
-      );
+      const conversationDataSourceView =
+        await DataSourceViewResource.fetchByConversation(auth, conversation);
 
       if (filesUsableAsTableQuery.length > 0) {
         const action: TablesQueryConfigurationType = {
@@ -83,12 +87,12 @@ async function getJITActions(
           tables: filesUsableAsTableQuery.flatMap((f) => {
             if (isConversationFileType(f)) {
               assert(
-                dataSourceView,
+                conversationDataSourceView,
                 "No conversation datasource view found for table when trying to get JIT actions"
               );
               return f.generatedTables.map((tableId) => ({
                 workspaceId: auth.getNonNullableWorkspace().sId,
-                dataSourceViewId: dataSourceView.sId,
+                dataSourceViewId: conversationDataSourceView.sId,
                 tableId,
               }));
             } else if (isConversationContentNodeType(f)) {
@@ -104,14 +108,31 @@ async function getJITActions(
         actions.push(action);
       }
 
-      if (
-        filesUsableAsRetrievalQuery.filter((f) => isConversationFileType(f))
-          .length > 0
-      ) {
-        assert(
-          dataSourceView,
-          "No conversation datasource view found for retrieval when trying to get JIT actions"
-        );
+      if (filesUsableAsRetrievalQuery.length > 0) {
+        const dataSources: DataSourceConfiguration[] =
+          filesUsableAsRetrievalQuery
+            // For each searchable content node, we add its datasourceview with itself as parent filter.
+            .filter((f) => isConversationContentNodeType(f))
+            .map((f) => ({
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              // Cast ok here because of the filter above.
+              dataSourceViewId: (f as ConversationContentNodeType)
+                .nodeDataSourceViewId,
+              filter: {
+                parents: {
+                  in: [(f as ConversationContentNodeType).contentNodeId],
+                  not: [],
+                },
+                tags: null,
+              },
+            }));
+        if (conversationDataSourceView) {
+          dataSources.push({
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            dataSourceViewId: conversationDataSourceView.sId,
+            filter: { parents: null, tags: null },
+          });
+        }
         const action: RetrievalConfigurationType = {
           description: DEFAULT_CONVERSATION_SEARCH_ACTION_DATA_DESCRIPTION,
           type: "retrieval_configuration",
@@ -121,13 +142,7 @@ async function getJITActions(
           topK: "auto",
           query: "auto",
           relativeTimeFrame: "auto",
-          dataSources: [
-            {
-              workspaceId: conversation.owner.sId,
-              dataSourceViewId: dataSourceView.sId,
-              filter: { parents: null, tags: null },
-            },
-          ],
+          dataSources,
         };
         actions.push(action);
       }
