@@ -145,8 +145,54 @@ export function DataSourceViewsSelector({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
+  const filteredDSVs = useMemo(() => {
+    const includesConnectorIDs: string[] = [];
+    const excludesConnectorIDs: string[] = [];
+
+    if (viewType === "table" && useCase === "assistantBuilder") {
+      const selection = Object.values(selectionConfigurations);
+      const firstDs =
+        selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
+
+      if (firstDs) {
+        if (isRemoteDatabase(firstDs)) {
+          includesConnectorIDs.push(firstDs.connectorId!);
+        } else {
+          dataSourceViews.forEach((dsv) => {
+            if (isRemoteDatabase(dsv.dataSource)) {
+              excludesConnectorIDs.push(dsv.dataSource.connectorId!);
+            }
+          });
+        }
+      }
+    }
+
+    return orderDatasourceViewByImportance(dataSourceViews).filter((dsv) => {
+      if (!includesConnectorIDs.length && !excludesConnectorIDs.length) {
+        return true;
+      }
+      if (includesConnectorIDs.length && dsv.dataSource.connectorId) {
+        return includesConnectorIDs.includes(dsv.dataSource.connectorId);
+      }
+      if (excludesConnectorIDs.length && dsv.dataSource.connectorId) {
+        return !excludesConnectorIDs.includes(dsv.dataSource.connectorId);
+      }
+      return true;
+    });
+  }, [dataSourceViews, selectionConfigurations, viewType, useCase]);
+
+  // Group the filtered DSVs
+  const filteredGroups = useMemo(
+    () => ({
+      managedDsv: filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)),
+      folders: filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)),
+      websites: filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)),
+    }),
+    [filteredDSVs]
+  );
+
   const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
-    dataSourceViews,
+    dataSourceViews: filteredDSVs, // Use filtered DSVs on the search too.
     includeDataSources: true,
     owner,
     search: debouncedSearch,
@@ -168,51 +214,8 @@ export function DataSourceViewsSelector({
     }
   }, [searchResult]);
 
-  const includesConnectorIDs: (string | null)[] = [];
-  const excludesConnectorIDs: (string | null)[] = [];
-
-  // If view type is tables
-  // You can either select tables from the same remote database (as the query will be executed live on the database)
-  // Or select tables from different non-remote databases (as we load all data in the same sqlite database)
-  if (viewType === "table" && useCase === "assistantBuilder") {
-    // Find the first data source in the selection configurations
-    const selection = Object.values(selectionConfigurations);
-    const firstDs =
-      selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
-
-    if (firstDs) {
-      // If it's a remote database, we only allow selecting tables with the same connector
-      if (isRemoteDatabase(firstDs)) {
-        includesConnectorIDs.push(firstDs.connectorId);
-      } else {
-        // Otherwise, we exclude the connector ID of all remote databases providers
-        dataSourceViews.forEach((dsv) => {
-          if (isRemoteDatabase(dsv.dataSource)) {
-            excludesConnectorIDs.push(dsv.dataSource.connectorId);
-          }
-        });
-      }
-    }
-  }
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(dataSourceViews),
-    [dataSourceViews]
-  );
-
-  const filteredDSVs = orderDatasourceViews.filter(
-    (dsv) =>
-      (!includesConnectorIDs.length ||
-        includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
-      (!excludesConnectorIDs.length ||
-        !excludesConnectorIDs.includes(dsv.dataSource.connectorId))
-  );
-
-  const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
-  const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
-  const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
-
   const displayManagedDsv =
-    managedDsv.length > 0 &&
+    filteredGroups.managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
   function updateSelection(
@@ -328,29 +331,27 @@ export function DataSourceViewsSelector({
               !isManaged(searchResult.dataSourceView.dataSource)
             }
           >
-            {orderDatasourceViews
-              .filter((dsv) => isManaged(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  isRootSelectable={isRootSelectable}
-                  defaultCollapsed={filteredDSVs.length > 1}
-                  useCase={useCase}
-                  searchResult={searchResult}
-                />
-              ))}
+            {filteredGroups.managedDsv.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                isRootSelectable={isRootSelectable}
+                defaultCollapsed={filteredGroups.managedDsv.length > 1}
+                useCase={useCase}
+                searchResult={searchResult}
+              />
+            ))}
           </Tree.Item>
         )}
-        {managedDsv.length > 0 &&
+        {filteredGroups.managedDsv.length > 0 &&
           useCase === "spaceDatasourceManagement" &&
-          managedDsv.map((dataSourceView) => (
+          filteredGroups.managedDsv.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}
               owner={owner}
@@ -361,12 +362,12 @@ export function DataSourceViewsSelector({
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
               isRootSelectable={false}
-              defaultCollapsed={filteredDSVs.length > 1}
+              defaultCollapsed={filteredGroups.managedDsv.length > 1}
               useCase={useCase}
               searchResult={searchResult}
             />
           ))}
-        {folders.length > 0 && (
+        {filteredGroups.folders.length > 0 && (
           <Tree.Item
             key="folders"
             label="Folders"
@@ -376,7 +377,7 @@ export function DataSourceViewsSelector({
               !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
             }
           >
-            {folders.map((dataSourceView) => (
+            {filteredGroups.folders.map((dataSourceView) => (
               <DataSourceViewSelector
                 key={dataSourceView.sId}
                 owner={owner}
@@ -387,42 +388,43 @@ export function DataSourceViewsSelector({
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
+                defaultCollapsed={filteredGroups.folders.length > 1}
                 useCase={useCase}
                 searchResult={searchResult}
               />
             ))}
           </Tree.Item>
         )}
-        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
-          <Tree.Item
-            key="websites"
-            label="Websites"
-            visual={GlobeAltIcon}
-            type="node"
-            defaultCollapsed={
-              !searchResult ||
-              !isWebsite(searchResult.dataSourceView.dataSource)
-            }
-          >
-            {websites.map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-                viewType={viewType}
-                isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
-                useCase={useCase}
-                searchResult={searchResult}
-              />
-            ))}
-          </Tree.Item>
-        )}
+        {filteredGroups.websites.length > 0 &&
+          useCase !== "transcriptsProcessing" && (
+            <Tree.Item
+              key="websites"
+              label="Websites"
+              visual={GlobeAltIcon}
+              type="node"
+              defaultCollapsed={
+                !searchResult ||
+                !isWebsite(searchResult.dataSourceView.dataSource)
+              }
+            >
+              {filteredGroups.websites.map((dataSourceView) => (
+                <DataSourceViewSelector
+                  key={dataSourceView.sId}
+                  owner={owner}
+                  selectionConfiguration={
+                    selectionConfigurations[dataSourceView.sId] ??
+                    defaultSelectionConfiguration(dataSourceView)
+                  }
+                  setSelectionConfigurations={setSelectionConfigurations}
+                  viewType={viewType}
+                  isRootSelectable={isRootSelectable}
+                  defaultCollapsed={filteredGroups.websites.length > 1}
+                  useCase={useCase}
+                  searchResult={searchResult}
+                />
+              ))}
+            </Tree.Item>
+          )}
       </Tree>
     </div>
   );
