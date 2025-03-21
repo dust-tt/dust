@@ -10,6 +10,7 @@ export const ALLOWED_HEADERS = [
   "content-type",
   "x-commit-hash",
   "x-dust-extension-version",
+  "x-extension-version",
   "x-hackerone-research",
   "x-request-origin",
 ] as const;
