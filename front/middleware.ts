@@ -93,6 +93,12 @@ function setCorsHeaders(
     .get("access-control-request-headers")
     ?.toLowerCase();
 
+  // If there's no origin, it's not a CORS request (e.g. direct API call from backend) so we should
+  // let it through without CORS headers
+  if (!origin) {
+    return undefined;
+  }
+
   // If this is a preflight request checking headers.
   if (request.method === "OPTIONS" && requestHeaders) {
     const requestedHeaders = requestHeaders.split(",").map((h) => h.trim());
@@ -106,14 +112,6 @@ function setCorsHeaders(
         statusText: "Forbidden: Unauthorized Headers",
       });
     }
-  }
-
-  // Check origin.
-  if (!origin) {
-    return new NextResponse(null, {
-      status: 403,
-      statusText: "Forbidden: Missing Origin",
-    });
   }
 
   // Check if origin is allowed (prod or dev).
