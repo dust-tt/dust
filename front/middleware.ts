@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 
 import {
   ALLOWED_HEADERS,
-  DEV_ORIGIN,
   isAllowedHeader,
   isAllowedOrigin,
 } from "@app/config/cors";
@@ -76,10 +75,10 @@ function handleCors(
   response: NextResponse,
   request: NextRequest
 ): NextResponse {
-  const corsResponse = setCorsHeaders(response, request);
-  if (corsResponse) {
+  const corsResponseError = setCorsHeaders(response, request);
+  if (corsResponseError) {
     // If setCorsHeaders returned a response, it's an error.
-    return corsResponse;
+    return corsResponseError;
   }
 
   return response;
@@ -121,9 +120,8 @@ function setCorsHeaders(
 
   // Cannot use helper functions like isDevelopment() in Edge Runtime middleware since they are not
   // bundled. Must check NODE_ENV directly.
-  const isDevOrigin =
-    process.env.NODE_ENV === "development" && origin === DEV_ORIGIN;
-  if (isDevOrigin || isAllowedOrigin(origin)) {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  if (isDevelopment || isAllowedOrigin(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else {
