@@ -20,7 +20,6 @@ type BaseSearchParams = {
   spaceIds?: string[];
   viewType: ContentNodesViewType;
   pagination?: CursorPaginationParams;
-  useCase?: "pasteUrl" | "searchNode";
 };
 
 // Text search variant
@@ -43,7 +42,6 @@ export function useSpacesSearch({
   search,
   spaceIds,
   viewType,
-  useCase = "searchNode",
 }: SpacesSearchParams) {
   const dustAPI = useDustAPI();
 
@@ -54,7 +52,6 @@ export function useSpacesSearch({
       ...(nodeIds ? { nodeIds } : { query: search }),
       spaceIds: spaceIds || [],
       limit: 100,
-      useCase,
     }),
     [viewType, includeDataSources, nodeIds, search, spaceIds]
   );

@@ -86,7 +86,6 @@ export const InputBarContainer = ({
     nodeIds: nodeCandidate ? [nodeCandidate] : [],
     disabled: isSpacesLoading || !nodeCandidate,
     spaceIds: spaces.map((s) => s.sId),
-    useCase: "pasteUrl",
   });
 
   useEffect(() => {
