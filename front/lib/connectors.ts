@@ -144,6 +144,8 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     matcher: (url: URL): boolean => {
       return (
         url.hostname.includes("slack.com") &&
+        // archives is present is thread and messages urls while client
+        // is in channel ones
         (url.pathname.includes("/archives/") ||
           url.pathname.includes("/client/"))
       );
