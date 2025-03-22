@@ -265,6 +265,32 @@ export function DataSourceViewsSelector({
     ? LimitedSearchContentMessage({ warningCode })
     : undefined;
 
+  // We want to allow a "Select all" results from the search results in the Assistant Builder.
+  // We think to make it a good XP we need to add some additional filters per data source.
+  // Since this is something that we really need for Salesforce, we will start with this.
+  const displaySelectAllButton = useMemo(() => {
+    if (useCase !== "assistantBuilder" || searchResultNodes.length === 0) {
+      return false;
+    }
+
+    const isAllSalesforce = searchResultNodes.every(
+      (r) => r.dataSourceView.dataSource.connectorProvider === "salesforce"
+    );
+    return isAllSalesforce;
+
+    // TODO: Replace with this once we are ready to select all from the search results for all data sources.
+    // if (viewType !== "table") {
+    //   return true;
+    // }
+    // const hasRemote = searchResultNodes.some((r) =>
+    //   isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // const hasNonRemote = searchResultNodes.some(
+    //   (r) => !isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // return hasRemote !== hasNonRemote;
+  }, [searchResultNodes, useCase]);
+
   return (
     <div>
       <SearchInputWithPopover
@@ -286,6 +312,20 @@ export function DataSourceViewsSelector({
             updateSelection(item, prevState)
           );
         }}
+        displayItemCount={useCase === "assistantBuilder"}
+        onSelectAll={
+          displaySelectAllButton
+            ? () => {
+                setSearchSpaceText("");
+                searchResultNodes.forEach((item) => {
+                  setSelectionConfigurations((prevState) =>
+                    updateSelection(item, prevState)
+                  );
+                });
+                setSearchResult(searchResultNodes[0]); // We scroll to the first item. Not perfect but no perfect solution here.
+              }
+            : undefined
+        }
         contentMessage={contentMessage}
         renderItem={(item, selected) => {
           return (

@@ -89,6 +89,12 @@ export default function AssistantBuilderDataSourceModal({
     }
   }, [dataSourceViews, viewType]);
 
+  const selectedItemsCount = useMemo(() => {
+    return Object.values(selectionConfigurations).reduce((acc, curr) => {
+      return acc + curr.selectedResources.length;
+    }, 0);
+  }, [selectionConfigurations]);
+
   return (
     <Sheet
       open={isOpen}
@@ -119,6 +125,9 @@ export default function AssistantBuilderDataSourceModal({
             />
           </div>
         </SheetContainer>
+        <div className="flex flex-col border-t border-border/60 bg-background p-3 text-sm dark:border-border-night/60 dark:bg-background-night">
+          {selectedItemsCount} items selected.
+        </div>
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",
