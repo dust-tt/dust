@@ -130,11 +130,13 @@ export async function handleSearch(
     });
   }
 
+  const excludedNodeMimeTypes = nodeIds ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
+
   const searchFilterResult = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     allDatasourceViews,
     {
-      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
+      excludedNodeMimeTypes,
       includeDataSources,
       viewType,
       nodeIds,
