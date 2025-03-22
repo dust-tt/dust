@@ -97,6 +97,8 @@ impl FromStr for OpenAIToolChoice {
     }
 }
 
+type ResponseFormat = serde_json::Map<String, serde_json::Value>;
+
 // Outputs types.
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -625,7 +627,7 @@ pub async fn openai_compatible_chat_completion(
                 _ => None,
             },
             match v.get("response_format") {
-                Some(Value::String(f)) => Some(f.to_string()),
+                Some(Value::Object(f)) => Some(f.clone()),
                 _ => None,
             },
             match v.get("reasoning_effort") {
@@ -868,7 +870,7 @@ async fn streamed_chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
-    response_format: Option<String>,
+    response_format: Option<ResponseFormat>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
     top_logprobs: Option<i32>,
@@ -963,9 +965,7 @@ async fn streamed_chat_completion(
         body["tool_choice"] = json!(tool_choice);
     }
     if let Some(response_format) = response_format {
-        body["response_format"] = json!({
-            "type": response_format,
-        });
+        body["response_format"] = json!(response_format);
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
@@ -1366,7 +1366,7 @@ async fn chat_completion(
     max_tokens: Option<i32>,
     presence_penalty: Option<f32>,
     frequency_penalty: Option<f32>,
-    response_format: Option<String>,
+    response_format: Option<ResponseFormat>,
     reasoning_effort: Option<String>,
     logprobs: Option<bool>,
     top_logprobs: Option<i32>,
@@ -1399,9 +1399,7 @@ async fn chat_completion(
     }
 
     if let Some(response_format) = response_format {
-        body["response_format"] = json!({
-            "type": response_format,
-        });
+        body["response_format"] = json!(response_format)
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);
