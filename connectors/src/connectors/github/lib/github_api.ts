@@ -811,11 +811,25 @@ export async function processRepository({
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
   if (data.size > 10 * 1024 * 1024) {
-    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
-    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // For now we throw a panic log, so we are able to report the issue to the
+    // user, and continue with the rest of the sync. See runbook for future
+    // improvements
+    // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
+
+    // Later on, we might want to build capabilities to handle this (likely a
+    // typed error to return a syncFailed to the user, when we are able to
+    // display granular failure, or increase this limit if we want some largers
     // repositories).
-    throw new Error(
-      `Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
+
+    logger.error(
+      {
+        repoLogin,
+        repoName,
+        size: data.size,
+        connectorId: connector.id,
+        panic: true,
+      },
+      `Github Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
     );
   }
 
