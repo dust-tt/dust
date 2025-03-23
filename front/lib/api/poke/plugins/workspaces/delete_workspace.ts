@@ -3,7 +3,10 @@ import {
   deleteWorkspace,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import {
+  FREE_NO_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
+} from "@app/lib/plans/plan_codes";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { Ok } from "@app/types";
 import { Err } from "@app/types";
@@ -66,7 +69,11 @@ export const deleteWorkspacePlugin = createPlugin({
         );
       }
       const subscription = auth.getNonNullableSubscription();
-      if (subscription.plan.code !== FREE_NO_PLAN_CODE) {
+      if (
+        ![FREE_NO_PLAN_CODE, FREE_TEST_PLAN_CODE].includes(
+          subscription.plan.code
+        )
+      ) {
         return new Err(
           new Error(
             "Workspace has a paid plan, please downgrade to a free plan before deleting the workspace."
