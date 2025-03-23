@@ -59,6 +59,10 @@ AgentMCPServerConfiguration.init(
         isIn: [AVAILABLE_INTERNAL_MCPSERVER_IDS],
       },
     },
+    remoteMCPServerId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
     modelName: "agent_mcp_server_configuration",
@@ -90,6 +94,7 @@ AgentMCPServerConfiguration.init(
             }
             break;
           case "remote":
+            console.log(config);
             if (!config.remoteMCPServerId) {
               throw new Error(
                 "remoteMCPServerId is required for serverType remote"

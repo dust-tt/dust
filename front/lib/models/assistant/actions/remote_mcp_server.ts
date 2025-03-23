@@ -14,11 +14,10 @@ export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   declare space: NonAttribute<SpaceModel>;
 
-  declare name: string;
   declare url: string;
-
+  declare name: string;
   declare description: string | null;
-  declare cachedTools: string[];
+  declare cachedTools: { name: string, description: string }[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;
@@ -53,7 +52,7 @@ RemoteMCPServer.init(
       allowNull: true,
     },
     cachedTools: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: [],
     },
