@@ -125,6 +125,7 @@ export async function submitMessage({
               nodeId: contentFragment.internalId,
               nodeDataSourceViewId: contentFragment.dataSourceView.sId,
               contentType: contentFragment.mimeType,
+              sourceUrl: contentFragment.sourceUrl,
               context: {
                 timezone:
                   Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -252,6 +253,7 @@ export async function createConversationWithMessage({
     contentFragments: [
       ...contentFragments.uploaded.map((cf) => ({
         title: cf.title,
+
         context: {
           profilePictureUrl: user.image,
         },
@@ -276,6 +278,7 @@ export async function createConversationWithMessage({
           },
           nodeId: cf.internalId,
           contentType,
+          sourceUrl: cf.sourceUrl,
           nodeDataSourceViewId: cf.dataSourceView.sId,
         };
       }),

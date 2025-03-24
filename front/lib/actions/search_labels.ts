@@ -6,6 +6,7 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
@@ -146,6 +147,17 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
       name: string;
     }
   ): Promise<Result<AgentActionSpecification, Error>> {
+    const inputs = [
+      {
+        name: "searchText",
+        description:
+          "The text to search for in existing labels using edge ngram matching (case-insensitive). " +
+          "Matches labels that start with any word in the search text. " +
+          "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
+          "based on the user request and conversation context.",
+        type: "string" as const,
+      },
+    ];
     return new Ok({
       name,
       description:
@@ -153,17 +165,8 @@ export class SearchLabelsConfigurationServerRunner extends BaseActionConfigurati
         `Find exact matching labels before using them in the tool ${this.actionConfiguration.parentTool}. ` +
           "Restricting or excluding content succeeds only with existing labels. " +
           "Searching without verifying labels first typically returns no results.",
-      inputs: [
-        {
-          name: "searchText",
-          description:
-            "The text to search for in existing labels using edge ngram matching (case-insensitive). " +
-            "Matches labels that start with any word in the search text. " +
-            "The returned labels can be used in tagsIn/tagsNot parameters to restrict or exclude content " +
-            "based on the user request and conversation context.",
-          type: "string",
-        },
-      ],
+      inputs: inputs,
+      inputSchema: dustAppRunInputsToInputSchema(inputs),
     });
   }
 

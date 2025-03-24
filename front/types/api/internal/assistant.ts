@@ -4,7 +4,11 @@ import * as t from "io-ts";
 import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
-  content: t.string,
+  content: t.refinement(
+    t.string,
+    (s): s is string => s.length > 0,
+    "NonEmptyString"
+  ),
   mentions: t.array(t.type({ configurationId: t.string })),
   context: t.type({
     timezone: t.string,
@@ -85,6 +89,7 @@ const ContentFragmentInputWithContentNodeSchema = t.intersection([
     nodeId: t.string,
     nodeDataSourceViewId: t.string,
     contentType: getSupportedContentNodeContentTypeSchema(),
+    sourceUrl: t.union([t.string, t.null]),
   }),
 ]);
 

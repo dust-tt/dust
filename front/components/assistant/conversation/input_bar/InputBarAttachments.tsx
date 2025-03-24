@@ -39,6 +39,7 @@ type NodeAttachment = {
   visual: React.ReactNode;
   path: string;
   onRemove: () => void;
+  url: string | null;
 };
 
 type Attachment = FileAttachment | NodeAttachment;
@@ -94,6 +95,7 @@ export function InputBarAttachments({
         return {
           type: "node",
           id: nodeId,
+          url: node.sourceUrl,
           title: node.title,
           spaceName,
           spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
@@ -133,6 +135,7 @@ export function InputBarAttachments({
             trigger={
               <Citation
                 className="w-40"
+                href={!isFile && attachment.url ? attachment.url : undefined}
                 isLoading={attachment.type === "file" && attachment.isUploading}
                 action={
                   <CitationClose

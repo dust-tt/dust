@@ -4,6 +4,11 @@ import type {
   ConversationIncludeFileConfigurationType,
 } from "@app/lib/actions/conversation/include_file";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type {
+  MCPActionType,
+  MCPServerConfigurationType,
+  MCPToolConfigurationType,
+} from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
 import type {
@@ -102,6 +107,32 @@ export function isReasoningConfiguration(
     typeof arg === "object" &&
     "type" in arg &&
     arg.type === "reasoning_configuration"
+  );
+}
+
+export function isMCPActionType(arg: AgentActionType): arg is MCPActionType {
+  return arg.type === "tool_action";
+}
+
+export function isMCPActionConfiguration(
+  arg: unknown
+): arg is MCPToolConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "mcp_configuration"
+  );
+}
+
+export function isMCPServerConfiguration(
+  arg: unknown
+): arg is MCPServerConfigurationType {
+  return (
+    !!arg &&
+    typeof arg === "object" &&
+    "type" in arg &&
+    arg.type === "mcp_server_configuration"
   );
 }
 

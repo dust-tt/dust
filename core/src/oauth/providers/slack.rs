@@ -49,7 +49,8 @@ impl Provider for SlackConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://slack.com/api/oauth.v2.access")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
@@ -98,7 +99,7 @@ impl Provider for SlackConnectionProvider {
         //     .unseal_refresh_token()?
         //     .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
 
-        // let req = reqwest::Client::new()
+        // let req = self.reqwest_client()
         //     .post("https://slack.com/api/oauth.v2.access")
         //     .header("Authorization", format!("Basic {}", self.basic_auth()))
         //     .header("Content-Type", "application/json; charset=utf-8")

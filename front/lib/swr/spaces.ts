@@ -700,12 +700,14 @@ type BaseSearchParams = {
 type TextSearchParams = BaseSearchParams & {
   search: string;
   nodeIds?: undefined;
+  searchSourceUrls?: boolean;
 };
 
 // Node ID search variant
 type NodeIdSearchParams = BaseSearchParams & {
   search?: undefined;
   nodeIds: string[];
+  searchSourceUrls?: undefined;
 };
 
 type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
@@ -719,6 +721,7 @@ export function useSpacesSearch({
   spaceIds,
   viewType,
   pagination,
+  searchSourceUrls = false,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -737,12 +740,13 @@ export function useSpacesSearch({
   }
 
   const body = {
-    query: search,
-    viewType,
-    nodeIds,
-    spaceIds,
     includeDataSources,
     limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
+    nodeIds,
+    query: search,
+    searchSourceUrls,
+    spaceIds,
+    viewType,
   };
 
   // Only perform a query if we have a valid search

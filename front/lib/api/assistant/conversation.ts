@@ -1,5 +1,4 @@
-import { isEqual, sortBy } from "lodash";
-import _ from "lodash";
+import _, { isEqual, sortBy } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -1934,6 +1933,7 @@ async function* streamRunAgentEvents(
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "tool_params":
         yield event;
         break;
 
@@ -2032,15 +2032,20 @@ export async function updateConversationRequestedGroupIds(
   conversation: ConversationType,
   t: Transaction
 ): Promise<void> {
-  const newRequirements = mentionedAgents.flatMap(
-    (agent) => agent.requestedGroupIds
+  // Sort and deduplicate new requirements.
+  const newRequirements = _.uniqWith(
+    mentionedAgents.flatMap((agent) =>
+      agent.requestedGroupIds.map((req) => sortBy(req))
+    ),
+    isEqual
   );
   const currentRequirements = conversation.requestedGroupIds;
 
   // Check if each new requirement already exists in current requirements.
   const areAllRequirementsPresent = newRequirements.every((newReq) =>
-    currentRequirements.some((currentReq) =>
-      isEqual(sortBy(newReq), sortBy(currentReq))
+    currentRequirements.some(
+      // newReq was sorted, so we need to sort currentReq as well.
+      (currentReq) => isEqual(newReq, sortBy(currentReq))
     )
   );
 
@@ -2053,7 +2058,8 @@ export async function updateConversationRequestedGroupIds(
   const requirementsToAdd = newRequirements.filter(
     (newReq) =>
       !currentRequirements.some((currentReq) =>
-        isEqual(sortBy(newReq), sortBy(currentReq))
+        // newReq was sorted, so we need to sort currentReq as well.
+        isEqual(newReq, sortBy(currentReq))
       )
   );
 

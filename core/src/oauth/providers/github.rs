@@ -98,7 +98,8 @@ impl GithubConnectionProvider {
         code: &str,
     ) -> Result<(String, u64, serde_json::Value), ProviderError> {
         // https://github.com/octokit/auth-app.js/blob/main/src/get-installation-authentication.ts
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post(format!(
                 "https://api.github.com/app/installations/{}/access_tokens",
                 code

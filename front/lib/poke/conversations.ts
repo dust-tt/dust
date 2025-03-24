@@ -137,6 +137,10 @@ export async function getPokeConversation(
                     break;
                   }
 
+                  case "tool_action":
+                    //TODO(mcp) link to the MCP action logs
+                    break;
+
                   case "conversation_include_file_action":
                   case "conversation_list_files_action":
                   case "reasoning_action":

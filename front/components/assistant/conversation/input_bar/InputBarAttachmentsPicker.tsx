@@ -80,7 +80,7 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const { spaces } = useSpaces({ workspaceId: owner.sId });
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
   const { searchResultNodes, isSearchLoading, isSearchValidating, hasMore, nextPage } =
     useSpaceSearchWithInfiniteScroll({
@@ -89,6 +89,9 @@ export const InputBarAttachmentsPicker = ({
       search: searchQuery,
       viewType: "all",
       pageSize: PAGE_SIZE,
+      disabled: isSpacesLoading || !searchQuery,
+      spaceIds: spaces.map((s) => s.sId),
+      searchSourceUrls: true,
     });
 
   const attachedNodeIds = useMemo(() => {

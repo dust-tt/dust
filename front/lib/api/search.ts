@@ -57,6 +57,7 @@ const TextSearchBody = t.intersection([
   }),
   t.partial({
     nodeIds: t.undefined,
+    searchSourceUrls: t.boolean,
   }),
 ]);
 
@@ -67,6 +68,7 @@ const NodeIdSearchBody = t.intersection([
   }),
   t.partial({
     query: t.undefined,
+    searchSourceUrls: t.boolean,
   }),
 ]);
 
@@ -79,8 +81,14 @@ export async function handleSearch(
   auth: Authenticator,
   searchParams: SearchRequestBodyType
 ): Promise<Result<SearchResult, SearchError>> {
-  const { query, includeDataSources, viewType, spaceIds, nodeIds } =
-    searchParams;
+  const {
+    query,
+    includeDataSources,
+    viewType,
+    spaceIds,
+    nodeIds,
+    searchSourceUrls,
+  } = searchParams;
 
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   if (!spaces.length) {
@@ -123,11 +131,13 @@ export async function handleSearch(
     });
   }
 
+  const excludedNodeMimeTypes = nodeIds ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
+
   const searchFilterResult = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     allDatasourceViews,
     {
-      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
+      excludedNodeMimeTypes,
       includeDataSources,
       viewType,
       nodeIds,
@@ -150,8 +160,9 @@ export async function handleSearch(
     query,
     filter: searchFilterResult,
     options: {
-      limit: paginationRes.value?.limit,
       cursor: paginationRes.value?.cursor ?? undefined,
+      limit: paginationRes.value?.limit,
+      search_source_urls: searchSourceUrls,
     },
   });
 

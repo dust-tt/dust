@@ -116,7 +116,7 @@ export async function getContentFragmentBlob(
       contentType: cf.contentType,
       nodeId: cf.nodeId,
       nodeDataSourceViewId: getResourceIdFromSId(cf.nodeDataSourceViewId),
-      sourceUrl: null,
+      sourceUrl: cf.sourceUrl,
       textBytes: null,
       fileId: null,
       title,

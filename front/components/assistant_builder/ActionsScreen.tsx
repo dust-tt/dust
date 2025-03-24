@@ -47,6 +47,10 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
+  ActionMCP,
+  hasErrorActionMCP,
+} from "@app/components/assistant_builder/actions/MCPAction";
+import {
   ActionProcess,
   hasErrorActionProcess,
 } from "@app/components/assistant_builder/actions/ProcessAction";
@@ -70,6 +74,7 @@ import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
+  AssistantBuilderMCPServerConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -83,9 +88,11 @@ import {
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
 import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   ModelConfigurationType,
   SpaceType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
@@ -97,9 +104,10 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const ADVANCED_ACTION_CATEGORIES = [
+  "DUST_APP_RUN",
+  "MCP",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 // Actions in this list are not configurable via the "add tool" menu.
 // Instead, they should be handled in the `Capabilities` component.
@@ -127,6 +135,8 @@ export function hasActionError(
       return hasErrorActionRetrievalSearch(action);
     case "RETRIEVAL_EXHAUSTIVE":
       return hasErrorActionRetrievalExhaustive(action);
+    case "MCP":
+      return hasErrorActionMCP(action);
     case "PROCESS":
       return hasErrorActionProcess(action);
     case "DUST_APP_RUN":
@@ -177,6 +187,9 @@ export default function ActionsScreen({
   reasoningModels,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
@@ -215,6 +228,11 @@ export default function ActionsScreen({
 
         case "DUST_APP_RUN":
           addActionToSpace(action.configuration.app?.space.sId);
+          break;
+
+        case "MCP":
+          //TODO(mcp): add action to space when it leverage datasources configurations
+          // Iterate over the datasources configurations and add the action to the respective spaces
           break;
 
         case "WEB_NAVIGATION":
@@ -388,6 +406,7 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
+                  hasFeature={hasFeature}
                 />
               </div>
             )}
@@ -469,6 +488,7 @@ export default function ActionsScreen({
                     action,
                   });
                 }}
+                hasFeature={hasFeature}
               />
             </div>
           )}
@@ -850,6 +870,24 @@ function ActionConfigEditor({
         />
       );
 
+    case "MCP":
+      return (
+        <ActionMCP
+          owner={owner}
+          actionConfiguration={action.configuration}
+          allowedSpaces={allowedSpaces}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderMCPServerConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+
     case "PROCESS":
       return (
         <ActionProcess
@@ -941,7 +979,7 @@ function ActionEditor({
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
-  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS", "MCP"].includes(
     action.type
   );
 
@@ -1156,9 +1194,10 @@ function AdvancedSettings({
 
 interface AddActionProps {
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+  hasFeature: (feature: WhitelistableFeature) => boolean;
 }
 
-function AddAction({ onAddAction }: AddActionProps) {
+function AddAction({ onAddAction, hasFeature }: AddActionProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -1176,6 +1215,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Data Sources" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;
@@ -1197,6 +1239,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Advanced Actions" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;

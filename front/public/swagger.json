@@ -3713,7 +3713,7 @@
     "/api/v1/w/{wId}/workspace-usage": {
       "get": {
         "summary": "Get workspace usage data",
-        "description": "Get usage data for the workspace identified by {wId} in CSV format.",
+        "description": "Get usage data for the workspace identified by {wId} in CSV or JSON format.",
         "tags": [
           "Workspace"
         ],
@@ -3754,12 +3754,25 @@
             "in": "query",
             "name": "mode",
             "required": true,
-            "description": "The mode of date range selection ('month' or 'range')",
+            "description": "The mode of date range selection",
             "schema": {
               "type": "string",
               "enum": [
                 "month",
                 "range"
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "description": "The output format of the data (defaults to 'csv')",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "json"
               ]
             }
           },
@@ -3783,11 +3796,16 @@
         ],
         "responses": {
           "200": {
-            "description": "The usage data in CSV format or a ZIP of multiple CSVs if table is equal to \"all\"",
+            "description": "The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to \"all\"",
             "content": {
               "text/csv": {
                 "schema": {
                   "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "object"
                 }
               },
               "application/zip": {

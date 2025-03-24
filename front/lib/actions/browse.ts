@@ -8,6 +8,7 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
@@ -138,19 +139,22 @@ export class BrowseConfigurationServerRunner extends BaseActionConfigurationServ
       throw new Error("Unexpected unauthenticated call to `runBrowseAction`");
     }
 
+    const inputs = [
+      {
+        name: "urls",
+        description: "List of urls to browse.",
+        type: "array" as const,
+        items: {
+          type: "string" as const,
+        },
+      },
+    ];
+
     return new Ok({
       name: name,
       description: description ?? "Get the content of a web page.",
-      inputs: [
-        {
-          name: "urls",
-          description: "List of urls to browse.",
-          type: "array",
-          items: {
-            type: "string",
-          },
-        },
-      ],
+      inputs: inputs,
+      inputSchema: dustAppRunInputsToInputSchema(inputs),
     });
   }
 

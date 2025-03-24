@@ -54,7 +54,8 @@ impl Provider for GoogleDriveConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://oauth2.googleapis.com/token")
             .header("Content-Type", "application/json")
             .json(&body);
@@ -124,7 +125,8 @@ impl Provider for GoogleDriveConnectionProvider {
             "refresh_token": refresh_token,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://oauth2.googleapis.com/token")
             .header("Content-Type", "application/json")
             .json(&body);

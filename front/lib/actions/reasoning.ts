@@ -9,6 +9,7 @@ import {
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { isReasoningConfiguration } from "@app/lib/actions/types/guards";
 import { AgentMessageContentParser } from "@app/lib/api/assistant/agent_message_content_parser";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
@@ -157,6 +158,7 @@ export class ReasoningConfigurationServerRunner extends BaseActionConfigurationS
         description ||
         "Perform complex step-by-step reasoning using an advanced AI model.",
       inputs: [],
+      inputSchema: dustAppRunInputsToInputSchema([]),
     });
   }
 
