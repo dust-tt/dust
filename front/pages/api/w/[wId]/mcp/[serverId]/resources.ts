@@ -9,7 +9,7 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerResourcesResponseBody = {
-  resources: Resource[];
+  resources: Pick<Resource, "name" | "description" | "mimeType" | "uri">[];
 };
 
 async function handler(
@@ -66,7 +66,14 @@ async function handler(
         internalMCPServerId: serverId,
       });
 
-      return res.status(200).json({ resources });
+      return res.status(200).json({
+        resources: resources.map((resource) => ({
+          name: resource.name,
+          description: resource.description,
+          uri: resource.uri,
+          mimeType: resource.mimeType,
+        })),
+      });
     default:
       return apiError(req, res, {
         status_code: 405,
