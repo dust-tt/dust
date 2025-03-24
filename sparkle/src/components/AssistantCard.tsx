@@ -65,7 +65,7 @@ export const AssistantCard = React.forwardRef<
           <div
             className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
           >
-            <h3 className="s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all s-text-base s-font-medium">
+            <h3 className="s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all s-text-base s-font-semibold">
               {title}
             </h3>
             <p
@@ -116,7 +116,7 @@ export const LargeAssistantCard = React.forwardRef<
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
-          <h3 className="s-font-medium">{title}</h3>
+          <h3 className="s-font-semibold">{title}</h3>
           <p
             className={cn(
               "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
