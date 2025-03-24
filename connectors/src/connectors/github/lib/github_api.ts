@@ -556,11 +556,13 @@ export async function getDiscussion(
   repoName: string,
   login: string,
   discussionNumber: number
-): Promise<DiscussionNode> {
+): Promise<Result<DiscussionNode, Error>> {
   const octokit = await getOctokit(connector);
 
-  const d = await octokit.graphql(
-    `
+  let d;
+  try {
+    d = await octokit.graphql(
+      `
     query getDiscussion(
       $owner: String!
       $repo: String!
@@ -582,16 +584,22 @@ export async function getDiscussion(
       }
     }
     `,
-    {
-      owner: login,
-      repo: repoName,
-      discussionNumber,
+      {
+        owner: login,
+        repo: repoName,
+        discussionNumber,
+      }
+    );
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
     }
-  );
+    return new Err(new Error(String(err)));
+  }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
   if (!isLeft(errorPayloadValidation)) {
-    throw new Error(JSON.stringify(errorPayloadValidation.right));
+    return new Err(new Error(JSON.stringify(errorPayloadValidation.right)));
   }
 
   const getDiscussionPayloadValidation = GetDiscussionPayloadSchema.decode(d);
@@ -600,12 +608,12 @@ export async function getDiscussion(
     const pathError = reporter.formatValidationErrors(
       getDiscussionPayloadValidation.left
     );
-    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
+    return new Err(new Error(`Unexpected payload: ${pathError.join(", ")}`));
   }
 
   const payload = getDiscussionPayloadValidation.right;
 
-  return payload.repository.discussion;
+  return new Ok(payload.repository.discussion);
 }
 
 export async function getOctokit(
