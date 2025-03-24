@@ -50,18 +50,16 @@ export function ActionMCP({
   });
 
   useEffect(() => {
-    if (resources) {
-      updateAction((previousAction) => ({
-        ...previousAction,
-        resources: {
-          dataSourceConfigurations: resources.some(
-            (r) => r.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
-          )
-            ? previousAction.resources?.dataSourceConfigurations || {}
-            : undefined,
-        },
-      }));
-    }
+    updateAction((previousAction) => ({
+      ...previousAction,
+      resources: {
+        dataSourceConfigurations: resources?.some(
+          (r) => r.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
+        )
+          ? previousAction.resources?.dataSourceConfigurations || {}
+          : undefined,
+      },
+    }));
   }, [resources, setEdited, updateAction]);
 
   const handleServerSelection = (serverId: InternalMCPServerIdType) => {
