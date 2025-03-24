@@ -133,7 +133,7 @@ const InputBarContainer = ({
         }
       : {
           // TextSearchParams
-          search: nodeOrUrlCandidate.url || "",
+          search: nodeOrUrlCandidate?.url || "",
           searchSourceUrls: true,
           includeDataSources: true,
           owner,
