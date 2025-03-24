@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@app/types";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
@@ -53,9 +53,6 @@ const config = {
   },
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
-  },
-  getDustDataSourcesBucket: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_DATA_SOURCES_BUCKET");
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
@@ -155,9 +152,6 @@ const config = {
   },
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
-  },
-  getOAuthSalesforceClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SALESFORCE_CLIENT_ID");
   },
   // Text extraction.
   getTextExtractionUrl: (): string => {

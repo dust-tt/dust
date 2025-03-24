@@ -1,8 +1,9 @@
 import { BarHeader, Page } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
 import Head from "next/head";
 import Script from "next/script";
 import React from "react";
+
+import type { LightWorkspaceType } from "@app/types";
 
 export default function OnboardingLayout({
   owner,

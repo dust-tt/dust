@@ -1,9 +1,9 @@
-import type { DataSourceWithAgentsUsageType, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
 import assert from "assert";
 import { uniq } from "lodash";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import config from "@app/lib/api/config";
+import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -14,9 +14,20 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
+import type {
+  ContentNodesViewType,
+  CoreAPIError,
+  CoreAPISearchOptions,
+  DataSourceViewContentNode,
+  DataSourceWithAgentsUsageType,
+  Result,
+  SearchWarningCode,
+} from "@app/types";
+import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -233,4 +244,90 @@ export async function createRegularSpaceAndGroup(
   }
 
   return new Ok(space);
+}
+
+export async function searchContenNodesInSpace(
+  auth: Authenticator,
+  space: SpaceResource,
+  dataSourceViews: DataSourceViewResource[],
+  {
+    excludedNodeMimeTypes,
+    includeDataSources,
+    options,
+    query,
+    viewType,
+  }: {
+    excludedNodeMimeTypes: readonly string[];
+    includeDataSources: boolean;
+    options: CoreAPISearchOptions;
+    query: string;
+    viewType: ContentNodesViewType;
+  }
+): Promise<
+  Result<
+    {
+      nodes: DataSourceViewContentNode[];
+      total: number;
+      warningCode: SearchWarningCode | null;
+      nextPageCursor: string | null;
+    },
+    DustError | CoreAPIError
+  >
+> {
+  if (!space.canReadOrAdministrate(auth)) {
+    return new Err(new DustError("unauthorized", "Unauthorized"));
+  }
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const searchFilterResult = getSearchFilterFromDataSourceViews(
+    auth.getNonNullableWorkspace(),
+    dataSourceViews,
+    {
+      excludedNodeMimeTypes,
+      includeDataSources,
+      viewType,
+    }
+  );
+
+  const searchRes = await coreAPI.searchNodes({
+    query,
+    filter: searchFilterResult,
+    options,
+  });
+
+  if (searchRes.isErr()) {
+    return searchRes;
+  }
+
+  const dataSourceViewById = new Map(
+    dataSourceViews.map((dsv) => [dsv.dataSource.dustAPIDataSourceId, dsv])
+  );
+
+  const nodes = searchRes.value.nodes.flatMap((node) => {
+    const dataSourceView = dataSourceViewById.get(node.data_source_id);
+    if (!dataSourceView) {
+      logger.error(
+        {
+          nodeId: node.node_id,
+          expectedDataSourceId: node.data_source_id,
+          availableDataSourceIds: Array.from(dataSourceViewById.keys()),
+        },
+        "DataSourceView lookup failed for node"
+      );
+
+      return [];
+    }
+    return {
+      ...getContentNodeFromCoreNode(node, viewType),
+      dataSourceView: dataSourceView.toJSON(),
+    };
+  });
+
+  return new Ok({
+    nodes,
+    total: searchRes.value.hit_count,
+    warningCode: searchRes.value.warning_code,
+    nextPageCursor: searchRes.value.next_page_cursor,
+  });
 }

@@ -3,15 +3,13 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   amber,
   blue,
-  emerald,
+  gray,
   green,
   indigo,
-  pink,
   purple,
   red,
   rose,
   sky,
-  slate,
   violet,
   yellow,
 } from "tailwindcss/colors";
@@ -43,14 +41,14 @@ const toHex = (color: string) => {
 };
 
 const palette = {
-  slate: {
-    50: toHex(slate[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
-    100: toHex(slate[100]), // primaryColor
-    200: toHex(slate[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
-    400: toHex(slate[400]), // lineColor, signalColor
-    600: toHex(slate[600]), // tertiaryTextColor, sequenceNumberColor
-    700: toHex(slate[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
-    800: toHex(slate[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
+  gray: {
+    50: toHex(gray[50]), // background, labelBoxBkgColor, groupBkgColor, edgeLabelBackground
+    100: toHex(gray[100]), // primaryColor
+    200: toHex(gray[200]), // tertiaryBorderColor, clusterBorder, labelBoxBorderColor, groupBorderColor, pieOuterStrokeColor
+    400: toHex(gray[400]), // lineColor, signalColor
+    600: toHex(gray[600]), // tertiaryTextColor, sequenceNumberColor
+    700: toHex(gray[700]), // signalTextColor, labelTextColor, loopTextColor, messageTextColor, groupTextColor, pieSectionTextColor
+    800: toHex(gray[800]), // textColor, titleColor, nodeTextColor, pieTitleTextColor, pieLegendTextColor
   },
   sky: {
     100: toHex(sky[100]), // primaryColor, nodeBorder, actorBkg, activationBkgColor
@@ -58,11 +56,11 @@ const palette = {
     300: toHex(sky[300]), // actorLineColor, pie1
     800: toHex(sky[800]), // primaryTextColor, nodeTextColor, actorTextColor, defaultLinkColor
   },
-  emerald: {
-    100: toHex(emerald[100]), // secondaryColor
-    200: toHex(emerald[200]), // secondaryBorderColor
-    300: toHex(emerald[300]), // pie3
-    800: toHex(emerald[800]), // secondaryTextColor
+  green: {
+    100: toHex(green[100]), // secondaryColor
+    200: toHex(green[200]), // secondaryBorderColor
+    300: toHex(green[300]), // pie3
+    800: toHex(green[800]), // secondaryTextColor
   },
   amber: {
     50: toHex(amber[50]), // noteBkgColor
@@ -80,14 +78,8 @@ const palette = {
   purple: {
     400: toHex(purple[400]), // pie5
   },
-  pink: {
-    300: toHex(pink[300]), // pie6
-  },
   yellow: {
     300: toHex(yellow[300]), // pie7
-  },
-  green: {
-    300: toHex(green[300]), // pie9
   },
   rose: {
     300: toHex(rose[300]), // pie10
@@ -103,7 +95,7 @@ const palette = {
 const mermaidStyles = `
   /* Base diagram styles */
   .mermaid {
-    background: ${palette.slate[50]};
+    background: ${palette.gray[100]};
     cursor: default;
   }
     
@@ -118,8 +110,8 @@ const mermaidStyles = `
     rx: 8px;
     ry: 8px;
     stroke-width: 1px;
-    fill: ${palette.slate["50"]};
-    stroke: ${palette.slate["200"]};
+    fill: ${palette.gray["100"]};
+    stroke: ${palette.gray["200"]};
   }
 
   /* Section styles */
@@ -151,28 +143,28 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         themeVariables: {
           fontFamily: "darkmode-off-cc",
           fontSize: "14px",
-          textColor: palette.slate[800],
+          textColor: palette.gray[800],
           primaryColor: palette.sky[100],
           primaryTextColor: palette.sky[800],
           primaryBorderColor: palette.sky[100],
-          lineColor: palette.slate[400],
-          secondaryColor: palette.emerald[100],
-          secondaryBorderColor: palette.emerald[200],
-          secondaryTextColor: palette.emerald[800],
+          lineColor: palette.gray[400],
+          secondaryColor: palette.green[100],
+          secondaryBorderColor: palette.green[200],
+          secondaryTextColor: palette.green[800],
           tertiaryColor: "#FFF",
-          tertiaryBorderColor: palette.slate[200],
-          tertiaryTextColor: palette.slate[600],
+          tertiaryBorderColor: palette.gray[200],
+          tertiaryTextColor: palette.gray[600],
           noteBkgColor: palette.amber[50],
-          noteTextColor: palette.slate[800],
+          noteTextColor: palette.gray[800],
           errorBkgColor: palette.red[100],
           errorTextColor: palette.red[800],
           // Flowchart specific
           nodeBorder: palette.sky[100],
           clusterBkg: "#FFF",
-          clusterBorder: palette.slate[200],
+          clusterBorder: palette.gray[200],
           defaultLinkColor: palette.sky[800],
-          titleColor: palette.slate[800],
-          edgeLabelBackground: palette.slate[50],
+          titleColor: palette.gray[800],
+          edgeLabelBackground: palette.gray[50],
           nodeTextColor: palette.sky[800],
           // Sequence Diagram Variables
           // Actor styling
@@ -182,60 +174,59 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
           actorLineColor: palette.sky[300], // Subtle grey lines
 
           // Signal styling
-          signalColor: palette.slate["400"], // Medium grey for signals/arrows
-          signalTextColor: palette.slate["700"], // Darker grey for signal labels
+          signalColor: palette.gray["400"], // Medium grey for signals/arrows
+          signalTextColor: palette.gray["700"], // Darker grey for signal labels
 
           // Label box styling
-          labelBoxBkgColor: palette.slate["50"], // Very light grey background
-          labelBoxBorderColor: palette.slate["200"], // Light grey border
-          labelTextColor: palette.slate["700"], // Dark grey text
+          labelBoxBkgColor: palette.gray["50"], // Very light grey background
+          labelBoxBorderColor: palette.gray["200"], // Light grey border
+          labelTextColor: palette.gray["700"], // Dark grey text
 
           // Loop styling
-          loopTextColor: palette.slate["700"], // Dark grey for loop text
+          loopTextColor: palette.gray["700"], // Dark grey for loop text
 
           // Activation styling (the vertical bars)
           activationBorderColor: palette.sky["200"], // Light blue border
           activationBkgColor: palette.sky[100], // Very light blue background
 
           // Sequence numbers
-          sequenceNumberColor: palette.slate["600"], // Medium grey for numbers
+          sequenceNumberColor: palette.gray["600"], // Medium grey for numbers
 
           // Additional sequence-specific colors
           messageBkgColor: "#FFFFFF", // White background for messages
-          messageTextColor: palette.slate["700"], // Dark grey for message text
+          messageTextColor: palette.gray["700"], // Dark grey for message text
           noteBorderColor: palette.amber["200"], // Light amber for note borders
 
           // Group styling
-          groupBkgColor: palette.slate["50"], // Very light grey for groups
-          groupBorderColor: palette.slate["200"], // Light grey for group borders
-          groupTextColor: palette.slate["700"], // Dark grey for group text
+          groupBkgColor: palette.gray["50"], // Very light grey for groups
+          groupBorderColor: palette.gray["200"], // Light grey for group borders
+          groupTextColor: palette.gray["700"], // Dark grey for group text
           // Pie Chart Colors - Using a gradient approach
-          pie1: palette.sky["300"], // Primary blue
-          pie2: palette.blue["300"], // Lighter blue
-          pie3: palette.emerald["300"], // Primary green
-          pie4: palette.amber["300"], // Lighter green
-          pie5: palette.purple["400"], // Primary amber
-          pie6: palette.pink["300"], // Lighter amber
-          pie7: palette.yellow["300"], // Primary grey
-          pie8: palette.red["300"], // Lighter grey
-          pie9: palette.green["300"], // Very light blue
-          pie10: palette.rose["300"], // Very light green
-          pie11: palette.violet["300"], // Very light amber
-          pie12: palette.indigo["300"], // Very light grey
+          pie1: palette.sky["300"],
+          pie2: palette.blue["300"],
+          pie3: palette.green["300"],
+          pie4: palette.amber["300"],
+          pie5: palette.purple["400"],
+          pie7: palette.yellow["300"],
+          pie8: palette.red["300"],
+          pie9: palette.green["300"],
+          pie10: palette.rose["300"],
+          pie11: palette.violet["300"],
+          pie12: palette.indigo["300"],
 
           // Pie Chart Text Styling
           pieTitleTextSize: "16px",
-          pieTitleTextColor: palette.slate["800"],
+          pieTitleTextColor: palette.gray["800"],
           pieSectionTextSize: "14px",
-          pieSectionTextColor: palette.slate["700"],
+          pieSectionTextColor: palette.gray["700"],
           pieLegendTextSize: "14px",
-          pieLegendTextColor: palette.slate["800"],
+          pieLegendTextColor: palette.gray["800"],
 
           // Pie Chart Stroke Styling
           pieStrokeColor: "#FFFFFF", // White borders between sections
           pieStrokeWidth: "1px",
           pieOuterStrokeWidth: "1px",
-          pieOuterStrokeColor: palette.slate["200"],
+          pieOuterStrokeColor: palette.gray["200"],
           pieOpacity: "0.9", // Slight transparency
         },
         flowchart: {
@@ -246,8 +237,8 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         },
       });
 
-      graphRef.current.innerHTML = chart;
-      void mermaid.init(undefined, graphRef.current);
+      graphRef.current.textContent = chart;
+      void mermaid.run(undefined);
     }
   }, [chart]);
 

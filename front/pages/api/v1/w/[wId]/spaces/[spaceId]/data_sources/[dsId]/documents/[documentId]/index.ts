@@ -4,28 +4,29 @@ import type {
   UpsertDocumentResponseType,
 } from "@dust-tt/client";
 import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  CoreAPI,
-  dustManagedCredentials,
-  rateLimiter,
-  safeSubstring,
-  sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
 import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  CoreAPI,
+  dustManagedCredentials,
+  safeSubstring,
+  sectionFullText,
+  validateUrl,
+} from "@app/types";
 
 export const config = {
   api: {
@@ -151,7 +152,7 @@ export const config = {
  *                 description: Tags to associate with the document.
  *               timestamp:
  *                 type: number
- *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
+ *                 description: Unix timestamp (in milliseconds) for the document (e.g. 1736365559000).
  *               light_document_output:
  *                 type: boolean
  *                 description: If true, a lightweight version of the document will be returned in the response (excluding the text, chunks and vectors). Defaults to false.
@@ -560,33 +561,26 @@ async function handler(
       }
 
       const documentId = req.query.documentId as string;
-
-      const title = r.data.title ?? "Untitled document";
       const mimeType = r.data.mime_type ?? "application/octet-stream";
 
       const tags = r.data.tags || [];
       const titleInTags = tags
         .find((t) => t.startsWith("title:"))
-        ?.split(":")
-        .slice(1)
-        .join(":");
+        ?.substring(6)
+        ?.trim();
+
+      // Use titleInTags if no title is provided.
+      const title = r.data.title?.trim() || titleInTags || UNTITLED_TITLE;
+
       if (!titleInTags) {
         tags.push(`title:${title}`);
       }
 
       if (titleInTags && titleInTags !== title) {
-        logger.error(
+        logger.warn(
           { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-          "[CoreNodes] Inconsistency between tags and title."
+          "Inconsistency between tags and title."
         );
-        // TODO(2025-02-18 aubin): uncomment what follows.
-        // return apiError(req, res, {
-        //   status_code: 400,
-        //   api_error: {
-        //     type: "invalid_request_error",
-        //     message: `Invalid tags: title passed in tags does not match the document title.`,
-        //   },
-        // });
       }
 
       if (r.data.async === true) {

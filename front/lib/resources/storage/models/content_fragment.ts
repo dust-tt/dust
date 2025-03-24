@@ -1,14 +1,15 @@
-import type {
-  ContentFragmentVersion,
-  SupportedContentFragmentType,
-} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  ContentFragmentVersion,
+  SupportedContentFragmentType,
+} from "@app/types";
 
 export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;
@@ -31,6 +32,9 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
+
+  declare nodeId: string | null;
+  declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
 
   declare version: ContentFragmentVersion;
 }
@@ -87,6 +91,10 @@ ContentFragmentModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "latest",
+    },
+    nodeId: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
     },
   },
   {

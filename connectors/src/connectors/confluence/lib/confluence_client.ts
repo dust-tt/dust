@@ -1,4 +1,3 @@
-import { ConfluenceClientError } from "@dust-tt/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
@@ -6,6 +5,7 @@ import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
+import { ConfluenceClientError } from "@connectors/types";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 

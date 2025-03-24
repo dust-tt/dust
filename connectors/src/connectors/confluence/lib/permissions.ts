@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { Op } from "sequelize";
 
 import { listConfluenceSpaces } from "@connectors/connectors/confluence/lib/confluence_api";
@@ -22,6 +17,9 @@ import {
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 function isConfluenceSpaceModel(
   confluenceSpace: unknown
@@ -48,7 +46,7 @@ export function createContentNodeFromSpace(
   return {
     internalId: makeSpaceInternalId(spaceId),
     parentInternalId: null,
-    type: "Folder",
+    type: "folder",
     title: space.name || "Unnamed Space",
     sourceUrl: `${baseUrl}/wiki${urlSuffix}`,
     expandable: isExpandable,
@@ -70,7 +68,7 @@ export function createContentNodeFromPage(
       parent.type === "space"
         ? makeSpaceInternalId(parent.id)
         : makePageInternalId(parent.id),
-    type: "Document",
+    type: "document",
     title: page.title,
     sourceUrl: `${baseUrl}/wiki${page.externalUrl}`,
     expandable: isExpandable,

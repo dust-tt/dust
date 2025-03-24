@@ -1,4 +1,4 @@
-import { Button, Hover3D, RocketIcon } from "@dust-tt/sparkle";
+import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
@@ -38,26 +38,20 @@ const VideoPlayer = () => {
 };
 
 export function IntroSection() {
-  const MainVisual = () => (
-    <Hover3D depth={-40} perspective={1000} className="relative w-full">
-      <VideoPlayer />
-    </Hover3D>
-  );
+  const MainVisual = () => <VideoPlayer />;
 
   return (
     <div className="w-full pt-[6vh] sm:pt-[8vh] xl:pt-[12vh] 2xl:pt-[18vh]">
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">
-              Accelerate your entire organization with AI
-            </H1>
+            <H1 className="text-red-400">Transform how work gets done</H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
             <P size="lg" className="text-slate-50">
-              Build your team of AI agents: secure, connected to your data and
-              customizable to your needs.
+              Build custom AI agents: secure, connected to your company
+              knowledge, and powered by the best AI models.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>

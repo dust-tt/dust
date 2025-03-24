@@ -1,5 +1,5 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import type { ConnectorProvider } from "@app/types";
+import { assertNever } from "@app/types";
 
 export function isConnectorTypeTrackable(
   connectorType: ConnectorProvider
@@ -16,6 +16,7 @@ export function isConnectorTypeTrackable(
     case "zendesk":
     case "bigquery":
     case "salesforce":
+    case "gong":
       return true;
     case "slack":
       return false;

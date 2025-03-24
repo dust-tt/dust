@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { ConnectorsAPI } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,6 +9,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { ConnectorsAPI } from "@app/types";
 
 export const PostManagedDataSourceConfigRequestBodySchema = t.type({
   configValue: t.string,
@@ -74,14 +74,16 @@ async function handler(
     });
   }
 
-  // We only allow setting and retrieving `botEnabled` (slack) and `codeSyncEnabled` (github). This
-  // is mainly to prevent users from enabling other configs that are not released (e.g. google_drive
-  // `pdfEnabled`).
+  // We only allow setting and retrieving `botEnabled` (Slack), `codeSyncEnabled` (GitHub),
+  // `intercomConversationsNotesSyncEnabled` (Intercom) and `zendeskSyncUnresolvedTicketsEnabled` (Zendesk).
+  // This is mainly to prevent users from enabling other configs that are not released (e.g., google_drive `pdfEnabled`).
   if (
     ![
       "botEnabled",
       "codeSyncEnabled",
       "intercomConversationsNotesSyncEnabled",
+      "zendeskSyncUnresolvedTicketsEnabled",
+      "gongRetentionPeriodDays",
     ].includes(configKey)
   ) {
     return apiError(req, res, {

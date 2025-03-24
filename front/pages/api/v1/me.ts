@@ -1,12 +1,9 @@
 import type { MeResponseType } from "@dust-tt/client";
-import type {
-  UserTypeWithWorkspaces,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withAuth0TokenAuthentication } from "@app/lib/api/auth_wrappers";
 import { apiError } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger

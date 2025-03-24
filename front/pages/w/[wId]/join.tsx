@@ -1,5 +1,4 @@
-import { Button, LoginIcon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
-import type { LightWorkspaceType } from "@dust-tt/types";
+import { Button, DustLogoSquare, LoginIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
@@ -12,6 +11,7 @@ import {
 import { getPendingMembershipInvitationForToken } from "@app/lib/iam/invitations";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { getSignUpUrl } from "@app/lib/signup";
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * 3 ways to end up here:
@@ -160,7 +160,7 @@ export default function Join({
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <Page.Header
           title={`Hello there!`}
-          icon={() => <LogoSquareColorLogo className="-ml-11 h-10 w-32" />}
+          icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">

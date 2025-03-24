@@ -1,5 +1,4 @@
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -10,9 +9,14 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
+  ContentNodeMentionBlock,
+  contentNodeMentionDirective,
+} from "@app/components/markdown/ContentNodeMentionBlock";
+import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
+import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -33,12 +37,13 @@ export function UserMessage({
     () => ({
       sup: CiteBlock,
       mention: MentionBlock,
+      content_node_mention: ContentNodeMentionBlock,
     }),
     []
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
     []
   );
 

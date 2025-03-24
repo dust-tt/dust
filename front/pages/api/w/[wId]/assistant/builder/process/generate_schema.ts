@@ -1,21 +1,19 @@
-import type {
-  ProcessSchemaPropertyType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  getLargeWhitelistedModel,
-  getSmallWhitelistedModel,
-  InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema,
-  ioTsParsePayload,
-  PROCESS_SCHEMA_ALLOWED_TYPES,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
+import { PROCESS_SCHEMA_ALLOWED_TYPES } from "@app/lib/actions/process";
 import { runAction } from "@app/lib/actions/server";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { cloneBaseConfig, getDustProdActionRegistry } from "@app/lib/registry";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import {
+  getLargeWhitelistedModel,
+  getSmallWhitelistedModel,
+  InternalPostBuilderProcessActionGenerateSchemaRequestBodySchema,
+  ioTsParsePayload,
+} from "@app/types";
 
 async function handler(
   req: NextApiRequest,

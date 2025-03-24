@@ -4,8 +4,8 @@ import type {
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -133,21 +133,21 @@ export async function streamConversationToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "process_params":
-      case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
+      case "dust_app_run_block":
+      case "dust_app_run_params":
+      case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "retrieval_params":
+      case "search_labels_params":
+      case "tables_query_model_output":
+      case "tables_query_output":
+      case "tables_query_started":
+      case "websearch_params":
+      case "tool_params":
         await postSlackMessageUpdate(
           {
             isComplete: false,

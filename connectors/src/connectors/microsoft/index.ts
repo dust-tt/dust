@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Client } from "@microsoft/microsoft-graph-client";
 
 import type {
@@ -12,8 +7,10 @@ import type {
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import {
   getChannelAsContentNode,
   getDriveAsContentNode,
@@ -46,19 +43,23 @@ import {
   launchMicrosoftGarbageCollectionWorkflow,
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
-import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   MicrosoftConfigurationResource,
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -72,7 +73,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     try {
       // Sanity checks - check connectivity and permissions. User should be able to access the sites and teams list.
-      await getSites(client);
+      await getSites(logger, client);
     } catch (err) {
       logger.error(
         {
@@ -123,11 +124,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     // Check that we don't switch tenants
     if (connectionId) {
       try {
+        const logger = getActivityLogger(connector);
         const client = await getClient(connector.connectionId);
-        const currentOrg = await clientApiGet(client, "/organization");
+        const currentOrg = await clientApiGet(logger, client, "/organization");
 
         const newClient = await getClient(connectionId);
-        const newOrg = await clientApiGet(newClient, "/organization");
+        const newOrg = await clientApiGet(logger, newClient, "/organization");
 
         if (
           !currentOrg?.value ||
@@ -215,7 +217,9 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    const isTablesView = viewType === "tables";
+    const logger = getActivityLogger(connector);
+
+    const isTablesView = viewType === "table";
     if (filterPermission === "read" || isTablesView) {
       if (!parentInternalId) {
         const nodes = await MicrosoftNodeResource.fetchNodesWithoutParents(
@@ -267,21 +271,21 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       switch (nodeType) {
         case "sites-root": {
           const sites = await getAllPaginatedEntities((nextLink) =>
-            getSites(client, nextLink)
+            getSites(logger, client, nextLink)
           );
           nodes.push(...sites.map((n) => getSiteAsContentNode(n)));
           break;
         }
         case "teams-root": {
           const teams = await getAllPaginatedEntities((nextLink) =>
-            getTeams(client, nextLink)
+            getTeams(logger, client, nextLink)
           );
           nodes.push(...teams.map((n) => getTeamAsContentNode(n)));
           break;
         }
         case "team": {
           const channels = await getAllPaginatedEntities((nextLink) =>
-            getChannels(client, parentInternalId, nextLink)
+            getChannels(logger, client, parentInternalId, nextLink)
           );
           nodes.push(
             ...channels.map((n) => getChannelAsContentNode(n, parentInternalId))
@@ -290,10 +294,10 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         }
         case "site": {
           const subSites = await getAllPaginatedEntities((nextLink) =>
-            getSubSites(client, parentInternalId, nextLink)
+            getSubSites(logger, client, parentInternalId, nextLink)
           );
           const drives = await getAllPaginatedEntities((nextLink) =>
-            getDrives(client, parentInternalId, nextLink)
+            getDrives(logger, client, parentInternalId, nextLink)
           );
           nodes.push(
             ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
@@ -304,7 +308,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         case "drive":
         case "folder": {
           const filesAndFolders = await getAllPaginatedEntities((nextLink) =>
-            getFilesAndFolders(client, parentInternalId, nextLink)
+            getFilesAndFolders(logger, client, parentInternalId, nextLink)
           );
           const folders = filesAndFolders.filter((n) => n.folder);
           nodes.push(
@@ -354,6 +358,15 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       // Unanhdled error, throwing to get a 500.
       throw e;
     }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions({
@@ -456,64 +469,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-    viewType,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connector = await ConnectorResource.fetchById(this.connectorId);
-    if (!connector) {
-      return new Err(
-        new Error(`Could not find connector with id ${this.connectorId}`)
-      );
-    }
-
-    try {
-      const nodes = await MicrosoftNodeResource.fetchByInternalIds(
-        this.connectorId,
-        internalIds
-      );
-
-      const contentNodes = nodes.map((node) =>
-        getMicrosoftNodeAsContentNode(node, viewType === "tables")
-      );
-
-      const selectedResources = (
-        await MicrosoftRootResource.listRootsByConnectorId(connector.id)
-      ).map((r) => r.internalId);
-
-      const contentNodesWithPermissions = contentNodes.map((node) => ({
-        ...node,
-        permission: (selectedResources.includes(node.internalId) ||
-        (node.parentInternalId &&
-          selectedResources.includes(node.parentInternalId))
-          ? "read"
-          : "none") as ConnectorPermission,
-      }));
-
-      return new Ok(contentNodesWithPermissions);
-    } catch (error) {
-      return new Err(new Error("Failed to retrieve Microsoft content nodes"));
-    }
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parents = await getParents({
-      connectorId: this.connectorId,
-      internalId,
-      // base memoization, caches the parents for 30mn
-      startSyncTs: 0,
-    });
-    return new Ok(parents);
   }
 
   async setConfigurationKey({

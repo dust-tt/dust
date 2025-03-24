@@ -1,8 +1,3 @@
-import type {
-  MembershipInvitationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { ActiveRoleSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -13,6 +8,11 @@ import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { getPendingInvitations } from "@app/lib/api/invitation";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  MembershipInvitationType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { ActiveRoleSchema } from "@app/types";
 
 export type GetWorkspaceInvitationsResponseBody = {
   invitations: MembershipInvitationType[];
@@ -102,7 +102,7 @@ async function handler(
 
       const invitationRes = await handleMembershipInvitations(auth, {
         owner,
-        user,
+        user: user.toJSON(),
         subscription,
         invitationRequests: bodyValidation.right,
       });

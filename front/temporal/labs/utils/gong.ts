@@ -1,31 +1,22 @@
-import { getOAuthConnectionAccessToken } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
+import { getDataSources } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import type { ConnectorType } from "@app/types";
+import { ConnectorsAPI, getOAuthConnectionAccessToken } from "@app/types";
 
-const getGongAccessToken = async (
-  transcriptsConfiguration: LabsTranscriptsConfigurationResource,
-  logger: Logger
-) => {
-  if (!transcriptsConfiguration.connectionId) {
-    throw new Error(
-      "[retrieveGongTranscripts] No connectionId found for transcriptsConfiguration Gong oauth connection."
-    );
-  }
-
+const getGongAccessToken = async (connectionId: string, logger: Logger) => {
   const tokRes = await getOAuthConnectionAccessToken({
     config: config.getOAuthAPIConfig(),
     logger,
     provider: "gong",
-    connectionId: transcriptsConfiguration.connectionId,
+    connectionId: connectionId,
   });
   if (tokRes.isErr()) {
     logger.error(
       {
-        connectionId: transcriptsConfiguration.connectionId,
+        connectionId: connectionId,
         error: tokRes.error,
       },
       "[retrieveGongTranscripts] Error retrieving Gong access token"
@@ -33,7 +24,45 @@ const getGongAccessToken = async (
     throw new Error("Error retrieving Gong access token");
   }
 
-  return tokRes.value.access_token;
+  return tokRes.value.access_token ?? null;
+};
+
+const getGongConnectorFromAuth = async (
+  auth: Authenticator,
+  localLogger: Logger
+): Promise<ConnectorType | null> => {
+  const allDataSources = await getDataSources(auth);
+
+  const dataSource = allDataSources.find(
+    (ds) => ds.connectorProvider === "gong"
+  );
+
+  if (!dataSource) {
+    localLogger.error(
+      {},
+      "[retrieveGongTranscripts] No Gong connector found. Skipping."
+    );
+    return null;
+  }
+
+  const connectorsApi = new ConnectorsAPI(
+    config.getConnectorsAPIConfig(),
+    localLogger
+  );
+
+  const gongConnectorResponse = await connectorsApi.getConnectorFromDataSource(
+    dataSource.toJSON()
+  );
+
+  if (gongConnectorResponse.isErr()) {
+    localLogger.error(
+      { error: gongConnectorResponse.error },
+      "[retrieveGongTranscripts] Error getting Gong connector."
+    );
+    return null;
+  }
+
+  return gongConnectorResponse.value;
 };
 
 export async function retrieveGongTranscripts(
@@ -49,25 +78,34 @@ export async function retrieveGongTranscripts(
     return [];
   }
 
-  if (!transcriptsConfiguration.connectionId) {
+  if (!transcriptsConfiguration.useConnectorConnection) {
     localLogger.error(
       {},
-      "[retrieveGongTranscripts] No connectionId found for default configuration. Skipping."
+      "[retrieveGongTranscripts] UseConnectorConnection is disabled. Skipping."
+    );
+    return [];
+  }
+
+  const gongConnector = await getGongConnectorFromAuth(auth, localLogger);
+
+  if (!gongConnector?.connectionId) {
+    localLogger.error(
+      {
+        gongConnector,
+        transcriptsConfiguration,
+      },
+      "[retrieveGongTranscripts] No connectionId found for Gong connector."
     );
     return [];
   }
 
   const gongAccessToken = await getGongAccessToken(
-    transcriptsConfiguration,
+    gongConnector.connectionId,
     localLogger
   );
 
-  // TEMP: Get the last 2 weeks if labs_transcripts_full_storage FF is enabled.
-  const flags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
-    ? 14
-    : 1;
-
+  // Only 1 day of history now as we don't need to store the calls anymore (native connector)
+  const daysOfHistory = 1;
   const fromDateTime = new Date(
     Date.now() - daysOfHistory * 24 * 60 * 60 * 1000
   ).toISOString();
@@ -145,21 +183,21 @@ export async function retrieveGongTranscriptContent(
   transcriptContent: string;
   userParticipated: boolean;
 } | null> {
-  if (!transcriptsConfiguration || !transcriptsConfiguration.connectionId) {
+  const gongConnector = await getGongConnectorFromAuth(auth, localLogger);
+
+  if (!gongConnector?.connectionId) {
     localLogger.error(
       {
-        fileId,
-        transcriptsConfigurationId: transcriptsConfiguration.id,
+        gongConnector,
+        transcriptsConfiguration,
       },
-      "[retrieveGongTranscripts] No connectionId found. Skipping."
+      "[retrieveGongTranscripts] No connectionId found for Gong connector."
     );
-    throw new Error(
-      "No connectionId for transcriptsConfiguration found. Skipping."
-    );
+    return null;
   }
 
   const gongAccessToken = await getGongAccessToken(
-    transcriptsConfiguration,
+    gongConnector.connectionId,
     localLogger
   );
 
@@ -168,47 +206,70 @@ export async function retrieveGongTranscriptContent(
 
     if (!user) {
       localLogger.error(
-        {},
+        {
+          fileId,
+          transcriptsConfigurationId: transcriptsConfiguration.id,
+        },
         "[retrieveGongTranscripts] User not found. Skipping."
       );
       return null;
     }
 
-    const gongUsers = await fetch(`https://api.gong.io/v2/users`, {
-      headers: {
-        Authorization: `Bearer ${gongAccessToken}`,
-        "Content-Type": "application/json",
-      },
-    });
+    const searchUserInPage = async (cursor?: string): Promise<any> => {
+      const url = cursor
+        ? `https://api.gong.io/v2/users?cursor=${encodeURIComponent(cursor)}`
+        : `https://api.gong.io/v2/users`;
 
-    if (!gongUsers.ok) {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${gongAccessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        localLogger.error(
+          {
+            fileId,
+            transcriptsConfigurationId: transcriptsConfiguration.id,
+            status: response.status,
+          },
+          "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
+        );
+        return null;
+      }
+
+      const data = await response.json();
+
+      const foundUser = data.users?.find(
+        (gongUser: { emailAddress: string }) =>
+          gongUser.emailAddress.toLowerCase() === user.email.toLowerCase()
+      );
+
+      if (foundUser) {
+        return foundUser;
+      }
+
+      if (data.records?.cursor) {
+        return searchUserInPage(data.records.cursor);
+      }
+
+      return null;
+    };
+
+    const gongUser = await searchUserInPage();
+
+    if (!gongUser) {
       localLogger.error(
         {
           fileId,
           transcriptsConfigurationId: transcriptsConfiguration.id,
+          userEmail: user.email,
         },
-        "[retrieveGongTranscripts] Error fetching Gong users. Skipping."
+        "[retrieveGongTranscripts] Gong user not found. Skipping."
       );
       return null;
     }
-
-    const gongUsersData = await gongUsers.json();
-
-    if (!gongUsersData || gongUsersData.length === 0) {
-      localLogger.error(
-        {
-          fileId,
-          transcriptsConfigurationId: transcriptsConfiguration.id,
-        },
-        "[retrieveGongTranscripts] No Gong users found. Skipping."
-      );
-      return null;
-    }
-
-    const gongUser = gongUsersData.users.find(
-      (gongUser: { emailAddress: string }) =>
-        gongUser.emailAddress === user.email
-    );
 
     return gongUser;
   };

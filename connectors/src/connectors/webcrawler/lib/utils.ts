@@ -1,4 +1,3 @@
-import type { ContentNodeType } from "@dust-tt/types";
 import { hash as blake3 } from "blake3";
 import dns from "dns";
 
@@ -6,6 +5,7 @@ import type {
   WebCrawlerFolder,
   WebCrawlerPage,
 } from "@connectors/lib/models/webcrawler";
+import type { ContentNodeType } from "@connectors/types";
 
 // Generate a stable id for a given url and ressource type
 // That way we don't have to send URL as documentId to the front API.
@@ -18,9 +18,9 @@ export function stableIdForUrl({
 }) {
   // LEGACY, due to a renaming of content node types, but ids must remain stable
   const typePrefix =
-    ressourceType === "Document"
+    ressourceType === "document"
       ? "file"
-      : ressourceType === "Table"
+      : ressourceType === "table"
         ? "database"
         : "folder";
   return Buffer.from(blake3(`${typePrefix}-${url}`)).toString("hex");
@@ -28,15 +28,15 @@ export function stableIdForUrl({
 
 export function getParentsForPage(url: string, pageInItsOwnFolder: boolean) {
   const parents: string[] = [];
-  parents.push(stableIdForUrl({ url, ressourceType: "Document" }));
+  parents.push(stableIdForUrl({ url, ressourceType: "document" }));
   if (pageInItsOwnFolder) {
     parents.push(
-      stableIdForUrl({ url: normalizeFolderUrl(url), ressourceType: "Folder" })
+      stableIdForUrl({ url: normalizeFolderUrl(url), ressourceType: "folder" })
     );
   }
   parents.push(
     ...getAllFoldersForUrl(url).map((f) =>
-      stableIdForUrl({ url: f, ressourceType: "Folder" })
+      stableIdForUrl({ url: f, ressourceType: "folder" })
     )
   );
 

@@ -1,11 +1,10 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateExtensionConfiguration } from "@app/lib/api/workspace";
 import { isDomain } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
-export const extensionBlacklistDomainsPlugin = createPlugin(
-  {
+export const extensionBlacklistDomainsPlugin = createPlugin({
+  manifest: {
     id: "extension-blacklist-domains",
     name: "Extension Blacklist Domains/URLs",
     description:
@@ -20,7 +19,7 @@ export const extensionBlacklistDomainsPlugin = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const domains = args.domains
       ? args.domains
           .split(",")
@@ -45,8 +44,8 @@ export const extensionBlacklistDomainsPlugin = createPlugin(
       display: "text",
       value: `Blacklisted domains/URLs updated.`,
     });
-  }
-);
+  },
+});
 
 function areDomainsValid(domains: string[]): boolean {
   if (domains.length === 0) {

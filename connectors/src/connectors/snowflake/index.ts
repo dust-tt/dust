@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, isSnowflakeCredentials, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -17,10 +12,8 @@ import {
 } from "@connectors/connectors/interface";
 import {
   fetchAvailableChildrenInSnowflake,
-  fetchReadNodes,
+  fetchSelectedNodes,
   fetchSyncedChildren,
-  getBatchContentNodes,
-  getContentNodeParents,
 } from "@connectors/connectors/snowflake/lib/permissions";
 import type { TestConnectionError } from "@connectors/connectors/snowflake/lib/snowflake_api";
 import { testConnection } from "@connectors/connectors/snowflake/lib/snowflake_api";
@@ -32,14 +25,15 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
-  getConnector,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isSnowflakeCredentials } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "snowflake",
@@ -278,13 +272,10 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
 
     const { connector, credentials } = connectorAndCredentialsRes.value;
 
-    // I don't understand why but connector expects all the selected node
-    // no matter if they are at the root level if we filter on read + parentInternalId === null.
-    // This really sucks because for Snowflake it's easy to build the real tree.
-    // It means that we get a weird behavior on the tree displayed in the UI sidebar.
-    // TODO(SNOWFLAKE): Fix this, even if with a hack.
+    // When asked for the content nodes we have read access to with parentInternalId === null, we
+    // return the selected nodes (independently of their level (db/schema/table)).
     if (filterPermission === "read" && parentInternalId === null) {
-      const fetchRes = await fetchReadNodes({
+      const fetchRes = await fetchSelectedNodes({
         connectorId: connector.id,
       });
       if (fetchRes.isErr()) {
@@ -293,8 +284,8 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       return fetchRes;
     }
 
-    // We display the nodes that we were given access to by the admin.
-    // We display the db/schemas if we have access to at least one table within those.
+    // We display the nodes that we were given access to by the admin. We display the db/schemas if
+    // we have access to at least one table within those.
     if (filterPermission === "read") {
       const fetchRes = await fetchSyncedChildren({
         connectorId: connector.id,
@@ -316,6 +307,15 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       throw fetchRes.error;
     }
     return fetchRes;
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   async setPermissions({
@@ -355,48 +355,6 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorRes = await getConnector({
-      connectorId: this.connectorId,
-      logger,
-    });
-    if (connectorRes.isErr()) {
-      return connectorRes;
-    }
-    const connector = connectorRes.value.connector;
-
-    const nodesRes = await getBatchContentNodes({
-      connectorId: connector.id,
-      internalIds,
-    });
-    if (nodesRes.isErr()) {
-      return nodesRes;
-    }
-    return new Ok(nodesRes.value);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parentsRes = getContentNodeParents({ internalId });
-    if (parentsRes.isErr()) {
-      return parentsRes;
-    }
-    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {

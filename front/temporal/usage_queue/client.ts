@@ -1,22 +1,23 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok, rateLimiter } from "@dust-tt/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import { getTemporalClient } from "@app/lib/temporal";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
 import { updateWorkspaceUsageWorkflow } from "@app/temporal/usage_queue/workflows";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 async function shouldProcessUsageUpdate(workflowId: string) {
   // Compute the max usage of the workspace once per hour.
-  const hasRunInPastHour = await rateLimiter({
+  const remainingRunsThisHour = await rateLimiter({
     key: workflowId,
     maxPerTimeframe: 1,
     timeframeSeconds: 60 * 60, // 1 hour.
     logger: logger,
   });
 
-  return hasRunInPastHour === 0;
+  return remainingRunsThisHour > 0;
 }
 
 /**

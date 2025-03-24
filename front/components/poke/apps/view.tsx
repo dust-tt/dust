@@ -1,5 +1,3 @@
-import type { AppType, LightWorkspaceType } from "@dust-tt/types";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -9,6 +7,7 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { AppType, LightWorkspaceType } from "@app/types";
 
 export function ViewAppTable({
   app,

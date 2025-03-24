@@ -1,10 +1,10 @@
-import type { GroupKind } from "@dust-tt/types";
-import { isGlobalGroupKind, isSystemGroupKind } from "@dust-tt/types";
 import type { CreationOptional, Transaction } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { GroupKind } from "@app/types";
+import { isGlobalGroupKind, isSystemGroupKind } from "@app/types";
 
 export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;

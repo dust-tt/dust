@@ -1,8 +1,46 @@
+import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
+import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
+import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
-  AgentActionsEvent,
+  AgentActionConfigurationType,
   AgentActionSpecification,
   AgentActionSpecificEvent,
+} from "@app/lib/actions/types/agent";
+import { isActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isConversationIncludeFileConfiguration,
+  isDustAppRunConfiguration,
+  isMCPActionConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isSearchLabelsConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import { getCitationsCount } from "@app/lib/actions/utils";
+import {
+  AgentMessageContentParser,
+  getDelimitersConfiguration,
+} from "@app/lib/api/assistant/agent_message_content_parser";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
+import {
+  constructPromptMultiActions,
+  renderConversationForModel,
+} from "@app/lib/api/assistant/generation";
+import { getEmulatedAndJITActions } from "@app/lib/api/assistant/jit_actions";
+import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
+import config from "@app/lib/api/config";
+import { getRedisClient } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import logger from "@app/logger/logger";
+import type {
+  AgentActionsEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
@@ -18,45 +56,8 @@ import type {
   LightAgentConfigurationType,
   UserMessageType,
   WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isConversationIncludeFileConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isTextContent,
-  isUserMessageTypeModel,
-  isWebsearchConfiguration,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@dust-tt/types";
-
-import { runActionStreamed } from "@app/lib/actions/server";
-import { getEmulatedAndJITActions } from "@app/lib/api/assistant//jit_actions";
-import { getRunnerForActionConfiguration } from "@app/lib/api/assistant/actions/runners";
-import { getCitationsCount } from "@app/lib/api/assistant/actions/utils";
-import {
-  AgentMessageContentParser,
-  getDelimitersConfiguration,
-} from "@app/lib/api/assistant/agent_message_content_parser";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  constructPromptMultiActions,
-  renderConversationForModel,
-} from "@app/lib/api/assistant/generation";
-import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import config from "@app/lib/api/config";
-import { getRedisClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
-import logger from "@app/logger/logger";
+} from "@app/types";
+import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -80,7 +81,8 @@ export async function* runAgent(
 > {
   const fullConfiguration = await getAgentConfiguration(
     auth,
-    configuration.sId
+    configuration.sId,
+    "full"
   );
   if (!fullConfiguration) {
     throw new Error(
@@ -153,7 +155,7 @@ async function* runMultiActionsAgentLoop(
       conversation,
       userMessage,
       agentMessage,
-      availableActions: actions,
+      agentActions: actions,
       isLastGenerationIteration,
       isLegacyAgent,
     });
@@ -310,7 +312,7 @@ async function* runMultiActionsAgent(
     conversation,
     userMessage,
     agentMessage,
-    availableActions,
+    agentActions,
     isLastGenerationIteration,
     isLegacyAgent,
   }: {
@@ -318,7 +320,7 @@ async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: ActionConfigurationType[];
+    agentActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
@@ -352,24 +354,38 @@ async function* runMultiActionsAgent(
     };
     return;
   }
+  const availableActions: ActionConfigurationType[] = [];
 
-  let fallbackPrompt = "You are a conversational agent";
-  if (
-    agentConfiguration.actions.length ||
-    agentConfiguration.visualizationEnabled
-  ) {
-    fallbackPrompt += " with access to tool use.";
-  } else {
-    fallbackPrompt += ".";
+  for (const agentAction of agentActions) {
+    if (isActionConfigurationType(agentAction)) {
+      availableActions.push(agentAction);
+    }
   }
 
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
+    agentActions,
     agentMessage,
     conversation,
   });
 
+  const mcpActions = await tryGetMCPTools(auth, {
+    agentActions,
+  });
+
   if (!isLastGenerationIteration) {
-    availableActions = availableActions.concat(jitActions);
+    availableActions.push(...jitActions);
+    availableActions.push(...mcpActions);
+  }
+
+  let fallbackPrompt = "You are a conversational agent";
+  if (
+    agentConfiguration.actions.length ||
+    agentConfiguration.visualizationEnabled ||
+    availableActions.length > 0
+  ) {
+    fallbackPrompt += " with access to tool use.";
+  } else {
+    fallbackPrompt += ".";
   }
 
   const prompt = await constructPromptMultiActions(auth, {
@@ -380,7 +396,7 @@ async function* runMultiActionsAgent(
     hasAvailableActions: !!availableActions.length,
   });
 
-  const MIN_GENERATION_TOKENS = 2048;
+  const MIN_GENERATION_TOKENS = model.generationTokensCount;
 
   // Prepend emulated actions to the current agent message before rendering the conversation for the
   // model.
@@ -428,7 +444,7 @@ async function* runMultiActionsAgent(
       auth,
       {
         name: a.name,
-        description: a.description,
+        description: a.description ?? null,
       }
     );
 
@@ -507,27 +523,13 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const renderedConversation = modelConversationRes.value.modelConversation;
-  // Anthropic does not accept empty user message.
-  if (model.providerId === "anthropic") {
-    renderedConversation.messages.forEach((m) => {
-      if (isUserMessageTypeModel(m)) {
-        m.content.forEach((c) => {
-          if (isTextContent(c) && c.text.length === 0) {
-            c.text = "Answer according to provided context and instructions.";
-          }
-        });
-      }
-    });
-  }
-
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
     runConfig,
     [
       {
-        conversation: renderedConversation,
+        conversation: modelConversationRes.value.modelConversation,
         specifications,
         prompt,
       },
@@ -690,7 +692,7 @@ async function* runMultiActionsAgent(
   yield* contentParser.flushTokens();
 
   if (!output.actions.length) {
-    if (typeof output.generation === "string") {
+    if (typeof output.generation === "string" && contentParser.getContent()) {
       yield {
         type: "agent_message_content",
         created: Date.now(),
@@ -1229,100 +1231,6 @@ async function* runAction(
           assertNever(event);
       }
     }
-  } else if (isGithubGetPullRequestConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "github_get_pull_request_params":
-          yield event;
-          break;
-        case "github_get_pull_request_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        case "github_get_pull_request_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
-  } else if (isGithubCreateIssueConfiguration(actionConfiguration)) {
-    const eventStream = getRunnerForActionConfiguration(
-      actionConfiguration
-    ).run(auth, {
-      agentConfiguration: configuration,
-      conversation,
-      agentMessage,
-      rawInputs: inputs,
-      functionCallId,
-      step,
-    });
-
-    for await (const event of eventStream) {
-      switch (event.type) {
-        case "github_create_issue_params":
-          yield event;
-          break;
-        case "github_create_issue_error":
-          yield {
-            type: "agent_error",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            error: {
-              code: event.error.code,
-              message: event.error.message,
-            },
-          };
-          return;
-        case "github_create_issue_success":
-          yield {
-            type: "agent_action_success",
-            created: event.created,
-            configurationId: configuration.sId,
-            messageId: agentMessage.sId,
-            action: event.action,
-          };
-
-          // We stitch the action into the agent message. The conversation is expected to include
-          // the agentMessage object, updating this object will update the conversation as well.
-          agentMessage.actions.push(event.action);
-          break;
-
-        default:
-          assertNever(event);
-      }
-    }
   } else if (isReasoningConfiguration(actionConfiguration)) {
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
@@ -1361,6 +1269,104 @@ async function* runAction(
           };
           agentMessage.actions.push(event.action);
           break;
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isSearchLabelsConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "search_labels_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+
+        case "search_labels_params":
+          yield event;
+          break;
+
+        case "search_labels_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isMCPActionConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "tool_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+
+        case "tool_params":
+          yield event;
+          break;
+
+        case "tool_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
         default:
           assertNever(event);
       }

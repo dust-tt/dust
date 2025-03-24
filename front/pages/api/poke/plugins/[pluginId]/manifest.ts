@@ -1,8 +1,3 @@
-import type {
-  PluginArgs,
-  PluginManifest,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -10,9 +5,15 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  PluginArgs,
+  PluginManifest,
+  SupportedResourceType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export interface PokeGetPluginDetailsResponseBody {
-  manifest: PluginManifest<PluginArgs>;
+  manifest: PluginManifest<PluginArgs, SupportedResourceType>;
 }
 
 async function handler(
@@ -44,7 +45,7 @@ async function handler(
         });
       }
 
-      const plugin = pluginManager.getPluginById(pluginId as string);
+      const plugin = pluginManager.getPluginById(pluginId);
       if (!plugin) {
         return apiError(req, res, {
           status_code: 404,

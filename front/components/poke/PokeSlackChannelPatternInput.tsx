@@ -1,4 +1,5 @@
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -7,17 +8,16 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { useCallback, useMemo, useState } from "react";
+
+import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type {
   DataSourceType,
   LightWorkspaceType,
   SlackAutoReadPattern,
-} from "@dust-tt/types";
-import { useCallback, useMemo, useState } from "react";
-
-import { SlackAutoReadPatternsTable } from "@app/components/poke/data_sources/slack/table";
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { usePokeSpaces } from "@app/poke/swr/spaces";
+} from "@app/types";
 
 interface SlackChannelPatternInputProps {
   dataSource: DataSourceType;
@@ -148,9 +148,12 @@ export function SlackChannelPatternInput({
         <div className="flex-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild value={newPattern.spaceId}>
-              <PokeButton variant="outline" size="sm" className="w-full">
-                {selectedSpace ? selectedSpace.name : "Select a Space"}
-              </PokeButton>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                label={selectedSpace ? selectedSpace.name : "Select a Space"}
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="min-w-60">
               {spaces.map((s) => {
@@ -168,13 +171,12 @@ export function SlackChannelPatternInput({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <PokeButton
+        <Button
           onClick={handleAdd}
           disabled={!newPattern.pattern || !newPattern.spaceId}
           variant="secondary"
-        >
-          Add Pattern
-        </PokeButton>
+          label="Add Pattern"
+        />
       </div>
     </div>
   );

@@ -1,11 +1,3 @@
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceWithAgentsUsageType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@dust-tt/types";
 import { sortBy, uniq } from "lodash";
 import type { WhereAttributeHashValue } from "sequelize";
 import { Op, Sequelize } from "sequelize";
@@ -24,6 +16,14 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategory,
+  DataSourceWithAgentsUsageType,
+  ModelId,
+  Result,
+} from "@app/types";
+import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching

@@ -1,11 +1,18 @@
-import { isValidSalesforceDomain } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import logger from "@connectors/logger/logger";
+import { isValidSalesforceDomain } from "@connectors/types";
+
+export type SalesforceAPICredentials = {
+  accessToken: string;
+  instanceUrl: string;
+};
 
 export async function getSalesforceCredentials(
   connectionId: string
-): Promise<{ accessToken: string; instanceUrl: string }> {
+): Promise<Result<SalesforceAPICredentials, Error>> {
   const creds = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "salesforce",
@@ -16,8 +23,8 @@ export async function getSalesforceCredentials(
   const instanceUrl = creds.connection.metadata.instance_url;
 
   if (!accessToken || !instanceUrl || !isValidSalesforceDomain(instanceUrl)) {
-    throw new Error("Invalid credentials");
+    return new Err(new Error("Invalid credentials"));
   }
 
-  return { accessToken, instanceUrl };
+  return new Ok({ accessToken, instanceUrl });
 }

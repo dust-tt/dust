@@ -1,15 +1,13 @@
 import type { GetAppsResponseType } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { concurrentExecutor } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { exportApps } from "@app/lib/utils/apps";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 /**
  * @ignoreswagger
@@ -43,30 +41,18 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const apps = await AppResource.listBySpace(auth, space);
+      const apps = await exportApps(auth, space);
+      if (apps.isErr()) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to export apps.",
+          },
+        });
+      }
 
-      const enhancedApps = await concurrentExecutor(
-        apps.filter((app) => app.canRead(auth)),
-        async (app) => {
-          const datasetsFromFront = await getDatasets(auth, app.toJSON());
-          const datasets = [];
-          for (const dataset of datasetsFromFront) {
-            const fromCore = await getDatasetHash(
-              auth,
-              app,
-              dataset.name,
-              "latest"
-            );
-            datasets.push(fromCore ?? dataset);
-          }
-          return { ...app.toJSON(), datasets };
-        },
-        { concurrency: 5 }
-      );
-
-      res.status(200).json({
-        apps: enhancedApps,
-      });
+      res.status(200).json({ apps: apps.value });
       return;
 
     default:

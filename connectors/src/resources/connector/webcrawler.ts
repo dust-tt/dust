@@ -1,4 +1,3 @@
-import type { ModelId, WebCrawlerConfiguration } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";
@@ -10,6 +9,8 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
+import type { WebCrawlerConfiguration } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 export class WebCrawlerStrategy
   implements ConnectorProviderStrategy<"webcrawler">

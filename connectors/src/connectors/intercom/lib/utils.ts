@@ -1,10 +1,9 @@
-import type { ModelId } from "@dust-tt/types";
-
 import type {
   IntercomArticleType,
   IntercomCollectionType,
 } from "@connectors/connectors/intercom/lib/types";
-import { IntercomCollection } from "@connectors/lib/models/intercom";
+import { IntercomCollectionModel } from "@connectors/lib/models/intercom";
+import type { ModelId } from "@connectors/types";
 
 /**
  * From id to internalId
@@ -121,15 +120,18 @@ export async function getParentIdsForArticle({
   documentId,
   connectorId,
   parentCollectionId,
+  helpCenterId,
 }: {
   documentId: string;
   connectorId: number;
   parentCollectionId: string;
+  helpCenterId: string;
 }): Promise<[string, string, ...string[]]> {
   // Get collection parents
   const collectionParents = await getParentIdsForCollection({
     connectorId,
     collectionId: parentCollectionId,
+    helpCenterId,
   });
 
   return [documentId, ...collectionParents];
@@ -138,9 +140,11 @@ export async function getParentIdsForArticle({
 export async function getParentIdsForCollection({
   connectorId,
   collectionId,
+  helpCenterId,
 }: {
   connectorId: number;
   collectionId: string;
+  helpCenterId: string;
 }): Promise<[string, ...string[]]> {
   const parentIds = [];
 
@@ -151,7 +155,7 @@ export async function getParentIdsForCollection({
   // The user can only select top level collections; every collection found
   // here should be added to the parents (the last one in this loop will be the one selected).
   for (let i = 0; i < 2; i++) {
-    const currentParent = await IntercomCollection.findOne({
+    const currentParent = await IntercomCollectionModel.findOne({
       where: {
         connectorId,
         collectionId: currentParentId,
@@ -172,5 +176,6 @@ export async function getParentIdsForCollection({
   return [
     getHelpCenterCollectionInternalId(connectorId, collectionId),
     ...parentIds,
+    getHelpCenterInternalId(connectorId, helpCenterId),
   ];
 }

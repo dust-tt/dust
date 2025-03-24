@@ -9,13 +9,14 @@
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "tsx ./src/start_server.ts -p 3002",
     "start:worker": "tsx ./src/start_worker.ts",
+    "test": "vitest",
+    "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "cli": "npx tsx src/admin/cli.ts",
     "initdb": "./admin/init_db.sh",
     "create-db-migration": "./create_db_migration_file.sh"
   },
   "dependencies": {
     "@dust-tt/client": "file:../sdks/js",
-    "@dust-tt/types": "file:../types",
     "@google-cloud/bigquery": "^7.9.2",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@microsoft/microsoft-graph-types": "^2.40.0",
@@ -45,6 +46,8 @@
     "hot-shots": "^10.0.0",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
+    "io-ts-types": "^0.5.19",
+    "jsforce": "^3.6.4",
     "lodash": "^4.17.21",
     "mdast-util-gfm": "^3.0.0",
     "micromark-extension-gfm": "^3.0.0",
@@ -66,6 +69,7 @@
     "tar": "^6.2.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "turndown": "^7.1.2",
+    "undici": "^6.21.1",
     "uuid": "^9.0.0",
     "yargs": "^17.7.2"
   },
@@ -86,6 +90,8 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "prettier": "^3.0",
     "tsx": "^4.10.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.8"
   }
 }

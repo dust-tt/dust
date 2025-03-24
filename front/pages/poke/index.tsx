@@ -1,4 +1,4 @@
-import { BookOpenIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import { BookOpenIcon, Icon, Input, Spinner } from "@dust-tt/sparkle";
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import Link from "next/link";
@@ -41,7 +41,7 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
       {workspaces.length === 0 && <p>No workspaces found.</p>}
       {workspaces.map((ws) => (
         <Link href={`/poke/${ws.sId}`} key={ws.id}>
-          <li className="border-material-100 w-80 rounded-lg border bg-white p-4 transition-colors duration-200 hover:bg-gray-100">
+          <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
             <h2 className="text-md flex-grow pb-2 font-bold">{ws.name}</h2>
             <PokeTable>
               <PokeTableBody>
@@ -133,8 +133,7 @@ const Dashboard = () => {
   return (
     <>
       <h1 className="mb-4 text-2xl font-bold">Search in Workspaces</h1>
-      <input
-        className="w-full rounded-lg border border-gray-300 p-2 focus:outline-none focus:ring-2 focus:ring-blue-600"
+      <Input
         type="text"
         placeholder="Search"
         value={searchTerm}
@@ -161,7 +160,7 @@ const Dashboard = () => {
 };
 
 Dashboard.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Home">{page}</PokeLayout>;
 };
 
 export default Dashboard;

@@ -4,6 +4,7 @@ use crate::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
+        credential::Credential,
         providers::utils::execute_request,
     },
     utils,
@@ -41,6 +42,7 @@ impl Provider for GongConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -53,7 +55,8 @@ impl Provider for GongConnectionProvider {
             ("redirect_uri", &redirect_uri),
         ];
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://app.gong.io/oauth2/generate-customer-token")
             .header("Content-Type", "application/json")
             .header("Authorization", authorization)
@@ -93,7 +96,11 @@ impl Provider for GongConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = match connection.unseal_refresh_token() {
             Ok(Some(token)) => token,
             Ok(None) => Err(anyhow!("Missing `refresh_token` in Gong connection"))?,
@@ -107,7 +114,8 @@ impl Provider for GongConnectionProvider {
             ("refresh_token", &refresh_token),
         ];
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://app.gong.io/oauth2/generate-customer-token")
             .header("Content-Type", "application/json")
             .header("Authorization", authorization)

@@ -1,10 +1,9 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { extendStripeSubscriptionTrial } from "@app/lib/plans/stripe";
+import { Err, Ok } from "@app/types";
 
-export const extendTrialPlugin = createPlugin(
-  {
+export const extendTrialPlugin = createPlugin({
+  manifest: {
     id: "extend-trial",
     name: "Extend trial",
     description: "Extend the trial period of the workspace",
@@ -17,7 +16,7 @@ export const extendTrialPlugin = createPlugin(
       },
     },
   },
-  async (auth, _, args) => {
+  execute: async (auth, _, args) => {
     const subscription = auth.subscription();
     if (!subscription || !subscription.stripeSubscriptionId) {
       return new Err(
@@ -45,5 +44,5 @@ export const extendTrialPlugin = createPlugin(
       display: "text",
       value: `New trial end date: ${new Date(result.value.trialEnd * 1000).toLocaleDateString()}`,
     });
-  }
-);
+  },
+});

@@ -1,10 +1,9 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { upgradeWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
-export const upgradeToBusinessPlan = createPlugin(
-  {
+export const upgradeToBusinessPlan = createPlugin({
+  manifest: {
     id: "upgrade-to-business-plan",
     name: "Upgrade to Business Plan",
     description: "Upgrade workspace to business plan (Pro plan 39€).",
@@ -17,7 +16,7 @@ export const upgradeToBusinessPlan = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     if (!args.confirm) {
       return new Err(new Error("Please confirm the upgrade to business plan."));
     }
@@ -32,5 +31,5 @@ export const upgradeToBusinessPlan = createPlugin(
       display: "text",
       value: `Workspace ${workspace.name} upgrade to business plan.`,
     });
-  }
-);
+  },
+});

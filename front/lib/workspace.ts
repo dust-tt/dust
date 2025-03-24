@@ -1,13 +1,12 @@
+import { Workspace } from "@app/lib/models/workspace";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   LightWorkspaceType,
   ModelId,
   RoleType,
   UserType,
   WorkspaceType,
-} from "@dust-tt/types";
-
-import { Workspace } from "@app/lib/models/workspace";
-import { UserResource } from "@app/lib/resources/user_resource";
+} from "@app/types";
 
 export function renderLightWorkspaceType({
   workspace,

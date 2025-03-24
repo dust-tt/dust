@@ -7,6 +7,7 @@ import {
   IntercomLogo,
   NotionLogo,
   Page,
+  SalesforceLogo,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -15,14 +16,11 @@ import {
   SheetTrigger,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { isDevelopment } from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import {
   PokeTable,
@@ -40,6 +38,8 @@ import {
   isProPlan,
 } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
+import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
@@ -206,6 +206,9 @@ export function ActiveSubscriptionTable({
                       {activePlan.limits.connections.isWebCrawlerAllowed ? (
                         <GlobeAltIcon />
                       ) : null}
+                      {activePlan.limits.connections.isSalesforceAllowed ? (
+                        <SalesforceLogo />
+                      ) : null}
                     </div>
                   </PokeTableCell>
                 </PokeTableRow>
@@ -358,13 +361,12 @@ function UpgradeDowngradeModal({
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
             />
             <div>
-              <PokeButton
-                variant="destructive"
+              <Button
+                variant="warning"
                 onClick={onDowngrade}
                 disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
-              >
-                Downgrade to NO PLAN
-              </PokeButton>
+                label="Downgrade to NO PLAN"
+              />
             </div>
             <Separator />
             <Page.SectionHeader
@@ -377,13 +379,12 @@ function UpgradeDowngradeModal({
                 .map((p) => {
                   return (
                     <div key={p.code} className="pt-2">
-                      <PokeButton
+                      <Button
                         variant="outline"
                         disabled={subscription.plan.code === p.code}
                         onClick={() => onUpgradeToPlan(p)}
-                      >
-                        Upgrade to {p.code}
-                      </PokeButton>
+                        label={`Upgrade to ${p.code}`}
+                      />
                     </div>
                   );
                 })}
@@ -408,13 +409,12 @@ function UpgradeDowngradeModal({
                     .map((p) => {
                       return (
                         <div key={p.code} className="pt-2">
-                          <PokeButton
+                          <Button
                             variant="outline"
                             disabled={subscription.plan.code === p.code}
                             onClick={() => onUpgradeToPlan(p)}
-                          >
-                            Upgrade to {p.code}
-                          </PokeButton>
+                            label={`Upgrade to ${p.code}`}
+                          />
                         </div>
                       );
                     })}

@@ -1,5 +1,4 @@
 import { Hoverable } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
@@ -8,6 +7,7 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderTableConfiguration,
 } from "@app/components/assistant_builder/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 export function hasErrorActionTablesQuery(
   action: AssistantBuilderActionConfiguration
@@ -64,7 +64,7 @@ export function ActionTablesQuery({
         }}
         initialDataSourceConfigurations={actionConfiguration}
         allowedSpaces={allowedSpaces}
-        viewType="tables"
+        viewType="table"
       />
 
       <div className="text-sm text-element-700">
@@ -88,7 +88,7 @@ export function ActionTablesQuery({
         openDataSourceModal={() => {
           setShowTableModal(true);
         }}
-        viewType="tables"
+        viewType="table"
       />
     </>
   );

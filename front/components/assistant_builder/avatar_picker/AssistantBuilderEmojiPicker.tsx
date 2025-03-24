@@ -10,7 +10,6 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { generateTailwindBackgroundColors } from "@dust-tt/types";
 import React, { useEffect, useImperativeHandle, useRef, useState } from "react";
 
 import type {
@@ -18,6 +17,7 @@ import type {
   SelectedEmojiType,
 } from "@app/components/assistant_builder/avatar_picker/types";
 import { makeUrlForEmojiAndBackgroud } from "@app/components/assistant_builder/avatar_picker/utils";
+import { generateTailwindBackgroundColors } from "@app/types";
 
 const DEFAULT_BACKGROUND_COLOR: avatarUtils.AvatarBackgroundColorType =
   "bg-gray-100";

@@ -1,4 +1,4 @@
-import { EnvironmentConfig } from "@dust-tt/types";
+import { EnvironmentConfig } from "@connectors/types";
 
 export const slackConfig = {
   getRequiredDustBaseUrl: (): string => {

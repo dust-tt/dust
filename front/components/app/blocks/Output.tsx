@@ -1,10 +1,4 @@
 import { Button, ClipboardIcon } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  SpecificationBlockType,
-  TraceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -15,6 +9,12 @@ import {
 import { useEffect, useState } from "react";
 
 import { useRunBlock } from "@app/lib/swr/apps";
+import type {
+  AppType,
+  SpecificationBlockType,
+  TraceType,
+  WorkspaceType,
+} from "@app/types";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 

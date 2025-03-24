@@ -1,5 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -16,6 +16,7 @@ import {
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { ModelId } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -110,7 +111,10 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     return new Ok(undefined);
   }
 
-  toJSON() {
+  toJSON(): {
+    id: number;
+    connectorId: number;
+  } {
     return {
       id: this.id,
       connectorId: this.connectorId,
@@ -207,7 +211,12 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     return new this(this.model, blob.get());
   }
 
-  toJSON() {
+  toJSON(): {
+    id: number;
+    nodeType: MicrosoftNodeType;
+    internalId: string;
+    connectorId: number;
+  } {
     return {
       id: this.id,
       nodeType: this.nodeType,
@@ -408,7 +417,18 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     return [...existingNodeResources, ...newNodeResources];
   }
 
-  toJSON() {
+  toJSON(): {
+    id: number;
+    nodeType: MicrosoftNodeType;
+    internalId: string;
+    connectorId: number;
+    parentInternalId: string | null;
+    name: string | null;
+    mimeType: string | null;
+    lastSeenTs: Date | null;
+    lastUpsertedTs: Date | null;
+    skipReason: string | null;
+  } {
     return {
       id: this.id,
       nodeType: this.nodeType,

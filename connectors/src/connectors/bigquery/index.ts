@@ -1,15 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isBigQueryWithLocationCredentials,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type { TestConnectionError } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { testConnection } from "@connectors/connectors/bigquery/lib/bigquery_api";
@@ -17,8 +7,6 @@ import {
   fetchAvailableChildrenInBigQuery,
   fetchReadNodes,
   fetchSyncedChildren,
-  getBatchContentNodes,
-  getContentNodeParents,
 } from "@connectors/connectors/bigquery/lib/permissions";
 import {
   launchBigQuerySyncWorkflow,
@@ -37,14 +25,15 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import {
-  getConnector,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
 } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { isBigQueryWithLocationCredentials } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "bigquery",
@@ -356,31 +345,6 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorRes = await getConnector({
-      connectorId: this.connectorId,
-      logger,
-    });
-    if (connectorRes.isErr()) {
-      return connectorRes;
-    }
-    const connector = connectorRes.value.connector;
-
-    const nodesRes = await getBatchContentNodes({
-      connectorId: connector.id,
-      internalIds,
-    });
-    if (nodesRes.isErr()) {
-      return nodesRes;
-    }
-    return new Ok(nodesRes.value);
-  }
-
   /**
    * Retrieves the parent IDs of a content node in hierarchical order.
    * The first ID is the internal ID of the content node itself.
@@ -391,19 +355,29 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const parentsRes = getContentNodeParents({ internalId });
-    if (parentsRes.isErr()) {
-      return parentsRes;
-    }
-    return new Ok(parentsRes.value);
+    return new Ok([internalId]);
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method pause not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    await connector.markAsPaused();
+    return this.stop();
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method unpause not implemented.");
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(
+        new Error(`Connector not found with id ${this.connectorId}`)
+      );
+    }
+    await connector.markAsUnpaused();
+    return this.resume();
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

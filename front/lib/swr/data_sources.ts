@@ -1,15 +1,13 @@
-import type {
-  DataSourceType,
-  GetPostNotionSyncResponseBody,
-  LightWorkspaceType,
-  TagSearchParams,
-  TagSearchResult,
-} from "@dust-tt/types";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetDataSourceUsageResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/usage";
+import type {
+  DataSourceType,
+  GetPostNotionSyncResponseBody,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function useDataSourceUsage({
   owner,
@@ -30,35 +28,6 @@ export function useDataSourceUsage({
     isUsageError: error,
     mutate,
   };
-}
-
-export function useTagSearchEndpoint({
-  owner,
-}: {
-  owner: LightWorkspaceType;
-}): {
-  searchTags: (params: TagSearchParams) => Promise<TagSearchResult[]>;
-} {
-  const searchTags = async (
-    params: TagSearchParams
-  ): Promise<TagSearchResult[]> => {
-    const res = await fetch(`/api/w/${owner.sId}/data_sources/tags`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(params),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to search tags");
-    }
-
-    const data = await res.json();
-    return data.tags;
-  };
-
-  return { searchTags };
 }
 
 export function useNotionLastSyncedUrls({

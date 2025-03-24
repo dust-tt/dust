@@ -1,9 +1,9 @@
-import type { ConnectorsAPIErrorResponse } from "@dust-tt/types";
 import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
 
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
+import type { ConnectorsAPIErrorResponse } from "@connectors/types";
 
 const {
   DUST_CONNECTORS_SECRET,

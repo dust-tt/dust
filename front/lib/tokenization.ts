@@ -1,8 +1,8 @@
-import type { Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok, safeSubstring } from "@dust-tt/types";
 import _ from "lodash";
 
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { CoreAPI, Err, Ok, safeSubstring } from "@app/types";
 
 import config from "./api/config";
 

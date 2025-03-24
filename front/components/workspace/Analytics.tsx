@@ -1,7 +1,7 @@
 import { Page, Spinner, ValueCard } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 
 import { useWorkspaceAnalytics } from "@app/lib/swr/workspaces";
+import type { WorkspaceType } from "@app/types";
 
 interface QuickInsightsProps {
   owner: WorkspaceType;

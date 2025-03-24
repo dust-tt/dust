@@ -3,7 +3,6 @@ name: Lint & Build & Test (front)
 on:
   push:
     paths:
-      - types/**
       - sdks/js/**
       - front/**
       - .github/workflows/build-and-lint-front.yml
@@ -24,9 +23,6 @@ jobs:
             ./front/package-lock.json
             ./types/package-lock.json
             ./sdks/js/package-lock.json
-      - name: Build Types
-        working-directory: types
-        run: npm install && npm run build
       - name: Build SDK/JS
         working-directory: sdks/js
         run: npm install && npm run build

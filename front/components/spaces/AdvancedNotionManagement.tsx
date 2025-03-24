@@ -4,26 +4,29 @@ import type {
   NotificationType,
 } from "@dust-tt/sparkle";
 import {
+  ArrowPathIcon,
   Button,
   CheckCircleIcon,
   DataTable,
   Icon,
   TextArea,
   Tooltip,
+  TrashIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { GetPostNotionSyncResponseBodySchema } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
 
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
+import type { DataSourceType, WorkspaceType } from "@app/types";
+import { GetPostNotionSyncResponseBodySchema } from "@app/types";
 
 interface TableData {
   url: string;
   timestamp: number;
   success: boolean;
+  method: "sync" | "delete";
   error_message?: string;
   onClick?: () => void;
   moreMenuItems?: DropdownMenuItemProps[];
@@ -111,15 +114,27 @@ export function AdvancedNotionManagement({
       accessorKey: "success",
       cell: (info: CellContext<TableData, boolean>) => (
         <DataTable.CellContent>
-          {info.row.original.success ? (
-            <Icon
-              visual={CheckCircleIcon}
-              size="sm"
-              className="text-success-500"
-            />
-          ) : (
-            <Icon visual={XCircleIcon} size="sm" className="text-warning-500" />
-          )}
+          <div className="flex items-center gap-2">
+            {info.row.original.method === "delete" ? (
+              <Icon visual={TrashIcon} size="sm" />
+            ) : (
+              <Icon visual={ArrowPathIcon} size="sm" />
+            )}
+
+            {info.row.original.success ? (
+              <Icon
+                visual={CheckCircleIcon}
+                size="sm"
+                className="text-success-500"
+              />
+            ) : (
+              <Icon
+                visual={XCircleIcon}
+                size="sm"
+                className="text-warning-500"
+              />
+            )}
+          </div>
         </DataTable.CellContent>
       ),
       meta: {
@@ -147,7 +162,7 @@ export function AdvancedNotionManagement({
     },
   ];
 
-  async function syncURLs() {
+  async function syncURLs(method: "sync" | "delete") {
     setSyncing(true);
     // Remove empty strings and duplicates
     const trimmedUrls = [...new Set(urls.filter((url) => url.trim()))];
@@ -163,6 +178,7 @@ export function AdvancedNotionManagement({
             },
             body: JSON.stringify({
               urls: trimmedUrls,
+              method,
             }),
           }
         );
@@ -194,13 +210,13 @@ export function AdvancedNotionManagement({
           sendNotification({
             type: "success",
             title: "Sync started",
-            description: "The Notion URLs should be synced shortly.",
+            description: `The Notion URLs should be ${method === "delete" ? "deleted" : "synced"} shortly.`,
           });
         } else {
           sendNotification({
             type: "error",
             title: `Synced ${successCount} of ${syncResults.length} URLs`,
-            description: "Some URLs were not synced due to errors.",
+            description: `Some URLs were not ${method === "delete" ? "deleted" : "synced"} due to errors.`,
           });
         }
         await mutate();
@@ -209,7 +225,7 @@ export function AdvancedNotionManagement({
       sendNotification({
         type: "error",
         title: "Error syncing Notion URLs",
-        description: "An unexpected error occurred while syncing Notion URLs.",
+        description: `An unexpected error occurred while ${method === "delete" ? "deleted" : "synced"} Notion URLs.`,
       });
     }
     setSyncing(false);
@@ -237,14 +253,20 @@ export function AdvancedNotionManagement({
         <Button
           label="Sync URL(s)"
           variant="primary"
-          onClick={syncURLs}
+          onClick={() => syncURLs("sync")}
+          disabled={syncing}
+        />
+        <Button
+          label="Delete URL(s)"
+          variant="primary"
+          onClick={() => syncURLs("delete")}
           disabled={syncing}
         />
       </div>
       {/* List of the last 50 synced URLs */}
       {!isLoading && lastSyncedUrls.length > 0 && (
         <>
-          <div className="p-1 font-bold">Recently synced URLs</div>
+          <div className="p-1 font-bold">Recent operations</div>
           <div className="p-1 text-xs">
             An{" "}
             <Icon
@@ -252,9 +274,10 @@ export function AdvancedNotionManagement({
               size="xs"
               className="inline-block text-success-500"
             />{" "}
-            icon indicates sync successfully started, but URLs may take up to 20
-            minutes to sync fully.
+            icon indicates operation successfully started, but URLs may take up
+            to 20 minutes to sync fully.
           </div>
+
           <DataTable
             columns={columns}
             data={lastSyncedUrls.map((url) => ({

@@ -1,8 +1,3 @@
-import type {
-  ExtensionConfigurationType,
-  WorkspaceDomain,
-  WorkspaceType,
-} from "@dust-tt/types";
 import Link from "next/link";
 
 import {
@@ -12,6 +7,11 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type {
+  ExtensionConfigurationType,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@app/types";
 
 export function WorkspaceInfoTable({
   owner,

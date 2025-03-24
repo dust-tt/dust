@@ -1,5 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
@@ -45,9 +46,9 @@ const PopoverContent = React.forwardRef<
           "data-[side=right]:s-slide-in-from-left-2",
           "data-[side=top]:s-slide-in-from-bottom-2",
           "s-z-50 s-rounded-xl s-border s-shadow-md s-outline-none",
+          "s-border s-border-border dark:s-border-border-night",
           "s-bg-background dark:s-bg-background-night",
           "s-text-primary-950 dark:s-text-primary-950-night",
-          "s-border-border dark:s-border-border-night",
           fullWidth ? "s-grow" : "s-w-72 s-p-4",
           className
         )}
@@ -55,16 +56,22 @@ const PopoverContent = React.forwardRef<
       />
     );
 
-    const dialogElements = document.querySelectorAll(
-      ".s-sheet[role=dialog][data-state=open]"
+    const [container, setContainer] = useState<Element | undefined>(
+      mountPortalContainer
     );
 
-    const defaultContainer = dialogElements[dialogElements.length - 1];
+    useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, []);
 
     return mountPortal ? (
-      <PopoverPrimitive.Portal
-        container={mountPortalContainer || defaultContainer}
-      >
+      <PopoverPrimitive.Portal container={container}>
         {content}
       </PopoverPrimitive.Portal>
     ) : (

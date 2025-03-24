@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   ParentClosePolicy,
@@ -13,13 +12,14 @@ import {
   syncResultPageChildWorkflow,
   syncResultPageDatabaseChildWorkflow,
 } from "@connectors/connectors/notion/temporal/workflows/children";
+import type { ModelId } from "@connectors/types";
 
 const {
   garbageCollectorMarkAsSeenAndReturnNewEntities,
   fetchDatabaseChildPages,
   upsertDatabaseStructuredDataFromCache,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
+  startToCloseTimeout: "15 minutes",
 });
 
 export async function upsertDatabase({

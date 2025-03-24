@@ -8,22 +8,22 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
+import type { SetStateAction } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
+import {
+  supportsDocumentsData,
+  supportsStructuredData,
+} from "@app/lib/data_sources";
 import type {
   ContentNodesViewType,
   DataSourceViewSelectionConfigurations,
   DataSourceViewType,
   SpaceType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import type { SetStateAction } from "react";
-import { useCallback, useMemo, useState } from "react";
-
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
-import {
-  supportsDocumentsData,
-  supportsStructuredData,
-} from "@app/lib/data_sources";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface TrackerBuilderDataSourceModal {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -60,11 +60,11 @@ export default function TrackerBuilderDataSourceModal({
     switch (viewType) {
       case "all":
         return dataSourceViews;
-      case "tables":
+      case "table":
         return dataSourceViews.filter((dsv) =>
           supportsStructuredData(dsv.dataSource)
         );
-      case "documents":
+      case "document":
         return dataSourceViews.filter((dsv) =>
           supportsDocumentsData(dsv.dataSource)
         );
@@ -91,7 +91,7 @@ export default function TrackerBuilderDataSourceModal({
             id="dataSourceViewsSelector"
             className="overflow-y-auto scrollbar-hide"
           >
-            <DataSourceViewsSelector
+            <DataSourceViewsSpaceSelector
               useCase="trackerBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
               allowedSpaces={allowedSpaces}

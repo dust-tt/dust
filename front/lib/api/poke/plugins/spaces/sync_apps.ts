@@ -1,26 +1,20 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { synchronizeDustApps } from "@app/lib/utils/apps";
+import { Err, Ok } from "@app/types";
 
-export const syncAppsPlugin = createPlugin(
-  {
+export const syncAppsPlugin = createPlugin({
+  manifest: {
     id: "sync-apps",
     name: "Sync dust-apps",
     description: "Synchronize dust-apps from production",
     resourceTypes: ["spaces"],
     args: {},
   },
-  async (auth, spaceId) => {
-    if (!spaceId) {
+  execute: async (auth, space) => {
+    if (!space) {
       return new Err(new Error("No space specified"));
     }
 
-    const space = await SpaceResource.fetchById(auth, spaceId);
-    if (!space) {
-      return new Err(new Error("Space not found"));
-    }
     const result = await synchronizeDustApps(auth, space);
     if (result.isErr()) {
       return new Err(new Error(`Error when syncing: ${result.error.message}`));
@@ -34,7 +28,7 @@ export const syncAppsPlugin = createPlugin(
 
     return new Ok({
       display: "json",
-      value: { importedApp: result.value },
+      value: result.value,
     });
-  }
-);
+  },
+});

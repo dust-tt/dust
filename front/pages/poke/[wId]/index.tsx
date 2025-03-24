@@ -10,19 +10,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  Spinner,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  ExtensionConfigurationType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceDomain,
-  WorkspaceSegmentationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { WHITELISTABLE_FEATURES } from "@dust-tt/types";
 import { format } from "date-fns/format";
 import { keyBy } from "lodash";
 import type { InferGetServerSidePropsType } from "next";
@@ -42,32 +30,37 @@ import { ActiveSubscriptionTable } from "@app/components/poke/subscriptions/tabl
 import { TrackerDataTable } from "@app/components/poke/trackers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import config from "@app/lib/api/config";
-import { getDataSources } from "@app/lib/api/data_sources";
 import {
   getWorkspaceCreationDate,
   getWorkspaceVerifiedDomain,
 } from "@app/lib/api/workspace";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { orderDatasourceByImportance } from "@app/lib/connectors";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { Plan, Subscription } from "@app/lib/models/plan";
-import { FREE_NO_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import type {
+  ExtensionConfigurationType,
+  SubscriptionType,
+  WhitelistableFeature,
+  WorkspaceDomain,
+  WorkspaceSegmentationType,
+  WorkspaceType,
+} from "@app/types";
+import { WHITELISTABLE_FEATURES } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
   activeSubscription: SubscriptionType;
-  subscriptions: SubscriptionType[];
-  dataSources: DataSourceType[];
-  whitelistableFeatures: WhitelistableFeature[];
+  baseUrl: string;
+  extensionConfig: ExtensionConfigurationType | null;
+  owner: WorkspaceType;
   registry: ActionRegistry;
+  subscriptions: SubscriptionType[];
+  whitelistableFeatures: WhitelistableFeature[];
   workspaceVerifiedDomain: WorkspaceDomain | null;
   worspaceCreationDay: string;
-  extensionConfig: ExtensionConfigurationType | null;
-  baseUrl: string;
 }>(async (context, auth) => {
   const owner = auth.workspace();
   const activeSubscription = auth.subscription();
@@ -78,12 +71,9 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const [dataSources, subscriptionModels] = await Promise.all([
-    getDataSources(auth, { includeEditedBy: true }),
-    Subscription.findAll({
-      where: { workspaceId: owner.id },
-    }),
-  ]);
+  const subscriptionModels = await Subscription.findAll({
+    where: { workspaceId: owner.id },
+  });
 
   const plans = keyBy(
     await Plan.findAll({
@@ -112,9 +102,6 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       owner,
       activeSubscription,
       subscriptions,
-      dataSources: orderDatasourceByImportance(
-        dataSources.map((ds) => ds.toJSON())
-      ),
       whitelistableFeatures:
         WHITELISTABLE_FEATURES as unknown as WhitelistableFeature[],
       registry: getDustProdActionRegistry(),
@@ -130,7 +117,6 @@ const WorkspacePage = ({
   owner,
   activeSubscription,
   subscriptions,
-  dataSources,
   whitelistableFeatures,
   registry,
   workspaceVerifiedDomain,
@@ -180,11 +166,6 @@ const WorkspacePage = ({
                 registry={registry}
                 baseUrl={baseUrl}
               />
-              <DeleteWorkspaceModal
-                owner={owner}
-                subscription={activeSubscription}
-                dataSources={dataSources}
-              />
             </div>
           </div>
           <div>
@@ -225,10 +206,10 @@ const WorkspacePage = ({
               />
               <div className="flex flex-grow flex-col gap-4">
                 <PluginList
-                  resourceType="workspaces"
-                  workspaceResource={{
-                    workspace: owner,
+                  pluginResourceTarget={{
                     resourceId: owner.sId,
+                    resourceType: "workspaces",
+                    workspace: owner,
                   }}
                 />
                 <ActiveSubscriptionTable
@@ -307,106 +288,11 @@ export function DustAppLogsModal({
   );
 }
 
-export function DeleteWorkspaceModal({
-  owner,
-  subscription,
-  dataSources,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  dataSources: DataSourceType[];
-}) {
-  const router = useRouter();
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const sendNotification = useSendNotification();
-
-  const { submit: onDeleteWorkspace } = useSubmitFunction(async () => {
-    if (
-      !window.confirm(
-        "Are you sure you want to delete this workspace? Data will be deleted and THERE IS NO GOING BACK."
-      )
-    ) {
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      if (!r.ok) {
-        const res: { error: { message: string } } = await r.json();
-        throw new Error(res.error.message);
-      }
-      await router.push("/poke?success=workspace-deleted");
-      sendNotification({
-        title: "Success!",
-        description: "Workspace data request successfully sent.",
-        type: "success",
-      });
-    } catch (e) {
-      console.error(e);
-      window.alert(`We could not delete the workspace:\n${e}`);
-    }
-    setIsLoading(false);
-  });
-
-  const workspaceHasManagedDataSources = dataSources.some(
-    (ds) => !!ds.connectorProvider
-  );
-
-  return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button label="Delete the workspace" variant="warning" />
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Delete Workspace Data (GDPR)</SheetTitle>
-        </SheetHeader>
-        <SheetContainer>
-          <div className="flex flex-col gap-2 pt-4">
-            <div className="flex flex-col gap-2 pt-4">
-              <div>
-                {dataSources.length > 0 && (
-                  <p className="mb-4 text-sm text-warning">
-                    Delete data sources before deleting the workspace.
-                  </p>
-                )}
-                {subscription.plan.code !== FREE_NO_PLAN_CODE && (
-                  <p className="mb-4 text-sm text-warning">
-                    Downgrade workspace before deleting its data.
-                  </p>
-                )}
-                {isLoading ? (
-                  <p className="mb-4 text-sm text-warning">
-                    Deleting workspace data...
-                    <Spinner />
-                  </p>
-                ) : (
-                  <Button
-                    label="Delete the workspace"
-                    variant="outline"
-                    onClick={onDeleteWorkspace}
-                    disabled={
-                      subscription.plan.code !== FREE_NO_PLAN_CODE ||
-                      workspaceHasManagedDataSources
-                    }
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </SheetContainer>
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-WorkspacePage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+WorkspacePage.getLayout = (
+  page: ReactElement,
+  { owner }: { owner: WorkspaceType }
+) => {
+  return <PokeLayout title={`${owner.name}`}>{page}</PokeLayout>;
 };
 
 export default WorkspacePage;

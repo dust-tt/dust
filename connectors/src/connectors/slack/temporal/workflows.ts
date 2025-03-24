@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -9,6 +8,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import type { ModelId } from "@connectors/types";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
@@ -18,16 +18,18 @@ const {
   syncChannel,
   fetchUsers,
   saveSuccessSyncActivity,
+  syncChannelMetadata,
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
   attemptChannelJoinActivity,
-  deleteChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-const { syncThread, syncNonThreaded } = proxyActivities<typeof activities>({
+const { deleteChannel, syncThread, syncNonThreaded } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "30 minutes",
 });
 
@@ -158,6 +160,11 @@ export async function syncOneThreadDebounced(
     }
 
     console.log(`Talked to slack after debouncing ${debounceCount} time(s)`);
+    await syncChannelMetadata(
+      connectorId,
+      channelId,
+      parseInt(threadTs, 10) * 1000
+    );
     await syncThread(channelId, channel.name, threadTs, connectorId);
     await saveSuccessSyncActivity(connectorId);
   }
@@ -192,9 +199,10 @@ export async function syncOneMessageDebounced(
     if (!channel.name) {
       throw new Error(`Could not find channel name for channel ${channelId}`);
     }
-    const messageTs = parseInt(threadTs) * 1000;
+    const messageTs = parseInt(threadTs, 10) * 1000;
     const startTsMs = getWeekStart(new Date(messageTs)).getTime();
     const endTsMs = getWeekEnd(new Date(messageTs)).getTime();
+    await syncChannelMetadata(connectorId, channelId, endTsMs);
     await syncNonThreaded(
       channelId,
       channel.name,

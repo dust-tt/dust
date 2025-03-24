@@ -1,5 +1,3 @@
-import type { UserMessageType, WithAPIErrorResponse } from "@dust-tt/types";
-import { isUserMessageType } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -11,6 +9,8 @@ import { editUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
+import { isUserMessageType } from "@app/types";
 
 const PostEditRequestBodySchema = t.type({
   content: t.string,

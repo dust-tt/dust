@@ -17,8 +17,10 @@ pub trait OAuthStore {
         &self,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        related_credential_id: Option<String>,
     ) -> Result<Connection>;
-    async fn retrieve_connection(
+    async fn retrieve_connection(&self, connection_id: &str) -> Result<Connection>;
+    async fn retrieve_connection_by_provider(
         &self,
         provider: ConnectionProvider,
         connection_id: &str,
@@ -87,6 +89,7 @@ impl OAuthStore for PostgresOAuthStore {
         &self,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        related_credential_id: Option<String>,
     ) -> Result<Connection> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -98,8 +101,8 @@ impl OAuthStore for PostgresOAuthStore {
         // Create connection
         let stmt = c
             .prepare(
-                "INSERT INTO connections (id, created, provider, secret, status, metadata)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5::jsonb) RETURNING id",
+                "INSERT INTO connections (id, created, provider, secret, status, metadata, related_credential_id)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5::jsonb, $6) RETURNING id",
             )
             .await?;
         let row_id: i64 = c
@@ -111,6 +114,7 @@ impl OAuthStore for PostgresOAuthStore {
                     &secret,
                     &status.to_string(),
                     &metadata,
+                    &related_credential_id,
                 ],
             )
             .await?
@@ -130,14 +134,11 @@ impl OAuthStore for PostgresOAuthStore {
             None,
             None,
             None,
+            related_credential_id,
         ))
     }
 
-    async fn retrieve_connection(
-        &self,
-        provider: ConnectionProvider,
-        connection_id: &str,
-    ) -> Result<Connection> {
+    async fn retrieve_connection(&self, connection_id: &str) -> Result<Connection> {
         let (row_id, secret) = Connection::row_id_and_secret_from_connection_id(connection_id)?;
 
         let pool = self.pool.clone();
@@ -145,25 +146,28 @@ impl OAuthStore for PostgresOAuthStore {
 
         let r = c
             .query_one(
-                "SELECT created, status, metadata,
+                "SELECT created, provider, status, metadata,
                         redirect_uri, encrypted_authorization_code,
                         access_token_expiry, encrypted_access_token,
-                        encrypted_refresh_token, encrypted_raw_json
+                        encrypted_refresh_token, encrypted_raw_json,
+                        related_credential_id
                    FROM connections
-                   WHERE id = $1 AND provider = $2 AND secret = $3",
-                &[&row_id, &provider.to_string(), &secret],
+                   WHERE id = $1 AND secret = $2",
+                &[&row_id, &secret],
             )
             .await?;
 
         let created: i64 = r.get(0);
-        let status: ConnectionStatus = ConnectionStatus::from_str(r.get(1))?;
-        let metadata: serde_json::Value = r.get(2);
-        let redirect_uri: Option<String> = r.get(3);
-        let encrypted_authorization_code: Option<Vec<u8>> = r.get(4);
-        let access_token_expiry: Option<i64> = r.get(5);
-        let encrypted_access_token: Option<Vec<u8>> = r.get(6);
-        let encrypted_refresh_token: Option<Vec<u8>> = r.get(7);
-        let encrypted_raw_json: Option<Vec<u8>> = r.get(8);
+        let provider: ConnectionProvider = ConnectionProvider::from_str(r.get(1))?;
+        let status: ConnectionStatus = ConnectionStatus::from_str(r.get(2))?;
+        let metadata: serde_json::Value = r.get(3);
+        let redirect_uri: Option<String> = r.get(4);
+        let encrypted_authorization_code: Option<Vec<u8>> = r.get(5);
+        let access_token_expiry: Option<i64> = r.get(6);
+        let encrypted_access_token: Option<Vec<u8>> = r.get(7);
+        let encrypted_refresh_token: Option<Vec<u8>> = r.get(8);
+        let encrypted_raw_json: Option<Vec<u8>> = r.get(9);
+        let related_credential_id: Option<String> = r.get(10);
 
         Ok(Connection::new(
             connection_id.to_string(),
@@ -180,7 +184,21 @@ impl OAuthStore for PostgresOAuthStore {
             encrypted_access_token,
             encrypted_refresh_token,
             encrypted_raw_json,
+            related_credential_id,
         ))
+    }
+
+    async fn retrieve_connection_by_provider(
+        &self,
+        provider: ConnectionProvider,
+        connection_id: &str,
+    ) -> Result<Connection> {
+        let c = self.retrieve_connection(connection_id).await?;
+        if c.provider() == provider {
+            Ok(c)
+        } else {
+            Err(anyhow::anyhow!("Connection provider mismatch"))
+        }
     }
 
     async fn update_connection_secrets(&self, connection: &Connection) -> Result<()> {
@@ -351,7 +369,8 @@ pub const POSTGRES_TABLES: [&'static str; 2] = [
        encrypted_authorization_code   BYTEA,
        encrypted_access_token         BYTEA,
        encrypted_refresh_token        BYTEA,
-       encrypted_raw_json             BYTEA
+       encrypted_raw_json             BYTEA,
+       related_credential_id          TEXT
     );",
     "-- secrets
     CREATE TABLE IF NOT EXISTS credentials (

@@ -2,21 +2,24 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import {
   Checkbox,
-  Collapsible,
+  CollapsibleComponent,
   Input,
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { SpecificationBlockType, SpecificationType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { BlockType } from "@dust-tt/types";
-import type { RunType } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
+import type {
+  AppType,
+  BlockType,
+  RunType,
+  SpecificationBlockType,
+  SpecificationType,
+  WorkspaceType,
+} from "@app/types";
 
 import Block from "./Block";
 
@@ -284,9 +287,10 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <Collapsible>
-            <Collapsible.Button label="Advanced" />
-            <Collapsible.Panel>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerProps={{ label: "Advanced" }}
+            contentChildren={
               <div className="flex flex-row gap-2">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center space-x-2">
@@ -345,8 +349,8 @@ export default function Chat({
                   </div>
                 </div>
               </div>
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+          />
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
@@ -364,7 +368,6 @@ export default function Chat({
                 minHeight={80}
                 className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
                 style={{
-                  color: "rgb(55 65 81)",
                   fontSize: 13,
                   fontFamily:
                     "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
@@ -398,9 +401,10 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <Collapsible>
-            <Collapsible.Button label="Functions" />
-            <Collapsible.Panel>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: false }}
+            triggerProps={{ label: "Functions" }}
+            contentChildren={
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
@@ -437,8 +441,8 @@ export default function Chat({
                   </div>
                 </div>
               </div>
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+          />
         </div>
       </div>
     </Block>

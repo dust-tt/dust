@@ -1,4 +1,3 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 
 import type { IntercomConversationWithPartsType } from "@connectors/connectors/intercom/lib/types";
@@ -6,13 +5,14 @@ import { stopIntercomSyncWorkflow } from "@connectors/connectors/intercom/tempor
 import { syncConversation } from "@connectors/connectors/intercom/temporal/sync_conversation";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { syncFailed } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "intercom" });
 
@@ -69,7 +69,7 @@ const _webhookIntercomAPIHandler = async (
   }
 
   // Find IntercomWorkspace
-  const intercomWorskpace = await IntercomWorkspace.findOne({
+  const intercomWorskpace = await IntercomWorkspaceModel.findOne({
     where: {
       intercomWorkspaceId,
     },
@@ -120,7 +120,7 @@ const _webhookIntercomAPIHandler = async (
       );
       return res.status(200).end();
     } else {
-      const team = await IntercomTeam.findOne({
+      const team = await IntercomTeamModel.findOne({
         where: {
           connectorId: connector.id,
           teamId: conversation.team_assignee_id.toString(),
@@ -188,7 +188,7 @@ const _webhookIntercomUninstallAPIHandler = async (
     return res.status(200).end();
   }
 
-  const intercomWorskpace = await IntercomWorkspace.findOne({
+  const intercomWorskpace = await IntercomWorkspaceModel.findOne({
     where: {
       intercomWorkspaceId,
     },

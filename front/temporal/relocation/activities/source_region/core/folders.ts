@@ -1,16 +1,17 @@
-import type {
-  CoreAPINodesSearchFilter,
-  CoreAPISearchCursorRequest,
-} from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
-import type { CoreFolderAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
-import type { DataSourceCoreIds } from "@app/temporal/relocation/activities/types";
+import type {
+  CoreFolderAPIRelocationBlob,
+  DataSourceCoreIds,
+} from "@app/temporal/relocation/activities/types";
 import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type {
+  CoreAPINodesSearchFilter,
+  CoreAPISearchCursorRequest,
+} from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,
@@ -36,11 +37,13 @@ export async function getDataSourceFolders({
     data_source_views: [
       {
         data_source_id: dataSourceCoreIds.dustAPIDataSourceId,
+        // Only paginate through data source nodes.
+        search_scope: "nodes_titles",
         // Leaving empty to get all folders.
         view_filter: [],
       },
     ],
-    node_types: ["Folder"],
+    node_types: ["folder"],
   };
 
   const options: CoreAPISearchCursorRequest = {
@@ -59,7 +62,7 @@ export async function getDataSourceFolders({
 
   if (searchResults.isErr()) {
     localLogger.error(
-      { error: searchResults.error },
+      { cursor: pageCursor, error: searchResults.error },
       "[Core] Failed to search nodes with cursor"
     );
 

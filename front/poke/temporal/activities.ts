@@ -1,5 +1,3 @@
-import { CoreAPI } from "@dust-tt/types";
-import { Storage } from "@google-cloud/storage";
 import assert from "assert";
 import { chunk } from "lodash";
 import { Op } from "sequelize";
@@ -46,10 +44,12 @@ import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
@@ -57,13 +57,12 @@ import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
-import { PlatformActionsConfigurationModel } from "@app/lib/resources/storage/models/platform_actions";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
+import { CoreAPI } from "@app/types";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -94,34 +93,6 @@ export async function scrubDataSourceActivity({
       "Data source is not soft deleted."
     );
     throw new Error("Data source is not soft deleted.");
-  }
-
-  const { dustAPIProjectId } = dataSource;
-
-  const storage = new Storage({ keyFilename: config.getServiceAccount() });
-
-  const [files] = await storage
-    .bucket(config.getDustDataSourcesBucket())
-    .getFiles({ prefix: dustAPIProjectId });
-
-  const chunkSize = 32;
-  const chunks = [];
-  for (let i = 0; i < files.length; i += chunkSize) {
-    chunks.push(files.slice(i, i + chunkSize));
-  }
-
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    if (!chunk) {
-      continue;
-    }
-    await Promise.all(
-      chunk.map((f) => {
-        return (async () => {
-          await f.delete();
-        })();
-      })
-    );
   }
 
   await hardDeleteDataSource(auth, dataSource);
@@ -163,9 +134,16 @@ export async function scrubSpaceActivity({
 
 export async function isWorkflowDeletableActivity({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
+  // If the workspace has been relocated, we don't expect subscriptions to be canceled.
+  if (workspaceHasBeenRelocated) {
+    return true;
+  }
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const workspace = auth.getNonNullableWorkspace();
 
@@ -320,6 +298,13 @@ export async function deleteAgentsActivity({
         },
       },
     });
+    await AgentDataSourceConfiguration.destroy({
+      where: {
+        processConfigurationId: {
+          [Op.in]: agentProcessConfigurations.map((r) => r.id),
+        },
+      },
+    });
     await AgentProcessConfiguration.destroy({
       where: {
         agentConfigurationId: agent.id,
@@ -429,11 +414,7 @@ export async function deleteMembersActivity({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.workspace();
-
-  if (!workspace) {
-    throw new Error("Could not find the workspace.");
-  }
+  const workspace = auth.getNonNullableWorkspace();
 
   await MembershipInvitation.destroy({
     where: {
@@ -455,11 +436,6 @@ export async function deleteMembersActivity({
 
       // If the user we're removing the membership of only has one membership, we delete the user.
       if (membershipsOfUser.length === 1) {
-        await UserMetadataModel.destroy({
-          where: {
-            userId: user.id,
-          },
-        });
         hardDeleteLogger.info(
           {
             membershipId: membership.id,
@@ -502,11 +478,36 @@ export async function deleteSpacesActivity({
       throw res.error;
     }
 
+    // Soft delete all the data source views of the space.
+    const dataSourceViews = await DataSourceViewResource.listBySpace(
+      auth,
+      space
+    );
+    for (const ds of dataSourceViews) {
+      await ds.delete(auth, { hardDelete: false });
+    }
+
+    // Soft delete all the data sources of the space.
+    const dataSources = await DataSourceResource.listBySpace(auth, space);
+    for (const ds of dataSources) {
+      await ds.delete(auth, { hardDelete: false });
+    }
+
     await scrubSpaceActivity({
       spaceId: space.sId,
       workspaceId,
     });
   }
+}
+
+export async function deletePluginRunsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  await PluginRunResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteWorkspaceActivity({
@@ -538,11 +539,6 @@ export async function deleteWorkspaceActivity({
     },
   });
   await FeatureFlag.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-  await PlatformActionsConfigurationModel.destroy({
     where: {
       workspaceId: workspace.id,
     },

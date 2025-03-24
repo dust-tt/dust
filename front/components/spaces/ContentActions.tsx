@@ -1,26 +1,15 @@
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
+  DocumentDuplicateIcon,
   ExternalLinkIcon,
   EyeIcon,
   PencilSquareIcon,
   TrashIcon,
-  useHashParam,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { capitalize } from "lodash";
+import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
-import React, {
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useState,
-} from "react";
+import React, { useCallback, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
@@ -33,6 +22,15 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { DocumentDeletionKey, DocumentViewRawContentKey } from "@app/types";
 
 export type UploadOrEditContentActionKey =
   | "DocumentUploadOrEdit"
@@ -41,8 +39,7 @@ export type UploadOrEditContentActionKey =
 export type ContentActionKey =
   | UploadOrEditContentActionKey
   | "MultipleDocumentsUpload"
-  | "DocumentOrTableDeleteDialog"
-  | "DocumentViewRawContent";
+  | "DeleteContentNode";
 
 export type ContentAction = {
   action?: ContentActionKey;
@@ -93,15 +90,6 @@ export const ContentActions = React.forwardRef<
       },
     }));
 
-    const [currentDocumentId, setCurrentDocumentId] =
-      useHashParam("documentId");
-
-    useEffect(() => {
-      if (currentAction.action === "DocumentViewRawContent") {
-        setCurrentDocumentId(currentAction.contentNode?.internalId ?? "");
-      }
-    }, [currentAction, setCurrentDocumentId]);
-
     const onClose = useCallback(
       (save: boolean) => {
         const action = currentAction.action;
@@ -148,24 +136,14 @@ export const ContentActions = React.forwardRef<
           totalNodesCount={totalNodesCount}
           plan={plan}
         />
-        {currentAction.contentNode && (
-          <DocumentOrTableDeleteDialog
-            dataSourceView={dataSourceView}
-            isOpen={currentAction.action === "DocumentOrTableDeleteDialog"}
-            onClose={onClose}
-            owner={owner}
-            contentNode={currentAction.contentNode}
-          />
-        )}
+        <DocumentOrTableDeleteDialog
+          dataSourceView={dataSourceView}
+          owner={owner}
+          contentNode={currentAction.contentNode ?? null}
+        />
         <DataSourceViewDocumentModal
           owner={owner}
           dataSourceView={dataSourceView}
-          documentId={currentDocumentId ?? null}
-          isOpen={currentDocumentId !== undefined}
-          onClose={() => {
-            setCurrentDocumentId(undefined);
-            onClose(false);
-          }}
         />
       </>
     );
@@ -185,7 +163,10 @@ export const getMenuItems = (
   addDataToSpace: (
     contentNode: DataSourceViewContentNode,
     spaceSId: string
-  ) => void
+  ) => void,
+  router: NextRouter,
+  onOpenDocument?: (node: DataSourceViewContentNode) => void,
+  setEffectiveContentNode?: (node: DataSourceViewContentNode) => void
 ): MenuItem[] => {
   const actions: MenuItem[] = [];
 
@@ -195,9 +176,9 @@ export const getMenuItems = (
     });
   }
 
-  if (canReadInSpace && contentNode.type === "Document") {
+  if (canReadInSpace && contentNode.type === "document") {
     actions.push({
-      ...makeViewRawContentAction(contentNode, contentActionsRef),
+      ...makeViewRawContentAction(contentNode, router, onOpenDocument),
     });
   }
 
@@ -209,7 +190,7 @@ export const getMenuItems = (
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
-          contentNode.type === "Table"
+          contentNode.type === "table"
             ? "TableUploadOrEdit"
             : "DocumentUploadOrEdit",
           contentNode
@@ -222,10 +203,22 @@ export const getMenuItems = (
       icon: TrashIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
-        contentActionsRef.current?.callAction(
-          "DocumentOrTableDeleteDialog",
-          contentNode
-        );
+
+        setQueryParam(router, DocumentDeletionKey, "true");
+
+        // If a setter if provided, use it to set the contentNode.
+        if (setEffectiveContentNode) {
+          setEffectiveContentNode(contentNode);
+        } else {
+          // Otherwise, use the ref to set the contentNode in the delete dialog.
+          contentActionsRef.current?.callAction(
+            "DeleteContentNode",
+            contentNode
+          );
+        }
+        if (onOpenDocument) {
+          onOpenDocument(contentNode);
+        }
       },
       variant: "warning",
     });
@@ -234,7 +227,7 @@ export const getMenuItems = (
   if (
     dataSourceView.kind === "default" &&
     isManaged(dataSourceView.dataSource) &&
-    contentNode.type === "Folder"
+    contentNode.type === "folder"
   ) {
     const allViews = dataSourceViews.filter(
       (dsv) =>
@@ -256,17 +249,16 @@ export const getMenuItems = (
       (s) => !alreadyInSpace.includes(s.sId)
     );
 
-    if (availableSpaces.length > 0) {
-      actions.push({
-        kind: "submenu",
-        label: "Add to space",
-        items: availableSpaces.map((s) => ({
-          id: s.sId,
-          name: s.name,
-        })),
-        onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
-      });
-    }
+    actions.push({
+      disabled: availableSpaces.length === 0,
+      kind: "submenu",
+      label: "Add to space",
+      items: availableSpaces.map((s) => ({
+        id: s.sId,
+        name: s.name,
+      })),
+      onSelect: (spaceId) => addDataToSpace(contentNode, spaceId),
+    });
   }
 
   if (
@@ -276,7 +268,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: PencilSquareIcon,
+      icon: DocumentDuplicateIcon,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);
@@ -313,7 +305,8 @@ const makeViewSourceUrlContentAction = (
 
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
-  contentActionsRef: RefObject<ContentActionsRef>
+  router: NextRouter,
+  onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem => {
   return {
     kind: "item",
@@ -321,10 +314,11 @@ const makeViewRawContentAction = (
     icon: EyeIcon,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
-      contentActionsRef.current?.callAction(
-        "DocumentViewRawContent",
-        contentNode
-      );
+      setQueryParam(router, "documentId", contentNode.internalId);
+      setQueryParam(router, DocumentViewRawContentKey, "true");
+      if (onOpenDocument) {
+        onOpenDocument(contentNode);
+      }
     },
   };
 };

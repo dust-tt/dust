@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { SearchInput, SearchInputWithPopover } from "../index_with_tw_base";
+import {
+  cn,
+  InformationCircleIcon,
+  SearchInput,
+  SearchInputWithPopover,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Components/SearchInput",
@@ -51,6 +56,7 @@ export const ExampleSearchInput: Story = {
     placeholder: "Search...",
     value: "",
     disabled: false,
+    onChange: () => console.log("hey"),
   },
   render: (args) => {
     const [value, setValue] = React.useState(args.value);
@@ -85,26 +91,36 @@ export function SearchInputWithPopoverScrollableExample() {
       onChange={setValue}
       open={open}
       onOpenChange={setOpen}
-    >
-      {filteredItems.length > 0 ? (
-        filteredItems.map((item) => (
-          <div
-            key={item}
-            role="option"
-            className="s-cursor-pointer s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
-            onClick={() => {
-              setValue(item);
-              setOpen(false);
-            }}
-          >
-            {item}
-          </div>
-        ))
-      ) : (
-        <div className="s-px-4 s-py-2 s-text-muted-foreground">
-          No results found
+      items={filteredItems}
+      onItemSelect={(item) => console.log(item)}
+      onSelectAll={() => console.log("select all")}
+      contentMessage={{
+        title: "You can add a custom message here",
+        variant: "pink",
+        icon: InformationCircleIcon,
+        className: "s-w-full",
+        size: "lg",
+      }}
+      displayItemCount={true}
+      totalItems={100}
+      renderItem={(item, selected) => (
+        <div
+          key={item}
+          role="option"
+          className={cn(
+            "s-cursor-pointer s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+            selected && "s-bg-primary-100"
+          )}
+          onClick={() => {
+            setValue(item);
+            setOpen(false);
+            console.log("clicked", item);
+          }}
+        >
+          {item}
         </div>
       )}
-    </SearchInputWithPopover>
+      noResults="No results found"
+    />
   );
 }

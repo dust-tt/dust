@@ -1,5 +1,4 @@
 import { Div3D, Hover3D } from "@dust-tt/sparkle";
-import React from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2, P, Strong } from "@app/components/home/ContentComponents";
@@ -11,7 +10,7 @@ export function FutureSection() {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
+            <H2 className="text-blue-200">
               Your own AI agents, powered by the best models
             </H2>
             <P size="lg">
@@ -42,17 +41,14 @@ export function FutureSection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-20}>
-                <img src="/static/landing/connect/connect1.png" />
+              <Div3D depth={20}>
+                <img src="/static/landing/connect/cloud1.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/connect2.png" />
+                <img src="/static/landing/connect/cloud2.png" />
               </Div3D>
-              <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/connect/connect3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/connect/connect4.png" />
+              <Div3D depth={-20} className="absolute top-0">
+                <img src="/static/landing/connect/cloud3.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
@@ -71,16 +67,16 @@ export function FutureSection() {
               perspective={1000}
               className={classNames("relative")}
             >
-              <Div3D depth={-40}>
+              <Div3D depth={40}>
                 <img src="/static/landing/model/model1.png" />
               </Div3D>
-              <Div3D depth={0} className="absolute top-0">
+              <Div3D depth={20} className="absolute top-0">
                 <img src="/static/landing/model/model2.png" />
               </Div3D>
-              <Div3D depth={50} className="absolute top-0 drop-shadow-lg">
+              <Div3D depth={10} className="absolute top-0 drop-shadow-lg">
                 <img src="/static/landing/model/model3.png" />
               </Div3D>
-              <Div3D depth={120} className="absolute top-0 drop-shadow-lg">
+              <Div3D depth={30} className="absolute top-0 drop-shadow-lg">
                 <img src="/static/landing/model/model4.png" />
               </Div3D>
             </Hover3D>

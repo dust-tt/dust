@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse, WorkspaceType } from "@dust-tt/types";
-import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,6 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse, WorkspaceType } from "@app/types";
+import { EmbeddingProviderCodec, ModelProviderIdCodec } from "@app/types";
 
 export type PostWorkspaceResponseBody = {
   workspace: WorkspaceType;

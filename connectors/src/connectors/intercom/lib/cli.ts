@@ -1,37 +1,41 @@
-import type {
-  IntercomCheckConversationResponseType,
-  IntercomCheckMissingConversationsResponseType,
-  IntercomCheckTeamsResponseType,
-  IntercomCommandType,
-  IntercomFetchConversationResponseType,
-  IntercomForceResyncArticlesResponseType,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import {
+  fetchIntercomArticles,
   fetchIntercomConversation,
   fetchIntercomConversationsForDay,
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import {
-  IntercomArticle,
-  IntercomConversation,
-  IntercomTeam,
+  IntercomArticleModel,
+  IntercomConversationModel,
+  IntercomTeamModel,
 } from "@connectors/lib/models/intercom";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  IntercomCheckConversationResponseType,
+  IntercomCheckMissingConversationsResponseType,
+  IntercomCheckTeamsResponseType,
+  IntercomCommandType,
+  IntercomFetchArticlesResponseType,
+  IntercomFetchConversationResponseType,
+  IntercomForceResyncArticlesResponseType,
+} from "@connectors/types";
 
-export const intercom = async ({
-  command,
-  args,
-}: IntercomCommandType): Promise<
+type IntercomResponse =
   | IntercomCheckConversationResponseType
   | IntercomFetchConversationResponseType
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
-> => {
+  | IntercomFetchArticlesResponseType;
+
+export const intercom = async ({
+  command,
+  args,
+}: IntercomCommandType): Promise<IntercomResponse> => {
   const logger = topLogger.child({ majorCommand: "intercom", command, args });
 
   const connectorId = args.connectorId ? args.connectorId.toString() : null;
@@ -49,7 +53,7 @@ export const intercom = async ({
         throw new Error("[Admin] Need to pass --force=true to force resync");
       }
       logger.info("[Admin] Forcing resync of articles");
-      const updated = await IntercomArticle.update(
+      const updated = await IntercomArticleModel.update(
         { lastUpsertedTs: null },
         { where: {} } // Targets all records
       );
@@ -78,7 +82,7 @@ export const intercom = async ({
           ? conversationOnIntercom.team_assignee_id.toString()
           : undefined;
 
-      const conversationOnDB = await IntercomConversation.findOne({
+      const conversationOnDB = await IntercomConversationModel.findOne({
         where: {
           conversationId,
           connectorId: connector.id,
@@ -113,6 +117,30 @@ export const intercom = async ({
         conversation: conversationOnIntercom,
       };
     }
+    case "fetch-articles": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const helpCenterId = args.helpCenterId?.toString();
+
+      if (!helpCenterId) {
+        throw new Error("Missing --helpCenterId argument");
+      }
+
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+      const articles = await fetchIntercomArticles({
+        accessToken,
+        helpCenterId,
+        page: 1,
+        pageSize: 1000,
+      });
+
+      return {
+        articles: articles.data.articles,
+      };
+    }
+
     case "check-missing-conversations": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -152,7 +180,7 @@ export const intercom = async ({
       } while (cursor);
 
       // Fetch all conversations for the day from DB
-      const convosOnDB = await IntercomConversation.findAll({
+      const convosOnDB = await IntercomConversationModel.findAll({
         where: {
           connectorId: connector.id,
           conversationCreatedAt: {
@@ -184,7 +212,7 @@ export const intercom = async ({
       logger.info("[Admin] Checking teams");
       const accessToken = await getIntercomAccessToken(connector.connectionId);
       const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
-      const teamsOnDb = await IntercomTeam.findAll({
+      const teamsOnDb = await IntercomTeamModel.findAll({
         where: {
           connectorId: connector.id,
         },

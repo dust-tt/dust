@@ -1,8 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import {
-  assertNever,
-  PatchDataSourceTableRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -15,14 +10,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: "8mb",
-    },
-  },
-};
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever, PatchDataSourceTableRequestBodySchema } from "@app/types";
 
 export type PatchTableResponseBody = {
   table?: { table_id: string };

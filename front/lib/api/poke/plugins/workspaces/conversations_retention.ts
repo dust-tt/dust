@@ -1,10 +1,9 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateWorkspaceConversationsRetention } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
-export const conversationsRetentionPlugin = createPlugin(
-  {
+export const conversationsRetentionPlugin = createPlugin({
+  manifest: {
     id: "conversations-retention",
     name: "Change Conversations Retention",
     description: "Change how long conversations are retained in the workspace",
@@ -18,7 +17,7 @@ export const conversationsRetentionPlugin = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const retentionDays = args.retentionDays;
 
     if (retentionDays !== -1 && retentionDays < 1) {
@@ -41,5 +40,5 @@ export const conversationsRetentionPlugin = createPlugin(
       display: "text",
       value: `Conversations retention period set to ${retentionDays === -1 ? "unlimited" : `${retentionDays} days`}.`,
     });
-  }
-);
+  },
+});

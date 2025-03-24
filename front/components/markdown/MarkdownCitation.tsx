@@ -4,6 +4,7 @@ import {
   DocumentTextIcon,
   DriveLogo,
   GithubLogo,
+  GongLogo,
   ImageIcon,
   IntercomLogo,
   MicrosoftLogo,
@@ -29,6 +30,7 @@ const CITATION_ICONS = [
   "snowflake",
   "bigquery",
   "salesforce",
+  "gong",
 ] as const;
 
 export type CitationIconType = (typeof CITATION_ICONS)[number];
@@ -50,6 +52,7 @@ export const citationIconMap: Record<
   snowflake: SnowflakeLogo,
   bigquery: BigQueryLogo,
   salesforce: SalesforceLogo,
+  gong: GongLogo,
 };
 
 export interface MarkdownCitation {

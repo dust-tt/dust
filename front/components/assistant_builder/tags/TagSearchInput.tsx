@@ -1,6 +1,7 @@
-import { Button, Chip, SearchInputWithPopover } from "@dust-tt/sparkle";
-import type { DataSourceTag } from "@dust-tt/types";
+import { Chip, cn, SearchInputWithPopover } from "@dust-tt/sparkle";
 import React from "react";
+
+import type { DataSourceTag } from "@app/types";
 
 export interface TagSearchProps {
   searchInputValue: string;
@@ -32,10 +33,7 @@ export const TagSearchInput = ({
         placeholder="Search labels..."
         value={searchInputValue}
         onChange={(value) => setSearchInputValue(value)}
-        open={
-          availableTags.length > 0 ||
-          (searchInputValue.length > 0 && !isLoading)
-        }
+        open={availableTags.length > 0 || searchInputValue.length > 0}
         onOpenChange={(open) => {
           if (!open) {
             setSearchInputValue("");
@@ -43,32 +41,27 @@ export const TagSearchInput = ({
         }}
         isLoading={isLoading}
         disabled={disabled}
-      >
-        <div className="flex flex-col gap-2 pr-4">
-          {availableTags.length > 0 ? (
-            availableTags.map((tag, i) => (
-              <Button
-                key={`${tag.tag}-${i}`}
-                variant="ghost"
-                label={tag.tag}
-                size="sm"
-                className="justify-start"
-                onClick={() => {
-                  onTagAdd(tag);
-                  setSearchInputValue("");
-                }}
-              />
-            ))
-          ) : (
-            <Button
-              variant="ghost"
-              size="sm"
-              label="No results found"
-              disabled
-            />
-          )}
-        </div>
-      </SearchInputWithPopover>
+        noResults="No results found"
+        items={availableTags}
+        onItemSelect={(item) => {
+          onTagAdd(item);
+          setSearchInputValue("");
+        }}
+        renderItem={(item, selected) => (
+          <div
+            className={cn(
+              "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+              selected && "bg-structure-50 dark:bg-structure-50-night"
+            )}
+            onClick={() => {
+              onTagAdd(item);
+              setSearchInputValue("");
+            }}
+          >
+            <span className="text-sm font-semibold">{item.tag}</span>
+          </div>
+        )}
+      ></SearchInputWithPopover>
 
       <div className="flex flex-wrap gap-2">
         {selectedTags.map((tag, i) => (

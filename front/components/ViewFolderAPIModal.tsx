@@ -10,11 +10,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
+
+import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

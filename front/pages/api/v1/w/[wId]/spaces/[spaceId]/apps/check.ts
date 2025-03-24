@@ -1,7 +1,5 @@
 import type { AppsCheckResponseType } from "@dust-tt/client";
 import { AppsCheckRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -13,6 +11,8 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { concurrentExecutor, CoreAPI } from "@app/types";
 
 /**
  * @ignoreswagger

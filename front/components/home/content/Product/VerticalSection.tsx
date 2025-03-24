@@ -10,20 +10,26 @@ import { H2, P } from "@app/components/home/ContentComponents";
 import { CustomerCaroussel } from "@app/pages/home/solutions/customer-support";
 import { DataCaroussel } from "@app/pages/home/solutions/data-analytics";
 import { EngineeringCaroussel } from "@app/pages/home/solutions/engineering";
+import { ITCaroussel } from "@app/pages/home/solutions/it";
 import { KnowledgeCaroussel } from "@app/pages/home/solutions/knowledge";
+import { LegalCaroussel } from "@app/pages/home/solutions/legal";
 import { MarketingCaroussel } from "@app/pages/home/solutions/marketing";
-import { RecruitingCaroussel } from "@app/pages/home/solutions/recruiting-people";
+import { ProductivityCaroussel } from "@app/pages/home/solutions/productivity";
+import { PeopleCaroussel } from "@app/pages/home/solutions/recruiting-people";
 import { SalesCaroussel } from "@app/pages/home/solutions/sales";
 
 export function VerticalSection() {
   const carouselSections = [
-    { title: "Customer Support", component: CustomerCaroussel },
     { title: "Sales", component: SalesCaroussel },
+    { title: "Customer Support", component: CustomerCaroussel },
     { title: "Marketing", component: MarketingCaroussel },
-    { title: "Recruiting", component: RecruitingCaroussel },
     { title: "Engineering", component: EngineeringCaroussel },
-    { title: "Knowledge", component: KnowledgeCaroussel },
     { title: "Data Analytics", component: DataCaroussel },
+    { title: "Knowledge", component: KnowledgeCaroussel },
+    { title: "IT", component: ITCaroussel },
+    { title: "Legal", component: LegalCaroussel },
+    { title: "People", component: PeopleCaroussel },
+    { title: "Productivity", component: ProductivityCaroussel },
   ];
 
   const [api, setApi] = React.useState<any>(null);
@@ -58,8 +64,8 @@ export function VerticalSection() {
     <div className="w-full">
       <Carousel className="w-full" isLooping={true} setApi={setApi}>
         <div>
-          <H2 className="mb-4" from="from-amber-200" to="to-amber-400">
-            Custom AI agents to enhance every function
+          <H2 className="mb-4 text-brand-sky-blue">
+            Custom AI agents for every function
           </H2>
           <P>
             Whether you’re a developer, marketer, or data scientist, Dust helps

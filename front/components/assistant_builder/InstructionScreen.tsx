@@ -9,15 +9,6 @@ import {
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, md5, Ok } from "@dust-tt/types";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -32,9 +23,9 @@ import React, {
   useState,
 } from "react";
 
+import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
 import { AdvancedSettings } from "@app/components/assistant_builder/AdvancedSettings";
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
-import { ParagraphExtension } from "@app/components/text_editor/extensions";
 import {
   plainTextFromTipTapContent,
   tipTapContentFromPlainText,
@@ -42,6 +33,15 @@ import {
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
+import type {
+  APIError,
+  BuilderSuggestionsType,
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { Err, md5, Ok } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 

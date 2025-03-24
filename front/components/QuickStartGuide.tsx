@@ -34,7 +34,7 @@ export function QuickStartGuide() {
             </div>
             <div className="col-span-3 flex flex-col gap-2">
               <h5 className="text-xl font-semibold">
-                👋 Hello <span className="text-success-500">@agents</span>
+                👋 Hello <span className="text-highlight-500">@agents</span>
               </h5>
               <p>
                 In Dust, you have access to{" "}
@@ -71,7 +71,7 @@ export function QuickStartGuide() {
               <p>
                 Raw model agents, without any particular instructions or access
                 to your company knowledge are also available, like{" "}
-                <span className="font-medium text-success-500">@gpt4</span>.
+                <span className="font-medium text-highlight-500">@gpt4</span>.
               </p>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
@@ -116,7 +116,10 @@ export function QuickStartGuide() {
             </div>
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Icon visual={CloudArrowLeftRightIcon} className="text-brand" />
+                <Icon
+                  visual={CloudArrowLeftRightIcon}
+                  className="text-foreground"
+                />
                 <h6 className="font-semibold">Connections</h6>
               </div>
               <p>
@@ -126,14 +129,14 @@ export function QuickStartGuide() {
             </div>
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Icon visual={FolderIcon} className="text-brand" />
+                <Icon visual={FolderIcon} className="text-foreground" />
                 <h6 className="font-semibold">Folders</h6>
               </div>
               <p>Upload files (text, pdf, csv) directly in Dust.</p>
             </div>
             <div className="col-span-2 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Icon visual={GlobeAltIcon} className="text-brand" />
+                <Icon visual={GlobeAltIcon} className="text-foreground" />
                 <h6 className="font-semibold">Websites</h6>
               </div>
               <p>

@@ -11,6 +11,12 @@ import {
   SheetTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import DatasetPicker from "@app/components/app/DatasetPicker";
+import DatasetView from "@app/components/app/DatasetView";
+import { useDataset } from "@app/lib/swr/datasets";
+import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
   BlockType,
@@ -19,13 +25,7 @@ import type {
   SpecificationBlockType,
   SpecificationType,
   WorkspaceType,
-} from "@dust-tt/types";
-import { useState } from "react";
-
-import DatasetPicker from "@app/components/app/DatasetPicker";
-import DatasetView from "@app/components/app/DatasetView";
-import { useDataset } from "@app/lib/swr/datasets";
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
 
 import Block from "./Block";
 

@@ -6,13 +6,13 @@ import {
   DataTable,
   Page,
 } from "@dust-tt/sparkle";
-import type { MembershipInvitationType, WorkspaceType } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import React, { useMemo, useState } from "react";
 
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
+import type { MembershipInvitationType, WorkspaceType } from "@app/types";
 
 type RowData = MembershipInvitationType & {
   onClick: () => void;

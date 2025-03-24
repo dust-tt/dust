@@ -24,23 +24,29 @@ const baseClasses =
 const iconClasses = {
   secondary: {
     idle: cn("s-text-foreground", "dark:s-text-foreground-night"),
-    selected: cn("s-text-action-500", "dark:s-text-action-500-night"),
-    hover: cn("hover:s-text-action-400", "dark:hover:s-text-action-400-night"),
-    active: cn(
-      "active:s-text-action-600",
-      "dark:active:s-text-action-600-night"
+    selected: cn("s-text-highlight-500", "dark:s-text-highlight-500-night"),
+    hover: cn(
+      "hover:s-text-highlight-400",
+      "dark:hover:s-text-highlight-400-night"
     ),
-    disabled: cn("s-text-element-500", "dark:s-text-element-500-night"),
+    active: cn(
+      "active:s-text-highlight-600",
+      "dark:active:s-text-highlight-600-night"
+    ),
+    disabled: cn("s-text-primary-500", "dark:s-text-primary-500-night"),
   },
   tertiary: {
-    idle: cn("s-text-element-600", "dark:s-text-element-600-night"),
-    selected: cn("s-text-action-500", "dark:s-text-action-500-night"),
-    hover: cn("hover:s-text-action-400", "dark:hover:s-text-action-400-night"),
-    active: cn(
-      "active:s-text-action-600",
-      "dark:active:s-text-action-600-night"
+    idle: cn("s-text-primary-600", "dark:s-text-primary-600-night"),
+    selected: cn("s-text-highlight-500", "dark:s-text-highlight-500-night"),
+    hover: cn(
+      "hover:s-text-highlight-400",
+      "dark:hover:s-text-highlight-400-night"
     ),
-    disabled: cn("s-text-element-500", "dark:s-text-element-500-night"),
+    active: cn(
+      "active:s-text-highlight-600",
+      "dark:active:s-text-highlight-600-night"
+    ),
+    disabled: cn("s-text-primary-500", "dark:s-text-primary-500-night"),
   },
 };
 

@@ -13,7 +13,8 @@ use unicode_normalization::UnicodeNormalization;
 use crate::{databases::table::Row, utils};
 
 pub struct UpsertQueueCSVContent {
-    pub upsert_queue_bucket_csv_path: String,
+    pub bucket: String,
+    pub bucket_csv_path: String,
 }
 
 const MAX_TABLE_COLUMNS: usize = 512;
@@ -21,21 +22,14 @@ const MAX_COLUMN_NAME_LENGTH: usize = 1024;
 const MAX_TABLE_ROWS: usize = 500_000;
 
 impl UpsertQueueCSVContent {
-    async fn get_upsert_queue_bucket() -> Result<String> {
-        match std::env::var("DUST_UPSERT_QUEUE_BUCKET") {
-            Ok(bucket) => Ok(bucket),
-            Err(_) => Err(anyhow!("DUST_UPSERT_QUEUE_BUCKET is not set")),
-        }
-    }
-
     pub async fn parse(&self) -> Result<Vec<Row>> {
         let now = utils::now();
-        let bucket = Self::get_upsert_queue_bucket().await?;
-        let path = &self.upsert_queue_bucket_csv_path;
+        let bucket = &self.bucket;
+        let path = &self.bucket_csv_path;
 
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
-        let content = Object::download(&bucket, path).await?;
+        let content = Object::download(bucket, path).await?;
         let rdr = std::io::Cursor::new(content);
 
         // We buffer the reader to make sure we yield the thread while processing.
@@ -223,6 +217,10 @@ impl UpsertQueueCSVContent {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
+    use crate::databases::table_schema::{TableSchema, TableSchemaFieldType};
+
     use super::*;
 
     #[tokio::test]
@@ -317,22 +315,20 @@ BAR,acme";
 
         // Test first row
         assert_eq!(rows[0].row_id, "0");
-        let value = rows[0].value.as_object().unwrap();
-        assert_eq!(value["hellworld"], 1.0);
-        assert_eq!(value["super_fast"], 2.23);
-        assert_eq!(value["c_foo"], 3.0);
-        let date = value["date"].as_object().unwrap();
+        assert_eq!(rows[0].value["hellworld"], 1.0);
+        assert_eq!(rows[0].value["super_fast"], 2.23);
+        assert_eq!(rows[0].value["c_foo"], 3.0);
+        let date = rows[0].value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545612380i64);
         assert_eq!(date["string_value"], "2025-02-14T15:06:52.380Z");
 
         // Test second row
         assert_eq!(rows[1].row_id, "1");
-        let value = rows[1].value.as_object().unwrap();
-        assert_eq!(value["hellworld"], 4.0);
-        assert_eq!(value["super_fast"], "hello world");
-        assert_eq!(value["c_foo"], 6.0);
-        let date = value["date"].as_object().unwrap();
+        assert_eq!(rows[1].value["hellworld"], 4.0);
+        assert_eq!(rows[1].value["super_fast"], "hello world");
+        assert_eq!(rows[1].value["c_foo"], 6.0);
+        let date = rows[1].value["date"].as_object().unwrap();
         assert_eq!(date["type"], "datetime");
         assert_eq!(date["epoch"], 1739545834000i64);
         assert_eq!(date["string_value"], "Fri, 14 Feb 2025 15:10:34 GMT");
@@ -369,8 +365,6 @@ BAR,acme";
         // Test that __dust_id is not inserted.
         let row_0_concatenated_keys = rows[0]
             .value
-            .as_object()
-            .unwrap()
             .keys()
             .into_iter()
             .map(|k| k.to_string())
@@ -412,6 +406,33 @@ BAR,acme";
         assert!(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter)
             .await
             .is_err());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_schema_end_to_end() -> anyhow::Result<()> {
+        let csv = "string,int,float,bool,date\n\
+                   foo,123,0.231,true,2025-02-14T15:06:52.380Z\n\
+                   ,,,,\n\
+                    , , , , \n\
+                    , , ,TRUE , \n\
+                    , , ,FALSE, \n\
+                    , , ,t , \n\
+                   bar,0,23123.0,false,\"Fri, 14 Feb 2025 15:10:34 GMT\"";
+        let (delimiter, rdr) =
+            UpsertQueueCSVContent::find_delimiter(std::io::Cursor::new(csv)).await?;
+        let rows = Arc::new(UpsertQueueCSVContent::csv_to_rows(rdr, delimiter).await?);
+        let schema = TableSchema::from_rows_async(rows).await?;
+
+        assert_eq!(schema.columns()[0].value_type, TableSchemaFieldType::Text);
+        assert_eq!(schema.columns()[1].value_type, TableSchemaFieldType::Int);
+        assert_eq!(schema.columns()[2].value_type, TableSchemaFieldType::Float);
+        assert_eq!(schema.columns()[3].value_type, TableSchemaFieldType::Bool);
+        assert_eq!(
+            schema.columns()[4].value_type,
+            TableSchemaFieldType::DateTime
+        );
 
         Ok(())
     }

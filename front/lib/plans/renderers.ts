@@ -1,7 +1,6 @@
-import type { PlanType, SubscriptionType } from "@dust-tt/types";
-
 import type { Subscription } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanType, SubscriptionType } from "@app/types";
 
 // Helper function to render PlanType from PlanAttributes
 export function renderPlanFromModel({
@@ -26,6 +25,7 @@ export function renderPlanFromModel({
         isGithubAllowed: plan.isManagedGithubAllowed,
         isIntercomAllowed: plan.isManagedIntercomAllowed,
         isWebCrawlerAllowed: plan.isManagedWebCrawlerAllowed,
+        isSalesforceAllowed: plan.isManagedSalesforceAllowed,
       },
       dataSources: {
         count: plan.maxDataSourcesCount,

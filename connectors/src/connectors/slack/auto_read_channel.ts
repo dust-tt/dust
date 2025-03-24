@@ -1,18 +1,22 @@
-import { DustAPI } from "@dust-tt/client";
-import type { Result, SlackAutoReadPattern } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 
 import { joinChannel } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
-import { apiConfig } from "@connectors/lib/api/config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import {
-  SlackChannel,
-  SlackConfigurationModel,
-} from "@connectors/lib/models/slack";
+  getSlackChannelSourceUrl,
+  slackChannelInternalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
+import { apiConfig } from "@connectors/lib/api/config";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import { SlackChannel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { SlackAutoReadPattern } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 function findMatchingChannelPatterns(
   remoteChannelName: string,
@@ -29,11 +33,8 @@ export async function autoReadChannel(
   logger: Logger,
   slackChannelId: string
 ): Promise<Result<undefined, Error>> {
-  const slackConfiguration = await SlackConfigurationModel.findOne({
-    where: {
-      slackTeamId: teamId,
-    },
-  });
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByTeamId(teamId);
   if (!slackConfiguration) {
     return new Err(
       new Error(`Slack configuration not found for teamId ${teamId}`)
@@ -72,6 +73,18 @@ export async function autoReadChannel(
       return joinChannelRes;
     }
 
+    await upsertDataSourceFolder({
+      dataSourceConfig: dataSourceConfigFromConnector(connector),
+      folderId: slackChannelInternalIdFromSlackChannelId(slackChannelId),
+      title: `#${remoteChannelName}`,
+      parentId: null,
+      parents: [slackChannelInternalIdFromSlackChannelId(slackChannelId)],
+      mimeType: MIME_TYPES.SLACK.CHANNEL,
+      sourceUrl: getSlackChannelSourceUrl(slackChannelId, slackConfiguration),
+      providerVisibility: remoteChannel.channel?.is_private
+        ? "private"
+        : "public",
+    });
     let channel: SlackChannel | null = null;
     channel = await SlackChannel.findOne({
       where: {

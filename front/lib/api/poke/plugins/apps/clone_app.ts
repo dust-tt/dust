@@ -1,14 +1,11 @@
-import { Err, Ok } from "@dust-tt/types";
-import assert from "assert";
-
 import { cloneAppToWorkspace } from "@app/lib/api/apps";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
-import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { Err, Ok } from "@app/types";
 
-export const cloneAppPlugin = createPlugin(
-  {
+export const cloneAppPlugin = createPlugin({
+  manifest: {
     id: "clone-app",
     name: "Clone App",
     description: "Clone an app to a target workspace and space",
@@ -26,12 +23,9 @@ export const cloneAppPlugin = createPlugin(
       },
     },
   },
-  async (auth, appId, args) => {
-    assert(appId, "appId is required");
-
+  execute: async (auth, app, args) => {
     const { targetSpaceId, targetWorkspaceId } = args;
 
-    const app = await AppResource.fetchById(auth, appId);
     if (!app) {
       return new Err(new Error("App not found"));
     }
@@ -67,5 +61,5 @@ export const cloneAppPlugin = createPlugin(
       display: "text",
       value: `App ${app.name} cloned successfully in workspace ${targetWorkspace.name}`,
     });
-  }
-);
+  },
+});

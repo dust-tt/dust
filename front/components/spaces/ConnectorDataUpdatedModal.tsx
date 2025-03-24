@@ -2,7 +2,6 @@ import {
   Button,
   ContentMessage,
   Hoverable,
-  Icon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -10,9 +9,9 @@ import {
   SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider } from "@dust-tt/types";
 
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
@@ -37,17 +36,13 @@ export const ConnectorDataUpdatedModal = ({
         }}
       >
         <SheetHeader hideButton>
-          <SheetTitle />
-          <div className="p-1 text-xl font-bold">
-            <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-            <div>Data sync in progress...</div>
-          </div>
+          <SheetTitle icon={SparklesIcon}>Data sync in progress...</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ContentMessage variant="amber">
             <div className="flex flex-col gap-2">
               <p>
-                Once synchronized, {isRemoteDbProvider ? "tables" : "data"} will
+                Once synchronized, {isRemoteDbProvider ? "table" : "data"} will
                 appear under <em>"Connection Admin"</em> and can be added to:
               </p>
               <ul className="ml-6 list-disc">

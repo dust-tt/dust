@@ -1,4 +1,5 @@
 use std::{collections::HashSet, env};
+use tracing::info;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -68,6 +69,7 @@ impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
             name: col.name,
             value_type: col_type,
             possible_values: None,
+            non_filterable: None,
         })
     }
 }
@@ -119,9 +121,7 @@ impl TryFrom<SnowflakeRow> for QueryResult {
             map.insert(name.to_string(), value);
         }
 
-        Ok(QueryResult {
-            value: serde_json::Value::Object(map),
-        })
+        Ok(QueryResult { value: map })
     }
 }
 
@@ -129,7 +129,8 @@ impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
     type Error = anyhow::Error;
 
     fn try_from(result: QueryResult) -> Result<Self> {
-        serde_json::from_value(result.value).map_err(|e| anyhow!("Error deserializing row: {}", e))
+        serde_json::from_value(serde_json::Value::Object(result.value))
+            .map_err(|e| anyhow!("Error deserializing row: {}", e))
     }
 }
 
@@ -223,16 +224,19 @@ impl SnowflakeRemoteDatabase {
         &self,
         session: &SnowflakeSession,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let executor = match session.execute(query).await {
             Ok(executor) => Ok(executor),
-            Err(snowflake_connector_rs::Error::TimedOut) => Err(
-                QueryDatabaseError::ExecutionError("Query execution timed out".to_string()),
-            ),
-            Err(e) => Err(QueryDatabaseError::ExecutionError(format!(
-                "Error executing query: {}",
-                e
-            ))),
+            Err(snowflake_connector_rs::Error::TimedOut) => {
+                Err(QueryDatabaseError::ExecutionError(
+                    "Query execution timed out".to_string(),
+                    Some(query.to_string()),
+                ))
+            }
+            Err(e) => Err(QueryDatabaseError::ExecutionError(
+                format!("Error executing query: {}", e),
+                Some(query.to_string()),
+            )),
         }?;
 
         let mut query_result_rows: usize = 0;
@@ -272,7 +276,7 @@ impl SnowflakeRemoteDatabase {
 
         let schema = TableSchema::empty();
 
-        Ok((all_rows, schema))
+        Ok((all_rows, schema, query.to_string()))
     }
 
     async fn get_query_plan(
@@ -281,7 +285,7 @@ impl SnowflakeRemoteDatabase {
         query: &str,
     ) -> Result<Vec<SnowflakeQueryPlanEntry>, QueryDatabaseError> {
         let plan_query = format!("EXPLAIN {}", query);
-        let (res, _) = self.execute_query(session, &plan_query).await?;
+        let (res, _, _) = self.execute_query(session, &plan_query).await?;
 
         Ok(res
             .into_iter()
@@ -311,10 +315,18 @@ impl SnowflakeRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+            info!(
+                used_forbidden_tables = used_forbidden_tables.join(", "),
+                allowed_tables = allowed_tables.into_iter().collect::<Vec<_>>().join(", "),
+                "Query uses tables that are not allowed",
+            );
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables that are not allowed: {}",
+                    used_forbidden_tables.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         let used_forbidden_operations = plan
@@ -332,10 +344,13 @@ impl SnowflakeRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_operations.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query contains forbidden operations: {}",
-                used_forbidden_operations.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query contains forbidden operations: {}",
+                    used_forbidden_operations.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         Ok(())
@@ -352,7 +367,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let session = self.get_session().await?;
 
         // Authorize the query based on allowed tables, query plan,
@@ -383,7 +398,7 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         results
             .into_iter()
             .zip(opaque_ids.into_iter())
-            .map(|((rows, _), opaque_id)| {
+            .map(|((rows, _, _), opaque_id)| {
                 let raw_columns = match rows.len() {
                     0 => Err(anyhow!("No rows returned for table {}", opaque_id)),
                     _ => Ok(rows),
@@ -392,9 +407,11 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 let columns = raw_columns
                     .into_iter()
                     .map(|row| {
-                        serde_json::from_value::<SnowflakeSchemaColumn>(row.value)
-                            .map_err(|e| anyhow!("Error deserializing row: {}", e))?
-                            .try_into()
+                        serde_json::from_value::<SnowflakeSchemaColumn>(serde_json::Value::Object(
+                            row.value,
+                        ))
+                        .map_err(|e| anyhow!("Error deserializing row: {}", e))?
+                        .try_into()
                     })
                     .collect::<Result<Vec<TableSchemaColumn>>>()
                     .map_err(|e| {

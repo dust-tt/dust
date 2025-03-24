@@ -1,6 +1,3 @@
-import type { CoreAPIDataSource } from "@dust-tt/types";
-import { CoreAPI, dustManagedCredentials } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -9,6 +6,8 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import type { CoreAPIDataSource } from "@app/types";
+import { CoreAPI, dustManagedCredentials } from "@app/types";
 
 export async function createDataSourceProject({
   destRegion,
@@ -41,6 +40,8 @@ export async function createDataSourceProject({
     projectId: dustProject.value.project.project_id.toString(),
     config: sourceRegionCoreDataSource.config,
     credentials: dustManagedCredentials(),
+    // Temporary to unblock migration. Name was not returned by the core API.
+    name: sourceRegionCoreDataSource.name ?? "",
   });
 
   if (dustDataSource.isErr()) {

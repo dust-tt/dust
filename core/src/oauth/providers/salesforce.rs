@@ -3,21 +3,13 @@ use crate::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
         },
+        credential::{Credential, CredentialProvider},
         providers::utils::execute_request,
     },
     utils,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use lazy_static::lazy_static;
-use serde_json::json;
-use std::env;
-
-lazy_static! {
-    static ref OAUTH_SALESFORCE_CLIENT_ID: String = env::var("OAUTH_SALESFORCE_CLIENT_ID").unwrap();
-    static ref OAUTH_SALESFORCE_CLIENT_SECRET: String =
-        env::var("OAUTH_SALESFORCE_CLIENT_SECRET").unwrap();
-}
 
 pub struct SalesforceConnectionProvider {}
 
@@ -25,11 +17,42 @@ impl SalesforceConnectionProvider {
     pub fn new() -> Self {
         SalesforceConnectionProvider {}
     }
-    fn get_instance_url(connection: &Connection) -> Result<String> {
-        match connection.metadata()["instance_url"].as_str() {
+
+    pub fn get_instance_url(metadata: &serde_json::Value) -> Result<String> {
+        match metadata["instance_url"].as_str() {
             Some(url) => Ok(url.to_string()),
             None => Err(anyhow!("Salesforce instance URL is missing")),
         }
+    }
+
+    /// Gets the Salesforce credentials (client_id and client_secret) from the related credential
+    pub async fn get_credentials(credentials: Option<Credential>) -> Result<(String, String)> {
+        let credentials =
+            credentials.ok_or_else(|| anyhow!("Missing credentials for Salesforce connection"))?;
+
+        let content = credentials.unseal_encrypted_content()?;
+        let provider = credentials.provider();
+
+        // Fetch credential
+        if provider != CredentialProvider::Salesforce {
+            return Err(anyhow!(
+                "Invalid credential provider: {:?}, expected Salesforce",
+                provider
+            ));
+        }
+
+        // Extract client ID and secret
+        let client_id = content
+            .get("client_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_id in Salesforce credential"))?;
+
+        let client_secret = content
+            .get("client_secret")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_secret in Salesforce credential"))?;
+
+        Ok((client_id.to_string(), client_secret.to_string()))
     }
 }
 
@@ -42,28 +65,33 @@ impl Provider for SalesforceConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let instance_url = Self::get_instance_url(connection)?;
+        let instance_url = Self::get_instance_url(&connection.metadata())?;
 
         let code_verifier = connection.metadata()["code_verifier"]
             .as_str()
             .ok_or_else(|| anyhow!("Missing `code_verifier` in Salesforce connection"))?;
 
-        let body = json!({
-            "grant_type": "authorization_code",
-            "client_id": *OAUTH_SALESFORCE_CLIENT_ID,
-            "client_secret": *OAUTH_SALESFORCE_CLIENT_SECRET,
-            "code": code,
-            "redirect_uri": redirect_uri,
-            "code_verifier": code_verifier,
-        });
+        // Get Salesforce client_id and client_secret using the helper
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let req = reqwest::Client::new()
+        // Use a HashMap instead of json! for form data
+        let mut form_data = std::collections::HashMap::new();
+        form_data.insert("grant_type", "authorization_code");
+        form_data.insert("client_id", &client_id);
+        form_data.insert("client_secret", &client_secret);
+        form_data.insert("code", code);
+        form_data.insert("redirect_uri", redirect_uri);
+        form_data.insert("code_verifier", code_verifier);
+
+        let req = self
+            .reqwest_client()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&body);
+            .form(&form_data);
 
         let raw_json = execute_request(ConnectionProvider::Salesforce, req)
             .await
@@ -88,23 +116,30 @@ impl Provider for SalesforceConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
-        let instance_url = Self::get_instance_url(connection)?;
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
+        let instance_url = Self::get_instance_url(&connection.metadata())?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Salesforce connection"))?;
 
-        let body = json!({
-            "grant_type": "refresh_token",
-            "client_id": *OAUTH_SALESFORCE_CLIENT_ID,
-            "client_secret": *OAUTH_SALESFORCE_CLIENT_SECRET,
-            "refresh_token": refresh_token,
-        });
+        let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let req = reqwest::Client::new()
+        // Use a HashMap instead of json! for form data
+        let mut form_data = std::collections::HashMap::new();
+        form_data.insert("grant_type", "refresh_token");
+        form_data.insert("client_id", &client_id);
+        form_data.insert("client_secret", &client_secret);
+        form_data.insert("refresh_token", &refresh_token);
+
+        let req = self
+            .reqwest_client()
             .post(format!("{}/services/oauth2/token", instance_url))
             .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&body);
+            .form(&form_data);
 
         let raw_json = execute_request(ConnectionProvider::Salesforce, req)
             .await

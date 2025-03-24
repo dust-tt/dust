@@ -43,7 +43,7 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
     <Page.Vertical gap="xs">
       <Icon
         visual={icon}
-        className="s-text-primary-400 dark:s-text-primary-400-night"
+        className="s-text-primary-400 dark:s-text-primary-500"
         size="lg"
       />
       <Page.H variant="h3">{title}</Page.H>
@@ -101,7 +101,7 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
       className={classNames(
         PsizeClasses[size],
         variant === "secondary"
-          ? "s-text-element-700 dark:s-text-element-600-night"
+          ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
           : "s-text-foreground dark:s-text-foreground-night"
       )}
     >

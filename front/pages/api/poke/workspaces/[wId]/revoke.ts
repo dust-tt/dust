@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -8,6 +6,8 @@ import { getUserForWorkspace } from "@app/lib/api/user";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type RevokeUserResponseBody = {
   success: true;
@@ -72,6 +72,15 @@ async function handler(
             });
           case "already_revoked":
             // Should not happen, but we ignore.
+            break;
+          case "invalid_end_at":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "invalid_request_error",
+                message: "Can't revoke membership before it has started.",
+              },
+            });
             break;
           default:
             assertNever(revokeResult.error.type);

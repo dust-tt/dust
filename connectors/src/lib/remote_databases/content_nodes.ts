@@ -2,7 +2,7 @@ import type {
   ConnectorPermission,
   ContentNode,
   MIME_TYPES,
-} from "@dust-tt/types";
+} from "@connectors/types";
 
 /**
  * 3 types of nodes in a remote database content tree:
@@ -32,7 +32,10 @@ export const getContentNodeTypeFromInternalId = (
 export const getContentNodeFromInternalId = (
   internalId: string,
   permission: ConnectorPermission = "none",
-  mimeTypes: typeof MIME_TYPES.BIGQUERY | typeof MIME_TYPES.SNOWFLAKE
+  mimeTypes:
+    | typeof MIME_TYPES.BIGQUERY
+    | typeof MIME_TYPES.SNOWFLAKE
+    | typeof MIME_TYPES.SALESFORCE
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
   const [databaseName, schemaName, tableName] = internalId.split(".");
@@ -41,7 +44,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: databaseName as string,
       parentInternalId: null,
-      type: "Folder",
+      type: "folder",
       title: databaseName as string,
       sourceUrl: null,
       expandable: true,
@@ -55,7 +58,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: `${databaseName}.${schemaName}`,
       parentInternalId: databaseName as string,
-      type: "Folder",
+      type: "folder",
       title: schemaName as string,
       sourceUrl: null,
       expandable: true,
@@ -69,7 +72,7 @@ export const getContentNodeFromInternalId = (
     return {
       internalId: `${databaseName}.${schemaName}.${tableName}`,
       parentInternalId: `${databaseName}.${schemaName}`,
-      type: "Table",
+      type: "table",
       title: tableName as string,
       sourceUrl: null,
       expandable: false,

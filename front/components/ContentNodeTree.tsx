@@ -1,3 +1,4 @@
+import type { NotificationType } from "@dust-tt/sparkle";
 import {
   BracesIcon,
   Button,
@@ -7,20 +8,33 @@ import {
   SearchInput,
   Tooltip,
   Tree,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, ContentNode } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
-  node: ContentNode
-) =>
-  Object.entries(selection).reduce((acc, [k, v]) => {
-    const shouldUnselect = v.parents.includes(node.internalId);
+  node: ContentNode,
+  sendNotification: (notification: NotificationType) => void
+) => {
+  if (Object.entries(selection).some(([, v]) => v.parents === null)) {
+    sendNotification({
+      type: "error",
+      title: "Deselecting partial selection unavailable.",
+      description:
+        "Please deselect manually each node you want to unselect. This is due to nodes not being fully synchronized yet",
+    });
+    return selection;
+  }
+
+  return Object.entries(selection).reduce((acc, [k, v]) => {
+    // we checked above all parents were not null
+    const shouldUnselect = v.parents?.includes(node.internalId);
     return {
       ...acc,
       [k]: {
@@ -30,17 +44,20 @@ const unselectedChildren = (
       },
     };
   }, {});
+};
 
 export type UseResourcesHook = (parentId: string | null) => {
   resources: ContentNode[];
+  totalResourceCount?: number; // This count can be higher than resources.length if the call is paginated.
   isResourcesLoading: boolean;
   isResourcesError: boolean;
+  isResourcesTruncated?: boolean;
   resourcesError?: APIError | null;
 };
 
-export type ContentNodeTreeItemStatus = {
+export type ContentNodeTreeItemStatus<T extends ContentNode = ContentNode> = {
   isSelected: boolean;
-  node: ContentNode;
+  node: T;
   parents: string[];
 };
 
@@ -55,6 +72,7 @@ type ContextType = {
   showExpand?: boolean;
   useResourcesHook: UseResourcesHook;
   emptyComponent: ReactNode;
+  defaultExpandedIds?: string[];
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -88,7 +106,7 @@ const useContentNodeTreeContext = () => {
 interface ContentNodeTreeChildrenProps {
   depth: number;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
@@ -97,7 +115,7 @@ interface ContentNodeTreeChildrenProps {
 function ContentNodeTreeChildren({
   depth,
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   parentId,
   parentIds,
   parentIsSelected,
@@ -105,20 +123,32 @@ function ContentNodeTreeChildren({
   const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
     useContentNodeTreeContext();
 
-  const [search, setSearch] = useState("");
-  // This is to control when to dislpay the "Select All" vs "unselect All" button.
+  const sendNotification = useSendNotification();
+  const [filter, setFilter] = useState("");
+  // This is to control when to display the "Select All" vs "unselect All" button.
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
 
-  const { useResourcesHook, emptyComponent } = useContentNodeTreeContext();
+  const { useResourcesHook, emptyComponent, defaultExpandedIds } =
+    useContentNodeTreeContext();
 
-  const { resources, isResourcesLoading, isResourcesError, resourcesError } =
-    useResourcesHook(parentId);
+  const {
+    resources,
+    isResourcesLoading,
+    isResourcesError,
+    resourcesError,
+    isResourcesTruncated,
+    totalResourceCount,
+  } = useResourcesHook(parentId);
 
   const filteredNodes = resources.filter(
-    (n) => search.trim().length === 0 || n.title.includes(search)
+    (n) => filter.trim().length === 0 || n.title.includes(filter)
   );
+  // The count below does not take into account the search, it's: total number of nodes - number of nodes displayed.
+  const hiddenNodesCount = totalResourceCount
+    ? Math.max(0, totalResourceCount - filteredNodes.length)
+    : 0;
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -176,6 +206,7 @@ function ContentNodeTreeChildren({
         return (
           <Tree.Item
             key={n.internalId}
+            id={`tree-node-${n.internalId}`}
             type={
               showExpand === false ? "item" : n.expandable ? "node" : "leaf"
             }
@@ -187,6 +218,9 @@ function ContentNodeTreeChildren({
             }
             visual={getVisualForContentNode(n)}
             className={`whitespace-nowrap tree-depth-${depth}`}
+            defaultCollapsed={
+              !defaultExpandedIds || !defaultExpandedIds.includes(n.internalId)
+            }
             checkbox={
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
@@ -196,9 +230,9 @@ function ContentNodeTreeChildren({
                     onCheckedChange: (v) => {
                       if (setSelectedNodes) {
                         if (checkedState === "partial") {
-                          // Handle clicking on partial : unselect all selected children
+                          // Handle clicking on partial: unselect all selected children
                           setSelectedNodes((prev) =>
-                            unselectedChildren(prev, n)
+                            unselectedChildren(prev, n, sendNotification)
                           );
                         } else {
                           setSelectedNodes((prev) => ({
@@ -249,16 +283,16 @@ function ContentNodeTreeChildren({
                     size="xs"
                     icon={BracesIcon}
                     onClick={() => {
-                      if (n.type === "Document") {
+                      if (n.type === "document") {
                         onDocumentViewClick(n.internalId);
                       }
                     }}
                     className={classNames(
-                      n.type === "Document"
+                      n.type === "document"
                         ? ""
                         : "pointer-events-none opacity-0"
                     )}
-                    disabled={n.type !== "Document"}
+                    disabled={n.type !== "document"}
                     variant="outline"
                   />
                 )}
@@ -277,27 +311,32 @@ function ContentNodeTreeChildren({
           />
         );
       })}
+      {hiddenNodesCount > 0 && (
+        <Tree.Empty
+          label={`${filteredNodes.length > 0 ? "and " : ""}${hiddenNodesCount}${isResourcesTruncated ? "+" : ""} item${hiddenNodesCount > 1 ? "s" : ""}`}
+        />
+      )}
     </Tree>
   );
 
   return (
     <>
-      {isSearchEnabled && setSelectedNodes && (
+      {isTitleFilterEnabled && setSelectedNodes && (
         <>
           <div className="flex w-full flex-row items-center">
             <div className="flex-grow p-1">
               <SearchInput
                 name="search"
-                placeholder="Search..."
-                value={search}
+                placeholder="Search"
+                value={filter}
                 onChange={(v) => {
-                  setSearch(v);
+                  setFilter(v);
                   setSelectAllClicked(false);
                 }}
               />
             </div>
 
-            {search.trim().length > 0 && (
+            {filter.trim().length > 0 && (
               <Button
                 icon={ListCheckIcon}
                 label={selectAllClicked ? "Unselect All" : "Select All"}
@@ -345,7 +384,7 @@ interface ContentNodeTreeProps {
   /**
    * If true, a search bar will be displayed at the top of the tree.
    */
-  isSearchEnabled?: boolean;
+  isTitleFilterEnabled?: boolean;
   /**
    * Whole tree will be considered selected and disabled.
    */
@@ -377,11 +416,15 @@ interface ContentNodeTreeProps {
    * The component to display when an item is expanded and it has no children.
    */
   emptyComponent?: ReactNode;
+  /**
+   * The ids of the nodes to be expanded by default.
+   */
+  defaultExpandedIds?: string[];
 }
 
 export function ContentNodeTree({
   isRoundedBackground,
-  isSearchEnabled,
+  isTitleFilterEnabled,
   onDocumentViewClick,
   parentIsSelected,
   selectedNodes,
@@ -389,6 +432,7 @@ export function ContentNodeTree({
   showExpand,
   useResourcesHook,
   emptyComponent,
+  defaultExpandedIds,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -399,12 +443,13 @@ export function ContentNodeTree({
         showExpand,
         useResourcesHook,
         emptyComponent,
+        defaultExpandedIds,
       }}
     >
       <ContentNodeTreeChildren
         depth={0}
         isRoundedBackground={isRoundedBackground}
-        isSearchEnabled={isSearchEnabled}
+        isTitleFilterEnabled={isTitleFilterEnabled}
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}

@@ -1,19 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-  WebCrawlerConfigurationType,
-} from "@dust-tt/types";
-import {
-  DepthOptions,
-  Err,
-  isDepthOption,
-  MIME_TYPES,
-  Ok,
-  WEBCRAWLER_MAX_PAGES,
-  WebCrawlerHeaderRedactedValue,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -37,7 +23,20 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config.js";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+  WebCrawlerConfigurationType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  DepthOptions,
+  isDepthOption,
+  MIME_TYPES,
+  WEBCRAWLER_MAX_PAGES,
+  WebCrawlerHeaderRedactedValue,
+} from "@connectors/types";
 
 import {
   launchCrawlWebsiteWorkflow,
@@ -206,14 +205,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             parentInternalId: folder.parentUrl
               ? stableIdForUrl({
                   url: folder.parentUrl,
-                  ressourceType: "Folder",
+                  ressourceType: "folder",
                 })
               : null,
             title: getDisplayNameForFolder(folder),
             sourceUrl: folder.url,
             expandable: true,
             permission: "read",
-            type: "Folder",
+            type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
             mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
           };
@@ -227,20 +226,20 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
               internalId: isFileAndFolder
                 ? stableIdForUrl({
                     url: normalizeFolderUrl(page.url),
-                    ressourceType: "Folder",
+                    ressourceType: "folder",
                   })
                 : page.documentId,
               parentInternalId: page.parentUrl
                 ? stableIdForUrl({
                     url: page.parentUrl,
-                    ressourceType: "Folder",
+                    ressourceType: "folder",
                   })
                 : null,
               title: getDisplayNameForPage(page),
               sourceUrl: page.url,
               expandable: isFileAndFolder ? true : false,
               permission: "read",
-              type: "Document",
+              type: "document",
               lastUpdatedAt: page.updatedAt.getTime(),
               mimeType: "text/html",
             };
@@ -250,128 +249,13 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     );
   }
 
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const nodes: ContentNode[] = [];
-
-    const [folders, pages] = await Promise.all([
-      WebCrawlerFolder.findAll({
-        where: {
-          connectorId: this.connectorId,
-          internalId: internalIds,
-        },
-      }),
-      WebCrawlerPage.findAll({
-        where: {
-          connectorId: this.connectorId,
-          documentId: internalIds,
-        },
-      }),
-    ]);
-
-    folders.forEach((folder) => {
-      nodes.push({
-        internalId: folder.internalId,
-        parentInternalId: folder.parentUrl,
-        title: getDisplayNameForFolder(folder),
-        sourceUrl: folder.url,
-        expandable: true,
-        permission: "read",
-        type: "Folder",
-        lastUpdatedAt: folder.updatedAt.getTime(),
-        mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
-      });
-    });
-    pages.forEach((page) => {
-      nodes.push({
-        internalId: page.documentId,
-        parentInternalId: page.parentUrl,
-        title: getDisplayNameForPage(page),
-        sourceUrl: page.url,
-        expandable: false,
-        permission: "read",
-        type: "Document",
-        lastUpdatedAt: page.updatedAt.getTime(),
-        mimeType: "text/html",
-      });
-    });
-
-    return new Ok(nodes);
-  }
-
   async retrieveContentNodeParents({
     internalId,
   }: {
     internalId: string;
-    memoizationKey?: string;
   }): Promise<Result<string[], Error>> {
-    const parents: string[] = [internalId];
-    let parentUrl: string | null = null;
-
-    // First we get the Page or Folder for which we want to retrieve the parents
-    const page = await WebCrawlerPage.findOne({
-      where: {
-        connectorId: this.connectorId,
-        documentId: internalId,
-      },
-    });
-    if (page && page.parentUrl) {
-      parentUrl = page.parentUrl;
-    } else {
-      const folder = await WebCrawlerFolder.findOne({
-        where: {
-          connectorId: this.connectorId,
-          internalId: internalId,
-        },
-      });
-      if (folder && folder.parentUrl) {
-        parentUrl = folder.parentUrl;
-      }
-    }
-
-    // If the Page or Folder has no parentUrl, we return an empty array
-    if (!parentUrl) {
-      return new Ok(parents);
-    }
-
-    // Otherwise we loop on the parentUrl to retrieve all the parents
-    const visitedUrls = new Set<string>();
-    while (parentUrl) {
-      const parentFolder: WebCrawlerFolder | null =
-        await WebCrawlerFolder.findOne({
-          where: {
-            connectorId: this.connectorId,
-            url: parentUrl,
-          },
-        });
-
-      if (!parentFolder) {
-        parentUrl = null;
-        continue;
-      }
-
-      if (visitedUrls.has(parentFolder.url)) {
-        logger.error(
-          {
-            connectorId: this.connectorId,
-            internalId,
-            parents,
-          },
-          "Found a cycle in the parents tree"
-        );
-        parentUrl = null;
-        continue;
-      }
-      parents.push(parentFolder.internalId);
-      visitedUrls.add(parentFolder.url);
-      parentUrl = parentFolder.parentUrl;
-    }
-
-    return new Ok(parents);
+    // This isn't used for webcrawler.
+    return new Ok([internalId]);
   }
 
   async pause(): Promise<Result<undefined, Error>> {

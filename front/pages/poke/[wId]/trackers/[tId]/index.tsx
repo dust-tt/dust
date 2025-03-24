@@ -1,13 +1,14 @@
 import { ContextItem, Page, Spinner, TextArea } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react-markdown/lib/react-markdown";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeTracker } from "@app/poke/swr/trackers";
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -32,6 +33,7 @@ export default function TrackerDetailPage({
   owner,
   trackerId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { isDark } = useTheme();
   const { data, isLoading, isError } = usePokeTracker({
     owner,
     tId: trackerId,
@@ -46,7 +48,7 @@ export default function TrackerDetailPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
       <Page.Vertical align="stretch">
         <ContextItem.List>
           <ContextItem title={`${data.name} (${data.sId})`} visual={<></>}>
@@ -62,7 +64,11 @@ export default function TrackerDetailPage({
                 </div>
                 <div className="ml-4 pt-2 text-sm text-element-700">
                   <div className="font-bold">Raw Data</div>
-                  <JsonViewer value={data} defaultInspectDepth={0} />
+                  <JsonViewer
+                    theme={isDark ? "dark" : "light"}
+                    value={data}
+                    defaultInspectDepth={0}
+                  />
                 </div>
               </div>
             </ContextItem.Description>
@@ -73,6 +79,9 @@ export default function TrackerDetailPage({
   );
 }
 
-TrackerDetailPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+TrackerDetailPage.getLayout = (
+  page: ReactElement,
+  { owner, trackerId }: { owner: WorkspaceType; trackerId: string }
+) => {
+  return <PokeLayout title={`${owner.name} - ${trackerId}`}>{page}</PokeLayout>;
 };

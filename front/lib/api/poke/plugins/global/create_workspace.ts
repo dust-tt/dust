@@ -1,5 +1,3 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { config } from "@app/lib/api/regions/config";
@@ -7,9 +5,10 @@ import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
-export const createWorkspacePlugin = createPlugin(
-  {
+export const createWorkspacePlugin = createPlugin({
+  manifest: {
     id: "create-workspace",
     name: "Create Workspace",
     description: `Create a new workspace in ${getRegionDisplay(config.getCurrentRegion())}.`,
@@ -37,7 +36,7 @@ export const createWorkspacePlugin = createPlugin(
       },
     },
   },
-  async (auth, _, args) => {
+  execute: async (auth, _, args) => {
     const { enableAutoJoin = false } = args;
 
     const email = args.email.trim();
@@ -69,7 +68,7 @@ export const createWorkspacePlugin = createPlugin(
     const invitationRes = await handleMembershipInvitations(newWorkspaceAuth, {
       owner: newWorkspaceAuth.getNonNullableWorkspace(),
       // Dust admin user who invited the new user.
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       subscription,
       invitationRequests: [
         {
@@ -92,5 +91,5 @@ export const createWorkspacePlugin = createPlugin(
       display: "text",
       value: `Workspace created (id: ${workspace.sId}) and invitation sent to ${result.email}.`,
     });
-  }
-);
+  },
+});

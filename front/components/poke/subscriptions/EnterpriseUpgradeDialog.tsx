@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -8,14 +9,11 @@ import {
   DialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { EnterpriseUpgradeFormType, WorkspaceType } from "@dust-tt/types";
-import { EnterpriseUpgradeFormSchema, removeNulls } from "@dust-tt/types";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { PokeForm } from "@app/components/poke/shadcn/ui/form";
 import {
   InputField,
@@ -23,6 +21,8 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
 import { usePokePlans } from "@app/lib/swr/poke";
+import type { EnterpriseUpgradeFormType, WorkspaceType } from "@app/types";
+import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
 
 export default function EnterpriseUpgradeDialog({
   owner,
@@ -97,7 +97,7 @@ export default function EnterpriseUpgradeDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <PokeButton variant="outline">🏢 Upgrade to Enterprise</PokeButton>
+        <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
       <DialogContent className="bg-structure-50 sm:max-w-[600px]">
         <DialogHeader>
@@ -136,12 +136,7 @@ export default function EnterpriseUpgradeDialog({
                 </div>
               </div>
               <DialogFooter>
-                <PokeButton
-                  type="submit"
-                  className="border-warning-600 bg-warning-500 text-white"
-                >
-                  Upgrade
-                </PokeButton>
+                <Button type="submit" variant="warning" label="Upgrade" />
               </DialogFooter>
             </form>
           </PokeForm>

@@ -1,10 +1,9 @@
-import type { Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 export async function garbageCollectGoogleDriveDocument(
   dataSource: DataSourceResource,
@@ -36,8 +35,8 @@ export async function garbageCollectGoogleDriveDocument(
   return new Ok(undefined);
 }
 
-export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
-  {
+export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
+  manifest: {
     id: "garbage-collect-google-drive-document",
     name: "GC Google Drive Document",
     description: "Garbage collect Google Drive document.",
@@ -50,20 +49,16 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
+  isApplicableTo: (auth, resource) => {
+    if (!resource) {
+      return false;
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    return resource.connectorProvider === "google_drive";
+  },
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
-    }
-
-    if (dataSource.connectorProvider !== "google_drive") {
-      return new Err(
-        new Error("This Plugin only works with Google Drive data sources.")
-      );
     }
 
     const { connectorId } = dataSource;
@@ -84,5 +79,5 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin(
       display: "text",
       value: `Document ${documentId} garbage collected successfully.`,
     });
-  }
-);
+  },
+});

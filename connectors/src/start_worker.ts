@@ -1,13 +1,15 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { setupGlobalErrorHandler } from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
+import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
+import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
 import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/worker";
 import { runWebCrawlerWorker } from "@connectors/connectors/webcrawler/temporal/worker";
+import { setupGlobalErrorHandler } from "@connectors/types";
 
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
@@ -38,18 +40,14 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   snowflake: runSnowflakeWorker,
   zendesk: runZendeskWorkers,
   bigquery: runBigQueryWorker,
-  // TODO(salesforce): implement this
-  salesforce: () => Promise.resolve(),
+  salesforce: runSalesforceWorker,
+  gong: runGongWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];
 
 async function runWorkers(workers: WorkerType[]) {
   for (const worker of workers) {
-    // TODO(salesforce): implement this
-    if (worker === "salesforce") {
-      continue;
-    }
     workerFunctions[worker]().catch((err) =>
       logger.error(errorFromAny(err), `Error running ${worker} worker.`)
     );

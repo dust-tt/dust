@@ -1,6 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import type { SnowflakeCredentials } from "@dust-tt/types";
-import { Err, EXCLUDE_DATABASES, EXCLUDE_SCHEMAS, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -18,6 +17,9 @@ import {
   remoteDBSchemaCodec,
   remoteDBTableCodec,
 } from "@connectors/lib/remote_databases/utils";
+import logger from "@connectors/logger/logger";
+import type { SnowflakeCredentials } from "@connectors/types";
+import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -169,7 +171,8 @@ export const fetchDatabases = async ({
 };
 
 /**
- * Fetch the tables available in the Snowflake account.
+ * Fetch the tables available in the Snowflake account. `fromDatabase` is required because there is
+ * no guarantee to get all schemas otherwise.
  */
 export const fetchSchemas = async ({
   credentials,
@@ -177,12 +180,10 @@ export const fetchSchemas = async ({
   connection,
 }: {
   credentials: SnowflakeCredentials;
-  fromDatabase?: string;
+  fromDatabase: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBSchema>, Error>> => {
-  const query = fromDatabase
-    ? `SHOW SCHEMAS IN DATABASE ${fromDatabase}`
-    : "SHOW SCHEMAS";
+  const query = `SHOW SCHEMAS IN DATABASE ${fromDatabase}`;
   return _fetchRows<RemoteDBSchema>({
     credentials,
     query,
@@ -196,16 +197,22 @@ export const fetchSchemas = async ({
  */
 export const fetchTables = async ({
   credentials,
+  fromDatabase,
   fromSchema,
   connection,
 }: {
   credentials: SnowflakeCredentials;
+  fromDatabase?: string;
   fromSchema?: string;
   connection?: Connection;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
+  // We fetch the tables in the schema provided if defined, otherwise in the database provided if
+  // defined, otherwise globally.
   const query = fromSchema
     ? `SHOW TABLES IN SCHEMA ${fromSchema}`
-    : "SHOW TABLES";
+    : fromDatabase
+      ? `SHOW TABLES IN DATABASE ${fromDatabase}`
+      : "SHOW TABLES";
 
   return _fetchRows<RemoteDBTable>({
     credentials,
@@ -215,34 +222,73 @@ export const fetchTables = async ({
   });
 };
 
-export const fetchTree = async ({
-  credentials,
-  connection,
-}: {
-  credentials: SnowflakeCredentials;
-  connection: Connection;
-}): Promise<Result<RemoteDBTree, Error>> => {
+export const fetchTree = async (
+  {
+    credentials,
+    connection,
+  }: {
+    credentials: SnowflakeCredentials;
+    connection: Connection;
+  },
+  loggerArgs: { [key: string]: string | number }
+): Promise<Result<RemoteDBTree, Error>> => {
+  const localLogger = logger.child(loggerArgs);
+
   const databasesRes = await fetchDatabases({ credentials, connection });
   if (databasesRes.isErr()) {
     return databasesRes;
   }
+  localLogger.info(
+    {
+      databasesCount: databasesRes.value.length,
+    },
+    "Found databases in Snowflake"
+  );
+
   const databases = databasesRes.value.filter(
     (db) => !EXCLUDE_DATABASES.includes(db.name)
   );
 
-  const schemasRes = await fetchSchemas({ credentials, connection });
-  if (schemasRes.isErr()) {
-    return schemasRes;
+  const allSchemas: RemoteDBSchema[] = [];
+  const allTables: RemoteDBTable[] = [];
+
+  for (const db of databases) {
+    const schemasRes = await fetchSchemas({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (schemasRes.isErr()) {
+      return schemasRes;
+    }
+    allSchemas.push(...schemasRes.value);
+
+    const tablesRes = await fetchTables({
+      credentials,
+      fromDatabase: db.name,
+      connection,
+    });
+    if (tablesRes.isErr()) {
+      return tablesRes;
+    }
+    allTables.push(...tablesRes.value);
   }
-  const schemas = schemasRes.value.filter(
-    (s) => !EXCLUDE_SCHEMAS.includes(s.name)
+
+  const schemas = allSchemas.filter((s) => !EXCLUDE_SCHEMAS.includes(s.name));
+  localLogger.info(
+    {
+      schemasCount: schemas.length,
+    },
+    "Found schemas in Snowflake"
   );
 
-  const tablesRes = await fetchTables({ credentials, connection });
-  if (tablesRes.isErr()) {
-    return tablesRes;
-  }
-  const tables = tablesRes.value;
+  const tables = allTables;
+  localLogger.info(
+    {
+      tablesCount: tables.length,
+    },
+    "Found tables in Snowflake"
+  );
 
   const tree = {
     databases: databases.map((db) => ({
@@ -272,13 +318,14 @@ export async function isConnectionReadonly({
   connection: Connection;
 }): Promise<Result<void, TestConnectionError>> {
   // Check current role and all inherited roles
-  return _checkRoleGrants(credentials, connection, credentials.role);
+  return _checkRoleGrants(credentials, connection, credentials.role, false);
 }
 
 async function _checkRoleGrants(
   credentials: SnowflakeCredentials,
   connection: Connection,
   roleName: string,
+  isDbRole: boolean,
   checkedRoles: Set<string> = new Set()
 ): Promise<Result<void, TestConnectionError>> {
   // Prevent infinite recursion with cycles in role hierarchy
@@ -290,7 +337,7 @@ async function _checkRoleGrants(
   // Check current grants
   const currentGrantsRes = await _fetchRows<SnowflakeGrant>({
     credentials,
-    query: `SHOW GRANTS TO ROLE ${roleName}`,
+    query: `SHOW GRANTS TO ${isDbRole ? "DATABASE ROLE" : "ROLE"} ${roleName}`,
     codec: snowflakeGrantCodec,
     connection,
   });
@@ -300,17 +347,22 @@ async function _checkRoleGrants(
     );
   }
 
-  // Check future grants
-  const futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
-    credentials,
-    query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
-    codec: snowflakeFutureGrantCodec,
-    connection,
-  });
-  if (futureGrantsRes.isErr()) {
-    return new Err(
-      new TestConnectionError("UNKNOWN", futureGrantsRes.error.message)
-    );
+  let futureGrantsRes: Result<Array<SnowflakeFutureGrant>, Error>;
+  if (!isDbRole) {
+    // Check future grants
+    futureGrantsRes = await _fetchRows<SnowflakeFutureGrant>({
+      credentials,
+      query: `SHOW FUTURE GRANTS TO ROLE ${roleName}`,
+      codec: snowflakeFutureGrantCodec,
+      connection,
+    });
+    if (futureGrantsRes.isErr()) {
+      return new Err(
+        new TestConnectionError("UNKNOWN", futureGrantsRes.error.message)
+      );
+    }
+  } else {
+    futureGrantsRes = new Ok([]);
   }
 
   // Validate all grants (current and future)
@@ -360,7 +412,7 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (grantOn === "ROLE") {
+    } else if (["ROLE", "DATABASE_ROLE"].includes(grantOn)) {
       // For roles, allow USAGE (role inheritance) but recursively check the parent role
       if (g.privilege !== "USAGE") {
         return new Err(
@@ -375,6 +427,7 @@ async function _checkRoleGrants(
         credentials,
         connection,
         g.name,
+        grantOn === "DATABASE_ROLE",
         checkedRoles
       );
       if (parentRoleCheck.isErr()) {

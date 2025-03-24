@@ -1,21 +1,20 @@
+import { isLeft } from "fp-ts/lib/Either";
+
+import config from "@app/lib/api/config";
+import { createPlugin } from "@app/lib/api/poke/types";
+import logger from "@app/logger/logger";
 import {
   concurrentExecutor,
   ConnectorsAPI,
   Err,
   NotionFindUrlResponseSchema,
   Ok,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-
-import config from "@app/lib/api/config";
-import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 
-export const notionUrlSyncPlugin = createPlugin(
-  {
+export const notionUrlSyncPlugin = createPlugin({
+  manifest: {
     id: "notion-url-sync",
     name: "Notion URLs sync/delete",
     description: "Sync or delete a Notion URL to Dust",
@@ -38,18 +37,16 @@ export const notionUrlSyncPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
+  isApplicableTo: (auth, dataSource) => {
+    if (!dataSource) {
+      return false;
     }
 
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+    return dataSource.connectorProvider === "notion";
+  },
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
-    }
-
-    if (dataSource.connectorProvider !== "notion") {
-      return new Err(new Error("Data source is not Notion."));
     }
 
     const { connectorId } = dataSource;
@@ -78,8 +75,9 @@ export const notionUrlSyncPlugin = createPlugin(
     if (operation === "Sync urls") {
       const res = await syncNotionUrls({
         urlsArray,
-        dataSourceId,
+        dataSourceId: dataSource.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
+        method: "sync",
       });
       if (res.some((r) => !r.success)) {
         return new Err(
@@ -96,7 +94,7 @@ export const notionUrlSyncPlugin = createPlugin(
     } else if (operation === "Delete urls") {
       const res = await deleteUrls({
         urlsArray,
-        dataSourceId,
+        dataSourceId: dataSource.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
       if (res.some((r) => !r.success)) {
@@ -113,8 +111,8 @@ export const notionUrlSyncPlugin = createPlugin(
     } else {
       return new Err(new Error("Invalid operation"));
     }
-  }
-);
+  },
+});
 type URLOperationResult = {
   url: string;
   timestamp: number;
@@ -126,10 +124,12 @@ export async function syncNotionUrls({
   urlsArray,
   dataSourceId,
   workspaceId,
+  method,
 }: {
   urlsArray: string[];
   dataSourceId: string;
   workspaceId: string;
+  method: "sync" | "delete";
 }): Promise<URLOperationResult[]> {
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -169,7 +169,28 @@ export async function syncNotionUrls({
       }
 
       const { page, db } = decoded.right;
-      if (page) {
+      if (method === "delete") {
+        const deleteRes = await connectorsAPI.admin({
+          majorCommand: "notion",
+          command: "delete-url",
+          args: {
+            wId: workspaceId,
+            dsId: dataSourceId,
+            url,
+          },
+        });
+
+        if (deleteRes.isErr()) {
+          return {
+            url,
+            timestamp: Date.now(),
+            success: false,
+            error: new Error(deleteRes.error.message),
+          };
+        }
+
+        return { url, timestamp: Date.now(), success: true };
+      } else if (page) {
         const upsertPageRes = await connectorsAPI.admin({
           majorCommand: "notion",
           command: "upsert-page",

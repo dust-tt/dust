@@ -1,20 +1,4 @@
 import type { RunAppResponseType } from "@dust-tt/client";
-import type {
-  BlockType,
-  CredentialsType,
-  ModelIdType,
-  ModelProviderIdType,
-  RunType,
-  TraceType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  CoreAPI,
-  credentialsFromProviders,
-  dustManagedCredentials,
-  rateLimiter,
-} from "@dust-tt/types";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -29,8 +13,24 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Provider } from "@app/lib/resources/storage/models/apps";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  BlockType,
+  CredentialsType,
+  ModelIdType,
+  ModelProviderIdType,
+  RunType,
+  TraceType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  assertNever,
+  CoreAPI,
+  credentialsFromProviders,
+  dustManagedCredentials,
+} from "@app/types";
 
 export const config = {
   api: {

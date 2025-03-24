@@ -1,8 +1,3 @@
-import type {
-  LightAgentConfigurationType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { GetAgentConfigurationsHistoryQuerySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -14,6 +9,11 @@ import {
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  LightAgentConfigurationType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { GetAgentConfigurationsHistoryQuerySchema } from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
   history: LightAgentConfigurationType[];
@@ -38,7 +38,7 @@ async function handler(
   }
 
   // Check that user has access to this agent
-  const assistant = await getAgentConfiguration(auth, aId);
+  const assistant = await getAgentConfiguration(auth, aId, "light");
   if (
     !assistant ||
     (assistant.scope === "private" &&

@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
@@ -10,6 +9,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConfluenceSpace } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MIME_TYPES } from "@connectors/types";
 
 makeScript(
   {

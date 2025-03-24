@@ -1,12 +1,17 @@
-import { Chip, DataTable, SearchInput, Spinner } from "@dust-tt/sparkle";
-import type { TemplateTagCodeType, TemplateVisibility } from "@dust-tt/types";
-import { TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
+import {
+  Button,
+  Chip,
+  DataTable,
+  SearchInput,
+  Spinner,
+} from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import Link from "next/link";
 import React, { useState } from "react";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
+import type { TemplateTagCodeType, TemplateVisibility } from "@app/types";
+import { TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export interface TemplatesDisplayType {
   id: string;
@@ -102,27 +107,24 @@ export function TemplatesDataTable({
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
         {dustRegionSyncEnabled && (
-          <PokeButton
-            aria-label="Pull templates"
+          <Button
             variant="outline"
             size="sm"
             disabled={isPulling}
-            asChild
             onClick={async () => {
               await doPull();
             }}
-          >
-            <Link href="#">{isPulling ? <Spinner /> : "Pull templates"}</Link>
-          </PokeButton>
+            isLoading={isPulling}
+            label={isPulling ? "Pulling..." : "Pull templates"}
+          />
         )}
-        <PokeButton
+        <Button
           aria-label="Create template"
           variant="outline"
           size="sm"
-          asChild
-        >
-          <Link href="/poke/templates/new">Create template</Link>
-        </PokeButton>
+          label="Create template"
+          href="/poke/templates/new"
+        />
       </div>
       <SearchInput
         name="search"

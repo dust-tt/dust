@@ -1,4 +1,3 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import assert from "assert";
 
 import { Authenticator } from "@app/lib/auth";
@@ -8,6 +7,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 async function deleteUnmanagedDataSourceViewsForWorkspace(
   workspace: LightWorkspaceType,
   logger: Logger,

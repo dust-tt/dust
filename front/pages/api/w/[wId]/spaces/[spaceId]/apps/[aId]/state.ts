@@ -1,4 +1,5 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -7,6 +8,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { AppType, WithAPIErrorResponse } from "@app/types";
+
+export const PostStateRequestBodySchema = t.type({
+  specification: t.string,
+  config: t.string,
+  run: t.union([t.string, t.undefined]),
+});
 
 export type PostStateResponseBody = {
   app: AppType;
@@ -52,11 +60,8 @@ async function handler(
 
   switch (req.method) {
     case "POST":
-      if (
-        !req.body ||
-        !(typeof req.body.specification == "string") ||
-        !(typeof req.body.config == "string")
-      ) {
+      const body = PostStateRequestBodySchema.decode(req.body);
+      if (isLeft(body)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -72,23 +77,12 @@ async function handler(
         savedConfig: string;
         savedRun?: string;
       } = {
-        savedSpecification: req.body.specification,
-        savedConfig: req.body.config,
+        savedSpecification: body.right.specification,
+        savedConfig: body.right.config,
       };
 
-      if (req.body.run) {
-        if (typeof req.body.run != "string") {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message:
-                "The request body is invalid, `run` must be a string if provided.",
-            },
-          });
-        }
-
-        updateParams.savedRun = req.body.run;
+      if (body.right.run) {
+        updateParams.savedRun = body.right.run;
       }
 
       await app.updateState(auth, updateParams);

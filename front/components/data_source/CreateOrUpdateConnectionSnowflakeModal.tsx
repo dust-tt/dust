@@ -1,7 +1,7 @@
+import { isConnectorsAPIError } from "@dust-tt/client";
 import {
   BookOpenIcon,
   Button,
-  CloudArrowLeftRightIcon,
   Icon,
   Input,
   Page,
@@ -12,18 +12,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useState } from "react";
+
+import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import type {
   ConnectorProvider,
   ConnectorType,
   DataSourceType,
   SnowflakeCredentials,
   WorkspaceType,
-} from "@dust-tt/types";
-import { isConnectorsAPIError } from "@dust-tt/types";
-import { useState } from "react";
-
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
+} from "@app/types";
 
 type CreateOrUpdateConnectionSnowflakeModalProps = {
   owner: WorkspaceType;
@@ -79,6 +78,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
       warehouse: "",
     });
     _onSuccess(ds);
+    onClose();
   }
 
   const createSnowflakeConnection = async () => {
@@ -317,20 +317,14 @@ export function CreateOrUpdateConnectionSnowflakeModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: isLoading
-              ? "Connecting..."
-              : dataSourceToUpdate
-                ? "Update connection"
-                : "Connect and select tables",
-            icon: CloudArrowLeftRightIcon,
-            onClick: () => {
-              setIsLoading(true);
+            label: isLoading ? "Saving..." : "Save",
+            onClick: (e: React.MouseEvent<HTMLButtonElement>) => {
+              e.preventDefault();
               dataSourceToUpdate
                 ? void updateSnowflakeConnection()
                 : void createSnowflakeConnection();
             },
             disabled: isLoading || !areCredentialsValid(),
-            size: "md",
           }}
         />
       </SheetContent>

@@ -1,10 +1,4 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  ModelId,
-} from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
+import { assertNever } from "@dust-tt/client";
 import type { Client } from "node-zendesk";
 
 import {
@@ -26,6 +20,13 @@ import {
   ZendeskCategoryResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all nodes selected by the admin when setting permissions.
@@ -95,7 +96,7 @@ async function getRootLevelContentNodes(
           ?.toContentNode(connectorId) ?? {
           internalId: getBrandInternalId({ connectorId, brandId: brand.id }),
           parentInternalId: null,
-          type: "Folder",
+          type: "folder",
           title: brand.name || "Brand",
           sourceUrl: brand.brand_url,
           expandable: true,
@@ -152,7 +153,7 @@ async function getBrandChildren(
     ) ?? {
       internalId: getTicketsInternalId({ connectorId: connector.id, brandId }),
       parentInternalId: parentInternalId,
-      type: "Folder",
+      type: "folder",
       title: "Tickets",
       sourceUrl: null,
       expandable: false,
@@ -172,7 +173,7 @@ async function getBrandChildren(
           brandId,
         }),
         parentInternalId: parentInternalId,
-        type: "Folder",
+        type: "folder",
         title: "Help Center",
         sourceUrl: null,
         expandable: true,
@@ -230,7 +231,7 @@ async function getHelpCenterChildren(
             categoryId: category.id,
           }),
           parentInternalId: parentInternalId,
-          type: "Folder",
+          type: "folder",
           title: category.name,
           sourceUrl: category.html_url,
           expandable: false,

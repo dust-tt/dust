@@ -1,10 +1,4 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ConversationError,
-  ConversationType,
-  ConversationWithoutContentType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -19,6 +13,12 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+import type {
+  ConversationError,
+  ConversationType,
+  ConversationWithoutContentType,
+  LightWorkspaceType,
+} from "@app/types";
 
 export function useConversation({
   conversationId,

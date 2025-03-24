@@ -1,5 +1,12 @@
-import { Button, Collapsible, Input, Label, XMarkIcon } from "@dust-tt/sparkle";
-import { WebCrawlerHeaderRedactedValue } from "@dust-tt/types";
+import {
+  Button,
+  CollapsibleComponent,
+  Input,
+  Label,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
+
+import { WebCrawlerHeaderRedactedValue } from "@app/types";
 
 type Header = { key: string; value: string };
 
@@ -31,9 +38,10 @@ export function AdvancedSettingsSection({
   };
 
   return (
-    <Collapsible>
-      <Collapsible.Button label="Advanced settings" variant="secondary" />
-      <Collapsible.Panel>
+    <CollapsibleComponent
+      rootProps={{ defaultOpen: false }}
+      triggerProps={{ label: "Advanced settings", variant: "secondary" }}
+      contentChildren={
         <div className="flex w-full flex-col gap-3">
           <Label>Custom Headers</Label>
           <p>Add custom request headers for the web crawler.</p>
@@ -72,7 +80,7 @@ export function AdvancedSettingsSection({
           </div>
           <Button variant="outline" label="Add Header" onClick={addHeader} />
         </div>
-      </Collapsible.Panel>
-    </Collapsible>
+      }
+    />
   );
 }

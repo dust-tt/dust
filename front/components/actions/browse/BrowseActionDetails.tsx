@@ -6,10 +6,10 @@ import {
   GlobeAltIcon,
   Icon,
 } from "@dust-tt/sparkle";
-import type { BrowseActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import type { BrowseActionType } from "@app/lib/actions/browse";
 
 export function BrowseActionDetails({
   action,

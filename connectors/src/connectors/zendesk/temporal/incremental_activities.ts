@@ -1,9 +1,7 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import {
   deleteTicket,
+  shouldSyncTicket,
   syncTicket,
 } from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
@@ -19,13 +17,16 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -33,7 +34,7 @@ import {
 export async function getZendeskTimestampCursorActivity(
   connectorId: ModelId
 ): Promise<Date> {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -54,7 +55,7 @@ export async function setZendeskTimestampCursorActivity({
   connectorId: ModelId;
   currentSyncDateMs: number;
 }) {
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
@@ -109,6 +110,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
   });
 
   const { articles, hasMore, endTime } = await fetchRecentlyUpdatedArticles({
+    subdomain,
     brandSubdomain,
     accessToken,
     startTime,
@@ -210,6 +212,11 @@ export async function syncZendeskTicketUpdateBatchActivity({
   if (!connector) {
     throw new Error("[Zendesk] Connector not found.");
   }
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -247,7 +254,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
-      } else if (["solved", "closed"].includes(ticket.status)) {
+      } else if (shouldSyncTicket(ticket, configuration)) {
         const comments = await fetchZendeskTicketComments({
           accessToken,
           brandSubdomain,

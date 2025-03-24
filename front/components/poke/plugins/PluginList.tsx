@@ -1,5 +1,4 @@
 import { ScrollArea, Tooltip } from "@dust-tt/sparkle";
-import type { PluginWorkspaceResource } from "@dust-tt/types";
 import React, { useState } from "react";
 
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
@@ -11,6 +10,7 @@ import {
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 interface PluginCardProps {
   onClick: () => void;
@@ -36,15 +36,13 @@ function PluginCard({ onClick, plugin }: PluginCardProps) {
 }
 
 interface PluginListProps {
-  resourceType: string;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 }
 
-export function PluginList({
-  resourceType,
-  workspaceResource,
-}: PluginListProps) {
-  const { plugins } = usePokeListPluginForResourceType({ resourceType });
+export function PluginList({ pluginResourceTarget }: PluginListProps) {
+  const { plugins } = usePokeListPluginForResourceType({
+    pluginResourceTarget,
+  });
   const [selectedPlugin, setSelectedPlugin] = useState<PluginListItem | null>(
     null
   );
@@ -58,8 +56,8 @@ export function PluginList({
   };
 
   return (
-    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4">
+    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-slate-100 dark:bg-slate-100-night">
+      <div className="flex justify-between gap-3 rounded-t-lg bg-slate-300 p-4 dark:bg-slate-300-night">
         <h2 className="text-md font-bold">Plugins :</h2>
       </div>
 
@@ -90,9 +88,9 @@ export function PluginList({
       </ScrollArea>
       {selectedPlugin && (
         <RunPluginDialog
-          plugin={selectedPlugin}
-          workspaceResource={workspaceResource}
           onClose={handleDialogClose}
+          plugin={selectedPlugin}
+          pluginResourceTarget={pluginResourceTarget}
         />
       )}
     </div>

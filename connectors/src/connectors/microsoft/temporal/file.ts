@@ -1,17 +1,13 @@
-import type {
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { cacheWithRedis } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
 import axios from "axios";
 
 import { getClient } from "@connectors/connectors/microsoft";
 import {
   getDriveItemInternalId,
-  getFileDownloadURL,
+  getItem,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
+import { DRIVE_ITEM_EXPANDS_AND_SELECTS } from "@connectors/connectors/microsoft/lib/types";
 import {
   getColumnsFromListItem,
   typeAndPathFromInternalId,
@@ -27,6 +23,7 @@ import {
   handleTextFile,
 } from "@connectors/connectors/shared/file";
 import { filterCustomTags } from "@connectors/connectors/shared/tags";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -39,6 +36,7 @@ import {
 } from "@connectors/lib/data_sources";
 import type { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import type { WithCreationAttributes } from "@connectors/resources/connector/strategy";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
@@ -46,7 +44,9 @@ import {
   MicrosoftNodeResource,
   MicrosoftRootResource,
 } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis } from "@connectors/types";
 
 const PARENT_SYNC_CACHE_TTL_MS = 30 * 60 * 1000;
 
@@ -109,18 +109,37 @@ export async function syncOneFile({
   }
 
   localLogger.info("Syncing file");
+  const client = await getClient(connector.connectionId);
+  const { itemAPIPath } = typeAndPathFromInternalId(documentId);
 
-  const url =
-    "@microsoft.graph.downloadUrl" in file
-      ? file["@microsoft.graph.downloadUrl"]
-      : await getFileDownloadURL(
-          await getClient(connector.connectionId),
-          documentId
-        );
+  let url = file["@microsoft.graph.downloadUrl"];
+  let fields = file.listItem?.fields;
+
+  if (!url || !fields) {
+    if (!url) {
+      statsDClient.increment("microsoft.file.missing_download_url");
+    }
+    if (!fields) {
+      statsDClient.increment("microsoft.file.missing_fields");
+    }
+
+    const item = (await getItem(
+      logger,
+      client,
+      `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+    )) as DriveItem;
+
+    url = item["@microsoft.graph.downloadUrl"];
+    fields = item.listItem?.fields;
+  }
 
   if (!url) {
     localLogger.error("Unexpected missing download URL");
     throw new Error("Unexpected missing download URL");
+  }
+
+  if (!fields) {
+    localLogger.warn("Unexpected missing fields for file");
   }
 
   // If the file is too big to be downloaded, we skip it.
@@ -161,7 +180,8 @@ export async function syncOneFile({
   // Handle custom columns (metadata) potentially set on the file
   const columns = await getColumnsFromListItem(
     file,
-    await getClient(connector.connectionId),
+    fields,
+    client,
     localLogger
   );
 

@@ -4,6 +4,7 @@ use crate::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
+        credential::Credential,
         providers::utils::execute_request,
     },
     utils,
@@ -40,6 +41,7 @@ impl Provider for MicrosoftConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -52,7 +54,8 @@ impl Provider for MicrosoftConnectionProvider {
             "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
@@ -85,7 +88,11 @@ impl Provider for MicrosoftConnectionProvider {
         })
     }
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in Microsoft connection"))?;
@@ -98,7 +105,8 @@ impl Provider for MicrosoftConnectionProvider {
             "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);

@@ -13,20 +13,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewType,
-  SpaceType,
-  SubscriptionType,
-  SupportedModel,
-  TrackerConfigurationStateType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  TRACKER_FREQUENCIES,
-} from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
@@ -43,6 +29,20 @@ import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuild
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
 import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
 import { isEmailValid } from "@app/lib/utils";
+import type {
+  APIError,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewType,
+  SpaceType,
+  SubscriptionType,
+  SupportedModel,
+  TrackerConfigurationStateType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  TRACKER_FREQUENCIES,
+} from "@app/types";
 
 export const TrackerBuilder = ({
   owner,
@@ -373,7 +373,6 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
-            r
           </div>
         </div>
 
@@ -578,7 +577,7 @@ export const TrackerBuilder = ({
                     tracker.maintainedDataSources
                   }
                   allowedSpaces={[globalSpace]}
-                  viewType="documents"
+                  viewType="document"
                   disabled={tracker.status === "inactive"}
                 />
               </div>
@@ -618,7 +617,7 @@ export const TrackerBuilder = ({
                   dataSourceViews={dataSourceViews}
                   initialDataSourceConfigurations={tracker.watchedDataSources}
                   allowedSpaces={[globalSpace]}
-                  viewType="documents"
+                  viewType="document"
                   disabled={tracker.status === "inactive"}
                 />
               </div>

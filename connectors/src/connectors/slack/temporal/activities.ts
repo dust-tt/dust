@@ -1,5 +1,3 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { cacheWithRedis, MIME_TYPES, safeSubstring } from "@dust-tt/types";
 import type {
   CodedError,
   WebAPIPlatformError,
@@ -20,6 +18,7 @@ import { Op, Sequelize } from "sequelize";
 import {
   joinChannel,
   updateSlackChannelInConnectorsDb,
+  updateSlackChannelInCoreDb,
 } from "@connectors/connectors/slack/lib/channels";
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
@@ -34,6 +33,7 @@ import {
 } from "@connectors/connectors/slack/lib/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { cacheGet, cacheSet } from "@connectors/lib/cache";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
@@ -51,7 +51,9 @@ import { heartbeat } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { cacheWithRedis, MIME_TYPES, safeSubstring } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "slack" });
 
@@ -378,6 +380,14 @@ export async function syncChannel(
     nextCursor: allSkip ? undefined : messages.response_metadata?.next_cursor,
     weeksSynced: weeksSynced,
   };
+}
+
+export async function syncChannelMetadata(
+  connectorId: ModelId,
+  channelId: string,
+  timestampsMs: number
+) {
+  await updateSlackChannelInCoreDb(connectorId, channelId, timestampsMs);
 }
 
 export async function getMessagesForChannel(
@@ -1174,7 +1184,7 @@ export async function getChannelsToGarbageCollect(
 export async function deleteChannel(channelId: string, connectorId: ModelId) {
   const maxMessages = 1000;
   let nbDeleted = 0;
-
+  const loggerArgs = { channelId, connectorId };
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Could not find connector ${connectorId}`);
@@ -1192,7 +1202,11 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
     for (const slackMessage of slackMessages) {
       // We delete from the remote datasource first because we would rather double delete remotely
       // than miss one.
-      await deleteDataSourceDocument(dataSourceConfig, slackMessage.documentId);
+      await deleteDataSourceDocument(
+        dataSourceConfig,
+        slackMessage.documentId,
+        loggerArgs
+      );
       nbDeleted++;
 
       if (nbDeleted % 50 === 0) {
@@ -1213,10 +1227,11 @@ export async function deleteChannel(channelId: string, connectorId: ModelId) {
   await deleteDataSourceFolder({
     dataSourceConfig,
     folderId: slackChannelInternalIdFromSlackChannelId(channelId),
+    loggerArgs,
   });
 
   logger.info(
-    { nbDeleted, channelId, connectorId },
+    { nbDeleted, ...loggerArgs },
     "Deleted documents from datasource while garbage collecting."
   );
 }

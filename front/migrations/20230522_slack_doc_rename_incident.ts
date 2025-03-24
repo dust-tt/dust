@@ -1,9 +1,8 @@
-import { dustManagedCredentials } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 async function main() {
   const dataSources = await DataSourceModel.findAll({
@@ -68,6 +67,7 @@ async function main() {
             qdrant_config: null,
           },
           credentials,
+          name: dataSourceName,
         });
 
         if (dustDataSource.isErr()) {

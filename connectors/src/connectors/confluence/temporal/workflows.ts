@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { WorkflowInfo } from "@temporalio/workflow";
 import {
   continueAsNew,
@@ -19,6 +18,7 @@ import {
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
   makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import type { ModelId } from "@connectors/types";
 
 const {
   confluenceGetSpaceBlobActivity,
@@ -28,7 +28,8 @@ const {
   confluenceSaveStartSyncActivity,
   confluenceSaveSuccessSyncActivity,
   confluenceUpdatePagesParentIdsActivity,
-  confluenceCheckAndUpsertPageActivity,
+  confluenceCheckAndUpsertSinglePageActivity,
+  confluenceUpsertLeafPagesActivity,
   confluenceGetActiveChildPageRefsActivity,
   fetchConfluenceSpaceIdsForConnectorActivity,
   confluenceUpsertPageWithFullParentsActivity,
@@ -56,6 +57,8 @@ const {
 // since a Confluence page can have an unbounded number of pages.
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_SIZE_MB = 10;
+
+const MAX_LEAF_PAGES_PER_BATCH = 50;
 
 export async function confluenceSyncWorkflow({
   connectorId,
@@ -242,20 +245,43 @@ interface confluenceSyncTopLevelChildPagesWorkflowInput {
 
 /**
  * This workflow implements a DFS algorithm to synchronize all pages not subject to restrictions.
- * It uses a stack to process pages and their children, with a special handling for pagination:
- * - Regular pages are processed and their children are added to the stack
- * - Cursor elements in the stack represent continuation points for pages with many children
+ * It uses a stack to process pages and their children, with special handling for:
+ *
+ * 1. Pagination:
+ *    - Regular pages are processed and their children are added to the stack
+ *    - Cursor elements in the stack represent continuation points for pages with many children
+ *
+ * 2. Leaf pages optimization:
+ *    - Pages without children are batched together to reduce activity calls
+ *    - Batches are automatically flushed when full or before workflow continuation
+ *
  * This ensures we never store too many pages in the workflow history while maintaining proper
- * traversal.
+ * traversal and optimal performance.
  *
  * The workflow stops importing child pages if a parent page is restricted.
- * Page restriction checks are performed by `confluenceCheckAndUpsertPageActivity`.
+ * Page restriction checks are performed by `confluenceCheckAndUpsertSinglePageActivity`.
  */
 export async function confluenceSyncTopLevelChildPagesWorkflow(
   params: confluenceSyncTopLevelChildPagesWorkflowInput
 ) {
   const { space, topLevelPageRefs, visitedAtMs } = params;
+
+  // Step 1: Setup.
   const stack: StackElement[] = [...topLevelPageRefs];
+  let leafPagesBatch: ConfluencePageRef[] = [];
+
+  // Step 2: Define a helper to "commit" the current batch of leaves.
+  async function flushLeafPagesBatch() {
+    if (leafPagesBatch.length > 0) {
+      await confluenceUpsertLeafPagesActivity({
+        ...params,
+        space,
+        pageRefs: leafPagesBatch,
+        visitedAtMs,
+      });
+      leafPagesBatch = [];
+    }
+  }
 
   while (stack.length > 0) {
     const current = stack.pop();
@@ -266,22 +292,29 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
     // Check if it's a page reference or cursor.
     const isPageRef = "id" in current;
 
-    // If it's a page, process it first.
+    // Step 3: If this is a real page and it has no children, buffer it for batch processing.
+    if (isPageRef && !current.hasChildren) {
+      leafPagesBatch.push(current);
+
+      // Check if we reached the threshold and, if so, flush the batch.
+      if (leafPagesBatch.length >= MAX_LEAF_PAGES_PER_BATCH) {
+        await flushLeafPagesBatch();
+      }
+      continue;
+    }
+
+    // Step 4: For pages that do have children (or a cursor item), process them normally.
     if (isPageRef) {
-      const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
-        ...params,
-        space,
-        pageRef: current,
-        visitedAtMs,
-      });
+      const successfullyUpsert =
+        await confluenceCheckAndUpsertSinglePageActivity({
+          ...params,
+          space,
+          pageRef: current,
+          visitedAtMs,
+        });
       if (!successfullyUpsert) {
         continue;
       }
-    }
-
-    // Only attempt to fetch children if the page has known children.
-    if (isPageRef && !current.hasChildren) {
-      continue;
     }
 
     // Get child pages using either initial empty cursor or saved cursor.
@@ -301,7 +334,7 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
       });
     }
 
-    // Check if we would exceed limits by continuing.
+    // Step 5: Check workflow size constraints, flush any batch, then continue as new if needed.
     const hasReachedWorkflowLimits =
       workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH ||
       workflowInfo().historySize >
@@ -310,12 +343,16 @@ export async function confluenceSyncTopLevelChildPagesWorkflow(
       hasReachedWorkflowLimits &&
       (stack.length > 0 || childPageRefs.length > 0 || nextPageCursor !== null)
     ) {
+      await flushLeafPagesBatch();
+
       await continueAsNew<typeof confluenceSyncTopLevelChildPagesWorkflow>({
         ...params,
         topLevelPageRefs: stack,
       });
     }
   }
+
+  await flushLeafPagesBatch();
 }
 
 async function startConfluenceRemoveSpaceWorkflow(

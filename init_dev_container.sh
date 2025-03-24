@@ -16,4 +16,5 @@ cd -
 ## Initializing Elasticsearch indices
 cd core/
 cargo run --bin elasticsearch_create_index -- --index-name data_sources_nodes --index-version 4 --skip-confirmation
+cargo run --bin elasticsearch_create_index -- --index-name data_sources --index-version 1 --skip-confirmation
 cd -

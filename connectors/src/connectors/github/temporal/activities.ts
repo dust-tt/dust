@@ -1,11 +1,12 @@
-import type { CoreAPIDataSourceDocumentSection, ModelId } from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { isGraphQLNotFound } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
   GithubUser,
@@ -22,6 +23,7 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import type { DiscussionNode } from "@connectors/connectors/github/lib/github_graphql";
 import {
   getCodeRootInternalId,
   getDiscussionInternalId,
@@ -38,11 +40,13 @@ import { newWebhookSignal } from "@connectors/connectors/github/temporal/signals
 import { getCodeSyncWorkflowId } from "@connectors/connectors/github/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   deleteDataSourceDocument,
   deleteDataSourceFolder,
   renderDocumentTitleAndContent,
   renderMarkdownSection,
+  sectionLength,
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
@@ -60,7 +64,12 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import type { Logger } from "@connectors/logger/logger";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
+
+// Only allow documents up to 5mb to be processed.
+const MAX_DOCUMENT_TXT_LEN = 5000000;
 
 export async function githubGetReposResultPageActivity(
   connectorId: ModelId,
@@ -80,7 +89,7 @@ export async function githubGetReposResultPageActivity(
   });
 
   logger.info("Fetching GitHub repos result page.");
-  const pageRes = await getReposPage(connector.connectionId, pageNumber);
+  const pageRes = await getReposPage(connector, pageNumber);
   if (pageRes.isErr()) {
     throw pageRes.error;
   }
@@ -115,7 +124,7 @@ export async function githubGetRepoIssuesResultPageActivity(
 
   logger.info("Fetching GitHub repo issues result page.");
   const page = await getRepoIssuesPage(
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     pageNumber
@@ -137,7 +146,7 @@ async function renderIssue(
   content: CoreAPIDataSourceDocumentSection;
 } | null> {
   const issue = await getIssue(
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     issueNumber,
@@ -174,7 +183,7 @@ async function renderIssue(
     let comments = undefined;
     try {
       comments = await getIssueCommentsPage(
-        connector.connectionId,
+        connector,
         repoName,
         repoLogin,
         issueNumber,
@@ -284,6 +293,11 @@ export async function githubUpsertIssueActivity(
     content: renderedIssue,
   } = renderedIssueResult;
 
+  if (sectionLength(renderedIssue) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Issue is too large to upsert.");
+    return;
+  }
+
   const documentId = getIssueInternalId(repoId.toString(), issueNumber);
   const issueAuthor = renderGithubUser(issue.creator);
   const tags = [
@@ -334,13 +348,26 @@ async function renderDiscussion(
   login: string,
   discussionNumber: number,
   logger: Logger
-) {
-  const discussion = await getDiscussion(
-    connector.connectionId,
+): Promise<
+  Result<
+    {
+      discussion: DiscussionNode;
+      content: CoreAPIDataSourceDocumentSection;
+    },
+    Error
+  >
+> {
+  const discussionRes = await getDiscussion(
+    connector,
     repoName,
     login,
     discussionNumber
   );
+  if (discussionRes.isErr()) {
+    return new Err(discussionRes.error);
+  }
+
+  const discussion = discussionRes.value;
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
@@ -362,7 +389,7 @@ async function renderDiscussion(
     logger.info({ nextCursor }, "Fetching GitHub discussion comments page.");
 
     const { cursor, comments } = await getDiscussionCommentsPage(
-      connector.connectionId,
+      connector,
       repoName,
       login,
       discussionNumber,
@@ -402,7 +429,7 @@ async function renderDiscussion(
 
         const { cursor: childCursor, comments: childComments } =
           await getDiscussionCommentRepliesPage(
-            connector.connectionId,
+            connector,
             comment.id,
             nextChildCursor
           );
@@ -435,10 +462,10 @@ async function renderDiscussion(
     nextCursor = cursor;
   }
 
-  return {
+  return new Ok({
     discussion,
     content,
-  };
+  });
 }
 
 export async function githubUpsertDiscussionActivity(
@@ -463,7 +490,7 @@ export async function githubUpsertDiscussionActivity(
     ...loggerArgs,
   });
   logger.info("Upserting GitHub discussion.");
-  const { discussion, content: renderedDiscussion } = await renderDiscussion(
+  const renderedDiscussionRes = await renderDiscussion(
     dataSourceConfig,
     connector,
     repoName,
@@ -471,6 +498,22 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber,
     logger
   );
+
+  if (renderedDiscussionRes.isErr()) {
+    if (isGraphQLNotFound(renderedDiscussionRes.error)) {
+      logger.warn("Discussion not found. Skipping.");
+      return;
+    }
+    throw renderedDiscussionRes.error;
+  }
+
+  const { discussion, content: renderedDiscussion } =
+    renderedDiscussionRes.value;
+
+  if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
+    logger.info("Discussion is too large to upsert.");
+    return;
+  }
 
   const documentId = getDiscussionInternalId(
     repoId.toString(),
@@ -532,7 +575,7 @@ export async function githubGetRepoDiscussionsResultPageActivity(
   });
   logger.info("Fetching GitHub discussions result page.");
   const { cursor: nextCursor, discussions } = await getRepoDiscussionsPage(
-    connector.connectionId,
+    connector,
     repoName,
     repoLogin,
     cursor
@@ -1012,7 +1055,7 @@ export async function githubCodeSyncActivity({
   Context.current().heartbeat();
   let nbEntries = 0;
   const repoRes = await processRepository({
-    connectionId: connector.connectionId,
+    connector,
     repoLogin,
     repoName,
     repoId,
@@ -1157,6 +1200,13 @@ export async function githubCodeSyncActivity({
           }
           repoUpdatedAt = codeSyncStartedAt;
 
+          const renderedCode = formatCodeContentForUpsert(f.sourceUrl, content);
+
+          if (sectionLength(renderedCode) > MAX_DOCUMENT_TXT_LEN) {
+            logger.info("Code file is too large to upsert.");
+            return;
+          }
+
           const tags = [
             `title:${f.fileName}`,
             `lasUpdatedAt:${codeSyncStartedAt.getTime()}`,
@@ -1171,7 +1221,7 @@ export async function githubCodeSyncActivity({
           await upsertDataSourceDocument({
             dataSourceConfig,
             documentId: f.documentId,
-            documentContent: formatCodeContentForUpsert(f.sourceUrl, content),
+            documentContent: renderedCode,
             documentUrl: f.sourceUrl,
             timestampMs: codeSyncStartedAt.getTime(),
             tags,

@@ -1,4 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getConversationMessageType } from "@app/lib/api/assistant/conversation";
@@ -8,6 +7,7 @@ import { getMessagesEvents } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
@@ -85,8 +85,6 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const eventStream = getMessagesEvents(messageId, lastEventId);
-
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -94,10 +92,30 @@ async function handler(
       });
       res.flushHeaders();
 
+      // Create an AbortController to handle client disconnection
+      const controller = new AbortController();
+      const { signal } = controller;
+
+      // Handle client disconnection
+      req.on("close", () => {
+        controller.abort();
+      });
+
+      const eventStream = getMessagesEvents(auth, {
+        messageId,
+        lastEventId,
+        signal,
+      });
+
       for await (const event of eventStream) {
         res.write(`data: ${JSON.stringify(event)}\n\n`);
         // @ts-expect-error - We need it for streaming but it does not exists in the types.
         res.flush();
+
+        // If the client disconnected, stop the event stream
+        if (signal.aborted) {
+          break;
+        }
       }
       res.write("data: done\n\n");
       // @ts-expect-error - We need it for streaming but it does not exists in the types.

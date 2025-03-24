@@ -6,7 +6,7 @@ import { statsDClient } from "@app/logger/withlogging";
 
 let client: RedisClientType;
 
-type RedisUsageTagsType =
+export type RedisUsageTagsType =
   | "agent_recent_authors"
   | "agent_usage"
   | "assistant_generation"
@@ -18,7 +18,8 @@ type RedisUsageTagsType =
   | "update_authors"
   | "user_message_events"
   | "reasoning_generation"
-  | "notion_url_sync";
+  | "notion_url_sync"
+  | "lock";
 
 export async function getRedisClient({
   origin,

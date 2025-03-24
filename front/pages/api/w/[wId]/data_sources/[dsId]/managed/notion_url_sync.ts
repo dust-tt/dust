@@ -1,8 +1,3 @@
-import type {
-  GetPostNotionSyncResponseBody,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { PostNotionSyncPayloadSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
@@ -14,6 +9,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  GetPostNotionSyncResponseBody,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { PostNotionSyncPayloadSchema } from "@app/types";
 
 const RECENT_URLS_COUNT = 100;
 
@@ -100,16 +100,18 @@ async function handler(
         });
       }
 
-      const { urls } = bodyValidation.right;
+      const { urls, method } = bodyValidation.right;
 
       const syncResults = (
         await syncNotionUrls({
           urlsArray: urls,
           dataSourceId: dsId,
           workspaceId: owner.sId,
+          method,
         })
       ).map((urlResult) => ({
         url: urlResult.url,
+        method,
         timestamp: urlResult.timestamp,
         success: urlResult.success,
         ...(urlResult.error && { error_message: urlResult.error.message }),
@@ -122,6 +124,7 @@ async function handler(
         await redis.zAdd(
           redisKey,
           syncResults.map((urlResult) => ({
+            method,
             score: urlResult.timestamp,
             value: JSON.stringify(urlResult),
           }))

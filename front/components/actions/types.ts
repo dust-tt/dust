@@ -1,16 +1,15 @@
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS } from "@dust-tt/types";
-
 import { BrowseActionDetails } from "@app/components/actions/browse/BrowseActionDetails";
 import { ConversationIncludeFileActionDetails } from "@app/components/actions/conversation/include_file/IncludeFileActionDetails";
 import { DustAppRunActionDetails } from "@app/components/actions/dust_app_run/DustAppRunActionDetails";
-import { GithubCreateIssueActionDetails } from "@app/components/actions/github/GithubCreateIssueActionDetails";
-import { GithubGetPullRequestActionDetails } from "@app/components/actions/github/GithubGetPullRequestActionDetails";
+import { MCPActionDetails } from "@app/components/actions/mcp/MCPActionDetails";
 import { ProcessActionDetails } from "@app/components/actions/process/ProcessActionDetails";
 import { ReasoningActionDetails } from "@app/components/actions/reasoning/ReasoningActionDetails";
 import { RetrievalActionDetails } from "@app/components/actions/retrieval/RetrievalActionDetails";
+import { SearchLabelsActionDetails } from "@app/components/actions/SearchLabelsActionDetails";
 import { TablesQueryActionDetails } from "@app/components/actions/tables_query/TablesQueryActionDetails";
 import { WebsearchActionDetails } from "@app/components/actions/websearch/WebsearchActionDetails";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
+import { ACTION_RUNNING_LABELS } from "@app/types";
 
 export interface ActionDetailsComponentBaseProps<
   T extends AgentActionType = AgentActionType,
@@ -64,17 +63,17 @@ const actionsSpecification: ActionSpecifications = {
     detailsComponent: ConversationIncludeFileActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.conversation_include_file_action,
   },
-  github_get_pull_request_action: {
-    detailsComponent: GithubGetPullRequestActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_get_pull_request_action,
-  },
-  github_create_issue_action: {
-    detailsComponent: GithubCreateIssueActionDetails,
-    runningLabel: ACTION_RUNNING_LABELS.github_create_issue_action,
-  },
   reasoning_action: {
     detailsComponent: ReasoningActionDetails,
     runningLabel: ACTION_RUNNING_LABELS.reasoning_action,
+  },
+  search_labels_action: {
+    detailsComponent: SearchLabelsActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.search_labels_action,
+  },
+  tool_action: {
+    detailsComponent: MCPActionDetails,
+    runningLabel: ACTION_RUNNING_LABELS.tool_action,
   },
 };
 

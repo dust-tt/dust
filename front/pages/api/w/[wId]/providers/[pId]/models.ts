@@ -1,4 +1,10 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { Provider } from "@app/lib/resources/storage/models/apps";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
 import {
   FIREWORKS_DEEPSEEK_R1_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
@@ -13,13 +19,7 @@ import {
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
-} from "@dust-tt/types";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
-import { apiError } from "@app/logger/withlogging";
+} from "@app/types";
 
 export type GetProviderModelsResponseBody = {
   models: Array<{ id: string }>;
@@ -145,26 +145,30 @@ async function handler(
 
             let f = [];
             if (embed) {
-              f = mList.filter((d) => d.model.startsWith("text-embedding"));
+              f = mList.filter((m) => m.model.startsWith("text-embedding"));
             } else {
-              f = mList.filter((d) => {
+              f = mList.filter((m) => {
                 return (
                   !(
-                    d.model.includes("search") ||
-                    d.model.includes("similarity") ||
-                    d.model.includes("edit") ||
-                    d.model.includes("insert") ||
-                    d.model.includes("audio") ||
-                    d.model.includes(":") ||
-                    d.model.includes("embedding")
+                    m.model.includes("search") ||
+                    m.model.includes("similarity") ||
+                    m.model.includes("edit") ||
+                    m.model.includes("insert") ||
+                    m.model.includes("audio") ||
+                    m.model.includes(":") ||
+                    m.model.includes("embedding")
                   ) &&
-                  (d.model.startsWith("text-") ||
-                    d.model.startsWith("code-") ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4")) &&
+                  (m.model.startsWith("text-") ||
+                    m.model.startsWith("code-") ||
+                    m.model.startsWith("o1-") ||
+                    m.model.startsWith("gpt-3.5-turbo") ||
+                    m.model.startsWith("gpt-4") ||
+                    m.model.startsWith("o3")) &&
                   (!chat ||
-                    d.model.startsWith("gpt-3.5-turbo") ||
-                    d.model.startsWith("gpt-4"))
+                    m.model.startsWith("o1-") ||
+                    m.model.startsWith("o3") ||
+                    m.model.startsWith("gpt-3.5-turbo") ||
+                    m.model.startsWith("gpt-4"))
                 );
               });
             }
@@ -197,6 +201,7 @@ async function handler(
                 { id: "claude-3-sonnet-20240229" },
                 { id: "claude-3-5-sonnet-20240620" },
                 { id: "claude-3-5-sonnet-20241022" },
+                { id: "claude-3-7-sonnet-20250219" },
                 { id: "claude-3-5-haiku-20241022" },
                 { id: "claude-3-opus-20240229" },
               ];

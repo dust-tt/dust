@@ -1,4 +1,3 @@
-import type { DataSourceType, WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
@@ -6,6 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { DataSourceType, WithAPIErrorResponse } from "@app/types";
 
 export type PokeListDataSources = {
   data_sources: DataSourceType[];

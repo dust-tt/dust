@@ -1,16 +1,5 @@
-import type {
-  ContentNode,
-  ModelId,
-  Result,
-  SnowflakeCredentials,
-} from "@dust-tt/types";
-import {
-  Err,
-  EXCLUDE_DATABASES,
-  EXCLUDE_SCHEMAS,
-  MIME_TYPES,
-  Ok,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   fetchDatabases,
@@ -26,6 +15,13 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import type { ContentNode, SnowflakeCredentials } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import {
+  EXCLUDE_DATABASES,
+  EXCLUDE_SCHEMAS,
+  MIME_TYPES,
+} from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
@@ -140,10 +136,10 @@ export const fetchAvailableChildrenInSnowflake = async ({
 };
 
 /**
- * Retrieves the selected content nodes for a parent in our database.
- * They are the content nodes that we were given access to by the admin.
+ * Retrieves the selected content nodes in our database. They are the content nodes that we were
+ * given access to by the admin.
  */
-export const fetchReadNodes = async ({
+export const fetchSelectedNodes = async ({
   connectorId,
 }: {
   connectorId: ModelId;
@@ -197,9 +193,9 @@ export const fetchSyncedChildren = async ({
 
   // We want to fetch all the schemas for which we have access to at least one table.
   if (parentType === "database") {
-    // If the database is in db with permission: "selected" we have full access to it (it means the user selected this node).
-    // That means we have access to all schemas and tables.
-    // In that case we loop on all schemas.
+    // If the database is in db with permission: "selected" we have full access to it (it means the
+    // user selected this node). That means we have access to all schemas and tables.  In that case
+    // we loop on all schemas.
     const availableDatabase = await RemoteDatabaseModel.findOne({
       where: {
         connectorId,
@@ -225,9 +221,9 @@ export const fetchSyncedChildren = async ({
       return new Ok(schemaContentNodes);
     }
 
-    // Otherwise, we will fetch all the schemas we have full access to,
-    // which are the ones in db with permission: "selected" (the ones with "inherited" are absorbed in the case above).
-    // + the schemas for the tables that were explicitly selected.
+    // Otherwise, we will fetch all the schemas we have full access to, which are the ones in db
+    // with permission: "selected" (the ones with "inherited" are absorbed in the case above) +
+    // the schemas for the tables that were explicitly selected.
     const [availableSchemas, availableTables] = await Promise.all([
       RemoteSchemaModel.findAll({
         where: {
@@ -266,7 +262,8 @@ export const fetchSyncedChildren = async ({
     return new Ok(schemas);
   }
 
-  // Since we have all tables in the database, we can just return all the tables we have for this schema.
+  // Since we have all tables in the database, we can just return all the tables we have for this
+  // schema.
   if (parentType === "schema") {
     const [databaseName, schemaName] = parentInternalId.split(".");
     const availableTables = await RemoteTableModel.findAll({
@@ -287,66 +284,4 @@ export const fetchSyncedChildren = async ({
   }
 
   return new Ok([]);
-};
-
-/**
- * Gets the content nodes for a list of internalIds.
- */
-export const getBatchContentNodes = async ({
-  connectorId,
-  internalIds,
-}: {
-  connectorId: ModelId;
-  internalIds: string[];
-}): Promise<Result<ContentNode[], Error>> => {
-  const tables = await RemoteTableModel.findAll({
-    where: { connectorId },
-  });
-
-  const nodes: ContentNode[] = [];
-  for (const internalId of internalIds) {
-    if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(
-        internalId,
-        "read",
-        MIME_TYPES.SNOWFLAKE
-      );
-      nodes.push(node);
-    }
-  }
-
-  return new Ok(nodes);
-};
-
-/**
- * Retrieves the parent IDs of a content node in hierarchical order.
- * The first ID is the internal ID of the content node itself.
- * Quite straightforward for Snowflake as we can extract the parent IDs from the internalId.
- *
- * Note that this part may cause discrepancies between the response of core and the response of the connector since
- * core will consider parents starting from the root (what was selected by the user).
- * If such logs were to pop up they will be ignored.
- */
-export const getContentNodeParents = ({
-  internalId,
-}: {
-  internalId: string;
-}): Result<string[], Error> => {
-  const [database, schema, table] = internalId.split(".");
-  const internalType = getContentNodeTypeFromInternalId(internalId);
-
-  if (internalType === "database") {
-    return new Ok([internalId]);
-  }
-  if (internalType === "schema") {
-    return new Ok([internalId, `${database}`]);
-  }
-  if (internalType === "table") {
-    return new Ok([internalId, `${database}.${schema}`, `${database}`]);
-  }
-  return new Err(
-    new Error(
-      `Invalid internalId: ${internalId}. Extracted: Database=${database}, Schema=${schema}, Table=${table}.`
-    )
-  );
 };

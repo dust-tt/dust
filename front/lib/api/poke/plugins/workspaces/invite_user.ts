@@ -1,11 +1,10 @@
-import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@dust-tt/types";
-
 import { handleMembershipInvitations } from "@app/lib/api/invitation";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isEmailValid } from "@app/lib/utils";
+import { Err, MEMBERSHIP_ROLE_TYPES, Ok } from "@app/types";
 
-export const inviteUser = createPlugin(
-  {
+export const inviteUser = createPlugin({
+  manifest: {
     id: "invite-user",
     name: "Invite a user",
     description: "Invite a user to the workspace",
@@ -24,7 +23,7 @@ export const inviteUser = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const subscription = auth.subscription();
     const plan = auth.plan();
     if (!subscription || !plan) {
@@ -46,7 +45,7 @@ export const inviteUser = createPlugin(
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
-      user: auth.getNonNullableUser(),
+      user: auth.getNonNullableUser().toJSON(),
       subscription,
       invitationRequests: [
         {
@@ -70,5 +69,5 @@ export const inviteUser = createPlugin(
       display: "text",
       value: `Invitation sent to ${result.email}.`,
     });
-  }
-);
+  },
+});

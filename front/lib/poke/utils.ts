@@ -1,17 +1,17 @@
-import type {
-  PokeDataSourceType,
-  PokeDataSourceViewType,
-  PokeSpaceType,
-} from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { getWorkspaceByModelId } from "@app/lib/workspace";
+import type {
+  PokeDataSourceType,
+  PokeDataSourceViewType,
+  PokeSpaceType,
+} from "@app/types";
 
 export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
   return {
+    id: space.id,
     ...space.toJSON(),
     groups: space.groups.map((group) => group.toJSON()),
   };
@@ -43,7 +43,7 @@ export async function dataSourceViewToPokeJSON(
     link: workspace
       ? `${config.getClientFacingUrl()}/poke/${workspace.sId}/spaces/${dataSourceView.space.sId}/data_source_views/${dataSourceView.sId}`
       : null,
-    name: `Data Source (${dataSourceView.dataSource.name})`,
+    name: `Data Source View (${dataSourceView.dataSource.name})`,
     space: spaceToPokeJSON(dataSourceView.space),
   };
 }

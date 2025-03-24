@@ -1,11 +1,10 @@
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 export async function softDeleteApp(
   auth: Authenticator,

@@ -31,12 +31,6 @@ import {
   TextArea,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ModelConfigurationType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import assert from "assert";
 import type { ReactNode } from "react";
@@ -53,10 +47,9 @@ import {
   isActionDustAppRunValid as hasErrorActionDustAppRun,
 } from "@app/components/assistant_builder/actions/DustAppRunAction";
 import {
-  ActionGithubCreateIssue,
-  ActionGithubGetPullRequest,
-  hasErrorActionGithub,
-} from "@app/components/assistant_builder/actions/GithubAction";
+  ActionMCP,
+  hasErrorActionMCP,
+} from "@app/components/assistant_builder/actions/MCPAction";
 import {
   ActionProcess,
   hasErrorActionProcess,
@@ -81,6 +74,7 @@ import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
+  AssistantBuilderMCPServerConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -93,7 +87,15 @@ import {
   getDefaultActionConfiguration,
   isDefaultActionName,
 } from "@app/components/assistant_builder/types";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  ModelConfigurationType,
+  SpaceType,
+  WhitelistableFeature,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 
 const DATA_SOURCES_ACTION_CATEGORIES = [
   "RETRIEVAL_SEARCH",
@@ -102,17 +104,16 @@ const DATA_SOURCES_ACTION_CATEGORIES = [
   "TABLES_QUERY",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
-const ADVANCED_ACTION_CATEGORIES = ["DUST_APP_RUN"] as const satisfies Array<
-  AssistantBuilderActionConfiguration["type"]
->;
+const ADVANCED_ACTION_CATEGORIES = [
+  "DUST_APP_RUN",
+  "MCP",
+] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
 // Actions in this list are not configurable via the "add tool" menu.
 // Instead, they should be handled in the `Capabilities` component.
 // Note: not all capabilities are actions (eg: visualization)
 const CAPABILITIES_ACTION_CATEGORIES = [
   "WEB_NAVIGATION",
-  "GITHUB_GET_PULL_REQUEST",
-  "GITHUB_CREATE_ISSUE",
   "REASONING",
 ] as const satisfies Array<AssistantBuilderActionConfiguration["type"]>;
 
@@ -134,6 +135,8 @@ export function hasActionError(
       return hasErrorActionRetrievalSearch(action);
     case "RETRIEVAL_EXHAUSTIVE":
       return hasErrorActionRetrievalExhaustive(action);
+    case "MCP":
+      return hasErrorActionMCP(action);
     case "PROCESS":
       return hasErrorActionProcess(action);
     case "DUST_APP_RUN":
@@ -142,10 +145,6 @@ export function hasActionError(
       return hasErrorActionTablesQuery(action);
     case "WEB_NAVIGATION":
       return hasErrorActionWebNavigation(action);
-    case "GITHUB_GET_PULL_REQUEST":
-      return hasErrorActionGithub(action);
-    case "GITHUB_CREATE_ISSUE":
-      return hasErrorActionGithub(action);
     case "REASONING":
       return null;
     default:
@@ -188,6 +187,9 @@ export default function ActionsScreen({
   reasoningModels,
 }: ActionScreenProps) {
   const { spaces } = useContext(AssistantBuilderContext);
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const configurableActions = builderState.actions.filter(
     (a) => !(CAPABILITIES_ACTION_CATEGORIES as string[]).includes(a.type)
@@ -228,9 +230,12 @@ export default function ActionsScreen({
           addActionToSpace(action.configuration.app?.space.sId);
           break;
 
+        case "MCP":
+          //TODO(mcp): add action to space when it leverage datasources configurations
+          // Iterate over the datasources configurations and add the action to the respective spaces
+          break;
+
         case "WEB_NAVIGATION":
-        case "GITHUB_GET_PULL_REQUEST":
-        case "GITHUB_CREATE_ISSUE":
         case "REASONING":
           break;
 
@@ -401,6 +406,7 @@ export default function ActionsScreen({
                       action,
                     });
                   }}
+                  hasFeature={hasFeature}
                 />
               </div>
             )}
@@ -482,6 +488,7 @@ export default function ActionsScreen({
                     action,
                   });
                 }}
+                hasFeature={hasFeature}
               />
             </div>
           )}
@@ -863,6 +870,24 @@ function ActionConfigEditor({
         />
       );
 
+    case "MCP":
+      return (
+        <ActionMCP
+          owner={owner}
+          actionConfiguration={action.configuration}
+          allowedSpaces={allowedSpaces}
+          updateAction={(setNewAction) => {
+            updateAction({
+              actionName: action.name,
+              actionDescription: action.description,
+              getNewActionConfig: (old) =>
+                setNewAction(old as AssistantBuilderMCPServerConfiguration),
+            });
+          }}
+          setEdited={setEdited}
+        />
+      );
+
     case "PROCESS":
       return (
         <ActionProcess
@@ -904,11 +929,6 @@ function ActionConfigEditor({
 
     case "WEB_NAVIGATION":
       return <ActionWebNavigation />;
-
-    case "GITHUB_GET_PULL_REQUEST":
-      return <ActionGithubGetPullRequest />;
-    case "GITHUB_CREATE_ISSUE":
-      return <ActionGithubCreateIssue />;
 
     case "REASONING":
       return <ActionReasoning />;
@@ -959,7 +979,7 @@ function ActionEditor({
 
   const shouldDisplayAdvancedSettings = !["DUST_APP_RUN"].includes(action.type);
 
-  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS"].includes(
+  const shouldDisplayDescription = !["DUST_APP_RUN", "PROCESS", "MCP"].includes(
     action.type
   );
 
@@ -1174,9 +1194,10 @@ function AdvancedSettings({
 
 interface AddActionProps {
   onAddAction: (action: AssistantBuilderActionConfigurationWithId) => void;
+  hasFeature: (feature: WhitelistableFeature) => boolean;
 }
 
-function AddAction({ onAddAction }: AddActionProps) {
+function AddAction({ onAddAction, hasFeature }: AddActionProps) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -1194,6 +1215,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Data Sources" />
           {DATA_SOURCES_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;
@@ -1215,6 +1239,9 @@ function AddAction({ onAddAction }: AddActionProps) {
           <DropdownMenuLabel label="Advanced Actions" />
           {ADVANCED_ACTION_CATEGORIES.map((key) => {
             const spec = ACTION_SPECIFICATIONS[key];
+            if (spec.flag && !hasFeature(spec.flag)) {
+              return null;
+            }
             const defaultAction = getDefaultActionConfiguration(key);
             if (!defaultAction) {
               return null;
@@ -1281,17 +1308,6 @@ function Capabilities({
       </div>
     );
   };
-
-  const { platformActionsConfigurations } = useContext(AssistantBuilderContext);
-
-  const showGithubActions = useMemo(() => {
-    if (
-      builderState.actions.find((a) => a.type === "GITHUB_GET_PULL_REQUEST")
-    ) {
-      return true;
-    }
-    return platformActionsConfigurations.find((c) => c.provider === "github");
-  }, [platformActionsConfigurations, builderState]);
 
   return (
     <>
@@ -1364,66 +1380,6 @@ function Capabilities({
           />
         )}
       </div>
-
-      {showGithubActions && (
-        <>
-          <Page.H variant="h6">Github Actions</Page.H>
-
-          <div className="mx-auto grid w-full grid-cols-1 md:grid-cols-2">
-            <Capability
-              name="Pull request retrieval"
-              description="Agent can retrieve pull requests by number, including diffs"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_GET_PULL_REQUEST"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaultGithubGetPullRequestAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubGetPullRequestAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubGetPullRequestAction =
-                  getDefaultActionConfiguration("GITHUB_GET_PULL_REQUEST");
-                assert(defaulGithubGetPullRequestAction);
-                deleteAction(defaulGithubGetPullRequestAction.name);
-              }}
-            />
-
-            <Capability
-              name="Issue creation"
-              description="Agent can create issues"
-              enabled={
-                !!builderState.actions.find(
-                  (a) => a.type === "GITHUB_CREATE_ISSUE"
-                )
-              }
-              onEnable={() => {
-                setEdited(true);
-                const defaultGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaultGithubCreateIssueAction);
-                setAction({
-                  type: "insert",
-                  action: defaultGithubCreateIssueAction,
-                });
-              }}
-              onDisable={() => {
-                const defaulGithubCreateIssueAction =
-                  getDefaultActionConfiguration("GITHUB_CREATE_ISSUE");
-                assert(defaulGithubCreateIssueAction);
-                deleteAction(defaulGithubCreateIssueAction.name);
-              }}
-            />
-          </div>
-        </>
-      )}
     </>
   );
 }

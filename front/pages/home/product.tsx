@@ -25,7 +25,7 @@ export async function getServerSideProps() {
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Dust in motion",
   videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true",
+    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?seo=true&videoFoam=true",
 };
 
 export function Landing() {
@@ -39,7 +39,7 @@ export function Landing() {
         toColor="to-sky-500"
       />
       <UbiquitySection />
-      <ExtensibilitySection />
+      <ExtensibilitySection page="default" />
       <SecuritySection />
       <QuoteSection
         quote="Dust is the most impactful software we've adopted since building Clay. It delivers immediate value while continuously getting smarter and more valuable over time"

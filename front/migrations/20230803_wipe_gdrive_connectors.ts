@@ -1,10 +1,10 @@
-import { dustManagedCredentials } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { Sequelize } from "sequelize";
 
 import config from "@app/lib/api/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import logger from "@app/logger/logger";
+import { dustManagedCredentials } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 const { CONNECTORS_DB = "" } = process.env;
 
@@ -56,6 +56,7 @@ async function main() {
         qdrant_config: null,
       },
       credentials: dustManagedCredentials(),
+      name: d.name,
     });
   }
 }

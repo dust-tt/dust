@@ -1,28 +1,31 @@
 import {
+  BracesIcon,
+  Button,
   Chip,
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  CoreAPIDataSource,
-  DataSourceType,
-} from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+} from "@app/types";
 
 export function ViewDataSourceTable({
   connector,
@@ -60,14 +63,14 @@ export function ViewDataSourceTable({
           <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">Overview:</h2>
-              <PokeButton
+              <Button
                 aria-label="View raw objects"
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-              >
-                🤓 Show raw objects
-              </PokeButton>
+                icon={BracesIcon}
+                label="Show raw objects"
+              />
             </div>
             {isPaused && isRunning && (
               <Chip color="warning" size="sm" className="my-4">
@@ -239,6 +242,7 @@ function RawObjectsModal({
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
 }) {
+  const { isDark } = useTheme();
   return (
     <Dialog
       open={show}
@@ -252,26 +256,29 @@ function RawObjectsModal({
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
-        <div className="mx-2 my-4 overflow-y-auto">
+        <DialogContainer>
           <span className="text-sm font-bold">dataSource</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={dataSource}
             rootName={false}
             defaultInspectDepth={1}
           />
           <span className="text-sm font-bold">coreDataSource</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={coreDataSource}
             rootName={false}
             defaultInspectDepth={1}
           />
           <span className="text-sm font-bold">connector</span>
           <JsonViewer
+            theme={isDark ? "dark" : "light"}
             value={connector}
             rootName={false}
             defaultInspectDepth={1}
           />
-        </div>
+        </DialogContainer>
       </DialogContent>
     </Dialog>
   );

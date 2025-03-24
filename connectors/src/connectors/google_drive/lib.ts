@@ -1,13 +1,4 @@
-import type { ContentNodesViewType, ModelId } from "@dust-tt/types";
-import {
-  cacheWithRedis,
-  concurrentExecutor,
-  getGoogleIdsFromSheetContentNodeInternalId,
-  getGoogleSheetTableId,
-  isGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
-  removeNulls,
-} from "@dust-tt/types";
+import { removeNulls } from "@dust-tt/client";
 import type { Logger } from "pino";
 import type { InferAttributes, WhereOptions } from "sequelize";
 
@@ -40,6 +31,16 @@ import {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { sequelizeConnection } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type { ContentNodesViewType } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import {
+  cacheWithRedis,
+  concurrentExecutor,
+  getGoogleIdsFromSheetContentNodeInternalId,
+  getGoogleSheetTableId,
+  isGoogleSheetContentNodeInternalId,
+  MIME_TYPES,
+} from "@connectors/types";
 
 export async function isDriveObjectExpandable({
   objectId,
@@ -52,7 +53,7 @@ export async function isDriveObjectExpandable({
   connectorId: ModelId;
   viewType: ContentNodesViewType;
 }): Promise<boolean> {
-  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "tables") {
+  if (isGoogleDriveSpreadSheetFile({ mimeType }) && viewType === "table") {
     // In tables view, Spreadsheets can be expanded to show their sheets.
     return !!(await GoogleDriveSheet.findOne({
       attributes: ["id"],
@@ -192,17 +193,12 @@ export async function updateParentsField(
         sheet.driveFileId,
         sheet.driveSheetId
       );
-      // TODO(2025-02-19 aubin): remove this after the entries are unstuck.
-      try {
-        await updateDataSourceTableParents({
-          dataSourceConfig,
-          tableId,
-          parents: [tableId, ...parentIds],
-          parentId: file.dustFileId,
-        });
-      } catch (e) {
-        return;
-      }
+      await updateDataSourceTableParents({
+        dataSourceConfig,
+        tableId,
+        parents: [tableId, ...parentIds],
+        parentId: file.dustFileId,
+      });
     }
   } else {
     await updateDataSourceDocumentParents({
@@ -262,6 +258,7 @@ export async function fixParentsConsistency({
         files,
         async (file) =>
           getGoogleDriveObject({
+            connectorId: connector.id,
             authCredentials,
             driveObjectId: file.driveFileId,
             cacheKey: {
@@ -333,6 +330,7 @@ export async function fixParentsConsistency({
           if (execute) {
             for (const missingFolderId of missing) {
               const missingFolder = await getGoogleDriveObject({
+                connectorId: connector.id,
                 authCredentials,
                 driveObjectId: getDriveFileId(missingFolderId),
               });

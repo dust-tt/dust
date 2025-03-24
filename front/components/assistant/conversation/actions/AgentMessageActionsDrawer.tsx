@@ -7,9 +7,9 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { AgentActionType, LightWorkspaceType } from "@dust-tt/types";
 
 import { getActionSpecification } from "@app/components/actions/types";
+import type { AgentActionType, LightWorkspaceType } from "@app/types";
 
 interface AgentMessageActionsDrawerProps {
   actions: AgentActionType[];

@@ -3,8 +3,8 @@ import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 
 export function getPermissionViewType(file: GoogleDriveFiles) {
   if (isGoogleDriveFolder(file)) {
-    return "Folder";
+    return "folder";
   }
 
-  return "Document";
+  return "document";
 }

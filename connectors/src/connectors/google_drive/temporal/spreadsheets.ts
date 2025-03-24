@@ -1,10 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  getGoogleSheetTableId,
-  InvalidStructuredDataHeaderError,
-  MIME_TYPES,
-  slugify,
-} from "@dust-tt/types";
 import { Context } from "@temporalio/activity";
 import { stringify } from "csv-stringify/sync";
 import tracer from "dd-trace";
@@ -28,14 +21,20 @@ import {
   upsertDataSourceFolder,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
-import type { TablesError } from "@connectors/lib/error";
-import { ProviderWorkflowError } from "@connectors/lib/error";
+import { ProviderWorkflowError, TablesError } from "@connectors/lib/error";
 import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import { GoogleDriveSheet } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { GoogleDriveObjectType } from "@connectors/types/google_drive";
+import type { ModelId } from "@connectors/types";
+import type { GoogleDriveObjectType } from "@connectors/types";
+import {
+  getGoogleSheetTableId,
+  InvalidStructuredDataHeaderError,
+  MIME_TYPES,
+  slugify,
+} from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_GSHEET_ROWS = 50000;
 
@@ -201,13 +200,30 @@ async function processSheet(
   const rows = getValidRows(sheet.values, loggerArgs);
   // Assuming the first line as headers, at least one additional data line is required.
   if (rows.length > 1) {
-    const upsertError = await upsertGdriveTable(
-      connector,
-      sheet,
-      parents,
-      rows,
-      tags
-    );
+    let upsertError = null;
+    try {
+      upsertError = await upsertGdriveTable(
+        connector,
+        sheet,
+        parents,
+        rows,
+        tags
+      );
+    } catch (err) {
+      if (err instanceof TablesError) {
+        logger.warn(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Tables error - skipping (but not failing)."
+        );
+        upsertError = err;
+      } else {
+        logger.error(
+          { ...loggerArgs, error: err },
+          "[Spreadsheet] Failed to upsert table."
+        );
+        throw err;
+      }
+    }
 
     await upsertSheetInDb(connector, sheet, upsertError);
 

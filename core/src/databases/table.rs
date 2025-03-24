@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveTime, Utc};
 use futures::future::try_join_all;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::search_stores::search_store::NodeItem;
 use crate::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
+    data_sources::node::ProviderVisibility,
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -150,6 +151,9 @@ impl Table {
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
+    }
     pub fn created(&self) -> u64 {
         self.created
     }
@@ -194,6 +198,12 @@ impl Table {
     }
     pub fn remote_database_secret_id(&self) -> Option<&str> {
         self.remote_database_secret_id.as_deref()
+    }
+    pub fn table_id_for_dbml(&self) -> &str {
+        match self.remote_database_table_id() {
+            Some(id) if !id.is_empty() => id,
+            _ => self.name(), // Note from seb: kept self.name() as it was the previous behavior, but shouldn't it be self.table_id()?
+        }
     }
     pub fn table_type(&self) -> Result<TableType> {
         match (
@@ -250,7 +260,9 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store.delete_node(Node::from(self.clone())).await?;
+            search_store
+                .delete_node(NodeItem::Table(self.clone()))
+                .await?;
         }
 
         Ok(())
@@ -271,7 +283,9 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
+        search_store
+            .index_node(NodeItem::Table(self.clone()))
+            .await?;
         Ok(())
     }
 
@@ -308,25 +322,6 @@ impl Table {
             provider_visibility: self.provider_visibility().clone(),
             rows,
         })
-    }
-}
-
-impl From<Table> for Node {
-    fn from(table: Table) -> Node {
-        Node::new(
-            &table.data_source_id,
-            &table.data_source_internal_id,
-            &table.table_id,
-            NodeType::Table,
-            table.timestamp,
-            &table.title,
-            &table.mime_type,
-            table.provider_visibility,
-            table.parents.get(1).cloned(),
-            table.parents,
-            table.source_url,
-            Some(table.tags),
-        )
     }
 }
 
@@ -371,11 +366,7 @@ impl LocalTable {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
                 for (row_index, row) in rows.iter().enumerate() {
-                    let object = match row.value().as_object() {
-                        Some(object) => object,
-                        None => Err(anyhow!("Row {} is not an object", row_index,))?,
-                    };
-                    match object.keys().find(|key| match key.chars().next() {
+                    match row.value().keys().find(|key| match key.chars().next() {
                         Some(c) => c.is_ascii_uppercase(),
                         None => false,
                     }) {
@@ -507,12 +498,14 @@ impl LocalTable {
         &self,
         store: Box<dyn Store + Sync + Send>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
-        upsert_queue_bucket_csv_path: &str,
+        bucket: &str,
+        bucket_csv_path: &str,
         truncate: bool,
     ) -> Result<()> {
         let now = utils::now();
         let rows = UpsertQueueCSVContent {
-            upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+            bucket: bucket.to_string(),
+            bucket_csv_path: bucket_csv_path.to_string(),
         }
         .parse()
         .await?;
@@ -615,11 +608,12 @@ impl LocalTable {
         Ok(schema)
     }
 
-    pub async fn validate_csv_content(upsert_queue_bucket_csv_path: &str) -> Result<TableSchema> {
+    pub async fn validate_csv_content(bucket: &str, bucket_csv_path: &str) -> Result<TableSchema> {
         let now = utils::now();
         let rows = Arc::new(
             UpsertQueueCSVContent {
-                upsert_queue_bucket_csv_path: upsert_queue_bucket_csv_path.to_string(),
+                bucket: bucket.to_string(),
+                bucket_csv_path: bucket_csv_path.to_string(),
             }
             .parse()
             .await?,
@@ -664,11 +658,11 @@ impl Filterable for Table {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Row {
     pub row_id: String,
-    pub value: Value,
+    pub value: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Row {
-    pub fn new(row_id: String, value: Value) -> Self {
+    pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
         Row { row_id, value }
     }
 
@@ -679,6 +673,17 @@ impl Row {
         row_idx: usize,
     ) -> Result<Row> {
         let mut value_map = serde_json::Map::new();
+
+        fn try_parse_float(s: &str) -> Result<serde_json::Number> {
+            if let Ok(float) = s.parse::<f64>() {
+                match serde_json::Number::from_f64(float) {
+                    Some(num) => Ok(num),
+                    None => Err(anyhow!("Invalid JSON float value")),
+                }
+            } else {
+                Err(anyhow!("Invalid float value"))
+            }
+        }
 
         for (i, field) in record.iter().enumerate() {
             if i >= headers.len() {
@@ -694,31 +699,60 @@ impl Row {
 
             let parsed_value = if trimmed.is_empty() {
                 Value::Null
-            } else if let Ok(num) = trimmed.parse::<f64>() {
+            } else if let Ok(int) = trimmed.parse::<i64>() {
+                Value::Number(int.into())
+            } else if let Ok(float) = try_parse_float(trimmed) {
                 // Numbers
-                Value::Number(serde_json::Number::from_f64(num).unwrap())
-            } else if let Ok(bool_val) = trimmed.parse::<bool>() {
+                Value::Number(float)
+            } else if let Ok(bool_val) = match trimmed.to_lowercase().as_str() {
                 // Booleans
+                "t" | "true" => Ok(true),
+                "f" | "false" => Ok(false),
+                _ => Err(anyhow!("Invalid boolean value")),
+            } {
                 Value::Bool(bool_val)
             } else {
                 // Various datetime formats
-                let dt: Option<DateTime<Utc>> = [
+                let mut dt: Option<DateTime<Utc>> = [
                     // RFC3339
                     DateTime::parse_from_rfc3339(trimmed).map(|dt| dt.into()),
                     // RFC2822
                     DateTime::parse_from_rfc2822(trimmed).map(|dt| dt.into()),
-                    // Google Spreadsheet format
-                    DateTime::parse_from_str(trimmed, "%d-%b-%Y").map(|dt| dt.into()),
                     // SQL
                     DateTime::parse_from_str(trimmed, "%Y-%m-%d %H:%M:%S").map(|dt| dt.into()),
                     // HTTP date
                     DateTime::parse_from_str(trimmed, "%a, %d %b %Y %H:%M:%S GMT")
                         .map(|dt| dt.into()),
+                    // Google Spreadsheet format
+                    NaiveDate::parse_from_str(trimmed, "%d-%b-%Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(Utc).unwrap()
+                    }),
                     // Date with full month, zero-padded number, full year
-                    DateTime::parse_from_str(trimmed, "%B %d, %Y").map(|dt| dt.into()),
+                    NaiveDate::parse_from_str(trimmed, "%B %d %Y").map(|d| {
+                        let dt = d.and_hms_opt(0, 0, 0).unwrap();
+                        dt.and_local_timezone(Utc).unwrap()
+                    }),
                 ]
                 .iter()
                 .find_map(|result| result.ok());
+
+                // We fallback on dateparser for all other formats
+                if dt.is_none() {
+                    dt = match std::panic::catch_unwind(|| {
+                        dateparser::parse_with(
+                            trimmed,
+                            &Utc,
+                            NaiveTime::from_hms_opt(0, 0, 0).unwrap(),
+                        )
+                    }) {
+                        Ok(result) => result.ok(),
+                        Err(e) => {
+                            tracing::warn!("Panic while parsing date '{}': {:?}", trimmed, e);
+                            None
+                        }
+                    };
+                }
 
                 if let Some(datetime) = dt {
                     let mut dt_obj = serde_json::Map::new();
@@ -747,19 +781,19 @@ impl Row {
         }
         .unwrap_or_else(|| row_idx.to_string());
 
-        Ok(Row::new(row_id, Value::Object(value_map)))
+        Ok(Row::new(row_id, value_map))
     }
 
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
-    pub fn content(&self) -> &Value {
+    pub fn content(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
     }
 }
 
 impl HasValue for Row {
-    fn value(&self) -> &Value {
+    fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
     }
 }
@@ -768,23 +802,27 @@ impl HasValue for Row {
 mod tests {
     use super::*;
     use crate::utils;
-    use serde_json::json;
 
     #[tokio::test]
     async fn test_local_table_to_dbml() -> anyhow::Result<()> {
-        let row_1 = json!({
-            "user_id": 1,
-            "temperature": 1.2,
-            "label": "foo",
-            "ready": true,
-        });
-        let row_2 = json!({
-            "user_id": 2,
-            "temperature": 2.4,
-            "label": "bar",
-            "ready": false,
-            "description": "not null anymore and prety long so that it's not shown in note",
-        });
+        let row_1 = serde_json::Map::from_iter([
+            ("user_id".to_string(), 1.into()),
+            ("temperature".to_string(), 1.2.into()),
+            ("label".to_string(), "foo".into()),
+            ("ready".to_string(), true.into()),
+        ]);
+
+        let row_2 = serde_json::Map::from_iter([
+            ("user_id".to_string(), 2.into()),
+            ("temperature".to_string(), 2.4.into()),
+            ("label".to_string(), "bar".into()),
+            ("ready".to_string(), false.into()),
+            (
+                "description".to_string(),
+                "not null anymore and prety long so that it's not shown in note".into(),
+            ),
+        ]);
+
         let rows = Arc::new(vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
@@ -825,6 +863,138 @@ mod tests {
 }"#
         .to_string();
         assert_eq!(local_table.render_dbml(None), expected);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_row_from_csv_record() -> anyhow::Result<()> {
+        let headers = vec!["test".to_string(), "date".to_string()];
+
+        let record = vec!["1", "2021-01-01T00:00:00Z"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.row_id(), "0");
+        assert_eq!(
+            row.content(),
+            &serde_json::Map::from_iter([
+                ("test".to_string(), 1.into()),
+                (
+                    "date".to_string(),
+                    serde_json::Map::from_iter([
+                        ("type".to_string(), "datetime".into()),
+                        ("epoch".to_string(), 1609459200000_i64.into()),
+                        ("string_value".to_string(), "2021-01-01T00:00:00Z".into()),
+                    ])
+                    .into()
+                )
+            ])
+        );
+
+        let record = vec!["123a", "March 2, 2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::String("123a".to_string()));
+        assert_eq!(
+            row.content()["date"]["type"],
+            Value::String("datetime".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("March 2, 2021".to_string())
+        );
+
+        let record = vec!["true", "02-Jan-2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::Bool(true));
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("02-Jan-2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["false", "2024-02-19 15:30:45"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["test"], Value::Bool(false));
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("2024-02-19 15:30:45".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1708356645000_i64.into())
+        );
+
+        let record = vec!["", "2-Jan-2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("2-Jan-2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["", "January 02, 2021"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("January 02, 2021".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1609545600000_i64.into())
+        );
+
+        let record = vec!["", "Fri, 14 Feb 2025 15:10:34 GMT"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(
+            row.content()["date"]["string_value"],
+            Value::String("Fri, 14 Feb 2025 15:10:34 GMT".to_string())
+        );
+        assert_eq!(
+            row.content()["date"]["epoch"],
+            Value::Number(1739545834000_i64.into())
+        );
+
+        let headers = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        let record = vec!["2", "2.0", "0.1"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Number(2.into()));
+        assert_eq!(
+            row.content()["b"],
+            Value::Number(serde_json::Number::from_f64(2.0).unwrap())
+        );
+        assert_eq!(
+            row.content()["c"],
+            Value::Number(serde_json::Number::from_f64(0.1).unwrap())
+        );
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["true", "false"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["TRUE", "FALSE"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["t", "f"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
+
+        let headers = vec!["a".to_string(), "b".to_string()];
+        let record = vec!["trUe", "fALse"];
+        let row = Row::from_csv_record(&headers, record, 0)?;
+        assert_eq!(row.content()["a"], Value::Bool(true));
+        assert_eq!(row.content()["b"], Value::Bool(false));
 
         Ok(())
     }

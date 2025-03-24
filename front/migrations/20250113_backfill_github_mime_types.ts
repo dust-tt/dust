@@ -1,5 +1,5 @@
-import type { GithubMimeType } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import type { GithubMimeType } from "@dust-tt/client";
+import { MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";

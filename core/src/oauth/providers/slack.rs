@@ -7,6 +7,7 @@ use crate::oauth::{
         ProviderError,
         RefreshResult, // PROVIDER_TIMEOUT_SECONDS,
     },
+    credential::Credential,
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -44,12 +45,14 @@ impl Provider for SlackConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://slack.com/api/oauth.v2.access")
-            .header("Content-Type", "application/json; charset=utf-8")
+            .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
             // Very important, this will *not* work with JSON body.
             .form(&[("code", code), ("redirect_uri", redirect_uri)]);
@@ -84,7 +87,11 @@ impl Provider for SlackConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        _connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Slack access tokens do not expire.".to_string(),
         ))?
@@ -92,7 +99,7 @@ impl Provider for SlackConnectionProvider {
         //     .unseal_refresh_token()?
         //     .ok_or_else(|| anyhow!("Missing `refresh_token` in Slack connection"))?;
 
-        // let req = reqwest::Client::new()
+        // let req = self.reqwest_client()
         //     .post("https://slack.com/api/oauth.v2.access")
         //     .header("Authorization", format!("Basic {}", self.basic_auth()))
         //     .header("Content-Type", "application/json; charset=utf-8")

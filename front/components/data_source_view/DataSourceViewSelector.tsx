@@ -1,35 +1,33 @@
 import {
   Button,
   CloudArrowLeftRightIcon,
+  cn,
   FolderIcon,
   GlobeAltIcon,
+  InformationCircleIcon,
   ListCheckIcon,
-  Spinner,
+  SearchInputWithPopover,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { defaultSelectionConfiguration } from "@dust-tt/types";
+import type { ContentMessageProps } from "@dust-tt/sparkle/dist/esm/components/ContentMessage";
 import _ from "lodash";
 import type { Dispatch, SetStateAction } from "react";
-import { useCallback } from "react";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSelector";
 import type {
   ContentNodeTreeItemStatus,
   TreeSelectionModelUpdater,
 } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
+import {
+  DATA_SOURCE_MIME_TYPE,
+  getLocationForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -39,7 +37,23 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useSpaces } from "@app/lib/swr/spaces";
+import { useSpaceSearch } from "@app/lib/swr/spaces";
+import type {
+  ContentNodesViewType,
+  DataSourceViewContentNode,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import {
+  assertNever,
+  defaultSelectionConfiguration,
+  MIN_SEARCH_QUERY_SIZE,
+  removeNulls,
+} from "@app/types";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 
@@ -51,20 +65,24 @@ const getUseResourceHook =
     useContentNodes: typeof useDataSourceViewContentNodes
   ) =>
   (parentId: string | null) => {
-    const { nodes, isNodesLoading, isNodesError } = useContentNodes({
+    const {
+      nodes,
+      isNodesLoading,
+      isNodesError,
+      totalNodesCountIsAccurate,
+      totalNodesCount,
+    } = useContentNodes({
       owner,
       dataSourceView,
       parentId: parentId ?? undefined,
       viewType,
     });
     return {
-      resources: nodes.map((n) => ({
-        ...n,
-        preventSelection:
-          n.preventSelection || (viewType === "tables" && n.type !== "Table"),
-      })),
+      resources: nodes,
+      totalResourceCount: totalNodesCount,
       isResourcesLoading: isNodesLoading,
       isResourcesError: isNodesError,
+      isResourcesTruncated: !totalNodesCountIsAccurate,
     };
   };
 
@@ -85,160 +103,295 @@ const getNodesFromConfig = (
     {}
   );
 
+export type useCaseDataSourceViewsSelector =
+  | "spaceDatasourceManagement"
+  | "assistantBuilder"
+  | "transcriptsProcessing"
+  | "trackerBuilder";
+
 interface DataSourceViewsSelectorProps {
   owner: LightWorkspaceType;
-  useCase:
-    | "spaceDatasourceManagement"
-    | "assistantBuilder"
-    | "transcriptsProcessing"
-    | "trackerBuilder";
+  useCase: useCaseDataSourceViewsSelector;
   dataSourceViews: DataSourceViewType[];
-  allowedSpaces?: SpaceType[];
   selectionConfigurations: DataSourceViewSelectionConfigurations;
   setSelectionConfigurations: Dispatch<
     SetStateAction<DataSourceViewSelectionConfigurations>
   >;
   viewType: ContentNodesViewType;
   isRootSelectable: boolean;
+  space: SpaceType;
 }
 
 export function DataSourceViewsSelector({
   owner,
   useCase,
   dataSourceViews,
-  allowedSpaces,
   selectionConfigurations,
   setSelectionConfigurations,
   viewType,
   isRootSelectable,
+  space,
 }: DataSourceViewsSelectorProps) {
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const [searchResult, setSearchResult] = useState<
+    DataSourceViewContentNode | undefined
+  >();
+  const {
+    inputValue: searchSpaceText,
+    debouncedValue: debouncedSearch,
+    isDebouncing,
+    setValue: setSearchSpaceText,
+  } = useDebounce("", {
+    delay: 300,
+    minLength: MIN_SEARCH_QUERY_SIZE,
+  });
 
-  const includesConnectorIDs: (string | null)[] = [];
-  const excludesConnectorIDs: (string | null)[] = [];
+  const filteredDSVs = useMemo(() => {
+    const includesConnectorIDs: string[] = [];
+    const excludesConnectorIDs: string[] = [];
 
-  // If view type is tables
-  // You can either select tables from the same remote database (as the query will be executed live on the database)
-  // Or select tables from different non-remote databases (as we load all data in the same sqlite database)
-  if (viewType === "tables" && useCase === "assistantBuilder") {
-    // Find the first data source in the selection configurations
-    const selection = Object.values(selectionConfigurations);
-    const firstDs =
-      selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
+    if (viewType === "table" && useCase === "assistantBuilder") {
+      const selection = Object.values(selectionConfigurations);
+      const firstDs =
+        selection.length > 0 ? selection[0].dataSourceView.dataSource : null;
 
-    if (firstDs) {
-      // If it's a remote database, we only allow selecting tables with the same connector
-      if (isRemoteDatabase(firstDs)) {
-        includesConnectorIDs.push(firstDs.connectorId);
-      } else {
-        // Otherwise, we exclude the connector ID of all remote databases providers
-        dataSourceViews.forEach((dsv) => {
-          if (isRemoteDatabase(dsv.dataSource)) {
-            excludesConnectorIDs.push(dsv.dataSource.connectorId);
-          }
-        });
+      if (firstDs) {
+        if (isRemoteDatabase(firstDs)) {
+          includesConnectorIDs.push(firstDs.connectorId!);
+        } else {
+          dataSourceViews.forEach((dsv) => {
+            if (isRemoteDatabase(dsv.dataSource)) {
+              excludesConnectorIDs.push(dsv.dataSource.connectorId!);
+            }
+          });
+        }
       }
     }
-  }
-  const orderDatasourceViews = useMemo(
-    () => orderDatasourceViewByImportance(dataSourceViews),
-    [dataSourceViews]
+
+    return orderDatasourceViewByImportance(dataSourceViews).filter((dsv) => {
+      if (!includesConnectorIDs.length && !excludesConnectorIDs.length) {
+        return true;
+      }
+      if (includesConnectorIDs.length && dsv.dataSource.connectorId) {
+        return includesConnectorIDs.includes(dsv.dataSource.connectorId);
+      }
+      if (excludesConnectorIDs.length && dsv.dataSource.connectorId) {
+        return !excludesConnectorIDs.includes(dsv.dataSource.connectorId);
+      }
+      return true;
+    });
+  }, [dataSourceViews, selectionConfigurations, viewType, useCase]);
+
+  // Group the filtered DSVs
+  const filteredGroups = useMemo(
+    () => ({
+      managedDsv: filteredDSVs.filter((dsv) => isManaged(dsv.dataSource)),
+      folders: filteredDSVs.filter((dsv) => isFolder(dsv.dataSource)),
+      websites: filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource)),
+    }),
+    [filteredDSVs]
   );
 
-  const filteredDSVs = orderDatasourceViews.filter(
-    (dsv) =>
-      (!includesConnectorIDs.length ||
-        includesConnectorIDs.includes(dsv.dataSource.connectorId)) &&
-      (!excludesConnectorIDs.length ||
-        !excludesConnectorIDs.includes(dsv.dataSource.connectorId))
-  );
+  const { searchResultNodes, isSearchLoading, warningCode } = useSpaceSearch({
+    dataSourceViews: filteredDSVs, // Use filtered DSVs on the search too.
+    includeDataSources: true,
+    owner,
+    search: debouncedSearch,
+    viewType,
+    space,
+  });
 
-  const managedDsv = filteredDSVs.filter((dsv) => isManaged(dsv.dataSource));
-  const folders = filteredDSVs.filter((dsv) => isFolder(dsv.dataSource));
-  const websites = filteredDSVs.filter((dsv) => isWebsite(dsv.dataSource));
+  useEffect(() => {
+    if (searchResult) {
+      setTimeout(() => {
+        const node = document.getElementById(
+          `tree-node-${searchResult.internalId}`
+        );
+        node?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 100);
+    }
+  }, [searchResult]);
 
   const displayManagedDsv =
-    managedDsv.length > 0 &&
+    filteredGroups.managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
-  const defaultSpace = useMemo(() => {
-    const firstKey = Object.keys(selectionConfigurations)[0] ?? null;
-    return firstKey
-      ? selectionConfigurations[firstKey]?.dataSourceView?.spaceId ?? ""
-      : "";
-  }, [selectionConfigurations]);
+  function updateSelection(
+    item: DataSourceViewContentNode,
+    prevState: DataSourceViewSelectionConfigurations
+  ): DataSourceViewSelectionConfigurations {
+    const { dataSourceView: dsv } = item;
+    const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
-  const filteredSpaces = useMemo(() => {
-    const spaceIds = [...new Set(dataSourceViews.map((dsv) => dsv.spaceId))];
+    const exists = prevConfig.selectedResources.some(
+      (r) => r.internalId === item.internalId
+    );
 
-    return spaces.filter((s) => spaceIds.includes(s.sId));
-  }, [spaces, dataSourceViews]);
+    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
+      return {
+        ...prevState,
+        [dsv.sId]: {
+          ...prevConfig,
+          selectedResources: [],
+          isSelectAll: true,
+        },
+      };
+    }
 
-  if (isSpacesLoading) {
-    return <Spinner />;
+    const newResources = exists
+      ? prevConfig.selectedResources
+      : [
+          ...prevConfig.selectedResources,
+          {
+            ...item,
+            dataSourceView: dsv,
+            parentInternalIds: item.parentInternalIds || [],
+          },
+        ];
+
+    return {
+      ...prevState,
+      [dsv.sId]: {
+        ...prevConfig,
+        selectedResources: newResources,
+        isSelectAll: false,
+      },
+    };
   }
 
-  if (filteredSpaces.length > 1) {
-    return (
-      <SpaceSelector
-        spaces={filteredSpaces}
-        allowedSpaces={allowedSpaces}
-        defaultSpace={defaultSpace}
-        renderChildren={(space) => {
-          const dataSourceViewsForSpace = space
-            ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
-            : dataSourceViews;
+  const contentMessage = warningCode
+    ? LimitedSearchContentMessage({ warningCode })
+    : undefined;
 
-          if (dataSourceViewsForSpace.length === 0) {
-            return <>No data source in this space.</>;
+  // We want to allow a "Select all" results from the search results in the Assistant Builder.
+  // We think to make it a good XP we need to add some additional filters per data source.
+  // Since this is something that we really need for Salesforce, we will start with this.
+  const displaySelectAllButton = useMemo(() => {
+    if (useCase !== "assistantBuilder" || searchResultNodes.length === 0) {
+      return false;
+    }
+
+    const isAllSalesforce = searchResultNodes.every(
+      (r) => r.dataSourceView.dataSource.connectorProvider === "salesforce"
+    );
+    return isAllSalesforce;
+
+    // TODO: Replace with this once we are ready to select all from the search results for all data sources.
+    // if (viewType !== "table") {
+    //   return true;
+    // }
+    // const hasRemote = searchResultNodes.some((r) =>
+    //   isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // const hasNonRemote = searchResultNodes.some(
+    //   (r) => !isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // return hasRemote !== hasNonRemote;
+  }, [searchResultNodes, useCase]);
+
+  return (
+    <div>
+      <SearchInputWithPopover
+        value={searchSpaceText}
+        onChange={setSearchSpaceText}
+        name="search-dsv"
+        open={searchSpaceText.length >= MIN_SEARCH_QUERY_SIZE}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSearchSpaceText("");
           }
-
-          return (
-            <DataSourceViewsSelector
-              owner={owner}
-              useCase={useCase}
-              dataSourceViews={dataSourceViewsForSpace}
-              selectionConfigurations={selectionConfigurations}
-              setSelectionConfigurations={setSelectionConfigurations}
-              viewType={viewType}
-              isRootSelectable={isRootSelectable}
-            />
+        }}
+        isLoading={isSearchLoading || isDebouncing}
+        items={searchResultNodes}
+        onItemSelect={(item) => {
+          setSearchResult(item);
+          setSearchSpaceText("");
+          setSelectionConfigurations((prevState) =>
+            updateSelection(item, prevState)
           );
         }}
+        displayItemCount={useCase === "assistantBuilder"}
+        onSelectAll={
+          displaySelectAllButton
+            ? () => {
+                setSearchSpaceText("");
+                searchResultNodes.forEach((item) => {
+                  setSelectionConfigurations((prevState) =>
+                    updateSelection(item, prevState)
+                  );
+                });
+                setSearchResult(searchResultNodes[0]); // We scroll to the first item. Not perfect but no perfect solution here.
+              }
+            : undefined
+        }
+        contentMessage={contentMessage}
+        renderItem={(item, selected) => {
+          return (
+            <div
+              className={cn(
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
+                selected && "bg-structure-50 dark:bg-structure-50-night"
+              )}
+              onClick={() => {
+                setSearchResult(item);
+                setSearchSpaceText("");
+                setSelectionConfigurations((prevState) =>
+                  updateSelection(item, prevState)
+                );
+              }}
+            >
+              {getVisualForDataSourceViewContentNode(item)({
+                className: "min-w-4",
+              })}
+              <span className="flex-shrink truncate text-sm">{item.title}</span>
+              {item.parentTitle && (
+                <div className="ml-auto flex-none text-sm text-slate-500">
+                  {getLocationForDataSourceViewContentNode(item)}
+                </div>
+              )}
+            </div>
+          );
+        }}
+        noResults="No results found"
       />
-    );
-  } else {
-    return (
-      <Tree isLoading={false}>
+      <Tree
+        isLoading={false}
+        key={`dataSourceViewsSelector-${searchResult ? searchResult.internalId : ""}`}
+      >
         {displayManagedDsv && (
           <Tree.Item
             key="connected"
             label="Connected Data"
             visual={CloudArrowLeftRightIcon}
             type="node"
+            defaultCollapsed={
+              !searchResult ||
+              !isManaged(searchResult.dataSourceView.dataSource)
+            }
           >
-            {orderDatasourceViews
-              .filter((dsv) => isManaged(dsv.dataSource))
-              .map((dataSourceView) => (
-                <DataSourceViewSelector
-                  key={dataSourceView.sId}
-                  owner={owner}
-                  selectionConfiguration={
-                    selectionConfigurations[dataSourceView.sId] ??
-                    defaultSelectionConfiguration(dataSourceView)
-                  }
-                  setSelectionConfigurations={setSelectionConfigurations}
-                  viewType={viewType}
-                  isRootSelectable={isRootSelectable}
-                  defaultCollapsed={filteredDSVs.length > 1}
-                  useCase={useCase}
-                />
-              ))}
+            {filteredGroups.managedDsv.map((dataSourceView) => (
+              <DataSourceViewSelector
+                key={dataSourceView.sId}
+                owner={owner}
+                selectionConfiguration={
+                  selectionConfigurations[dataSourceView.sId] ??
+                  defaultSelectionConfiguration(dataSourceView)
+                }
+                setSelectionConfigurations={setSelectionConfigurations}
+                viewType={viewType}
+                isRootSelectable={isRootSelectable}
+                defaultCollapsed={filteredGroups.managedDsv.length > 1}
+                useCase={useCase}
+                searchResult={searchResult}
+              />
+            ))}
           </Tree.Item>
         )}
-        {managedDsv.length > 0 &&
+        {filteredGroups.managedDsv.length > 0 &&
           useCase === "spaceDatasourceManagement" &&
-          managedDsv.map((dataSourceView) => (
+          filteredGroups.managedDsv.map((dataSourceView) => (
             <DataSourceViewSelector
               key={dataSourceView.sId}
               owner={owner}
@@ -249,18 +402,22 @@ export function DataSourceViewsSelector({
               setSelectionConfigurations={setSelectionConfigurations}
               viewType={viewType}
               isRootSelectable={false}
-              defaultCollapsed={filteredDSVs.length > 1}
+              defaultCollapsed={filteredGroups.managedDsv.length > 1}
               useCase={useCase}
+              searchResult={searchResult}
             />
           ))}
-        {folders.length > 0 && (
+        {filteredGroups.folders.length > 0 && (
           <Tree.Item
             key="folders"
             label="Folders"
             visual={FolderIcon}
             type="node"
+            defaultCollapsed={
+              !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
+            }
           >
-            {folders.map((dataSourceView) => (
+            {filteredGroups.folders.map((dataSourceView) => (
               <DataSourceViewSelector
                 key={dataSourceView.sId}
                 owner={owner}
@@ -271,38 +428,65 @@ export function DataSourceViewsSelector({
                 setSelectionConfigurations={setSelectionConfigurations}
                 viewType={viewType}
                 isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
+                defaultCollapsed={filteredGroups.folders.length > 1}
                 useCase={useCase}
+                searchResult={searchResult}
               />
             ))}
           </Tree.Item>
         )}
-        {websites.length > 0 && useCase !== "transcriptsProcessing" && (
-          <Tree.Item
-            key="websites"
-            label="Websites"
-            visual={GlobeAltIcon}
-            type="node"
-          >
-            {websites.map((dataSourceView) => (
-              <DataSourceViewSelector
-                key={dataSourceView.sId}
-                owner={owner}
-                selectionConfiguration={
-                  selectionConfigurations[dataSourceView.sId] ??
-                  defaultSelectionConfiguration(dataSourceView)
-                }
-                setSelectionConfigurations={setSelectionConfigurations}
-                viewType={viewType}
-                isRootSelectable={isRootSelectable}
-                defaultCollapsed={filteredDSVs.length > 1}
-                useCase={useCase}
-              />
-            ))}
-          </Tree.Item>
-        )}
+        {filteredGroups.websites.length > 0 &&
+          useCase !== "transcriptsProcessing" && (
+            <Tree.Item
+              key="websites"
+              label="Websites"
+              visual={GlobeAltIcon}
+              type="node"
+              defaultCollapsed={
+                !searchResult ||
+                !isWebsite(searchResult.dataSourceView.dataSource)
+              }
+            >
+              {filteredGroups.websites.map((dataSourceView) => (
+                <DataSourceViewSelector
+                  key={dataSourceView.sId}
+                  owner={owner}
+                  selectionConfiguration={
+                    selectionConfigurations[dataSourceView.sId] ??
+                    defaultSelectionConfiguration(dataSourceView)
+                  }
+                  setSelectionConfigurations={setSelectionConfigurations}
+                  viewType={viewType}
+                  isRootSelectable={isRootSelectable}
+                  defaultCollapsed={filteredGroups.websites.length > 1}
+                  useCase={useCase}
+                  searchResult={searchResult}
+                />
+              ))}
+            </Tree.Item>
+          )}
       </Tree>
-    );
+    </div>
+  );
+}
+
+function LimitedSearchContentMessage({
+  warningCode,
+}: {
+  warningCode: SearchWarningCode;
+}): ContentMessageProps | undefined {
+  switch (warningCode) {
+    case "truncated-query-clauses":
+      return {
+        title: "Search results are partial due to the large amount of data.",
+        variant: "amber",
+        icon: InformationCircleIcon,
+        className: "w-full",
+        size: "lg",
+      };
+
+    default:
+      assertNever(warningCode);
   }
 }
 
@@ -318,6 +502,7 @@ interface DataSourceViewSelectorProps {
   isRootSelectable: boolean;
   defaultCollapsed?: boolean;
   useCase?: DataSourceViewsSelectorProps["useCase"];
+  searchResult?: DataSourceViewContentNode;
 }
 
 export function DataSourceViewSelector({
@@ -330,6 +515,7 @@ export function DataSourceViewSelector({
   isRootSelectable,
   defaultCollapsed = true,
   useCase,
+  searchResult,
 }: DataSourceViewSelectorProps) {
   const { isDark } = useTheme();
   const dataSourceView = selectionConfiguration.dataSourceView;
@@ -411,7 +597,7 @@ export function DataSourceViewSelector({
       ? "partial"
       : false;
 
-  const isTableView = viewType === "tables";
+  const isTableView = viewType === "table";
 
   // Show the checkbox by default. Hide it only for tables where no child items are partially checked.
   const hideCheckbox = readonly || (isTableView && isChecked !== "partial");
@@ -436,6 +622,7 @@ export function DataSourceViewSelector({
             .filter((v) => v.isSelected)
             .map((v) => ({
               ...v.node,
+              dataSourceView: dataSourceView,
               parentInternalIds: v.parents,
             })),
           isSelectAll: false,
@@ -466,13 +653,21 @@ export function DataSourceViewSelector({
     [owner, dataSourceView, viewType, useContentNodes]
   );
 
+  const isExpanded = searchResult
+    ? searchResult.dataSourceView.sId === dataSourceView.sId
+    : false;
+  const defaultExpandedIds =
+    isExpanded && searchResult
+      ? removeNulls([...new Set(searchResult.parentInternalIds)])
+      : undefined;
+
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
       <Tree.Item
         key={dataSourceView.dataSource.id}
         label={getDisplayNameForDataSource(dataSourceView.dataSource)}
         visual={LogoComponent}
-        defaultCollapsed={defaultCollapsed}
+        defaultCollapsed={defaultCollapsed && !isExpanded}
         type={canBeExpanded(dataSourceView.dataSource) ? "node" : "leaf"}
         checkbox={
           hideCheckbox || (!isRootSelectable && !hasActiveSelection)
@@ -504,12 +699,13 @@ export function DataSourceViewSelector({
             parentIsSelected={selectionConfiguration.isSelectAll}
             useResourcesHook={useResourcesHook}
             emptyComponent={
-              viewType === "tables" ? (
+              viewType === "table" ? (
                 <Tree.Empty label="No tables" />
               ) : (
                 <Tree.Empty label="No documents" />
               )
             }
+            defaultExpandedIds={defaultExpandedIds}
           />
         )}
       </Tree.Item>

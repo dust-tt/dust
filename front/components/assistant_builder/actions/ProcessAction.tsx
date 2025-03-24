@@ -14,13 +14,6 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ProcessSchemaPropertyType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import React, { useEffect, useState } from "react";
 
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -31,7 +24,10 @@ import type {
   AssistantBuilderProcessConfiguration,
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import { classNames } from "@app/lib/utils";
+import type { Result, SpaceType, WorkspaceType } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export function hasErrorActionProcess(
   action: AssistantBuilderActionConfiguration
@@ -384,7 +380,7 @@ export function ActionProcess({
           actionConfiguration.dataSourceConfigurations
         }
         allowedSpaces={allowedSpaces}
-        viewType="documents"
+        viewType="document"
       />
       <div className="text-sm text-element-700">
         This tool scans selected data sources within the specified time frame,
@@ -414,7 +410,7 @@ export function ActionProcess({
             dataSourceConfigurations: dsConfigs,
           }));
         }}
-        viewType="documents"
+        viewType="document"
       />
 
       {onDescriptionChange && (

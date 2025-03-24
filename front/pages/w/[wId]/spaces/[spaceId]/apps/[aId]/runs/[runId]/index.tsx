@@ -6,13 +6,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  RunType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -23,10 +16,17 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { subNavigationApp } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { getRun } from "@app/lib/api/run";
+import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -112,20 +112,7 @@ export default function AppRun({
     // hacky way to make a deep copy of the spec
     const specCopy = JSON.parse(JSON.stringify(spec));
 
-    for (const block of specCopy) {
-      // we clear out the config for input blocks because the dataset might
-      // have changed or might not exist anymore
-      if (block.type === "input") {
-        block.config = {};
-      }
-
-      // we have to remove the hash and ID of the dataset in data blocks
-      // to prevent the app from becoming un-runable
-      if (block.type === "data") {
-        delete block.spec.dataset_id;
-        delete block.spec.hash;
-      }
-    }
+    cleanSpecificationFromCore(specCopy);
 
     await fetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/state`,

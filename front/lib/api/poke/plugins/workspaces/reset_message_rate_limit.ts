@@ -1,10 +1,9 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { resetMessageRateLimitForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { Err, Ok } from "@app/types";
 
-export const resetMessageRateLimitPlugin = createPlugin(
-  {
+export const resetMessageRateLimitPlugin = createPlugin({
+  manifest: {
     id: "reset-message-rate-limit",
     name: "Reset Message Rate Limit",
     description: "Reset the message rate limit for the workspace.",
@@ -17,7 +16,7 @@ export const resetMessageRateLimitPlugin = createPlugin(
       },
     },
   },
-  async (auth, resourceId, args) => {
+  execute: async (auth, resource, args) => {
     const subscription = auth.subscription();
     const plan = auth.plan();
 
@@ -33,7 +32,7 @@ export const resetMessageRateLimitPlugin = createPlugin(
 
     return new Ok({
       display: "text",
-      value: `Message rate limit reset for workspace ${resourceId}.`,
+      value: `Message rate limit reset for workspace ${resource?.sId}.`,
     });
-  }
-);
+  },
+});

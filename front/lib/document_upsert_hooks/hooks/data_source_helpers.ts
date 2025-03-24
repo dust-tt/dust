@@ -1,12 +1,11 @@
-import type { Diff } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { diffStrings } from "@app/lib/diff";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { Diff } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getPreviousDocumentVersion({
   dataSource,

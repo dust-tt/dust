@@ -4,24 +4,22 @@ import {
   CitationIcons,
   CitationTitle,
   CodeBlock,
-  Collapsible,
+  CollapsibleComponent,
   CommandLineIcon,
   ContentBlockWrapper,
   DocumentIcon,
   Icon,
   TableIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DustAppRunActionType,
-  SupportedFileContentType,
-} from "@dust-tt/types";
-import { getDustAppRunResultsFileTitle } from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { useMemo } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import { getDustAppRunResultsFileTitle } from "@app/components/actions/dust_app_run/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
-import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/api/assistant/actions/constants";
+import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
+import type { DustAppRunActionType } from "@app/lib/actions/dust_app_run";
+import type { SupportedFileContentType } from "@app/types";
 
 function ContentTypeIcon({
   contentType,
@@ -56,16 +54,16 @@ export function DustAppRunActionDetails({
           </div>
         </div>
         <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen }}
+            triggerProps={{}}
+            triggerChildren={
               <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                 Results
               </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <DustAppRunOutputDetails action={action} />
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+            contentChildren={<DustAppRunOutputDetails action={action} />}
+          />
         </div>
       </div>
     </ActionDetailsWrapper>
@@ -136,13 +134,14 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
               </CitationTitle>
             </Citation>
 
-            <Collapsible defaultOpen={false}>
-              <Collapsible.Button>
+            <CollapsibleComponent
+              rootProps={{ defaultOpen: false }}
+              triggerChildren={
                 <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
                   Preview
                 </span>
-              </Collapsible.Button>
-              <Collapsible.Panel>
+              }
+              contentChildren={
                 <div className="py-2">
                   <CodeBlock
                     className="language-csv max-h-60 overflow-y-auto"
@@ -151,8 +150,8 @@ function DustAppRunOutputDetails({ action }: { action: DustAppRunActionType }) {
                     {action.resultsFileSnippet}
                   </CodeBlock>
                 </div>
-              </Collapsible.Panel>
-            </Collapsible>
+              }
+            />
           </div>
         )}
 

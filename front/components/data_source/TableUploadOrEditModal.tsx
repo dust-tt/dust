@@ -13,20 +13,6 @@ import {
   TextArea,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  Err,
-  getSupportedFileExtensions,
-  isBigFileSize,
-  isSlugified,
-  MAX_FILE_SIZES,
-  maxFileSizeToHumanReadable,
-} from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -35,6 +21,20 @@ import {
   useUpdateDataSourceViewTable,
 } from "@app/lib/swr/data_source_view_tables";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import type {
+  DataSourceViewType,
+  LightContentNode,
+  PlanType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  Err,
+  getSupportedFileExtensions,
+  isBigFileSize,
+  isSlugified,
+  MAX_FILE_SIZES,
+  maxFileSizeToHumanReadable,
+} from "@app/types";
 
 interface Table {
   name: string;
@@ -117,7 +117,7 @@ export const TableUploadOrEditModal = ({
             parentId: undefined,
             parents: undefined,
             async: undefined,
-            csv: undefined,
+            fileId: undefined,
           });
         } else {
           // Replacing the content of an existing table with a new file.
@@ -445,7 +445,8 @@ export const TableUploadOrEditModal = ({
           }}
           rightButtonProps={{
             label: isUpserting ? "Saving..." : "Save",
-            onClick: async () => {
+            onClick: async (event: MouseEvent) => {
+              event.preventDefault();
               await onSave();
             },
             disabled:

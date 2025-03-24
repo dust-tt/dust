@@ -1,28 +1,18 @@
 import type { ApiAppType } from "@dust-tt/client";
 import { DustAPI } from "@dust-tt/client";
-import type { CoreAPIError, Result, TraceType } from "@dust-tt/types";
-import {
-  concurrentExecutor,
-  CoreAPI,
-  credentialsFromProviders,
-  Err,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
-import { createParser } from "eventsource-parser";
 import _ from "lodash";
 
 import { default as config } from "@app/lib/api/config";
-import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
+import { getDatasetHash, getDatasets } from "@app/lib/api/datasets";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
-import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Dataset, Provider } from "@app/lib/resources/storage/models/apps";
-import { dumpSpecification } from "@app/lib/specification";
+import { Dataset } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
+import type { CoreAPIError, Result } from "@app/types";
+import { concurrentExecutor, CoreAPI, Err, Ok } from "@app/types";
 
 async function updateOrCreateApp(
   auth: Authenticator,
@@ -130,27 +120,29 @@ async function updateDatasets(
       }
 
       // Now update the dataset in front if it exists, or create one
-      const dataset = existingDatasets.find(
-        (d) => d.name === datasetToImport.name
-      );
-      if (dataset) {
-        if (
-          !_.isEqual(dataset.schema, datasetToImport.schema) ||
-          dataset.description !== datasetToImport.description
-        ) {
-          await dataset.update({
+      if (datasetToImport.schema) {
+        const dataset = existingDatasets.find(
+          (d) => d.name === datasetToImport.name
+        );
+        if (dataset) {
+          if (
+            !_.isEqual(dataset.schema, datasetToImport.schema) ||
+            dataset.description !== datasetToImport.description
+          ) {
+            await dataset.update({
+              description: datasetToImport.description,
+              schema: datasetToImport.schema,
+            });
+          }
+        } else {
+          await Dataset.create({
+            name: datasetToImport.name,
             description: datasetToImport.description,
+            appId: app.id,
+            workspaceId: owner.id,
             schema: datasetToImport.schema,
           });
         }
-      } else {
-        await Dataset.create({
-          name: datasetToImport.name,
-          description: datasetToImport.description,
-          appId: app.id,
-          workspaceId: owner.id,
-          schema: datasetToImport.schema,
-        });
       }
     }
   }
@@ -162,126 +154,69 @@ async function updateAppSpecifications(
   {
     app,
     savedSpecification,
+    coreSpecifications,
     savedConfig,
   }: {
     app: AppResource;
     savedSpecification: string;
+    coreSpecifications?: Record<string, string>;
     savedConfig: string;
   }
 ): Promise<Result<boolean, CoreAPIError | Error>> {
   logger.info({ sId: app.sId, name: app.name }, "Updating app specifications");
-  // Specification and config have been modified and need to be imported
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  // Specification or config have been modified and need to be imported
   if (
-    savedSpecification !== app.savedSpecification &&
+    savedSpecification !== app.savedSpecification ||
     savedConfig !== app.savedConfig
   ) {
-    // Fetch all datasets from core for this app
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const coreDatasets = await coreAPI.getDatasets({
-      projectId: app.dustAPIProjectId,
+    await app.updateState(auth, {
+      savedSpecification,
+      savedConfig,
     });
-    if (coreDatasets.isErr()) {
-      return coreDatasets;
-    }
-
-    const latestDatasets: { [key: string]: string } = {};
-    for (const d in coreDatasets.value.datasets) {
-      latestDatasets[d] = coreDatasets.value.datasets[d][0].hash;
-    }
-
-    const [datasetId] = Object.keys(latestDatasets);
-    if (datasetId) {
-      const owner = auth.getNonNullableWorkspace();
-      // Fetch providers and secrets
-      const [providers, secrets] = await Promise.all([
-        Provider.findAll({
-          where: {
-            workspaceId: owner.id,
-          },
-        }),
-        getDustAppSecrets(auth, true),
-      ]);
-
-      // Create a new run to save specifications and configs
-      const dustRun = await coreAPI.createRunStream(owner, auth.groups(), {
-        projectId: app.dustAPIProjectId,
-        runType: "local",
-        specification: dumpSpecification(
-          JSON.parse(savedSpecification),
-          latestDatasets
-        ),
-        config: { blocks: JSON.parse(savedConfig) },
-        credentials: credentialsFromProviders(providers),
-        datasetId,
-        secrets,
-        storeBlocksResults: true,
-      });
-
-      if (dustRun.isErr()) {
-        logger.error(app, "Failed to create run for app");
-        return dustRun;
-      }
-
-      let error = undefined;
-      try {
-        // Intercept block_execution events to store token usages.
-        const parser = createParser((event) => {
-          if (event.type === "event") {
-            if (event.data) {
-              const data = JSON.parse(event.data);
-              if (data.type === "block_execution") {
-                const traces: TraceType[][] = data.content.execution;
-                const errs = traces.flatMap((trace) =>
-                  removeNulls(trace.map((t) => t.error))
-                );
-                if (errs.length > 0) {
-                  throw new Error(errs[0]);
-                }
-              }
-            }
-          }
-        });
-
-        for await (const chunk of dustRun.value.chunkStream) {
-          parser.feed(new TextDecoder().decode(chunk));
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          error = err.message;
-        } else {
-          error = String(err);
-        }
-      }
-
-      const dustRunId = await dustRun.value.dustRunId;
-
-      // Update app state
-      await Promise.all([
-        RunResource.makeNew({
-          dustRunId,
-          appId: app.id,
-          runType: "local",
-          workspaceId: owner.id,
-        }),
-
-        app.updateState(auth, {
-          savedSpecification,
-          savedConfig,
-          savedRun: dustRunId,
-        }),
-      ]);
-
-      if (error) {
-        return new Err(new Error(error));
-      }
-
-      return new Ok(true);
-    }
   } else {
     logger.info(
       { sId: app.sId, name: app.name },
-      "No changes to app specifications"
+      "No changes to front app specifications"
     );
+  }
+
+  if (coreSpecifications) {
+    const existingHashes = await coreAPI.getSpecificationHashes({
+      projectId: app.dustAPIProjectId,
+    });
+    if (existingHashes.isOk()) {
+      // Remove hashes that already exist in core
+      coreSpecifications = _.omit(
+        coreSpecifications,
+        existingHashes.value.hashes
+      );
+    }
+
+    if (Object.keys(coreSpecifications).length > 0) {
+      logger.info(
+        {
+          sId: app.sId,
+          name: app.name,
+          hashes: Object.keys(coreSpecifications),
+        },
+        "Updating core app specifications"
+      );
+
+      await concurrentExecutor(
+        Object.values(coreSpecifications),
+        async (specification) => {
+          await coreAPI.saveSpecification({
+            projectId: app.dustAPIProjectId,
+            specification: specification,
+          });
+        },
+        { concurrency: 10 }
+      );
+
+      return new Ok(true);
+    }
   }
   return new Ok(false);
 }
@@ -331,6 +266,7 @@ export async function importApp(
     const updateSpecificationsRes = await updateAppSpecifications(auth, {
       app,
       savedSpecification: appToImport.savedSpecification,
+      coreSpecifications: appToImport.coreSpecifications,
       savedConfig: appToImport.savedConfig,
     });
     if (updateSpecificationsRes.isErr()) {
@@ -400,6 +336,109 @@ export async function importApps(
   }
 
   return apps;
+}
+
+export const extractDatasetIdsAndHashes = (specification: string) => {
+  const dataSetsToFetch: { datasetId: string; hash: string }[] = [];
+  const dataBlockMatch = specification.match(
+    /data [^\n]+\s*{\s*dataset_id:\s*([^\n]+)\s*hash:\s*([^\n]+)\s*}/
+  );
+  if (dataBlockMatch) {
+    const [, datasetId, hash] = dataBlockMatch;
+    dataSetsToFetch.push({ datasetId, hash });
+  }
+  return dataSetsToFetch;
+};
+
+export async function exportApps(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<Result<ApiAppType[], Error>> {
+  const apps = await AppResource.listBySpace(auth, space);
+
+  const enhancedApps = await concurrentExecutor(
+    apps.filter((app) => app.canRead(auth)),
+
+    async (app) => {
+      const specsToFetch = await getSpecificationsHashesFromCore(
+        app.dustAPIProjectId
+      );
+
+      const dataSetsToFetch = (await getDatasets(auth, app.toJSON())).map(
+        (ds) => ({ datasetId: ds.name, hash: "latest" })
+      );
+
+      const coreSpecifications: { [key: string]: string } = {};
+
+      if (specsToFetch) {
+        for (const hash of specsToFetch) {
+          const coreSpecification = await getSpecificationFromCore(
+            app.dustAPIProjectId,
+            hash
+          );
+          if (coreSpecification) {
+            // Parse dataset_id and hash from specification if it contains DATA section
+            dataSetsToFetch.push(
+              ...extractDatasetIdsAndHashes(coreSpecification.data)
+            );
+
+            coreSpecifications[hash] = coreSpecification.data;
+          }
+        }
+      }
+      const datasets = [];
+      for (const dataset of dataSetsToFetch) {
+        const fromCore = await getDatasetHash(
+          auth,
+          app,
+          dataset.datasetId,
+          dataset.hash,
+          { includeDeleted: true }
+        );
+        if (fromCore) {
+          datasets.push(fromCore);
+        }
+      }
+
+      return { ...app.toJSON(), datasets, coreSpecifications };
+    },
+    { concurrency: 5 }
+  );
+  return new Ok(enhancedApps);
+}
+
+export async function getSpecificationsHashesFromCore(
+  dustAPIProjectId: string
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const coreSpec = await coreAPI.getSpecificationHashes({
+    projectId: dustAPIProjectId,
+  });
+
+  if (coreSpec.isErr()) {
+    return null;
+  }
+
+  return coreSpec.value.hashes;
+}
+
+export async function getSpecificationFromCore(
+  dustAPIProjectId: string,
+  hash: string
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const coreSpec = await coreAPI.getSpecification({
+    projectId: dustAPIProjectId,
+    specificationHash: hash,
+  });
+
+  if (coreSpec.isErr()) {
+    return null;
+  }
+
+  return coreSpec.value.specification;
 }
 
 interface CheckRes {

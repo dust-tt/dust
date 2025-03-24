@@ -1,3 +1,13 @@
+import config from "@app/lib/api/config";
+import {
+  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
+  getContentNodeFromCoreNode,
+} from "@app/lib/api/content_nodes";
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
+import type { Authenticator } from "@app/lib/auth";
+import type { DustError } from "@app/lib/error";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import logger from "@app/logger/logger";
 import type {
   ContentNodesViewType,
   CoreAPIContentNode,
@@ -6,80 +16,24 @@ import type {
   DataSourceViewType,
   PatchDataSourceViewType,
   Result,
-} from "@dust-tt/types";
-import { assertNever, CoreAPI, Err, Ok, removeNulls } from "@dust-tt/types";
+} from "@app/types";
+import { assertNever, CoreAPI, Err, Ok } from "@app/types";
 
-import config from "@app/lib/api/config";
-import {
-  FOLDERS_SELECTION_PREVENTED_MIME_TYPES,
-  FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES,
-  NON_EXPANDABLE_NODES_MIME_TYPES,
-} from "@app/lib/api/content_nodes";
-import type {
-  CursorPaginationParams,
-  OffsetPaginationParams,
-} from "@app/lib/api/pagination";
-import { isCursorPaginationParams } from "@app/lib/api/pagination";
-import type { Authenticator } from "@app/lib/auth";
-import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
-import type { DustError } from "@app/lib/error";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import logger from "@app/logger/logger";
-
-export function filterAndCropContentNodesByView(
-  dataSourceView: DataSourceViewResource,
-  contentNodes: DataSourceViewContentNode[]
-): DataSourceViewContentNode[] {
-  const viewHasParents = dataSourceView.parentsIn !== null;
-
-  // Filter out content nodes that are not in the view.
-  // Update the parentInternalIds of the content nodes to only include the parentInternalIds that are in the view.
-  const contentNodesInView = contentNodes.map((node) => {
-    const { parentInternalIds } = node;
-
-    if (!parentInternalIds) {
-      return null;
-    }
-
-    // Ensure that the node, or at least one of its ancestors, is within the
-    // view. For parentInternalIds, include all of them  up to the highest one
-    // in the hierarchy that is in the view, (which is last index, since parents
-    // are ordered from leaf to root), or all of them  if the view is "full",
-    // that is,  parentsIn is null.
-    const indexToSplit = parentInternalIds.findLastIndex((p) =>
-      dataSourceView.parentsIn?.includes(p)
-    );
-    const isInView = !viewHasParents || indexToSplit !== -1;
-
-    if (isInView) {
-      const parentIdsInView = !viewHasParents
-        ? parentInternalIds
-        : parentInternalIds.slice(0, indexToSplit + 1);
-
-      return {
-        ...node,
-        parentInternalIds: parentIdsInView,
-      };
-    } else {
-      return null;
-    }
-  });
-
-  return removeNulls(contentNodesInView);
-}
+const DEFAULT_PAGINATION_LIMIT = 1000;
 
 // If `internalIds` is not provided, it means that the request is for all the content nodes in the view.
 interface GetContentNodesForDataSourceViewParams {
   internalIds?: string[];
   parentId?: string;
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  pagination?: CursorPaginationParams | OffsetPaginationParams;
+  pagination?: CursorPaginationParams;
   viewType: ContentNodesViewType;
 }
 
 interface GetContentNodesForDataSourceViewResult {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
 }
 
 function filterNodesByViewType(
@@ -87,17 +41,17 @@ function filterNodesByViewType(
   viewType: ContentNodesViewType
 ) {
   switch (viewType) {
-    case "documents":
+    case "document":
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Document"].includes(node.node_type)
+          ["folder", "document"].includes(node.node_type)
       );
-    case "tables":
+    case "table":
       return nodes.filter(
         (node) =>
           node.children_count > 0 ||
-          ["Folder", "Table"].includes(node.node_type)
+          ["folder", "table"].includes(node.node_type)
       );
     case "all":
       return nodes;
@@ -127,6 +81,53 @@ function makeCoreDataSourceViewFilter(
 
 const ROOT_PARENT_ID = "root";
 
+export async function getFlattenedContentNodesOfViewTypeForDataSourceView(
+  dataSourceView: DataSourceViewResource | DataSourceViewType,
+  {
+    viewType,
+    pagination,
+  }: {
+    viewType: Exclude<ContentNodesViewType, "all">;
+    pagination?: CursorPaginationParams;
+  }
+): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
+
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
+
+  const coreRes = await coreAPI.searchNodes({
+    filter: {
+      data_source_views: [makeCoreDataSourceViewFilter(dataSourceView)],
+      node_types: [viewType],
+    },
+    options: { limit, cursor: nextPageCursor ?? undefined },
+  });
+
+  if (coreRes.isErr()) {
+    return new Err(new Error(coreRes.error.message));
+  }
+
+  const resultNodes: CoreAPIContentNode[] = coreRes.value.nodes;
+  nextPageCursor = coreRes.value.next_page_cursor;
+
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+  }));
+
+  return new Ok({
+    nodes,
+    total: coreRes.value.hit_count,
+    totalIsAccurate: coreRes.value.hit_count_is_accurate,
+    nextPageCursor: nextPageCursor,
+  });
+}
+
 export async function getContentNodesForDataSourceView(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
   {
@@ -136,7 +137,7 @@ export async function getContentNodesForDataSourceView(
     pagination,
   }: GetContentNodesForDataSourceViewParams
 ): Promise<Result<GetContentNodesForDataSourceViewResult, Error>> {
-  const limit = pagination?.limit ?? 1000;
+  const limit = pagination?.limit ?? DEFAULT_PAGINATION_LIMIT;
 
   // There's an early return possible on !dataSourceView.dataSource.connectorId && internalIds?.length === 0,
   // won't include it for now as we are shadow-reading.
@@ -166,14 +167,13 @@ export async function getContentNodesForDataSourceView(
         ? undefined
         : ROOT_PARENT_ID);
 
-  // TODO(nodes-core): remove offset pagination upon project cleanup
-  let nextPageCursor: string | null = pagination
-    ? isCursorPaginationParams(pagination)
-      ? pagination.cursor
-      : null
-    : null;
+  let nextPageCursor: string | null = pagination ? pagination.cursor : null;
 
   let resultNodes: CoreAPIContentNode[] = [];
+  let hitCount;
+  let hiddenNodesCount = 0;
+  let totalIsAccurate;
+
   do {
     const coreRes = await coreAPI.searchNodes({
       filter: {
@@ -181,51 +181,46 @@ export async function getContentNodesForDataSourceView(
         node_ids,
         parent_id,
       },
-      options: { limit, cursor: nextPageCursor ?? undefined },
+      options: {
+        // We limit the results to the remaining number of nodes
+        // we still need to make sure we get a correct nextPageCursor at the end of this loop.
+        limit: limit - resultNodes.length,
+        cursor: nextPageCursor ?? undefined,
+      },
     });
 
     if (coreRes.isErr()) {
       return new Err(new Error(coreRes.error.message));
     }
 
+    hitCount = coreRes.value.hit_count;
+    totalIsAccurate = coreRes.value.hit_count_is_accurate;
     const filteredNodes = removeCatchAllFoldersIfEmpty(
       filterNodesByViewType(coreRes.value.nodes, viewType)
     );
+    hiddenNodesCount += coreRes.value.nodes.length - filteredNodes.length;
 
     resultNodes = [...resultNodes, ...filteredNodes].slice(0, limit);
     nextPageCursor = coreRes.value.next_page_cursor;
-  } while (nextPageCursor && resultNodes.length < limit);
+  } while (resultNodes.length < limit && nextPageCursor);
 
-  const expandable = (node: CoreAPIContentNode) =>
-    !NON_EXPANDABLE_NODES_MIME_TYPES.includes(node.mime_type) &&
-    node.children_count > 0 &&
-    // if we aren't in tables/all view, spreadsheets are not expandable
-    !(
-      !["tables", "all"].includes(viewType) &&
-      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
-    );
+  const nodes = resultNodes.map((node) => ({
+    ...getContentNodeFromCoreNode(node, viewType),
+    dataSourceView:
+      dataSourceView instanceof DataSourceViewResource
+        ? dataSourceView.toJSON()
+        : dataSourceView,
+  }));
+  const sortedNodes = !internalIds
+    ? nodes
+    : internalIds.flatMap((id) =>
+        nodes.filter((node) => node.internalId === id)
+      );
 
   return new Ok({
-    nodes: resultNodes.map((node) => {
-      return {
-        internalId: node.node_id,
-        parentInternalId: node.parent_id ?? null,
-        // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
-        title: node.title === "Untitled document" ? node.node_id : node.title,
-        sourceUrl: node.source_url ?? null,
-        permission: "read",
-        lastUpdatedAt: node.timestamp,
-        providerVisibility: node.provider_visibility,
-        parentInternalIds: node.parents,
-        type: node.node_type,
-        expandable: expandable(node),
-        mimeType: node.mime_type,
-        preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
-          node.mime_type
-        ),
-      };
-    }),
-    total: resultNodes.length,
+    nodes: sortedNodes,
+    total: hitCount - hiddenNodesCount, // Deducing the number of folders we hid from the total count.
+    totalIsAccurate,
     nextPageCursor: nextPageCursor,
   });
 }

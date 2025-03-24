@@ -20,18 +20,17 @@ const checkboxSizeVariant: Record<CheckboxSizeType, string> = {
 const checkboxStyles = cva(
   cn(
     "s-shrink-0 s-peer s-border",
-    "s-border-border-darker dark:s-border-border-darker-night",
-    "dark:s-text-foreground-night s-text-foreground",
-    "data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
+    "s-s-border-border-dark dark:s-s-border-border-dark-night",
+    "s-text-foreground dark:s-text-foreground-night",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
     "disabled:s-cursor-not-allowed disabled:s-opacity-50"
   ),
   {
     variants: {
       checked: {
-        true: "data-[state=checked]:s-bg-primary dark:data-[state=checked]:s-bg-primary-night",
+        true: "data-[state=checked]:s-bg-primary dark:data-[state=checked]:s-bg-primary-night data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
         partial:
-          "data-[state=checked]:s-bg-muted-foreground dark:data-[state=checked]:s-bg-muted-foreground-night",
+          "data-[state=indeterminate]:s-bg-primary dark:data-[state=indeterminate]:s-bg-primary-night data-[state=indeterminate]:s-text-white data-[state=indeterminate]:s-border-primary",
         false: "",
       },
       size: checkboxSizeVariant,
@@ -72,6 +71,7 @@ const Checkbox = React.forwardRef<
           <Icon
             size="xs"
             visual={checked === "partial" ? DashIcon : CheckIcon}
+            className="s-text-background dark:s-text-background-night"
           />
         </span>
       </CheckboxPrimitive.Indicator>

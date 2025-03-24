@@ -15,21 +15,21 @@ import {
   DropdownMenuTrigger,
   EyeIcon,
   Icon,
-  ImageIcon,
   LightbulbIcon,
+  LightModeIcon,
   LogoutIcon,
   StarIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type { UserType, WorkspaceType } from "@dust-tt/types";
-import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@dust-tt/types";
 import { BugIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { forceUserRole, showDebugTools } from "@app/lib/development";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { UserType, WorkspaceType } from "@app/types";
+import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
 export function UserMenu({
   user,
@@ -158,40 +158,41 @@ export function UserMenu({
                 icon={UserIcon}
               />
             )}
-            <DropdownMenuLabel label="Preferences (Dust only)" />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Theme" icon={ImageIcon} />
-              <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value={theme}>
-                  <DropdownMenuRadioItem
-                    value="light"
-                    label="Light"
-                    onClick={() => {
-                      localStorage.setItem("theme", "light");
-                      window.location.reload();
-                    }}
-                  />
-                  <DropdownMenuRadioItem
-                    value="dark"
-                    label="Dark"
-                    onClick={() => {
-                      localStorage.setItem("theme", "dark");
-                      window.location.reload();
-                    }}
-                  />
-                  <DropdownMenuRadioItem
-                    value="system"
-                    label="System"
-                    onClick={() => {
-                      localStorage.setItem("theme", "system");
-                      window.location.reload();
-                    }}
-                  />
-                </DropdownMenuRadioGroup>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
           </>
         )}
+
+        <DropdownMenuLabel label="Preferences" />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger label="Theme" icon={LightModeIcon} />
+          <DropdownMenuSubContent>
+            <DropdownMenuRadioGroup value={theme}>
+              <DropdownMenuRadioItem
+                value="light"
+                label="Light"
+                onClick={() => {
+                  localStorage.setItem("theme", "light");
+                  window.location.reload();
+                }}
+              />
+              <DropdownMenuRadioItem
+                value="dark"
+                label="Dark"
+                onClick={() => {
+                  localStorage.setItem("theme", "dark");
+                  window.location.reload();
+                }}
+              />
+              <DropdownMenuRadioItem
+                value="system"
+                label="System"
+                onClick={() => {
+                  localStorage.setItem("theme", "system");
+                  window.location.reload();
+                }}
+              />
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuLabel label="Account" />
         <DropdownMenuItem

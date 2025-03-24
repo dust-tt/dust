@@ -1,14 +1,14 @@
+import { cloneDeep } from "lodash";
+
+import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
+import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
 import type {
   AgentMessageNewEvent,
   AgentMessageWithRankType,
   UserMessageNewEvent,
   UserMessageWithRankType,
-} from "@dust-tt/types";
-import { isAgentMessageType, isUserMessageType } from "@dust-tt/types";
-import { cloneDeep } from "lodash";
-
-import type { FetchConversationMessagesResponse } from "@app/lib/api/assistant/messages";
-import type { FetchConversationParticipantsResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/participants";
+} from "@app/types";
+import { isAgentMessageType, isUserMessageType } from "@app/types";
 
 /**
  * If no message pages exist, create a single page with the optimistic message.

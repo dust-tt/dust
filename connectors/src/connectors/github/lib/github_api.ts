@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import { createWriteStream } from "fs";
 import { mkdtemp, readdir, rm } from "fs/promises";
@@ -12,6 +12,11 @@ import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import type { ReadEntry } from "tar";
 import { extract } from "tar";
+import type {
+  RequestInfo as UndiciRequestInfo,
+  RequestInit as UndiciRequestInit,
+} from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import {
   isBadCredentials,
@@ -44,6 +49,11 @@ import {
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import {
+  EnvironmentConfig,
+  getOAuthConnectionAccessToken,
+} from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
 
@@ -113,11 +123,11 @@ export async function installationIdFromConnectionId(
 }
 
 export async function getReposPage(
-  connectionId: string,
+  connector: ConnectorResource,
   page: number
 ): Promise<Result<GithubRepo[], ExternalOAuthTokenError>> {
   try {
-    const octokit = await getOctokit(connectionId);
+    const octokit = await getOctokit(connector);
 
     return new Ok(
       (
@@ -148,10 +158,10 @@ export async function getReposPage(
 }
 
 export async function getRepo(
-  connectionId: string,
+  connector: ConnectorResource,
   repoId: number
 ): Promise<Result<GithubRepo, ExternalOAuthTokenError>> {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
 
   try {
     const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
@@ -181,13 +191,13 @@ export async function getRepo(
 }
 
 export async function getRepoIssuesPage(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   page: number
 ): Promise<GithubIssue[]> {
   try {
-    const octokit = await getOctokit(connectionId);
+    const octokit = await getOctokit(connector);
 
     const issues = (
       await octokit.rest.issues.listForRepo({
@@ -224,6 +234,11 @@ export async function getRepoIssuesPage(
         "transient_upstream_activity_error"
       );
     }
+
+    if (isGithubRequestErrorNotFound(err)) {
+      return [];
+    }
+
     // Handle disabled issues case - GitHub returns 410 Gone when issues are disabled
     if (
       err instanceof RequestError &&
@@ -237,14 +252,14 @@ export async function getRepoIssuesPage(
 }
 
 export async function getIssue(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   issueNumber: number,
   logger: Logger
 ): Promise<GithubIssue | null> {
   try {
-    const octokit = await getOctokit(connectionId);
+    const octokit = await getOctokit(connector);
 
     const issue = (
       await octokit.rest.issues.get({
@@ -296,13 +311,13 @@ export async function getIssue(
 }
 
 export async function getIssueCommentsPage(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   issueNumber: number,
   page: number
 ): Promise<GithubIssueComment[]> {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
 
   const comments = (
     await octokit.rest.issues.listComments({
@@ -330,12 +345,12 @@ export async function getIssueCommentsPage(
 }
 
 export async function getRepoDiscussionsPage(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; discussions: DiscussionNode[] }> {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
   const d = await octokit.graphql(
     `
       query getDiscussions($owner: String!, $repo: String!, $cursor: String) {
@@ -396,13 +411,13 @@ export async function getRepoDiscussionsPage(
 }
 
 export async function getDiscussionCommentsPage(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   discussionNumber: number,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
   const d = await octokit.graphql(
     `
     query getDiscussionComments(
@@ -469,11 +484,11 @@ export async function getDiscussionCommentsPage(
 }
 
 export async function getDiscussionCommentRepliesPage(
-  connectionId: string,
+  connector: ConnectorResource,
   nodeID: string,
   cursor: string | null = null
 ): Promise<{ cursor: string | null; comments: DiscussionCommentNode[] }> {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
 
   const d = await octokit.graphql(
     `
@@ -537,15 +552,17 @@ export async function getDiscussionCommentRepliesPage(
 }
 
 export async function getDiscussion(
-  connectionId: string,
+  connector: ConnectorResource,
   repoName: string,
   login: string,
   discussionNumber: number
-): Promise<DiscussionNode> {
-  const octokit = await getOctokit(connectionId);
+): Promise<Result<DiscussionNode, Error>> {
+  const octokit = await getOctokit(connector);
 
-  const d = await octokit.graphql(
-    `
+  let d;
+  try {
+    d = await octokit.graphql(
+      `
     query getDiscussion(
       $owner: String!
       $repo: String!
@@ -567,16 +584,22 @@ export async function getDiscussion(
       }
     }
     `,
-    {
-      owner: login,
-      repo: repoName,
-      discussionNumber,
+      {
+        owner: login,
+        repo: repoName,
+        discussionNumber,
+      }
+    );
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
     }
-  );
+    return new Err(new Error(String(err)));
+  }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
   if (!isLeft(errorPayloadValidation)) {
-    throw new Error(JSON.stringify(errorPayloadValidation.right));
+    return new Err(new Error(JSON.stringify(errorPayloadValidation.right)));
   }
 
   const getDiscussionPayloadValidation = GetDiscussionPayloadSchema.decode(d);
@@ -585,20 +608,43 @@ export async function getDiscussion(
     const pathError = reporter.formatValidationErrors(
       getDiscussionPayloadValidation.left
     );
-    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
+    return new Err(new Error(`Unexpected payload: ${pathError.join(", ")}`));
   }
 
   const payload = getDiscussionPayloadValidation.right;
 
-  return payload.repository.discussion;
+  return new Ok(payload.repository.discussion);
 }
 
-export async function getOctokit(connectionId: string): Promise<Octokit> {
+export async function getOctokit(
+  connector: ConnectorResource
+): Promise<Octokit> {
   const token = await getOAuthConnectionAccessTokenWithThrow({
     logger,
     provider: "github",
-    connectionId,
+    connectionId: connector.connectionId,
   });
+
+  if (connector.useProxy) {
+    const myFetch = (url: UndiciRequestInfo, options: UndiciRequestInit) =>
+      undiciFetch(url, {
+        ...options,
+        dispatcher: new ProxyAgent(
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+        ),
+      });
+
+    return new Octokit({
+      auth: token.access_token,
+      request: { fetch: myFetch },
+    });
+  }
 
   return new Octokit({ auth: token.access_token });
 }
@@ -746,21 +792,21 @@ async function* getFiles(dir: string): AsyncGenerator<string> {
 // information. The root of the directory is considered the null parent (and will have to be
 // stitched by the activity).
 export async function processRepository({
-  connectionId,
+  connector,
   repoLogin,
   repoName,
   repoId,
   onEntry,
   logger,
 }: {
-  connectionId: string;
+  connector: ConnectorResource;
   repoLogin: string;
   repoName: string;
   repoId: number;
   onEntry: (entry: ReadEntry) => void;
   logger: Logger;
 }) {
-  const octokit = await getOctokit(connectionId);
+  const octokit = await getOctokit(connector);
 
   const { data } = await octokit.rest.repos.get({
     owner: repoLogin,
@@ -773,11 +819,25 @@ export async function processRepository({
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
   if (data.size > 10 * 1024 * 1024) {
-    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
-    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // For now we throw a panic log, so we are able to report the issue to the
+    // user, and continue with the rest of the sync. See runbook for future
+    // improvements
+    // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
+
+    // Later on, we might want to build capabilities to handle this (likely a
+    // typed error to return a syncFailed to the user, when we are able to
+    // display granular failure, or increase this limit if we want some largers
     // repositories).
-    throw new Error(
-      `Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
+
+    logger.error(
+      {
+        repoLogin,
+        repoName,
+        size: data.size,
+        connectorId: connector.id,
+        panic: true,
+      },
+      `Github Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
     );
   }
 

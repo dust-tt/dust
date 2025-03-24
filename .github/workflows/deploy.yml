@@ -1,4 +1,5 @@
 name: Deploy
+run-name: Deploy ${{ inputs.component }} to ${{ inputs.regions }}
 
 on:
   workflow_dispatch:
@@ -16,15 +17,18 @@ on:
         description: "Name of the component to deploy"
         required: true
         type: choice
+        default:
         options:
           - connectors
           - core
           - front
           - front-edge
+          - front-qa
           - prodbox
           - oauth
           - viz
           - alerting-temporal
+          - dante
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -39,7 +43,17 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if deployment is from main branch
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'front-qa' }}
+        run: |
+          echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
+          exit 1
+
   prepare:
+    needs: [ check-branch ]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -70,7 +84,7 @@ jobs:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
-        if: ${{ inputs.check_deployment_blocked }}
+        if: ${{ inputs.check_deployment_blocked == 'check' }}
         id: check_deployment_blocked
         uses: ./.github/actions/slack-check-deployment-blocked
         with:

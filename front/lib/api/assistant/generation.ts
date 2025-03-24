@@ -1,3 +1,20 @@
+import moment from "moment-timezone";
+
+import {
+  isRetrievalConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
+import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
+import {
+  getTextContentFromMessage,
+  getTextRepresentationFromMessages,
+} from "@app/lib/api/assistant/utils";
+import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
+import type { Authenticator } from "@app/lib/auth";
+import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { tokenCountForTexts } from "@app/lib/tokenization";
+import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AssistantContentMessageTypeModel,
@@ -10,32 +27,17 @@ import type {
   ModelMessageTypeMultiActions,
   Result,
   UserMessageType,
-} from "@dust-tt/types";
+} from "@app/types";
 import {
   assertNever,
   Err,
   isAgentMessageType,
   isContentFragmentMessageTypeModel,
   isContentFragmentType,
-  isRetrievalConfiguration,
   isUserMessageType,
-  isWebsearchConfiguration,
   Ok,
   removeNulls,
-} from "@dust-tt/types";
-import moment from "moment-timezone";
-
-import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
-import {
-  getTextContentFromMessage,
-  getTextRepresentationFromMessages,
-} from "@app/lib/api/assistant/utils";
-import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
-import type { Authenticator } from "@app/lib/auth";
-import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
-import { tokenCountForTexts } from "@app/lib/tokenization";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 /**
  * Generation execution.
@@ -64,6 +66,7 @@ export async function constructPromptMultiActions(
   let context = "CONTEXT:\n";
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `local_time: ${d.format("YYYY-MM-DD HH:mm (ddd)")}\n`;
+  context += `model_id: ${model.modelId}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
     if (userMessage.context.fullName) {

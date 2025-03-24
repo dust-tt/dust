@@ -1,7 +1,7 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { LogoSquareColorLogo } from "@sparkle/logo/dust";
+import { DustLogoSquare } from "@sparkle/logo/dust";
 
 import { Div3D, GithubLogo, Hover3D, Icon } from "../index_with_tw_base";
 
@@ -38,7 +38,7 @@ export const Hover3DExample = () => (
       <div>
         <Hover3D className="s-rounded-[24px] s-bg-slate-800 s-p-8">
           <Div3D depth={60}>
-            <Icon visual={LogoSquareColorLogo} size="2xl" />
+            <Icon visual={DustLogoSquare} size="2xl" />
           </Div3D>
         </Hover3D>
       </div>
@@ -88,7 +88,7 @@ export const Hover3DExample = () => (
           fullscreenSensible
         >
           <Div3D depth={60}>
-            <Icon visual={LogoSquareColorLogo} size="2xl" />
+            <Icon visual={DustLogoSquare} size="2xl" />
           </Div3D>
         </Hover3D>
       </div>

@@ -2,6 +2,30 @@ import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
+import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
+import { getMembers } from "@app/lib/api/workspace";
+import type { Authenticator } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
+import { DustError } from "@app/lib/error";
+import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { Lock } from "@app/lib/lock";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ServerSideTracking } from "@app/lib/tracking/server";
+import { enqueueUpsertTable } from "@app/lib/upsert_queue";
+import logger from "@app/logger/logger";
+import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
   AdminCommandType,
   ConnectorProvider,
@@ -19,7 +43,8 @@ import type {
   Result,
   WithConnector,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
+import { validateUrl } from "@app/types";
 import {
   assertNever,
   concurrentExecutor,
@@ -33,31 +58,7 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
-import assert from "assert";
-import type { Transaction } from "sequelize";
-
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { default as apiConfig, default as config } from "@app/lib/api/config";
-import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { getFileContent } from "@app/lib/api/files/utils";
-import { rowsFromCsv, upsertTableFromCsv } from "@app/lib/api/tables";
-import { getMembers } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
-import { DustError } from "@app/lib/error";
-import { Lock } from "@app/lib/lock";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { ServerSideTracking } from "@app/lib/tracking/server";
-import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import logger from "@app/logger/logger";
-import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+} from "@app/types";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -116,7 +117,34 @@ export async function hardDeleteDataSource(
 ) {
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
+  // Delete all files in the data source's bucket.
   const { dustAPIProjectId } = dataSource;
+
+  const files = await getDustDataSourcesBucket().getFiles({
+    prefix: dustAPIProjectId,
+  });
+
+  const chunkSize = 32;
+  const chunks = [];
+  for (let i = 0; i < files.length; i += chunkSize) {
+    chunks.push(files.slice(i, i + chunkSize));
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) {
+      continue;
+    }
+    await Promise.all(
+      chunk.map((f) => {
+        return (async () => {
+          await f.delete();
+        })();
+      })
+    );
+  }
+
+  // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
@@ -149,6 +177,7 @@ export async function hardDeleteDataSource(
     }
   }
 
+  // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
@@ -336,38 +365,15 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
-  if (!titleInTags) {
-    nonNullTags.push(`title:${title}`);
-  }
-
+    ?.substring(6);
   if (titleInTags && titleInTags !== title) {
-    logger.error(
+    logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // new DustError(
-    //   "invalid_title_in_tags",
-    //   "Invalid tags: title passed in tags does not match the table title."
-    // )
-  }
-
-  // Add selection of tags as prefix to the section if they are present.
-  let tagsPrefix = "";
-  ["title", "author"].forEach((t) => {
-    nonNullTags.forEach((tag) => {
-      if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
-        tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
-      }
-    });
-  });
-  if (tagsPrefix && generatedSection) {
-    generatedSection.prefix = tagsPrefix;
   }
 
   if (!generatedSection) {
@@ -543,7 +549,6 @@ export interface UpsertTableArgs {
   async?: boolean;
   title: string;
   mimeType: string;
-  csv?: string;
   fileId?: string;
   sourceUrl?: string | null;
   timestamp?: number | null;
@@ -578,36 +583,29 @@ export async function upsertTable({
       },
     Omit<DustError, "code"> & {
       code:
-        | "invalid_csv_and_file"
-        | "missing_csv"
         | "data_source_error"
-        | "invalid_csv"
-        | "invalid_url"
-        | "table_not_found"
         | "file_not_found"
-        | "title_too_long"
+        | "internal_error"
+        | "invalid_csv_and_file"
+        | "invalid_csv_content"
         | "invalid_parent_id"
         | "invalid_parents"
-        | "internal_error";
+        | "invalid_url"
+        | "missing_csv"
+        | "table_not_found"
+        | "title_is_empty"
+        | "title_too_long";
     }
   >
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const { name, description, csv, fileId, truncate, async } = params;
-  if (!csv && !fileId && truncate) {
+  const { name, description, fileId, truncate, async } = params;
+  if (!fileId && truncate) {
     return new Err({
       name: "dust_error",
       code: "missing_csv",
       message: "Cannot truncate a table without providing a CSV.",
-    });
-  }
-
-  if (csv && fileId) {
-    return new Err({
-      name: "dust_error",
-      code: "invalid_csv_and_file",
-      message: "Cannot provide both a `csv` and a `fileId`.",
     });
   }
 
@@ -636,43 +634,36 @@ export async function upsertTable({
     });
   }
 
+  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
   if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
       name: "dust_error",
       code: "title_too_long",
-      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+      message:
+        "Invalid title:" +
+        `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
     });
   }
 
   const tableTags = params.tags ?? [];
   const titleInTags = tableTags
     .find((t) => t.startsWith("title:"))
-    ?.split(":")
-    .slice(1)
-    .join(":");
+    ?.substring(6);
   if (!titleInTags) {
     tableTags.push(`title:${params.title}`);
   }
 
   if (titleInTags && titleInTags !== params.title) {
-    logger.error(
+    logger.warn(
       {
         dataSourceId: dataSource.sId,
         tableId,
         titleInTags,
         title: params.title,
       },
-      "[CoreNodes] Inconsistency between tags and title."
+      "Inconsistency between tags and title."
     );
-    // TODO(2025-02-18 aubin): uncomment what follows.
-    // return apiError(req, res, {
-    //   status_code: 400,
-    //   api_error: {
-    //     type: "invalid_request_error",
-    //     message: `Invalid tags: title passed in tags does not match the table title.`,
-    //   },
-    // });
   }
 
   let standardizedSourceUrl: string | null = null;
@@ -692,132 +683,49 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  if (async) {
-    if (csv) {
-      // Ensure the CSV is valid before enqueuing the upsert.
-      const csvRowsRes = await rowsFromCsv({ auth, csv });
-      if (csvRowsRes.isErr()) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_csv",
-          message: "Failed to parse CSV: " + csvRowsRes.error.message,
-        });
-      }
-    }
+  const title = titleEmpty ? UNTITLED_TITLE : params.title;
 
+  if (async) {
     if (fileId) {
       const file = await FileResource.fetchById(auth, fileId);
-      if (file) {
-        const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      if (!file) {
+        return new Err({
+          name: "dust_error",
+          code: "file_not_found",
+          message:
+            "The file associated with the fileId you provided was not found",
+        });
+      }
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-        const [schemaRes, headersRes] = await Promise.all([
-          coreAPI.tableValidateCSVContent({
-            projectId: dataSource.dustAPIProjectId,
-            dataSourceId: dataSource.dustAPIDataSourceId,
-            upsertQueueBucketCSVPath: file.getCloudStoragePath(
-              auth,
-              "processed"
-            ),
-          }),
-          (async () => {
-            // TODO(spolu): [CSV-FILE] Remove this leg and enforce core check
-            const content = await getFileContent(auth, file);
-            if (!content) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_request_error",
-                message: "The file provided is empty",
-              });
-            }
-            const csvRowsRes = await rowsFromCsv({ auth, csv: content });
-            if (csvRowsRes.isErr()) {
-              return new Err({
-                name: "dust_error",
-                code: "invalid_csv",
-                message: "Failed to parse CSV: " + csvRowsRes.error.message,
-              });
-            } else {
-              return new Ok(csvRowsRes.value.detectedHeaders);
-            }
-          })(),
-        ]);
-
-        if (schemaRes.isErr()) {
-          // TODO(spolu): [CSV-FILE] Enforce core check
-          logger.info(
-            {
-              error: schemaRes.error,
-            },
-            "[CSV-FILE] error validating CSV content"
-          );
-
-          if (!headersRes.isErr()) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                error: schemaRes.error,
-                headers: headersRes.value.header,
-              },
-              "[CSV-FILE] mismatch: schema error but headers are valid"
-            );
-          }
-        }
-
-        if (headersRes.isErr()) {
-          logger.info(
-            {
-              error: headersRes.error,
-            },
-            "[CSV-FILE] error detecting headers"
-          );
-
-          if (!schemaRes.isErr()) {
-            logger.info(
-              {
-                error: headersRes.error,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers error but schema is valid"
-            );
-          }
-
-          // If we have a schema error, we return early.
+      const schemaRes = await coreAPI.tableValidateCSVContent({
+        projectId: dataSource.dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        bucket: file.getBucketForVersion("processed").name,
+        bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+      });
+      if (schemaRes.isErr()) {
+        if (schemaRes.error.code === "invalid_csv_content") {
           return new Err({
             name: "dust_error",
-            code: "invalid_csv",
-            message: headersRes.error.message,
+            code: "invalid_csv_content",
+            message: schemaRes.error.message,
           });
-        }
-
-        if (!schemaRes.isErr() && !headersRes.isErr()) {
-          const schema = schemaRes.value.schema;
-          const headers = headersRes.value.header;
-          const schemaHeaders = schema.map((s) => s.name);
-          const headersSet = new Set(headers);
-
-          logger.info(
+        } else {
+          logger.error(
             {
-              headers,
-              schemaHeaders,
-              schema: schema.map((s) => s.name),
+              bucket: file.getBucketForVersion("processed").name,
+              bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
+              dataSourceId: dataSource.sId,
+              error: schemaRes.error,
             },
-            "[CSV-FILE] Validated CSV content"
+            "Error validating CSV content"
           );
-
-          // Schema headers does not include columns that have only null values, so we check that
-          // all schema headers are in the front computed headers and consider ouselves happy if
-          // that's the case.
-          if (!schemaHeaders.every((v) => headersSet.has(v))) {
-            logger.info(
-              {
-                firstRow: headersRes.value.firstRow,
-                headers,
-                schemaHeaders,
-                schema: schemaRes.value.schema,
-              },
-              "[CSV-FILE] mismatch: headers and schema mismatch"
-            );
-          }
+          return new Err({
+            name: "dust_error",
+            code: "internal_error",
+            message: schemaRes.error.message,
+          });
         }
       }
     }
@@ -833,20 +741,30 @@ export async function upsertTable({
         tableTags,
         tableParentId,
         tableParents,
-        csv: csv ?? null,
+        csv: null,
         fileId: fileId ?? null,
         truncate,
-        title: params.title,
+        title,
         mimeType: params.mimeType,
         sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
+      logger.error(
+        {
+          error: enqueueRes.error,
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          tableId,
+        },
+        "Error enqueueing the table for asynchronous upsert."
+      );
+
       return new Err({
         name: "dust_error",
         code: "data_source_error",
         message:
-          "There was an error enqueueing the the document for asynchronous upsert.",
+          "There was an error enqueueing the table for asynchronous upsert.",
       });
     }
     return new Ok({
@@ -866,10 +784,9 @@ export async function upsertTable({
     tableTags,
     tableParentId,
     tableParents,
-    csv: csv ?? null,
     fileId: fileId ?? null,
     truncate,
-    title: params.title,
+    title,
     mimeType: params.mimeType,
     sourceUrl: standardizedSourceUrl,
   });
@@ -884,29 +801,11 @@ export async function upsertTable({
     }
 
     if (tableRes.error.type === "invalid_request_error") {
-      if ("csvParsingError" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_csv",
-          message:
-            "Failed to parse CSV: " + tableRes.error.csvParsingError.message,
-        });
-      } else if ("inputValidationError" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "internal_error",
-          message:
-            "Invalid request body: " + tableRes.error.inputValidationError,
-        });
-      } else if ("message" in tableRes.error) {
-        return new Err({
-          name: "dust_error",
-          code: "invalid_parent_id",
-          message: "Invalid request body: " + tableRes.error.message,
-        });
-      } else {
-        assertNever(tableRes.error);
-      }
+      return new Err({
+        name: "dust_error",
+        code: "invalid_csv_and_file",
+        message: "Invalid request body: " + tableRes.error.message,
+      });
     }
 
     if (tableRes.error.type === "not_found_error") {
@@ -1021,6 +920,7 @@ export async function createDataSourceWithoutProvider(
       },
     },
     credentials: dustManagedCredentials(),
+    name,
   });
 
   if (dustDataSource.isErr()) {
@@ -1237,8 +1137,19 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(auth: Authenticator) {
+export async function resumeAllManagedDataSources(
+  auth: Authenticator,
+  providers?: ConnectorProvider[]
+) {
   const dataSources = await getAllManagedDataSources(auth);
+
+  const filteredDataSources = dataSources.filter(
+    // If no providers are provided, resume all data sources.
+    (ds) =>
+      !providers ||
+      (ds.connectorProvider !== null &&
+        providers.includes(ds.connectorProvider))
+  );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -1246,7 +1157,7 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   );
 
   const res = await concurrentExecutor(
-    dataSources,
+    filteredDataSources,
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
@@ -1283,4 +1194,15 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   }
 
   return new Ok(res);
+}
+
+export async function computeDataSourceStatistics(
+  dataSource: DataSourceResource
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  return coreAPI.getDataSourceStats({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
+  });
 }

@@ -16,9 +16,11 @@ use async_trait::async_trait;
 use eventsource_client as es;
 use eventsource_client::Client as ESClient;
 use futures::TryStreamExt;
+use humantime::parse_duration;
 use hyper::StatusCode;
 use hyper::{body::Buf, Uri};
 use itertools::izip;
+use lazy_static::lazy_static;
 use parking_lot::{Mutex, RwLock};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -34,6 +36,18 @@ use super::azure_openai::AzureOpenAIEmbedder;
 use super::openai_compatible_helpers::{
     openai_compatible_chat_completion, OpenAIError, TransformSystemMessages,
 };
+
+pub const REMAINING_TOKENS_MARGIN: u64 = 500_000;
+#[derive(Debug)]
+struct RateLimitDetails {
+    pub remaining_tokens: u64,
+    pub reset_tokens: u64, // Unix timestamp in milliseconds when the rate limit resets
+}
+
+lazy_static! {
+    // Map of API key to rate limit details
+    static ref RATE_LIMITS: RwLock<HashMap<String, RateLimitDetails>> = RwLock::new(HashMap::new());
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Usage {
@@ -523,7 +537,36 @@ pub async fn embed(
     model_id: Option<String>,
     text: Vec<&str>,
     user: Option<String>,
+    min_remaining_tokens: Option<u64>,
 ) -> Result<Embeddings> {
+    if let Some(min_remaining_tokens) = min_remaining_tokens {
+        let now = utils::now();
+
+        // Clean up expired rate limits
+        {
+            let mut rate_limits = RATE_LIMITS.write();
+            rate_limits.retain(|_, details| details.reset_tokens > now);
+        }
+
+        // Check rate limits
+        {
+            let rate_limits = RATE_LIMITS.read();
+            if let Some(details) = rate_limits.get(&api_key) {
+                if details.remaining_tokens < min_remaining_tokens {
+                    Err(ModelError {
+                        request_id: None,
+                        message: "Rate limit exceeded".to_string(),
+                        retryable: Some(ModelErrorRetryOptions {
+                            sleep: Duration::from_millis(details.reset_tokens - now),
+                            factor: 2,
+                            retries: 3,
+                        }),
+                    })?;
+                }
+            }
+        }
+    }
+
     let mut body = json!({
         "input": text,
     });
@@ -568,6 +611,33 @@ pub async fn embed(
         Some(request_id) => Some(request_id.to_str()?.to_string()),
         None => None,
     };
+
+    let remaining_tokens = match res_headers.get("x-ratelimit-remaining-tokens") {
+        Some(remaining_tokens) => remaining_tokens.to_str()?.to_string().parse::<u64>().ok(),
+        None => None,
+    };
+
+    let reset_tokens = match res_headers.get("x-ratelimit-reset-tokens") {
+        Some(reset_tokens) => parse_duration(reset_tokens.to_str()?)
+            .ok()
+            .map(|d| d.as_millis()),
+        None => None,
+    };
+    match (remaining_tokens, reset_tokens) {
+        (Some(remaining_tokens), Some(reset_tokens)) => {
+            let now = utils::now();
+            if reset_tokens > 0 {
+                RATE_LIMITS.write().insert(
+                    api_key.clone(),
+                    RateLimitDetails {
+                        remaining_tokens,
+                        reset_tokens: now + reset_tokens as u64,
+                    },
+                );
+            }
+        }
+        _ => (),
+    }
 
     let body = match timeout(Duration::new(60, 0), res.bytes()).await {
         Ok(Ok(body)) => body,
@@ -1095,6 +1165,13 @@ impl Embedder for OpenAIEmbedder {
             match &extras {
                 Some(e) => match e.get("openai_user") {
                     Some(Value::String(u)) => Some(u.to_string()),
+                    _ => None,
+                },
+                None => None,
+            },
+            match &extras {
+                Some(e) => match e.get("enforce_rate_limit_margin") {
+                    Some(Value::Bool(true)) => Some(REMAINING_TOKENS_MARGIN),
                     _ => None,
                 },
                 None => None,

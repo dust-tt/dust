@@ -1,9 +1,7 @@
-import { assertNever, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger, { auditLog } from "@app/logger/logger";
+import { assertNever, ConnectorsAPI, Err, Ok } from "@app/types";
 
 const OPERATIONS = ["STOP", "PAUSE", "UNPAUSE", "RESUME", "SYNC"] as const;
 
@@ -31,8 +29,8 @@ const doOperation = (op: OperationType, connectorId: string) => {
   }
 };
 
-export const connectorOperationsPlugin = createPlugin(
-  {
+export const connectorOperationsPlugin = createPlugin({
+  manifest: {
     id: "maintenance-operation",
     name: "Maintenance operation",
     description: "Execute a maintenance operation on connector",
@@ -46,12 +44,7 @@ export const connectorOperationsPlugin = createPlugin(
       },
     },
   },
-  async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }
@@ -80,5 +73,5 @@ export const connectorOperationsPlugin = createPlugin(
       display: "text",
       value: `Operation ${op} executed successfully on connector ${connectorId}.`,
     });
-  }
-);
+  },
+});

@@ -1,5 +1,3 @@
-import type { LightWorkspaceType, Result } from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
 import type Stripe from "stripe";
 
 import { reportActiveSeats } from "@app/lib/plans/stripe";
@@ -13,8 +11,10 @@ import {
   isSupportedReportUsage,
   REPORT_USAGE_METADATA_KEY,
 } from "@app/lib/plans/usage/types";
+import type { LightWorkspaceType, Result } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
-function getUsageToReportForSubscriptionItem(
+export function getUsageToReportForSubscriptionItem(
   item: Stripe.SubscriptionItem
 ): Result<SupportedReportUsage | null, InvalidReportUsageError> {
   const usageToReport = item.price.metadata[REPORT_USAGE_METADATA_KEY];

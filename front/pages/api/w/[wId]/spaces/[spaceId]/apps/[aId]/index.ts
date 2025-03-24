@@ -1,5 +1,3 @@
-import type { AppType, WithAPIErrorResponse } from "@dust-tt/types";
-import { APP_NAME_REGEXP } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -12,6 +10,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { AppType, WithAPIErrorResponse } from "@app/types";
+import { APP_NAME_REGEXP } from "@app/types";
 
 export type GetOrPostAppResponseBody = {
   app: AppType;

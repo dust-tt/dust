@@ -1,22 +1,34 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import { assertNever, isValidContentNodesViewType } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok, removeNulls } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodeWithParent,
+} from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import {
+  concurrentExecutor,
+  isValidContentNodesViewType,
+} from "@connectors/types";
 
-type GetConnectorPermissionsRes = WithConnectorsAPIErrorReponse<{
-  resources: ContentNode[];
+type GetConnectorPermissionsRes<
+  T extends ConnectorPermission | null = ConnectorPermission,
+> = WithConnectorsAPIErrorReponse<{
+  resources: T extends "read" ? ContentNodeWithParent[] : ContentNode[];
 }>;
 
 const _getConnectorPermissions = async (
-  req: Request<{ connector_id: string }, GetConnectorPermissionsRes, undefined>,
-  res: Response<GetConnectorPermissionsRes>
+  req: Request<
+    { connector_id: string },
+    GetConnectorPermissionsRes<ConnectorPermission>,
+    undefined
+  >,
+  res: Response<GetConnectorPermissionsRes<ConnectorPermission>>
 ) => {
   if (!req.params.connector_id) {
     return apiError(req, res, {
@@ -58,7 +70,7 @@ const _getConnectorPermissions = async (
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Invalid viewType. Required: tables | documents | all",
+        message: "Invalid viewType. Required: table | document | all",
       },
     });
   }
@@ -121,6 +133,56 @@ const _getConnectorPermissions = async (
       default:
         assertNever(pRes.error.code);
     }
+  }
+
+  // Augment the resources with their parent internal ids.
+  if (filterPermission === "read") {
+    const resourcesWithParentsResults: Result<ContentNodeWithParent, Error>[] =
+      await concurrentExecutor(
+        pRes.value,
+        async (resource) => {
+          const res = await getConnectorManager({
+            connectorProvider: connector.type,
+            connectorId: connector.id,
+          }).retrieveContentNodeParents({
+            internalId: resource.internalId,
+            memoizationKey: `${resource.internalId}-${resource.parentInternalId}`,
+          });
+
+          if (res.isErr()) {
+            return new Err(res.error);
+          }
+
+          return new Ok({
+            ...resource,
+            parentInternalIds: res.value,
+          });
+        },
+        {
+          concurrency: 10,
+        }
+      );
+
+    const hasErrors = resourcesWithParentsResults.some((r) => r.isErr());
+    if (hasErrors) {
+      return apiError(req, res, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Error retrieving content node parents: ${removeNulls(
+            resourcesWithParentsResults.map((r) =>
+              r.isErr() ? r.error.message : null
+            )
+          ).join(", ")}`,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      resources: removeNulls(
+        resourcesWithParentsResults.map((r) => (r.isOk() ? r.value : null))
+      ),
+    });
   }
 
   return res.status(200).json({

@@ -1,6 +1,3 @@
-import type { AppType, SpecificationType } from "@dust-tt/types";
-import type { RunConfig, RunType } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import fs from "fs";
 import path from "path";
 import peg from "pegjs";
@@ -8,12 +5,56 @@ import peg from "pegjs";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { AppType, SpecificationType } from "@app/types";
+import type { RunConfig, RunType } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
-const libDir = path.join(process.cwd(), "lib");
-const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
-const specParser = peg.generate(dustPegJs);
+export const cleanSpecificationFromCore = (
+  specification: SpecificationType
+) => {
+  for (const block of specification) {
+    // we clear out the config for input blocks because the dataset might
+    // have changed or might not exist anymore
+    if (block.type === "input") {
+      block.config = {};
+    }
+
+    // we have to remove the hash and ID of the dataset in data blocks
+    // to prevent the app from becoming un-runable
+    if (block.type === "data") {
+      delete block.spec.dataset_id;
+      delete block.spec.hash;
+    }
+  }
+};
+
+export async function getSpecification(
+  app: AppType,
+  specificationHash: string
+) {
+  const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
+
+  const s = await coreAPI.getSpecification({
+    projectId: app.dustAPIProjectId,
+    specificationHash,
+  });
+
+  if (s.isErr()) {
+    return null;
+  }
+  // TODO(spolu): check type compatibility at run time.
+  const libDir = path.join(process.cwd(), "lib");
+  const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
+  const specParser = peg.generate(dustPegJs);
+
+  const spec = specParser.parse(
+    s.value.specification.data
+  ) as SpecificationType;
+
+  return spec;
+}
 
 export async function getRun(
   auth: Authenticator,
@@ -38,17 +79,11 @@ export async function getRun(
   // Retrieve specification and parse it.
   const specHash = run.app_hash;
 
-  const s = await coreAPI.getSpecification({
-    projectId: app.dustAPIProjectId,
-    specificationHash: specHash as string,
-  });
+  let spec = await getSpecification(app, specHash as string);
 
-  if (s.isErr()) {
+  if (!spec) {
     return null;
   }
-
-  // TODO(spolu): check type compatibility at run time.
-  let spec = specParser.parse(s.value.specification.data) as SpecificationType;
 
   for (let i = 0; i < spec.length; i++) {
     if (spec[i].name in config.blocks) {

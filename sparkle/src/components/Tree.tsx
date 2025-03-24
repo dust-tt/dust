@@ -53,7 +53,7 @@ export function Tree({
       className={cn(
         "s-flex s-flex-col s-gap-0.5 s-overflow-hidden",
         isBoxed &&
-          "s-rounded-xl s-border s-border-structure-200 s-bg-structure-50 s-p-4 dark:s-border-structure-200-night dark:s-bg-structure-50-night",
+          "s-rounded-xl s-border s-border-border s-bg-muted-background s-p-4 dark:s-border-border-night dark:s-bg-muted-background-night",
         className
       )}
     >
@@ -67,12 +67,12 @@ const treeItemStyleClasses = {
   isNavigatableBase:
     "s-rounded-xl s-pl-1 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
-    "s-bg-structure-150/0 dark:s-bg-structure-150-night/0",
-    "hover:s-bg-structure-150 dark:hover:s-bg-structure-150-night"
+    "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
+    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-structure-150 dark:s-bg-structure-150-night"
+    "s-bg-primary-100 dark:s-bg-primary-100-night"
   ),
 };
 
@@ -92,6 +92,7 @@ interface TreeItemProps {
   isNavigatable?: boolean;
   isSelected?: boolean;
   onItemClick?: () => void;
+  id?: string;
 }
 
 export interface TreeItemPropsWithChildren extends TreeItemProps {
@@ -104,106 +105,143 @@ export interface TreeItemPropsWithRender extends TreeItemProps {
   children?: never;
 }
 
-Tree.Item = function ({
-  label,
-  type = "node",
-  className = "",
-  labelClassName = "",
-  tailwindIconTextColor = "s-text-element-800 dark:s-text-element-800-night",
-  visual,
-  checkbox,
-  onChevronClick,
-  collapsed,
-  defaultCollapsed,
-  actions,
-  areActionsFading = true,
-  renderTreeItems,
-  children,
-  isNavigatable = false,
-  isSelected = false,
-  onItemClick,
-}: TreeItemPropsWithChildren | TreeItemPropsWithRender) {
-  const [collapsedState, setCollapsedState] = useState<boolean>(
-    defaultCollapsed ?? true
-  );
+Tree.Item = React.forwardRef<
+  HTMLDivElement,
+  TreeItemPropsWithChildren | TreeItemPropsWithRender
+>(
+  (
+    {
+      label,
+      type = "node",
+      className = "",
+      labelClassName = "",
+      tailwindIconTextColor = "s-text-foreground dark:s-text-foreground-night",
+      visual,
+      checkbox,
+      onChevronClick,
+      collapsed,
+      defaultCollapsed,
+      actions,
+      areActionsFading = true,
+      renderTreeItems,
+      children,
+      isNavigatable = false,
+      isSelected = false,
+      onItemClick,
+      id,
+    },
+    ref
+  ) => {
+    const [collapsedState, setCollapsedState] = useState<boolean>(
+      defaultCollapsed ?? true
+    );
 
-  const isControlledCollapse = collapsed !== undefined;
+    const isControlledCollapse = collapsed !== undefined;
 
-  const effectiveCollapsed = isControlledCollapse ? collapsed : collapsedState;
-  const effectiveOnChevronClick = isControlledCollapse
-    ? onChevronClick
-    : () => setCollapsedState(!collapsedState);
+    const effectiveCollapsed = isControlledCollapse
+      ? collapsed
+      : collapsedState;
+    const effectiveOnChevronClick = isControlledCollapse
+      ? onChevronClick
+      : () => setCollapsedState(!collapsedState);
 
-  const getChildren = () => {
-    if (effectiveCollapsed) {
-      return [];
-    }
+    const canExpand = effectiveOnChevronClick && type === "node";
+    const getChildren = () => {
+      if (effectiveCollapsed) {
+        return [];
+      }
 
-    return typeof renderTreeItems === "function" ? renderTreeItems() : children;
-  };
+      return typeof renderTreeItems === "function"
+        ? renderTreeItems()
+        : children;
+    };
 
-  const childrenToRender = getChildren();
+    const childrenToRender = getChildren();
 
-  const isExpanded = childrenToRender && !effectiveCollapsed;
+    const isExpanded = childrenToRender && !effectiveCollapsed;
 
-  return (
-    <>
-      <div
-        className={cn(
-          treeItemStyleClasses.base,
-          onItemClick ? "s-cursor-pointer" : "",
-          isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
-          isNavigatable
-            ? isSelected
-              ? treeItemStyleClasses.isNavigatableSelected
-              : treeItemStyleClasses.isNavigatableUnselected
-            : "",
-          isExpanded ? "is-expanded" : "is-collapsed",
-          type,
-          className
-        )}
-        onClick={onItemClick}
-      >
-        {type === "node" && (
-          <Button
-            icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
-            size="xs"
-            variant="ghost-secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (effectiveOnChevronClick) {
-                effectiveOnChevronClick();
-              }
-            }}
-          />
-        )}
-        {type === "leaf" && <div className="s-w-[34px] s-flex-shrink-0"></div>}
-        {checkbox && <Checkbox {...checkbox} size="xs" />}
-        <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
+    return (
+      <>
         <div
-          className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
+          ref={ref}
+          id={id}
+          className={cn(
+            treeItemStyleClasses.base,
+            onItemClick || checkbox?.onCheckedChange || canExpand
+              ? "s-cursor-pointer"
+              : "",
+            isNavigatable ? treeItemStyleClasses.isNavigatableBase : "",
+            isNavigatable
+              ? isSelected
+                ? treeItemStyleClasses.isNavigatableSelected
+                : treeItemStyleClasses.isNavigatableUnselected
+              : "",
+            isExpanded ? "is-expanded" : "is-collapsed",
+            type,
+            className
+          )}
+          onClick={
+            onItemClick ||
+            ((e) => {
+              // Skip if click on checkbox or any button
+              if (
+                e.target instanceof HTMLElement &&
+                e.target.tagName !== "BUTTON"
+              ) {
+                e.stopPropagation();
+                if (checkbox?.onCheckedChange) {
+                  checkbox.onCheckedChange?.(!checkbox.checked);
+                } else if (canExpand) {
+                  effectiveOnChevronClick();
+                }
+              }
+            })
+          }
         >
-          {label}
-        </div>
-        <div className="s-grow" />
-        {actions && (
+          {type === "node" && (
+            <Button
+              icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
+              size="xs"
+              variant="ghost-secondary"
+              disabled={!effectiveOnChevronClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (effectiveOnChevronClick) {
+                  effectiveOnChevronClick();
+                }
+              }}
+            />
+          )}
+          {type === "leaf" && (
+            <div className="s-w-[34px] s-flex-shrink-0"></div>
+          )}
+          {checkbox && <Checkbox {...checkbox} size="xs" />}
+          <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
           <div
-            className={cn(
-              "s-flex s-gap-2 s-pl-4",
-              areActionsFading &&
-                "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
-            )}
+            className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
           >
-            {actions}
+            {label}
           </div>
+          <div className="s-grow" />
+          {actions && (
+            <div
+              className={cn(
+                "s-flex s-gap-2 s-pl-4",
+                areActionsFading &&
+                  "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
+              )}
+            >
+              {actions}
+            </div>
+          )}
+        </div>
+        {React.Children.count(childrenToRender) > 0 && (
+          <div className="s-pl-4">{childrenToRender}</div>
         )}
-      </div>
-      {React.Children.count(childrenToRender) > 0 && (
-        <div className="s-pl-4">{childrenToRender}</div>
-      )}
-    </>
-  );
-};
+      </>
+    );
+  }
+);
 
 interface TreeEmptyProps {
   label: string;

@@ -1,4 +1,4 @@
-import { classNames, Collapsible, Icon } from "@dust-tt/sparkle";
+import { cn, CollapsibleComponent, Icon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface ActionDetailsWrapperProps {
@@ -15,10 +15,12 @@ export function ActionDetailsWrapper({
   visual,
 }: ActionDetailsWrapperProps) {
   return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <Collapsible.Button>
+    <CollapsibleComponent
+      rootProps={{ defaultOpen }}
+      triggerProps={{}}
+      triggerChildren={
         <div
-          className={classNames(
+          className={cn(
             "text-foreground dark:text-foreground-night",
             "flex flex-row items-center gap-x-2"
           )}
@@ -26,8 +28,8 @@ export function ActionDetailsWrapper({
           <Icon size="sm" visual={visual} />
           <span className="text-base font-semibold">{actionName}</span>
         </div>
-      </Collapsible.Button>
-      <Collapsible.Panel>{children}</Collapsible.Panel>
-    </Collapsible>
+      }
+      contentChildren={children}
+    />
   );
 }

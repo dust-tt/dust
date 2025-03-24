@@ -1,26 +1,22 @@
-import type {
-  ConnectorProvider,
-  CoreAPIDataSourceDocumentSection,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import {
-  Err,
-  isTextExtractionSupportedContentType,
-  Ok,
-  pagePrefixesPerMimeType,
-  parseAndStringifyCsv,
-  slugify,
-  TextExtraction,
-} from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import { apiConfig } from "@connectors/lib/api/config";
+import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import {
   ignoreTablesError,
   upsertDataSourceTableFromCsv,
 } from "@connectors/lib/data_sources";
 import type { Logger } from "@connectors/logger/logger";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  isTextExtractionSupportedContentType,
+  pagePrefixesPerMimeType,
+  parseAndStringifyCsv,
+  slugify,
+  TextExtraction,
+} from "@connectors/types";
 
 // We observed cases where tabular data was stored in ASCII in .txt files.
 const MAX_NUMBER_CHAR_RATIO = 0.66;
@@ -110,9 +106,10 @@ export async function handleTextExtraction(
     return new Err(new Error("unsupported_content_type"));
   }
 
-  const pageRes = await new TextExtraction(
-    apiConfig.getTextExtractionUrl()
-  ).fromBuffer(Buffer.from(data), mimeType);
+  const pageRes = await new TextExtraction(apiConfig.getTextExtractionUrl(), {
+    enableOcr: false,
+    logger: localLogger,
+  }).fromBuffer(Buffer.from(data), mimeType);
 
   if (pageRes.isErr()) {
     localLogger.warn(

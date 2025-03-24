@@ -1,5 +1,5 @@
 use super::file_storage_document::FileStorageDocument;
-use super::node::{Node, NodeType, ProviderVisibility};
+use super::node::ProviderVisibility;
 use super::qdrant::{DustQdrantClient, QdrantCluster};
 use crate::consts::DATA_SOURCE_DOCUMENT_SYSTEM_TAG_PREFIX;
 use crate::data_sources::qdrant::{QdrantClients, QdrantDataSourceConfig};
@@ -10,7 +10,7 @@ use crate::providers::embedder::{EmbedderRequest, EmbedderVector};
 use crate::providers::provider::ProviderID;
 use crate::run::Credentials;
 use crate::search_filter::{Filterable, SearchFilter};
-use crate::search_stores::search_store::SearchStore;
+use crate::search_stores::search_store::{Indexable, NodeItem, SearchStore};
 use crate::stores::store::{DocumentCreateParams, Store};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -18,11 +18,11 @@ use futures::future::try_join_all;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
-use qdrant_client::qdrant::vectors::VectorsOptions;
+use qdrant_client::qdrant::vectors_output::VectorsOptions;
 use qdrant_client::qdrant::{PointId, RetrievedPoint, ScoredPoint};
 use qdrant_client::{prelude::Payload, qdrant};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
@@ -98,13 +98,13 @@ pub struct Chunk {
 ///   corresponding table)
 ///
 /// For some sources, this is well emboodied by  the parent's external id,
-/// provided by the managed datasource’s API: the Notion id (notionPageId column
+/// provided by the managed datasource's API: the Notion id (notionPageId column
 /// in `notion_pages`) for Notion pages and databases, the Google drive id
 /// (driveFileId column in `google_drive_documents`).
 ///
 /// For other sources, such as github: github issues / discussions do not have a
 /// proper external id, so we use our computed document id. The repo is
-/// considered a parent, and has a proper external “repo id”, which is stored at
+/// considered a parent, and has a proper external "repo id", which is stored at
 /// 2nd place in the array
 ///
 /// Additional note: in cases where selection of elements to sync is done on
@@ -129,7 +129,7 @@ pub struct Chunk {
 ///
 /// The id of the document itself is stored at index 0 because the field is used
 /// in filtering search to search only parts of the hierarchy: it is natural
-/// that if the document’s id is selected as a parent filter, the document
+/// that if the document's id is selected as a parent filter, the document
 /// itself shows up in the search.
 ///
 ///
@@ -219,25 +219,6 @@ impl Filterable for Document {
 
     fn get_parents(&self) -> Vec<String> {
         self.parents.clone()
-    }
-}
-
-impl From<Document> for Node {
-    fn from(document: Document) -> Node {
-        Node::new(
-            &document.data_source_id,
-            &document.data_source_internal_id,
-            &document.document_id,
-            NodeType::Document,
-            document.timestamp,
-            &document.title,
-            &document.mime_type,
-            document.provider_visibility,
-            document.parent_id,
-            document.parents.clone(),
-            document.source_url,
-            Some(document.tags),
-        )
     }
 }
 
@@ -337,11 +318,12 @@ pub struct DocumnentBlobPayload {
 /// as well as vector search db. It is a generated unique ID.
 #[derive(Debug, Serialize, Clone)]
 pub struct DataSource {
-    project: Project,
+    config: DataSourceConfig,
     created: u64,
     data_source_id: String,
     internal_id: String,
-    config: DataSourceConfig,
+    name: String,
+    project: Project,
 }
 
 fn target_document_tokens_offsets(
@@ -397,13 +379,14 @@ fn target_document_tokens_offsets(
 }
 
 impl DataSource {
-    pub fn new(project: &Project, config: &DataSourceConfig) -> Self {
+    pub fn new(project: &Project, config: &DataSourceConfig, name: &str) -> Self {
         DataSource {
-            project: project.clone(),
+            config: config.clone(),
             created: utils::now(),
             data_source_id: utils::new_id(),
             internal_id: utils::new_id(),
-            config: config.clone(),
+            project: project.clone(),
+            name: name.to_string(),
         }
     }
 
@@ -413,6 +396,7 @@ impl DataSource {
         data_source_id: &str,
         internal_id: &str,
         config: &DataSourceConfig,
+        name: &str,
     ) -> Self {
         DataSource {
             project: project.clone(),
@@ -420,11 +404,46 @@ impl DataSource {
             data_source_id: data_source_id.to_string(),
             internal_id: internal_id.to_string(),
             config: config.clone(),
+            name: name.to_string(),
         }
+    }
+
+    pub async fn register(
+        &self,
+        store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
+    ) -> Result<()> {
+        // Store in postgres.
+        store.register_data_source(&self.project, self).await?;
+
+        search_store.index_data_source(self).await?;
+
+        Ok(())
+    }
+
+    pub async fn update_name(
+        &mut self,
+        store: Box<dyn Store + Sync + Send>,
+        search_store: Box<dyn SearchStore + Sync + Send>,
+        name: &str,
+    ) -> Result<()> {
+        self.name = name.to_string();
+
+        store
+            .update_data_source_name(&self.project, &self.data_source_id, &self.name)
+            .await?;
+
+        search_store.index_data_source(self).await?;
+
+        Ok(())
     }
 
     pub fn created(&self) -> u64 {
         self.created
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn project(&self) -> &Project {
@@ -519,7 +538,9 @@ impl DataSource {
 
         match document {
             Some(document) => {
-                search_store.index_node(Node::from(document)).await?;
+                search_store
+                    .index_node(NodeItem::Document(document))
+                    .await?;
             }
             None => (),
         }
@@ -812,7 +833,9 @@ impl DataSource {
             .await?;
 
         // Upsert document in search index.
-        search_store.index_node(Node::from(document)).await?;
+        search_store
+            .index_node(NodeItem::Document(document))
+            .await?;
 
         // Clean-up old superseded versions.
         self.scrub_document_superseded_versions(store, &document_id)
@@ -963,13 +986,16 @@ impl DataSource {
             .map(|chunk| chunk.to_vec())
             .collect::<Vec<_>>();
 
+        let mut extras = self.config.extras.clone().unwrap_or(json!({}));
+        extras["enforce_rate_limit_margin"] = json!(true);
+
         // Embed batched chunks sequentially.
         for chunk in chunked_splits {
             let r = EmbedderRequest::new(
                 embedder_config.provider_id.clone(),
                 &embedder_config.model_id,
                 chunk.iter().map(|ci| ci.text.as_str()).collect::<Vec<_>>(),
-                self.config.extras.clone(),
+                Some(extras.clone()),
             );
 
             let v = match r.execute(credentials.clone()).await {
@@ -1811,7 +1837,9 @@ impl DataSource {
             .await?;
 
         // Delete document from search index.
-        search_store.delete_node(Node::from(document)).await?;
+        search_store
+            .delete_node(NodeItem::Document(document))
+            .await?;
 
         // We also scrub it directly. We used to scrub async but now that we store a GCS version
         // for each data_source_documents entry we can scrub directly at the time of delete.
@@ -2095,10 +2123,8 @@ impl DataSource {
             "Deleted folders"
         );
 
-        // Delete all nodes from the search index
-        search_store
-            .delete_data_source_nodes(&self.data_source_id)
-            .await?;
+        // Delete all nodes and the data source documents from the search indices.
+        search_store.delete_data_source(self).await?;
 
         // Delete data source and documents (SQL).
         let deleted_rows = store
@@ -2445,5 +2471,77 @@ mod tests {
             "# title\nThis is an introduction.\n## paragraph 2\nThis \
              is a paragraph1.\n## paragraph 2\nThis is a paragraph2.\n"
         );
+    }
+}
+
+pub const DATA_SOURCE_MIME_TYPE: &str = "application/vnd.dust.datasource";
+pub const DATA_SOURCE_INDEX_NAME: &str = "core.data_sources";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataSourceESDocument {
+    pub data_source_id: String,
+    pub data_source_internal_id: String,
+    pub timestamp: u64,
+    pub name: String,
+}
+
+impl From<&DataSource> for DataSourceESDocument {
+    fn from(ds: &DataSource) -> Self {
+        Self {
+            data_source_id: ds.data_source_id().to_string(),
+            data_source_internal_id: ds.internal_id().to_string(),
+            timestamp: ds.created(),
+            name: ds.name().to_string(),
+        }
+    }
+}
+
+impl From<serde_json::Value> for DataSourceESDocument {
+    fn from(value: serde_json::Value) -> Self {
+        serde_json::from_value(value)
+            .expect("Failed to deserialize DataSourceESDocument from JSON value")
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DataSourceESDocumentWithStats {
+    pub data_source_id: String,
+    pub data_source_internal_id: String,
+    pub timestamp: u64,
+    pub name: String,
+    pub text_size: i64,
+    pub document_count: i64,
+}
+
+impl From<(DataSourceESDocument, i64, i64)> for DataSourceESDocumentWithStats {
+    fn from((document, text_size, document_count): (DataSourceESDocument, i64, i64)) -> Self {
+        Self {
+            data_source_id: document.data_source_id,
+            data_source_internal_id: document.data_source_internal_id,
+            timestamp: document.timestamp,
+            name: document.name,
+            text_size,
+            document_count,
+        }
+    }
+}
+
+impl Indexable for DataSource {
+    type Doc = DataSourceESDocument;
+
+    fn index_name(&self) -> &'static str {
+        DATA_SOURCE_INDEX_NAME
+    }
+
+    fn unique_id(&self) -> String {
+        self.internal_id().to_string()
+    }
+
+    fn document_type(&self) -> &'static str {
+        "data_source"
+    }
+
+    fn to_document(&self) -> Self::Doc {
+        self.into()
     }
 }

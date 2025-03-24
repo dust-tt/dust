@@ -1,34 +1,7 @@
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewSelectionConfigurations,
-  DustAppRunConfigurationType,
-  ProcessConfigurationType,
-  ReasoningConfigurationType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TemplateAgentConfigurationType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-  slugify,
-} from "@dust-tt/types";
-
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import {
   getDefaultDustAppRunActionConfiguration,
-  getDefaultGithubCreateIssueActionConfiguration,
-  getDefaultGithubGetPullRequestActionConfiguration,
+  getDefaultMCPServerActionConfiguration,
   getDefaultProcessActionConfiguration,
   getDefaultReasoningActionConfiguration,
   getDefaultRetrievalExhaustiveActionConfiguration,
@@ -37,12 +10,38 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { ProcessConfigurationType } from "@app/lib/actions/process";
+import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
+import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isMCPServerConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
+import type {
+  AgentConfigurationType,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewSelectionConfigurations,
+  TemplateAgentConfigurationType,
+} from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export const getAccessibleSourcesAndApps = async (auth: Authenticator) => {
   const accessibleSpaces = (
@@ -113,12 +112,10 @@ async function initializeBuilderAction(
     return getDefaultWebsearchActionConfiguration();
   } else if (isBrowseConfiguration(action)) {
     return null; // Ignore browse actions
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return getDefaultGithubGetPullRequestActionConfiguration();
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return getDefaultGithubCreateIssueActionConfiguration();
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
+  } else if (isMCPServerConfiguration(action)) {
+    return getMCPServerActionConfiguration(action);
   } else {
     assertNever(action);
   }
@@ -199,15 +196,15 @@ async function getProcessActionConfiguration(
   return processConfiguration;
 }
 
-async function getReasoningActionConfiguration(
+function getReasoningActionConfiguration(
   action: ReasoningConfigurationType
-): Promise<AssistantBuilderActionConfiguration> {
+): AssistantBuilderActionConfiguration {
   const builderAction = getDefaultReasoningActionConfiguration();
   if (builderAction.type !== "REASONING") {
     throw new Error("Reasoning action configuration is not valid");
   }
 
-  const supportedReasoningModel = await REASONING_MODEL_CONFIGS.find(
+  const supportedReasoningModel = REASONING_MODEL_CONFIGS.find(
     (m) =>
       m.modelId === action.modelId &&
       m.providerId === action.providerId &&
@@ -220,6 +217,22 @@ async function getReasoningActionConfiguration(
     builderAction.configuration.reasoningEffort =
       supportedReasoningModel.reasoningEffort ?? null;
   }
+
+  return builderAction;
+}
+
+function getMCPServerActionConfiguration(
+  action: MCPServerConfigurationType
+): AssistantBuilderActionConfiguration {
+  const builderAction = getDefaultMCPServerActionConfiguration();
+  if (builderAction.type !== "MCP") {
+    throw new Error("MCP action configuration is not valid");
+  }
+
+  builderAction.configuration = { ...action };
+  builderAction.name = action.name + "_" + generateRandomModelSId();
+  builderAction.description =
+    action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
 
   return builderAction;
 }
@@ -261,7 +274,7 @@ async function renderDataSourcesConfigurations(
         dataSourceView,
         {
           internalIds: sr.resources,
-          viewType: "documents",
+          viewType: "document",
         }
       );
 
@@ -338,7 +351,7 @@ async function renderTableDataSourcesConfigurations(
           dataSourceView,
           {
             internalIds: sr.resources,
-            viewType: "tables",
+            viewType: "table",
           }
         );
 

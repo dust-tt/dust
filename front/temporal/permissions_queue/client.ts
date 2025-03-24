@@ -1,5 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +8,8 @@ import { QUEUE_NAME } from "@app/temporal/permissions_queue/config";
 import type { UpdateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
 import { updateSpacePermissionsSignal } from "@app/temporal/permissions_queue/signals";
 import { updateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/workflows";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const DEBOUNCE_MS = 10 * 1000; // 10 seconds.
 

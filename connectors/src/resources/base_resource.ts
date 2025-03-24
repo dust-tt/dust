@@ -1,4 +1,4 @@
-import type { Result } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
 import type { Attributes, Model, ModelStatic, Transaction } from "sequelize";
 
 interface BaseResourceConstructor<T extends BaseResource<M>, M extends Model> {

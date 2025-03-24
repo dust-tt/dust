@@ -1,11 +1,3 @@
-import type { AgentMessageType, ModelId } from "@dust-tt/types";
-import {
-  assertNever,
-  dustManagedCredentials,
-  isEmptyString,
-} from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { UniqueConstraintError } from "sequelize";
@@ -18,10 +10,9 @@ import {
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
-import { default as apiConfig } from "@app/lib/api/config";
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
@@ -40,6 +31,15 @@ import {
   retrieveModjoTranscriptContent,
   retrieveModjoTranscripts,
 } from "@app/temporal/labs/utils/modjo";
+import type { AgentMessageType, ModelId } from "@app/types";
+import {
+  assertNever,
+  dustManagedCredentials,
+  isEmptyString,
+  isProviderWithDefaultWorkspaceConfiguration,
+} from "@app/types";
+import { Err } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function retrieveNewTranscriptsActivity(
   transcriptsConfigurationId: ModelId
@@ -89,11 +89,17 @@ export async function retrieveNewTranscriptsActivity(
 
   switch (transcriptsConfiguration.provider) {
     case "google_drive":
-      const googleTranscriptsIds = await retrieveGoogleTranscripts(
+      const googleTranscriptsRes = await retrieveGoogleTranscripts(
         auth,
         transcriptsConfiguration,
         localLogger
       );
+      if (googleTranscriptsRes.isErr()) {
+        await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
+        await transcriptsConfiguration.setIsActive(false);
+        throw googleTranscriptsRes.error;
+      }
+      const googleTranscriptsIds = googleTranscriptsRes.value;
       transcriptsIdsToProcess.push(...googleTranscriptsIds);
       break;
 
@@ -352,17 +358,15 @@ export async function processTranscriptActivity(
     throw error;
   }
 
-  // FF enables storing all Gong/Modjo transcripts in a single datasource view
-  let fullStorageFF = false;
   let fullStorageDataSourceViewId = null;
+  const fullStorage = isProviderWithDefaultWorkspaceConfiguration(
+    transcriptsConfiguration.provider
+  );
 
-  const featureFlags = await getFeatureFlags(owner);
-  fullStorageFF = featureFlags.includes("labs_transcripts_full_storage");
-
-  if (fullStorageFF) {
+  if (fullStorage) {
     const defaultTranscriptsStorageConfiguration =
-      await LabsTranscriptsConfigurationResource.fetchDefaultFullStorageConfigurationForWorkspace(
-        auth
+      await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
+        auth.getNonNullableWorkspace()
       );
 
     fullStorageDataSourceViewId =
@@ -372,7 +376,7 @@ export async function processTranscriptActivity(
   // Decide to store transcript or not (user might not have participated)
   const shouldStoreTranscript =
     (userParticipated && !!transcriptsConfiguration.dataSourceViewId) ||
-    (fullStorageFF && !!fullStorageDataSourceViewId);
+    (fullStorage && !!fullStorageDataSourceViewId);
 
   // Decide to process transcript or not (user needs to have participated)
   const shouldProcessTranscript =
@@ -384,7 +388,7 @@ export async function processTranscriptActivity(
       userParticipated,
       transcriptsConfigurationDataSourceViewId:
         transcriptsConfiguration.dataSourceViewId,
-      fullStorageFF,
+      fullStorage,
       fullStorageDataSourceViewId,
       shouldStoreTranscript,
       shouldProcessTranscript,
@@ -396,7 +400,7 @@ export async function processTranscriptActivity(
     localLogger.info(
       {
         dataSourceViewId: transcriptsConfiguration.dataSourceViewId,
-        fullStorageFF,
+        fullStorage,
         fullStorageDataSourceViewId,
         transcriptsConfiguration,
         transcriptTitle,
@@ -451,7 +455,7 @@ export async function processTranscriptActivity(
 
     const credentials = dustManagedCredentials();
 
-    const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), localLogger);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
     const upsertRes = await coreAPI.upsertDataSourceDocument({
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
@@ -517,7 +521,11 @@ export async function processTranscriptActivity(
       return;
     }
 
-    const agent = await getAgentConfiguration(auth, agentConfigurationId);
+    const agent = await getAgentConfiguration(
+      auth,
+      agentConfigurationId,
+      "light"
+    );
 
     if (!agent) {
       await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
@@ -684,7 +692,7 @@ export async function processTranscriptActivity(
       },
       subject: `[DUST] Transcripts - ${transcriptTitle.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")}`,
       body: `${htmlAnswer}<div style="text-align: center; margin-top: 20px;">
-    <a href="${apiConfig.getDustAPIConfig().url}/w/${owner.sId}/assistant/${conversation.sId}"
+    <a href="${config.getClientFacingUrl()}/w/${owner.sId}/assistant/${conversation.sId}"
       style="display: inline-block;
               padding: 10px 20px;
               background-color: #000000;

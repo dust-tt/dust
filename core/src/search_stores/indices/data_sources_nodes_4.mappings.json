@@ -22,7 +22,8 @@
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "edge_analyzer"
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "standard"
         },
         "keyword": {
           "type": "keyword"
@@ -46,13 +47,18 @@
       "type": "keyword",
       "index": false
     },
+    "text_size": {
+      "type": "long",
+      "index": false
+    },
     "tags": {
       "type": "text",
       "analyzer": "standard",
       "fields": {
         "edge": {
           "type": "text",
-          "analyzer": "tag_edge_analyzer"
+          "analyzer": "tag_edge_analyzer",
+          "search_analyzer": "standard"
         },
         "keyword": {
           "type": "keyword",

@@ -5,23 +5,36 @@ import {
   FullscreenExitIcon,
   FullscreenIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
 import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
+import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getSpaceAccessPriority } from "@app/lib/spaces";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentMention,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -43,6 +56,8 @@ export interface InputBarContainerProps {
   disableAutoFocus: boolean;
   disableSendButton: boolean;
   fileUploaderService: FileUploaderService;
+  onNodeSelect?: (node: DataSourceViewContentNode) => void;
+  attachedNodes: DataSourceViewContentNode[];
 }
 
 const InputBarContainer = ({
@@ -56,26 +71,92 @@ const InputBarContainer = ({
   disableAutoFocus,
   disableSendButton,
   fileUploaderService,
+  onNodeSelect,
+  attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
-  function handleExpansionToggle() {
-    setIsExpanded((currentExpanded) => !currentExpanded);
-    // Focus at the end of the document when toggling expansion.
-    editorService.focusEnd();
-  }
+  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] =
+    useState<DataSourceViewContentNode | null>(null);
 
-  function resetEditorContainerSize() {
-    setIsExpanded(false);
-  }
+  const handleUrlDetected = useCallback((nodeId: string | null) => {
+    if (nodeId) {
+      setNodeCandidate(nodeId);
+    }
+  }, []);
+
+  // TODO: remove once attach from datasources is released
+  const isAttachedFromDataSourceActivated = featureFlags.includes(
+    "attach_from_datasources"
+  );
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
+    ...(isAttachedFromDataSourceActivated && {
+      onUrlDetected: handleUrlDetected,
+    }),
   });
+
+  useUrlHandler(editor, selectedNode);
+
+  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+  const spacesMap = useMemo(
+    () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
+    [spaces]
+  );
+
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+    includeDataSources: true,
+    owner,
+    viewType: "all",
+    nodeIds: nodeCandidate ? [nodeCandidate] : [],
+    disabled:
+      isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
+    spaceIds: spaces.map((s) => s.sId),
+  });
+
+  useEffect(() => {
+    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
+      return;
+    }
+
+    if (searchResultNodes.length > 0) {
+      const nodesWithViews = searchResultNodes.flatMap((node) => {
+        const { dataSourceViews, ...rest } = node;
+        return dataSourceViews.map((view) => ({
+          ...rest,
+          dataSourceView: view,
+          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+        }));
+      });
+
+      if (nodesWithViews.length > 0) {
+        const sortedNodes = nodesWithViews.sort(
+          (a, b) => b.spacePriority - a.spacePriority
+        );
+        const node = sortedNodes[0];
+        onNodeSelect(node);
+        setSelectedNode(node);
+      }
+
+      // Reset node candidate after processing
+      setNodeCandidate(null);
+    } else {
+      setNodeCandidate(null);
+    }
+  }, [
+    searchResultNodes,
+    nodeCandidate,
+    onNodeSelect,
+    isSearchLoading,
+    editorService,
+    spacesMap,
+  ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
@@ -95,6 +176,16 @@ const InputBarContainer = ({
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleExpansionToggle() {
+    setIsExpanded((currentExpanded) => !currentExpanded);
+    // Focus at the end of the document when toggling expansion.
+    editorService.focusEnd();
+  }
+
+  function resetEditorContainerSize() {
+    setIsExpanded(false);
+  }
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -138,15 +229,28 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              <Button
-                variant="ghost-secondary"
-                icon={AttachmentIcon}
-                size="xs"
-                tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              />
+              {featureFlags.includes("attach_from_datasources") ? (
+                <InputBarAttachmentsPicker
+                  fileUploaderService={fileUploaderService}
+                  owner={owner}
+                  isLoading={false}
+                  onNodeSelect={
+                    onNodeSelect ||
+                    ((node) => console.log(`Selected ${node.title}`))
+                  }
+                  attachedNodes={attachedNodes}
+                />
+              ) : (
+                <Button
+                  variant="ghost-secondary"
+                  icon={AttachmentIcon}
+                  size="xs"
+                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                  }}
+                />
+              )}
             </>
           )}
           {(actions.includes("assistants-list") ||
@@ -181,10 +285,9 @@ const InputBarContainer = ({
           variant="highlight"
           disabled={editorService.isEmpty() || disableSendButton}
           onClick={async () => {
-            const jsonContent = editorService.getTextAndMentions();
             onEnterKeyDown(
               editorService.isEmpty(),
-              jsonContent,
+              editorService.getMarkdownAndMentions(),
               () => {
                 editorService.clearEditor();
                 resetEditorContainerSize();

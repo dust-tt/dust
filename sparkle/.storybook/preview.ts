@@ -3,7 +3,6 @@ import type { Preview } from "@storybook/react";
 
 const preview: Preview = {
   parameters: {
-    actions: { argTypesRegex: "^on[A-Z].*" },
     controls: {
       matchers: {
         color: /(background|color)$/i,
@@ -26,11 +25,45 @@ const preview: Preview = {
       default: "light",
       list: [
         { name: "light", class: "", color: "#ffffff" },
-        { name: "dark", class: "s-dark", color: "s-bg-slate-800" },
+        { name: "dark", class: "s-dark", color: "#000000" },
+      ],
+    },
+    backgrounds: {
+      default: "white",
+      values: [
+        {
+          name: "white",
+          value: "#ffffff",
+        },
+        {
+          name: "light",
+          value: "#F7F7F7",
+        },
+        {
+          name: "dark",
+          value: "#090F18",
+        },
+        {
+          name: "black",
+          value: "#000000",
+        },
       ],
     },
   },
+
   decorators: [
+    (Story, context) => {
+      const isDark = context.globals.theme === "dark";
+      const background = isDark ? "#000000" : "#ffffff";
+
+      // Update both document and storybook-docs background
+      document.documentElement.style.backgroundColor = background;
+      document
+        .querySelector(".docs-story")
+        ?.setAttribute("style", `background-color: ${background}`);
+
+      return Story();
+    },
     withThemeByClassName({
       themes: {
         light: "",
@@ -39,6 +72,8 @@ const preview: Preview = {
       defaultTheme: "light",
     }),
   ],
+
+  tags: ["autodocs"],
 };
 
 export default preview;

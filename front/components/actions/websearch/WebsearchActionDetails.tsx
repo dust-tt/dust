@@ -1,15 +1,15 @@
 import {
-  Collapsible,
+  CollapsibleComponent,
   ContentMessage,
   GlobeAltIcon,
   InformationCircleIcon,
   PaginatedCitationsGrid,
 } from "@dust-tt/sparkle";
-import type { WebsearchActionType } from "@dust-tt/types";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
 import { makeWebsearchResultsCitations } from "@app/components/actions/websearch/utils";
+import type { WebsearchActionType } from "@app/lib/actions/websearch";
 
 export function WebsearchActionDetails({
   action,
@@ -40,24 +40,27 @@ export function WebsearchActionDetails({
           </div>
         </div>
         <div>
-          <Collapsible defaultOpen={defaultOpen}>
-            <Collapsible.Button>
+          <CollapsibleComponent
+            rootProps={{ defaultOpen: defaultOpen }}
+            triggerChildren={
               <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                 Results
               </span>
-            </Collapsible.Button>
-            <Collapsible.Panel>
-              <PaginatedCitationsGrid items={resultsCitations} />
-              {formattedError && (
-                <ContentMessage
-                  title="Error searching the web"
-                  icon={InformationCircleIcon}
-                >
-                  {formattedError}
-                </ContentMessage>
-              )}
-            </Collapsible.Panel>
-          </Collapsible>
+            }
+            contentChildren={
+              <>
+                <PaginatedCitationsGrid items={resultsCitations} />
+                {formattedError && (
+                  <ContentMessage
+                    title="Error searching the web"
+                    icon={InformationCircleIcon}
+                  >
+                    {formattedError}
+                  </ContentMessage>
+                )}
+              </>
+            }
+          />
         </div>
       </div>
     </ActionDetailsWrapper>

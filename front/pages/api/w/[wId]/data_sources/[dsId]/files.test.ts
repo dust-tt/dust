@@ -10,7 +10,7 @@ import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./files";
 
-const CORE_FAKE_RESPONSE = {
+const CORE_TABLES_FAKE_RESPONSE = {
   response: {
     table: {
       project: { project_id: 47 },
@@ -35,6 +35,28 @@ const CORE_FAKE_RESPONSE = {
       remote_database_table_id: null,
       remote_database_secret_id: null,
     },
+  },
+};
+
+const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
+  response: {
+    schema: [
+      {
+        name: "foo",
+        value_type: "int",
+        possible_values: ["1", "4"],
+      },
+      {
+        name: "bar",
+        value_type: "int",
+        possible_values: ["2", "5"],
+      },
+      {
+        name: "baz",
+        value_type: "int",
+        possible_values: ["3", "6"],
+      },
+    ],
   },
 };
 
@@ -195,7 +217,7 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
           expect(req.name).toBe("Test Table");
           expect(req.description).toBe("Test Description");
           return Promise.resolve(
-            new Response(JSON.stringify(CORE_FAKE_RESPONSE), {
+            new Response(JSON.stringify(CORE_TABLES_FAKE_RESPONSE), {
               status: 200,
               headers: { "Content-Type": "application/json" },
             })
@@ -203,10 +225,11 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
           //
         }
 
-        if ((url as string).endsWith("/rows")) {
-          expect(req.rows[0].row_id).toBe("0");
-          expect(req.rows[0].value.bar).toBe(2);
-          expect(req.rows[1].value.foo).toBe(4);
+        if ((url as string).endsWith("/csv")) {
+          expect(req.bucket_csv_path).toBe(
+            `files/w/${workspace.sId}/${file.sId}/processed`
+          );
+          expect(req.truncate).toBe(true);
           return Promise.resolve(
             new Response(
               JSON.stringify({
@@ -219,6 +242,18 @@ describe("POST /api/w/[wId]/data_sources/[dsId]/files", () => {
                 headers: { "Content-Type": "application/json" },
               }
             )
+          );
+        }
+
+        if ((url as string).endsWith("/validate_csv_content")) {
+          expect(req.bucket_csv_path).toBe(
+            `files/w/${workspace.sId}/${file.sId}/processed`
+          );
+          return Promise.resolve(
+            new Response(JSON.stringify(CORE_VALIDATE_CSV_FAKE_RESPONSE), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            })
           );
         }
       });

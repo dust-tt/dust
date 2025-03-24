@@ -1,12 +1,22 @@
-import type { ConnectorPermission, ModelId, Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
 import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
+import {
+  getSlackChannelSourceUrl,
+  slackChannelInternalIdFromSlackChannelId,
+} from "@connectors/connectors/slack/lib/utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ConnectorPermission } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 import { getSlackClient } from "./slack_client";
 
@@ -63,6 +73,56 @@ export async function updateSlackChannelInConnectorsDb({
     agentConfigurationId: channel.agentConfigurationId,
     private: channel.private,
   };
+}
+
+export async function updateSlackChannelInCoreDb(
+  connectorId: ModelId,
+  channelId: string,
+  timestampMs: number | undefined
+) {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const slackConfiguration =
+    await SlackConfigurationResource.fetchByConnectorId(connectorId);
+  if (!slackConfiguration) {
+    throw new Error(
+      `Could not find slack configuration for connector ${connector}`
+    );
+  }
+
+  const channelOnDb = await SlackChannel.findOne({
+    where: {
+      connectorId: connector.id,
+      slackChannelId: channelId,
+    },
+  });
+  if (!channelOnDb) {
+    logger.warn(
+      {
+        connectorId,
+        channelId,
+      },
+      "Could not find channel in connectors db, skipping for now."
+    );
+    return;
+  }
+
+  const folderId = slackChannelInternalIdFromSlackChannelId(channelId);
+
+  await upsertDataSourceFolder({
+    dataSourceConfig: dataSourceConfigFromConnector(connector),
+    folderId,
+    title: `#${channelOnDb.slackChannelName}`,
+    parentId: null,
+    parents: [folderId],
+    mimeType: MIME_TYPES.SLACK.CHANNEL,
+    sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
+    providerVisibility: channelOnDb.private ? "private" : "public",
+    timestampMs,
+  });
 }
 
 export async function joinChannel(

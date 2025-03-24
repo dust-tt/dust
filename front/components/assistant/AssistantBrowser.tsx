@@ -19,15 +19,12 @@ import {
   useHashParam,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import React, { useMemo, useState } from "react";
 
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { setQueryParam } from "@app/lib/utils/router";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 function isValidTab(tab: string, visibleTabs: TabId[]): tab is TabId {
   return visibleTabs.includes(tab as TabId);

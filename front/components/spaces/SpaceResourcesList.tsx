@@ -3,52 +3,59 @@ import {
   Button,
   Chip,
   CloudArrowLeftRightIcon,
+  cn,
   Cog6ToothIcon,
   CubeIcon,
   DataTable,
   PencilSquareIcon,
-  SearchInput,
   Spinner,
   TrashIcon,
   usePaginationFromUrl,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  DataSourceViewCategory,
-  DataSourceViewsWithDetails,
-  DataSourceViewType,
-  DataSourceWithConnectorDetailsType,
-  PlanType,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isWebsiteOrFolderCategory } from "@dust-tt/types";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import { useRouter } from "next/router";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { AssistantDetails } from "@app/components/assistant/AssistantDetails";
-import { ConnectorPermissionsModal } from "@app/components/ConnectorPermissionsModal";
+import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
+import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers";
-import { getDataSourceNameFromView, isManaged } from "@app/lib/data_sources";
+import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAgentConfigurationSIdLookup } from "@app/lib/swr/assistants";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
 } from "@app/lib/swr/spaces";
-import { classNames } from "@app/lib/utils";
+import type {
+  ConnectorProvider,
+  DataSourceViewCategory,
+  DataSourceViewsWithDetails,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isWebsiteOrFolderCategory } from "@app/types";
 
 export interface RowData {
   dataSourceView: DataSourceViewsWithDetails;
@@ -252,7 +259,6 @@ export const SpaceResourcesList = ({
     workspaceId: owner.sId,
     agentConfigurationName: assistantName,
   });
-  const [dataSourceSearch, setDataSourceSearch] = useState("");
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
@@ -269,7 +275,6 @@ export const SpaceResourcesList = ({
     Partial<Record<ConnectorProvider, boolean>>
   >({});
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
@@ -295,10 +300,14 @@ export const SpaceResourcesList = ({
     category,
   });
 
+  const { setIsSearchDisabled, setTargetDataSourceViews } =
+    useContext(SpaceSearchContext);
+
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];
     }
+
     return spaceDataSourceViews.map((dataSourceView) => {
       const provider = dataSourceView.dataSource.connectorProvider;
 
@@ -367,6 +376,20 @@ export const SpaceResourcesList = ({
     isDark,
   ]);
 
+  // Disable the search if there are no rows.
+  useEffect(() => {
+    if (rows.length === 0) {
+      setIsSearchDisabled(true);
+    } else {
+      setIsSearchDisabled(false);
+    }
+  }, [rows.length, setIsSearchDisabled]);
+
+  // Set the target data source views to use when searching.
+  useEffect(() => {
+    setTargetDataSourceViews(spaceDataSourceViews);
+  }, [spaceDataSourceViews, setTargetDataSourceViews]);
+
   const onSelectedDataUpdated = useCallback(async () => {
     await mutateSpaceDataSourceViews();
   }, [mutateSpaceDataSourceViews]);
@@ -382,6 +405,10 @@ export const SpaceResourcesList = ({
     }
   }, [selectedDataSourceView, doDelete, router, owner.sId, space.sId]);
 
+  const { portalToHeader } = useActionButtonsPortal({
+    containerId: ACTION_BUTTONS_CONTAINER_ID,
+  });
+
   if (isSpaceDataSourceViewsLoading || isNewConnectorLoading) {
     return (
       <div className="mt-8 flex justify-center">
@@ -390,125 +417,113 @@ export const SpaceResourcesList = ({
     );
   }
 
-  return (
+  const actionButtons = (
     <>
-      <div
-        className={classNames(
-          "flex gap-2",
-          rows.length === 0
-            ? classNames(
-                "h-36 w-full items-center justify-center rounded-xl",
-                "bg-muted-background dark:bg-muted-background-night"
-              )
-            : ""
-        )}
-      >
-        {rows.length > 0 && (
-          <SearchInput
-            name="search"
-            ref={searchBarRef}
-            placeholder="Search (Name)"
-            value={dataSourceSearch}
-            onChange={(s) => setDataSourceSearch(s)}
-          />
-        )}
-        {isSystemSpace && category === "managed" && (
-          <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
-            <AddConnectionMenu
-              owner={owner}
-              plan={plan}
-              existingDataSources={
-                spaceDataSourceViews
-                  .filter((dsView) => isManaged(dsView.dataSource))
-                  .map(
-                    (v) => v.dataSource
-                  ) as DataSourceWithConnectorDetailsType[]
-                // We need to filter and then cast because useSpaceDataSourceViewsWithDetails can
-                // return dataSources with connectorProvider as null
-              }
-              setIsProviderLoading={(provider, isLoading) => {
-                setIsNewConnectorLoading(isLoading);
-                setIsLoadingByProvider((prev) => ({
-                  ...prev,
-                  [provider]: isLoading,
-                }));
-              }}
-              onCreated={async (dataSource) => {
-                const updateDataSourceViews =
-                  await mutateSpaceDataSourceViews();
+      {isSystemSpace && category === "managed" && (
+        <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
+          <AddConnectionMenu
+            owner={owner}
+            plan={plan}
+            setIsProviderLoading={(provider, isLoading) => {
+              setIsNewConnectorLoading(isLoading);
+              setIsLoadingByProvider((prev) => ({
+                ...prev,
+                [provider]: isLoading,
+              }));
+            }}
+            onCreated={async (dataSource) => {
+              const updateDataSourceViews = await mutateSpaceDataSourceViews();
 
-                if (updateDataSourceViews) {
-                  const view = updateDataSourceViews.dataSourceViews.find(
-                    (v: DataSourceViewType) =>
-                      v.dataSource.sId === dataSource.sId
-                  );
-                  if (view) {
-                    setSelectedDataSourceView(view);
-                    if (
-                      isConnectorPermissionsEditable(
-                        dataSource.connectorProvider
-                      )
-                    ) {
-                      setShowConnectorPermissionsModal(true);
-                    }
+              if (updateDataSourceViews) {
+                const view = updateDataSourceViews.dataSourceViews.find(
+                  (v: DataSourceViewType) => v.dataSource.sId === dataSource.sId
+                );
+                if (view) {
+                  setSelectedDataSourceView(view);
+                  if (
+                    isConnectorPermissionsEditable(dataSource.connectorProvider)
+                  ) {
+                    setShowConnectorPermissionsModal(true);
                   }
                 }
-                setIsNewConnectorLoading(false);
-              }}
-              integrations={integrations}
-            />
-          </div>
-        )}
-        {!isSystemSpace && isManagedCategory && (
-          <EditSpaceManagedDataSourcesViews
-            isAdmin={isAdmin}
-            onSelectedDataUpdated={onSelectedDataUpdated}
-            owner={owner}
-            systemSpace={systemSpace}
-            space={space}
+              }
+              setIsNewConnectorLoading(false);
+            }}
+            integrations={integrations}
           />
-        )}
-        {isFolder && selectedDataSourceView && (
-          <ViewFolderAPIModal
-            isOpen={showViewFolderAPIModal}
-            owner={owner}
-            space={space}
-            dataSource={selectedDataSourceView.dataSource}
-            onClose={() => setShowViewFolderAPIModal(false)}
-          />
-        )}
-        {isWebsiteOrFolder && (
-          <>
-            <EditSpaceStaticDatasourcesViews
-              isOpen={showFolderOrWebsiteModal}
-              onOpen={() => {
-                setSelectedDataSourceView(null);
-                setShowFolderOrWebsiteModal(true);
-              }}
-              owner={owner}
-              space={space}
-              canWriteInSpace={canWriteInSpace}
-              dataSourceView={selectedDataSourceView}
-              category={category}
-              onClose={() => setShowFolderOrWebsiteModal(false)}
-            />
-            {selectedDataSourceView && (
-              <DeleteStaticDataSourceDialog
-                owner={owner}
-                dataSource={selectedDataSourceView.dataSource}
-                handleDelete={onDeleteFolderOrWebsite}
-                isOpen={showDeleteConfirmDialog}
-                onClose={() => setShowDeleteConfirmDialog(false)}
-              />
-            )}
-          </>
-        )}
-        <AssistantDetails
+        </div>
+      )}
+      {!isSystemSpace && isManagedCategory && (
+        <EditSpaceManagedDataSourcesViews
+          isAdmin={isAdmin}
+          onSelectedDataUpdated={onSelectedDataUpdated}
           owner={owner}
-          assistantId={assistantSId}
-          onClose={() => setAssistantName(null)}
+          systemSpace={systemSpace}
+          space={space}
         />
-      </div>
+      )}
+      {isFolder && selectedDataSourceView && (
+        <ViewFolderAPIModal
+          isOpen={showViewFolderAPIModal}
+          owner={owner}
+          space={space}
+          dataSource={selectedDataSourceView.dataSource}
+          onClose={() => setShowViewFolderAPIModal(false)}
+        />
+      )}
+      {isWebsiteOrFolder && (
+        <>
+          <EditSpaceStaticDatasourcesViews
+            isOpen={showFolderOrWebsiteModal}
+            onOpen={() => {
+              setSelectedDataSourceView(null);
+              setShowFolderOrWebsiteModal(true);
+            }}
+            owner={owner}
+            space={space}
+            canWriteInSpace={canWriteInSpace}
+            dataSourceView={selectedDataSourceView}
+            category={category}
+            onClose={() => setShowFolderOrWebsiteModal(false)}
+          />
+          {selectedDataSourceView && (
+            <DeleteStaticDataSourceDialog
+              owner={owner}
+              dataSource={selectedDataSourceView.dataSource}
+              handleDelete={onDeleteFolderOrWebsite}
+              isOpen={showDeleteConfirmDialog}
+              onClose={() => setShowDeleteConfirmDialog(false)}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+
+  const isEmpty = rows.length === 0;
+
+  return (
+    <>
+      <AssistantDetails
+        owner={owner}
+        assistantId={assistantSId}
+        onClose={() => setAssistantName(null)}
+      />
+
+      {isEmpty && (
+        <div
+          className={cn(
+            "flex h-36 w-full items-center justify-center rounded-xl",
+            "bg-muted-background dark:bg-muted-background-night"
+          )}
+        >
+          {actionButtons}
+        </div>
+      )}
+
+      {/* Portal buttons next to the search bar if not empty. */}
+      {!isEmpty && portalToHeader(actionButtons)}
+
       {rows.length > 0 && (
         <DataTable<RowData>
           data={rows}
@@ -518,8 +533,6 @@ export const SpaceResourcesList = ({
             isWebsite,
             space
           )}
-          filter={dataSourceSearch}
-          filterColumn="name"
           sorting={sorting}
           setSorting={setSorting}
           pagination={pagination}

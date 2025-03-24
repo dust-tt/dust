@@ -1,19 +1,19 @@
-import type {
-  ConnectorType,
-  Result,
-  UpdateConnectorConfigurationType,
-  WithConnectorsAPIErrorReponse,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ioTsParsePayload,
-  WebCrawlerConfigurationTypeSchema,
-} from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import type { Request, Response } from "express";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type {
+  ConnectorType,
+  UpdateConnectorConfigurationType,
+} from "@connectors/types";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import {
+  ioTsParsePayload,
+  WebCrawlerConfigurationTypeSchema,
+} from "@connectors/types";
 
 type PatchConnectorConfigurationResBody =
   WithConnectorsAPIErrorReponse<ConnectorType>;
@@ -70,6 +70,7 @@ const _patchConnectorConfiguration = async (
     case "snowflake":
     case "bigquery":
     case "zendesk":
+    case "gong":
     case "slack": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`
@@ -85,7 +86,7 @@ const _patchConnectorConfiguration = async (
     }
   }
 
-  if (patchRes.isErr()) {
+  if (patchRes?.isErr()) {
     return apiError(
       req,
       res,

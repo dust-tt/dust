@@ -1,5 +1,3 @@
-import type { DustAppSecretType, WithAPIErrorResponse } from "@dust-tt/types";
-import { encrypt, rateLimiter } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,8 +7,11 @@ import {
 } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
 import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { DustAppSecretType, WithAPIErrorResponse } from "@app/types";
+import { encrypt } from "@app/types";
 
 export type GetDustAppSecretsResponseBody = {
   secrets: DustAppSecretType[];

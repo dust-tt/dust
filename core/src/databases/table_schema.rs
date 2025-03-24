@@ -19,6 +19,7 @@ pub enum TableSchemaFieldType {
     Text,
     Bool,
     DateTime,
+    Reference(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -54,6 +55,7 @@ impl std::fmt::Display for TableSchemaFieldType {
             TableSchemaFieldType::Text => write!(f, "text"),
             TableSchemaFieldType::Bool => write!(f, "boolean"),
             TableSchemaFieldType::DateTime => write!(f, "timestamp"),
+            TableSchemaFieldType::Reference(rel_name) => write!(f, "reference: {}", rel_name),
         }
     }
 }
@@ -66,30 +68,35 @@ pub struct TableSchemaColumn {
     pub name: String,
     pub value_type: TableSchemaFieldType,
     pub possible_values: Option<Vec<String>>,
+    // Set to true if this field can't be used in a where clause. False by default
+    pub non_filterable: Option<bool>,
 }
 
 impl TableSchemaColumn {
-    pub fn new(name: &str, field_type: TableSchemaFieldType) -> Self {
+    pub fn new(name: &str, field_type: TableSchemaFieldType, non_filterable: Option<bool>) -> Self {
         Self {
             name: name.to_string(),
             value_type: field_type,
             possible_values: None,
+            non_filterable,
         }
     }
 
     pub fn render_dbml(&self) -> String {
-        match &self.possible_values {
-            Some(possible_values) => {
-                let mut note = format!(
-                    "{} {} [note: 'possible values: ",
-                    self.name, self.value_type
-                );
-                note.push_str(&possible_values.join(", "));
-                note.push_str("']");
-                note
+        let mut dbml = format!("{} {}", self.name, self.value_type);
+        if let Some(possible_values) = &self.possible_values {
+            if !possible_values.is_empty() {
+                dbml.push_str(" [note: 'possible values: ");
+                dbml.push_str(&possible_values.join(", "));
+                dbml.push_str("']");
             }
-            None => format!("{} {}", self.name, self.value_type),
         }
+
+        if self.non_filterable.unwrap_or(false) {
+            dbml.push_str(" [note: non filterable - this field cannot be used in a where clause]");
+        }
+
+        dbml
     }
 }
 
@@ -164,12 +171,7 @@ impl TableSchema {
         let mut schema_map: HashMap<String, TableSchemaColumn> = HashMap::new();
 
         for (row_index, row) in rows.iter().enumerate() {
-            let object = match row.value().as_object() {
-                Some(object) => object,
-                None => Err(anyhow!("Row {} is not an object", row_index,))?,
-            };
-
-            for (k, v) in object {
+            for (k, v) in row.value() {
                 if v.is_null() {
                     continue;
                 }
@@ -225,6 +227,7 @@ impl TableSchema {
                             name: k.clone(),
                             value_type,
                             possible_values: Some(vec![]),
+                            non_filterable: None,
                         };
                         Self::accumulate_value(&mut column, v);
                         schema_map.insert(k.clone(), column);
@@ -257,6 +260,7 @@ impl TableSchema {
                         TableSchemaFieldType::Text => "TEXT",
                         TableSchemaFieldType::Bool => "BOOLEAN",
                         TableSchemaFieldType::DateTime => "TEXT",
+                        TableSchemaFieldType::Reference(_) => "REFERENCE",
                     };
                     format!("\"{}\" {}", column.name, sql_type)
                 })
@@ -292,31 +296,33 @@ impl TableSchema {
         field_names: &Vec<&String>,
         row: &Row,
     ) -> Result<Vec<SqlParam>> {
-        match row.content().as_object() {
-            None => Err(anyhow!("Row content is not an object")),
-            Some(object) => field_names
-                .iter()
-                .map(|col| match object.get(*col) {
-                    Some(Value::Bool(b)) => Ok(SqlParam::Bool(*b)),
-                    Some(Value::Number(x)) => {
-                        if x.is_i64() {
-                            Ok(SqlParam::Int(x.as_i64().unwrap()))
-                        } else if x.is_f64() {
-                            Ok(SqlParam::Float(x.as_f64().unwrap()))
-                        } else {
-                            Err(anyhow!("Number is not an i64 or f64"))
-                        }
+        field_names
+            .iter()
+            .map(|col| match row.value().get(*col) {
+                Some(Value::Bool(b)) => Ok(SqlParam::Bool(*b)),
+                Some(Value::Number(x)) => {
+                    if x.is_i64() {
+                        Ok(SqlParam::Int(x.as_i64().unwrap()))
+                    } else if x.is_u64() {
+                        Ok(SqlParam::Int(x.as_u64().unwrap() as i64))
+                    } else if x.is_f64() {
+                        Ok(SqlParam::Float(x.as_f64().unwrap()))
+                    } else {
+                        Err(anyhow!("Number is not an i64 or f64: {}", x))
                     }
-                    Some(Value::String(s)) => Ok(SqlParam::Text(s.clone())),
-                    Some(Value::Object(obj)) => match Self::try_parse_date_object(obj) {
-                        Some(date) => Ok(SqlParam::Text(date)),
-                        None => Err(anyhow!("Unknown object type")),
-                    },
-                    None | Some(Value::Null) => Ok(SqlParam::Null),
-                    _ => Err(anyhow!("Cannot convert value {:?} to SqlParam", object)),
-                })
-                .collect::<Result<Vec<_>>>(),
-        }
+                }
+                Some(Value::String(s)) => Ok(SqlParam::Text(s.clone())),
+                Some(Value::Object(obj)) => match Self::try_parse_date_object(obj) {
+                    Some(date) => Ok(SqlParam::Text(date)),
+                    None => Err(anyhow!("Unknown object type")),
+                },
+                None | Some(Value::Null) => Ok(SqlParam::Null),
+                _ => Err(anyhow!(
+                    "Cannot convert value {:?} to SqlParam",
+                    row.value()
+                )),
+            })
+            .collect::<Result<Vec<_>>>()
     }
 
     pub fn merge(&self, other: &Self) -> Result<Self, anyhow::Error> {
@@ -399,15 +405,21 @@ impl TableSchema {
     }
 
     pub fn render_dbml(&self, name: &str, description: &str) -> String {
-        return format!(
-            "Table {} {{\n{}\n\n  Note: '{}'\n}}",
+        let mut result = format!(
+            "Table {} {{\n{}",
             name,
             self.columns()
                 .iter()
                 .map(|c| format!("  {}", c.render_dbml()))
-                .join("\n"),
-            description
+                .join("\n")
         );
+
+        if !description.is_empty() {
+            result.push_str(&format!("\n\n  Note: '{}'", description));
+        }
+
+        result.push_str("\n}");
+        result
     }
 
     fn try_parse_date_object(maybe_date_obj: &serde_json::Map<String, Value>) -> Option<String> {
@@ -438,19 +450,25 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_rows() -> Result<()> {
-        let row_1 = json!({
-            "field1": 1,
-            "field2": 1.2,
-            "field3": "text",
-            "field4": true,
-        });
-        let row_2 = json!({
-            "field1": 2,
-            "field2": 2.4,
-            "field3": "more text but this time long and over 32 characters",
-            "field4": false,
-            "field5": "not null anymore",
-        });
+        let row_1 = serde_json::Map::from_iter([
+            ("field1".to_string(), json!(1)),
+            ("field2".to_string(), json!(1.2)),
+            ("field3".to_string(), json!("text")),
+            ("field4".to_string(), json!(true)),
+        ]);
+        let row_2 = serde_json::Map::from_iter([
+            ("field1".to_string(), json!(2)),
+            ("field2".to_string(), json!(2.4)),
+            (
+                "field3".to_string(),
+                Value::String("more text but this time long and over 32 characters".to_string()),
+            ),
+            ("field4".to_string(), Value::Bool(false)),
+            (
+                "field5".to_string(),
+                Value::String("not null anymore".to_string()),
+            ),
+        ]);
         let rows = &vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
@@ -463,26 +481,31 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: Some(vec!["1".to_string(), "2".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: Some(vec!["1.2".to_string(), "2.4".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: Some(vec!["TRUE".to_string(), "FALSE".to_string()]),
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field5".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: Some(vec!["\"not null anymore\"".to_string()]),
+                non_filterable: None,
             },
         ]);
 
@@ -493,23 +516,9 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_invalid_rows() -> Result<()> {
-        let row_1 = json!({
-            "field1": 1,
-            "field2": 1.2,
-            "field3": "text",
-            "field4": true,
-            "field6": ["array", "elements"],
-            "field7": {"key": "value"}
-        });
-        let row_2 = json!({
-            "field1": 2,
-            "field2": 2.4,
-            "field3": "more text",
-            "field4": false,
-            "field5": "not null anymore",
-            "field6": ["more", "elements"],
-            "field7": {"anotherKey": "anotherValue"}
-        });
+        use serde_json::Map;
+        let row_1: Map<String, Value> = json!({"field1": 1, "field2": 1.2, "field3": "text", "field4": true, "field6": ["array", "elements"], "field7": {"key": "value"}}).as_object().unwrap().clone();
+        let row_2: Map<String, Value> = json!({"field1": 2, "field2": 2.4, "field3": "more text", "field4": false, "field5": "not null anymore", "field6": ["more", "elements"], "field7": {"anotherKey": "anotherValue"}}).as_object().unwrap().clone();
         let rows = &vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
@@ -523,22 +532,17 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_rows_conflicting_types_merged_to_text() {
-        let row_1 = json!({
-            "field1": 1,
-            "field2": 1.2,
-            "field3": "text",
-            "field4": true,
-        });
-        let row_2 = json!({
-            "field1": 2,
-            "field2": 2.4,
-            "field3": "more text",
-            "field4": "this was a bool before",
-            "field5": "not null anymore",
-        });
-        let row_3 = json!({
-            "field1": "now it's a text field",
-        });
+        use serde_json::Map;
+        let row_1: Map<String, Value> =
+            json!({"field1": 1, "field2": 1.2, "field3": "text", "field4": true})
+                .as_object()
+                .unwrap()
+                .clone();
+        let row_2: Map<String, Value> = json!({"field1": 2, "field2": 2.4, "field3": "more text", "field4": "this was a bool before", "field5": "not null anymore"}).as_object().unwrap().clone();
+        let row_3: Map<String, Value> = json!({"field1": "now it's a text field"})
+            .as_object()
+            .unwrap()
+            .clone();
         let rows = &vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
@@ -601,12 +605,12 @@ mod tests {
 
         let row = Row::new(
             "row_1".to_string(),
-            json!({
-                "field1": 1,
-                "field2": 2.4,
-                "field3": "text",
-                "field4": true
-            }),
+            serde_json::Map::from_iter(
+                json!({"field1": 1, "field2": 2.4, "field3": "text", "field4": true})
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            ),
         );
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
@@ -642,11 +646,12 @@ mod tests {
         let schema = create_test_schema();
         let conn = setup_in_memory_db(&schema)?;
 
-        let row_content = json!({
-            "field1": 1,
-            "field2": 2.4
-            // Missing field3 and field4
-        });
+        let row_content = serde_json::Map::from_iter(
+            json!({"field1": 1, "field2": 2.4})
+                .as_object()
+                .unwrap()
+                .clone(),
+        );
 
         let (sql, field_names) = schema.get_insert_sql("test_table");
         let params = params_from_iter(
@@ -682,21 +687,25 @@ mod tests {
                 name: "field1".to_string(),
                 value_type: TableSchemaFieldType::Int,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field2".to_string(),
                 value_type: TableSchemaFieldType::Float,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field3".to_string(),
                 value_type: TableSchemaFieldType::Text,
                 possible_values: None,
+                non_filterable: None,
             },
             TableSchemaColumn {
                 name: "field4".to_string(),
                 value_type: TableSchemaFieldType::Bool,
                 possible_values: None,
+                non_filterable: None,
             },
         ])
     }
@@ -747,10 +756,12 @@ mod tests {
                 Some(TableSchemaColumn::new(
                     "no_possible_values",
                     TableSchemaFieldType::Text,
+                    None,
                 )),
                 Some(TableSchemaColumn::new(
                     "no_possible_values",
                     TableSchemaFieldType::Text,
+                    None,
                 )),
                 TableSchemaFieldType::Text,
                 None,
@@ -857,18 +868,17 @@ mod tests {
 
     #[test]
     fn test_table_schema_from_rows_with_datetime() -> Result<()> {
-        let row_1 = json!({
-            "created_at": {
-                "type": "datetime",
-                "epoch": 946684800000_i64 // Corresponds to 2000-01-01 00:00:00
-            }
-        });
-        let row_2 = json!({
-            "created_at": {
-                "type": "datetime",
-                "epoch": 946771200000_i64 // Corresponds to 2000-01-02 00:00:00
-            }
-        });
+        use serde_json::Map;
+        let row_1: Map<String, serde_json::Value> =
+            json!({"created_at": {"type": "datetime", "epoch": 946684800000_i64}})
+                .as_object()
+                .unwrap()
+                .clone(); // Corresponds to 2000-01-01 00:00:00
+        let row_2: Map<String, serde_json::Value> =
+            json!({"created_at": {"type": "datetime", "epoch": 946771200000_i64}})
+                .as_object()
+                .unwrap()
+                .clone(); // Corresponds to 2000-01-02 00:00:00
         let rows = &vec![
             Row::new("1".to_string(), row_1.clone()),
             Row::new("2".to_string(), row_2.clone()),
@@ -883,6 +893,7 @@ mod tests {
                 "2000-01-01 00:00:00".to_string(),
                 "2000-01-02 00:00:00".to_string(),
             ]),
+            non_filterable: None,
         }]);
 
         assert_eq!(schema, expected_schema);
@@ -935,6 +946,7 @@ mod tests {
             name: name.to_string(),
             value_type,
             possible_values: Some(possible_values),
+            non_filterable: None,
         }
     }
 }

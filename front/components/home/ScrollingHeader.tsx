@@ -27,7 +27,7 @@ const ScrollingHeader = ({ children }: ScrollingHeaderProps) => {
     "fixed top-0 w-full transition-all duration-500 ease-out border-b z-50";
   const idleClasses = "h-24 border-transparent";
   const scrolledClasses =
-    "h-16 border-slate-800 bg-slate-900/70 backdrop-blur-lg";
+    "h-16 border-slate-900 bg-slate-950/70 backdrop-blur-lg";
 
   // Combine them depending on state
   const combinedClasses = classNames(

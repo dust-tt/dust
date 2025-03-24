@@ -1,6 +1,5 @@
-import { assertNever } from "@dust-tt/client";
-import type { ConnectionCredentials, ModelId, Result } from "@dust-tt/types";
-import { Err, getConnectionCredentials, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import { apiConfig } from "@connectors/lib/api/config";
@@ -12,6 +11,9 @@ import {
 import { getContentNodeTypeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ConnectionCredentials } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { getConnectionCredentials } from "@connectors/types";
 
 export const remoteDBDatabaseCodec = t.type({
   name: t.string,
@@ -37,31 +39,6 @@ export type RemoteDBTree = {
       tables: RemoteDBTable[];
     })[];
   })[];
-};
-
-export const parseSchemaInternalId = (
-  schemaInternalId: string
-): RemoteDBSchema => {
-  const [dbName, schemaName] = schemaInternalId.split(".");
-  if (!dbName || !schemaName) {
-    throw new Error(`Invalid schema internalId: ${schemaInternalId}`);
-  }
-
-  return {
-    name: schemaName,
-    database_name: dbName,
-  };
-};
-
-export const parseTableInternalId = (
-  tableInternalId: string
-): RemoteDBTable => {
-  const [dbName, schemaName, tableName] = tableInternalId.split(".");
-  if (!dbName || !schemaName || !tableName) {
-    throw new Error(`Invalid table internalId: ${tableInternalId}`);
-  }
-
-  return { name: tableName, database_name: dbName, schema_name: schemaName };
 };
 
 // Helper functions to get connector and credentials

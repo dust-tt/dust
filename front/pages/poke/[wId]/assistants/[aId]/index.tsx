@@ -1,16 +1,18 @@
 import { ContextItem, Page, TextArea } from "@dust-tt/sparkle";
-import type { AgentConfigurationType } from "@dust-tt/types";
-import { SUPPORTED_MODEL_CONFIGS } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AgentConfigurationType, WorkspaceType } from "@app/types";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   agentConfigurations: AgentConfigurationType[];
+  workspace: WorkspaceType;
 }>(async (context, auth) => {
   const aId = context.params?.aId;
   if (!aId || typeof aId !== "string") {
@@ -28,15 +30,24 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   return {
     props: {
       agentConfigurations,
+      workspace: auth.getNonNullableWorkspace(),
     },
   };
 });
 
 const AssistantDetailsPage = ({
   agentConfigurations,
+  workspace,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+  const { isDark } = useTheme();
   return (
-    <div className="mx-auto max-w-4xl pt-8">
+    <div className="max-w-4xl">
+      <h3 className="text-xl font-bold">
+        Assistant of workspace:{" "}
+        <a href={`/poke/${workspace.sId}`} className="text-action-500">
+          {workspace.name}
+        </a>
+      </h3>
       <Page.Vertical align="stretch">
         <ContextItem.List>
           {agentConfigurations.map((a) => (
@@ -75,6 +86,7 @@ const AssistantDetailsPage = ({
                       )?.displayName ?? `Unknown Model (${a.model.modelId})`}
                     </div>
                     <JsonViewer
+                      theme={isDark ? "dark" : "light"}
                       value={a.model}
                       rootName={false}
                       defaultInspectDepth={0}
@@ -84,9 +96,13 @@ const AssistantDetailsPage = ({
                     {a.actions.map((action, index) => (
                       <div key={index}>
                         <div className="font-bold">
-                          Action {index + 1}: {action.type}
+                          Action {index + 1}: {action.type} (
+                          {action.type === "retrieval_configuration" &&
+                            (action.query === "auto" ? "search" : "include")}
+                          )
                         </div>
                         <JsonViewer
+                          theme={isDark ? "dark" : "light"}
                           value={action}
                           rootName={false}
                           defaultInspectDepth={0}
@@ -104,8 +120,13 @@ const AssistantDetailsPage = ({
   );
 };
 
-AssistantDetailsPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+AssistantDetailsPage.getLayout = (
+  page: ReactElement,
+  { workspace }: { workspace: WorkspaceType }
+) => {
+  return (
+    <PokeLayout title={`${workspace.name} - Assistants`}>{page}</PokeLayout>
+  );
 };
 
 export default AssistantDetailsPage;

@@ -82,7 +82,7 @@ const TextStylesDisplay: React.FC = () => {
 
 // Storybook metadata
 const meta = {
-  title: "Styles/Typography",
+  title: "Theme/Typography",
   component: TextStylesDisplay,
 } satisfies Meta<typeof TextStylesDisplay>;
 

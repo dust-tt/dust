@@ -1,11 +1,13 @@
-import type { ModelId, OAuthAPIError, Result } from "@dust-tt/types";
-import { OAuthAPI, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import { promises as fs } from "fs";
 import { makeScript } from "scripts/helpers";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId, OAuthAPIError } from "@connectors/types";
+import { OAuthAPI } from "@connectors/types";
 
 const PROVIDER = "github";
 const USE_CASE = "connection";

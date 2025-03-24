@@ -22,9 +22,12 @@ import {
 } from "@sparkle/components/Dropdown";
 import {
   AnthropicLogo,
+  DriveLogo,
   GithubLogo,
   MistralLogo,
+  NotionLogo,
   OpenaiLogo,
+  SlackLogo,
 } from "@sparkle/logo/platforms";
 
 import {
@@ -33,7 +36,10 @@ import {
   Button,
   ChatBubbleBottomCenterPlusIcon,
   CloudArrowDownIcon,
+  CloudArrowUpIcon,
   Cog6ToothIcon,
+  DocumentIcon,
+  FolderIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Icon,
@@ -52,7 +58,7 @@ const meta = {
 export default meta;
 
 export const DropdownExamples = () => (
-  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4">
+  <div className="s-flex s-h-80 s-w-full s-flex-col s-items-center s-justify-center s-gap-4 s-text-foreground dark:s-text-foreground-night">
     <div>{SimpleDropdownDemo()}</div>
     <div>{ComplexDropdownDemo()}</div>
     <div>{DropdownMenuCheckboxes()}</div>
@@ -334,6 +340,9 @@ function DropdownMenuSearchbarDemo() {
     item.toLowerCase().includes(searchText.toLowerCase())
   );
 
+  const mainIcons = [FolderIcon, DocumentIcon];
+  const extraIcons = [DriveLogo, NotionLogo, SlackLogo];
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -344,6 +353,8 @@ function DropdownMenuSearchbarDemo() {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="s-w-[300px]">
+        <DropdownMenuItem icon={CloudArrowUpIcon} label="Upload File" />
+        <DropdownMenuSeparator />
         <DropdownMenuSearchbar
           placeholder="Search systems..."
           name="search"
@@ -352,16 +363,25 @@ function DropdownMenuSearchbarDemo() {
         />
         <DropdownMenuSeparator />
         <ScrollArea className="s-h-[200px]">
-          {filteredItems.map((item) => (
-            <DropdownMenuItem
-              key={item}
-              label={item}
-              onClick={() => {
-                setSelectedItem(item);
-                setSearchText("");
-              }}
-            />
-          ))}
+          {filteredItems.map((item) => {
+            const randomMainIcon =
+              mainIcons[Math.floor(Math.random() * mainIcons.length)];
+            const randomExtraIcon =
+              extraIcons[Math.floor(Math.random() * extraIcons.length)];
+            return (
+              <DropdownMenuItem
+                key={item}
+                label={item}
+                description="Company Space/Notion"
+                icon={randomMainIcon}
+                extraIcon={randomExtraIcon}
+                onClick={() => {
+                  setSelectedItem(item);
+                  setSearchText("");
+                }}
+              />
+            );
+          })}
         </ScrollArea>
       </DropdownMenuContent>
     </DropdownMenu>

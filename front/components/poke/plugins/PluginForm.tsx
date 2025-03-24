@@ -1,12 +1,10 @@
-import { Checkbox } from "@dust-tt/sparkle";
-import { createIoTsCodecFromArgs } from "@dust-tt/types";
+import { Button, Checkbox } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
 import type * as t from "io-ts";
 import { useMemo, useState } from "react";
 import React from "react";
 import { useForm } from "react-hook-form";
 
-import { PokeButton } from "@app/components/poke/shadcn/ui/button";
 import {
   PokeForm,
   PokeFormControl,
@@ -26,6 +24,7 @@ import {
   PokeSelectValue,
 } from "@app/components/poke/shadcn/ui/select";
 import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import { createIoTsCodecFromArgs } from "@app/types";
 
 type FallbackArgs = Record<string, unknown>;
 
@@ -137,7 +136,7 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </PokeSelectTrigger>
                           </PokeFormControl>
                           <PokeSelectContent>
-                            <div className="bg-slate-100">
+                            <div className="bg-slate-100 dark:bg-slate-100-night">
                               {arg.values.map((option) => (
                                 <PokeSelectItem key={option} value={option}>
                                   {option}
@@ -158,9 +157,12 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
             )}
           />
         ))}
-        <PokeButton type="submit" variant="outline" disabled={isSubmitted}>
-          Run
-        </PokeButton>
+        <Button
+          type="submit"
+          variant="outline"
+          disabled={isSubmitted}
+          label="Run"
+        />
       </form>
     </PokeForm>
   );

@@ -2,19 +2,9 @@ import type {
   DataSourceType,
   LightContentNode,
   TimeframeUnit,
-} from "@dust-tt/types";
-import type { ConnectorProvider } from "@dust-tt/types";
-import {
-  assertNever,
-  isGoogleSheetContentNodeInternalId,
-} from "@dust-tt/types";
+} from "@app/types";
+import { assertNever, isGoogleSheetContentNodeInternalId } from "@app/types";
 
-export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
-export type FilteringMode = (typeof FILTERING_MODES)[number];
-export const FILTERING_MODE_TO_LABEL: Record<FilteringMode, string> = {
-  SEARCH: "Search",
-  TIMEFRAME: "Timeframe",
-};
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",
   day: "day(s)",
@@ -22,36 +12,6 @@ export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   month: "month(s)",
   year: "year(s)",
 };
-
-const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
-  ConnectorProvider,
-  {
-    singular: string;
-    plural: string;
-  }
-> = {
-  confluence: { singular: "space", plural: "spaces" },
-  microsoft: { singular: "folder", plural: "folders" },
-  notion: { singular: "page", plural: "pages" },
-  google_drive: { singular: "folder", plural: "folders" },
-  slack: { singular: "channel", plural: "channels" },
-  github: { singular: "repository", plural: "repositories" },
-  intercom: { singular: "element", plural: "elements" },
-  webcrawler: { singular: "page", plural: "pages" },
-  snowflake: { singular: "table", plural: "tables" },
-  zendesk: { singular: "element", plural: "elements" },
-  bigquery: { singular: "table", plural: "tables" },
-  // TODO(salesforce): double check this
-  salesforce: { singular: "record", plural: "records" },
-};
-
-export const getConnectorProviderResourceName = (
-  connectorProvider: ConnectorProvider,
-  plural: boolean
-) =>
-  CONNECTOR_PROVIDER_TO_RESOURCE_NAME[connectorProvider][
-    plural ? "plural" : "singular"
-  ];
 
 export const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";
 
@@ -281,7 +241,7 @@ export function getTableIdForContentNode(
   dataSource: DataSourceType,
   contentNode: LightContentNode
 ): string {
-  if (contentNode.type !== "Table") {
+  if (contentNode.type !== "table") {
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 
@@ -312,6 +272,7 @@ export function getTableIdForContentNode(
     case "github":
     case "zendesk":
     case "webcrawler":
+    case "gong":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );

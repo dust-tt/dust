@@ -4,7 +4,7 @@ import {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import {
   DataTable,
@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DropdownMenu,
   Input,
+  ScrollableDataTable,
 } from "@sparkle/components/";
 import { MenuItem } from "@sparkle/components/DataTable";
 import { FolderIcon } from "@sparkle/icons";
@@ -119,6 +120,18 @@ const data: TransformedData[] = [
         onSelect: (itemId) => console.log("Add to Space", itemId),
       },
       {
+        disabled: true,
+        kind: "submenu",
+        label: "Add to Space (disabled)",
+        items: [
+          { id: "space1", name: "Space 1" },
+          { id: "space2", name: "Space 2" },
+          { id: "space3", name: "Space 3" },
+          { id: "space4", name: "Space 4" },
+        ],
+        onSelect: (itemId) => console.log("Add to Space", itemId),
+      },
+      {
         kind: "item",
         label: "Test",
       },
@@ -167,6 +180,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "name",
     header: "Name",
     sortingFn: "text",
+    id: "name",
     meta: {
       className: "s-w-full",
       tooltip: "User's full name",
@@ -185,6 +199,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "usedBy",
+    id: "usedBy",
     meta: {
       className: "s-w-[82px] s-hidden @xs/table:s-table-cell",
     },
@@ -196,6 +211,7 @@ const columns: ColumnDef<Data>[] = [
   {
     accessorKey: "addedBy",
     header: "Added by",
+    id: "addedBy",
     meta: {
       className: "s-w-[128px]",
     },
@@ -209,6 +225,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "lastUpdated",
+    id: "lastUpdated",
     header: "Last updated",
     meta: {
       className: "s-w-[128px] s-hidden @sm/table:s-table-cell",
@@ -220,6 +237,7 @@ const columns: ColumnDef<Data>[] = [
   },
   {
     accessorKey: "size",
+    id: "size",
     header: "Size",
     meta: {
       className: "s-w-[48px] s-hidden @sm/table:s-table-cell",
@@ -368,6 +386,36 @@ export const DataTablePaginatedExample = () => {
   );
 };
 
+export const DataTablePaginatedPageButtonsDisabledExample = () => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 2,
+  });
+  const [filter, setFilter] = React.useState<string>("");
+
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={data}
+        filter={filter}
+        filterColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        disablePaginationNumbers
+      />
+    </div>
+  );
+};
+
 export const DataTablePaginatedServerSideExample = () => {
   const [pagination, setPagination] = React.useState<PaginationState>({
     pageIndex: 0,
@@ -418,6 +466,127 @@ export const DataTablePaginatedServerSideExample = () => {
         columnsBreakpoints={{ lastUpdated: "sm" }}
         isServerSideSorting={true}
       />
+    </div>
+  );
+};
+
+export const DataTablePaginatedServerSideRowCountCappedExample = () => {
+  const [pagination, setPagination] = React.useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 2,
+  });
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: "name", desc: true },
+  ]);
+  const [filter, setFilter] = React.useState<string>("");
+  const rows = useMemo(() => {
+    if (sorting.length > 0) {
+      const order = sorting[0].desc ? -1 : 1;
+      return data
+        .sort((a: Data, b: Data) => {
+          return (
+            a.name.toLowerCase().localeCompare(b.name.toLowerCase()) * order
+          );
+        })
+        .slice(
+          pagination.pageIndex * pagination.pageSize,
+          (pagination.pageIndex + 1) * pagination.pageSize
+        );
+    }
+    return data.slice(
+      pagination.pageIndex * pagination.pageSize,
+      (pagination.pageIndex + 1) * pagination.pageSize
+    );
+  }, [data, pagination, sorting]);
+  return (
+    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        data={rows}
+        totalRowCount={data.length}
+        rowCountIsCapped={true}
+        filter={filter}
+        filterColumn="name"
+        pagination={pagination}
+        setPagination={setPagination}
+        columns={columns}
+        sorting={sorting}
+        setSorting={setSorting}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+        isServerSideSorting={true}
+      />
+    </div>
+  );
+};
+
+const createData = (start: number, count: number) => {
+  return Array(count)
+    .fill(0)
+    .map((_, i) => ({
+      name: `Item ${start + i + 1}`,
+      usedBy: Math.floor(Math.random() * 100),
+      addedBy: `UserUserUserUserUserUserUserUserUserUserUser ${Math.floor(Math.random() * 10) + 1}`,
+      lastUpdated: `2023-08-${Math.floor(Math.random() * 30) + 1}`,
+      size: `${Math.floor(Math.random() * 200)}kb`,
+      menuItems: [
+        { kind: "item", label: "test", onClick: () => console.log("hey") },
+      ],
+    })) as TransformedData[];
+};
+
+export const ScrollableDataTableExample = () => {
+  const [filter, setFilter] = useState("");
+  const [data, setData] = useState(() => createData(0, 50));
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load more data when user scrolls to bottom
+  const loadMore = useCallback(() => {
+    setIsLoading(true);
+
+    // Simulate API call delay
+    setTimeout(() => {
+      setData((prevData) => [...prevData, ...createData(prevData.length, 50)]);
+      setIsLoading(false);
+    }, 1000);
+  }, []);
+
+  const columnsWithSize = columns.map((column, index) => {
+    return { ...column, meta: { sizeRatio: index % 2 === 0 ? 15 : 10 } };
+  });
+  return (
+    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+      <h3 className="s-text-lg s-font-medium">
+        Virtualized ScrollableDataTable with Infinite Scrolling
+      </h3>
+
+      <div className="s-flex s-flex-col s-gap-4">
+        <Input
+          name="filter"
+          placeholder="Filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+
+        <ScrollableDataTable
+          data={data}
+          filter={filter}
+          filterColumn="name"
+          columns={columnsWithSize}
+          onLoadMore={loadMore}
+          isLoading={isLoading}
+          maxHeight="s-max-h-[500px]"
+        />
+
+        <div className="s-text-sm s-text-muted-foreground">
+          Loaded {data.length} rows. Scroll to the bottom to load more.
+        </div>
+      </div>
     </div>
   );
 };

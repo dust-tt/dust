@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
-
 import {
   connectToSnowflake,
   fetchTree,
@@ -14,12 +11,18 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
+import { isSnowflakeCredentials, MIME_TYPES } from "@connectors/types";
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
+  const localLogger = logger.child({
+    connectorId,
+  });
+
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
     isTypeGuard: isSnowflakeCredentials,
-    logger,
+    logger: localLogger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
     throw getConnectorAndCredentialsRes.error;
@@ -40,7 +43,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     connection,
   });
 
-  logger.info({ connectorId }, "Starting snowflake sync");
+  localLogger.info("Starting snowflake sync");
 
   if (readonlyConnectionCheck.isErr()) {
     if (readonlyConnectionCheck.error.code !== "NOT_READONLY") {
@@ -49,10 +52,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     }
     // The connection is not read-only...
 
-    logger.info(
-      { connectorId },
-      "Connection is not read-only, garbage collecting"
-    );
+    localLogger.info("Connection is not read-only, garbage collecting");
     // We garbage collect everything that was synced as nothing will be marked as used.
     await sync({
       mimeTypes: MIME_TYPES.SNOWFLAKE,
@@ -62,7 +62,11 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     // ... and we mark the connector as errored.
     await syncFailed(connectorId, "remote_database_connection_not_readonly");
   } else {
-    const treeRes = await fetchTree({ credentials, connection });
+    localLogger.info("Fetching tree from Snowflake");
+    const treeRes = await fetchTree(
+      { credentials, connection },
+      { connectorId }
+    );
     if (treeRes.isErr()) {
       throw treeRes.error;
     }

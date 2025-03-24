@@ -11,17 +11,17 @@ import {
   useSendNotification,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ActiveRoleType,
-  MembershipInvitationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useContext, useEffect, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
+import type {
+  ActiveRoleType,
+  MembershipInvitationType,
+  WorkspaceType,
+} from "@app/types";
 
 export function EditInvitationModal({
   owner,

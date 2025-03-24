@@ -6,6 +6,7 @@ import {
   GithubLogo,
   GithubWhiteLogo,
   GlobeAltIcon,
+  GongLogo,
   IntercomLogo,
   MicrosoftLogo,
   NotionLogo,
@@ -15,6 +16,15 @@ import {
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
+
+import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/SalesforceOAuthExtractConfig";
+import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
+import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
 import type {
   ConnectorPermission,
   ConnectorProvider,
@@ -22,13 +32,8 @@ import type {
   PlanType,
   WhitelistableFeature,
   WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
-import type { ComponentType } from "react";
-
-import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
-import { SlackBotEnableView } from "@app/components/data_source/SlackBotEnableView";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface ConnectorOptionsProps {
   owner: WorkspaceType;
@@ -36,6 +41,16 @@ interface ConnectorOptionsProps {
   isAdmin: boolean;
   dataSource: DataSourceType;
   plan: PlanType;
+}
+
+export interface ConnectorOauthExtraConfigProps {
+  extraConfig: Record<string, string>;
+  setExtraConfig: (
+    value:
+      | Record<string, string>
+      | ((prev: Record<string, string>) => Record<string, string>)
+  ) => void;
+  setIsExtraConfigValid: (valid: boolean) => void;
 }
 
 export type ConnectorProviderConfiguration = {
@@ -51,10 +66,14 @@ export type ConnectorProviderConfiguration = {
   description: string;
   mismatchError: string;
   limitations: string | null;
+  oauthExtraConfigComponent?: (
+    props: ConnectorOauthExtraConfigProps
+  ) => React.JSX.Element;
   guideLink: string | null;
   selectLabel?: string; // Show in the permissions modal, above the content node tree, note that a connector might not allow to select anything
   isNested: boolean;
-  isSearchEnabled: boolean;
+  isTitleFilterEnabled?: boolean;
+  isResourceSelectionDisabled?: boolean; // Whether the user cannot select distinct resources (everything is synced).
   permissions: {
     selected: ConnectorPermission;
     unselected: ConnectorPermission;
@@ -94,7 +113,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return ConfluenceLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -116,7 +134,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return NotionLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -139,7 +156,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return DriveLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -162,7 +178,7 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: SlackBotEnableView,
     isNested: false,
-    isSearchEnabled: true,
+    isTitleFilterEnabled: true,
     permissions: {
       selected: "read_write",
       unselected: "write",
@@ -177,16 +193,15 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     description:
       "Authorize access to your company's GitHub on a repository-by-repository basis. Dust can access Issues, Discussions, and Pull Request threads. Code indexing can be controlled on-demand.",
     limitations:
-      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled.",
+      "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB. Please contact support@dust.tt if you need to sync larger repositories.",
     mismatchError: `You cannot select another GitHub Organization.\nPlease contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app.`,
     guideLink: "https://docs.dust.tt/docs/github-connection",
-    selectLabel: "Synchronized content",
+    selectLabel: "Authorized content",
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? GithubWhiteLogo : GithubLogo;
     },
     optionsComponent: GithubCodeEnableView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -210,7 +225,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     },
     optionsComponent: IntercomConfigView,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -233,7 +247,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return MicrosoftLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -253,7 +266,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return GlobeAltIcon;
     },
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "none",
       unselected: "none",
@@ -272,7 +284,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return SnowflakeLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/snowflake-connection",
     selectLabel: "Select tables",
     permissions: {
@@ -295,8 +306,9 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: (isDark?: boolean) => {
       return isDark ? ZendeskWhiteLogo : ZendeskLogo;
     },
+    optionsComponent: ZendeskConfigView,
+    oauthExtraConfigComponent: ZendeskOAuthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
@@ -315,7 +327,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
       return BigQueryLogo;
     },
     isNested: true,
-    isSearchEnabled: false,
     guideLink: "https://docs.dust.tt/docs/bigquery",
     selectLabel: "Select tables",
     permissions: {
@@ -337,14 +348,37 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return SalesforceLogo;
     },
+    oauthExtraConfigComponent: SalesforceOauthExtraConfig,
     isNested: true,
-    isSearchEnabled: false,
     permissions: {
       selected: "read",
       unselected: "none",
     },
     isDeletable: true,
-    guideLink: "https://docs.dust.tt/docs/salesforce-connection",
+    guideLink:
+      "https://www.notion.so/dust-tt/Dust-Salesforce-Connection-Admin-Guide-for-beta-testers-1b428599d94180508c17ed762af5ef90",
+  },
+  gong: {
+    name: "Gong",
+    connectorProvider: "gong",
+    status: "built",
+    isResourceSelectionDisabled: true,
+    optionsComponent: GongOptionComponent,
+    hide: false,
+    description: "Authorize access to Gong for indexing call transcripts.",
+    guideLink: "https://docs.dust.tt/docs/gong-connection",
+    getLogoComponent: () => {
+      return GongLogo;
+    },
+    isNested: true,
+    permissions: {
+      selected: "read",
+      unselected: "none",
+    },
+    isDeletable: false,
+    limitations:
+      "Dust will index the content accessible to the authorized account only. All transcripts will be synchronized with Dust.",
+    mismatchError: `You cannot change the Gong account. Please add a new Gong connection instead.`,
   },
 };
 
@@ -395,18 +429,15 @@ export const isConnectorProviderAllowedForPlan = (
       return plan.limits.connections.isGoogleDriveAllowed;
     case "intercom":
       return plan.limits.connections.isIntercomAllowed;
-    case "microsoft":
-      return true;
     case "webcrawler":
       return plan.limits.connections.isWebCrawlerAllowed;
-    case "snowflake":
-      // TODO(SNOWFLAKE): Add a isSnowflakeAllowed column to the plan model.
-      return true;
-    case "zendesk":
-      return true;
-    case "bigquery":
-      return true;
     case "salesforce":
+      return plan.limits.connections.isSalesforceAllowed;
+    case "microsoft":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "gong":
       return true;
     default:
       assertNever(provider);
@@ -425,13 +456,13 @@ export const isConnectorProviderAssistantDefaultSelected = (
     case "intercom":
     case "microsoft":
     case "zendesk":
+    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "snowflake":
     case "bigquery":
     case "webcrawler":
-      return false;
     case "salesforce":
       return false;
     default:
@@ -454,6 +485,7 @@ export const isConnectionIdRequiredForProvider = (
     case "snowflake":
     case "bigquery":
     case "salesforce":
+    case "gong":
       return true;
     case "webcrawler":
       return false;

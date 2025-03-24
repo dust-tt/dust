@@ -8,10 +8,12 @@ interface ThemeContextType {
   setTheme: (theme: Theme) => void;
 }
 
+const DEFAULT_THEME: Theme = "system";
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {

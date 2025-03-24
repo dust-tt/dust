@@ -1,10 +1,5 @@
-import type {
-  BigQueryCredentialsWithLocation,
-  ContentNode,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, EXCLUDE_SCHEMAS, MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   fetchDatabases,
@@ -20,6 +15,12 @@ import {
   getContentNodeFromInternalId,
   getContentNodeTypeFromInternalId,
 } from "@connectors/lib/remote_databases/content_nodes";
+import type {
+  BigQueryCredentialsWithLocation,
+  ContentNode,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { EXCLUDE_SCHEMAS, MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the BigQuery account.
@@ -100,10 +101,12 @@ export const fetchAvailableChildrenInBigQuery = async ({
       where: { connectorId },
     });
     const syncedTablesInternalIds = syncedTables.map((db) => db.internalId);
-
+    const datasetName = parentInternalId.substring(
+      parentInternalId.indexOf(".") + 1
+    );
     const allTablesRes = await fetchTables({
       credentials,
-      internalDatasetId: parentInternalId,
+      dataset: datasetName,
     });
     if (allTablesRes.isErr()) {
       return new Err(allTablesRes.error);
@@ -270,66 +273,4 @@ export const fetchSyncedChildren = async ({
   }
 
   return new Ok([]);
-};
-
-/**
- * Gets the content nodes for a list of internalIds.
- */
-export const getBatchContentNodes = async ({
-  connectorId,
-  internalIds,
-}: {
-  connectorId: ModelId;
-  internalIds: string[];
-}): Promise<Result<ContentNode[], Error>> => {
-  const tables = await RemoteTableModel.findAll({
-    where: { connectorId },
-  });
-
-  const nodes: ContentNode[] = [];
-  for (const internalId of internalIds) {
-    if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(
-        internalId,
-        "read",
-        MIME_TYPES.BIGQUERY
-      );
-      nodes.push(node);
-    }
-  }
-
-  return new Ok(nodes);
-};
-
-/**
- * Retrieves the parent IDs of a content node in hierarchical order.
- * The first ID is the internal ID of the content node itself.
- * Quite straightforward for BigQuery as we can extract the parent IDs from the internalId.
- *
- * Note that this part may cause discrepancies between the response of core and the response of the connector since
- * core will consider parents starting from the root (what was selected by the user).
- * If such logs were to pop up they will be ignored.
- */
-export const getContentNodeParents = ({
-  internalId,
-}: {
-  internalId: string;
-}): Result<string[], Error> => {
-  const [database, schema, table] = internalId.split(".");
-  const internalType = getContentNodeTypeFromInternalId(internalId);
-
-  if (internalType === "database") {
-    return new Ok([internalId]);
-  }
-  if (internalType === "schema") {
-    return new Ok([internalId, `${database}`]);
-  }
-  if (internalType === "table") {
-    return new Ok([internalId, `${database}.${schema}`, `${database}`]);
-  }
-  return new Err(
-    new Error(
-      `Invalid internalId: ${internalId}. Extracted: Database=${database}, Schema=${schema}, Table=${table}.`
-    )
-  );
 };

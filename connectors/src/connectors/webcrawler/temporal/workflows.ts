@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   ActivityCancellationType,
   CancellationScope,
@@ -9,6 +8,7 @@ import {
 } from "@temporalio/workflow";
 
 import type * as activities from "@connectors/connectors/webcrawler/temporal/activities";
+import type { ModelId } from "@connectors/types";
 
 // timeout for crawling a single url = timeout for upserting (5 minutes) + 2mn
 // leeway to crawl on slow websites

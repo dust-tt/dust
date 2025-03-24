@@ -13,7 +13,7 @@ use tokio_postgres::types::ToSql;
 use tokio_postgres::{NoTls, Transaction};
 
 use crate::data_sources::data_source::DocumentStatus;
-use crate::data_sources::node::{Node, NodeType, ProviderVisibility};
+use crate::data_sources::node::{Node, NodeESDocument, NodeType, ProviderVisibility};
 use crate::search_filter::Filterable;
 use crate::{
     blocks::block::BlockType,
@@ -57,6 +57,7 @@ pub struct UpsertNode<'a> {
     pub parents: &'a Vec<String>,
     pub source_url: &'a Option<String>,
     pub tags: &'a Vec<String>,
+    pub text_size: &'a Option<i64>,
 }
 
 impl PostgresStore {
@@ -168,14 +169,15 @@ impl PostgresStore {
             .prepare(
                 "INSERT INTO data_sources_nodes \
                   (id, data_source, created, node_id, timestamp, title, mime_type, provider_visibility, parents, source_url, tags_array, \
-                   document, \"table\", folder) \
-                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) \
+                   document, \"table\", folder, text_size) \
+                  VALUES (DEFAULT, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) \
                   ON CONFLICT (data_source, node_id) DO UPDATE \
                   SET timestamp = EXCLUDED.timestamp, title = EXCLUDED.title, \
                     mime_type = EXCLUDED.mime_type, parents = EXCLUDED.parents, \
                     document = EXCLUDED.document, \"table\" = EXCLUDED.\"table\", \
                     folder = EXCLUDED.folder, source_url = EXCLUDED.source_url, \
-                    tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility \
+                    tags_array = EXCLUDED.tags_array, provider_visibility = EXCLUDED.provider_visibility, \
+                    text_size = EXCLUDED.text_size \
                   RETURNING id",
             )
             .await?;
@@ -197,6 +199,7 @@ impl PostgresStore {
                     &document_row_id,
                     &table_row_id,
                     &folder_row_id,
+                    &upsert_params.text_size,
                 ],
             )
             .await?;
@@ -473,6 +476,21 @@ impl Store for PostgresStore {
             1 => Ok(Some(r[0].get(0))),
             _ => unreachable!(),
         }
+    }
+
+    async fn list_specification_hashes(&self, project: &Project) -> Result<Vec<String>> {
+        let project_id = project.project_id();
+
+        let pool = &self.pool;
+        let c = pool.get().await?;
+        let r = c
+            .query(
+                "SELECT hash FROM specifications WHERE project = $1 ORDER BY created",
+                &[&project_id],
+            )
+            .await?;
+
+        Ok(r.into_iter().map(|r| r.get(0)).collect())
     }
 
     async fn register_specification(
@@ -1150,10 +1168,11 @@ impl Store for PostgresStore {
 
     async fn register_data_source(&self, project: &Project, ds: &DataSource) -> Result<()> {
         let project_id = project.project_id();
+        let data_source_config = ds.config().clone();
         let data_source_created = ds.created();
         let data_source_id = ds.data_source_id().to_string();
         let data_source_internal_id = ds.internal_id().to_string();
-        let data_source_config = ds.config().clone();
+        let data_source_name = ds.name().to_string();
 
         let pool = self.pool.clone();
         let c = pool.get().await?;
@@ -1163,8 +1182,8 @@ impl Store for PostgresStore {
         let stmt = c
             .prepare(
                 "INSERT INTO data_sources \
-                   (id, project, created, data_source_id, internal_id, config_json) \
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5) RETURNING id",
+                   (id, project, created, data_source_id, internal_id, config_json, name) \
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5, $6) RETURNING id",
             )
             .await?;
         c.query_one(
@@ -1175,6 +1194,7 @@ impl Store for PostgresStore {
                 &data_source_id,
                 &data_source_internal_id,
                 &config_data,
+                &data_source_name,
             ],
         )
         .await?;
@@ -1209,21 +1229,27 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, created, internal_id, config_json FROM data_sources
+                "SELECT id, created, internal_id, config_json, name FROM data_sources
                    WHERE project = $1 AND data_source_id = $2 LIMIT 1",
                 &[&project_id, &data_source_id],
             )
             .await?;
 
-        let d: Option<(i64, i64, String, String)> = match r.len() {
+        let d: Option<(i64, i64, String, String, Option<String>)> = match r.len() {
             0 => None,
-            1 => Some((r[0].get(0), r[0].get(1), r[0].get(2), r[0].get(3))),
+            1 => Some((
+                r[0].get(0),
+                r[0].get(1),
+                r[0].get(2),
+                r[0].get(3),
+                r[0].get(4),
+            )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((_, created, internal_id, config_data)) => {
+            Some((_, created, internal_id, config_data, name)) => {
                 let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
                 Ok(Some(DataSource::new_from_store(
                     &Project::new_from_id(project_id),
@@ -1231,6 +1257,8 @@ impl Store for PostgresStore {
                     &data_source_id,
                     &internal_id,
                     &data_source_config,
+                    // TODO(keyword-search) Remove this once name has been backfilled.
+                    &name.unwrap_or("".to_string()),
                 )))
             }
         }
@@ -1247,13 +1275,13 @@ impl Store for PostgresStore {
 
         let r = c
             .query(
-                "SELECT id, created, project, data_source_id, config_json FROM data_sources
+                "SELECT id, created, project, data_source_id, config_json, name FROM data_sources
                    WHERE internal_id = $1 LIMIT 1",
                 &[&data_source_internal_id],
             )
             .await?;
 
-        let d: Option<(i64, i64, i64, String, String)> = match r.len() {
+        let d: Option<(i64, i64, i64, String, String, Option<String>)> = match r.len() {
             0 => None,
             1 => Some((
                 r[0].get(0),
@@ -1261,13 +1289,14 @@ impl Store for PostgresStore {
                 r[0].get(2),
                 r[0].get(3),
                 r[0].get(4),
+                r[0].get(5),
             )),
             _ => unreachable!(),
         };
 
         match d {
             None => Ok(None),
-            Some((_, created, project_id, data_source_id, config_data)) => {
+            Some((_, created, project_id, data_source_id, config_data, name)) => {
                 let data_source_config: DataSourceConfig = serde_json::from_str(&config_data)?;
                 Ok(Some(DataSource::new_from_store(
                     &Project::new_from_id(project_id),
@@ -1275,6 +1304,8 @@ impl Store for PostgresStore {
                     &data_source_id,
                     &data_source_internal_id,
                     &data_source_config,
+                    // TODO(keyword-search) Remove this once name has been backfilled.
+                    &name.unwrap_or("".to_string()),
                 )))
             }
         }
@@ -1301,6 +1332,31 @@ impl Store for PostgresStore {
             )
             .await?;
         c.execute(&stmt, &[&config_data, &project_id, &data_source_id])
+            .await?;
+
+        Ok(())
+    }
+
+    async fn update_data_source_name(
+        &self,
+        project: &Project,
+        data_source_id: &str,
+        name: &str,
+    ) -> Result<()> {
+        let project_id = project.project_id();
+        let data_source_id = data_source_id.to_string();
+        let name = name.to_string();
+
+        let pool = self.pool.clone();
+        let c = pool.get().await?;
+
+        let stmt = c
+            .prepare(
+                "UPDATE data_sources SET name = $1 \
+                   WHERE project = $2 AND data_source_id = $3",
+            )
+            .await?;
+        c.execute(&stmt, &[&name, &project_id, &data_source_id])
             .await?;
 
         Ok(())
@@ -1930,6 +1986,7 @@ impl Store for PostgresStore {
                 parents: &document.parents,
                 source_url: &document.source_url,
                 tags: &document.tags,
+                text_size: &Some(document.text_size as i64),
             },
             data_source_row_id,
             document_row_id,
@@ -2709,6 +2766,7 @@ impl Store for PostgresStore {
                 parents: table.parents(),
                 source_url: table.source_url(),
                 tags: &table.get_tags(),
+                text_size: &None,
             },
             data_source_row_id,
             table_row_id,
@@ -3185,7 +3243,7 @@ impl Store for PostgresStore {
                        VALUES (DEFAULT, $1, $2, $3) \
                        ON CONFLICT (folder_id, data_source)  DO UPDATE \
                        SET folder_id = data_sources_folders.folder_id \
-                       RETURNING id, created",
+                       RETURNING id",
             )
             .await?;
 
@@ -3201,13 +3259,12 @@ impl Store for PostgresStore {
             .await?;
 
         let folder_row_id: i64 = r.get(0);
-        let created: i64 = r.get(1);
 
         let folder = Folder::new(
             data_source_id,
             data_source_internal_id,
             upsert_params.folder_id,
-            created as u64,
+            upsert_params.timestamp,
             upsert_params.title,
             upsert_params.parents.get(1).cloned(),
             upsert_params.parents,
@@ -3227,6 +3284,7 @@ impl Store for PostgresStore {
                 parents: folder.parents(),
                 source_url: folder.source_url(),
                 tags: &vec![],
+                text_size: &None,
             },
             data_source_row_id,
             folder_row_id,
@@ -3471,7 +3529,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, tags_array \
+                "SELECT timestamp, title, mime_type, provider_visibility, parents, node_id, document, \"table\", folder, source_url, tags_array, text_size \
                    FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 LIMIT 1",
             )
@@ -3499,12 +3557,14 @@ impl Store for PostgresStore {
                 };
                 let source_url: Option<String> = row[0].get::<_, Option<String>>(9);
                 let tags: Option<Vec<String>> = row[0].get::<_, Option<Vec<String>>>(10);
+                let text_size: Option<i64> = row[0].get::<_, Option<i64>>(11);
                 Ok(Some((
                     Node::new(
                         &data_source_id,
                         &data_source_internal_id,
                         &node_id,
                         node_type,
+                        text_size,
                         timestamp as u64,
                         &title,
                         &mime_type,
@@ -3531,7 +3591,7 @@ impl Store for PostgresStore {
 
         let stmt = c
             .prepare(
-                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.tags_array, dsn.id \
+                "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.tags_array, dsn.id, dsn.text_size \
                    FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                    WHERE dsn.id > $1 ORDER BY dsn.id ASC LIMIT $2",
             )
@@ -3563,12 +3623,14 @@ impl Store for PostgresStore {
                 let source_url: Option<String> = row.get::<_, Option<String>>(11);
                 let tags: Option<Vec<String>> = row.get::<_, Option<Vec<String>>>(12);
                 let row_id = row.get::<_, i64>(13);
+                let text_size: Option<i64> = row.get::<_, Option<i64>>(14);
                 (
                     Node::new(
                         &data_source_id,
                         &data_source_internal_id,
                         &node_id,
                         node_type,
+                        text_size,
                         timestamp as u64,
                         &title,
                         &mime_type,
@@ -3586,7 +3648,10 @@ impl Store for PostgresStore {
         Ok(nodes)
     }
 
-    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>> {
+    async fn count_nodes_children(
+        &self,
+        nodes: &Vec<NodeESDocument>,
+    ) -> Result<HashMap<String, u64>> {
         let pool = self.pool.clone();
         let c = pool.get().await?;
 

@@ -1,7 +1,8 @@
 import { Icon, StopSignIcon } from "@dust-tt/sparkle";
-import type { ConversationError } from "@dust-tt/types";
-import { isAPIErrorResponse, safeParseJSON } from "@dust-tt/types";
 import type { ComponentType } from "react";
+
+import type { ConversationError } from "@app/types";
+import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 interface ConversationErrorProps {
   error: ConversationError;

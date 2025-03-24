@@ -5,11 +5,7 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -17,11 +13,19 @@ import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPerm
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewSelectionConfigurationByImportance } from "@app/lib/connectors";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
+
 export const TrackerDataSourceSelectedTree = ({
   owner,
   dataSourceConfigurations,
@@ -29,10 +33,8 @@ export const TrackerDataSourceSelectedTree = ({
   owner: LightWorkspaceType;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
 }) => {
+  const router = useRouter();
   const { isDark } = useTheme();
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
   return (
@@ -40,9 +42,6 @@ export const TrackerDataSourceSelectedTree = ({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {orderDatasourceViewSelectionConfigurationByImportance(
@@ -74,9 +73,10 @@ export const TrackerDataSourceSelectedTree = ({
                   parentId={null}
                   onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                    setDocumentToDisplay(documentId);
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
                   }}
-                  viewType={"all"}
+                  viewType="all"
                 />
               )}
               {dsConfig.selectedResources.map((node) => {
@@ -85,7 +85,7 @@ export const TrackerDataSourceSelectedTree = ({
                     key={`${dsConfig.dataSourceView.sId}-${node.internalId}`}
                     label={node.title}
                     type={node.expandable ? "node" : "leaf"}
-                    visual={getVisualForContentNode(node)}
+                    visual={getVisualForDataSourceViewContentNode(node)}
                     className="whitespace-nowrap"
                     actions={
                       <div className="mr-8 flex flex-row gap-2">
@@ -109,19 +109,28 @@ export const TrackerDataSourceSelectedTree = ({
                           size="xs"
                           icon={BracesIcon}
                           onClick={() => {
-                            if (node.type === "Document") {
+                            if (node.type === "document") {
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
-                              setDocumentToDisplay(node.internalId);
+                              setQueryParam(
+                                router,
+                                DocumentViewRawContentKey,
+                                "true"
+                              );
+                              setQueryParam(
+                                router,
+                                "documentId",
+                                node.internalId
+                              );
                             }
                           }}
                           className={classNames(
-                            node.type === "Document"
+                            node.type === "document"
                               ? ""
                               : "pointer-events-none opacity-0"
                           )}
-                          disabled={node.type !== "Document"}
+                          disabled={node.type !== "document"}
                           variant="outline"
                         />
                       </div>
@@ -133,7 +142,12 @@ export const TrackerDataSourceSelectedTree = ({
                       parentId={node.internalId}
                       onDocumentViewClick={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                        setDocumentToDisplay(documentId);
+                        setQueryParam(
+                          router,
+                          DocumentViewRawContentKey,
+                          "true"
+                        );
+                        setQueryParam(router, "documentId", documentId);
                       }}
                       viewType={"all"}
                     />

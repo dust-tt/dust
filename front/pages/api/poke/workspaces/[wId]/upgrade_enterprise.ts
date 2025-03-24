@@ -1,5 +1,3 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { EnterpriseUpgradeFormSchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -12,11 +10,10 @@ import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
-import {
-  getSubscriptionForStripeId,
-  pokeUpgradeWorkspaceToEnterprise,
-} from "@app/lib/plans/subscription";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { EnterpriseUpgradeFormSchema } from "@app/types";
 
 export interface UpgradeEnterpriseSuccessResponseBody {
   success: boolean;
@@ -86,7 +83,7 @@ async function handler(
 
       // Ensure that the stripe subscription is either attached to the current workspace
       // or is not attached to any workspace.
-      const subscription = await getSubscriptionForStripeId(
+      const subscription = await SubscriptionResource.fetchByStripeId(
         stripeSubscription.id
       );
       const currentWorkspaceSubscription = auth.subscription();
@@ -131,7 +128,7 @@ async function handler(
 
       // If yes, we will create the new plan and attach it to the workspace with a new subscription
       try {
-        await pokeUpgradeWorkspaceToEnterprise(auth, body);
+        await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(auth, body);
       } catch (error) {
         const errorString =
           error instanceof Error

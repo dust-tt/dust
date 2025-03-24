@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -8,7 +6,10 @@ import {
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
 import { syncCategory } from "@connectors/connectors/zendesk/lib/sync_category";
-import { syncTicket } from "@connectors/connectors/zendesk/lib/sync_ticket";
+import {
+  shouldSyncTicket,
+  syncTicket,
+} from "@connectors/connectors/zendesk/lib/sync_ticket";
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   changeZendeskClientSubdomain,
@@ -29,7 +30,7 @@ import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -39,6 +40,8 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -54,7 +57,7 @@ export async function zendeskConnectorStartSync(
   if (res.isErr()) {
     throw res.error;
   }
-  const cursor = await ZendeskTimestampCursor.findOne({
+  const cursor = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
 
@@ -74,11 +77,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursor.create({
+    await ZendeskTimestampCursorModel.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
@@ -654,12 +657,12 @@ export async function syncZendeskTicketBatchActivity({
     return { hasMore: false, nextLink: "" };
   }
 
-  const closedTickets = tickets.filter((t) =>
-    ["closed", "solved"].includes(t.status)
+  const ticketsToSync = tickets.filter((t) =>
+    shouldSyncTicket(t, configuration)
   );
 
   const comments2d = await concurrentExecutor(
-    closedTickets,
+    ticketsToSync,
     async (ticket) =>
       fetchZendeskTicketComments({
         accessToken,
@@ -679,7 +682,7 @@ export async function syncZendeskTicketBatchActivity({
   });
 
   const res = await concurrentExecutor(
-    _.zip(closedTickets, comments2d),
+    _.zip(ticketsToSync, comments2d),
     async ([ticket, comments]) => {
       if (!ticket || !comments) {
         throw new Error(

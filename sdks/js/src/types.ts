@@ -1,6 +1,8 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
+import { MIME_TYPES_VALUES } from "./internal_mime_types";
+
 type StringLiteral<T> = T extends string
   ? string extends T
     ? never
@@ -35,6 +37,7 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "claude-3-opus-20240229"
   | "claude-3-5-sonnet-20240620"
   | "claude-3-5-sonnet-20241022"
+  | "claude-3-7-sonnet-20250219"
   | "claude-3-5-haiku-20241022"
   | "claude-3-haiku-20240307"
   | "claude-2.1"
@@ -72,6 +75,7 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "unexpected_network_error"
   | "unknown_connector_provider"
   | "invalid_request_error"
+  | "connector_authorization_error"
   | "connector_not_found"
   | "connector_configuration_not_found"
   | "connector_update_error"
@@ -89,11 +93,25 @@ const ConnectorsAPIErrorSchema = z.object({
   message: z.string(),
 });
 
+export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
+
 const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
 >;
+
+export function isConnectorsAPIError(obj: unknown): obj is ConnectorsAPIError {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "message" in obj &&
+    typeof obj.message === "string" &&
+    "type" in obj &&
+    typeof obj.type === "string" &&
+    ConnectorsAPIErrorSchema.safeParse(obj).success
+  );
+}
 
 // Supported content types that are plain text and can be sent as file-less content fragment.
 export const supportedOtherFileFormats = {
@@ -107,11 +125,15 @@ export const supportedOtherFileFormats = {
     ".ppt",
     ".pptx",
   ],
+  "application/vnd.google-apps.document": [],
+  "application/vnd.google-apps.presentation": [],
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
     ".xlsx",
   ],
+  "application/vnd.google-apps.spreadsheet": [],
   "application/vnd.ms-excel": [".xls"],
   "application/pdf": [".pdf"],
+  "application/vnd.dust.section.json": [".json"],
   "text/comma-separated-values": [".csv"],
   "text/csv": [".csv"],
   "text/markdown": [".md", ".markdown"],
@@ -182,12 +204,10 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
+  | (typeof MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
 >();
-
-const SupportedInlinedContentFragmentTypeSchema =
-  FlexibleEnumSchema<keyof typeof supportedOtherFileFormats>();
 
 const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
@@ -281,8 +301,14 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "zendesk"
   | "bigquery"
   | "salesforce"
+  | "gong"
 >();
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
+
+export const isConnectorProvider = (
+  provider: string
+): provider is ConnectorProvider =>
+  ConnectorProvidersSchema.safeParse(provider).success;
 
 const EditedByUserSchema = z.object({
   editedAt: z.number().nullable(),
@@ -305,6 +331,21 @@ const DataSourceTypeSchema = z.object({
   connectorProvider: ConnectorProvidersSchema.nullable(),
   editedByUser: EditedByUserSchema.nullable().optional(),
 });
+
+export type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
+
+export function isFolder(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: null } {
+  // If there is no connectorProvider, it's a folder.
+  return !ds.connectorProvider;
+}
+
+export function isWebsite(
+  ds: DataSourceType
+): ds is DataSourceType & { connectorProvider: "webcrawler" } {
+  return ds.connectorProvider === "webcrawler";
+}
 
 const CoreAPIDocumentChunkSchema = z.object({
   text: z.string(),
@@ -353,6 +394,8 @@ const CoreAPIRowSchema = z.object({
   row_id: z.string(),
   value: z.record(CoreAPIRowValueSchema),
 });
+
+export type CoreAPIRowType = z.infer<typeof CoreAPIRowSchema>;
 
 const CoreAPITableSchema = z.array(
   z.object({
@@ -517,6 +560,28 @@ const BrowseActionTypeSchema = BaseActionSchema.extend({
 });
 type BrowseActionPublicType = z.infer<typeof BrowseActionTypeSchema>;
 
+const SearchLabelsActionOutputSchema = z.object({
+  tags: z.array(
+    z.object({
+      tag: z.string(),
+      match_count: z.number(),
+      data_sources: z.array(z.string()),
+    })
+  ),
+});
+
+const SearchLabelsActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  output: SearchLabelsActionOutputSchema.nullable(),
+  functionCallId: z.string().nullable(),
+  functionCallName: z.string().nullable(),
+  step: z.number(),
+  type: z.literal("search_labels_action"),
+});
+type SearchLabelsActionPublicType = z.infer<
+  typeof SearchLabelsActionTypeSchema
+>;
+
 const ReasoningActionTypeSchema = BaseActionSchema.extend({
   agentMessageId: ModelIdSchema,
   output: z.string().nullable(),
@@ -541,14 +606,27 @@ const ConversationIncludeFileActionTypeSchema = BaseActionSchema.extend({
   type: z.literal("conversation_include_file_action"),
 });
 
-const ConversationFileTypeSchema = z.object({
-  fileId: z.string(),
-  title: z.string(),
-  contentType: SupportedContentFragmentTypeSchema,
-});
+const ConversationAttachmentTypeSchema = z.union([
+  // File case
+  z.object({
+    fileId: z.string(),
+    contentFragmentId: z.undefined(),
+    nodeDataSourceViewId: z.undefined(),
+    title: z.string(),
+    contentType: SupportedContentFragmentTypeSchema,
+  }),
+  // Node case
+  z.object({
+    fileId: z.undefined(),
+    contentFragmentId: z.string(),
+    nodeDataSourceViewId: z.string(),
+    title: z.string(),
+    contentType: SupportedContentFragmentTypeSchema,
+  }),
+]);
 
 const ConversationListFilesActionTypeSchema = BaseActionSchema.extend({
-  files: z.array(ConversationFileTypeSchema),
+  files: z.array(ConversationAttachmentTypeSchema),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
@@ -698,6 +776,7 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
   output: z.record(z.union([z.string(), z.number(), z.boolean()])).nullable(),
   resultsFileId: z.string().nullable(),
   resultsFileSnippet: z.string().nullable(),
+  sectionFileId: z.string().nullable(),
   functionCallId: z.string().nullable(),
   functionCallName: z.string().nullable(),
   agentMessageId: ModelIdSchema,
@@ -706,75 +785,10 @@ const TablesQueryActionTypeSchema = BaseActionSchema.extend({
 });
 type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 
-const GithubGetPullRequestParamsSchema = z.object({
-  owner: z.string(),
-  repo: z.string(),
-  pullNumber: z.number(),
-});
-
-const GithubPullCommitSchema = z.object({
-  sha: z.string(),
-  message: z.string(),
-  author: z.string(),
-});
-
-const GithubPullCommentSchema = z.object({
-  createdAt: z.number(),
-  author: z.string(),
-  body: z.string(),
-});
-
-const GithubPullReviewCommentSchema = z.object({
-  body: z.string(),
-  path: z.string(),
-  line: z.number(),
-});
-
-const GithubPullReviewSchema = z.object({
-  createdAt: z.number(),
-  author: z.string(),
-  body: z.string(),
-  state: z.string(),
-  comments: GithubPullReviewCommentSchema.array(),
-});
-
-const GithubGetPullRequestActionSchema = BaseActionSchema.extend({
-  params: GithubGetPullRequestParamsSchema,
-  pullBody: z.string().nullable(),
-  pullDiff: z.string().nullable(),
-  pullCommits: GithubPullCommitSchema.array().nullable(),
-  pullComments: GithubPullCommentSchema.array().nullable(),
-  pullReviews: GithubPullReviewSchema.array().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("github_get_pull_request_action"),
-});
-
-const GithubCreateIssueParamsSchema = z.object({
-  owner: z.string(),
-  repo: z.string(),
-  title: z.string(),
-  body: z.string(),
-});
-
-const GithubCreateIssueActionSchema = BaseActionSchema.extend({
-  params: GithubCreateIssueParamsSchema,
-  issueNumber: z.number().nullable(),
-  functionCallId: z.string().nullable(),
-  functionCallName: z.string().nullable(),
-  agentMessageId: ModelIdSchema,
-  step: z.number(),
-  type: z.literal("github_create_issue_action"),
-});
-
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
   | "labs_transcripts"
-  | "labs_transcripts_full_storage"
-  | "labs_transcripts_meet_scope"
   | "labs_trackers"
   | "document_tracker"
   | "openai_o1_feature"
@@ -792,6 +806,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "deepseek_r1_global_agent_feature"
   | "salesforce_feature"
   | "advanced_notion_management"
+  | "search_knowledge_builder"
+  | "attach_from_datasources"
+  | "force_gdrive_labels_scope"
+  | "claude_3_7_reasoning"
+  | "mcp_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -874,6 +893,12 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
 export type WebsearchActionPublicType = z.infer<
   typeof WebsearchActionTypeSchema
 >;
+
+const MCPActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.unknown(),
+  type: z.literal("tool_action"),
+});
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1022,9 +1047,9 @@ const AgentActionTypeSchema = z.union([
   BrowseActionTypeSchema,
   ConversationListFilesActionTypeSchema,
   ConversationIncludeFileActionTypeSchema,
-  GithubGetPullRequestActionSchema,
-  GithubCreateIssueActionSchema,
   ReasoningActionTypeSchema,
+  SearchLabelsActionTypeSchema,
+  MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1162,22 +1187,6 @@ const DustAppRunBlockEventSchema = z.object({
   action: DustAppRunActionTypeSchema,
 });
 
-const GithubGetPullRequestParamsEventSchema = z.object({
-  type: z.literal("github_get_pull_request_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: GithubGetPullRequestActionSchema,
-});
-
-const GithubCreateIssueParamsEventSchema = z.object({
-  type: z.literal("github_create_issue_params"),
-  created: z.number(),
-  configurationId: z.string(),
-  messageId: z.string(),
-  action: GithubCreateIssueActionSchema,
-});
-
 const ProcessParamsEventSchema = z.object({
   type: z.literal("process_params"),
   created: z.number(),
@@ -1254,6 +1263,22 @@ const ReasoningTokensEventSchema = z.object({
   classification: TokensClassificationSchema,
 });
 
+const SearchLabelsParamsEventSchema = z.object({
+  type: z.literal("search_labels_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: SearchLabelsActionTypeSchema,
+});
+
+const MCPParamsEventSchema = z.object({
+  type: z.literal("tool_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1267,21 +1292,21 @@ const AgentErrorEventSchema = z.object({
 export type AgentErrorEvent = z.infer<typeof AgentErrorEventSchema>;
 
 const AgentActionSpecificEventSchema = z.union([
-  RetrievalParamsEventSchema,
-  DustAppRunParamsEventSchema,
-  DustAppRunBlockEventSchema,
-  TablesQueryStartedEventSchema,
-  TablesQueryModelOutputEventSchema,
-  TablesQueryOutputEventSchema,
-  ProcessParamsEventSchema,
-  WebsearchParamsEventSchema,
   BrowseParamsEventSchema,
   ConversationIncludeFileParamsEventSchema,
-  GithubGetPullRequestParamsEventSchema,
-  GithubCreateIssueParamsEventSchema,
+  DustAppRunBlockEventSchema,
+  DustAppRunParamsEventSchema,
+  ProcessParamsEventSchema,
   ReasoningStartedEventSchema,
   ReasoningThinkingEventSchema,
   ReasoningTokensEventSchema,
+  RetrievalParamsEventSchema,
+  SearchLabelsParamsEventSchema,
+  TablesQueryModelOutputEventSchema,
+  TablesQueryOutputEventSchema,
+  TablesQueryStartedEventSchema,
+  WebsearchParamsEventSchema,
+  MCPParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -1389,6 +1414,8 @@ export const CoreAPIErrorSchema = z.object({
   code: z.string(),
 });
 
+export type CoreAPIError = z.infer<typeof CoreAPIErrorSchema>;
+
 export const CoreAPITokenTypeSchema = z.tuple([z.number(), z.string()]);
 export type CoreAPITokenType = z.infer<typeof CoreAPITokenTypeSchema>;
 
@@ -1490,6 +1517,8 @@ export const WorkspaceDomainSchema = z.object({
   domain: z.string(),
   domainAutoJoinEnabled: z.boolean(),
 });
+
+export type WorkspaceDomainType = z.infer<typeof WorkspaceDomainSchema>;
 
 export const DustAppTypeSchema = z.object({
   appHash: z.string(),
@@ -1637,11 +1666,14 @@ const SpaceKindSchema = FlexibleEnumSchema<
 const SpaceTypeSchema = z.object({
   createdAt: z.number(),
   groupIds: z.array(z.string()),
+  isRestricted: z.boolean(),
   kind: SpaceKindSchema,
   name: z.string(),
   sId: z.string(),
   updatedAt: z.number(),
 });
+
+export type SpaceType = z.infer<typeof SpaceTypeSchema>;
 
 const DatasetSchemaEntryType = FlexibleEnumSchema<
   "string" | "number" | "boolean" | "json"
@@ -1674,6 +1706,7 @@ const AppTypeSchema = z.object({
   dustAPIProjectId: z.string(),
   space: SpaceTypeSchema,
   datasets: z.array(DatasetSchema).optional(),
+  coreSpecifications: z.record(z.string()).optional(),
 });
 
 export type ApiAppType = z.infer<typeof AppTypeSchema>;
@@ -1803,7 +1836,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
-    content: z.string(),
+    content: z.string().min(1),
     mentions: z.array(
       z.object({
         configurationId: z.string(),
@@ -1844,8 +1877,10 @@ export const PublicContentFragmentWithContentSchema = z.object({
   title: z.string(),
   url: z.string().optional().nullable(),
   content: z.string(),
-  contentType: SupportedInlinedContentFragmentTypeSchema,
+  contentType: z.string(),
   fileId: z.undefined().nullable(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1861,6 +1896,8 @@ export const PublicContentFragmentWithFileIdSchema = z.object({
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
   fileId: z.string(),
+  nodeId: z.undefined().nullable(),
+  nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   // Undocumented for now -- allows to supersede an existing content fragment.
   supersededContentFragmentId: z.string().optional().nullable(),
@@ -1870,9 +1907,22 @@ export type PublicContentFragmentWithFileId = z.infer<
   typeof PublicContentFragmentWithFileIdSchema
 >;
 
+const PublicContentFragmentWithContentNodeSchema = z.object({
+  title: z.string(),
+  url: z.string().optional().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.string(),
+  fileId: z.undefined().nullable(),
+  nodeId: z.string(),
+  nodeDataSourceViewId: z.string(),
+  context: ContentFragmentContextSchema.optional().nullable(),
+  supersededContentFragmentId: z.string().optional().nullable(),
+});
+
 export const PublicPostContentFragmentRequestBodySchema = z.union([
   PublicContentFragmentWithContentSchema,
   PublicContentFragmentWithFileIdSchema,
+  PublicContentFragmentWithContentNodeSchema,
 ]);
 
 export type PublicPostContentFragmentRequestBody = z.infer<
@@ -1889,7 +1939,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     message: z.union([
       z.intersection(
         z.object({
-          content: z.string(),
+          content: z.string().min(1),
           mentions: z.array(
             z.object({
               configurationId: z.string(),
@@ -1908,6 +1958,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     contentFragment: z.union([
       PublicContentFragmentWithContentSchema,
       PublicContentFragmentWithFileIdSchema,
+      PublicContentFragmentWithContentNodeSchema,
       z.undefined(),
     ]),
     contentFragments: z.union([
@@ -1915,6 +1966,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
         .union([
           PublicContentFragmentWithContentSchema,
           PublicContentFragmentWithFileIdSchema,
+          PublicContentFragmentWithContentNodeSchema,
         ])
         .array(),
       z.undefined(),
@@ -1992,6 +2044,18 @@ export const PostAppsRequestSchema = z.object({
 });
 
 export type GetAppsResponseType = z.infer<typeof GetAppsResponseSchema>;
+
+export const ImportAppsResponseSchema = z.object({
+  apps: z
+    .object({
+      sId: z.string(),
+      name: z.string(),
+      error: z.string().optional(),
+    })
+    .array(),
+});
+
+export type ImportAppsResponseType = z.infer<typeof ImportAppsResponseSchema>;
 
 export const DataSourceViewResponseSchema = z.object({
   dataSourceView: DataSourceViewSchema,
@@ -2088,6 +2152,10 @@ export const PostDataSourceDocumentRequestSchema = z.object({
   mime_type: z.string().nullable().optional(),
   title: z.string().nullable().optional(),
 });
+
+export type PostDataSourceDocumentRequestType = z.infer<
+  typeof PostDataSourceDocumentRequestSchema
+>;
 
 const GetDocumentResponseSchema = z.object({
   document: CoreAPIDocumentSchema,
@@ -2217,8 +2285,7 @@ export const UpsertTableFromCsvRequestSchema = z.object({
   mimeType: z.string(),
   sourceUrl: z.string().nullable().optional(),
   tableId: z.string(),
-  csv: z.string().optional(),
-  fileId: z.string().optional(),
+  fileId: z.string(),
 });
 
 export type UpsertTableFromCsvRequestType = z.infer<
@@ -2345,12 +2412,14 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     end: z.undefined(),
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
   z.object({
     start: DateSchema,
     end: DateSchema,
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
 ]);
 
@@ -2483,6 +2552,12 @@ export function isReasoningActionType(
   return action.type === "reasoning_action";
 }
 
+export function isSearchLabelsActionType(
+  action: AgentActionPublicType
+): action is SearchLabelsActionPublicType {
+  return action.type === "search_labels_action";
+}
+
 export function isAgentMention(arg: AgentMentionType): arg is AgentMentionType {
   return (arg as AgentMentionType).configurationId !== undefined;
 }
@@ -2559,3 +2634,132 @@ export const AppsCheckResponseSchema = z.object({
 });
 
 export type AppsCheckResponseType = z.infer<typeof AppsCheckResponseSchema>;
+
+export const GetSpacesResponseSchema = z.object({
+  spaces: z.array(SpaceTypeSchema),
+});
+
+export type GetSpacesResponseType = z.infer<typeof GetSpacesResponseSchema>;
+
+export const ContentNodeTypeSchema = z.union([
+  z.literal("document"),
+  z.literal("table"),
+  z.literal("folder"),
+]);
+
+export const ContentNodesViewTypeSchema = z.union([
+  z.literal("table"),
+  z.literal("document"),
+  z.literal("all"),
+]);
+
+export type ContentNodesViewType = z.infer<typeof ContentNodesViewTypeSchema>;
+
+export const BaseSearchBodySchema = z.object({
+  viewType: ContentNodesViewTypeSchema,
+  spaceIds: z.array(z.string()),
+  includeDataSources: z.boolean(),
+  limit: z.number(),
+});
+
+const TextSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    query: z.string(),
+    nodeIds: z.undefined().optional(),
+  })
+);
+
+const NodeIdSearchBodySchema = z.intersection(
+  BaseSearchBodySchema,
+  z.object({
+    nodeIds: z.array(z.string()),
+    query: z.undefined().optional(),
+  })
+);
+
+export const SearchRequestBodySchema = z.union([
+  TextSearchBodySchema,
+  NodeIdSearchBodySchema,
+]);
+
+export type SearchRequestBodyType = z.infer<typeof SearchRequestBodySchema>;
+
+export const ContentNodeSchema = z.object({
+  expandable: z.boolean(),
+  internalId: z.string(),
+  lastUpdatedAt: z.number().nullable(),
+  mimeType: z.string(),
+  // The direct parent ID of this content node
+  parentInternalId: z.string().nullable(),
+  // permission: ConnectorPermissionSchema,
+  preventSelection: z.boolean().optional(),
+  providerVisibility: ProviderVisibilitySchema.nullable().optional(),
+  sourceUrl: z.string().nullable().optional(),
+  title: z.string(),
+  type: ContentNodeTypeSchema,
+});
+
+export type ContentNodeType = z.infer<typeof ContentNodeSchema>;
+
+export const ContentNodeWithParentSchema = z.intersection(
+  ContentNodeSchema,
+  z.object({
+    parentsInternalIds: z.array(z.string()).optional(),
+    parentTitle: z.string().optional().nullable(),
+  })
+);
+
+export const DataSourceContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSource: DataSourceTypeSchema,
+    dataSourceViews: DataSourceViewSchema.array(),
+  })
+);
+
+export type DataSourceContentNodeType = z.infer<
+  typeof DataSourceContentNodeSchema
+>;
+
+export const DataSourceViewContentNodeSchema = z.intersection(
+  ContentNodeWithParentSchema,
+  z.object({
+    dataSourceView: DataSourceViewSchema,
+  })
+);
+
+export type DataSourceViewContentNodeType = z.infer<
+  typeof DataSourceViewContentNodeSchema
+>;
+
+export const SearchWarningCodeSchema = z.literal("truncated-query-clauses");
+
+export type SearchWarningCode = z.infer<typeof SearchWarningCodeSchema>;
+
+export const PostWorkspaceSearchResponseBodySchema = z.object({
+  nodes: DataSourceContentNodeSchema.array(),
+  warningCode: SearchWarningCodeSchema.optional().nullable(),
+});
+
+export type PostWorkspaceSearchResponseBodyType = z.infer<
+  typeof PostWorkspaceSearchResponseBodySchema
+>;
+
+// TODO(mcp) move somewhere else as we'll need dynamic labels for MCP.
+export const ACTION_RUNNING_LABELS: Record<
+  AgentActionPublicType["type"],
+  string
+> = {
+  browse_action: "Browsing page",
+  conversation_include_file_action: "Reading file",
+  conversation_list_files_action: "Listing files",
+  dust_app_run_action: "Running App",
+  process_action: "Extracting data",
+  reasoning_action: "Reasoning",
+  retrieval_action: "Searching data",
+  search_labels_action: "Searching labels",
+  tables_query_action: "Querying tables",
+  websearch_action: "Searching the web",
+  tool_action: "Calling MCP Server",
+};

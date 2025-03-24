@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import TurndownService from "turndown";
 
 import type {
@@ -16,13 +14,29 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
+import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
   return apiUrl.replace("/api/v2/", "/").replace(".json", "");
+}
+
+export function shouldSyncTicket(
+  ticket: ZendeskFetchedTicket,
+  configuration: ZendeskConfigurationResource
+): boolean {
+  return [
+    "closed",
+    "solved",
+    ...(configuration.syncUnresolvedTickets
+      ? ["new", "open", "pending", "hold"]
+      : []),
+  ].includes(ticket.status);
 }
 
 export function extractMetadataFromDocumentUrl(ticketUrl: string): {

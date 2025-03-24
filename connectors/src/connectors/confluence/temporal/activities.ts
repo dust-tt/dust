@@ -1,9 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import {
-  ConfluenceClientError,
-  isConfluenceNotFoundError,
-  MIME_TYPES,
-} from "@dust-tt/types";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -50,12 +44,21 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import {
+  ConfluenceClientError,
+  isConfluenceNotFoundError,
+  MIME_TYPES,
+} from "@connectors/types";
+
 /**
  * This type represents the ID that should be passed as parentId to a content node to hide it from the UI.
  * This behavior is typically used to hide content nodes whose position in the ContentNodeTree cannot be resolved at time of upsertion.
  */
 export const HiddenContentNodeParentId = "__hidden_syncing_content__";
+
+const UPSERT_CONCURRENT_LIMIT = 10;
 
 export interface SpaceBlob {
   id: string;
@@ -298,65 +301,67 @@ async function upsertConfluencePageToDataSource({
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
 
-  if (markdown) {
-    const renderedMarkdown = await renderMarkdownSection(
-      dataSourceConfig,
-      markdown
-    );
-
-    // Log labels info
-    if (page.labels.results.length > 0) {
-      localLogger.info(
-        { labelsCount: page.labels.results.length },
-        "Confluence page has labels."
-      );
-    }
-
-    // Use label names for tags instead of IDs
-    const customTags = page.labels.results.map((l) => l.name);
-
-    const tags = [
-      `createdAt:${pageCreatedAt.getTime()}`,
-      `space:${spaceName}`,
-      `title:${page.title}`,
-      `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
-      `version:${page.version.number}`,
-      ...filterCustomTags(customTags, localLogger),
-    ];
-
-    const renderedPage = await renderDocumentTitleAndContent({
-      dataSourceConfig,
-      title: `Page ${page.title}`,
-      createdAt: pageCreatedAt,
-      updatedAt: lastPageVersionCreatedAt,
-      content: renderedMarkdown,
-      additionalPrefixes: {
-        labels: page.labels.results.map((l) => l.name).join(", ") || "none",
-      },
-    });
-
-    const documentId = makePageInternalId(page.id);
-    const documentUrl = makeConfluenceDocumentUrl({
-      baseUrl: confluenceConfig.url,
-      suffix: page._links.tinyui,
-    });
-
-    await upsertDataSourceDocument({
-      dataSourceConfig,
-      documentContent: renderedPage,
-      documentId,
-      documentUrl,
-      loggerArgs,
-      parents,
-      parentId: parents[1],
-      tags,
-      timestampMs: lastPageVersionCreatedAt.getTime(),
-      upsertContext: { sync_type: syncType },
-      title: page.title,
-      mimeType: MIME_TYPES.CONFLUENCE.PAGE,
-      async: true,
-    });
+  if (!markdown) {
+    logger.warn({ ...loggerArgs }, "Upserting page with empty content.");
   }
+
+  const renderedMarkdown = await renderMarkdownSection(
+    dataSourceConfig,
+    markdown
+  );
+
+  // Log labels info
+  if (page.labels.results.length > 0) {
+    localLogger.info(
+      { labelsCount: page.labels.results.length },
+      "Confluence page has labels."
+    );
+  }
+
+  // Use label names for tags instead of IDs
+  const customTags = page.labels.results.map((l) => l.name);
+
+  const tags = [
+    `createdAt:${pageCreatedAt.getTime()}`,
+    `space:${spaceName}`,
+    `title:${page.title}`,
+    `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
+    `version:${page.version.number}`,
+    ...filterCustomTags(customTags, localLogger),
+  ];
+
+  const renderedPage = await renderDocumentTitleAndContent({
+    dataSourceConfig,
+    title: `Page ${page.title}`,
+    createdAt: pageCreatedAt,
+    updatedAt: lastPageVersionCreatedAt,
+    content: renderedMarkdown,
+    additionalPrefixes: {
+      labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+    },
+  });
+
+  const documentId = makePageInternalId(page.id);
+  const documentUrl = makeConfluenceDocumentUrl({
+    baseUrl: confluenceConfig.url,
+    suffix: page._links.tinyui,
+  });
+
+  await upsertDataSourceDocument({
+    dataSourceConfig,
+    documentContent: renderedPage,
+    documentId,
+    documentUrl,
+    loggerArgs,
+    parents,
+    parentId: parents[1],
+    tags,
+    timestampMs: lastPageVersionCreatedAt.getTime(),
+    upsertContext: { sync_type: syncType },
+    title: page.title,
+    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
+    async: true,
+  });
 }
 
 async function upsertConfluencePageInDb(
@@ -376,7 +381,7 @@ async function upsertConfluencePageInDb(
   });
 }
 
-interface ConfluenceCheckAndUpsertPageActivityInput {
+interface ConfluenceCheckAndUpsertSinglePageActivityInput {
   connectorId: ModelId;
   isBatchSync: boolean;
   pageRef: ConfluencePageRef;
@@ -390,14 +395,14 @@ interface ConfluenceCheckAndUpsertPageActivityInput {
  * Operates greedily by stopping if the page is restricted or if there is a version match
  * (unless the page was moved, in this case, we have to upsert because the parents have changed).
  */
-export async function confluenceCheckAndUpsertPageActivity({
+export async function confluenceCheckAndUpsertSinglePageActivity({
   connectorId,
   isBatchSync,
   pageRef,
   space,
   forceUpsert,
   visitedAtMs,
-}: ConfluenceCheckAndUpsertPageActivityInput) {
+}: ConfluenceCheckAndUpsertSinglePageActivityInput) {
   const connector = await fetchConfluenceConnector(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -504,6 +509,31 @@ export async function confluenceCheckAndUpsertPageActivity({
   await upsertConfluencePageInDb(connector.id, page, visitedAtMs);
 
   return true;
+}
+
+type ConfluenceUpsertLeafPagesActivityInput = Omit<
+  ConfluenceCheckAndUpsertSinglePageActivityInput,
+  "pageRef"
+> & {
+  pageRefs: ConfluencePageRef[];
+};
+
+export async function confluenceUpsertLeafPagesActivity({
+  pageRefs,
+  ...params
+}: ConfluenceUpsertLeafPagesActivityInput) {
+  await concurrentExecutor(
+    pageRefs,
+    async (pageRef) => {
+      await confluenceCheckAndUpsertSinglePageActivity({
+        ...params,
+        pageRef,
+      });
+    },
+    {
+      concurrency: UPSERT_CONCURRENT_LIMIT,
+    }
+  );
 }
 
 /**
@@ -714,10 +744,12 @@ export async function fetchAndUpsertRootPagesActivity(params: {
 
   // Check and upsert pages, filter allowed ones.
   for (const rootPageRef of rootPageRefs) {
-    const successfullyUpsert = await confluenceCheckAndUpsertPageActivity({
-      ...params,
-      pageRef: rootPageRef,
-    });
+    const successfullyUpsert = await confluenceCheckAndUpsertSinglePageActivity(
+      {
+        ...params,
+        pageRef: rootPageRef,
+      }
+    );
 
     // If the page fails the upsert operation, it indicates the page is restricted.
     // Such pages should not be added to the list of allowed pages.

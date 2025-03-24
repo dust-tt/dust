@@ -1,19 +1,20 @@
-import type {
-  ConnectorErrorType,
-  ConnectorProvider,
-  ConnectorSyncStatus,
-} from "@dust-tt/types";
+import type { ConnectorProvider } from "@dust-tt/client";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
+import type {
+  ConnectorErrorType,
+  ConnectorSyncStatus,
+} from "@connectors/types";
 
 export class ConnectorModel extends BaseModel<ConnectorModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare type: ConnectorProvider;
   declare connectionId: string;
+  declare useProxy: boolean | null;
 
   declare workspaceAPIKey: string;
   declare workspaceId: string;
@@ -50,6 +51,11 @@ ConnectorModel.init(
     connectionId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    useProxy: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
     workspaceAPIKey: {
       type: DataTypes.STRING,

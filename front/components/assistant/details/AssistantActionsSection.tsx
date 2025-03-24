@@ -3,10 +3,10 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  CommandIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
-  GithubIcon,
   Icon,
   IconButton,
   Label,
@@ -17,42 +17,33 @@ import {
   SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  ConnectorProvider,
-  ContentNodesViewType,
-  DataSourceConfiguration,
-  DataSourceTag,
-  DataSourceViewType,
-  DustAppRunConfigurationType,
-  LightWorkspaceType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TagsFilter,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-} from "@dust-tt/types";
 import _ from "lodash";
+import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isMCPServerConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -62,6 +53,21 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  AgentConfigurationType,
+  ConnectorProvider,
+  ContentNodesViewType,
+  DataSourceTag,
+  DataSourceViewType,
+  LightWorkspaceType,
+  TagsFilter,
+} from "@app/types";
+import {
+  assertNever,
+  DocumentViewRawContentKey,
+  GLOBAL_AGENTS_SID,
+} from "@app/types";
 
 interface AssistantActionsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -187,7 +193,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="documents"
+                viewType="document"
               />
             </div>
           ))}
@@ -202,7 +208,7 @@ export function AssistantActionsSection({
                 owner={owner}
                 dataSourceViews={dataSourceViews}
                 dataSourceConfigurations={[dataSources]}
-                viewType="tables"
+                viewType="table"
               />
             </div>
           ))}
@@ -273,7 +279,7 @@ function renderOtherAction(
           owner={owner}
           dataSourceViews={dataSourceViews}
           dataSourceConfigurations={action.dataSources}
-          viewType="documents"
+          viewType="document"
         />
       </ActionSection>
     );
@@ -299,26 +305,15 @@ function renderOtherAction(
         </div>
       </ActionSection>
     );
+  } else if (isMCPServerConfiguration(action)) {
+    return (
+      <ActionSection title={action.name} key={`other-${index}`}>
+        <Icon visual={CommandIcon} size="sm" />
+        <div>{action.description}</div>
+      </ActionSection>
+    );
   } else if (isBrowseConfiguration(action)) {
     return null;
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can retrieve pull requests from Github.</div>
-        </div>
-      </ActionSection>
-    );
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can create issues on Github.</div>
-        </div>
-      </ActionSection>
-    );
   } else if (
     !isRetrievalConfiguration(action) &&
     !isTablesQueryConfiguration(action)
@@ -356,10 +351,8 @@ function DataSourceViewsSection({
   dataSourceConfigurations,
   viewType,
 }: DataSourceViewsSectionProps) {
+  const router = useRouter();
   const { isDark } = useTheme();
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
@@ -368,9 +361,6 @@ function DataSourceViewsSection({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {
@@ -418,7 +408,8 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(documentId);
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
                   }}
                   viewType={viewType}
                 />
@@ -429,7 +420,10 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   dataSourceConfiguration={dsConfig}
                   setDataSourceViewToDisplay={setDataSourceViewToDisplay}
-                  setDocumentToDisplay={setDocumentToDisplay}
+                  setDocumentToDisplay={(documentId: string) => {
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
+                  }}
                   viewType={viewType}
                 />
               )}
@@ -514,7 +508,7 @@ function RetrievalActionTagsFilterPopover({
           )}
           {isTagsAuto && (
             <div className="flex flex-col gap-2">
-              <Label>Conversation filtering</Label>
+              <Label>In-Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
                 <Chip
                   color="emerald"
@@ -561,8 +555,8 @@ function DataSourceViewSelectedNodes({
         <Tree.Item
           key={node.internalId}
           label={node.title}
-          type={node.expandable && viewType !== "tables" ? "node" : "leaf"}
-          visual={getVisualForContentNode(node)}
+          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+          visual={getVisualForDataSourceViewContentNode(node)}
           className="whitespace-nowrap"
           actions={
             <div className="mr-8 flex flex-row gap-2">
@@ -584,17 +578,17 @@ function DataSourceViewSelectedNodes({
                 size="xs"
                 icon={BracesIcon}
                 onClick={() => {
-                  if (node.type === "Document") {
+                  if (node.type === "document") {
                     setDataSourceViewToDisplay(dataSourceView);
                     setDocumentToDisplay(node.internalId);
                   }
                 }}
                 className={classNames(
-                  node.type === "Document"
+                  node.type === "document"
                     ? ""
                     : "pointer-events-none opacity-0"
                 )}
-                disabled={node.type !== "Document"}
+                disabled={node.type !== "document"}
                 variant="outline"
               />
             </div>

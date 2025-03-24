@@ -1,4 +1,3 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -11,12 +10,13 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import {
-  IntercomCollection,
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomCollectionModel,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { MIME_TYPES } from "@connectors/types";
 
 async function createFolderNodes(execute: boolean) {
   const connectors = await ConnectorResource.listByType("intercom", {});
@@ -39,7 +39,7 @@ async function createFolderNodes(execute: boolean) {
       });
     }
 
-    const teams = await IntercomTeam.findAll({
+    const teams = await IntercomTeamModel.findAll({
       where: {
         connectorId: connector.id,
       },
@@ -67,7 +67,7 @@ async function createFolderNodes(execute: boolean) {
     );
 
     // Length = 1, for loop just in case
-    const workspaces = await IntercomWorkspace.findAll({
+    const workspaces = await IntercomWorkspaceModel.findAll({
       where: {
         connectorId: connector.id,
       },
@@ -75,7 +75,7 @@ async function createFolderNodes(execute: boolean) {
 
     for (const workspace of workspaces) {
       // Length mostly 1
-      const helpCenters = await IntercomHelpCenter.findAll({
+      const helpCenters = await IntercomHelpCenterModel.findAll({
         where: {
           connectorId: connector.id,
           intercomWorkspaceId: workspace.intercomWorkspaceId,
@@ -83,7 +83,7 @@ async function createFolderNodes(execute: boolean) {
       });
 
       for (const helpCenter of helpCenters) {
-        const collections = await IntercomCollection.findAll({
+        const collections = await IntercomCollectionModel.findAll({
           where: {
             connectorId: connector.id,
             helpCenterId: helpCenter.helpCenterId,
@@ -101,6 +101,7 @@ async function createFolderNodes(execute: boolean) {
             const collectionParents = await getParentIdsForCollection({
               connectorId: connector.id,
               collectionId: collection.collectionId,
+              helpCenterId: helpCenter.helpCenterId,
             });
             console.log(
               `[${connector.id}] -> ${JSON.stringify({ folderId: collectionInternalId, parents: collectionParents })}`

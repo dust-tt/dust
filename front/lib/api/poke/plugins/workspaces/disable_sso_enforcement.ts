@@ -1,10 +1,9 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { disableSSOEnforcement } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
-export const disableSSOPlugin = createPlugin(
-  {
+export const disableSSOPlugin = createPlugin({
+  manifest: {
     id: "disable-sso",
     name: "Disable SSO Enforcement",
     description: "Disable SSO enforcement on a workspace",
@@ -17,8 +16,7 @@ export const disableSSOPlugin = createPlugin(
       },
     },
   },
-  async (auth, _, args) => {
-    const workspace = auth.workspace();
+  execute: async (auth, workspace, args) => {
     if (!workspace) {
       return new Err(new Error("Cannot find workspace."));
     }
@@ -40,5 +38,5 @@ export const disableSSOPlugin = createPlugin(
       display: "text",
       value: "SSO enforcement disabled.",
     });
-  }
-);
+  },
+});

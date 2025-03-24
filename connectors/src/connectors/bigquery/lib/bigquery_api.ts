@@ -1,5 +1,5 @@
-import type { BigQueryCredentialsWithLocation, Result } from "@dust-tt/types";
-import { Err, Ok, removeNulls } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 
 import type {
@@ -8,7 +8,7 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
-import { parseSchemaInternalId } from "@connectors/lib/remote_databases/utils";
+import type { BigQueryCredentialsWithLocation } from "@connectors/types";
 
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
@@ -123,32 +123,15 @@ export const fetchDatasets = async ({
  */
 export const fetchTables = async ({
   credentials,
-  datasetName,
-  internalDatasetId,
+  dataset,
   connection,
 }: {
   credentials: BigQueryCredentialsWithLocation;
-  datasetName?: string;
-  internalDatasetId?: string;
+  dataset: string;
   connection?: BigQuery;
 }): Promise<Result<Array<RemoteDBTable>, Error>> => {
   const conn = connection ?? connectToBigQuery(credentials);
   try {
-    if (!datasetName && !internalDatasetId) {
-      throw new Error(
-        "Either datasetName or internalDatasetId must be provided"
-      );
-    }
-    if (datasetName && internalDatasetId) {
-      throw new Error(
-        "Both datasetName and internalDatasetId cannot be provided"
-      );
-    }
-
-    const dataset = internalDatasetId
-      ? parseSchemaInternalId(internalDatasetId).name
-      : datasetName;
-
     // Can't happen, to please TS.
     if (!dataset) {
       throw new Error("Dataset name is required");
@@ -201,7 +184,7 @@ export const fetchTree = async ({
               .map(async (schema) => {
                 const tablesRes = await fetchTables({
                   credentials,
-                  datasetName: schema.name,
+                  dataset: schema.name,
                 });
                 if (tablesRes.isErr()) {
                   throw tablesRes.error;

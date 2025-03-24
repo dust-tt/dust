@@ -1,4 +1,6 @@
-import { CoreAPI, EnvironmentConfig } from "@dust-tt/types";
+/*
+// Disabled as CoreAPI is not available, for now, in connectors.
+
 import { makeScript } from "scripts/helpers";
 import { Sequelize } from "sequelize";
 
@@ -7,6 +9,7 @@ import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { CoreAPI, EnvironmentConfig } from "@connectors/types";
 
 const { FRONT_DATABASE_URI } = process.env;
 
@@ -230,3 +233,4 @@ makeScript(
     logger.info("Finished processing all connectors");
   }
 );
+*/

@@ -1,17 +1,16 @@
-import type {
-  ConversationType,
-  ConversationWithoutContentType,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import { ConversationError, Err, Ok } from "@dust-tt/types";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { canAccessConversation } from "@app/lib/api/assistant/conversation/auth";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { PaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+  Result,
+  UserType,
+} from "@app/types";
+import { ConversationError, Err, Ok } from "@app/types";
 
 /**
  * We retrieve the feedbacks for a whole conversation, not just a single message.
@@ -203,7 +202,8 @@ export async function getAgentFeedbacks({
   // Make sure the user has access to the agent
   const agentConfiguration = await getAgentConfiguration(
     auth,
-    agentConfigurationId
+    agentConfigurationId,
+    "light"
   );
   if (!agentConfiguration) {
     return new Err(new Error("agent_configuration_not_found"));

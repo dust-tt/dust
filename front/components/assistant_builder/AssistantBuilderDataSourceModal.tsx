@@ -6,23 +6,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
 import { useNavigationLock } from "@app/components/assistant_builder/useNavigationLock";
-import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
+import { DataSourceViewsSpaceSelector } from "@app/components/data_source_view/DataSourceViewsSpaceSelector";
 import {
   supportsDocumentsData,
   supportsStructuredData,
 } from "@app/lib/data_sources";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 interface AssistantBuilderDataSourceModalProps {
   initialDataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -76,11 +76,11 @@ export default function AssistantBuilderDataSourceModal({
     switch (viewType) {
       case "all":
         return dataSourceViews;
-      case "tables":
+      case "table":
         return dataSourceViews.filter((dsv) =>
           supportsStructuredData(dsv.dataSource)
         );
-      case "documents":
+      case "document":
         return dataSourceViews.filter((dsv) =>
           supportsDocumentsData(dsv.dataSource)
         );
@@ -88,6 +88,15 @@ export default function AssistantBuilderDataSourceModal({
         assertNever(viewType);
     }
   }, [dataSourceViews, viewType]);
+
+  const selectedTableCount = useMemo(() => {
+    if (viewType !== "table") {
+      return null;
+    }
+    return Object.values(selectionConfigurations).reduce((acc, curr) => {
+      return acc + curr.selectedResources.length;
+    }, 0);
+  }, [selectionConfigurations, viewType]);
 
   return (
     <Sheet
@@ -107,7 +116,7 @@ export default function AssistantBuilderDataSourceModal({
             id="dataSourceViewsSelector"
             className="overflow-y-auto scrollbar-hide"
           >
-            <DataSourceViewsSelector
+            <DataSourceViewsSpaceSelector
               useCase="assistantBuilder"
               dataSourceViews={supportedDataSourceViewsForViewType}
               allowedSpaces={allowedSpaces}
@@ -119,6 +128,11 @@ export default function AssistantBuilderDataSourceModal({
             />
           </div>
         </SheetContainer>
+        {selectedTableCount !== null && (
+          <div className="flex flex-col border-t border-border/60 bg-background p-3 text-sm dark:border-border-night/60 dark:bg-background-night">
+            {selectedTableCount} items selected.
+          </div>
+        )}
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",

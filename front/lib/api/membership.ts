@@ -1,10 +1,10 @@
-import type { LightWorkspaceType } from "@dust-tt/types";
 import type { Transaction } from "sequelize";
 
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { LightWorkspaceType } from "@app/types";
 
 export async function revokeAndTrackMembership(
   workspace: LightWorkspaceType,
@@ -18,6 +18,7 @@ export async function revokeAndTrackMembership(
   });
 
   if (revokeResult.isOk()) {
+    await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
     void ServerSideTracking.trackRevokeMembership({
       user: user.toJSON(),
       workspace,
@@ -25,8 +26,6 @@ export async function revokeAndTrackMembership(
       startAt: revokeResult.value.startAt,
       endAt: revokeResult.value.endAt,
     });
-
-    await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
   }
 
   return revokeResult;
