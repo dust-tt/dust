@@ -170,7 +170,8 @@ const InputBarContainer = ({
         setSelectedNode(node);
       }
 
-      // Reset node candidate after processing
+      // Reset node candidate after processing.
+      // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
     } else {
       setNodeOrUrlCandidate(null);
