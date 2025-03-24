@@ -82,7 +82,7 @@ export const InputBarAttachmentsPicker = ({
 
   const { spaces } = useSpaces({ workspaceId: owner.sId });
 
-  const { searchResultNodes, isSearchLoading, hasMore, nextPage } =
+  const { searchResultNodes, isSearchLoading, isSearchValidating, hasMore, nextPage } =
     useSpaceSearchWithInfiniteScroll({
       includeDataSources: true,
       owner,
@@ -110,6 +110,8 @@ export const InputBarAttachmentsPicker = ({
       element.focus();
     }
   };
+
+  const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
 
   return (
     <DropdownMenu
@@ -170,56 +172,52 @@ export const InputBarAttachmentsPicker = ({
             }
           }}
         />
-
-        {searchQuery && (
-          <>
-            <DropdownMenuSeparator />
-            <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-              <div className="pt-0" ref={itemsContainerRef}>
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      label={item.title}
-                      icon={() =>
-                        getVisualForDataSourceViewContentNode(item)({
-                          className: "min-w-4",
-                        })
-                      }
-                      extraIcon={getConnectorProviderLogoWithFallback({
-                        provider:
-                          item.dataSourceView.dataSource.connectorProvider,
-                      })}
-                      disabled={
-                        attachedNodeIds.includes(item.internalId) ||
-                        item.type === "folder"
-                      }
-                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
-                      onClick={() => {
-                        setSearch("");
-                        onNodeSelect(item);
-                        setIsOpen(false);
-                      }}
-                    />
-                  ))
-                ) : isSearchLoading || isDebouncing ? (
-                  <Loader />
-                ) : (
-                  <div className="p-2 text-sm text-gray-500">
-                    No results found
-                  </div>
-                )}
-              </div>
-              <InfiniteScroll
-                nextPage={nextPage}
-                hasMore={hasMore}
-                showLoader={unfoldedNodes.length > 0 && isSearchLoading}
-                loader={<Loader />}
-              />
-              <ScrollBar className="py-0" />
-            </ScrollArea>
-          </>
-        )}
+        {
+          searchQuery && <>
+          <DropdownMenuSeparator />
+          <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+            {
+              unfoldedNodes.map((item, index) => (
+                <DropdownMenuItem
+                  key={index}
+                    label={item.title}
+                    icon={() =>
+                      getVisualForDataSourceViewContentNode(item)({
+                        className: "min-w-4",
+                      })
+                    }
+                    extraIcon={getConnectorProviderLogoWithFallback({
+                      provider:
+                        item.dataSourceView.dataSource.connectorProvider,
+                    })}
+                    disabled={
+                      attachedNodeIds.includes(item.internalId) ||
+                      item.type === "folder"
+                    }
+                    description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
+                    onClick={() => {
+                      setSearch("");
+                      onNodeSelect(item);
+                      setIsOpen(false);
+                    }}
+                  />
+                ))
+              }
+              {unfoldedNodes.length === 0 && !showLoader && (
+                <div className="flex items-center justify-center py-4 text-sm text-element-700">
+                  No results found
+                </div>
+              )}
+            <InfiniteScroll
+              nextPage={nextPage}
+              hasMore={hasMore}
+              showLoader={showLoader}
+              loader={<Loader />}
+            />
+            <ScrollBar className="py-0" />
+          </ScrollArea>
+        </>
+        }
       </DropdownMenuContent>
     </DropdownMenu>
   );

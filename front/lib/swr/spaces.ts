@@ -1,5 +1,5 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
 
 import type { CursorPaginationParams } from "@app/lib/api/pagination";
@@ -857,9 +857,9 @@ export function useSpaceSearchWithInfiniteScroll({
     isSearchLoading: isLoading,
     isSearchError: error,
     isSearchValidating: isValidating,
-    hasMore: data?.[size - 1] ? data[size - 1].nextPageCursor !== null : false,
-    nextPage: async () => {
+    hasMore: data?.[size - 1] ? data[size - 1].nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not 
+    nextPage: useCallback(async () => {
       await setSize((size) => size + 1);
-    },
+    }, [setSize]),
   };
 }

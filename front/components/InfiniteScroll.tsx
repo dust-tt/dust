@@ -15,8 +15,7 @@ export const InfiniteScroll = ({
   showLoader,
   loader,
 }: InfiniteScrollProps) => {
-
-  const { ref, inView } = useInView();
+  const { ref, inView } = useInView();  
   useEffect(() => {
     if (inView && hasMore) {
       void nextPage();
