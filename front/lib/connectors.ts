@@ -118,6 +118,18 @@ type ProviderWithExtractor = BaseProvider & {
 type Provider = ProviderWithExtractor | ProviderWithNormalizer;
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
+  confluence: {
+    matcher: (url: URL): boolean => {
+      return (
+        url.hostname.endsWith("atlassian.net") &&
+        url.pathname.startsWith("/wiki")
+      );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString() };
+    },
+  },
+
   google_drive: {
     matcher: (url: URL): boolean => {
       return (
