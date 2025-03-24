@@ -129,7 +129,6 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return { url: url.toString() };
     },
   },
-
   google_drive: {
     matcher: (url: URL): boolean => {
       return (
@@ -153,7 +152,14 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return null;
     },
   },
-
+  github: {
+    matcher: (url: URL): boolean => {
+      return url.hostname.endsWith("github.com");
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString() };
+    },
+  },
   notion: {
     matcher: (url: URL): boolean => {
       return url.hostname.includes("notion.so");
