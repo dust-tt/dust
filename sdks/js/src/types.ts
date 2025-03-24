@@ -2412,12 +2412,14 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     end: z.undefined(),
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
   z.object({
     start: DateSchema,
     end: DateSchema,
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
 ]);
 
