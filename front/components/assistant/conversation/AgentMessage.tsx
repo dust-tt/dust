@@ -53,6 +53,7 @@ import {
   sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
@@ -143,6 +144,7 @@ export function AgentMessage({
   owner,
   user,
 }: AgentMessageProps) {
+  const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
@@ -488,7 +490,7 @@ export function AgentMessage({
     const allDocsReferences = allDocs.reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d);
+      acc[d.reference] = makeDocumentCitation(d, isDark);
       return acc;
     }, {});
 
