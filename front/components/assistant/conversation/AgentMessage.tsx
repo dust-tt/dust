@@ -514,6 +514,7 @@ export function AgentMessage({
     agentMessageToRender.actions,
     agentMessageToRender.status,
     agentMessageToRender.sId,
+    isDark,
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
