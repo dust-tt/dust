@@ -62,7 +62,7 @@ makeScript(
       choices: RELOCATION_STEPS,
       demandOption: true,
     },
-    skipUsersWithMultipleMemberships: {
+    forceUsersWithMultipleMemberships: {
       type: "boolean",
       required: false,
       default: false,
@@ -75,7 +75,7 @@ makeScript(
       step,
       workspaceId,
       execute,
-      skipUsersWithMultipleMemberships,
+      forceUsersWithMultipleMemberships,
     },
     logger
   ) => {
@@ -147,7 +147,7 @@ makeScript(
               execute,
               newRegion: destinationRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              skipUsersWithMultipleMemberships,
+              forceUsersWithMultipleMemberships,
             });
           if (updateUsersRegionToDestRes.isErr()) {
             logger.error(
@@ -217,7 +217,7 @@ makeScript(
               execute,
               newRegion: sourceRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              skipUsersWithMultipleMemberships: false,
+              forceUsersWithMultipleMemberships: false,
             });
           if (updateUsersRegionToSrcRes.isErr()) {
             logger.error(
