@@ -179,9 +179,10 @@ export const InputBarAttachmentsPicker = ({
           searchQuery && <>
           <DropdownMenuSeparator />
           <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-            {
-              unfoldedNodes.map((item, index) => (
-                <DropdownMenuItem
+            <div ref={itemsContainerRef}>
+              {
+                unfoldedNodes.map((item, index) => (
+                  <DropdownMenuItem
                   key={index}
                     label={item.title}
                     icon={() =>
@@ -211,6 +212,7 @@ export const InputBarAttachmentsPicker = ({
                   No results found
                 </div>
               )}
+              </div>
             <InfiniteScroll
               nextPage={nextPage}
               hasMore={hasMore}
