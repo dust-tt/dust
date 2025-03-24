@@ -59,6 +59,7 @@ async function backfillDataSource({
     if (rowsCount == 0) {
       break;
     }
+    logger.info(`Found ${rowsCount} Confluence pages.`);
 
     const connectorsNodeIds = confluencePages.map((page) =>
       makePageInternalId(page.pageId)
@@ -84,8 +85,6 @@ async function backfillDataSource({
         (nodeId) =>
           coreNodeIds.includes(nodeId) || logger.info({ nodeId }, "Missing")
       );
-    } else {
-      logger.info(`Found ${rowsCount} Confluence pages.`);
     }
 
     nextId = confluencePages[confluencePages.length - 1].id;
