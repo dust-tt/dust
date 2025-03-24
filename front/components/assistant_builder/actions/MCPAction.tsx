@@ -1,3 +1,4 @@
+import { MIME_TYPES } from "@dust-tt/client/src";
 import {
   Button,
   DropdownMenu,
@@ -5,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -15,7 +16,12 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { useInternalMcpServerResources } from "@app/lib/swr/mcp";
+import type {
+  DataSourceViewSelectionConfigurations,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
@@ -37,6 +43,26 @@ export function ActionMCP({
   setEdited,
 }: ActionMCPProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+
+  const { resources } = useInternalMcpServerResources({
+    owner,
+    serverId: actionConfiguration.internalMCPServerId,
+  });
+
+  useEffect(() => {
+    if (resources) {
+      updateAction((previousAction) => ({
+        ...previousAction,
+        resources: {
+          dataSourceConfigurations: resources.some(
+            (r) => r.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
+          )
+            ? previousAction.resources?.dataSourceConfigurations || {}
+            : undefined,
+        },
+      }));
+    }
+  }, [resources, setEdited, updateAction]);
 
   const handleServerSelection = (serverId: InternalMCPServerIdType) => {
     setEdited(true);
