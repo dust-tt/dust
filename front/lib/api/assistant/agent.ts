@@ -57,12 +57,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  isTextContent,
-  isUserMessageTypeModel,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -528,27 +523,13 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const renderedConversation = modelConversationRes.value.modelConversation;
-  // Anthropic does not accept empty user message.
-  if (model.providerId === "anthropic") {
-    renderedConversation.messages.forEach((m) => {
-      if (isUserMessageTypeModel(m)) {
-        m.content.forEach((c) => {
-          if (isTextContent(c) && c.text.length === 0) {
-            c.text = "Answer according to provided context and instructions.";
-          }
-        });
-      }
-    });
-  }
-
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
     runConfig,
     [
       {
-        conversation: renderedConversation,
+        conversation: modelConversationRes.value.modelConversation,
         specifications,
         prompt,
       },
