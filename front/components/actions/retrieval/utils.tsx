@@ -46,8 +46,8 @@ export function makeDocumentCitation(
   isDark?: boolean
 ): MarkdownCitation {
   const IconComponent = getCitationIcon(
-    getProviderFromRetrievedDocument(document)
-  )(isDark);
+    getProviderFromRetrievedDocument(document, isDark)
+  );
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
