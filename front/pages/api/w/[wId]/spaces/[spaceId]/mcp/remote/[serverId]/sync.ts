@@ -86,32 +86,31 @@ async function handler(
       },
     });
   }
-  
-      const metadata = await fetchServerMetadata(server.url);
 
-      await server.updateSettings(auth, {
-        name: metadata.name,
-        description: metadata.description,
-      });
+  const metadata = await fetchServerMetadata(server.url);
 
-      await server.updateTools(auth, {
-        cachedTools: metadata.tools,
-        lastSyncAt: new Date(),
-      });
+  await server.updateSettings(auth, {
+    name: metadata.name,
+    description: metadata.description,
+  });
 
-      return res.status(200).json({
-        success: true,
-        data: {
-          id: server.sId,
-          workspaceId: wId,
-          name: server.name,
-          description: server.description || "",
-          tools: server.cachedTools,
-          url: server.url,
-          sharedSecret: server.sharedSecret,
-        },
-      });
-  }
+  await server.updateTools(auth, {
+    cachedTools: metadata.tools,
+    lastSyncAt: new Date(),
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: {
+      id: server.sId,
+      workspaceId: wId,
+      name: server.name,
+      description: server.description || "",
+      tools: server.cachedTools,
+      url: server.url,
+      sharedSecret: server.sharedSecret,
+    },
+  });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);
