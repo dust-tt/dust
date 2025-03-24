@@ -27,7 +27,7 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
-import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
+import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
 import { isEmailValid } from "@app/lib/utils";
 import type {
   APIError,
