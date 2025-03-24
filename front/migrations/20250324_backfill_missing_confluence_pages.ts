@@ -97,11 +97,6 @@ makeScript({}, async ({ execute }, logger) => {
     where: { connectorProvider: "confluence" },
   });
   for (const frontDataSource of frontDataSources) {
-    if (coreDataSourceId === null) {
-      logger.error({ frontDataSource }, `Data source not found in core.`);
-      continue;
-    }
-
     await backfillDataSource({
       coreAPI,
       connectorsSequelize,
