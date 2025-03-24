@@ -26,7 +26,6 @@ vi.mock(
        */
       CoreAPI: vi.fn().mockReturnValue({
         searchNodes: vi.fn().mockImplementation(() => {
-          console.log("LAAAAA");
           return {
             isErr: () => false,
             value: {

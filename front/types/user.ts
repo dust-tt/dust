@@ -176,7 +176,7 @@ export function isOnlyAdmin(
   return owner.role === "admin";
 }
 
-const DustUserEmailHeader = "x-api-user-email";
+export const DustUserEmailHeader = "x-api-user-email";
 
 export function getUserEmailFromHeaders(headers: {
   [key: string]: string | string[] | undefined;
