@@ -30,8 +30,18 @@ export const createServer = (): McpServer => {
   server.resource(
     "data_source_view",
     new ResourceTemplate(
-      "data_source_view://dust/w/{wId}/data_source_views/{dsvId}", // removed newline character
-      { list: undefined }
+      "data_source_view://dust/w/{wId}/data_source_views/{dsvId}",
+      {
+        list: () => ({
+          resources: [
+            {
+              name: "data_source_view",
+              uri: "data_source_view://dust/w/{wId}/data_source_views/{dsvId}",
+              mimeType: MIME_TYPES.DATA_SOURCE_VIEW,
+            },
+          ],
+        }),
+      }
     ),
     async (uri, { wId, dsvId }) => ({
       contents: [
