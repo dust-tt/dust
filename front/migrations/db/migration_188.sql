@@ -1,6 +1,9 @@
 -- Migration created on Mar 24, 2025
 ALTER TABLE "public"."remote_mcp_servers" ADD COLUMN "deletedAt" TIMESTAMP WITH TIME ZONE;
+
 ALTER TABLE "public"."remote_mcp_servers" ADD COLUMN "vaultId" BIGINT NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+UPDATE "public"."remote_mcp_servers" SET "vaultId" = "spaceId";
+ALTER TABLE "public"."remote_mcp_servers" DROP COLUMN "spaceId";
 
 ALTER TABLE "remote_mcp_servers" 
     DROP COLUMN "cachedTools",
