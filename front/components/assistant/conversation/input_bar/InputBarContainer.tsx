@@ -24,7 +24,11 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import type { CandidateProvenance } from "@app/lib/connectors";
+import {
+  isNodeCandidate,
+  NodeCandidate,
+  UrlCandidate,
+} from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -78,17 +82,16 @@ const InputBarContainer = ({
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<{
-    candidate: string | null;
-    type: CandidateProvenance;
-  }>({ candidate: null, type: null });
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
   const handleUrlDetected = useCallback(
-    (candidate: string | null, type: CandidateProvenance) => {
+    (candidate: UrlCandidate | NodeCandidate | null) => {
       if (candidate) {
-        setNodeOrUrlCandidate({ candidate, type });
+        setNodeOrUrlCandidate(candidate);
       }
     },
     []
@@ -109,7 +112,7 @@ const InputBarContainer = ({
     }),
   });
 
-  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate.type);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -118,24 +121,24 @@ const InputBarContainer = ({
   );
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
-    nodeOrUrlCandidate.type === "node"
+    isNodeCandidate(nodeOrUrlCandidate)
       ? {
           // NodeIdSearchParams
-          nodeIds: nodeOrUrlCandidate.candidate
-            ? [nodeOrUrlCandidate.candidate]
+          nodeIds: nodeOrUrlCandidate?.candidate.node
+            ? [nodeOrUrlCandidate.candidate.node]
             : [],
           includeDataSources: true,
           owner,
           viewType: "all",
           disabled:
             isSpacesLoading ||
-            !nodeOrUrlCandidate.candidate ||
+            !nodeOrUrlCandidate?.candidate ||
             !isAttachedFromDataSourceActivated,
           spaceIds: spaces.map((s) => s.sId),
         }
       : {
           // TextSearchParams
-          search: nodeOrUrlCandidate.candidate || "",
+          search: nodeOrUrlCandidate.candidate.url || "",
           searchSourceUrls: true,
           includeDataSources: true,
           owner,
@@ -149,7 +152,7 @@ const InputBarContainer = ({
   );
 
   useEffect(() => {
-    if (!nodeOrUrlCandidate.candidate || !onNodeSelect || isSearchLoading) {
+    if (!nodeOrUrlCandidate?.candidate || !onNodeSelect || isSearchLoading) {
       return;
     }
 
@@ -173,9 +176,9 @@ const InputBarContainer = ({
       }
 
       // Reset node candidate after processing
-      setNodeOrUrlCandidate({ candidate: null, type: null });
+      setNodeOrUrlCandidate(null);
     } else {
-      setNodeOrUrlCandidate({ candidate: null, type: null });
+      setNodeOrUrlCandidate(null);
     }
   }, [
     searchResultNodes,
@@ -183,7 +186,7 @@ const InputBarContainer = ({
     isSearchLoading,
     editorService,
     spacesMap,
-    nodeOrUrlCandidate.candidate,
+    nodeOrUrlCandidate,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from

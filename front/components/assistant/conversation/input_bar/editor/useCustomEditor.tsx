@@ -14,10 +14,10 @@ import { URLDetectionExtension } from "@app/components/assistant/conversation/in
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { CandidateProvenance } from "@app/lib/connectors";
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 
 export interface EditorMention {
   id: string;
@@ -196,7 +196,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (candidate: string | null, type: CandidateProvenance) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
 }
 
 const useCustomEditor = ({
