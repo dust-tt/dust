@@ -2,10 +2,7 @@ import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
 import config from "@app/lib/api/config";
-import {
-  getConnectorsReplicaDbConnection,
-  getCorePrimaryDbConnection,
-} from "@app/lib/production_checks/utils";
+import { getConnectorsReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -91,40 +88,14 @@ async function backfillDataSource({
   } while (rowsCount === BATCH_SIZE);
 }
 
-async function getCoreDataSourceId(
-  frontDataSource: DataSourceModel,
-  coreSequelize: Sequelize
-): Promise<number | null> {
-  const { dustAPIProjectId, dustAPIDataSourceId } = frontDataSource;
-  const coreDataSource: any = (
-    await coreSequelize.query(
-      `SELECT id
-       FROM data_sources
-       WHERE project = :dustAPIProjectId
-         AND data_source_id = :dustAPIDataSourceId LIMIT 1`,
-      {
-        replacements: { dustAPIProjectId, dustAPIDataSourceId },
-        type: QueryTypes.SELECT,
-      }
-    )
-  )[0];
-  return coreDataSource?.id || null;
-}
-
 makeScript({}, async ({ execute }, logger) => {
-  const coreSequelize = getCorePrimaryDbConnection();
-  const connectorsSequelize = getConnectorsReplicaDbConnection();
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+  const connectorsSequelize = getConnectorsReplicaDbConnection();
 
   const frontDataSources = await DataSourceModel.findAll({
     where: { connectorProvider: "confluence" },
   });
   for (const frontDataSource of frontDataSources) {
-    const coreDataSourceId = await getCoreDataSourceId(
-      frontDataSource,
-      coreSequelize
-    );
-
     if (coreDataSourceId === null) {
       logger.error({ frontDataSource }, `Data source not found in core.`);
       continue;
