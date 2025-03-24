@@ -1,13 +1,14 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { MCPApiResponse } from "@app/types/mcp";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import type { MCPApiResponse } from "@app/types/mcp";
 
 /**
  * Synchronizes with an MCP server and retrieves its metadata and tools.
@@ -25,22 +26,24 @@ async function fetchServerMetadata(url: string) {
 
     const serverVersion = await mcpClient.getServerVersion();
     const serverName = serverVersion?.name || "A Remote MCP Server";
-    const serverDescription = 
-      (serverVersion && "description" in serverVersion && typeof serverVersion.description === "string") 
-        ? serverVersion.description 
+    const serverDescription =
+      serverVersion &&
+      "description" in serverVersion &&
+      typeof serverVersion.description === "string"
+        ? serverVersion.description
         : "Remote MCP server description";
-    
+
     // Get available tools from the server
     const toolsResult = await mcpClient.listTools();
-    const serverTools = toolsResult.tools.map(tool => ({
+    const serverTools = toolsResult.tools.map((tool) => ({
       name: tool.name,
-      description: tool.description || ""
+      description: tool.description || "",
     }));
-    
+
     return {
       name: serverName,
       description: serverDescription,
-      tools: serverTools
+      tools: serverTools,
     };
   } finally {
     // Ensure client is closed even if there was an error
@@ -56,7 +59,11 @@ async function handler(
   const { method } = req;
   const { wId, spaceId, serverId } = req.query;
 
-  if (typeof wId !== "string" || typeof spaceId !== "string" || typeof serverId !== "string") {
+  if (
+    typeof wId !== "string" ||
+    typeof spaceId !== "string" ||
+    typeof serverId !== "string"
+  ) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -149,19 +156,19 @@ async function handler(
         try {
           // Synchronize the server by fetching new metadata
           const metadata = await fetchServerMetadata(server.url);
-          
+
           // Update the server settings with the new metadata
           await server.updateSettings(auth, {
             name: metadata.name,
             description: metadata.description,
           });
-          
+
           // Update tools with the new metadata
           await server.updateTools(auth, {
             cachedTools: metadata.tools,
             lastSyncAt: new Date(),
           });
-          
+
           return res.status(200).json({
             success: true,
             data: {
@@ -216,7 +223,7 @@ async function handler(
           url,
           description,
         });
-        
+
         // Update tools if provided
         if (tools) {
           await server.updateTools(auth, {
@@ -278,10 +285,11 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET, POST, PATCH, or DELETE is expected.",
+          message:
+            "The method passed is not supported, GET, POST, PATCH, or DELETE is expected.",
         },
       });
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler); 
+export default withSessionAuthenticationForWorkspace(handler);

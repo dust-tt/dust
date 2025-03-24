@@ -58,7 +58,11 @@ export type DataSourceViewCategoryWithoutApps = Exclude<
 export function isDataSourceViewCategoryWithoutApps(
   category: unknown
 ): category is DataSourceViewCategoryWithoutApps {
-  return isValidDataSourceViewCategory(category) && category !== "apps" && category !== "mcp";
+  return (
+    isValidDataSourceViewCategory(category) &&
+    category !== "apps" &&
+    category !== "mcp"
+  );
 }
 
 export function isWebsiteOrFolderCategory(

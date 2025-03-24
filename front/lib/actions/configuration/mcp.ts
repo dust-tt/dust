@@ -2,18 +2,21 @@ import { Op } from "sequelize";
 
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { ModelId } from "@app/types";
-import { Authenticator } from "@app/lib/auth";
 
-export async function fetchMCPServerActionConfigurations(auth: Authenticator, {
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
+export async function fetchMCPServerActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: "light" | "full";
+  }
+): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }

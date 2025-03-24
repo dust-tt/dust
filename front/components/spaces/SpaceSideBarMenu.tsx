@@ -28,12 +28,14 @@ import {
 } from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useRemoteMCPServers } from "@app/lib/swr/remote_mcp_servers";
 import {
   useSpaceDataSourceViews,
   useSpaceInfo,
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -43,9 +45,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
-import { useRemoteMCPServer, useRemoteMCPServers } from "@app/lib/swr/remote_mcp_servers";
-import { MCPResponse } from "@app/types/mcp";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { MCPResponse } from "@app/types/mcp";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -234,7 +234,9 @@ const SystemSpaceMenu = ({
     <Tree variant="navigator">
       {SYSTEM_SPACE_ITEMS.map((item) => (
         <SystemSpaceItem
-          category={item.category as Exclude<DataSourceViewCategory, "apps" | "mcp">}
+          category={
+            item.category as Exclude<DataSourceViewCategory, "apps" | "mcp">
+          }
           key={item.label}
           label={item.label}
           owner={owner}
@@ -344,8 +346,8 @@ const SpaceMenuItem = ({
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId
-  })
+    workspaceId: owner.sId,
+  });
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -730,7 +732,6 @@ const SpaceAppSubMenu = ({
   );
 };
 
-
 const SpaceRemoteMCPServerItem = ({
   server,
 }: {
@@ -797,7 +798,11 @@ const SpaceRemoteMCPServersSubMenu = ({
       {isExpanded && (
         <Tree isLoading={isServersLoading}>
           {sortBy(servers, "name").map((server) => (
-            <SpaceRemoteMCPServerItem server={server} key={server.id} owner={owner} />
+            <SpaceRemoteMCPServerItem
+              server={server}
+              key={server.id}
+              owner={owner}
+            />
           ))}
         </Tree>
       )}

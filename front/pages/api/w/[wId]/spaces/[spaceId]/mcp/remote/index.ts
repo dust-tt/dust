@@ -1,15 +1,16 @@
-import type { NextApiRequest, NextApiResponse } from "next";
-import { MCPApiResponse } from "@app/types/mcp";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import type { Authenticator } from "@app/lib/auth";
-import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
-import { randomBytes } from "crypto";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { randomBytes } from "crypto";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import type { MCPApiResponse } from "@app/types/mcp";
 
 // Function to generate a secure token
 function generateSecureToken(): string {
@@ -33,22 +34,24 @@ async function fetchServerMetadata(url: string) {
 
     const serverVersion = await mcpClient.getServerVersion();
     const serverName = serverVersion?.name || "A Remote MCP Server";
-    const serverDescription = 
-      (serverVersion && "description" in serverVersion && typeof serverVersion.description === "string") 
-        ? serverVersion.description 
+    const serverDescription =
+      serverVersion &&
+      "description" in serverVersion &&
+      typeof serverVersion.description === "string"
+        ? serverVersion.description
         : "Remote MCP server description";
-    
+
     // Get available tools from the server
     const toolsResult = await mcpClient.listTools();
-    const serverTools = toolsResult.tools.map(tool => ({
+    const serverTools = toolsResult.tools.map((tool) => ({
       name: tool.name,
-      description: tool.description || ""
+      description: tool.description || "",
     }));
-    
+
     return {
       name: serverName,
       description: serverDescription,
-      tools: serverTools
+      tools: serverTools,
     };
   } finally {
     // Ensure client is closed even if there was an error
@@ -69,7 +72,7 @@ async function synchronizeServer(
 ) {
   // Fetch metadata from the remote server
   const metadata = await fetchServerMetadata(url);
-  
+
   if (existingServer) {
     // Update existing server
     await existingServer.updateSettings(auth, {
@@ -77,17 +80,17 @@ async function synchronizeServer(
       url: url,
       description: metadata.description,
     });
-    
+
     await existingServer.updateTools(auth, {
       cachedTools: metadata.tools,
       lastSyncAt: new Date(),
     });
-    
+
     return existingServer;
   } else {
     // Create a new MCP server
     const sharedSecret = generateSecureToken();
-    return await RemoteMCPServerResource.makeNew(
+    return RemoteMCPServerResource.makeNew(
       {
         workspaceId: workspace.id,
         name: metadata.name,
@@ -104,7 +107,9 @@ async function synchronizeServer(
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MCPApiResponse | GetRemoteMCPServersResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<MCPApiResponse | GetRemoteMCPServersResponseBody>
+  >,
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
@@ -178,11 +183,22 @@ async function handler(
           // Check if a server with this URL already exists
           // If a server with the same URL exists, we'll update it instead of creating a new one
           // This ensures that synchronizing an existing server doesn't create duplicates
-          const existingServers = await RemoteMCPServerResource.listBySpace(auth, space);
-          const existingServer = existingServers.find(server => server.url === url);
+          const existingServers = await RemoteMCPServerResource.listBySpace(
+            auth,
+            space
+          );
+          const existingServer = existingServers.find(
+            (server) => server.url === url
+          );
 
           // Synchronize the server (either create new or update existing)
-          const mcpServer = await synchronizeServer(auth, workspace, space, url, existingServer);
+          const mcpServer = await synchronizeServer(
+            auth,
+            workspace,
+            space,
+            url,
+            existingServer
+          );
 
           return res.status(200).json({
             success: true,
@@ -207,7 +223,10 @@ async function handler(
         }
       } else {
         try {
-          const servers = await RemoteMCPServerResource.listBySpace(auth, space);
+          const servers = await RemoteMCPServerResource.listBySpace(
+            auth,
+            space
+          );
 
           const serverResponses = servers.map((server) => ({
             id: server.sId,
@@ -290,10 +309,11 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, GET or POST is expected.",
+          message:
+            "The method passed is not supported, GET or POST is expected.",
         },
       });
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler); 
+export default withSessionAuthenticationForWorkspace(handler);

@@ -122,7 +122,7 @@ export const CATEGORY_DETAILS: {
   },
   mcp: {
     label: "MCP Servers",
-    icon: SparklesIcon
+    icon: SparklesIcon,
   },
 };
 

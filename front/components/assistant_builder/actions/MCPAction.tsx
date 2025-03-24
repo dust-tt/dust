@@ -2,8 +2,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -37,9 +37,10 @@ export function ActionMCP({
     useState<(typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null>(
       actionConfiguration.internalMCPServerId
     );
-  const [selectedRemoteMCPServerId, setSelectedRemoteMCPServerId] =
-    useState<string | null>(actionConfiguration.remoteMCPServerId);
-  
+  const [selectedRemoteMCPServerId, setSelectedRemoteMCPServerId] = useState<
+    string | null
+  >(actionConfiguration.remoteMCPServerId);
+
   const space = allowedSpaces.length > 0 ? allowedSpaces[0] : null;
   const { servers, isServersLoading } = useRemoteMCPServers({
     disabled: !space,
@@ -48,10 +49,16 @@ export function ActionMCP({
   });
 
   const getDropdownLabel = () => {
-    if (actionConfiguration.serverType === "internal" && selectedInternalMCPServerId) {
+    if (
+      actionConfiguration.serverType === "internal" &&
+      selectedInternalMCPServerId
+    ) {
       return `${selectedInternalMCPServerId}`;
-    } else if (actionConfiguration.serverType === "remote" && selectedRemoteMCPServerId) {
-      const server = servers.find(s => s.id === selectedRemoteMCPServerId);
+    } else if (
+      actionConfiguration.serverType === "remote" &&
+      selectedRemoteMCPServerId
+    ) {
+      const server = servers.find((s) => s.id === selectedRemoteMCPServerId);
       return server ? `${server.name}` : "Unnamed Server";
     }
     return "Select a server";
@@ -61,19 +68,18 @@ export function ActionMCP({
     <>
       <div>Will expose all the tools available via an MCP Server.</div>
       <div>
-        You can choose from <b>internal</b>, Dust-developed MCP Servers, or from <b>Remote</b> MCP Servers.
-        You can setup Remote servers in your spaces of choice, in the Knowledge tab.
+        You can choose from <b>internal</b>, Dust-developed MCP Servers, or from{" "}
+        <b>Remote</b> MCP Servers. You can setup Remote servers in your spaces
+        of choice, in the Knowledge tab.
       </div>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            isSelect
-            label={getDropdownLabel()}
-            className="w-48"
-          />
+          <Button isSelect label={getDropdownLabel()} className="w-48" />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="mt-1" align="start">
-          <div className="px-2 py-1 text-xs font-medium text-gray-500">Internal Servers</div>
+          <div className="px-2 py-1 text-xs font-medium text-gray-500">
+            Internal Servers
+          </div>
           {AVAILABLE_INTERNAL_MCPSERVER_IDS.map((id) => (
             <DropdownMenuItem
               key={id}
@@ -91,13 +97,15 @@ export function ActionMCP({
               }}
             />
           ))}
-          
+
           {servers.length > 0 && <DropdownMenuSeparator />}
-          
+
           {servers.length > 0 && (
-            <div className="px-2 py-1 text-xs font-medium text-gray-500">Remote Servers</div>
+            <div className="px-2 py-1 text-xs font-medium text-gray-500">
+              Remote Servers
+            </div>
           )}
-          
+
           {servers.map((server) => (
             <DropdownMenuItem
               key={server.id}
@@ -115,13 +123,17 @@ export function ActionMCP({
               }}
             />
           ))}
-          
+
           {isServersLoading && (
-            <div className="px-2 py-1 text-sm text-gray-500">Loading remote servers...</div>
+            <div className="px-2 py-1 text-sm text-gray-500">
+              Loading remote servers...
+            </div>
           )}
-          
+
           {!isServersLoading && servers.length === 0 && (
-            <div className="px-2 py-1 text-sm text-gray-500">No remote servers available</div>
+            <div className="px-2 py-1 text-sm text-gray-500">
+              No remote servers available
+            </div>
           )}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -164,18 +164,20 @@ function makeMCPConfigurations({
   });
 }
 
-const connectToMCPServer = async (auth: Authenticator,
+const connectToMCPServer = async (
+  auth: Authenticator,
   {
-  serverType,
-  internalMCPServerId,
-  remoteMCPServerId,
-}: {
-  serverType: MCPServerConfigurationType["serverType"];
-  internalMCPServerId?:
-    | MCPServerConfigurationType["internalMCPServerId"]
-    | null;
-  remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
-}) => {
+    serverType,
+    internalMCPServerId,
+    remoteMCPServerId,
+  }: {
+    serverType: MCPServerConfigurationType["serverType"];
+    internalMCPServerId?:
+      | MCPServerConfigurationType["internalMCPServerId"]
+      | null;
+    remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
+  }
+) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -205,7 +207,10 @@ const connectToMCPServer = async (auth: Authenticator,
         );
       }
 
-      const remoteMCPServer = await RemoteMCPServerResource.fetchById(auth, remoteMCPServerId);
+      const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+        auth,
+        remoteMCPServerId
+      );
 
       if (!remoteMCPServer) {
         throw new Error(
@@ -238,11 +243,17 @@ function extractMetadataFromServerVersion(r: Implementation | undefined): {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function updateRemoteMCPServerMetadata(auth: Authenticator, config: {
-  serverType: "remote";
-  remoteMCPServerId: string;
-}) {
-  const remoteMCPServer = await RemoteMCPServerResource.fetchById(auth, config.remoteMCPServerId);
+async function updateRemoteMCPServerMetadata(
+  auth: Authenticator,
+  config: {
+    serverType: "remote";
+    remoteMCPServerId: string;
+  }
+) {
+  const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+    auth,
+    config.remoteMCPServerId
+  );
 
   if (!remoteMCPServer) {
     throw new Error(

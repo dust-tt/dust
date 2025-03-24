@@ -7,10 +7,12 @@ import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sourc
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
-import { getFeatureFlags, type Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -23,8 +25,6 @@ import {
   DATA_SOURCE_VIEW_CATEGORIES,
   PatchSpaceRequestBodySchema,
 } from "@app/types";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;
@@ -51,7 +51,7 @@ async function handler(
   { space }: { space: SpaceResource }
 ): Promise<void> {
   const workspace = auth.getNonNullableWorkspace();
-  const ff = await getFeatureFlags(workspace)
+  const ff = await getFeatureFlags(workspace);
 
   switch (req.method) {
     case "GET": {

@@ -38,7 +38,6 @@ import { AgentBrowseConfiguration } from "@app/lib/models/assistant/actions/brow
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentDustAppRunConfiguration } from "@app/lib/models/assistant/actions/dust_app_run";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
@@ -1172,9 +1171,11 @@ export async function createAgentActionConfiguration(
           auth,
           action.remoteMCPServerId
         );
-        
+
         if (!remoteMCPServer) {
-          throw new Error(`Remote MCP server with sId ${action.remoteMCPServerId} not found.`);
+          throw new Error(
+            `Remote MCP server with sId ${action.remoteMCPServerId} not found.`
+          );
         }
         remoteMCPServerId = remoteMCPServer.id;
       }

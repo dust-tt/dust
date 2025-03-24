@@ -1,3 +1,4 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   CommandLineIcon,
@@ -16,7 +17,6 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { MenuItem } from "@dust-tt/sparkle";
 import { sortBy } from "lodash";
 import type { ComponentType } from "react";
 import * as React from "react";
@@ -25,18 +25,19 @@ import { useState } from "react";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import { useRemoteMCPServers, useDeleteRemoteMCPServer } from "@app/lib/swr/remote_mcp_servers";
-import type {
-  LightWorkspaceType,
-  SpaceType,
-} from "@app/types";
+import {
+  useDeleteRemoteMCPServer,
+  useRemoteMCPServers,
+} from "@app/lib/swr/remote_mcp_servers";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+
 import SpaceMCPModal from "./SpaceMCPModal";
 
 type MCPServerDisplay = {
   id: string;
   name: string;
   description: string;
-  tools: { name: string, description: string }[];
+  tools: { name: string; description: string }[];
   url: string;
 };
 
@@ -76,13 +77,13 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
       cell: (info: CellContext<RowData, string>) => {
         const { server } = info.row.original;
         return (
-          <div className="flex flex-wrap gap-1 items-center">
+          <div className="flex flex-wrap items-center gap-1">
             {server.tools.length > 0 ? (
               <>
                 {server.tools.slice(0, 2).map((tool, i) => (
-                  <span 
-                    key={i} 
-                    className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50"
+                  <span
+                    key={i}
+                    className="inline-flex items-center rounded-md bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-700 dark:text-blue-50"
                   >
                     {tool.name}
                   </span>
@@ -127,11 +128,13 @@ export const SpaceMCPList = ({
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [serverToDelete, setServerToDelete] = useState<MCPServerDisplay | null>(null);
+  const [serverToDelete, setServerToDelete] = useState<MCPServerDisplay | null>(
+    null
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   const { deleteServer } = useDeleteRemoteMCPServer();
-  
+
   const { q: searchParam } = useQueryParams(["q"]);
   const searchTerm = searchParam.value || "";
 
@@ -149,7 +152,7 @@ export const SpaceMCPList = ({
     urlPrefix: "table",
   });
 
-  const handleDeleteServer = async (server: MCPServerDisplay) => {
+  const handleDeleteServer = (server: MCPServerDisplay) => {
     setServerToDelete(server);
     setIsDeleteConfirmOpen(true);
   };
@@ -158,7 +161,7 @@ export const SpaceMCPList = ({
     if (!serverToDelete) {
       return;
     }
-    
+
     setIsDeleting(true);
     try {
       await deleteServer(owner, space, serverToDelete.id);
@@ -190,10 +193,10 @@ export const SpaceMCPList = ({
     if (!servers || servers.length === 0) {
       return [];
     }
-    
+
     return sortBy(servers, "name").map((server) => {
       const menuItems: MenuItem[] = [];
-      
+
       if (canWriteInSpace) {
         menuItems.push({
           label: "Edit",
@@ -210,13 +213,13 @@ export const SpaceMCPList = ({
             });
           },
         });
-        
+
         menuItems.push({
           label: "Delete",
           icon: TrashIcon,
           kind: "item",
           variant: "warning",
-          onClick: (e) => {
+          onClick: async (e) => {
             e.stopPropagation();
             handleDeleteServer({
               id: server.id || "",
@@ -270,12 +273,11 @@ export const SpaceMCPList = ({
   const columns = getTableColumns();
   const isEmpty = rows.length === 0;
 
-  const closeModal = () => {
+  const closeModal = async () => {
     setIsCreateModalOpened(false);
     setSelectedServerId(null);
     setIsEditMode(false);
-    // Refresh the server list when modal is closed
-    mutateServers();
+    await mutateServers();
   };
 
   const actionButtons = (
@@ -318,7 +320,7 @@ export const SpaceMCPList = ({
           setPagination={setPagination}
         />
       )}
-      
+
       {/* Create/Edit Modal */}
       {(isCreateModalOpened || isEditMode) && (
         <SpaceMCPModal
@@ -331,7 +333,7 @@ export const SpaceMCPList = ({
           onSave={handleRefreshServers}
         />
       )}
-      
+
       {/* Delete Confirmation Dialog */}
       <Sheet
         open={isDeleteConfirmOpen}
@@ -348,7 +350,10 @@ export const SpaceMCPList = ({
           </SheetHeader>
           <SheetContainer>
             <div className="py-4">
-              <p>Are you sure you want to delete <strong>{serverToDelete?.name}</strong>?</p>
+              <p>
+                Are you sure you want to delete{" "}
+                <strong>{serverToDelete?.name}</strong>?
+              </p>
               <p className="mt-2 text-red-600">This action cannot be undone.</p>
             </div>
           </SheetContainer>

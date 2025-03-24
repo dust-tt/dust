@@ -1,31 +1,24 @@
 import {
-  Button,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useReducer, useState } from "react";
 
 import { SpaceMCPForm } from "@app/components/spaces/mcp/SpaceMCPForm";
-import { 
-  useRemoteMCPServer, 
-  useSyncRemoteMCPServer, 
+import {
+  useRemoteMCPServer,
+  useSyncRemoteMCPServer,
   useUpdateRemoteMCPServer,
-  useDeleteRemoteMCPServer 
 } from "@app/lib/swr/remote_mcp_servers";
-import type {
-  SpaceType,
-  WorkspaceType,
-} from "@app/types";
+import type { SpaceType, WorkspaceType } from "@app/types";
 import { validateUrl } from "@app/types";
-import { MCPFormAction, MCPFormState } from "@app/types/mcp";
 import type { MCPApiResponse } from "@app/types/mcp";
+import type { MCPFormAction, MCPFormState } from "@app/types/mcp";
 
 function getInitialFormState(): MCPFormState {
   return {
@@ -42,9 +35,7 @@ type ValidationResult = {
   errors: MCPFormState["errors"];
 };
 
-function validateFormState(
-  state: MCPFormState
-): ValidationResult {
+function validateFormState(state: MCPFormState): ValidationResult {
   const urlValidation = validateUrl(state.url);
   const errors: MCPFormState["errors"] = {
     url: !urlValidation.valid
@@ -62,7 +53,7 @@ export interface SpaceMCPModalProps {
   owner: WorkspaceType;
   space: SpaceType;
   canWriteInSpace: boolean;
-  onSave?: () => Promise<void>;
+  onSave: () => Promise<void>;
 }
 
 export default function SpaceMCPModal({
@@ -74,27 +65,25 @@ export default function SpaceMCPModal({
   canWriteInSpace,
   onSave,
 }: SpaceMCPModalProps) {
-  const router = useRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isSynchronizing, setIsSynchronizing] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isSynchronized, setIsSynchronized] = useState(false);
-  const [sharedSecret, setSharedSecret] = useState<string | undefined>(undefined);
+  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
+    undefined
+  );
   const [mcpServerId, setMcpServerId] = useState<string | undefined>(undefined);
 
-  // Fetch existing server data if serverId is provided
   const { server, isServerLoading, mutateServer } = useRemoteMCPServer({
     owner,
     space,
     serverId: serverId || "",
-    disabled: !serverId
+    disabled: !serverId,
   });
 
-  // Get update, sync, and delete hooks
+  // Get update, sync hooks
   const { updateServer } = useUpdateRemoteMCPServer();
-  const { syncServer, syncById, syncByUrl } = useSyncRemoteMCPServer();
-  const { deleteServer } = useDeleteRemoteMCPServer();
+  const { syncById, syncByUrl } = useSyncRemoteMCPServer();
 
   const formReducer = (
     state: MCPFormState,
@@ -124,23 +113,24 @@ export default function SpaceMCPModal({
     }
   };
 
-  const [formState, dispatch] = useReducer(
-    formReducer,
-    getInitialFormState()
-  );
+  const [formState, dispatch] = useReducer(formReducer, getInitialFormState());
 
   // Load data from existing server into form
   useEffect(() => {
     if (server) {
       dispatch({ type: "SET_FIELD", field: "name", value: server.name });
-      dispatch({ type: "SET_FIELD", field: "description", value: server.description });
+      dispatch({
+        type: "SET_FIELD",
+        field: "description",
+        value: server.description,
+      });
       dispatch({ type: "SET_FIELD", field: "url", value: server.url || "" });
       dispatch({ type: "SET_FIELD", field: "tools", value: server.tools });
-      
+
       if (server.sharedSecret) {
         setSharedSecret(server.sharedSecret);
       }
-      
+
       setIsSynchronized(true);
       setMcpServerId(server.id);
     }
@@ -157,7 +147,7 @@ export default function SpaceMCPModal({
     setIsSaving(true);
     try {
       const serverIdToUse = serverId || mcpServerId;
-      
+
       if (serverIdToUse) {
         // Update existing MCP server using the hook
         await updateServer(owner, space, serverIdToUse, {
@@ -170,7 +160,7 @@ export default function SpaceMCPModal({
         if (serverId) {
           await mutateServer();
         }
-        
+
         sendNotification({
           title: "MCP updated",
           type: "success",
@@ -185,57 +175,17 @@ export default function SpaceMCPModal({
         setIsSaving(false);
         return;
       }
-      
+
       onClose();
       dispatch({ type: "RESET" });
       setIsSynchronized(false);
       setSharedSecret(undefined);
       setMcpServerId(undefined);
-      
-      // Call the onSave callback instead of refreshing the page
-      if (onSave) {
-        await onSave();
-      } else {
-        // Fallback to the old behavior if callback is not provided
-        router.push(router.asPath);
-      }
+
+      await onSave();
     } catch (err) {
       sendNotification({
         title: "Error updating MCP",
-        type: "error",
-        description: err instanceof Error ? err.message : "An error occurred",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async (): Promise<void> => {
-    if (!serverId) {
-      return;
-    }
-    setIsSaving(true);
-    try {
-      await deleteServer(owner, space, serverId);
-      
-      sendNotification({
-        title: "MCP server deleted",
-        type: "success",
-        description: "The MCP server has been successfully deleted.",
-      });
-      
-      onClose();
-      
-      // Call the onSave callback instead of refreshing the page
-      if (onSave) {
-        await onSave();
-      } else {
-        // Fallback to the old behavior if callback is not provided
-        router.push(router.asPath);
-      }
-    } catch (err) {
-      sendNotification({
-        title: "Error deleting MCP",
         type: "error",
         description: err instanceof Error ? err.message : "An error occurred",
       });
@@ -259,23 +209,31 @@ export default function SpaceMCPModal({
       // Determine if we should sync by ID or URL
       const serverIdToUse = serverId || mcpServerId;
       let result: MCPApiResponse;
-      
+
       if (serverIdToUse && server?.url === formState.url) {
         result = await syncById(owner, space, serverIdToUse);
       } else {
         result = await syncByUrl(owner, space, formState.url);
       }
-      
+
       if (result.success && result.data) {
         // Populate form state with the received data
         dispatch({ type: "SET_FIELD", field: "name", value: result.data.name });
-        dispatch({ type: "SET_FIELD", field: "description", value: result.data.description });
-        dispatch({ type: "SET_FIELD", field: "tools", value: result.data.tools });
-        
+        dispatch({
+          type: "SET_FIELD",
+          field: "description",
+          value: result.data.description,
+        });
+        dispatch({
+          type: "SET_FIELD",
+          field: "tools",
+          value: result.data.tools,
+        });
+
         // Store the shared secret and server ID
         setSharedSecret(result.data.sharedSecret);
         setMcpServerId(result.data.id);
-        
+
         setIsSynchronized(true);
 
         sendNotification({
@@ -290,7 +248,8 @@ export default function SpaceMCPModal({
       sendNotification({
         title: "Error synchronizing MCP server",
         type: "error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
       });
     } finally {
       setIsSynchronizing(false);
@@ -339,63 +298,11 @@ export default function SpaceMCPModal({
                 await handleSynchronize();
               }
             },
-            disabled: !canWriteInSpace || (isSaving || isSynchronizing) || 
-                    ((!isSynchronized && !serverId)),
-          }}
-        />
-      </SheetContent>
-    </Sheet>
-  );
-}
-
-type DeleteConfirmationDialogProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-  serverName: string;
-};
-
-function DeleteConfirmationDialog({
-  isOpen,
-  onClose,
-  onConfirm,
-  serverName,
-}: DeleteConfirmationDialogProps) {
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  const handleConfirm = async () => {
-    setIsDeleting(true);
-    try {
-      await onConfirm();
-      onClose();
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-  
-  return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent size="md">
-        <SheetHeader>
-          <SheetTitle>Delete MCP Server</SheetTitle>
-        </SheetHeader>
-        <SheetContainer>
-          <div className="py-4">
-            <p>Are you sure you want to delete <strong>{serverName}</strong>?</p>
-            <p className="mt-2 text-red-600">This action cannot be undone.</p>
-          </div>
-        </SheetContainer>
-        <SheetFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            onClick: onClose,
-          }}
-          rightButtonProps={{
-            label: isDeleting ? "Deleting..." : "Delete",
-            variant: "warning",
-            onClick: handleConfirm,
-            disabled: isDeleting,
+            disabled:
+              !canWriteInSpace ||
+              isSaving ||
+              isSynchronizing ||
+              (!isSynchronized && !serverId),
           }}
         />
       </SheetContent>

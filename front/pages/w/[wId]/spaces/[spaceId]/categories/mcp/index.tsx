@@ -1,11 +1,13 @@
+import type { SpaceType } from "@dust-tt/client";
+import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react-markdown/lib/react-markdown";
+
 import { SpaceMCPList } from "@app/components/spaces/mcp/SpaceMCPList";
-import { SpaceLayout, SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
+import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { DataSourceViewCategory } from "@app/types";
-import { SpaceType } from "@dust-tt/client";
-import { InferGetServerSidePropsType } from "next";
-import { ReactElement } from "react-markdown/lib/react-markdown";
+import type { DataSourceViewCategory } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
@@ -58,11 +60,13 @@ export default function Space({
   owner,
   space,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <SpaceMCPList 
-    canWriteInSpace={canWriteInSpace}
-    owner={owner}
-    space={space}
-  />;
+  return (
+    <SpaceMCPList
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+    />
+  );
 }
 
 Space.getLayout = (page: ReactElement, pageProps: any) => {

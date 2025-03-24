@@ -26,13 +26,13 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceWithAgentsUsageType,
   SpaceType,
   WorkspaceType,
 } from "@app/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type RowData = {
   category: string;
@@ -109,8 +109,8 @@ export const SpaceCategoriesList = ({
     spaceId: space.sId,
   });
   const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId
-  })
+    workspaceId: owner.sId,
+  });
 
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
@@ -189,7 +189,7 @@ export const SpaceCategoriesList = ({
             icon={CommandLineIcon}
             label="Create a Dust App"
           />
-          {hasFeature("mcp_actions") && ( 
+          {hasFeature("mcp_actions") && (
             <DropdownMenuItem
               disabled={!canWriteInSpace}
               href={`/w/${owner.sId}/spaces/${space.sId}/categories/mcp`}

@@ -17,7 +17,7 @@ export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPS
   declare url: string;
   declare name: string;
   declare description: string | null;
-  declare cachedTools: { name: string, description: string }[];
+  declare cachedTools: { name: string; description: string }[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;

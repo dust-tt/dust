@@ -1,22 +1,25 @@
 import assert from "assert";
-import type { Attributes, CreationAttributes, ModelStatic, Transaction } from "sequelize";
-import { Op } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { BaseResource } from "@app/lib/resources/base_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
-import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface RemoteMCPServerResource extends ReadonlyAttributesType<RemoteMCPServer> {}
+export interface RemoteMCPServerResource
+  extends ReadonlyAttributesType<RemoteMCPServer> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> {
   static model: ModelStatic<RemoteMCPServer> = RemoteMCPServer;
@@ -30,7 +33,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId" >,
+    blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
     space: SpaceResource
   ) {
     const server = await RemoteMCPServer.create({
@@ -49,9 +52,9 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     options?: ResourceFindOptions<RemoteMCPServer>
   ) {
     const servers = await this.baseFetchWithAuthorization(auth, {
-        ...options,
-    })
-    return servers.filter((server) => auth.isAdmin() || server.canRead(auth)) 
+      ...options,
+    });
+    return servers.filter((server) => auth.isAdmin() || server.canRead(auth));
   }
 
   static async fetchByIds(
@@ -95,6 +98,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
+      ...options,
     });
   }
 

@@ -1,16 +1,16 @@
 import {
   Button,
+  EyeIcon,
+  EyeSlashIcon,
   Input,
   Label,
-  TextArea,
   Spinner,
-  Page,
-  EyeSlashIcon,
-  EyeIcon,
+  TextArea,
 } from "@dust-tt/sparkle";
-import { ChangeEvent, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
+import { useEffect, useState } from "react";
 
-import { MCPFormAction, MCPFormState, MCPTool } from "@app/types/mcp";
+import type { MCPFormAction, MCPFormState } from "@app/types/mcp";
 
 interface SpaceMCPFormProps {
   state: MCPFormState;
@@ -51,7 +51,11 @@ export function SpaceMCPForm({
       await onSynchronize();
     } catch (error) {
       console.error("Error synchronizing with MCP:", error);
-      setSyncError(error instanceof Error ? error.message : "Failed to synchronize with MCP server");
+      setSyncError(
+        error instanceof Error
+          ? error.message
+          : "Failed to synchronize with MCP server"
+      );
     }
   };
 
@@ -61,7 +65,7 @@ export function SpaceMCPForm({
 
   if (isConfigurationLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
+      <div className="flex items-center justify-center p-8">
         <Spinner />
       </div>
     );
@@ -73,12 +77,22 @@ export function SpaceMCPForm({
         <div className="rounded-md bg-red-50 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5 text-red-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Synchronization Error</h3>
+              <h3 className="text-sm font-medium text-red-800">
+                Synchronization Error
+              </h3>
               <div className="mt-2 text-sm text-red-700">
                 <p>{syncError}</p>
               </div>
@@ -96,7 +110,11 @@ export function SpaceMCPForm({
               placeholder="https://example.com/api/mcp"
               value={state.url}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                dispatch({ type: "SET_FIELD", field: "url", value: e.target.value })
+                dispatch({
+                  type: "SET_FIELD",
+                  field: "url",
+                  value: e.target.value,
+                })
               }
               isError={!!state.errors?.url}
               message={state.errors?.url}
@@ -146,7 +164,9 @@ export function SpaceMCPForm({
               }
             />
             {state.errors?.description && (
-              <p className="text-sm text-red-600 mt-1">{state.errors.description}</p>
+              <p className="mt-1 text-sm text-red-600">
+                {state.errors.description}
+              </p>
             )}
           </div>
 
@@ -163,33 +183,44 @@ export function SpaceMCPForm({
                 <button
                   type="button"
                   onClick={toggleSecretVisibility}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
                 >
                   {isSecretVisible ? (
                     <EyeSlashIcon className="h-5 w-5 text-gray-400" />
                   ) : (
-                    <EyeIcon className="h-5 w-5 text-gray-400"/>
+                    <EyeIcon className="h-5 w-5 text-gray-400" />
                   )}
                 </button>
               </div>
               <p className="text-xs text-gray-500">
-                This is the secret key used to authenticate your MCP server with Dust. Keep it secure.
+                This is the secret key used to authenticate your MCP server with
+                Dust. Keep it secure.
               </p>
             </div>
           )}
 
           <div className="space-y-2">
             <Label>Available Tools</Label>
-            <div className="border rounded-md p-4 space-y-4">
+            <div className="space-y-4 rounded-md border p-4">
               {state.tools && state.tools.length > 0 ? (
-                state.tools.map((tool: { name: string, description: string }, index: number) => (
-                  <div key={index} className="border-b pb-4 last:border-b-0 last:pb-0">
-                    <h4 className="font-medium text-sm">{tool.name}</h4>
-                    {tool.description && (
-                      <p className="text-xs text-gray-500 mt-1">{tool.description}</p>
-                    )}
-                  </div>
-                ))
+                state.tools.map(
+                  (
+                    tool: { name: string; description: string },
+                    index: number
+                  ) => (
+                    <div
+                      key={index}
+                      className="border-b pb-4 last:border-b-0 last:pb-0"
+                    >
+                      <h4 className="text-sm font-medium">{tool.name}</h4>
+                      {tool.description && (
+                        <p className="mt-1 text-xs text-gray-500">
+                          {tool.description}
+                        </p>
+                      )}
+                    </div>
+                  )
+                )
               ) : (
                 <p className="text-sm text-gray-500">No tools available</p>
               )}

@@ -56,22 +56,13 @@ export function useRemoteMCPServer({
 }) {
   const serverFetcher: Fetcher<MCPApiResponse> = fetcher;
 
-  if (!serverId) {
-    return {
-      server: null,
-      isServerLoading: false,
-      isServerError: true,
-      mutateServer: () => Promise.resolve(),
-    };
-  }
+  const url = serverId
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`
+    : null;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    serverId ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}` : null,
-    serverFetcher,
-    {
-      disabled,
-    }
-  );
+  const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
+    disabled,
+  });
 
   return {
     server: data?.data || null,
@@ -104,18 +95,8 @@ export function useDeleteRemoteMCPServer() {
 
     return response.json();
   };
-  
-  return { deleteServer };
-}
 
-// Keep the old function for backward compatibility
-export async function deleteRemoteMCPServer(
-  owner: LightWorkspaceType,
-  space: SpaceType,
-  serverId: string
-): Promise<MCPApiResponse> {
-  const { deleteServer } = useDeleteRemoteMCPServer();
-  return deleteServer(owner, space, serverId);
+  return { deleteServer };
 }
 
 /**
@@ -124,50 +105,48 @@ export async function deleteRemoteMCPServer(
  */
 export function useSyncRemoteMCPServer() {
   // Sync by URL - this will find existing servers with the same URL or create a new one
-  const syncByUrl = async (owner: LightWorkspaceType, space: SpaceType, url: string): Promise<MCPApiResponse> => {
+  const syncByUrl = async (
+    owner: LightWorkspaceType,
+    space: SpaceType,
+    url: string
+  ): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote?url=${encodeURIComponent(url)}`,
       { method: "GET" }
     );
-    
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.api_error?.message || "Failed to synchronize server");
+      throw new Error(
+        error.api_error?.message || "Failed to synchronize server"
+      );
     }
-    
+
     return response.json();
   };
-  
+
   // Sync an existing server by its ID
-  const syncById = async (owner: LightWorkspaceType, space: SpaceType, serverId: string): Promise<MCPApiResponse> => {
+  const syncById = async (
+    owner: LightWorkspaceType,
+    space: SpaceType,
+    serverId: string
+  ): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}?action=sync`,
       { method: "POST" }
     );
-    
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.api_error?.message || "Failed to synchronize server");
+      throw new Error(
+        error.api_error?.message || "Failed to synchronize server"
+      );
     }
-    
+
     return response.json();
   };
 
-  // Main sync function that determines which method to use
-  const syncServer = async (
-    owner: LightWorkspaceType, 
-    space: SpaceType, 
-    urlOrId: string, 
-    isUrl: boolean = true
-  ): Promise<MCPApiResponse> => {
-    if (isUrl) {
-      return syncByUrl(owner, space, urlOrId);
-    } else {
-      return syncById(owner, space, urlOrId);
-    }
-  };
-  
-  return { syncServer, syncByUrl, syncById };
+  return { syncByUrl, syncById };
 }
 
 /**
@@ -175,14 +154,14 @@ export function useSyncRemoteMCPServer() {
  */
 export function useUpdateRemoteMCPServer() {
   const updateServer = async (
-    owner: LightWorkspaceType, 
-    space: SpaceType, 
-    serverId: string, 
+    owner: LightWorkspaceType,
+    space: SpaceType,
+    serverId: string,
     data: {
       name: string;
       url: string;
       description: string;
-      tools: { name: string, description: string }[];
+      tools: { name: string; description: string }[];
     }
   ): Promise<MCPApiResponse> => {
     const response = await fetch(
@@ -193,14 +172,14 @@ export function useUpdateRemoteMCPServer() {
         body: JSON.stringify(data),
       }
     );
-    
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.api_error?.message || "Failed to update server");
     }
-    
+
     return response.json();
   };
-  
+
   return { updateServer };
 }
