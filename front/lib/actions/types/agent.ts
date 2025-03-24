@@ -115,18 +115,78 @@ export type UnsavedAgentActionConfigurationType = {
 //   ]
 // }
 // ```
+
+export type DustAppRunInputType = {
+  name: string;
+  description: string;
+  type: "string" | "number" | "boolean" | "array";
+  items?: {
+    type: "string" | "number" | "boolean";
+  };
+};
+export type InputSchemaType = {
+  type: "object";
+  [x: string]: unknown;
+  properties?:
+    | {
+        [x: string]: unknown;
+      }
+    | undefined;
+};
 export type AgentActionSpecification = {
   name: string;
   description: string;
-  inputs: {
-    name: string;
-    description: string;
-    type: "string" | "number" | "boolean" | "array" | "object";
-    items?: {
-      type: "string" | "number" | "boolean";
-    };
-  }[];
+  inputSchema: InputSchemaType;
 };
+
+export function dustAppRunInputsToInputSchema(
+  inputs: DustAppRunInputType[]
+): InputSchemaType {
+  const properties: Record<string, unknown> = {};
+  for (const i of inputs) {
+    properties[i.name] = {
+      type: i.type,
+      description: i.description,
+      items: i.items,
+    };
+  }
+  return {
+    type: "object",
+    properties: properties,
+    required: inputs.map((i) => i.name),
+  };
+}
+
+export function inputSchemaToDustAppRunInputs(
+  inputSchema: InputSchemaType
+): DustAppRunInputType[] {
+  return Object.entries(inputSchema.properties || {}).map(
+    ([name, property]) => {
+      let type: DustAppRunInputType["type"] = "string";
+      let description: DustAppRunInputType["description"] = "";
+
+      if (property !== null && typeof property === "object") {
+        if (
+          "type" in property &&
+          typeof property.type === "string" &&
+          ["string", "number", "boolean", "array"].includes(property.type)
+        ) {
+          type = property.type as DustAppRunInputType["type"];
+        }
+        if ("description" in property) {
+          description =
+            property.description as DustAppRunInputType["description"];
+        }
+      }
+
+      return {
+        name,
+        type,
+        description,
+      };
+    }
+  );
+}
 
 // Event sent during the execution of an action. These are action specific.
 export type AgentActionSpecificEvent =

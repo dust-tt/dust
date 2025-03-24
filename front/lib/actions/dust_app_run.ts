@@ -15,6 +15,10 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  dustAppRunInputsToInputSchema,
+  inputSchemaToDustAppRunInputs,
+} from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -320,8 +324,9 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     // Check that all inputs are accounted for.
     const params: DustAppParameters = {};
+    const inputs = inputSchemaToDustAppRunInputs(spec.inputSchema);
 
-    for (const k of spec.inputs) {
+    for (const k of inputs) {
       if (k.name in rawInputs && typeof rawInputs[k.name] === k.type) {
         // As defined in dustAppRunActionSpecification, type is either "string", "number" or "boolean"
         params[k.name] = rawInputs[k.name] as string | number | boolean;
@@ -764,6 +769,7 @@ async function dustAppRunActionSpecification({
       name,
       description,
       inputs: [],
+      inputSchema: dustAppRunInputsToInputSchema([]),
     });
   }
 
@@ -793,6 +799,7 @@ async function dustAppRunActionSpecification({
     name,
     description,
     inputs,
+    inputSchema: dustAppRunInputsToInputSchema(inputs),
   });
 }
 
