@@ -183,11 +183,11 @@ async function streamAgentAnswerToSlack(
         );
       }
       case "error": {
-        return new Err(
-          new SlackAnswerRetryableError(
-            `Error: code: ${event.content.code} message: ${event.content.message}`
-          )
-        );
+        const message = `Error: code: ${event.content.code} message: ${event.content.message}`;
+        if (event.content.code === "stream_error") {
+          return new Err(new SlackAnswerRetryableError(message));
+        }
+        return new Err(new Error(message));
       }
 
       case "agent_action_success": {
