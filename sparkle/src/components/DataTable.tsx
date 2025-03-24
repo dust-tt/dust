@@ -584,7 +584,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize",
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-semibold s-capitalize",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
