@@ -66,39 +66,6 @@ const Schema = z.union([
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
-function isPropertyCompatibleType(value: unknown): value is {
-  title?: string;
-  description?: string;
-  type: "string" | "number" | "boolean" | "array" | "object";
-} {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "type" in value &&
-    (value.type === "string" ||
-      value.type === "number" ||
-      value.type === "boolean" ||
-      value.type === "array" ||
-      value.type === "object")
-  );
-}
-
-function isPropertyWithItemAndCompatibleItemType(value: unknown): value is {
-  items: { type: "string" | "number" | "boolean" };
-} {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "items" in value &&
-    typeof value.items === "object" &&
-    value.items !== null &&
-    "type" in value.items &&
-    (value.items.type === "string" ||
-      value.items.type === "number" ||
-      value.items.type === "boolean")
-  );
-}
-
 function makeMCPConfigurations({
   config,
   listToolsResult,
@@ -116,50 +83,7 @@ function makeMCPConfigurations({
       remoteMCPServerId: config.remoteMCPServerId,
       name: tool.name,
       description: tool.description ?? null,
-
-      inputs: Object.entries(tool.inputSchema.properties ?? {}).map(
-        ([propertyName, propertyValues]) => {
-          // Check if propertyValues is an object with a title and type property.
-          if (isPropertyCompatibleType(propertyValues)) {
-            if (propertyValues.type === "array") {
-              if (isPropertyWithItemAndCompatibleItemType(propertyValues)) {
-                return {
-                  name: propertyName,
-                  description:
-                    propertyValues.title ?? propertyValues.description ?? "",
-                  type: propertyValues.type,
-                  items: {
-                    type: propertyValues.items.type,
-                  },
-                };
-              } else {
-                return {
-                  name: propertyName,
-                  description:
-                    propertyValues.title ?? propertyValues.description ?? "",
-                  type: propertyValues.type,
-                  items: {
-                    type: "string", // fallback type
-                  },
-                };
-              }
-            } else {
-              return {
-                name: propertyName,
-                description:
-                  propertyValues.title ?? propertyValues.description ?? "",
-                type: propertyValues.type,
-              };
-            }
-          } else {
-            throw new Error(
-              `MCPConfigurationServerRunner: property ${propertyName} is not a valid property: ${JSON.stringify(
-                propertyValues
-              )}`
-            );
-          }
-        }
-      ),
+      inputSchema: tool.inputSchema,
     };
   });
 }

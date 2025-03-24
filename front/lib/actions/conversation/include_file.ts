@@ -10,6 +10,7 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { listFiles } from "@app/lib/api/assistant/jit_utils";
 import config from "@app/lib/api/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
@@ -236,18 +237,21 @@ export class ConversationIncludeFileConfigurationServerRunner extends BaseAction
       );
     }
 
+    const inputs = [
+      {
+        name: "fileId",
+        description:
+          "The fileId of the attachment to include in the conversation as returned by the `conversation_list_files_action`",
+        type: "string" as const,
+      },
+    ];
+
     return new Ok({
       name,
       description:
         description ?? DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_DESCRIPTION,
-      inputs: [
-        {
-          name: "fileId",
-          description:
-            "The fileId of the attachment to include in the conversation as returned by the `conversation_list_files_action`",
-          type: "string",
-        },
-      ],
+      inputs: inputs,
+      inputSchema: dustAppRunInputsToInputSchema(inputs),
     });
   }
 

@@ -9,7 +9,10 @@ import {
   BaseAction,
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type {
+  AgentActionSpecification,
+  InputSchemaType,
+} from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -43,14 +46,7 @@ export type MCPToolConfigurationType = Omit<
   "type"
 > & {
   type: "mcp_configuration";
-  inputs: {
-    name: string;
-    description: string;
-    type: "string" | "number" | "boolean" | "array" | "object";
-    items?: {
-      type: "string" | "number" | "boolean";
-    };
-  }[];
+  inputSchema: InputSchemaType;
 };
 
 type MCPParamsEvent = {
@@ -175,7 +171,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     return new Ok({
       name: this.actionConfiguration.name,
       description: this.actionConfiguration.description ?? "",
-      inputs: this.actionConfiguration.inputs,
+      inputs: [],
+      inputSchema: this.actionConfiguration.inputSchema,
     });
   }
 
@@ -195,36 +192,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     }
 
     const { actionConfiguration } = this;
-
-    // TODO(mcp): Check that the rawInputs are matching the action configuration
-    for (const input of actionConfiguration.inputs) {
-      if (!(input.name in rawInputs)) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: `Error: property ${input.name} is required`,
-          },
-        };
-        return;
-      }
-      if (typeof rawInputs[input.name] !== input.type) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: `Error: property ${input.name} is of type ${input.type} but got ${typeof rawInputs[input.name]}`,
-          },
-        };
-        return;
-      }
-    }
 
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if
