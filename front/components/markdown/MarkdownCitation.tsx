@@ -19,7 +19,7 @@ export const citationIconMap = {
   image: ImageIcon,
 } satisfies Record<
   CitationIconType,
-  (props: SVGProps<SVGSVGElement>) => JSX.Element
+  (props: SVGProps<SVGSVGElement>) => React.JSX.Element
 >;
 
 export interface MarkdownCitation {
