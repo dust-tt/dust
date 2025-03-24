@@ -5,19 +5,19 @@ import type { Result } from "./shared/result";
 import { Err, Ok } from "./shared/result";
 
 export const CONNECTOR_PROVIDERS = [
+  "bigquery",
   "confluence",
   "github",
+  "gong",
   "google_drive",
   "intercom",
-  "notion",
-  "slack",
   "microsoft",
-  "webcrawler",
-  "snowflake",
-  "zendesk",
-  "bigquery",
+  "notion",
   "salesforce",
-  "gong",
+  "slack",
+  "snowflake",
+  "webcrawler",
+  "zendesk",
 ] as const;
 
 export type ConnectorProvider = (typeof CONNECTOR_PROVIDERS)[number];
