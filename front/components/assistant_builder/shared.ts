@@ -257,20 +257,20 @@ export function getTableIdForContentNode(
 
     // For static tables, the tableId is the contentNode internalId.
     case null:
-    case "snowflake":
+    case "bigquery":
     case "microsoft":
     case "notion":
-    case "bigquery":
     case "salesforce":
+    case "snowflake":
       return contentNode.internalId;
 
     case "confluence":
+    case "github":
+    case "gong":
     case "intercom":
     case "slack":
-    case "github":
-    case "zendesk":
     case "webcrawler":
-    case "gong":
+    case "zendesk":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
