@@ -17,7 +17,6 @@ class MyDocument extends Document {
           {ENABLE_BOT_CRAWLING !== "true" && (
             <meta name="robots" content="noindex" />
           )}
-          <link href="https://use.typekit.net/jnb2umy.css" rel="stylesheet" />
         </Head>
         <body>
           <Main />

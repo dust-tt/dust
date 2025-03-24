@@ -654,7 +654,7 @@ export default function DatasetView({
                       <TextareaAutosize
                         minRows={1}
                         className={classNames(
-                          "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
+                          "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
                           readOnly
                             ? "text-gray-500"
                             : "text-gray-700 dark:text-gray-700-night"
@@ -718,7 +718,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px] dark:bg-slate-100-night",
+                            "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px] dark:bg-slate-100-night",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               isTypeValidForDataset(
@@ -756,7 +756,7 @@ export default function DatasetView({
                             <TextareaAutosize
                               minRows={1}
                               className={classNames(
-                                "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
+                                "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
                                 readOnly
                                   ? "text-gray-500"
                                   : "text-gray-700 dark:text-gray-600"
