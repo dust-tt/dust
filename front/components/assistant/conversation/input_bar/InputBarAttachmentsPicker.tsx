@@ -74,17 +74,22 @@ export const InputBarAttachmentsPicker = ({
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
 
-  const { searchResultNodes, isSearchLoading, isSearchValidating, hasMore, nextPage } =
-    useSpaceSearchWithInfiniteScroll({
-      includeDataSources: true,
-      owner,
-      search: searchQuery,
-      viewType: "all",
-      pageSize: PAGE_SIZE,
-      disabled: isSpacesLoading || !searchQuery,
-      spaceIds: spaces.map((s) => s.sId),
-      searchSourceUrls: true,
-    });
+  const {
+    searchResultNodes,
+    isSearchLoading,
+    isSearchValidating,
+    hasMore,
+    nextPage,
+  } = useSpaceSearchWithInfiniteScroll({
+    includeDataSources: true,
+    owner,
+    search: searchQuery,
+    viewType: "all",
+    pageSize: PAGE_SIZE,
+    disabled: isSpacesLoading || !searchQuery,
+    spaceIds: spaces.map((s) => s.sId),
+    searchSourceUrls: true,
+  });
 
   const attachedNodeIds = useMemo(() => {
     return attachedNodes.map((node) => node.internalId);
@@ -167,15 +172,14 @@ export const InputBarAttachmentsPicker = ({
             }
           }}
         />
-        {
-          searchQuery && <>
-          <DropdownMenuSeparator />
-          <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-            <div ref={itemsContainerRef}>
-              {
-                unfoldedNodes.map((item, index) => (
+        {searchQuery && (
+          <>
+            <DropdownMenuSeparator />
+            <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
+              <div ref={itemsContainerRef}>
+                {unfoldedNodes.map((item, index) => (
                   <DropdownMenuItem
-                  key={index}
+                    key={index}
                     label={item.title}
                     icon={() =>
                       getVisualForDataSourceViewContentNode(item)({
@@ -197,26 +201,27 @@ export const InputBarAttachmentsPicker = ({
                       setIsOpen(false);
                     }}
                   />
-                ))
-              }
-              {unfoldedNodes.length === 0 && !showLoader && (
-                <div className="flex items-center justify-center py-4 text-sm text-element-700">
-                  No results found
-                </div>
-              )}
+                ))}
+                {unfoldedNodes.length === 0 && !showLoader && (
+                  <div className="flex items-center justify-center py-4 text-sm text-element-700">
+                    No results found
+                  </div>
+                )}
               </div>
-            <InfiniteScroll
-              nextPage={nextPage}
-              hasMore={hasMore}
-              showLoader={showLoader}
-              loader={<div className="flex justify-center py-4">
-                <Spinner variant="dark" size="sm" />
-              </div>}
-            />
-            <ScrollBar className="py-0" />
-          </ScrollArea>
-        </>
-        }
+              <InfiniteScroll
+                nextPage={nextPage}
+                hasMore={hasMore}
+                showLoader={showLoader}
+                loader={
+                  <div className="flex justify-center py-4">
+                    <Spinner variant="dark" size="sm" />
+                  </div>
+                }
+              />
+              <ScrollBar className="py-0" />
+            </ScrollArea>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
