@@ -12,7 +12,10 @@ export function getCitationIcon(
     case "image":
       return ImageIcon;
     default:
-      return CONNECTOR_CONFIGURATIONS[type].getLogoComponent(isDark);
+      return (
+        CONNECTOR_CONFIGURATIONS[type]?.getLogoComponent(isDark) ||
+        DocumentTextIcon
+      );
   }
 }
 
