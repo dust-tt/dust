@@ -186,7 +186,7 @@ export default function TablePicker({
                 value={searchFilter}
                 onChange={setSearchFilter}
               />
-              <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col mt-3">
+              <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col mt-2">
                 <div className="w-full space-y-1">
                   {Array.from(allTablesMap.values())
                     .filter(
@@ -214,7 +214,7 @@ export default function TablePicker({
                     ))}
                   {debouncedSearch && allTablesMap.size === 0 &&
                     !showTableLoaders && (
-                      <span className="block px-2 text-sm text-gray-700">
+                      <span className="block px-2 mt-2 text-sm text-gray-700">
                         No tables found
                       </span>
                     )}
@@ -226,7 +226,7 @@ export default function TablePicker({
                   hasMore={!!nextPageCursor}
                   showLoader={showTableLoaders}
                   loader={
-                    <div className="flex items-center gap-2 px-2 text-center text-sm text-element-700">
+                    <div className="flex items-center gap-2 px-2 mt-2 text-center text-sm text-element-700">
                       <Spinner size="xs" />
                       <span>Loading more data...</span>
                     </div>
