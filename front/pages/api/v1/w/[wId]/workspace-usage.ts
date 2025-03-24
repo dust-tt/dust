@@ -3,6 +3,7 @@ import type {
   UsageTableType,
 } from "@dust-tt/client";
 import { GetWorkspaceUsageRequestSchema } from "@dust-tt/client";
+import { parse as parseCSV } from "csv-parse/sync";
 import { endOfMonth } from "date-fns/endOfMonth";
 import JSZip from "jszip";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -27,7 +28,7 @@ import { assertNever } from "@app/types";
  * /api/v1/w/{wId}/workspace-usage:
  *   get:
  *     summary: Get workspace usage data
- *     description: Get usage data for the workspace identified by {wId} in CSV format.
+ *     description: Get usage data for the workspace identified by {wId} in CSV or JSON format.
  *     tags:
  *       - Workspace
  *     security:
@@ -54,10 +55,17 @@ import { assertNever } from "@app/types";
  *       - in: query
  *         name: mode
  *         required: true
- *         description: The mode of date range selection ('month' or 'range')
+ *         description: The mode of date range selection
  *         schema:
  *           type: string
  *           enum: [month, range]
+ *       - in: query
+ *         name: format
+ *         required: false
+ *         description: The output format of the data (defaults to 'csv')
+ *         schema:
+ *           type: string
+ *           enum: [csv, json]
  *       - in: query
  *         name: table
  *         required: true
@@ -74,11 +82,14 @@ import { assertNever } from "@app/types";
  *           enum: [users, assistant_messages, builders, assistants, feedbacks, all]
  *     responses:
  *       200:
- *         description: The usage data in CSV format or a ZIP of multiple CSVs if table is equal to "all"
+ *         description: The usage data in CSV or JSON format, or a ZIP of multiple CSVs if table is equal to "all"
  *         content:
  *           text/csv:
  *             schema:
  *               type: string
+ *           application/json:
+ *             schema:
+ *               type: object
  *           application/zip:
  *             schema:
  *               type: string
@@ -124,29 +135,65 @@ async function handler(
       }
 
       const query = r.data;
+
+      // Add validation for JSON format with 'all' table
+      if (query.format === "json" && query.table === "all") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "JSON format is not supported with table='all'. Please use CSV format instead.",
+          },
+        });
+      }
+
       const { endDate, startDate } = resolveDates(query);
-      const csvData = await fetchUsageData({
+      const data = await fetchUsageData({
         table: query.table,
         start: startDate,
         end: endDate,
         workspace: owner,
       });
+
+      if (query.format === "json") {
+        const csvData = data[query.table];
+        if (!csvData) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "No data found for the specified table.",
+            },
+          });
+        }
+
+        // Parse CSV string into JSON
+        const records = parseCSV(csvData, {
+          columns: true, // Use first row as headers
+          skip_empty_lines: true,
+        });
+
+        res.setHeader("Content-Type", "application/json");
+        res.status(200).json(records);
+        return;
+      }
+
       const zip = new JSZip();
       const csvSuffix = startDate
         .toLocaleString("default", { month: "short" })
         .toLowerCase();
-      for (const [fileName, data] of Object.entries(csvData)) {
-        if (data) {
+      for (const [fileName, csvData] of Object.entries(data)) {
+        if (csvData) {
           zip.file(
             `${fileName}_${startDate.getFullYear()}_${csvSuffix}.csv`,
-            data
+            csvData
           );
         }
       }
 
       if (query.table === "all") {
         const zipContent = await zip.generateAsync({ type: "nodebuffer" });
-
         res.setHeader("Content-Type", "application/zip");
         res.setHeader(
           "Content-Disposition",
@@ -159,7 +206,7 @@ async function handler(
           "Content-Disposition",
           `attachment; filename="${query.table}.csv"`
         );
-        res.status(200).send(csvData[query.table]);
+        res.status(200).send(data[query.table]);
       }
       return;
 
@@ -183,6 +230,7 @@ function resolveDates(query: GetWorkspaceUsageRequestType) {
       parts[2] ? parseInt(parts[2]) : 1
     );
   };
+
   switch (query.mode) {
     case "month":
       const date = parseDate(query.start);
