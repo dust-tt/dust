@@ -198,7 +198,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   gong: {
     matcher: (url: URL): boolean => {
       return (
-        url.hostname.includes("app.gong.io") &&
+        url.hostname.endsWith("app.gong.io") &&
         url.pathname === "/call" &&
         url.searchParams.has("id")
       );
