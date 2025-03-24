@@ -113,14 +113,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
 
   if (variant === "copy") {
     return (
-      <div
-        className="s-space-y-12 s-bg-repeat s-py-8"
-        style={
-          {
-            // backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(svgBackground)}")`,
-          }
-        }
-      >
+      <div className="s-space-y-12 s-bg-repeat s-py-8">
         {Object.entries(copySizes).map(([sizeKey, copyClass]) => (
           <div key={sizeKey} className="s-space-y-4">
             <div className={copyClass}>
@@ -191,14 +184,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
 
   if (variant === "heading-mono") {
     return (
-      <div
-        className="s-space-y-8 s-bg-repeat s-py-8"
-        style={
-          {
-            // backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(svgBackground)}")`,
-          }
-        }
-      >
+      <div className="s-space-y-8 s-bg-repeat s-py-8">
         {Object.entries(headingMonoSizes).map(([sizeKey, headingClass]) => (
           <div key={sizeKey} className={headingClass}>
             <div>{`Heading Mono ${sizeKey}`}</div>
@@ -210,14 +196,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
   }
 
   return (
-    <div
-      className="s-space-y-8 s-bg-repeat s-py-8"
-      style={
-        {
-          // backgroundImage: `url("data:image/svg+xml;utf8,${encodeURIComponent(svgBackground)}")`,
-        }
-      }
-    >
+    <div className="s-space-y-8 s-bg-repeat s-py-8">
       {Object.entries(headingSizes).map(([sizeKey, headingClass]) => (
         <div key={sizeKey} className={headingClass}>
           <div>{`Heading ${sizeKey}`}</div>
