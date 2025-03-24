@@ -1,6 +1,19 @@
-import { ArrowUpIcon, AttachmentIcon, Button, FullscreenExitIcon, FullscreenIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  AttachmentIcon,
+  Button,
+  FullscreenExitIcon,
+  FullscreenIcon,
+} from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
@@ -16,7 +29,12 @@ import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
-import type { AgentMention, DataSourceViewContentNode, LightAgentConfigurationType, WorkspaceType } from "@app/types";
+import type {
+  AgentMention,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
