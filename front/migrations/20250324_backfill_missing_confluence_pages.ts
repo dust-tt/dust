@@ -78,10 +78,11 @@ async function backfillDataSource({
       }
 
       const coreNodeIds = searchRes.value.nodes.map((node) => node.node_id);
-      connectorsNodeIds.forEach(
-        (nodeId) =>
-          coreNodeIds.includes(nodeId) || logger.info({ nodeId }, "Missing")
-      );
+      for (const nodeId of coreNodeIds) {
+        if (coreNodeIds.includes(nodeId)) {
+          logger.info({ nodeId }, "Missing");
+        }
+      }
     }
 
     nextId = confluencePages[confluencePages.length - 1].id;
