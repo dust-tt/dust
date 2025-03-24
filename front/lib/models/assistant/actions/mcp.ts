@@ -94,7 +94,6 @@ AgentMCPServerConfiguration.init(
             }
             break;
           case "remote":
-            console.log(config);
             if (!config.remoteMCPServerId) {
               throw new Error(
                 "remoteMCPServerId is required for serverType remote"

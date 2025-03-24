@@ -16,13 +16,7 @@ import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import { useRemoteMCPServers } from "@app/lib/swr/remote_mcp_servers";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
-export function ActionMCP({
-  owner,
-  allowedSpaces,
-  actionConfiguration,
-  updateAction,
-  setEdited,
-}: {
+type ActionMCPProps = {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   actionConfiguration: AssistantBuilderMCPServerConfiguration;
@@ -32,7 +26,15 @@ export function ActionMCP({
     ) => AssistantBuilderMCPServerConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-}) {
+};
+
+export function ActionMCP({
+  owner,
+  allowedSpaces,
+  actionConfiguration,
+  updateAction,
+  setEdited,
+}: ActionMCPProps) {
   const [selectedInternalMCPServerId, setSelectedInternalMCPServerId] =
     useState<(typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null>(
       actionConfiguration.internalMCPServerId
@@ -53,13 +55,13 @@ export function ActionMCP({
       actionConfiguration.serverType === "internal" &&
       selectedInternalMCPServerId
     ) {
-      return `${selectedInternalMCPServerId}`;
+      return selectedInternalMCPServerId;
     } else if (
       actionConfiguration.serverType === "remote" &&
       selectedRemoteMCPServerId
     ) {
       const server = servers.find((s) => s.id === selectedRemoteMCPServerId);
-      return server ? `${server.name}` : "Unnamed Server";
+      return server ? server.name : "Unnamed Server";
     }
     return "Select a server";
   };
@@ -83,7 +85,7 @@ export function ActionMCP({
           {AVAILABLE_INTERNAL_MCPSERVER_IDS.map((id) => (
             <DropdownMenuItem
               key={id}
-              label={`${id}`}
+              label={id}
               onClick={() => {
                 setSelectedInternalMCPServerId(id);
                 setSelectedRemoteMCPServerId(null);
@@ -109,7 +111,7 @@ export function ActionMCP({
           {servers.map((server) => (
             <DropdownMenuItem
               key={server.id}
-              label={`${server.name}`}
+              label={server.name}
               onClick={() => {
                 setSelectedInternalMCPServerId(null);
                 setSelectedRemoteMCPServerId(server.id || null);
