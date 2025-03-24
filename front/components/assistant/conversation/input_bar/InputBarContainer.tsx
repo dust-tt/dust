@@ -121,35 +121,33 @@ const InputBarContainer = ({
     isNodeCandidate(nodeOrUrlCandidate)
       ? {
           // NodeIdSearchParams
-          nodeIds: nodeOrUrlCandidate?.candidate.node
-            ? [nodeOrUrlCandidate.candidate.node]
-            : [],
+          nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
           includeDataSources: true,
           owner,
           viewType: "all",
           disabled:
             isSpacesLoading ||
-            !nodeOrUrlCandidate?.candidate ||
+            !nodeOrUrlCandidate ||
             !isAttachedFromDataSourceActivated,
           spaceIds: spaces.map((s) => s.sId),
         }
       : {
           // TextSearchParams
-          search: nodeOrUrlCandidate.candidate.url || "",
+          search: nodeOrUrlCandidate.url || "",
           searchSourceUrls: true,
           includeDataSources: true,
           owner,
           viewType: "all",
           disabled:
             isSpacesLoading ||
-            !nodeOrUrlCandidate.candidate ||
+            !nodeOrUrlCandidate ||
             !isAttachedFromDataSourceActivated,
           spaceIds: spaces.map((s) => s.sId),
         }
   );
 
   useEffect(() => {
-    if (!nodeOrUrlCandidate?.candidate || !onNodeSelect || isSearchLoading) {
+    if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
       return;
     }
 

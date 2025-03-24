@@ -48,9 +48,7 @@ export const URLDetectionExtension = Extension.create<URLFormatOptions>({
                 const isUrlNode = isUrlCandidate(node);
                 if (node) {
                   const { from } = view.state.selection;
-                  const nodeId = isUrlNode
-                    ? node.candidate.url
-                    : node.candidate.node;
+                  const nodeId = isUrlNode ? node.url : node.node;
                   // Store URL position for later replacement
                   storage.pendingUrls.set(nodeId, {
                     url,
