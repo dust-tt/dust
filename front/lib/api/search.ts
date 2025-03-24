@@ -67,7 +67,7 @@ const NodeIdSearchBody = t.intersection([
   }),
   t.partial({
     query: t.undefined,
-    searchSourceUrls: t.undefined,
+    searchSourceUrls: t.boolean,
   }),
 ]);
 
