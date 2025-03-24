@@ -59,6 +59,14 @@ AgentMCPServerConfiguration.init(
         isIn: [AVAILABLE_INTERNAL_MCPSERVER_IDS],
       },
     },
+    remoteMCPServerId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: RemoteMCPServer,
+        key: 'id'
+      },
+    }
   },
   {
     modelName: "agent_mcp_server_configuration",
