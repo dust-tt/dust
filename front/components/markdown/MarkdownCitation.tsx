@@ -8,19 +8,19 @@ const CITATION_ICONS = [...CONNECTOR_PROVIDERS, "document", "image"] as const;
 
 export type CitationIconType = (typeof CITATION_ICONS)[number];
 
-export const citationIconMap: Record<
-  CitationIconType,
-  (props: SVGProps<SVGSVGElement>) => React.JSX.Element
-> = {
-  ...(Object.fromEntries(
-    Object.entries(CONNECTOR_CONFIGURATIONS).map(([key, value]) => [
-      key,
-      value.getLogoComponent(),
-    ])
-  ) as Record<ConnectorProvider, React.JSX.Element>),
+// Maps citation types to their corresponding SVG components, including both connector logos and standard icons.
+export const citationIconMap = {
+  ...Object.fromEntries(
+    Object.entries(CONNECTOR_CONFIGURATIONS).map(
+      ([key, { getLogoComponent }]) => [key, getLogoComponent()]
+    )
+  ),
   document: DocumentTextIcon,
   image: ImageIcon,
-};
+} satisfies Record<
+  CitationIconType,
+  (props: SVGProps<SVGSVGElement>) => JSX.Element
+>;
 
 export interface MarkdownCitation {
   description?: string;
