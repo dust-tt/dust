@@ -1,5 +1,4 @@
 import { DocumentTextIcon, ImageIcon } from "@dust-tt/sparkle";
-import type { SVGProps } from "react";
 
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_PROVIDERS } from "@app/types";
@@ -12,17 +11,17 @@ export type CitationIconType = (typeof CITATION_ICONS)[number];
 export const citationIconMap = {
   ...(Object.fromEntries(
     Object.entries(CONNECTOR_CONFIGURATIONS).map(
-      ([key, { getLogoComponent }]) => [key, getLogoComponent()]
+      ([key, { getLogoComponent }]) => [key, getLogoComponent]
     )
   ) as Record<
     CONNECTOR_PROVIDERS,
-    (props: SVGProps<SVGSVGElement>) => React.JSX.Element
+    (isDark?: boolean) => (props: SVGProps<SVGSVGElement>) => React.JSX.Element
   >), // this type cast is a bit unfortunate, but hard to get rid of
-  document: DocumentTextIcon,
-  image: ImageIcon,
+  document: () => DocumentTextIcon,
+  image: () => ImageIcon,
 } satisfies Record<
   CitationIconType,
-  (props: SVGProps<SVGSVGElement>) => React.JSX.Element
+  (isDark?: boolean) => (props: SVGProps<SVGSVGElement>) => React.JSX.Element
 >;
 
 export interface MarkdownCitation {

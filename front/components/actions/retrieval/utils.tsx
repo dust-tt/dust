@@ -42,10 +42,11 @@ export function getTitleFromRetrievedDocument(
 }
 
 export function makeDocumentCitation(
-  document: RetrievalDocumentType
+  document: RetrievalDocumentType,
+  isDark?: boolean
 ): MarkdownCitation {
   const IconComponent =
-    citationIconMap[getProviderFromRetrievedDocument(document)];
+    citationIconMap[getProviderFromRetrievedDocument(document)](isDark);
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
@@ -54,7 +55,8 @@ export function makeDocumentCitation(
 }
 
 export function makeDocumentCitations(
-  documents: RetrievalDocumentType[]
+  documents: RetrievalDocumentType[],
+  isDark?: boolean
 ): MarkdownCitation[] {
-  return documents.map(makeDocumentCitation);
+  return documents.map((document) => makeDocumentCitation(document, isDark));
 }
