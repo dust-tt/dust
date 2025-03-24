@@ -261,9 +261,6 @@ export function getTableIdForContentNode(
     case "microsoft":
     case "notion":
     case "bigquery":
-      return contentNode.internalId;
-
-    // TODO(salesforce): double check this
     case "salesforce":
       return contentNode.internalId;
 
