@@ -65,6 +65,12 @@ export function ActionDustAppRun({
 
   const noDustApp = dustApps.length === 0;
 
+  const hasNoDustAppsInAllowedSpaces = useMemo(() => {
+    // No n^2 complexity.
+    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
+    return dustApps.every((app) => !allowedSet.has(app.space.sId));
+  }, [dustApps, allowedSpaces]);
+
   if (!action.configuration) {
     return null;
   }
@@ -141,7 +147,7 @@ export function ActionDustAppRun({
                 const appsInSpace = space
                   ? dustApps.filter((app) => app.space.sId === space.sId)
                   : dustApps;
-                if (appsInSpace.length === 0) {
+                if (appsInSpace.length === 0 || hasNoDustAppsInAllowedSpaces) {
                   return <>No Dust Apps available.</>;
                 }
 
