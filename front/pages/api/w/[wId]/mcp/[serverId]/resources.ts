@@ -1,4 +1,4 @@
-import type { Resource } from "@modelcontextprotocol/sdk/types";
+import type { Resource } from "@modelcontextprotocol/sdk/types.js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateInternalMCPServerId } from "@app/lib/actions/mcp";

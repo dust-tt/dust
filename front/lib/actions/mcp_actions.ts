@@ -392,8 +392,7 @@ export async function getMCPServerResources(
   let serverResources: Resource[] = [];
   let nextPageCursor;
   do {
-    const { resources, nextCursor }: z.infer<typeof ListResourcesResultSchema> =
-      await mcpClient.listResources();
+    const { resources, nextCursor } = await mcpClient.listResources();
     nextPageCursor = nextCursor;
     serverResources = [...serverResources, ...resources];
   } while (nextPageCursor);
