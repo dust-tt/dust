@@ -473,25 +473,11 @@ export const isConnectorProviderAssistantDefaultSelected = (
 export const isConnectionIdRequiredForProvider = (
   provider: ConnectorProvider
 ): boolean => {
-  switch (provider) {
-    case "bigquery":
-    case "confluence":
-    case "github":
-    case "gong":
-    case "google_drive":
-    case "intercom":
-    case "microsoft":
-    case "notion":
-    case "salesforce":
-    case "slack":
-    case "snowflake":
-    case "zendesk":
-      return true;
-    case "webcrawler":
-      return false;
-    default:
-      assertNever(provider);
+  if (provider === "webcrawler") {
+    return false;
   }
+  // By default, the connection ID will always be required.
+  return true;
 };
 
 export function getDefaultDataSourceName(
