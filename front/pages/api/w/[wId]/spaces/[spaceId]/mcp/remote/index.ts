@@ -16,6 +16,92 @@ function generateSecureToken(): string {
   return randomBytes(32).toString("hex");
 }
 
+/**
+ * Synchronizes with an MCP server and retrieves its metadata and tools.
+ * This function connects to the server and fetches the necessary information.
+ * It does not create or update the database record.
+ */
+async function fetchServerMetadata(url: string) {
+  const mcpClient = new Client({
+    name: "dust-mcp-client",
+    version: "1.0.0",
+  });
+
+  try {
+    const sseTransport = new SSEClientTransport(new URL(url));
+    await mcpClient.connect(sseTransport);
+
+    const serverVersion = await mcpClient.getServerVersion();
+    const serverName = serverVersion?.name || "A Remote MCP Server";
+    const serverDescription = 
+      (serverVersion && "description" in serverVersion && typeof serverVersion.description === "string") 
+        ? serverVersion.description 
+        : "Remote MCP server description";
+    
+    // Get available tools from the server
+    const toolsResult = await mcpClient.listTools();
+    const serverTools = toolsResult.tools.map(tool => ({
+      name: tool.name,
+      description: tool.description || ""
+    }));
+    
+    return {
+      name: serverName,
+      description: serverDescription,
+      tools: serverTools
+    };
+  } finally {
+    // Ensure client is closed even if there was an error
+    await mcpClient.close();
+  }
+}
+
+/**
+ * Synchronizes with an MCP server by creating a new one or updating an existing one.
+ * Returns the synchronized server resource.
+ */
+async function synchronizeServer(
+  auth: Authenticator,
+  workspace: any,
+  space: any,
+  url: string,
+  existingServer?: any
+) {
+  // Fetch metadata from the remote server
+  const metadata = await fetchServerMetadata(url);
+  
+  if (existingServer) {
+    // Update existing server
+    await existingServer.updateSettings(auth, {
+      name: metadata.name,
+      url: url,
+      description: metadata.description,
+    });
+    
+    await existingServer.updateTools(auth, {
+      cachedTools: metadata.tools,
+      lastSyncAt: new Date(),
+    });
+    
+    return existingServer;
+  } else {
+    // Create a new MCP server
+    const sharedSecret = generateSecureToken();
+    return await RemoteMCPServerResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: metadata.name,
+        url: url,
+        description: metadata.description,
+        cachedTools: metadata.tools,
+        lastSyncAt: new Date(),
+        sharedSecret,
+      },
+      space
+    );
+  }
+}
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<MCPApiResponse | GetRemoteMCPServersResponseBody>>,
@@ -89,56 +175,24 @@ async function handler(
             });
           }
 
-          const sharedSecret = generateSecureToken();
+          // Check if a server with this URL already exists
+          // If a server with the same URL exists, we'll update it instead of creating a new one
+          // This ensures that synchronizing an existing server doesn't create duplicates
+          const existingServers = await RemoteMCPServerResource.listBySpace(auth, space);
+          const existingServer = existingServers.find(server => server.url === url);
 
-          const mcpClient = new Client({
-            name: "dust-mcp-client",
-            version: "1.0.0",
-          });
-
-          const sseTransport = new SSEClientTransport(new URL(url));
-          await mcpClient.connect(sseTransport);
-
-          const serverVersion = await mcpClient.getServerVersion();
-          const serverName = serverVersion?.name || "A Remote MCP Server";
-          const serverDescription = 
-            (serverVersion && "description" in serverVersion && typeof serverVersion.description === "string") 
-              ? serverVersion.description 
-              : "Remote MCP server description";
-          
-          // Get available tools from the server
-          const toolsResult = await mcpClient.listTools();
-          const serverTools = toolsResult.tools.map(tool => ({
-            name: tool.name,
-            description: tool.description || ""
-          }));
-          
-          // Close the client connection
-          await mcpClient.close();
-
-          // Create a new MCP server using the resource
-          const newMCPServer = await RemoteMCPServerResource.makeNew(
-            {
-              workspaceId: workspace.id,
-              name: serverName,
-              url: url,
-              description: serverDescription,
-              cachedTools: serverTools,
-              lastSyncAt: new Date(),
-              sharedSecret,
-            },
-            space
-          );
+          // Synchronize the server (either create new or update existing)
+          const mcpServer = await synchronizeServer(auth, workspace, space, url, existingServer);
 
           return res.status(200).json({
             success: true,
             data: {
-              id: newMCPServer.sId,
+              id: mcpServer.sId,
               workspaceId: wId,
-              name: newMCPServer.name,
-              description: newMCPServer.description ?? "",
-              tools: newMCPServer.cachedTools,
-              sharedSecret: newMCPServer.sharedSecret,
+              name: mcpServer.name,
+              description: mcpServer.description ?? "",
+              tools: mcpServer.cachedTools,
+              sharedSecret: mcpServer.sharedSecret,
             },
           });
         } catch (error) {

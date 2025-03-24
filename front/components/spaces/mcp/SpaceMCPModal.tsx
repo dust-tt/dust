@@ -25,6 +25,7 @@ import type {
 } from "@app/types";
 import { validateUrl } from "@app/types";
 import { MCPFormAction, MCPFormState } from "@app/types/mcp";
+import type { MCPApiResponse } from "@app/types/mcp";
 
 function getInitialFormState(): MCPFormState {
   return {
@@ -92,7 +93,7 @@ export default function SpaceMCPModal({
 
   // Get update, sync, and delete hooks
   const { updateServer } = useUpdateRemoteMCPServer();
-  const { syncServer } = useSyncRemoteMCPServer();
+  const { syncServer, syncById, syncByUrl } = useSyncRemoteMCPServer();
   const { deleteServer } = useDeleteRemoteMCPServer();
 
   const formReducer = (
@@ -255,8 +256,15 @@ export default function SpaceMCPModal({
 
     setIsSynchronizing(true);
     try {
-      // Use the syncServer hook instead of direct fetch
-      const result = await syncServer(owner, space, formState.url);
+      // Determine if we should sync by ID or URL
+      const serverIdToUse = serverId || mcpServerId;
+      let result: MCPApiResponse;
+      
+      if (serverIdToUse && server?.url === formState.url) {
+        result = await syncById(owner, space, serverIdToUse);
+      } else {
+        result = await syncByUrl(owner, space, formState.url);
+      }
       
       if (result.success && result.data) {
         // Populate form state with the received data

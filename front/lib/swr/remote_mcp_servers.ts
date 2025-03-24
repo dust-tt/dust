@@ -119,10 +119,12 @@ export async function deleteRemoteMCPServer(
 }
 
 /**
- * Hook to synchronize with a remote MCP server by URL
+ * Hook to synchronize with a remote MCP server
+ * This can either create a new server using a URL or sync an existing server by its ID
  */
 export function useSyncRemoteMCPServer() {
-  const syncServer = async (owner: LightWorkspaceType, space: SpaceType, url: string): Promise<MCPApiResponse> => {
+  // Sync by URL - this will find existing servers with the same URL or create a new one
+  const syncByUrl = async (owner: LightWorkspaceType, space: SpaceType, url: string): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote?url=${encodeURIComponent(url)}`,
       { method: "GET" }
@@ -136,7 +138,36 @@ export function useSyncRemoteMCPServer() {
     return response.json();
   };
   
-  return { syncServer };
+  // Sync an existing server by its ID
+  const syncById = async (owner: LightWorkspaceType, space: SpaceType, serverId: string): Promise<MCPApiResponse> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}?action=sync`,
+      { method: "POST" }
+    );
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.api_error?.message || "Failed to synchronize server");
+    }
+    
+    return response.json();
+  };
+
+  // Main sync function that determines which method to use
+  const syncServer = async (
+    owner: LightWorkspaceType, 
+    space: SpaceType, 
+    urlOrId: string, 
+    isUrl: boolean = true
+  ): Promise<MCPApiResponse> => {
+    if (isUrl) {
+      return syncByUrl(owner, space, urlOrId);
+    } else {
+      return syncById(owner, space, urlOrId);
+    }
+  };
+  
+  return { syncServer, syncByUrl, syncById };
 }
 
 /**

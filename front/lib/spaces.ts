@@ -6,6 +6,7 @@ import {
   LockIcon,
   PlanetIcon,
   ServerIcon,
+  SparklesIcon,
 } from "@dust-tt/sparkle";
 import { groupBy } from "lodash";
 import type React from "react";
@@ -120,8 +121,8 @@ export const CATEGORY_DETAILS: {
     icon: CommandLineIcon,
   },
   mcp: {
-    label: "Remote MCP Servers",
-    icon: ServerIcon
+    label: "MCP Servers",
+    icon: SparklesIcon
   },
 };
 

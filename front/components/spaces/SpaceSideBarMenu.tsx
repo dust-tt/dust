@@ -452,7 +452,7 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   },
   mcp: {
     icon: SparklesIcon,
-    label: "Remote MCP Servers",
+    label: "MCP Servers",
   },
 };
 
@@ -741,7 +741,7 @@ const SpaceRemoteMCPServerItem = ({
     <Tree.Item
       type="leaf"
       label={server.name}
-      visual={CommandLineIcon}
+      visual={SparklesIcon}
       areActionsFading={false}
     />
   );
