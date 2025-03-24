@@ -449,22 +449,22 @@ export const isConnectorProviderAssistantDefaultSelected = (
 ): boolean => {
   switch (provider) {
     case "confluence":
-    case "slack":
-    case "notion":
     case "github":
+    case "gong":
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "notion":
+    case "slack":
     case "zendesk":
-    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     // TODO(2025-03-24 aubin): see whether this can be handled with an entry in CONNECTOR_CONFIGURATIONS.
-    case "snowflake":
     case "bigquery":
-    case "webcrawler":
     case "salesforce":
+    case "snowflake":
+    case "webcrawler":
       return false;
     default:
       assertNever(provider);
@@ -475,18 +475,18 @@ export const isConnectionIdRequiredForProvider = (
   provider: ConnectorProvider
 ): boolean => {
   switch (provider) {
+    case "bigquery":
     case "confluence":
-    case "slack":
-    case "notion":
     case "github":
+    case "gong":
     case "google_drive":
     case "intercom":
     case "microsoft":
-    case "zendesk":
-    case "snowflake":
-    case "bigquery":
+    case "notion":
     case "salesforce":
-    case "gong":
+    case "slack":
+    case "snowflake":
+    case "zendesk":
       return true;
     case "webcrawler":
       return false;
