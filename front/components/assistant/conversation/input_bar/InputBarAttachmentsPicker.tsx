@@ -51,14 +51,6 @@ function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
   });
 }
 
-function Loader() {
-  return (
-    <div className="flex justify-center py-4">
-      <Spinner variant="dark" size="sm" />
-    </div>
-  );
-}
-
 export const InputBarAttachmentsPicker = ({
   owner,
   fileUploaderService,
@@ -217,7 +209,9 @@ export const InputBarAttachmentsPicker = ({
               nextPage={nextPage}
               hasMore={hasMore}
               showLoader={showLoader}
-              loader={<Loader />}
+              loader={<div className="flex justify-center py-4">
+                <Spinner variant="dark" size="sm" />
+              </div>}
             />
             <ScrollBar className="py-0" />
           </ScrollArea>
