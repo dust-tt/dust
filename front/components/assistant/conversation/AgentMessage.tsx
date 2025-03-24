@@ -546,7 +546,7 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {

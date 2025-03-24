@@ -93,7 +93,7 @@ export function TableBodyBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-medium s-uppercase s-tracking-wider s-text-muted-foreground dark:s-text-muted-foreground-night">
+    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
       {children}
     </th>
   );

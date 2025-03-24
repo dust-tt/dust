@@ -61,10 +61,10 @@ export const ASSISTANT_MANAGER_TABS = [
     description: SCOPE_INFO["global"].text,
   },
   {
-    label: "Searching across all assistants",
+    label: "Searching across all agents",
     icon: MagnifyingGlassIcon,
     id: "search",
-    description: "Searching across all assistants",
+    description: "Searching across all agents",
   },
 ] as const;
 

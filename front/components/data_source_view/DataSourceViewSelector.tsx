@@ -168,14 +168,15 @@ export function DataSourceViewsSelector({
     }
 
     return orderDatasourceViewByImportance(dataSourceViews).filter((dsv) => {
+      const connectorId = dsv.dataSource.connectorId;
       if (!includesConnectorIDs.length && !excludesConnectorIDs.length) {
         return true;
       }
-      if (includesConnectorIDs.length && dsv.dataSource.connectorId) {
-        return includesConnectorIDs.includes(dsv.dataSource.connectorId);
+      if (includesConnectorIDs.length) {
+        return connectorId ? includesConnectorIDs.includes(connectorId) : false;
       }
-      if (excludesConnectorIDs.length && dsv.dataSource.connectorId) {
-        return !excludesConnectorIDs.includes(dsv.dataSource.connectorId);
+      if (excludesConnectorIDs.length && connectorId) {
+        return !excludesConnectorIDs.includes(connectorId);
       }
       return true;
     });

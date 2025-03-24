@@ -56,6 +56,7 @@ import {
 } from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
+const REPOSITORIES_API_PAGE_SIZE = 25;
 
 type GithubOrg = {
   id: number;
@@ -132,7 +133,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: API_PAGE_SIZE,
+          per_page: REPOSITORIES_API_PAGE_SIZE,
           page: page,
         })
       ).data.repositories.map((r) => ({

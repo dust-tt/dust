@@ -3,7 +3,6 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  IconButton,
   LinkIcon,
   PencilSquareIcon,
   Popover,
@@ -120,7 +119,7 @@ export function ConversationTitle({
         <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
-              <span className="font-bold">{conversation?.title || ""}</span>
+              {conversation?.title || ""}
             </div>
           ) : (
             <div className="w-[84%]">
@@ -173,26 +172,27 @@ export function ConversationTitle({
                 }}
                 className="flex items-center"
               >
-                <IconButton icon={CheckIcon} variant="highlight" />
+                <Button size="mini" icon={CheckIcon} variant="primary" />
               </div>
-              <IconButton
+              <Button
                 icon={XMarkIcon}
+                size="mini"
                 onClick={() => {
                   setIsEditingTitle(false);
                   setEditedTitle("");
                 }}
-                variant="highlight"
+                variant="outline"
               />
             </div>
           ) : (
-            <IconButton
+            <Button
               icon={PencilSquareIcon}
               onClick={() => {
                 setEditedTitle(conversation?.title || "");
                 setIsEditingTitle(true);
               }}
-              size="sm"
-              variant="outline"
+              size="mini"
+              variant="ghost-secondary"
             />
           )}
         </div>
