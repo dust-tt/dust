@@ -53,7 +53,7 @@ async function backfillDataSource({
     )) as { id: number; pageId: string }[];
     rowsCount = confluencePages.length;
 
-    if (rowsCount == 0) {
+    if (rowsCount === 0) {
       break;
     }
     logger.info(`Found ${rowsCount} Confluence pages.`);
