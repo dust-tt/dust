@@ -36,7 +36,7 @@ type MCPServerDisplay = {
   id: string;
   name: string;
   description: string;
-  tools: string[];
+  tools: { name: string, description: string }[];
   url: string;
 };
 
@@ -78,14 +78,21 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
         return (
           <div className="flex flex-wrap gap-1">
             {server.tools.length > 0 ? (
-              server.tools.map((tool, i) => (
-                <span 
-                  key={i} 
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50"
-                >
-                  {tool}
-                </span>
-              ))
+              <>
+                {server.tools.slice(0, 2).map((tool, i) => (
+                  <span 
+                    key={i} 
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-700 dark:text-blue-50"
+                  >
+                    {tool.name}
+                  </span>
+                ))}
+                {server.tools.length > 2 && (
+                  <span className="text-xs text-gray-500">
+                    +{server.tools.length - 2} more
+                  </span>
+                )}
+              </>
             ) : (
               <span className="text-sm text-gray-500">No tools</span>
             )}

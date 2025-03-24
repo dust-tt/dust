@@ -151,7 +151,7 @@ export function useUpdateRemoteMCPServer() {
       name: string;
       url: string;
       description: string;
-      tools: string[];
+      tools: { name: string, description: string }[];
     }
   ): Promise<MCPApiResponse> => {
     const response = await fetch(

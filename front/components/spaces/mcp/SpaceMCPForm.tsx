@@ -185,9 +185,12 @@ export function SpaceMCPForm({
             <Label>Available Tools</Label>
             <div className="border rounded-md p-4 space-y-4">
               {state.tools && state.tools.length > 0 ? (
-                state.tools.map((tool: string, index: number) => (
-                  <div key={index} className="border-b pb-2 last:border-b-0 last:pb-0">
-                    <h4 className="font-medium text-sm">{tool}</h4>
+                state.tools.map((tool: { name: string, description: string }, index: number) => (
+                  <div key={index} className="border-b pb-4 last:border-b-0 last:pb-0">
+                    <h4 className="font-medium text-sm">{tool.name}</h4>
+                    {tool.description && (
+                      <p className="text-xs text-gray-500 mt-1">{tool.description}</p>
+                    )}
                   </div>
                 ))
               ) : (

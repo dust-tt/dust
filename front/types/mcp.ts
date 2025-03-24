@@ -2,7 +2,7 @@ export type MCPFormState = {
   url: string;
   name: string;
   description: string;
-  tools: string[];
+  tools: { name: string, description: string }[];
   errors?: {
     url?: string;
     name?: string;
@@ -37,7 +37,7 @@ export interface MCPResponse {
   workspaceId?: string;
   name: string;
   description: string;
-  tools: string[];
+  tools: { name: string, description: string }[];
   url?: string;
   version?: string;
   sharedSecret?: string;

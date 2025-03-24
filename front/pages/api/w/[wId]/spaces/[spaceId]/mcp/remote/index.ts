@@ -8,6 +8,8 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { randomBytes } from "crypto";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 // Function to generate a secure token
 function generateSecureToken(): string {
@@ -91,25 +93,44 @@ async function handler(
             });
           }
 
-          // Generate secure tokens
           const sharedSecret = generateSecureToken();
           const sId = generateSecureToken();
 
-          // In a real implementation, we would fetch the tools from the MCP server
-          // For now, use mock data
-          const mockTools = [
-            "Search Web",
-            "Generate Image" 
-          ];
+          const mcpClient = new Client({
+            name: "dust-mcp-client",
+            version: "1.0.0",
+          });
+
+          const sseTransport = new SSEClientTransport(new URL(url));
+          await mcpClient.connect(sseTransport);
+
+          const serverVersion = await mcpClient.getServerVersion();
+          const serverName = serverVersion?.name || "A Remote MCP Server";
+          const serverDescription = 
+            (serverVersion && "description" in serverVersion && typeof serverVersion.description === "string") 
+              ? serverVersion.description 
+              : "Remote MCP server description";
+          
+          // Get available tools from the server
+          const toolsResult = await mcpClient.listTools();
+          console.log(toolsResult)
+
+          const serverTools = toolsResult.tools.map(tool => ({
+            name: tool.name,
+            description: tool.description || ""
+          }));
+          
+          // Close the client connection
+          await mcpClient.close();
 
           // Create a new MCP server
           const newMCPServer = await RemoteMCPServer.create({
             workspaceId: workspaceIdNum,
             spaceId: spaceIdNum,
-            name: "New MCP Server", // Default name
+            name: serverName,
             url: url,
-            description: "Fetched MCP Server", // Default description
-            cachedTools: mockTools,
+            description: serverDescription,
+            cachedTools: serverTools,
             lastSyncAt: new Date(),
             sharedSecret,
             sId,
@@ -137,14 +158,11 @@ async function handler(
           });
         }
       } else {
-        // List all MCP servers for this space
         try {
-          // Find all remote MCP servers for this space
           const servers = await RemoteMCPServer.findAll({
             where: { workspaceId: workspaceIdNum, spaceId: spaceIdNum },
           });
 
-          // Map the server records to the expected response format
           const serverResponses = servers.map((server) => ({
             id: server.sId,
             workspaceId: wId,
@@ -152,7 +170,6 @@ async function handler(
             description: server.description || "",
             tools: server.cachedTools,
             url: server.url,
-            // Don't include sharedSecret in the list response
           }));
 
           return res.status(200).json({
@@ -175,7 +192,6 @@ async function handler(
       try {
         const { name, url, description, tools } = req.body;
 
-        // Validate required fields
         if (!name || !url || !description) {
           return apiError(req, res, {
             status_code: 400,
@@ -186,10 +202,8 @@ async function handler(
           });
         }
 
-        // Generate a secure shared secret
         const sharedSecret = generateSecureToken();
 
-        // Create the remote MCP server
         const newRemoteMCPServer = await RemoteMCPServer.create({
           workspaceId: workspaceIdNum,
           spaceId: spaceIdNum,

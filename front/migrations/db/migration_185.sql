@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS "remote_mcp_servers" (
     "name" varchar(255) NOT NULL,
     "url" varchar(255) NOT NULL,
     "description" text,
-    "cachedTools" varchar(255)[] DEFAULT ARRAY[] ::varchar(255)[],
+    "cachedTools" JSONB NOT NULL DEFAULT '[]',
     "lastSyncAt" timestamp with time zone,
     "sharedSecret" varchar(255) NOT NULL,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
