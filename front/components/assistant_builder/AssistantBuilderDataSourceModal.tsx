@@ -89,11 +89,14 @@ export default function AssistantBuilderDataSourceModal({
     }
   }, [dataSourceViews, viewType]);
 
-  const selectedItemsCount = useMemo(() => {
+  const selectedTableCount = useMemo(() => {
+    if (viewType !== "table") {
+      return null;
+    }
     return Object.values(selectionConfigurations).reduce((acc, curr) => {
       return acc + curr.selectedResources.length;
     }, 0);
-  }, [selectionConfigurations]);
+  }, [selectionConfigurations, viewType]);
 
   return (
     <Sheet
@@ -125,9 +128,11 @@ export default function AssistantBuilderDataSourceModal({
             />
           </div>
         </SheetContainer>
-        <div className="flex flex-col border-t border-border/60 bg-background p-3 text-sm dark:border-border-night/60 dark:bg-background-night">
-          {selectedItemsCount} items selected.
-        </div>
+        {selectedTableCount && (
+          <div className="flex flex-col border-t border-border/60 bg-background p-3 text-sm dark:border-border-night/60 dark:bg-background-night">
+            {selectedTableCount} items selected.
+          </div>
+        )}
         <SheetFooter
           leftButtonProps={{
             label: "Cancel",
