@@ -22,6 +22,10 @@ import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 
+// Copied from front/hooks/useEventSource.ts
+const RECONNECT_DELAY = 5000; // 5 seconds.
+const MAX_RECONNECT_ATTEMPTS = 10;
+
 interface StreamConversationToSlackParams {
   assistantName: string;
   connector: ConnectorResource;
@@ -47,24 +51,8 @@ export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
 ): Promise<Result<undefined, Error>> {
-  const {
-    assistantName,
-    connector,
-    conversation,
-    mainMessage,
-    slack,
-    userMessage,
-    slackChatBotMessage,
-    agentConfigurations,
-  } = conversationData;
-
-  const {
-    slackChannelId,
-    slackClient,
-    slackMessageTs,
-    slackUserInfo,
-    slackUserId,
-  } = slack;
+  const { assistantName, connector, conversation, agentConfigurations } =
+    conversationData;
 
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
@@ -79,6 +67,61 @@ export async function streamConversationToSlack(
     },
     { adhereToRateLimit: false }
   );
+
+  let streamRes: Result<undefined, Error>;
+  let reconnectAttempts = 0;
+  do {
+    streamRes = await streamAgentAnswerToSlack(dustAPI, conversationData);
+
+    if (
+      streamRes.isErr() &&
+      streamRes.error instanceof SlackAnswerRetryableError
+    ) {
+      logger.warn(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          error: streamRes.error,
+        },
+        "Retryable error in Slack answer stream."
+      );
+      await new Promise((resolve) => setTimeout(resolve, RECONNECT_DELAY));
+      reconnectAttempts++;
+    } else {
+      return streamRes;
+    }
+  } while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS);
+
+  return streamRes;
+}
+
+class SlackAnswerRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+async function streamAgentAnswerToSlack(
+  dustAPI: DustAPI,
+  conversationData: StreamConversationToSlackParams
+) {
+  const {
+    assistantName,
+    conversation,
+    mainMessage,
+    userMessage,
+    slackChatBotMessage,
+    agentConfigurations,
+    slack,
+  } = conversationData;
+
+  const {
+    slackChannelId,
+    slackClient,
+    slackMessageTs,
+    slackUserInfo,
+    slackUserId,
+  } = slack;
 
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -141,7 +184,7 @@ export async function streamConversationToSlack(
       }
       case "error": {
         return new Err(
-          new Error(
+          new SlackAnswerRetryableError(
             `Error: code: ${event.content.code} message: ${event.content.message}`
           )
         );
@@ -241,10 +284,12 @@ export async function streamConversationToSlack(
     }
   }
 
-  return new Err(new Error("Failed to get the final answer from Dust"));
+  return new Err(
+    new SlackAnswerRetryableError("Failed to get the final answer from Dust")
+  );
 }
 
-const postSlackMessageUpdate = async (
+async function postSlackMessageUpdate(
   {
     messageUpdate,
     slack,
@@ -267,7 +312,7 @@ const postSlackMessageUpdate = async (
   { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
     adhereToRateLimit: true,
   }
-) => {
+) {
   let lastSentDate = new Date();
   let backoffTime = initialBackoffTime;
 
@@ -311,7 +356,7 @@ const postSlackMessageUpdate = async (
       "Failed to update Slack message."
     );
   }
-};
+}
 
 /**
  * Safely prepare the answer by normalizing the content for Slack and converting it to Markdown.
