@@ -24,6 +24,8 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -77,15 +79,20 @@ const InputBarContainer = ({
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
-  const handleUrlDetected = useCallback((nodeId: string | null) => {
-    if (nodeId) {
-      setNodeCandidate(nodeId);
-    }
-  }, []);
+  const handleUrlDetected = useCallback(
+    (candidate: UrlCandidate | NodeCandidate | null) => {
+      if (candidate) {
+        setNodeOrUrlCandidate(candidate);
+      }
+    },
+    []
+  );
 
   // TODO: remove once attach from datasources is released
   const isAttachedFromDataSourceActivated = featureFlags.includes(
@@ -102,7 +109,7 @@ const InputBarContainer = ({
     }),
   });
 
-  useUrlHandler(editor, selectedNode);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -110,18 +117,37 @@ const InputBarContainer = ({
     [spaces]
   );
 
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    viewType: "all",
-    nodeIds: nodeCandidate ? [nodeCandidate] : [],
-    disabled:
-      isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
-    spaceIds: spaces.map((s) => s.sId),
-  });
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch(
+    isNodeCandidate(nodeOrUrlCandidate)
+      ? {
+          // NodeIdSearchParams
+          nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
+          includeDataSources: true,
+          owner,
+          viewType: "all",
+          disabled:
+            isSpacesLoading ||
+            !nodeOrUrlCandidate ||
+            !isAttachedFromDataSourceActivated,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+      : {
+          // TextSearchParams
+          search: nodeOrUrlCandidate?.url || "",
+          searchSourceUrls: true,
+          includeDataSources: true,
+          owner,
+          viewType: "all",
+          disabled:
+            isSpacesLoading ||
+            !nodeOrUrlCandidate ||
+            !isAttachedFromDataSourceActivated,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+  );
 
   useEffect(() => {
-    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
+    if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
       return;
     }
 
@@ -144,18 +170,19 @@ const InputBarContainer = ({
         setSelectedNode(node);
       }
 
-      // Reset node candidate after processing
-      setNodeCandidate(null);
+      // Reset node candidate after processing.
+      // FIXME: This causes reset to early and it requires pasting the url twice.
+      setNodeOrUrlCandidate(null);
     } else {
-      setNodeCandidate(null);
+      setNodeOrUrlCandidate(null);
     }
   }, [
     searchResultNodes,
-    nodeCandidate,
     onNodeSelect,
     isSearchLoading,
     editorService,
     spacesMap,
+    nodeOrUrlCandidate,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
