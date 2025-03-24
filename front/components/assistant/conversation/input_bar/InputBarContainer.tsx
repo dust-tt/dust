@@ -35,6 +35,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { getSupportedFileExtensions } from "@app/types";
+import { CandidateProvenance } from "@app/lib/connectors";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -77,15 +78,21 @@ const InputBarContainer = ({
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
-  const [nodeCandidate, setNodeCandidate] = useState<string | null>(null);
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<{
+    candidate: string | null;
+    type: CandidateProvenance;
+  }>({ candidate: null, type: null });
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
-  const handleUrlDetected = useCallback((nodeId: string | null) => {
-    if (nodeId) {
-      setNodeCandidate(nodeId);
-    }
-  }, []);
+  const handleUrlDetected = useCallback(
+    (candidate: string | null, type: CandidateProvenance) => {
+      if (candidate) {
+        setNodeOrUrlCandidate({ candidate, type });
+      }
+    },
+    []
+  );
 
   // TODO: remove once attach from datasources is released
   const isAttachedFromDataSourceActivated = featureFlags.includes(
@@ -102,7 +109,7 @@ const InputBarContainer = ({
     }),
   });
 
-  useUrlHandler(editor, selectedNode);
+  useUrlHandler(editor, selectedNode, nodeOrUrlCandidate.type);
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
   const spacesMap = useMemo(
@@ -110,18 +117,39 @@ const InputBarContainer = ({
     [spaces]
   );
 
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
-    includeDataSources: true,
-    owner,
-    viewType: "all",
-    nodeIds: nodeCandidate ? [nodeCandidate] : [],
-    disabled:
-      isSpacesLoading || !nodeCandidate || !isAttachedFromDataSourceActivated,
-    spaceIds: spaces.map((s) => s.sId),
-  });
+  const { searchResultNodes, isSearchLoading } = useSpacesSearch(
+    nodeOrUrlCandidate.type === "node"
+      ? {
+          // NodeIdSearchParams
+          nodeIds: nodeOrUrlCandidate.candidate
+            ? [nodeOrUrlCandidate.candidate]
+            : [],
+          includeDataSources: true,
+          owner,
+          viewType: "all",
+          disabled:
+            isSpacesLoading ||
+            !nodeOrUrlCandidate.candidate ||
+            !isAttachedFromDataSourceActivated,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+      : {
+          // TextSearchParams
+          search: nodeOrUrlCandidate.candidate || "",
+          searchSourceUrls: true,
+          includeDataSources: true,
+          owner,
+          viewType: "all",
+          disabled:
+            isSpacesLoading ||
+            !nodeOrUrlCandidate.candidate ||
+            !isAttachedFromDataSourceActivated,
+          spaceIds: spaces.map((s) => s.sId),
+        }
+  );
 
   useEffect(() => {
-    if (!nodeCandidate || !onNodeSelect || isSearchLoading) {
+    if (!nodeOrUrlCandidate.candidate || !onNodeSelect || isSearchLoading) {
       return;
     }
 
@@ -145,17 +173,17 @@ const InputBarContainer = ({
       }
 
       // Reset node candidate after processing
-      setNodeCandidate(null);
+      setNodeOrUrlCandidate({ candidate: null, type: null });
     } else {
-      setNodeCandidate(null);
+      setNodeOrUrlCandidate({ candidate: null, type: null });
     }
   }, [
     searchResultNodes,
-    nodeCandidate,
     onNodeSelect,
     isSearchLoading,
     editorService,
     spacesMap,
+    nodeOrUrlCandidate.candidate,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from

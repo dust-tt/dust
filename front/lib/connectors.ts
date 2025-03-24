@@ -86,10 +86,23 @@ export function orderDatasourceViewSelectionConfigurationByImportance<
   });
 }
 
-interface Provider {
+export type CandidateProvenance = "node" | "url" | null;
+
+type BaseProvider = {
   matcher: (url: URL) => boolean;
+};
+
+type ProviderWithNormalizer = BaseProvider & {
+  urlNormalizer: (url: URL) => string;
+  extractor?: never;
+};
+
+type ProviderWithExtractor = BaseProvider & {
   extractor: (url: URL) => string | null;
-}
+  urlNormalizer?: never;
+};
+
+type Provider = ProviderWithExtractor | ProviderWithNormalizer;
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
   google_drive: {
@@ -170,6 +183,18 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       );
     },
   },
+  gong: {
+    matcher: (url: URL): boolean => {
+      return (
+        url.hostname.includes("app.gong.io") &&
+        url.pathname === "/call" &&
+        url.searchParams.has("id")
+      );
+    },
+    urlNormalizer: (url: URL): string => {
+      return url.toString();
+    },
+  },
 };
 
 // Extract a channel node ID from a Slack client URL
@@ -239,19 +264,25 @@ function extractMessageNodeId(url: URL): string | null {
 }
 
 // Extracts a nodeId from a given url
-export function nodeIdFromUrl(url: string): string | null {
+export function nodeIdFromUrl(url: string): {
+  candidate: string | null;
+  type: CandidateProvenance;
+} {
   try {
     const urlObj = new URL(url);
 
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
-        return provider.extractor(urlObj);
+        if (provider.extractor) {
+          return { candidate: provider.extractor(urlObj), type: "node" };
+        } else {
+          return { candidate: provider.urlNormalizer(urlObj), type: "url" };
+        }
       }
     }
-
-    return null;
+    return { candidate: null, type: null };
   } catch (error) {
     console.error("Error parsing URL:", error);
-    return null;
+    return { candidate: null, type: null };
   }
 }

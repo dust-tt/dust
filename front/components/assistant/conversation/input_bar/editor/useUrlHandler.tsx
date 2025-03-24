@@ -7,7 +7,8 @@ import type { URLState } from "./extensions/URLStorageExtension";
 
 const useUrlHandler = (
   editor: Editor | null,
-  selectedNode: DataSourceViewContentNode | null
+  selectedNode: DataSourceViewContentNode | null,
+  searchType: "url" | "node" | null
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
@@ -78,7 +79,8 @@ const useUrlHandler = (
     }
 
     const { pendingUrls } = editor.storage.URLStorage;
-    const nodeId = selectedNode.internalId;
+    const nodeId =
+      searchType === "node" ? selectedNode.internalId : selectedNode.sourceUrl;
     const pendingUrl = pendingUrls.get(nodeId);
 
     if (!pendingUrl) {
