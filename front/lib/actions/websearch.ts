@@ -11,6 +11,7 @@ import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import {
   actionRefsOffset,
   getWebsearchNumResults,
@@ -170,18 +171,20 @@ export class WebsearchConfigurationServerRunner extends BaseActionConfigurationS
       );
     }
 
+    const inputs = [
+      {
+        name: "query",
+        description:
+          "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain.",
+        type: "string" as const,
+      },
+    ];
     return new Ok({
       name,
       description:
         description || "Perform a google search and return the top results.",
-      inputs: [
-        {
-          name: "query",
-          description:
-            "The query used to perform the google search. If requested by the user, use the google syntax `site:` to restrict the the search to a particular website or domain.",
-          type: "string",
-        },
-      ],
+      inputs: inputs,
+      inputSchema: dustAppRunInputsToInputSchema(inputs),
     });
   }
 

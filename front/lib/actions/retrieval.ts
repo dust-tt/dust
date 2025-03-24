@@ -11,6 +11,7 @@ import type {
   ActionConfigurationType,
   AgentActionSpecification,
 } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { actionRefsOffset, getRetrievalTopK } from "@app/lib/actions/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -825,7 +826,7 @@ function retrievalActionSpecification({
   return {
     name,
     description,
-    inputs,
+    inputSchema: dustAppRunInputsToInputSchema(inputs),
   };
 }
 

@@ -19,6 +19,7 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { dustAppRunInputsToInputSchema } from "@app/lib/actions/types/agent";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -561,7 +562,7 @@ async function processActionSpecification({
   return {
     name,
     description,
-    inputs,
+    inputSchema: dustAppRunInputsToInputSchema(inputs),
   };
 }
 
