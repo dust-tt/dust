@@ -47,7 +47,9 @@ export function ActionMCP({
     }));
   };
 
-  const handleDataSourceConfigUpdate = (dsConfigs: any) => {
+  const handleDataSourceConfigUpdate = (
+    dsConfigs: DataSourceViewSelectionConfigurations
+  ) => {
     setEdited(true);
     updateAction((previousAction) => ({
       ...previousAction,
