@@ -64,9 +64,9 @@ AgentMCPServerConfiguration.init(
       allowNull: true,
       references: {
         model: RemoteMCPServer,
-        key: 'id'
+        key: "id",
       },
-    }
+    },
   },
   {
     modelName: "agent_mcp_server_configuration",
