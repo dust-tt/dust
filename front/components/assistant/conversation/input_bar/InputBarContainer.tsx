@@ -24,11 +24,8 @@ import useUrlHandler from "@app/components/assistant/conversation/input_bar/edit
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import {
-  isNodeCandidate,
-  NodeCandidate,
-  UrlCandidate,
-} from "@app/lib/connectors";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";

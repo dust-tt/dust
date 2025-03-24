@@ -95,7 +95,7 @@ const useUrlHandler = (
     pendingUrls.delete(nodeId);
 
     void replaceUrl(urlState, selectedNode);
-  }, [editor, selectedNode, replaceUrl]);
+  }, [editor, selectedNode, replaceUrl, candidate]);
 };
 
 export default useUrlHandler;
