@@ -43,8 +43,8 @@ async function backfillDataSource({
       `SELECT id, "pageId"
        FROM confluence_pages
        WHERE "connectorId" = :connectorId
-         AND id > :nextId LIMIT :batchSize
-       ORDER BY id;`,
+         AND id > :nextId
+       ORDER BY id LIMIT :batchSize;`,
       {
         replacements: {
           connectorId: frontDataSource.connectorId,
