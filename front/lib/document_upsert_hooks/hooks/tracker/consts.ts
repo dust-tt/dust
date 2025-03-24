@@ -4,6 +4,7 @@ import { assertNever } from "@app/types";
 export function isConnectorTypeTrackable(
   connectorType: ConnectorProvider
 ): boolean {
+  // TODO(2025-03-24 aubin): see if this can be handled through an optional (default to true) property in CONNECTOR_CONFIGURATIONS.
   switch (connectorType) {
     case "google_drive":
     case "github":
