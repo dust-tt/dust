@@ -12,12 +12,12 @@ export const citationIconMap: Record<
   CitationIconType,
   (props: SVGProps<SVGSVGElement>) => React.JSX.Element
 > = {
-  ...Object.fromEntries(
+  ...(Object.fromEntries(
     Object.entries(CONNECTOR_CONFIGURATIONS).map(([key, value]) => [
       key,
       value.getLogoComponent(),
     ])
-  ),
+  ) as Record<ConnectorProvider, React.JSX.Element>),
   document: DocumentTextIcon,
   image: ImageIcon,
 };
