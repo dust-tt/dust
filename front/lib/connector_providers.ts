@@ -460,7 +460,6 @@ export const isConnectorProviderAssistantDefaultSelected = (
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
-    // TODO(2025-03-24 aubin): see whether this can be handled with an entry in CONNECTOR_CONFIGURATIONS.
     case "bigquery":
     case "salesforce":
     case "snowflake":
