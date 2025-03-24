@@ -82,6 +82,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     return;
   }
 
+  // The crawler scheduler may have scheduled a crawl before the connector was paused.
+  if (connector.isPaused()) {
+    logger.info({ connectorId }, "Connector is paused. Skipping crawl.");
+    return;
+  }
+
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
