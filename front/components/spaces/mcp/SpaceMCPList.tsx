@@ -67,7 +67,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
       ),
       accessorFn: (row: RowData) => row.name,
       meta: {
-        className: "w-full",
+        className: "w-1/3",
       },
     },
     {
@@ -76,7 +76,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
       cell: (info: CellContext<RowData, string>) => {
         const { server } = info.row.original;
         return (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 items-center">
             {server.tools.length > 0 ? (
               <>
                 {server.tools.slice(0, 2).map((tool, i) => (
@@ -101,7 +101,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
       },
       accessorFn: () => "",
       meta: {
-        className: "w-1/3",
+        className: "w-full",
       },
     },
     {

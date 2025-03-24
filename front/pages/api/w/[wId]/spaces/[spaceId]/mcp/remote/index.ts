@@ -1,5 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { MCPApiResponse } from "@app/types/mcp";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +9,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 
 // Function to generate a secure token
 function generateSecureToken(): string {
@@ -71,10 +71,6 @@ async function handler(
     });
   }
 
-  // Use the numeric IDs for database operations
-  const workspaceIdNum = workspace.id;
-  const spaceIdNum = space.id;
-
   switch (method) {
     case "GET": {
       // Check if we're listing servers or synchronizing with a specific URL
@@ -94,7 +90,6 @@ async function handler(
           }
 
           const sharedSecret = generateSecureToken();
-          const sId = generateSecureToken();
 
           const mcpClient = new Client({
             name: "dust-mcp-client",
@@ -113,8 +108,6 @@ async function handler(
           
           // Get available tools from the server
           const toolsResult = await mcpClient.listTools();
-          console.log(toolsResult)
-
           const serverTools = toolsResult.tools.map(tool => ({
             name: tool.name,
             description: tool.description || ""
@@ -123,18 +116,19 @@ async function handler(
           // Close the client connection
           await mcpClient.close();
 
-          // Create a new MCP server
-          const newMCPServer = await RemoteMCPServer.create({
-            workspaceId: workspaceIdNum,
-            spaceId: spaceIdNum,
-            name: serverName,
-            url: url,
-            description: serverDescription,
-            cachedTools: serverTools,
-            lastSyncAt: new Date(),
-            sharedSecret,
-            sId,
-          });
+          // Create a new MCP server using the resource
+          const newMCPServer = await RemoteMCPServerResource.makeNew(
+            {
+              workspaceId: workspace.id,
+              name: serverName,
+              url: url,
+              description: serverDescription,
+              cachedTools: serverTools,
+              lastSyncAt: new Date(),
+              sharedSecret,
+            },
+            space
+          );
 
           return res.status(200).json({
             success: true,
@@ -159,9 +153,7 @@ async function handler(
         }
       } else {
         try {
-          const servers = await RemoteMCPServer.findAll({
-            where: { workspaceId: workspaceIdNum, spaceId: spaceIdNum },
-          });
+          const servers = await RemoteMCPServerResource.listBySpace(auth, space);
 
           const serverResponses = servers.map((server) => ({
             id: server.sId,
@@ -204,17 +196,18 @@ async function handler(
 
         const sharedSecret = generateSecureToken();
 
-        const newRemoteMCPServer = await RemoteMCPServer.create({
-          workspaceId: workspaceIdNum,
-          spaceId: spaceIdNum,
-          name,
-          url,
-          description,
-          cachedTools: tools || [],
-          lastSyncAt: new Date(),
-          sharedSecret,
-          sId: generateSecureToken(),
-        });
+        const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
+          {
+            workspaceId: workspace.id,
+            name,
+            url,
+            description,
+            cachedTools: tools || [],
+            lastSyncAt: new Date(),
+            sharedSecret,
+          },
+          space
+        );
 
         return res.status(201).json({
           success: true,

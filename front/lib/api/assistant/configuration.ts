@@ -50,6 +50,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -483,7 +484,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
-    fetchMCPServerActionConfigurations({ configurationIds, variant }),
+    fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -1167,9 +1168,10 @@ export async function createAgentActionConfiguration(
     case "mcp_server_configuration": {
       let remoteMCPServerId = null;
       if (action.serverType === "remote" && action.remoteMCPServerId) {
-        const remoteMCPServer = await RemoteMCPServer.findOne({
-          where: { sId: action.remoteMCPServerId }
-        });
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          action.remoteMCPServerId
+        );
         
         if (!remoteMCPServer) {
           throw new Error(`Remote MCP server with sId ${action.remoteMCPServerId} not found.`);

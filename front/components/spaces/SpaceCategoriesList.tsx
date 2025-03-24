@@ -14,6 +14,7 @@ import {
   Icon,
   PlusIcon,
   RobotIcon,
+  ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -31,6 +32,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { DATA_SOURCE_VIEW_CATEGORIES, removeNulls } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type RowData = {
   category: string;
@@ -106,6 +108,9 @@ export const SpaceCategoriesList = ({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId
+  })
 
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
@@ -184,6 +189,14 @@ export const SpaceCategoriesList = ({
             icon={CommandLineIcon}
             label="Create a Dust App"
           />
+          {hasFeature("mcp_actions") && ( 
+            <DropdownMenuItem
+              disabled={!canWriteInSpace}
+              href={`/w/${owner.sId}/spaces/${space.sId}/categories/mcp`}
+              icon={ServerIcon}
+              label="Create an MCP"
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

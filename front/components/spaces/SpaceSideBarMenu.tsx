@@ -45,6 +45,7 @@ import type {
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
 import { useRemoteMCPServer, useRemoteMCPServers } from "@app/lib/swr/remote_mcp_servers";
 import { MCPResponse } from "@app/types/mcp";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -342,6 +343,9 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId
+  })
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -392,6 +396,9 @@ const SpaceMenuItem = ({
                   />
                 );
               } else if (c === "mcp") {
+                if (!hasFeature("mcp_actions")) {
+                  return null;
+                }
                 return (
                   <SpaceRemoteMCPServersSubMenu
                     key={c}

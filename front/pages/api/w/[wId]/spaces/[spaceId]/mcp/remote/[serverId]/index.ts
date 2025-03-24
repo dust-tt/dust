@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { MCPApiResponse } from "@app/types/mcp";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 
 async function handler(
   req: NextApiRequest,
@@ -48,35 +48,24 @@ async function handler(
     });
   }
 
-  // Get the actual workspace and space database IDs
-  const workspace = auth.workspace();
+  // Get the space resource
   const space = await SpaceResource.fetchById(auth, spaceId);
 
-  if (!workspace || !space) {
+  if (!space) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
-        message: "Workspace or space not found",
+        message: "Space not found",
       },
     });
   }
-
-  // Use the numeric IDs for database operations
-  const workspaceIdNum = workspace.id;
-  const spaceIdNum = space.id;
 
   switch (method) {
     case "GET": {
       try {
         // Find the specific remote MCP server
-        const server = await RemoteMCPServer.findOne({
-          where: { 
-            workspaceId: workspaceIdNum, 
-            spaceId: spaceIdNum,
-            sId: serverId 
-          },
-        });
+        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
         if (!server) {
           return apiError(req, res, {
@@ -129,13 +118,7 @@ async function handler(
         }
 
         // Find the specific MCP server
-        const server = await RemoteMCPServer.findOne({
-          where: { 
-            workspaceId: workspaceIdNum, 
-            spaceId: spaceIdNum,
-            sId: serverId 
-          },
-        });
+        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
         if (!server) {
           return apiError(req, res, {
@@ -147,14 +130,20 @@ async function handler(
           });
         }
 
-        // Update the server
-        await server.update({
+        // Update the server settings
+        await server.updateSettings(auth, {
           name,
           url,
-          description: description || server.description,
-          cachedTools: tools || server.cachedTools,
-          lastSyncAt: new Date(),
+          description,
         });
+        
+        // Update tools if provided
+        if (tools) {
+          await server.updateTools(auth, {
+            cachedTools: tools,
+            lastSyncAt: new Date(),
+          });
+        }
 
         return res.status(200).json({
           success: true,
@@ -182,13 +171,7 @@ async function handler(
     case "DELETE": {
       try {
         // Find and delete the specific remote MCP server
-        const server = await RemoteMCPServer.findOne({
-          where: { 
-            workspaceId: workspaceIdNum, 
-            spaceId: spaceIdNum,
-            sId: serverId 
-          },
-        });
+        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
         if (!server) {
           return apiError(req, res, {
@@ -200,7 +183,7 @@ async function handler(
           });
         }
 
-        await server.destroy();
+        await server.hardDelete(auth);
 
         return res.status(200).json({
           success: true,

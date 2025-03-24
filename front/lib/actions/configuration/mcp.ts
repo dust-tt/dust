@@ -3,10 +3,11 @@ import { Op } from "sequelize";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { ModelId } from "@app/types";
+import { Authenticator } from "@app/lib/auth";
 
-export async function fetchMCPServerActionConfigurations({
+export async function fetchMCPServerActionConfigurations(auth: Authenticator, {
   configurationIds,
   variant,
 }: {
@@ -36,7 +37,8 @@ export async function fetchMCPServerActionConfigurations({
 
     let remoteMCPServerId: string | null = null;
     if (serverType === "remote" && config.remoteMCPServerId) {
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
+      const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+        auth,
         config.remoteMCPServerId
       );
       if (!remoteMCPServer) {
@@ -52,7 +54,7 @@ export async function fetchMCPServerActionConfigurations({
     }
 
     // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-    const metadata = await getMCPServerMetadata(config);
+    const metadata = await getMCPServerMetadata(auth, config);
 
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {

@@ -2,16 +2,17 @@
 CREATE TABLE IF NOT EXISTS "remote_mcp_servers" (
     "createdAt" timestamp with time zone NOT NULL,
     "updatedAt" timestamp with time zone NOT NULL,
+    "deletedAt" timestamp with time zone,
     "sId" varchar(255) NOT NULL,
-    "name" varchar(255) NOT NULL,
     "url" varchar(255) NOT NULL,
+    "name" varchar(255) NOT NULL,
     "description" text,
     "cachedTools" JSONB NOT NULL DEFAULT '[]',
     "lastSyncAt" timestamp with time zone,
     "sharedSecret" varchar(255) NOT NULL,
     "workspaceId" bigint NOT NULL REFERENCES "workspaces" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     "id" bigserial,
-    "spaceId" bigint NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    "vaultId" bigint NOT NULL REFERENCES "vaults" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY ("id")
 );
 

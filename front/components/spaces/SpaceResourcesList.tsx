@@ -237,7 +237,7 @@ interface SpaceResourcesListProps {
   canWriteInSpace: boolean;
   space: SpaceType;
   systemSpace: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: Exclude<DataSourceViewCategory, "apps" | "mcp">;
   onSelect: (sId: string) => void;
   integrations: DataSourceIntegration[];
 }

@@ -3,15 +3,15 @@ import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
+export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPServer> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare sId: string;
 
-  declare spaceId: ForeignKey<SpaceModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare space: NonAttribute<SpaceModel>;
 
   declare url: string;
@@ -34,6 +34,9 @@ RemoteMCPServer.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     sId: {
       type: DataTypes.STRING,
@@ -72,9 +75,9 @@ RemoteMCPServer.init(
 );
 
 SpaceModel.hasMany(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "spaceId" },
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
 RemoteMCPServer.belongsTo(SpaceModel, {
-  foreignKey: { allowNull: false, name: "spaceId" },
+  foreignKey: { allowNull: false, name: "vaultId" },
 });
