@@ -245,7 +245,7 @@ export function getTableIdForContentNode(
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 
-  // TODO(2025-03-24 aubin): see whether this switch is needed.
+  // We specify whether the connector supports TableQuery as a safeguard in case somehow a non-table node was selected.
   switch (dataSource.connectorProvider) {
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
