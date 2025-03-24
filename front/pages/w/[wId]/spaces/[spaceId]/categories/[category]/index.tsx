@@ -29,14 +29,14 @@ import {
   removeNulls,
 } from "@app/types";
 
-type DataSourceViewCategoryWithoutApps = Exclude<
+type DataSourceViewCategoryWithoutAppsAndMCPs = Exclude<
   DataSourceViewCategory,
-  "apps"
+  "apps" | "mcp"
 >;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
-    category: DataSourceViewCategoryWithoutApps;
+    category: DataSourceViewCategoryWithoutAppsAndMCPs;
     isAdmin: boolean;
     canWriteInSpace: boolean;
     space: SpaceType;

@@ -14,6 +14,7 @@ import {
   Icon,
   PlusIcon,
   RobotIcon,
+  ServerIcon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -25,6 +26,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   DataSourceWithAgentsUsageType,
   SpaceType,
@@ -106,6 +108,9 @@ export const SpaceCategoriesList = ({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const { setIsSearchDisabled } = React.useContext(SpaceSearchContext);
 
@@ -184,6 +189,14 @@ export const SpaceCategoriesList = ({
             icon={CommandLineIcon}
             label="Create a Dust App"
           />
+          {hasFeature("mcp_actions") && (
+            <DropdownMenuItem
+              disabled={!canWriteInSpace}
+              href={`/w/${owner.sId}/spaces/${space.sId}/categories/mcp`}
+              icon={ServerIcon}
+              label="Create an MCP"
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>

@@ -8,9 +8,11 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -48,6 +50,9 @@ async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  const ff = await getFeatureFlags(workspace);
+
   switch (req.method) {
     case "GET": {
       const dataSourceViews = await DataSourceViewResource.listBySpace(
@@ -58,6 +63,10 @@ async function handler(
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};
       for (const category of DATA_SOURCE_VIEW_CATEGORIES) {
+        if (!ff.includes("mcp_actions") && category === "mcp") {
+          continue;
+        }
+
         categories[category] = {
           count: 0,
           usage: {
@@ -96,6 +105,11 @@ async function handler(
       }
 
       categories["apps"].count = apps.length;
+
+      if (ff.includes("mcp_actions")) {
+        const mcps = await RemoteMCPServerResource.listBySpace(auth, space);
+        categories["mcp"].count = mcps.length;
+      }
 
       const currentMembers = (
         await Promise.all(

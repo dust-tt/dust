@@ -7,6 +7,7 @@ import {
   NavigationList,
   NavigationListLabel,
   PlusIcon,
+  SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import { sortBy, uniqBy } from "lodash";
@@ -27,12 +28,14 @@ import {
 } from "@app/lib/spaces";
 import { useApps } from "@app/lib/swr/apps";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import { useRemoteMCPServers } from "@app/lib/swr/remote_mcp_servers";
 import {
   useSpaceDataSourceViews,
   useSpaceInfo,
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -42,6 +45,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+import type { MCPResponse } from "@app/types/mcp";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;
@@ -230,7 +234,9 @@ const SystemSpaceMenu = ({
     <Tree variant="navigator">
       {SYSTEM_SPACE_ITEMS.map((item) => (
         <SystemSpaceItem
-          category={item.category as Exclude<DataSourceViewCategory, "apps">}
+          category={
+            item.category as Exclude<DataSourceViewCategory, "apps" | "mcp">
+          }
           key={item.label}
           label={item.label}
           owner={owner}
@@ -251,7 +257,7 @@ const SystemSpaceItem = ({
   space,
   visual,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: Exclude<DataSourceViewCategory, "apps" | "mcp">;
   label: string;
   owner: LightWorkspaceType;
   space: SpaceType;
@@ -339,6 +345,9 @@ const SpaceMenuItem = ({
 }) => {
   const router = useRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const isAncestorToCurrentPage =
@@ -388,6 +397,18 @@ const SpaceMenuItem = ({
                     space={space}
                   />
                 );
+              } else if (c === "mcp") {
+                if (!hasFeature("mcp_actions")) {
+                  return null;
+                }
+                return (
+                  <SpaceRemoteMCPServersSubMenu
+                    key={c}
+                    category={c}
+                    owner={owner}
+                    space={space}
+                  />
+                );
               } else {
                 return (
                   spaceInfo.categories[c] && (
@@ -430,6 +451,10 @@ const DATA_SOURCE_OR_VIEW_SUB_ITEMS: {
   apps: {
     icon: CommandLineIcon,
     label: "Apps",
+  },
+  mcp: {
+    icon: SparklesIcon,
+    label: "MCP Servers",
   },
 };
 
@@ -551,7 +576,7 @@ const SpaceDataSourceViewSubMenu = ({
 }: {
   owner: LightWorkspaceType;
   space: SpaceType;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: Exclude<DataSourceViewCategory, "apps" | "mcp">;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const router = useRouter();
@@ -700,6 +725,84 @@ const SpaceAppSubMenu = ({
         <Tree isLoading={isAppsLoading}>
           {sortBy(apps, "name").map((app) => (
             <SpaceAppItem app={app} key={app.sId} owner={owner} />
+          ))}
+        </Tree>
+      )}
+    </Tree.Item>
+  );
+};
+
+const SpaceRemoteMCPServerItem = ({
+  server,
+}: {
+  server: MCPResponse;
+  owner: LightWorkspaceType;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={server.name}
+      visual={SparklesIcon}
+      areActionsFading={false}
+    />
+  );
+};
+
+const SpaceRemoteMCPServersSubMenu = ({
+  owner,
+  space,
+  category,
+}: {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+  category: "mcp";
+}) => {
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const router = useRouter();
+
+  const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
+  const isAncestorToCurrentPage =
+    router.asPath.startsWith(spaceCategoryPath + "/") ||
+    router.asPath === spaceCategoryPath;
+
+  // Unfold the space's category if it's an ancestor of the current page.
+  const [isExpanded, setIsExpanded] = useState(false);
+  useEffect(() => {
+    if (isAncestorToCurrentPage) {
+      setIsExpanded(isAncestorToCurrentPage);
+    }
+  }, [isAncestorToCurrentPage]);
+
+  const categoryDetails = DATA_SOURCE_OR_VIEW_SUB_ITEMS[category];
+
+  const { isServersLoading, servers } = useRemoteMCPServers({
+    owner,
+    space,
+  });
+
+  return (
+    <Tree.Item
+      isNavigatable
+      label={categoryDetails.label}
+      collapsed={!isExpanded}
+      onItemClick={async () => {
+        await setNavigationSelection({ lastSpaceId: space.sId });
+        void router.push(spaceCategoryPath);
+      }}
+      isSelected={router.asPath === spaceCategoryPath}
+      onChevronClick={() => setIsExpanded(!isExpanded)}
+      visual={categoryDetails.icon}
+      areActionsFading={false}
+      type={isServersLoading || servers.length > 0 ? "node" : "leaf"}
+    >
+      {isExpanded && (
+        <Tree isLoading={isServersLoading}>
+          {sortBy(servers, "name").map((server) => (
+            <SpaceRemoteMCPServerItem
+              server={server}
+              key={server.id}
+              owner={owner}
+            />
           ))}
         </Tree>
       )}

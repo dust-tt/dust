@@ -150,7 +150,7 @@ export function useSpaceDataSourceViews({
   spaceId,
   workspaceId,
 }: {
-  category?: Exclude<DataSourceViewCategory, "apps">;
+  category?: Exclude<DataSourceViewCategory, "apps" | "mcp">;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -191,7 +191,7 @@ export function useSpaceDataSourceViewsWithDetails({
   spaceId,
   workspaceId,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: Exclude<DataSourceViewCategory, "apps" | "mcp">;
   disabled?: boolean;
   spaceId: string;
   workspaceId: string;
@@ -342,7 +342,7 @@ export function useDeleteFolderOrWebsite({
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: Exclude<DataSourceViewCategory, "apps" | "mcp">;
 }) {
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =

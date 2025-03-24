@@ -71,6 +71,8 @@ export async function getDataSourceViewsUsageByCategory({
       break;
     case "apps":
       return {};
+    case "mcp":
+      return {};
     default:
       assertNever(category);
   }
