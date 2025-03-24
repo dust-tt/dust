@@ -1,10 +1,12 @@
-import { assertNever } from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { isGraphQLNotFound } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
   GithubUser,
@@ -21,6 +23,7 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import type { DiscussionNode } from "@connectors/connectors/github/lib/github_graphql";
 import {
   getCodeRootInternalId,
   getDiscussionInternalId,
@@ -345,13 +348,26 @@ async function renderDiscussion(
   login: string,
   discussionNumber: number,
   logger: Logger
-) {
-  const discussion = await getDiscussion(
+): Promise<
+  Result<
+    {
+      discussion: DiscussionNode;
+      content: CoreAPIDataSourceDocumentSection;
+    },
+    Error
+  >
+> {
+  const discussionRes = await getDiscussion(
     connector,
     repoName,
     login,
     discussionNumber
   );
+  if (discussionRes.isErr()) {
+    return new Err(discussionRes.error);
+  }
+
+  const discussion = discussionRes.value;
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
@@ -446,10 +462,10 @@ async function renderDiscussion(
     nextCursor = cursor;
   }
 
-  return {
+  return new Ok({
     discussion,
     content,
-  };
+  });
 }
 
 export async function githubUpsertDiscussionActivity(
@@ -474,7 +490,7 @@ export async function githubUpsertDiscussionActivity(
     ...loggerArgs,
   });
   logger.info("Upserting GitHub discussion.");
-  const { discussion, content: renderedDiscussion } = await renderDiscussion(
+  const renderedDiscussionRes = await renderDiscussion(
     dataSourceConfig,
     connector,
     repoName,
@@ -482,6 +498,17 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber,
     logger
   );
+
+  if (renderedDiscussionRes.isErr()) {
+    if (isGraphQLNotFound(renderedDiscussionRes.error)) {
+      logger.warn("Discussion not found. Skipping.");
+      return;
+    }
+    throw renderedDiscussionRes.error;
+  }
+
+  const { discussion, content: renderedDiscussion } =
+    renderedDiscussionRes.value;
 
   if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
     logger.info("Discussion is too large to upsert.");

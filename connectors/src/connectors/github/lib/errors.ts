@@ -31,3 +31,12 @@ export function isBadCredentials(error: unknown): error is RequestError {
     error.message.includes("Bad credentials")
   );
 }
+
+export function isGraphQLNotFound(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    "errors" in error &&
+    Array.isArray(error.errors) &&
+    error.errors.some((e) => e.type === "NOT_FOUND")
+  );
+}
