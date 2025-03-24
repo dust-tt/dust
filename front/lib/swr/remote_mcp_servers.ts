@@ -5,7 +5,6 @@ import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { MCPApiResponse, MCPResponse } from "@app/types/mcp";
 
-// Type for the GetRemoteMCPServersResponseBody
 export type GetRemoteMCPServersResponseBody = {
   servers: MCPResponse[];
 };

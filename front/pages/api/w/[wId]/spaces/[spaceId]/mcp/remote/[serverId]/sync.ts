@@ -1,5 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,47 +7,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
-
-/**
- * Synchronizes with an MCP server and retrieves its metadata and tools.
- * This function connects to the server and fetches the necessary information.
- */
-async function fetchServerMetadata(url: string) {
-  const mcpClient = new Client({
-    name: "dust-mcp-client",
-    version: "1.0.0",
-  });
-
-  try {
-    const sseTransport = new SSEClientTransport(new URL(url));
-    await mcpClient.connect(sseTransport);
-
-    const serverVersion = await mcpClient.getServerVersion();
-    const serverName = serverVersion?.name || "A Remote MCP Server";
-    const serverDescription =
-      serverVersion &&
-      "description" in serverVersion &&
-      typeof serverVersion.description === "string"
-        ? serverVersion.description
-        : "Remote MCP server description";
-
-    // Get available tools from the server
-    const toolsResult = await mcpClient.listTools();
-    const serverTools = toolsResult.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description || "",
-    }));
-
-    return {
-      name: serverName,
-      description: serverDescription,
-      tools: serverTools,
-    };
-  } finally {
-    // Ensure client is closed even if there was an error
-    await mcpClient.close();
-  }
-}
+import { fetchServerMetadata } from "@app/lib/api/mcp";
 
 async function handler(
   req: NextApiRequest,
@@ -119,7 +77,16 @@ async function handler(
     });
   }
 
-  if (method === "POST") {
+  if (method !== "POST") {
+    return apiError(req, res, {
+      status_code: 405,
+      api_error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, POST is expected.",
+      },
+    });
+  }
+  
       const metadata = await fetchServerMetadata(server.url);
 
       await server.updateSettings(auth, {
@@ -144,14 +111,6 @@ async function handler(
           sharedSecret: server.sharedSecret,
         },
       });
-  } else {
-    return apiError(req, res, {
-      status_code: 405,
-      api_error: {
-        type: "method_not_supported_error",
-        message: "The method passed is not supported, POST is expected.",
-      },
-    });
   }
 }
 

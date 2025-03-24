@@ -77,81 +77,81 @@ async function handler(
 
   switch (method) {
     case "GET": {
-        return res.status(200).json({
-          success: true,
-          data: {
-            id: server.sId,
-            workspaceId: wId,
-            name: server.name,
-            description: server.description || "",
-            tools: server.cachedTools,
-            url: server.url,
-            sharedSecret: server.sharedSecret,
-          },
-        });
+      return res.status(200).json({
+        success: true,
+        data: {
+          id: server.sId,
+          workspaceId: wId,
+          name: server.name,
+          description: server.description || "",
+          tools: server.cachedTools,
+          url: server.url,
+          sharedSecret: server.sharedSecret,
+        },
+      });
     }
 
     case "PATCH": {
-        const { name, url, description, tools } = req.body;
+      const { name, url, description, tools } = req.body;
 
-        if (!name && !url && !description && !tools) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "At least one field to update is required",
-            },
-          });
-        }
-
-        const updateSettingsData: any = {};
-        if (name) {
-          updateSettingsData.name = name;
-        }
-        if (url) {
-          updateSettingsData.url = url;
-        }
-        if (description !== undefined) {
-          updateSettingsData.description = description;
-        }
-
-        if (Object.keys(updateSettingsData).length > 0) {
-          await server.updateSettings(auth, updateSettingsData);
-        }
-
-        if (tools) {
-          await server.updateTools(auth, {
-            cachedTools: tools,
-            lastSyncAt: new Date(),
-          });
-        }
-
-        return res.status(200).json({
-          success: true,
-          data: {
-            id: server.sId,
-            workspaceId: wId,
-            name: server.name,
-            description: server.description || "",
-            tools: server.cachedTools,
-            url: server.url,
-            sharedSecret: server.sharedSecret,
+      if (!name && !url && !description && !tools) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "At least one field to update is required",
           },
         });
+      }
+
+      const updateSettingsData: any = {};
+      if (name) {
+        updateSettingsData.name = name;
+      }
+      if (url) {
+        updateSettingsData.url = url;
+      }
+      if (description !== undefined) {
+        updateSettingsData.description = description;
+      }
+
+      if (Object.keys(updateSettingsData).length > 0) {
+        await server.updateSettings(auth, updateSettingsData);
+      }
+
+      if (tools) {
+        await server.updateTools(auth, {
+          cachedTools: tools,
+          lastSyncAt: new Date(),
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          id: server.sId,
+          workspaceId: wId,
+          name: server.name,
+          description: server.description || "",
+          tools: server.cachedTools,
+          url: server.url,
+          sharedSecret: server.sharedSecret,
+        },
+      });
     }
 
     case "DELETE": {
-        await server.hardDelete(auth);
+      await server.hardDelete(auth);
 
-        return res.status(200).json({
-          success: true,
-          data: {
-            id: serverId,
-            name: server.name,
-            description: server.description || "",
-            tools: server.cachedTools,
-          },
-        });
+      return res.status(200).json({
+        success: true,
+        data: {
+          id: serverId,
+          name: server.name,
+          description: server.description || "",
+          tools: server.cachedTools,
+        },
+      });
     }
 
     default:
