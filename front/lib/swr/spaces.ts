@@ -785,6 +785,7 @@ export function useSpacesSearch({
 }
 
 export function useSpaceSearchWithInfiniteScroll({
+  disabled = false,
   includeDataSources = false,
   nodeIds,
   owner,
@@ -815,23 +816,10 @@ export function useSpaceSearchWithInfiniteScroll({
       ? `/api/w/${owner.sId}/search`
       : null;
 
-  const nodesFetcher: Fetcher<{
-    nodes: DataSourceContentNode[];
-    nextPageCursor: string | null;
-  }> = async (fetchKey: string) => {
-    if (!fetchKey) {
-      return null;
-    }
-
-    const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
-
-    return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
-  };
-
   const { data, error, setSize, size, isValidating, isLoading } =
     useSWRInfiniteWithDefaults(
       (_, previousPageData) => {
-        if (!url) {
+        if (!url || disabled) {
           return null;
         }
 
@@ -845,7 +833,14 @@ export function useSpaceSearchWithInfiniteScroll({
 
         return JSON.stringify([url + "?" + params.toString(), body]);
       },
-      nodesFetcher,
+      async (fetchKey: string) => {
+        if (!fetchKey) {
+          return null;
+        }
+      
+        const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
+        return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"])
+      },
       {
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
@@ -861,7 +856,7 @@ export function useSpaceSearchWithInfiniteScroll({
     isSearchLoading: isLoading,
     isSearchError: error,
     isSearchValidating: isValidating,
-    hasMore: data?.[size - 1] ? data[size - 1].nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not 
+    hasMore: data?.[size - 1] ? data[size - 1]?.nextPageCursor !== null : false, // check the last page of the array to see if there is a next page or not 
     nextPage: useCallback(async () => {
       await setSize((size) => size + 1);
     }, [setSize]),
