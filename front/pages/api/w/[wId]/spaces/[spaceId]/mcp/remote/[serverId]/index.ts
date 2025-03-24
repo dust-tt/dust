@@ -77,7 +77,6 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      try {
         return res.status(200).json({
           success: true,
           data: {
@@ -90,20 +89,9 @@ async function handler(
             sharedSecret: server.sharedSecret,
           },
         });
-      } catch (error) {
-        console.error("Error fetching remote MCP server:", error);
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Internal server error",
-          },
-        });
-      }
     }
 
     case "PATCH": {
-      try {
         const { name, url, description, tools } = req.body;
 
         if (!name && !url && !description && !tools) {
@@ -150,20 +138,9 @@ async function handler(
             sharedSecret: server.sharedSecret,
           },
         });
-      } catch (error) {
-        console.error("Error updating remote MCP server:", error);
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Internal server error",
-          },
-        });
-      }
     }
 
     case "DELETE": {
-      try {
         await server.hardDelete(auth);
 
         return res.status(200).json({
@@ -175,16 +152,6 @@ async function handler(
             tools: server.cachedTools,
           },
         });
-      } catch (error) {
-        console.error("Error deleting remote MCP server:", error);
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Internal server error",
-          },
-        });
-      }
     }
 
     default:

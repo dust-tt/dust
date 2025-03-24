@@ -141,7 +141,6 @@ async function handler(
     }
 
     case "POST": {
-      try {
         const { url } = req.body;
 
         if (!url) {
@@ -200,16 +199,6 @@ async function handler(
             sharedSecret: newRemoteMCPServer.sharedSecret,
           },
         });
-      } catch (error) {
-        console.error("Error creating MCP server:", error);
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Internal server error",
-          },
-        });
-      }
     }
 
     default:

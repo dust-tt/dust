@@ -120,7 +120,6 @@ async function handler(
   }
 
   if (method === "POST") {
-    try {
       const metadata = await fetchServerMetadata(server.url);
 
       await server.updateSettings(auth, {
@@ -145,16 +144,6 @@ async function handler(
           sharedSecret: server.sharedSecret,
         },
       });
-    } catch (error) {
-      console.error("Error synchronizing MCP server:", error);
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to synchronize MCP server",
-        },
-      });
-    }
   } else {
     return apiError(req, res, {
       status_code: 405,
