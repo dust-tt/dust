@@ -65,6 +65,10 @@ export function ActionDustAppRun({
 
   const noDustApp = dustApps.length === 0;
 
+  const hasNoDustAppsInAllowedSpaces = dustApps.every(
+    (app) => !allowedSpaces.some((space) => space.sId === app.space.sId)
+  );
+
   if (!action.configuration) {
     return null;
   }
@@ -141,7 +145,7 @@ export function ActionDustAppRun({
                 const appsInSpace = space
                   ? dustApps.filter((app) => app.space.sId === space.sId)
                   : dustApps;
-                if (appsInSpace.length === 0) {
+                if (appsInSpace.length === 0 || hasNoDustAppsInAllowedSpaces) {
                   return <>No Dust Apps available.</>;
                 }
 
