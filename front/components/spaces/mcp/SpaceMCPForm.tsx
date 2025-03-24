@@ -35,7 +35,6 @@ export function SpaceMCPForm({
   const [isSecretVisible, setIsSecretVisible] = useState(false);
 
   useEffect(() => {
-    // Reset any error state when the URL changes
     setSyncError(null);
   }, [state.url]);
 

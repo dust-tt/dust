@@ -81,7 +81,6 @@ export default function SpaceMCPModal({
     disabled: !serverId,
   });
 
-  // Get update, sync hooks
   const { updateServer } = useUpdateRemoteMCPServer();
   const { syncById, syncByUrl } = useSyncRemoteMCPServer();
 
@@ -115,7 +114,6 @@ export default function SpaceMCPModal({
 
   const [formState, dispatch] = useReducer(formReducer, getInitialFormState());
 
-  // Load data from existing server into form
   useEffect(() => {
     if (server) {
       dispatch({ type: "SET_FIELD", field: "name", value: server.name });
@@ -149,7 +147,6 @@ export default function SpaceMCPModal({
       const serverIdToUse = serverId || mcpServerId;
 
       if (serverIdToUse) {
-        // Update existing MCP server using the hook
         await updateServer(owner, space, serverIdToUse, {
           name: formState.name,
           url: formState.url,
@@ -206,7 +203,6 @@ export default function SpaceMCPModal({
 
     setIsSynchronizing(true);
     try {
-      // Determine if we should sync by ID or URL
       const serverIdToUse = serverId || mcpServerId;
       let result: MCPApiResponse;
 
@@ -217,7 +213,6 @@ export default function SpaceMCPModal({
       }
 
       if (result.success && result.data) {
-        // Populate form state with the received data
         dispatch({ type: "SET_FIELD", field: "name", value: result.data.name });
         dispatch({
           type: "SET_FIELD",
@@ -230,7 +225,6 @@ export default function SpaceMCPModal({
           value: result.data.tools,
         });
 
-        // Store the shared secret and server ID
         setSharedSecret(result.data.sharedSecret);
         setMcpServerId(result.data.id);
 

@@ -1,5 +1,3 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,47 +7,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
-
-/**
- * Synchronizes with an MCP server and retrieves its metadata and tools.
- * This function connects to the server and fetches the necessary information.
- */
-async function fetchServerMetadata(url: string) {
-  const mcpClient = new Client({
-    name: "dust-mcp-client",
-    version: "1.0.0",
-  });
-
-  try {
-    const sseTransport = new SSEClientTransport(new URL(url));
-    await mcpClient.connect(sseTransport);
-
-    const serverVersion = await mcpClient.getServerVersion();
-    const serverName = serverVersion?.name || "A Remote MCP Server";
-    const serverDescription =
-      serverVersion &&
-      "description" in serverVersion &&
-      typeof serverVersion.description === "string"
-        ? serverVersion.description
-        : "Remote MCP server description";
-
-    // Get available tools from the server
-    const toolsResult = await mcpClient.listTools();
-    const serverTools = toolsResult.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description || "",
-    }));
-
-    return {
-      name: serverName,
-      description: serverDescription,
-      tools: serverTools,
-    };
-  } finally {
-    // Ensure client is closed even if there was an error
-    await mcpClient.close();
-  }
-}
 
 async function handler(
   req: NextApiRequest,
@@ -73,19 +30,17 @@ async function handler(
     });
   }
 
-  // Check authentication
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can view MCP servers.",
+          "Only users that are `builders` for the current workspace can manage MCP servers.",
       },
     });
   }
 
-  // Ensure workspace ID matches authenticated workspace
   if (auth.workspace()?.sId !== wId) {
     return apiError(req, res, {
       status_code: 403,
@@ -96,7 +51,6 @@ async function handler(
     });
   }
 
-  // Get the space resource
   const space = await SpaceResource.fetchById(auth, spaceId);
 
   if (!space) {
@@ -109,7 +63,6 @@ async function handler(
     });
   }
 
-  // Find the specific remote MCP server for all methods
   const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
   if (!server) {
@@ -134,7 +87,6 @@ async function handler(
             description: server.description || "",
             tools: server.cachedTools,
             url: server.url,
-            // Include shared secret in individual server response
             sharedSecret: server.sharedSecret,
           },
         });
@@ -150,81 +102,35 @@ async function handler(
       }
     }
 
-    case "POST": {
-      // Special route for synchronizing this specific server
-      if (req.query.action === "sync") {
-        try {
-          // Synchronize the server by fetching new metadata
-          const metadata = await fetchServerMetadata(server.url);
-
-          // Update the server settings with the new metadata
-          await server.updateSettings(auth, {
-            name: metadata.name,
-            description: metadata.description,
-          });
-
-          // Update tools with the new metadata
-          await server.updateTools(auth, {
-            cachedTools: metadata.tools,
-            lastSyncAt: new Date(),
-          });
-
-          return res.status(200).json({
-            success: true,
-            data: {
-              id: server.sId,
-              workspaceId: wId,
-              name: server.name,
-              description: server.description || "",
-              tools: server.cachedTools,
-              url: server.url,
-              sharedSecret: server.sharedSecret,
-            },
-          });
-        } catch (error) {
-          console.error("Error synchronizing MCP server:", error);
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Failed to synchronize MCP server",
-            },
-          });
-        }
-      } else {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Invalid action",
-          },
-        });
-      }
-    }
-
     case "PATCH": {
       try {
         const { name, url, description, tools } = req.body;
 
-        // Validate required fields
-        if (!name || !url) {
+        if (!name && !url && !description && !tools) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "Name and URL are required fields",
+              message: "At least one field to update is required",
             },
           });
         }
 
-        // Update the server settings
-        await server.updateSettings(auth, {
-          name,
-          url,
-          description,
-        });
+        const updateSettingsData: any = {};
+        if (name) {
+          updateSettingsData.name = name;
+        }
+        if (url) {
+          updateSettingsData.url = url;
+        }
+        if (description !== undefined) {
+          updateSettingsData.description = description;
+        }
 
-        // Update tools if provided
+        if (Object.keys(updateSettingsData).length > 0) {
+          await server.updateSettings(auth, updateSettingsData);
+        }
+
         if (tools) {
           await server.updateTools(auth, {
             cachedTools: tools,
@@ -241,6 +147,7 @@ async function handler(
             description: server.description || "",
             tools: server.cachedTools,
             url: server.url,
+            sharedSecret: server.sharedSecret,
           },
         });
       } catch (error) {
@@ -286,7 +193,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST, PATCH, or DELETE is expected.",
+            "The method passed is not supported, GET, PATCH, or DELETE is expected.",
         },
       });
   }

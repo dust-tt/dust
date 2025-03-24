@@ -41,7 +41,6 @@ async function fetchServerMetadata(url: string) {
         ? serverVersion.description
         : "Remote MCP server description";
 
-    // Get available tools from the server
     const toolsResult = await mcpClient.listTools();
     const serverTools = toolsResult.tools.map((tool) => ({
       name: tool.name,
@@ -54,54 +53,7 @@ async function fetchServerMetadata(url: string) {
       tools: serverTools,
     };
   } finally {
-    // Ensure client is closed even if there was an error
     await mcpClient.close();
-  }
-}
-
-/**
- * Synchronizes with an MCP server by creating a new one or updating an existing one.
- * Returns the synchronized server resource.
- */
-async function synchronizeServer(
-  auth: Authenticator,
-  workspace: any,
-  space: any,
-  url: string,
-  existingServer?: any
-) {
-  // Fetch metadata from the remote server
-  const metadata = await fetchServerMetadata(url);
-
-  if (existingServer) {
-    // Update existing server
-    await existingServer.updateSettings(auth, {
-      name: metadata.name,
-      url: url,
-      description: metadata.description,
-    });
-
-    await existingServer.updateTools(auth, {
-      cachedTools: metadata.tools,
-      lastSyncAt: new Date(),
-    });
-
-    return existingServer;
-  } else {
-    // Create a new MCP server
-    const sharedSecret = generateSecureToken();
-    return RemoteMCPServerResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: metadata.name,
-        url: url,
-        description: metadata.description,
-        cachedTools: metadata.tools,
-        lastSyncAt: new Date(),
-        sharedSecret,
-      },
-      space
-    );
   }
 }
 
@@ -125,7 +77,6 @@ async function handler(
     });
   }
 
-  // Check authentication
   if (!auth.isBuilder()) {
     return apiError(req, res, {
       status_code: 403,
@@ -137,7 +88,6 @@ async function handler(
     });
   }
 
-  // Ensure workspace ID matches authenticated workspace
   if (auth.workspace()?.sId !== wId) {
     return apiError(req, res, {
       status_code: 403,
@@ -148,7 +98,6 @@ async function handler(
     });
   }
 
-  // Get the actual workspace and space database IDs
   const workspace = auth.workspace();
   const space = await SpaceResource.fetchById(auth, spaceId);
 
@@ -164,118 +113,75 @@ async function handler(
 
   switch (method) {
     case "GET": {
-      // Check if we're listing servers or synchronizing with a specific URL
-      const { url } = req.query;
+      try {
+        const servers = await RemoteMCPServerResource.listBySpace(auth, space);
 
-      if (url) {
-        // Synchronize with a remote MCP server
-        try {
-          if (typeof url !== "string" || !url) {
-            return apiError(req, res, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: "URL parameter is required",
-              },
-            });
-          }
+        const serverResponses = servers.map((server) => ({
+          id: server.sId,
+          workspaceId: wId,
+          name: server.name,
+          description: server.description || "",
+          tools: server.cachedTools,
+          url: server.url,
+        }));
 
-          // Check if a server with this URL already exists
-          // If a server with the same URL exists, we'll update it instead of creating a new one
-          // This ensures that synchronizing an existing server doesn't create duplicates
-          const existingServers = await RemoteMCPServerResource.listBySpace(
-            auth,
-            space
-          );
-          const existingServer = existingServers.find(
-            (server) => server.url === url
-          );
-
-          // Synchronize the server (either create new or update existing)
-          const mcpServer = await synchronizeServer(
-            auth,
-            workspace,
-            space,
-            url,
-            existingServer
-          );
-
-          return res.status(200).json({
-            success: true,
-            data: {
-              id: mcpServer.sId,
-              workspaceId: wId,
-              name: mcpServer.name,
-              description: mcpServer.description ?? "",
-              tools: mcpServer.cachedTools,
-              sharedSecret: mcpServer.sharedSecret,
-            },
-          });
-        } catch (error) {
-          console.error("Error synchronizing MCP:", error);
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Internal server error",
-            },
-          });
-        }
-      } else {
-        try {
-          const servers = await RemoteMCPServerResource.listBySpace(
-            auth,
-            space
-          );
-
-          const serverResponses = servers.map((server) => ({
-            id: server.sId,
-            workspaceId: wId,
-            name: server.name,
-            description: server.description || "",
-            tools: server.cachedTools,
-            url: server.url,
-          }));
-
-          return res.status(200).json({
-            servers: serverResponses,
-          });
-        } catch (error) {
-          console.error("Error listing remote MCP servers:", error);
-          return apiError(req, res, {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "Internal server error",
-            },
-          });
-        }
+        return res.status(200).json({
+          servers: serverResponses,
+        });
+      } catch (error) {
+        console.error("Error listing remote MCP servers:", error);
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Internal server error",
+          },
+        });
       }
     }
 
     case "POST": {
       try {
-        const { name, url, description, tools } = req.body;
+        const { url } = req.body;
 
-        if (!name || !url || !description) {
+        if (!url) {
           return apiError(req, res, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "Missing required fields",
+              message: "URL is required",
             },
           });
         }
 
+        const existingServers = await RemoteMCPServerResource.listBySpace(
+          auth,
+          space
+        );
+        const existingServer = existingServers.find(
+          (server) => server.url === url
+        );
+
+        if (existingServer) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "A server with this URL already exists",
+            },
+          });
+        }
+
+        const metadata = await fetchServerMetadata(url);
         const sharedSecret = generateSecureToken();
 
         const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
           {
             workspaceId: workspace.id,
-            name,
-            url,
-            description,
-            cachedTools: tools || [],
+            name: metadata.name,
+            url: url,
+            description: metadata.description,
+            cachedTools: metadata.tools,
             lastSyncAt: new Date(),
             sharedSecret,
           },
@@ -290,10 +196,12 @@ async function handler(
             name: newRemoteMCPServer.name,
             description: newRemoteMCPServer.description ?? "",
             tools: newRemoteMCPServer.cachedTools,
+            url: newRemoteMCPServer.url,
+            sharedSecret: newRemoteMCPServer.sharedSecret,
           },
         });
       } catch (error) {
-        console.error("Error creating MCP:", error);
+        console.error("Error creating MCP server:", error);
         return apiError(req, res, {
           status_code: 500,
           api_error: {

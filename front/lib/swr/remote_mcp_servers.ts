@@ -64,6 +64,15 @@ export function useRemoteMCPServer({
     disabled,
   });
 
+  if (!serverId) {
+    return {
+      server: null,
+      isServerLoading: false,
+      isServerError: true,
+      mutateServer: () => {},
+    };
+  }
+
   return {
     server: data?.data || null,
     isServerLoading: !error && !data,
@@ -104,15 +113,19 @@ export function useDeleteRemoteMCPServer() {
  * This can either create a new server using a URL or sync an existing server by its ID
  */
 export function useSyncRemoteMCPServer() {
-  // Sync by URL - this will find existing servers with the same URL or create a new one
+  // Create a new server with the provided URL
   const syncByUrl = async (
     owner: LightWorkspaceType,
     space: SpaceType,
     url: string
   ): Promise<MCPApiResponse> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote?url=${encodeURIComponent(url)}`,
-      { method: "GET" }
+      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      }
     );
 
     if (!response.ok) {
@@ -125,14 +138,13 @@ export function useSyncRemoteMCPServer() {
     return response.json();
   };
 
-  // Sync an existing server by its ID
   const syncById = async (
     owner: LightWorkspaceType,
     space: SpaceType,
     serverId: string
   ): Promise<MCPApiResponse> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}?action=sync`,
+      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}/sync`,
       { method: "POST" }
     );
 
