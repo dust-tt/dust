@@ -9,6 +9,7 @@ import {
   fetcher,
   fetcherWithBody,
   getErrorFromResponse,
+  useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type {
@@ -776,5 +777,89 @@ export function useSpacesSearch({
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
     nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+export function useSpaceSearchWithInfiniteScroll({
+  includeDataSources = false,
+  nodeIds,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pageSize = 25,
+}: SpacesSearchParams & { pageSize?: number }): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  searchResultNodes: DataSourceContentNode[];
+  nextPage: () => Promise<void>;
+  hasMore: boolean;
+} {
+  const body = {
+    query: search,
+    viewType,
+    nodeIds,
+    spaceIds,
+    includeDataSources,
+    limit: pageSize,
+  };
+
+  // Only perform a query if we have a valid search
+  const url =
+    (search && search.length >= 1) || nodeIds
+      ? `/api/w/${owner.sId}/search`
+      : null;
+
+  const nodesFetcher: Fetcher<{
+    nodes: DataSourceContentNode[];
+    nextPageCursor: string | null;
+  }> = async (fetchKey: string) => {
+    if (!fetchKey) {
+      return null;
+    }
+
+    const [urlWithParams, bodyWithCursor] = JSON.parse(fetchKey);
+
+    return fetcherWithBody([urlWithParams, bodyWithCursor, "POST"]);
+  };
+
+  const { data, error, setSize, size, isValidating, isLoading } =
+    useSWRInfiniteWithDefaults(
+      (_, previousPageData) => {
+        if (!url) {
+          return null;
+        }
+
+        const params = new URLSearchParams();
+
+        params.append("limit", pageSize.toString());
+
+        if (previousPageData && previousPageData?.nextPageCursor) {
+          params.append("cursor", previousPageData.nextPageCursor);
+        }
+
+        return JSON.stringify([url + "?" + params.toString(), body]);
+      },
+      nodesFetcher,
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: false,
+        revalidateFirstPage: false,
+      }
+    );
+
+  return {
+    searchResultNodes: useMemo(
+      () => (data ? data.flatMap((d) => (d ? d.nodes : [])) : []),
+      [data]
+    ),
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    isSearchValidating: isValidating,
+    hasMore: data?.[size - 1] ? data[size - 1].nextPageCursor !== null : false,
+    nextPage: async () => {
+      await setSize((size) => size + 1);
+    },
   };
 }

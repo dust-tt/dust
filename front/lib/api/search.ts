@@ -31,6 +31,7 @@ export type DataSourceContentNode = ContentNodeWithParent & {
 export type SearchResult = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 };
 
 type SearchError = {

@@ -13,10 +13,9 @@ import {
   ScrollBar,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useCursorPagination } from "@app/hooks/useCursorPagination";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { DataSourceContentNode } from "@app/lib/api/search";
@@ -25,7 +24,10 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import {
+  useSpaces,
+  useSpaceSearchWithInfiniteScroll,
+} from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -67,9 +69,6 @@ export const InputBarAttachmentsPicker = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-  const [currentResultNodes, setCurrentResultNodes] = useState<
-    DataSourceViewContentNode[]
-  >([]);
 
   const {
     inputValue: search,
@@ -81,23 +80,15 @@ export const InputBarAttachmentsPicker = ({
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
 
-  const {
-    cursorPagination,
-    reset: resetPagination,
-    handleLoadNext,
-    pageIndex,
-  } = useCursorPagination(PAGE_SIZE);
+  const { spaces } = useSpaces({ workspaceId: owner.sId });
 
-  const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading, nextPageCursor } =
-    useSpacesSearch({
+  const { searchResultNodes, isSearchLoading, hasMore, nextPage } =
+    useSpaceSearchWithInfiniteScroll({
       includeDataSources: true,
       owner,
       search: searchQuery,
       viewType: "all",
-      disabled: isSpacesLoading || !searchQuery,
-      spaceIds: spaces.map((s) => s.sId),
-      pagination: cursorPagination,
+      pageSize: PAGE_SIZE,
     });
 
   const attachedNodeIds = useMemo(() => {
@@ -109,28 +100,16 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
+  const unfoldedNodes = useMemo(
+    () => getUnfoldedNodes(searchResultNodes),
+    [searchResultNodes]
+  );
+
   const searchbarRef = (element: HTMLInputElement) => {
     if (element) {
       element.focus();
     }
   };
-
-  useEffect(() => {
-    resetPagination();
-  }, [searchQuery, resetPagination]);
-
-  useEffect(() => {
-    if (searchResultNodes && !isSearchLoading) {
-      const unfoldedNodes = getUnfoldedNodes(searchResultNodes);
-      setCurrentResultNodes((prevResultNodes) => {
-        if (pageIndex === 0) {
-          return unfoldedNodes;
-        } else {
-          return [...prevResultNodes, ...unfoldedNodes];
-        }
-      });
-    }
-  }, [searchResultNodes, isSearchLoading, pageIndex]);
 
   return (
     <DropdownMenu
@@ -197,8 +176,8 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
               <div className="pt-0" ref={itemsContainerRef}>
-                {currentResultNodes.length > 0 ? (
-                  currentResultNodes.map((item, index) => (
+                {unfoldedNodes.length > 0 ? (
+                  unfoldedNodes.map((item, index) => (
                     <DropdownMenuItem
                       key={index}
                       label={item.title}
@@ -232,9 +211,9 @@ export const InputBarAttachmentsPicker = ({
                 )}
               </div>
               <InfiniteScroll
-                nextPage={() => handleLoadNext(nextPageCursor)}
-                hasMore={!!nextPageCursor}
-                showLoader={currentResultNodes.length > 0 && isSearchLoading}
+                nextPage={nextPage}
+                hasMore={hasMore}
+                showLoader={unfoldedNodes.length > 0 && isSearchLoading}
                 loader={<Loader />}
               />
               <ScrollBar className="py-0" />
