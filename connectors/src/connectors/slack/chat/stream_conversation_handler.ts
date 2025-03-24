@@ -45,7 +45,9 @@ const initialBackoffTime = 1_000;
 
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
-  {
+  conversationData: StreamConversationToSlackParams
+): Promise<Result<undefined, Error>> {
+  const {
     assistantName,
     connector,
     conversation,
@@ -54,8 +56,8 @@ export async function streamConversationToSlack(
     userMessage,
     slackChatBotMessage,
     agentConfigurations,
-  }: StreamConversationToSlackParams
-): Promise<Result<undefined, Error>> {
+  } = conversationData;
+
   const {
     slackChannelId,
     slackClient,
@@ -64,59 +66,17 @@ export async function streamConversationToSlack(
     slackUserId,
   } = slack;
 
-  let lastSentDate = new Date();
-  let backoffTime = initialBackoffTime;
-
-  const postSlackMessageUpdate = async (
-    messageUpdate: SlackMessageUpdate,
-    { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
-      adhereToRateLimit: true,
-    }
-  ) => {
-    if (
-      lastSentDate.getTime() + backoffTime > new Date().getTime() &&
-      adhereToRateLimit
-    ) {
-      return;
-    }
-
-    lastSentDate = new Date();
-    if (adhereToRateLimit) {
-      // Linear increase of backoff time.
-      backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
-    }
-
-    const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(
-        conversationUrl,
-        connector.workspaceId,
-        messageUpdate
-      ),
-      channel: slackChannelId,
-      thread_ts: slackMessageTs,
-      ts: mainMessage.ts as string,
-    });
-
-    if (response.error) {
-      logger.error(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          err: response.error,
-        },
-        "Failed to update Slack message."
-      );
-    }
-  };
-
-  const conversationUrl = makeConversationUrl(
-    connector.workspaceId,
-    conversation.sId
-  );
-
   // Immediately post the conversation URL once available.
   await postSlackMessageUpdate(
-    { isComplete: false, isThinking: true, assistantName, agentConfigurations },
+    {
+      messageUpdate: {
+        isComplete: false,
+        isThinking: true,
+        assistantName,
+        agentConfigurations,
+      },
+      ...conversationData,
+    },
     { adhereToRateLimit: false }
   );
 
@@ -150,12 +110,15 @@ export async function streamConversationToSlack(
       case "tool_params":
         await postSlackMessageUpdate(
           {
-            isComplete: false,
-            isThinking: true,
-            assistantName,
-            agentConfigurations,
-            text: answer,
-            thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            messageUpdate: {
+              isComplete: false,
+              isThinking: true,
+              assistantName,
+              agentConfigurations,
+              text: answer,
+              thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
@@ -212,11 +175,14 @@ export async function streamConversationToSlack(
           break;
         }
         await postSlackMessageUpdate({
-          isComplete: false,
-          text: slackContent,
-          assistantName,
-          agentConfigurations,
-          footnotes,
+          messageUpdate: {
+            isComplete: false,
+            text: slackContent,
+            assistantName,
+            agentConfigurations,
+            footnotes,
+          },
+          ...conversationData,
         });
         break;
       }
@@ -234,11 +200,14 @@ export async function streamConversationToSlack(
 
         await postSlackMessageUpdate(
           {
-            isComplete: true,
-            text: slackContent,
-            assistantName,
-            agentConfigurations,
-            footnotes,
+            messageUpdate: {
+              isComplete: true,
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
@@ -274,6 +243,75 @@ export async function streamConversationToSlack(
 
   return new Err(new Error("Failed to get the final answer from Dust"));
 }
+
+const postSlackMessageUpdate = async (
+  {
+    messageUpdate,
+    slack,
+    connector,
+    conversation,
+    mainMessage,
+  }: {
+    messageUpdate: SlackMessageUpdate;
+    slack: {
+      slackChannelId: string;
+      slackClient: WebClient;
+      slackMessageTs: string;
+      slackUserInfo: SlackUserInfo;
+      slackUserId: string | null;
+    };
+    connector: ConnectorResource;
+    conversation: ConversationPublicType;
+    mainMessage: ChatPostMessageResponse;
+  },
+  { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
+    adhereToRateLimit: true,
+  }
+) => {
+  let lastSentDate = new Date();
+  let backoffTime = initialBackoffTime;
+
+  const { slackChannelId, slackMessageTs, slackClient } = slack;
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  if (
+    lastSentDate.getTime() + backoffTime > new Date().getTime() &&
+    adhereToRateLimit
+  ) {
+    return;
+  }
+
+  lastSentDate = new Date();
+  if (adhereToRateLimit) {
+    // Linear increase of backoff time.
+    backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+  }
+
+  const response = await slackClient.chat.update({
+    ...makeMessageUpdateBlocksAndText(
+      conversationUrl,
+      connector.workspaceId,
+      messageUpdate
+    ),
+    channel: slackChannelId,
+    thread_ts: slackMessageTs,
+    ts: mainMessage.ts as string,
+  });
+
+  if (response.error) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: response.error,
+      },
+      "Failed to update Slack message."
+    );
+  }
+};
 
 /**
  * Safely prepare the answer by normalizing the content for Slack and converting it to Markdown.
