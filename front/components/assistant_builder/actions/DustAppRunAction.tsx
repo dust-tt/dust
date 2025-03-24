@@ -65,9 +65,11 @@ export function ActionDustAppRun({
 
   const noDustApp = dustApps.length === 0;
 
-  const hasNoDustAppsInAllowedSpaces = dustApps.every(
-    (app) => !allowedSpaces.some((space) => space.sId === app.space.sId)
-  );
+  const hasNoDustAppsInAllowedSpaces = useMemo(() => {
+    // No n^2 complexity.
+    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
+    return dustApps.every((app) => !allowedSet.has(app.space.sId));
+  }, [dustApps, allowedSpaces]);
 
   if (!action.configuration) {
     return null;
