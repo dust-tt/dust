@@ -48,7 +48,7 @@ export default function SsoEnforced({
           </div>
           <div className="h-10"></div>
           <div>
-            <p className="font-regular mb-8 text-slate-400">
+            <p className="mb-8 font-normal text-slate-400">
               Access requires Single Sign-On (SSO) authentication. Use your SSO
               provider to sign in.{" "}
             </p>

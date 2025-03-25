@@ -218,7 +218,7 @@ Tree.Item = React.forwardRef<
           {checkbox && <Checkbox {...checkbox} size="xs" />}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
           <div
-            className={`s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
+            className={`s-truncate s-text-sm s-font-normal s-text-foreground dark:s-text-foreground-night ${labelClassName}`}
           >
             {label}
           </div>
@@ -252,7 +252,7 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
   return (
     <div
       className={cn(
-        "s-font-regular s-py-1.5 s-pl-6 s-text-sm",
+        "s-py-1.5 s-pl-6 s-text-sm s-font-normal",
         "s-text-muted-foreground dark:s-text-muted-foreground-night",
         onItemClick ? "s-cursor-pointer" : ""
       )}

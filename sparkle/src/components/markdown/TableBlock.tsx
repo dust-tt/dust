@@ -79,7 +79,7 @@ export function TableBlock({ children }: { children: React.ReactNode }) {
 
 export function TableHeadBlock({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
+    <thead className="s-border-b s-border-border/60 s-bg-muted-background s-px-2 s-py-2 dark:s-border-border-night/60 dark:s-bg-muted-background-night">
       {children}
     </thead>
   );
@@ -87,13 +87,15 @@ export function TableHeadBlock({ children }: { children: React.ReactNode }) {
 
 export function TableBodyBlock({ children }: { children: React.ReactNode }) {
   return (
-    <tbody className="s-bg-white dark:s-bg-background-night">{children}</tbody>
+    <tbody className="s-bg-white dark:s-bg-background-night [&>tr:last-child]:s-border-b-0 [&>tr]:s-border-b [&>tr]:s-border-border/60 [&>tr]:dark:s-border-border-night/60">
+      {children}
+    </tbody>
   );
 }
 
 export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
   return (
-    <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
+    <th className="s-truncate s-whitespace-nowrap s-break-words s-border-r s-border-border/60 s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground last:s-border-r-0 dark:s-border-border-night/60 dark:s-text-muted-foreground-night">
       {children}
     </th>
   );
@@ -101,7 +103,7 @@ export function TableHeaderBlock({ children }: { children: React.ReactNode }) {
 
 export function TableDataBlock({ children }: { children: React.ReactNode }) {
   return (
-    <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
+    <td className="s-border-r s-border-border/60 s-px-4 s-py-3 s-text-sm s-text-foreground last:s-border-r-0 dark:s-border-border-night/60 dark:s-text-foreground-night">
       {Array.isArray(children) ? (
         children.map((child: any, i) => {
           if (child === "<br>") {
