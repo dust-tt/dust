@@ -15,7 +15,7 @@ export async function fetchServerMetadata(url: string) {
     const sseTransport = new SSEClientTransport(new URL(url));
     await mcpClient.connect(sseTransport);
 
-    const serverVersion = await mcpClient.getServerVersion();
+    const serverVersion = mcpClient.getServerVersion();
     const serverName = serverVersion?.name || "A Remote MCP Server";
     const serverDescription =
       serverVersion &&
@@ -24,7 +24,6 @@ export async function fetchServerMetadata(url: string) {
         ? serverVersion.description
         : "Remote MCP server description";
 
-    // Get available tools from the server
     const toolsResult = await mcpClient.listTools();
     const serverTools = toolsResult.tools.map((tool) => ({
       name: tool.name,
@@ -37,7 +36,6 @@ export async function fetchServerMetadata(url: string) {
       tools: serverTools,
     };
   } finally {
-    // Ensure client is closed even if there was an error
     await mcpClient.close();
   }
 }

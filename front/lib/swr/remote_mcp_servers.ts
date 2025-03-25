@@ -83,24 +83,23 @@ export function useRemoteMCPServer({
 /**
  * Hook to delete a remote MCP server
  */
-export function useDeleteRemoteMCPServer() {
-  const deleteServer = async (
-    owner: LightWorkspaceType,
-    space: SpaceType,
-    serverId: string
-  ): Promise<MCPApiResponse> => {
+export function useDeleteRemoteMCPServer(
+  owner: LightWorkspaceType,
+  space: SpaceType
+) {
+  const { mutateServers } = useRemoteMCPServers({
+    disabled: true,
+    owner,
+    space,
+  });
+
+  const deleteServer = async (serverId: string): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`,
       {
         method: "DELETE",
       }
     );
-
-    const { mutateServers } = useRemoteMCPServers({
-      disabled: true,
-      owner,
-      space
-    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -118,7 +117,15 @@ export function useDeleteRemoteMCPServer() {
  * Hook to synchronize with a remote MCP server
  * This can either create a new server using a URL or sync an existing server by its ID
  */
-export function useSyncRemoteMCPServer() {
+export function useSyncRemoteMCPServer(
+  owner: LightWorkspaceType,
+  space: SpaceType
+) {
+  const { mutateServers } = useRemoteMCPServers({
+    disabled: true,
+    owner,
+    space,
+  });
   // Create a new server with the provided URL
   const syncByUrl = async (
     owner: LightWorkspaceType,
@@ -133,12 +140,6 @@ export function useSyncRemoteMCPServer() {
         body: JSON.stringify({ url }),
       }
     );
-
-    const { mutateServers } = useRemoteMCPServers({
-      disabled: true,
-      owner,
-      space
-    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -161,12 +162,6 @@ export function useSyncRemoteMCPServer() {
       { method: "POST" }
     );
 
-    const { mutateServers } = useRemoteMCPServers({
-      disabled: true,
-      owner,
-      space
-    });
-
     if (!response.ok) {
       const error = await response.json();
       throw new Error(
@@ -184,7 +179,16 @@ export function useSyncRemoteMCPServer() {
 /**
  * Hook to update a remote MCP server
  */
-export function useUpdateRemoteMCPServer() {
+export function useUpdateRemoteMCPServer(
+  owner: LightWorkspaceType,
+  space: SpaceType
+) {
+  const { mutateServers } = useRemoteMCPServers({
+    disabled: true,
+    owner,
+    space,
+  });
+
   const updateServer = async (
     owner: LightWorkspaceType,
     space: SpaceType,
@@ -204,12 +208,6 @@ export function useUpdateRemoteMCPServer() {
         body: JSON.stringify(data),
       }
     );
-
-    const { mutateServers } = useRemoteMCPServers({
-      disabled: true,
-      owner,
-      space
-    });
 
     if (!response.ok) {
       const error = await response.json();

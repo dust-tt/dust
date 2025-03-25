@@ -1,9 +1,9 @@
-import { describe, expect, vi } from "vitest";
+import { describe, expect } from "vitest";
 
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { itInTransaction } from "@app/tests/utils/utils";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
