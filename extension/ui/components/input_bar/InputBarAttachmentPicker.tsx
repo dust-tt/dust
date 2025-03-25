@@ -125,7 +125,7 @@ export const InputBarAttachmentsPicker = ({
           <DropdownMenuSearchbar
             ref={searchbarRef}
             name="search-files"
-            placeholder="Search knowledge or attach files"
+            placeholder="Search knowledge"
             value={search}
             onChange={setSearch}
             disabled={isLoading}
