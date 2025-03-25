@@ -219,48 +219,52 @@ export function DataSourceViewsSelector({
     filteredGroups.managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
-  function updateSelection(
-    item: DataSourceViewContentNode,
-    prevState: DataSourceViewSelectionConfigurations
-  ): DataSourceViewSelectionConfigurations {
-    const { dataSourceView: dsv } = item;
-    const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
+  const updateSelection = useCallback(
+    (
+      item: DataSourceViewContentNode,
+      prevState: DataSourceViewSelectionConfigurations
+    ): DataSourceViewSelectionConfigurations => {
+      const { dataSourceView: dsv } = item;
+      const prevConfig =
+        prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
 
-    const exists = prevConfig.selectedResources.some(
-      (r) => r.internalId === item.internalId
-    );
+      const exists = prevConfig.selectedResources.some(
+        (r) => r.internalId === item.internalId
+      );
 
-    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
+      if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
+        return {
+          ...prevState,
+          [dsv.sId]: {
+            ...prevConfig,
+            selectedResources: [],
+            isSelectAll: true,
+          },
+        };
+      }
+
+      const newResources = exists
+        ? prevConfig.selectedResources
+        : [
+            ...prevConfig.selectedResources,
+            {
+              ...item,
+              dataSourceView: dsv,
+              parentInternalIds: item.parentInternalIds || [],
+            },
+          ];
+
       return {
         ...prevState,
         [dsv.sId]: {
           ...prevConfig,
-          selectedResources: [],
-          isSelectAll: true,
+          selectedResources: newResources,
+          isSelectAll: false,
         },
       };
-    }
-
-    const newResources = exists
-      ? prevConfig.selectedResources
-      : [
-          ...prevConfig.selectedResources,
-          {
-            ...item,
-            dataSourceView: dsv,
-            parentInternalIds: item.parentInternalIds || [],
-          },
-        ];
-
-    return {
-      ...prevState,
-      [dsv.sId]: {
-        ...prevConfig,
-        selectedResources: newResources,
-        isSelectAll: false,
-      },
-    };
-  }
+    },
+    []
+  );
 
   const contentMessage = warningCode
     ? LimitedSearchContentMessage({ warningCode })
