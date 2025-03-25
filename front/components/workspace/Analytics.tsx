@@ -26,7 +26,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             title="Members"
             subtitle="Total members"
             content={
-              <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+              <div className="heading-lg text-foreground dark:text-foreground-night">
                 {analytics.memberCount}
               </div>
             }
@@ -37,7 +37,7 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             subtitle="Average on 7 days"
             content={
               <div className="flex flex-col gap-1">
-                <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                <div className="heading-lg text-foreground dark:text-foreground-night">
                   {analytics.averageWeeklyDailyActiveUsers.count}
                 </div>
               </div>
@@ -49,10 +49,10 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             subtitle="Last 7 days"
             content={
               <div className="grid grid-cols-2">
-                <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                <div className="heading-lg text-foreground dark:text-foreground-night">
                   {analytics.weeklyActiveUsers.count}
                 </div>
-                <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                <div className="heading-lg text-foreground dark:text-foreground-night">
                   {`${analytics.weeklyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
                     analytics.weeklyActiveUsers.growth
                   )}%`}
@@ -66,10 +66,10 @@ export function QuickInsights({ owner }: QuickInsightsProps) {
             subtitle="Last 30 days"
             content={
               <div className="grid grid-cols-2">
-                <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                <div className="heading-lg text-foreground dark:text-foreground-night">
                   {analytics.monthlyActiveUsers.count}
                 </div>
-                <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                <div className="heading-lg text-foreground dark:text-foreground-night">
                   {`${analytics.monthlyActiveUsers.growth >= 0 ? "+" : ""}${Math.floor(
                     analytics.monthlyActiveUsers.growth
                   )}%`}

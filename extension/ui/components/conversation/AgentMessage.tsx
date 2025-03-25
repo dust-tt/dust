@@ -558,7 +558,7 @@ export function AgentMessage({
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-semibold">
+            <div className="heading-base">
               {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>
