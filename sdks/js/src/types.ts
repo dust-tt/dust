@@ -1892,10 +1892,10 @@ export type PublicContentFragmentWithContent = z.infer<
 
 export const PublicContentFragmentWithFileIdSchema = z.object({
   title: z.string(),
+  fileId: z.string(),
   url: z.string().optional().nullable(),
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
-  fileId: z.string(),
   nodeId: z.undefined().nullable(),
   nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
@@ -1909,12 +1909,12 @@ export type PublicContentFragmentWithFileId = z.infer<
 
 const PublicContentFragmentWithContentNodeSchema = z.object({
   title: z.string(),
-  url: z.string().optional().nullable(),
-  content: z.undefined().nullable(),
-  contentType: z.string(),
-  fileId: z.undefined().nullable(),
   nodeId: z.string(),
   nodeDataSourceViewId: z.string(),
+  url: z.undefined().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.undefined().nullable(),
+  fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   supersededContentFragmentId: z.string().optional().nullable(),
 });
