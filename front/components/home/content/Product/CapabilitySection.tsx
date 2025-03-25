@@ -8,9 +8,7 @@ export function CapabilitySection() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <H2 from="from-amber-200" to="to-amber-400">
-          Tailor AI agents to your team needs
-        </H2>
+        <H2>Tailor AI agents to your team needs</H2>
         <P size="lg">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P>
@@ -75,8 +73,8 @@ export function CapabilitySection() {
           title={<>Leverage the best models on the market.</>}
           content={
             <>
-              “Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
-              model to ensure your agents stay smartest.”
+              "Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
+              model to ensure your agents stay smartest."
             </>
           }
         >

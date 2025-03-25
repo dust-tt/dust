@@ -48,7 +48,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
         {children ? children : null}
       </div>
       <div className="flex flex-col px-0 py-6">
-        <H3 className="text-white">{title}</H3>
+        <H3 className="text-foreground">{title}</H3>
         {renderContent()}
       </div>
     </div>
@@ -76,9 +76,9 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-muted-background",
         "group transition duration-300 ease-out",
-        "hover:bg-white"
+        "hover:bg-primary-100"
       )}
     >
       {children ? (
@@ -95,7 +95,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
                   "absolute h-full w-full object-cover",
                   "brightness-100 transition duration-300 ease-out",
                   "group-hover:brightness-110",
-                  "border border-slate-900/10 rounded-t-2xl"
+                  "border border-border rounded-t-2xl"
                 ),
               });
             }
@@ -105,13 +105,8 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       ) : null}
       <div className="flex flex-col p-6">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground dark:text-foreground-night">
-            {title}
-          </H5>
-          <P
-            size="xs"
-            className="line-clamp-3 text-foreground dark:text-foreground-night"
-          >
+          <H5 className="line-clamp-2 text-foreground">{title}</H5>
+          <P size="xs" className="line-clamp-3 text-foreground">
             {content}
           </P>
         </div>
@@ -124,8 +119,6 @@ interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle?: ReactNode;
   uptitle?: string;
-  from: string;
-  to: string;
   hasCTA?: boolean;
 }
 
@@ -133,8 +126,6 @@ export const HeaderContentBlock = ({
   title,
   subtitle,
   uptitle,
-  from,
-  to,
   hasCTA = true,
 }: HeaderContentBlockProps) => (
   <Grid>
@@ -149,18 +140,13 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P
-          size="lg"
-          className="text-muted-foreground dark:text-muted-foreground-night"
-        >
+        <P size="lg" className="text-muted-foreground">
           {uptitle}
         </P>
       )}
-      <H1 from={from} to={to}>
-        {title}
-      </H1>
+      <H1>{title}</H1>
       {subtitle && (
-        <P size="lg" className="text-white dark:text-black">
+        <P size="lg" className="text-foreground">
           {subtitle}
         </P>
       )}
@@ -197,7 +183,7 @@ interface MetricComponentProps {
   to: string;
 }
 
-export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
+export const MetricSection = ({ metrics }: MetricComponentProps) => (
   <div
     className={classNames(
       "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
@@ -213,9 +199,7 @@ export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
         {metric.logo && (
           <Image alt="alan" src={metric.logo} width={200} height={100} />
         )}
-        <H1 from={from} to={to} className="mt-0">
-          {metric.value}
-        </H1>
+        <H1>{metric.value}</H1>
 
         <div className="flex flex-col items-center">
           <P size="lg" className="max-w-[400px] text-black dark:text-slate-50">
@@ -250,13 +234,13 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
           className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
         >
           <Strong>
-            <span className="text-pink-300">{name}</span>
+            <span className="text-hunter-green">{name}</span>
           </Strong>
           <br /> {title}
         </P>
       </div>
     </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
+    <div className="lg:copy-2xl copy-base flex flex-col items-center rounded-4xl p-4 text-center italic text-foreground xs:copy-lg md:copy-xl sm:text-xl">
       &ldquo; {quote} &rdquo;
     </div>
   </div>
@@ -434,3 +418,19 @@ export const CarousselContentBlock = ({
     </div>
   );
 };
+
+export function ContentBlock({
+  title,
+  description,
+  image,
+  imageAlt,
+  page = "default",
+}: {
+  title: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+  page?: string;
+}) {
+  // ... existing code ...
+}

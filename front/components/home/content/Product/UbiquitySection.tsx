@@ -10,9 +10,7 @@ export function UbiquitySection() {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-sky-200" to="to-blue-400">
-              Have AI wherever you work
-            </H2>
+            <H2>Have AI wherever you work</H2>
             <P size="lg">
               Leverage the power of AI and your knoweldge right where you need
               it. No back and forth across tools.
@@ -55,7 +53,7 @@ export function UbiquitySection() {
             title={<>Access from your tools</>}
             content={
               <>
-                Bring Dust’s to Slack&nbsp;, Zendesk and others to&nbsp;bring
+                Bring Dust's to Slack&nbsp;, Zendesk and others to&nbsp;bring
                 Dust where you&nbsp;need&nbsp;it.
               </>
             }

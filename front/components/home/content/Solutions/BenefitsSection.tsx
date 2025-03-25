@@ -29,53 +29,51 @@ export interface MetricProps {
 
 interface BenefitsSectionProps {
   benefits: BenefitsProps;
-  fromColor: string;
-  toColor: string;
+  page?: string;
 }
 
-export const BenefitsSection: FC<BenefitsSectionProps> = ({
+export function BenefitsSection({
   benefits,
-  fromColor,
-  toColor,
-}) => (
-  <section className="w-full py-12 pb-0">
-    <Grid>
-      <div className="col-span-12 mb-2">
-        <H2 from={fromColor} to={toColor}>
-          {benefits.sectionTitle}
-        </H2>
-      </div>
+  page = "default",
+}: BenefitsSectionProps) {
+  return (
+    <section className="w-full py-12 pb-0">
+      <Grid>
+        <div className="col-span-12 mb-2">
+          <H2>{benefits.sectionTitle}</H2>
+        </div>
 
-      <div className="col-span-12 grid grid-cols-1 gap-8 pt-8 md:grid-cols-3">
-        {benefits.items.map((benefit, index) => (
-          <ImgBlock
-            key={index}
-            title={
-              <div className="text-center md:text-left">{benefit.title}</div>
-            }
-            content={<>{benefit.description}</>}
-            className="h-full flex-1 text-center md:text-left"
-          >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className="relative flex h-8 items-center justify-center sm:justify-start"
+        <div className="col-span-12 grid grid-cols-1 gap-8 pt-8 md:grid-cols-3">
+          {benefits.items.map((benefit, index) => (
+            <ImgBlock
+              key={index}
+              title={
+                <div className="text-center md:text-left">{benefit.title}</div>
+              }
+              content={<>{benefit.description}</>}
+              className="h-full flex-1 text-center md:text-left"
             >
-              <Avatar
-                size="xl"
-                visual={
-                  <Icon
-                    visual={benefit.icon}
-                    className="text-slate-300"
-                    size="xl"
-                  />
-                }
-                backgroundColor="bg-slate-700"
-              />
-            </Hover3D>
-          </ImgBlock>
-        ))}
-      </div>
-    </Grid>
-  </section>
-);
+              <Hover3D
+                depth={-20}
+                perspective={1000}
+                className="relative flex h-8 items-center justify-center sm:justify-start"
+              >
+                <Avatar
+                  size="xl"
+                  visual={
+                    <Icon
+                      visual={benefit.icon}
+                      className="text-slate-300"
+                      size="xl"
+                    />
+                  }
+                  backgroundColor="bg-slate-700"
+                />
+              </Hover3D>
+            </ImgBlock>
+          ))}
+        </div>
+      </Grid>
+    </section>
+  );
+}

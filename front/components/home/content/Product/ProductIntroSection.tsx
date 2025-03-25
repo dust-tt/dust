@@ -24,11 +24,11 @@ export function ProductIntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">Build your team of AI agents</H1>
+            <H1>Build your team of&nbsp;AI&nbsp;agents</H1>
             <div className="w-full md:hidden">
               <VideoPlayer />
             </div>
-            <P size="lg" className="text-slate-50">
+            <P size="lg" className="text-muted-foreground">
               Dust empowers all teams with agents with company context you can
               fully customize to match your unique requirements. Deploy
               seamlessly from simple workflows to complex enterprise

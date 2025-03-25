@@ -56,15 +56,16 @@ export function FunctionCard({
       </div>
 
       <div className={`flex flex-grow flex-col p-5 ${cardVariants({ color })}`}>
-        <h3 className="font-objektiv text-2xl font-semibold text-white">
-          {title}
-        </h3>
+        <h3 className="heading-2xl text-foreground">{title}</h3>
 
-        <ul className="mt-4 flex-grow space-y-3 font-objektiv">
+        <ul className="copy-base mt-4 flex-grow space-y-3">
           {features.map((feature, i) => (
-            <li key={i} className="flex min-h-6 items-start gap-3 text-white">
+            <li
+              key={i}
+              className="flex min-h-6 items-start gap-3 text-foreground"
+            >
               <ChevronRightIcon className="mt-1 h-4 w-4 flex-shrink-0" />
-              <span className="text-base leading-tight">{feature}</span>
+              {feature}
             </li>
           ))}
         </ul>

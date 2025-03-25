@@ -8,7 +8,7 @@ let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
 let renderer: THREE.WebGLRenderer;
 let particleSystem: THREE.Points;
-const backgroundColor = 0x000;
+const backgroundColor = 0xfff;
 const colorsArray = [0xb2b6bd, 0xd3d5d9, 0xeeeeef, 0x969ca5, 0xffffff];
 
 const originalSpread = 25; // the random position of Particules at start
