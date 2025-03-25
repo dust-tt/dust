@@ -1,4 +1,4 @@
-import { MIME_TYPES } from "@dust-tt/client/src";
+import { MIME_TYPES } from "@dust-tt/client";
 import {
   Button,
   DropdownMenu,
