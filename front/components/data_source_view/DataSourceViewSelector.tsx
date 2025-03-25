@@ -663,10 +663,21 @@ export function DataSourceViewSelector({
   const isExpanded = searchResult
     ? searchResult.dataSourceView.sId === dataSourceView.sId
     : false;
-  const defaultExpandedIds =
-    isExpanded && searchResult
-      ? removeNulls([...new Set(searchResult.parentInternalIds)])
-      : undefined;
+
+  const defaultExpandedIds = useMemo(
+    () =>
+      searchResult && isExpanded
+        ? removeNulls([
+            ...new Set(
+              searchResult.parentInternalIds?.filter(
+                (id) =>
+                  searchResult.expandable || id !== searchResult.internalId
+              )
+            ),
+          ])
+        : undefined,
+    [searchResult, isExpanded]
+  );
 
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>
