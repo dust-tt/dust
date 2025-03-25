@@ -225,6 +225,14 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return { url: url.toString() };
     },
   },
+  zendesk: {
+    matcher: (url: URL): boolean => {
+      return url.hostname.endsWith("zendesk.com");
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString() };
+    },
+  },
 };
 
 // Extract a channel node ID from a Slack client URL
