@@ -230,7 +230,26 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return url.hostname.endsWith("zendesk.com");
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}` };
+    },
+  },
+  intercom: {
+    matcher: (url: URL): boolean => {
+      return (
+        (url.hostname.includes("intercom.com") &&
+          url.hostname.startsWith("app")) ||
+        // custom help center domains (websiteTurnedOn is true)
+        url.hostname.startsWith("help")
+      );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}` };
     },
   },
 };
