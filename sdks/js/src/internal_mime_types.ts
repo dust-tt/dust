@@ -196,6 +196,9 @@ export type SalesforceMimeType =
 export type GongMimeType =
   (typeof MIME_TYPES.GONG)[keyof typeof MIME_TYPES.GONG];
 
+export type ConfigurationMimeType =
+  (typeof MIME_TYPES.CONFIGURATION)[keyof typeof MIME_TYPES.CONFIGURATION];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -209,7 +212,8 @@ export type DustMimeType =
   | WebcrawlerMimeType
   | ZendeskMimeType
   | SalesforceMimeType
-  | GongMimeType;
+  | GongMimeType
+  | ConfigurationMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
   return (MIME_TYPES_VALUES as string[]).includes(mimeType);
