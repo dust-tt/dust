@@ -621,7 +621,9 @@ export async function renderLightContentFragmentForModel(
       {
         type: "text",
         text: renderContentFragmentXml({
-          contentFragmentId: contentFragment.sId,
+          // Use fileId as contentFragmentId to provide a consistent identifier for the model
+          // to reference content fragments across different actions like include_file.
+          contentFragmentId: fileStringId ?? contentFragment.sId,
           contentType,
           title,
           version: contentFragmentVersion,
