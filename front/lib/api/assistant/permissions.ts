@@ -128,6 +128,10 @@ export async function getContentFragmentGroupIds(
     auth,
     contentFragment.nodeDataSourceViewId
   );
+  if (!dsView) {
+    throw new Error(`Unexpected dataSourceView not found`);
+  }
+
   const groups = groupsFromRequestedPermissions(dsView.requestedPermissions());
 
   return [groups].filter((arr) => arr.length > 0);
