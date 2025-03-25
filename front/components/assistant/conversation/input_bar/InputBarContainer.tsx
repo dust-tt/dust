@@ -184,6 +184,9 @@ const InputBarContainer = ({
       setSoftUrlNotification({
         title: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
       });
+      setTimeout(() => {
+        setSoftUrlNotification(null);
+      }, 5000);
       setNodeOrUrlCandidate(null);
     }
   }, [
