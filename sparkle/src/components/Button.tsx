@@ -89,15 +89,22 @@ const styleVariants: Record<ButtonVariantType, string> = {
 };
 
 const sizeVariants: Record<ButtonSizeType, string> = {
-  mini: "s-h-7 s-p-1.5 s-rounded-lg s-text-sm s-gap-1.5",
-  xs: "s-h-7 s-px-2.5 s-rounded-lg s-text-xs s-gap-1.5",
-  sm: "s-h-9 s-px-3 s-rounded-xl s-text-sm s-gap-2",
-  md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-text-base s-gap-2.5",
+  mini: "s-h-7 s-p-1.5 s-rounded-lg s-label-xs s-gap-1.5",
+  xs: "s-h-7 s-px-2.5 s-rounded-lg s-label-xs s-gap-1.5",
+  sm: "s-h-9 s-px-3 s-rounded-xl s-label-sm s-gap-2",
+  md: "s-h-12 s-px-4 s-py-2 s-rounded-2xl s-label-base s-gap-2.5",
+};
+
+const labelVariants: Record<ButtonSizeType, string> = {
+  mini: "s-label-xs",
+  xs: "s-label-xs",
+  sm: "s-label-sm",
+  md: "s-label-base",
 };
 
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-font-semibold s-ring-offset-background s-transition-colors",
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-2",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),
@@ -219,7 +226,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         )}
 
         {showContainer && (
-          <div className="s-flex s-items-center s-gap-2">
+          <div
+            className={cn("s-flex s-items-center s-gap-2", labelVariants[size])}
+          >
             {label}
             {showCounter && (
               <Counter
