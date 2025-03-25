@@ -33,7 +33,7 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ContentNode, DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "gong" });
 
@@ -81,7 +81,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       parents: [makeGongTranscriptFolderInternalId(connector)],
       parentId: null,
       title: TRANSCRIPTS_FOLDER_TITLE,
-      mimeType: MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
     const result = await createSchedule({

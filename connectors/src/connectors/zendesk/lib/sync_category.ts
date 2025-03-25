@@ -16,7 +16,7 @@ import {
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Deletes all the data stored in the db and in the data source relative to a category (articles).
@@ -131,7 +131,7 @@ export async function syncCategory({
     parents,
     parentId: parentId,
     title: category.name,
-    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: category.html_url,
     timestampMs: currentSyncDateMs,
   });

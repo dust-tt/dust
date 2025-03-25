@@ -32,7 +32,7 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { concurrentExecutor, MIME_TYPES } from "@connectors/types";
+import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -229,7 +229,7 @@ export async function upsertCollectionWithChildren({
     title: collection.name.trim() || "Untitled Collection",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
-    mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
     sourceUrl: collection.url || fallbackCollectionUrl,
     timestampMs: currentSyncMs,
   });
@@ -426,7 +426,7 @@ export async function upsertArticle({
       sync_type: "batch",
     },
     title: article.title,
-    mimeType: MIME_TYPES.INTERCOM.ARTICLE,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.ARTICLE,
     async: true,
   });
   await articleOnDb.update({
