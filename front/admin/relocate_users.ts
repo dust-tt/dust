@@ -106,7 +106,7 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   const members = await MembershipResource.getMembershipsForWorkspace({
     workspace,
   });
-  const userIds = [
+  let userIds = [
     ...new Set(removeNulls(members.memberships.map((m) => m.userId))),
   ];
   const allMemberships = await MembershipResource.fetchByUserIds(userIds);
