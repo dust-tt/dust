@@ -69,6 +69,16 @@ MCPServerConnection.init(
   {
     sequelize: frontSequelize,
     modelName: "mcp_server_connection",
+    indexes: [
+      {
+        fields: ["workspaceId", "internalMCPServerId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "remoteMCPServerId"],
+        concurrently: true,
+      },
+    ],
   }
 );
 
