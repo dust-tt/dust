@@ -65,7 +65,6 @@ export default function Chat({
   const handleModelChange = (model: {
     provider_id: string;
     model_id: string;
-    created?: number;
   }) => {
     const b = shallowBlockClone(block);
     b.config.provider_id = model.provider_id;
@@ -73,8 +72,6 @@ export default function Chat({
 
     const allowResponseFormat = supportsResponseFormat(model);
     if (!allowResponseFormat) {
-      // Clearing response format to avoid errors
-      // Note, users will need to recreate the response format if they switch back to a supported model.
       delete b.config.response_format;
     }
     onBlockUpdate(b);
@@ -185,15 +182,6 @@ export default function Chat({
   };
 
   const [newStop, setNewStop] = useState("");
-  const [responseFormatText, setResponseFormatText] = useState(
-    block.config.response_format
-      ? JSON.stringify(block.config.response_format, null, 2)
-      : ""
-  );
-  const [isResponseFormatJsonValid, setIsResponseFormatJsonValid] =
-    useState(true);
-  const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
-    useState(false);
 
   const config =
     (block.config as {
@@ -205,6 +193,16 @@ export default function Chat({
   if (typeof block.config.temperature === "number") {
     temperature = block.config.temperature.toString();
   }
+
+  const [responseFormatText, setResponseFormatText] = useState(
+    block.config.response_format
+      ? JSON.stringify(block.config.response_format, null, 2)
+      : ""
+  );
+  const [isResponseFormatJsonValid, setIsResponseFormatJsonValid] =
+    useState(true);
+  const [isModelSupportsResponseFormat, setIsModelSupportsResponseFormat] =
+    useState(config ? supportsResponseFormat(config) : false);
 
   const theme = localStorage.getItem("theme");
 

@@ -79,7 +79,7 @@ async function handler(
           } else {
             const models = await modelsRes.json();
             const mList = models.data.map((m: any) => {
-              return { id: m.id as string, created: m.created };
+              return { id: m.id as string };
             }) as Array<{ id: string }>;
 
             let f = [];
