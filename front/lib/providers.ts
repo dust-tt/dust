@@ -188,7 +188,7 @@ export async function getProviderLLMModels(
   return { models: models.models };
 }
 
-const KNOWN_OPENAI_PATTERNs_WITHOUT_STRUCTURED_OUTPUTS_SUPPORT = [
+const KNOWN_OPENAI_PATTERNS_WITHOUT_STRUCTURED_OUTPUTS_SUPPORT = [
   /^gpt-3\.5-turbo/,
   /^gpt-4(?!o|-\d\.\d)/,
   /^gpt-4o-2024-05-13/,
@@ -210,7 +210,7 @@ export function supportsResponseFormat(model: {
   // This will not necessarily be holistic of all model families in the future.
   // For future families not in this list that lack support for structured outputs,
   // customers will still see an error message from openai when running the app.
-  return !KNOWN_OPENAI_PATTERNs_WITHOUT_STRUCTURED_OUTPUTS_SUPPORT.some(
+  return !KNOWN_OPENAI_PATTERNS_WITHOUT_STRUCTURED_OUTPUTS_SUPPORT.some(
     (pattern) => pattern.test(model.model_id)
   );
 }

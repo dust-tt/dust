@@ -651,22 +651,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
       );
     }
 
-    function containsValidJsonOutput(output: unknown): output is {
-      message: {
-        content: string;
-      };
-    } {
-      return (
-        typeof output === "object" &&
-        output !== null &&
-        "message" in output &&
-        typeof output.message === "object" &&
-        output.message !== null &&
-        "content" in output.message &&
-        typeof output.message.content === "string"
-      );
-    }
-
     const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
 
     const updateParams: {
@@ -925,4 +909,20 @@ export function getDustAppRunResultsFileAttachment({
   }
 
   return `${attachment}>\n${resultsFileSnippet}\n</file>`;
+}
+
+function containsValidJsonOutput(output: unknown): output is {
+  message: {
+    content: string;
+  };
+} {
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    "message" in output &&
+    typeof output.message === "object" &&
+    output.message !== null &&
+    "content" in output.message &&
+    typeof output.message.content === "string"
+  );
 }
