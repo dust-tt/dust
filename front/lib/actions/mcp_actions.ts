@@ -76,6 +76,23 @@ export interface MCPServerConnectionDetails {
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
+// The type provided in the sdk is widely incomplete, below is an attempt to normalize the inputSchema.
+// TODO(mcp): fix InputSchemaType accordingly.
+export function normalizeInputSchemaProperties(
+  inputSchema: ListToolsResult["tools"][number]["inputSchema"]
+) {
+  const result: Record<string, any> = {};
+
+  for (const key in inputSchema.properties) {
+    const field = inputSchema.properties[key];
+    if (typeof field === "object" && field !== null && "const" in field) {
+      result[key] = field?.const;
+    }
+  }
+
+  return result;
+}
+
 function makeMCPConfigurations({
   config,
   listToolsResult,

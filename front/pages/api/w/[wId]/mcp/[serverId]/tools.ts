@@ -2,15 +2,20 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateInternalMCPServerId } from "@app/lib/actions/mcp";
 import type { ToolType } from "@app/lib/actions/mcp_actions";
-import { listMCPServerTools } from "@app/lib/actions/mcp_actions";
+import {
+  listMCPServerTools,
+  normalizeInputSchemaProperties,
+} from "@app/lib/actions/mcp_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-// TODO(mcp): put a richer type here, add some safeguard by checking the inputSchema.
+// TODO(mcp): Share this type with InputSchemaType.
 export type GetMCPServerToolsResponseBody = {
-  tools: ToolType[];
+  tools: (Pick<ToolType, "name" | "description"> & {
+    inputSchema: { [key: string]: string | number | boolean | object };
+  })[];
 };
 
 async function handler(
@@ -68,7 +73,10 @@ async function handler(
       });
 
       return res.status(200).json({
-        tools,
+        tools: tools.map((tool) => ({
+          ...tool,
+          inputSchema: normalizeInputSchemaProperties(tool.inputSchema),
+        })),
       });
     default:
       return apiError(req, res, {

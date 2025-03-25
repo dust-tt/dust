@@ -54,8 +54,7 @@ export function ActionMCP({
       ...previousAction,
       resources: {
         dataSourceConfigurations: tools?.some(
-          (r) =>
-            r.inputSchema.properties?.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
+          (r) => r.inputSchema.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
         )
           ? previousAction.resources?.dataSourceConfigurations || {}
           : undefined,
