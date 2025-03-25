@@ -108,8 +108,7 @@ const isRunnable = (
         key != "error_as_output" &&
         key != "function_call" &&
         key != "logprobs" &&
-        key != "top_logprobs" &&
-        key != "response_format"
+        key != "top_logprobs"
       ) {
         if (!config[name][key] || config[name][key].length == 0) {
           return false;

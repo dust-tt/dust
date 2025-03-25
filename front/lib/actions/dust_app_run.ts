@@ -573,22 +573,6 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         }
 
         lastBlockOutput = e.value;
-
-        // Check if it's a message with JSON content
-        if (containsValidJsonOutput(e.value)) {
-          try {
-            // Try to parse the content as JSON
-            const parsed = JSON.parse(e.value.message.content);
-            lastBlockOutput = {
-              __dust_file: {
-                type: "document",
-                content: JSON.stringify(parsed, null, 2),
-              },
-            };
-          } catch {
-            // Do not store as file if not valid JSON
-          }
-        }
       }
     }
 
@@ -909,20 +893,4 @@ export function getDustAppRunResultsFileAttachment({
   }
 
   return `${attachment}>\n${resultsFileSnippet}\n</file>`;
-}
-
-function containsValidJsonOutput(output: unknown): output is {
-  message: {
-    content: string;
-  };
-} {
-  return (
-    typeof output === "object" &&
-    output !== null &&
-    "message" in output &&
-    typeof output.message === "object" &&
-    output.message !== null &&
-    "content" in output.message &&
-    typeof output.message.content === "string"
-  );
 }
