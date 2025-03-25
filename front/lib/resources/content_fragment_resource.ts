@@ -5,6 +5,7 @@ import type {
   Transaction,
 } from "sequelize";
 
+import { conversationAttachmentId } from "@app/lib/actions/conversation/list_files";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
@@ -584,7 +585,9 @@ export async function renderLightContentFragmentForModel(
           {
             type: "text",
             text: renderContentFragmentXml({
-              contentFragmentId: contentFragment.sId,
+              // Use fileId as contentFragmentId to provide a consistent identifier for the model
+              // to reference content fragments across different actions like include_file.
+              contentFragmentId: fileStringId,
               contentType,
               title,
               version: contentFragmentVersion,

@@ -54,6 +54,8 @@ export function isConversationContentNodeType(
   return "contentFragmentId" in attachment;
 }
 
+// If updating this function, make sure to update `contentFragmentId` when we render the conversation
+// for the model. So there is a consistent way to reference content fragments across different actions.
 export function conversationAttachmentId(
   attachment: ConversationAttachmentType
 ): string {
