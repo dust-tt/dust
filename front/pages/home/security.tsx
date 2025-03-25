@@ -101,7 +101,7 @@ export default function Security() {
             <H1 from="from-golden-200" to="to-golden-200">
               Enterprise-grade Security
             </H1>
-            <P size="lg" className="text-slate-50">
+            <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
               <Strong>GDPR, HIPAA Compliant & SOC2 Type II Certified.</Strong>
@@ -129,7 +129,7 @@ export default function Security() {
             <H2 from="from-white" to="to-white">
               Ingest data on your terms
             </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <P size="lg" className="pb-6 text-muted-foreground">
               Control data selection and hosting location within rigorous
               security parameters.
             </P>
@@ -161,7 +161,7 @@ export default function Security() {
             <H2 from="from-slate-200" to="to-slate-400">
               Select trusted models, keep data protected
             </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <P size="lg" className="pb-6 text-muted-foreground">
               Control risk: only trusted providers, with no data fed into
               training.
             </P>
@@ -193,7 +193,7 @@ export default function Security() {
             <H2 from="from-slate-200" to="to-slate-400">
               Maintain rigorous access control at all levels
             </H2>
-            <P size="lg" className="pb-6 text-slate-50">
+            <P size="lg" className="pb-6 text-muted-foreground">
               Tailor Dust's features to each user according to specified access
               rights.
             </P>

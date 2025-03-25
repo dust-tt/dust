@@ -117,7 +117,7 @@ function MobileLink({
       shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       className={classNames(
-        "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-50 no-underline outline-none transition-colors",
+        "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-muted-foreground no-underline outline-none transition-colors",
         "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-muted-foreground"
       )}
       {...props}

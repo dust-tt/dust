@@ -17,7 +17,7 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-import Particles, { shapeNamesArray } from "@app/components/home/Particles";
+// import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { classNames } from "@app/lib/utils";
 
@@ -124,9 +124,9 @@ export default function LandingLayout({
       </ScrollingHeader>
       <div className="fixed bottom-0 left-0 right-0 top-0 -z-50" />
       <div className="fixed inset-0 -z-30" />
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
-        {/* <Particles currentShape={currentShape} /> */}
-      </div>
+      {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
+        <Particles currentShape={currentShape} />
+      </div> */}
       <main className="z-10 flex flex-col items-center">
         <div
           className={classNames(
