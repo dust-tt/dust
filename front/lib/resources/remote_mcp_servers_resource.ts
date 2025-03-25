@@ -33,9 +33,14 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   }
 
   static async makeNew(
+    auth: Authenticator,
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
-    space: SpaceResource,
+    space: SpaceResource
   ) {
+    if (!space.canWrite(auth)) {
+      throw new Error("Unauthorized write attempt");
+    }
+
     const server = await RemoteMCPServer.create({
       ...blob,
       vaultId: space.id,

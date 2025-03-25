@@ -1,15 +1,36 @@
+import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
+async function setupTest(
+  t: any,
+  role: "builder" | "user" | "admin" = "builder",
+  method: RequestMethod = "GET"
+) {
+  const { req, res, workspace } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
+
+  const space = await SpaceFactory.global(workspace, t);
+
+  // Set up common query parameters
+  req.query.wId = workspace.sId;
+  req.query.spaceId = space.sId;
+
+  return { req, res, workspace, space };
+}
+
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
-  itInTransaction("should return server details", async (db) => {
-    const { req, res, workspace, space } =
-      await RemoteMCPServerFactory.setupTest(db);
+  itInTransaction("should return server details", async (t) => {
+    const { req, res, workspace, space } = await setupTest(t);
 
     const server = await RemoteMCPServerFactory.create(workspace, space, {
       sharedSecret: "secret123",
@@ -25,8 +46,8 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
     expect(responseData).toHaveProperty("data");
   });
 
-  itInTransaction("should return 404 when server doesn't exist", async (db) => {
-    const { req, res } = await RemoteMCPServerFactory.setupTest(db);
+  itInTransaction("should return 404 when server doesn't exist", async (t) => {
+    const { req, res } = await setupTest(t);
     req.query.serverId = "non-existent-server-id";
 
     await handler(req, res);
@@ -44,9 +65,12 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
 describe("PATCH /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   itInTransaction(
     "should return 400 when no update fields are provided",
-    async (db) => {
-      const { req, res, workspace, space } =
-        await RemoteMCPServerFactory.setupTest(db, "builder", "PATCH");
+    async (t) => {
+      const { req, res, workspace, space } = await setupTest(
+        t,
+        "builder",
+        "PATCH"
+      );
 
       const server = await RemoteMCPServerFactory.create(workspace, space);
       req.query.serverId = server.sId;
@@ -66,9 +90,12 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
 });
 
 describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
-  itInTransaction("should delete a server", async (db) => {
-    const { req, res, workspace, space } =
-      await RemoteMCPServerFactory.setupTest(db, "builder", "DELETE");
+  itInTransaction("should delete a server", async (t) => {
+    const { req, res, workspace, space } = await setupTest(
+      t,
+      "builder",
+      "DELETE"
+    );
 
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;
@@ -92,9 +119,8 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
 });
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
-  itInTransaction("supports GET, PATCH, and DELETE methods", async (db) => {
-    const { req, res, workspace, space } =
-      await RemoteMCPServerFactory.setupTest(db, "builder", "PUT");
+  itInTransaction("supports GET, PATCH, and DELETE methods", async (t) => {
+    const { req, res, workspace, space } = await setupTest(t, "builder", "PUT");
 
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;

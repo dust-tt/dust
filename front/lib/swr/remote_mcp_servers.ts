@@ -118,36 +118,34 @@ export function useDeleteRemoteMCPServer(
  */
 export function useCreateRemoteMCPServer(
   owner: LightWorkspaceType,
-  space: SpaceType,
+  space: SpaceType
 ) {
   const { mutateServers } = useRemoteMCPServers({
     disabled: true,
     owner,
     space,
-  })
+  });
 
-    const createWithUrlSync = async (
-      url: string
-    ): Promise<MCPApiResponse> => {
-      const response = await fetch(
-        `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
-        }
-      );
-  
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(
-          error.api_error?.message || "Failed to synchronize server"
-        );
+  const createWithUrlSync = async (url: string): Promise<MCPApiResponse> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
       }
-  
-      void mutateServers();
-      return response.json();
-    };
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        error.api_error?.message || "Failed to synchronize server"
+      );
+    }
+
+    void mutateServers();
+    return response.json();
+  };
 
   return { createWithUrlSync };
 }
@@ -158,14 +156,14 @@ export function useCreateRemoteMCPServer(
 export function useSyncRemoteMCPServer(
   owner: LightWorkspaceType,
   space: SpaceType,
-  serverId: string,
+  serverId: string
 ) {
   const { mutateServer } = useRemoteMCPServer({
     disabled: true,
     owner,
     space,
-    serverId: serverId || ""
-  })
+    serverId: serverId || "",
+  });
 
   const syncServer = async (): Promise<MCPApiResponse> => {
     const response = await fetch(
@@ -193,7 +191,7 @@ export function useSyncRemoteMCPServer(
 export function useUpdateRemoteMCPServer(
   owner: LightWorkspaceType,
   space: SpaceType,
-  serverId: string,
+  serverId: string
 ) {
   const { mutateServer } = useRemoteMCPServer({
     disabled: true,
@@ -202,14 +200,12 @@ export function useUpdateRemoteMCPServer(
     serverId,
   });
 
-  const updateServer = async (
-    data: {
-      name: string;
-      url: string;
-      description: string;
-      tools: { name: string; description: string }[];
-    }
-  ): Promise<MCPApiResponse> => {
+  const updateServer = async (data: {
+    name: string;
+    url: string;
+    description: string;
+    tools: { name: string; description: string }[];
+  }): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`,
       {

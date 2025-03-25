@@ -1,17 +1,17 @@
 import { randomBytes } from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { fetchServerData } from "@app/lib/actions/mcp_actions";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
-import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
-import logger from "@app/logger/logger";
 
 async function handler(
   req: NextApiRequest,
@@ -19,7 +19,7 @@ async function handler(
     WithAPIErrorResponse<MCPApiResponse | GetRemoteMCPServersResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource },
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const { method } = req;
   const { wId } = req.query;
@@ -141,6 +141,7 @@ async function handler(
       const sharedSecret = randomBytes(32).toString("hex");
 
       const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
+        auth,
         {
           workspaceId: workspace.id,
           name: metadata.name,
@@ -150,8 +151,7 @@ async function handler(
           lastSyncAt: new Date(),
           sharedSecret,
         },
-        space,
-        auth,
+        space
       );
 
       return res.status(201).json({
@@ -180,6 +180,8 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(withResourceFetchingFromRoute(handler, {
-  space: { requireCanRead: true },
-}));
+export default withSessionAuthenticationForWorkspace(
+  withResourceFetchingFromRoute(handler, {
+    space: { requireCanRead: true },
+  })
+);

@@ -10,15 +10,12 @@ import type { MCPApiResponse } from "@app/types/mcp";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<MCPApiResponse>>,
-  auth: Authenticator,
+  auth: Authenticator
 ): Promise<void> {
   const { method } = req;
   const { wId, serverId } = req.query;
 
-  if (
-    typeof wId !== "string" ||
-    typeof serverId !== "string"
-  ) {
+  if (typeof wId !== "string" || typeof serverId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

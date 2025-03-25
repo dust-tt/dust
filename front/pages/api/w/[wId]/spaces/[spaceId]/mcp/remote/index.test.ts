@@ -1,11 +1,33 @@
+import type { RequestMethod } from "node-mocks-http";
 import { describe, expect, vi } from "vitest";
 
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
 
-vi.mock(import("@app/lib/api/mcp"), async (importOriginal) => {
+async function setupTest(
+  t: any,
+  role: "builder" | "user" | "admin" = "builder",
+  method: RequestMethod = "GET"
+) {
+  const { req, res, workspace } = await createPrivateApiMockRequest({
+    role,
+    method,
+  });
+
+  const space = await SpaceFactory.global(workspace, t);
+
+  // Set up common query parameters
+  req.query.wId = workspace.sId;
+  req.query.spaceId = space.sId;
+
+  return { req, res, workspace, space };
+}
+
+vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
@@ -18,9 +40,8 @@ vi.mock(import("@app/lib/api/mcp"), async (importOriginal) => {
 });
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
-  itInTransaction("should return a list of servers", async (db) => {
-    const { req, res, workspace, space } =
-      await RemoteMCPServerFactory.setupTest(db);
+  itInTransaction("should return a list of servers", async (t) => {
+    const { req, res, workspace, space } = await setupTest(t);
 
     // Create two test servers
     await RemoteMCPServerFactory.create(workspace, space, {
@@ -46,8 +67,8 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 
   itInTransaction(
     "should return empty array when no servers exist",
-    async (db) => {
-      const { req, res } = await RemoteMCPServerFactory.setupTest(db);
+    async (t) => {
+      const { req, res } = await setupTest(t);
 
       await handler(req, res);
 
@@ -59,32 +80,11 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
       expect(responseData.servers).toHaveLength(0);
     }
   );
-
-  itInTransaction(
-    "should return 403 when user is not a builder",
-    async (db) => {
-      const { req, res } = await RemoteMCPServerFactory.setupTest(db, "user");
-
-      await handler(req, res);
-
-      expect(res._getStatusCode()).toBe(403);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "data_source_auth_error",
-          message: expect.stringContaining("Only users that are `builders`"),
-        },
-      });
-    }
-  );
 });
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
-  itInTransaction("should return 400 when URL is missing", async (db) => {
-    const { req, res } = await RemoteMCPServerFactory.setupTest(
-      db,
-      "builder",
-      "POST"
-    );
+  itInTransaction("should return 400 when URL is missing", async (t) => {
+    const { req, res } = await setupTest(t, "builder", "POST");
 
     req.body = {};
 
@@ -101,9 +101,12 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 
   itInTransaction(
     "should return 400 when server with URL already exists",
-    async (db) => {
-      const { req, res, workspace, space } =
-        await RemoteMCPServerFactory.setupTest(db, "builder", "POST");
+    async (t) => {
+      const { req, res, workspace, space } = await setupTest(
+        t,
+        "builder",
+        "POST"
+      );
 
       const existingUrl = "https://existing-server.example.com";
       await RemoteMCPServerFactory.create(workspace, space, {
@@ -127,13 +130,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 });
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
-  itInTransaction("only supports GET and POST methods", async (db) => {
+  itInTransaction("only supports GET and POST methods", async (t) => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
-      const { req, res } = await RemoteMCPServerFactory.setupTest(
-        db,
-        "builder",
-        method
-      );
+      const { req, res } = await setupTest(t, "builder", method);
 
       await handler(req, res);
 

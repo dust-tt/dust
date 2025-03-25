@@ -32,7 +32,10 @@ export class RemoteMCPServerFactory {
     const sharedSecret =
       options.sharedSecret || `secret-${faker.string.alphanumeric(8)}`;
 
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
     return RemoteMCPServerResource.makeNew(
+      auth,
       {
         workspaceId: workspace.id,
         name,
@@ -42,7 +45,7 @@ export class RemoteMCPServerFactory {
         lastSyncAt: new Date(),
         sharedSecret,
       },
-      space,
+      space
     );
   }
 }
