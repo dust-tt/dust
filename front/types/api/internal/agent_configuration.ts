@@ -140,18 +140,17 @@ const MCPServerActionConfigurationSchema = t.type({
     t.null,
   ]),
   remoteMCPServerId: t.union([t.string, t.null]),
-  resources: t.type({
-    dataSources: t.union([
-      t.undefined,
-      t.array(
-        t.type({
-          dataSourceViewId: t.string,
-          workspaceId: t.string,
-          filter: DataSourceFilterCodec,
-        })
-      ),
-    ]),
-  }),
+
+  dataSources: t.union([
+    t.undefined,
+    t.array(
+      t.type({
+        dataSourceViewId: t.string,
+        workspaceId: t.string,
+        filter: DataSourceFilterCodec,
+      })
+    ),
+  ]),
 });
 
 const ProcessActionConfigurationSchema = t.type({
