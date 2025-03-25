@@ -30,7 +30,7 @@ import {
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -341,7 +341,7 @@ export async function syncConversation({
       sync_type: syncType,
     },
     title: convoTitle,
-    mimeType: MIME_TYPES.INTERCOM.CONVERSATION,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.CONVERSATION,
     async: true,
   });
 }

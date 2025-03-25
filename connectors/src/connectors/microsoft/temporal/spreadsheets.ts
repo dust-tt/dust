@@ -30,7 +30,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES, slugify } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, slugify } from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -331,7 +331,7 @@ export async function handleSpreadSheet({
     title: file.name ?? "Untitled spreadsheet",
     parents,
     parentId: parentInternalId,
-    mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
     sourceUrl: file.webUrl ?? undefined,
   });
 

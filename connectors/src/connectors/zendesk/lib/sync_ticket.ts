@@ -18,7 +18,7 @@ import type { ZendeskConfigurationResource } from "@connectors/resources/zendesk
 import { ZendeskTicketResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -262,7 +262,7 @@ export async function syncTicket({
       loggerArgs: { ...loggerArgs, ticketId: ticket.id },
       upsertContext: { sync_type: "batch" },
       title: ticket.subject,
-      mimeType: MIME_TYPES.ZENDESK.TICKET,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
       async: true,
     });
     await ticketInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

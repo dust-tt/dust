@@ -38,8 +38,8 @@ import {
   concurrentExecutor,
   getGoogleIdsFromSheetContentNodeInternalId,
   getGoogleSheetTableId,
+  INTERNAL_MIME_TYPES,
   isGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
 } from "@connectors/types";
 
 export async function isDriveObjectExpandable({
@@ -178,7 +178,7 @@ export async function updateParentsField(
       parents: parentIds,
       parentId: parentIds[1] ?? null,
       title: file.name ?? "",
-      mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
       sourceUrl: getSourceUrlForGoogleDriveFiles(file),
     });
     const sheets = await GoogleDriveSheet.findAll({
@@ -350,7 +350,7 @@ export async function fixParentsConsistency({
                   parents: missingFolderParents,
                   parentId: missingFolderParents[1] || null,
                   title: missingFolder.name ?? "",
-                  mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                  mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
                   sourceUrl: getSourceUrlForGoogleDriveFiles(missingFolder),
                 });
 

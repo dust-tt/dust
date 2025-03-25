@@ -5,7 +5,7 @@ import {
 import type {
   ConnectorPermission,
   ContentNode,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
 } from "@connectors/types";
 /**
  * 3 types of nodes in a remote database content tree:
@@ -35,9 +35,9 @@ export const getContentNodeFromInternalId = (
   internalId: string,
   permission: ConnectorPermission = "none",
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
   const { databaseName, schemaName, tableName } = parseInternalId(internalId);

@@ -16,7 +16,7 @@ import {
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 async function createFolderNodes(execute: boolean) {
   const connectors = await ConnectorResource.listByType("intercom", {});
@@ -35,7 +35,7 @@ async function createFolderNodes(execute: boolean) {
         parents: [getTeamsInternalId(connector.id)],
         parentId: null,
         title: "Conversations",
-        mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
       });
     }
 
@@ -59,7 +59,7 @@ async function createFolderNodes(execute: boolean) {
             parents: [teamInternalId, getTeamsInternalId(connector.id)],
             parentId: getTeamsInternalId(connector.id),
             title: team.name,
-            mimeType: MIME_TYPES.INTERCOM.TEAM,
+            mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
           });
         }
       },
@@ -113,7 +113,7 @@ async function createFolderNodes(execute: boolean) {
                 parents: collectionParents,
                 parentId: collectionParents[1] || null,
                 title: collection.name,
-                mimeType: MIME_TYPES.INTERCOM.COLLECTION,
+                mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,
               });
             }
           },
