@@ -25,7 +25,7 @@ export async function pauseAllLabsWorkflows(auth: Authenticator) {
   allLabsConfigs.forEach(async (config) => {
     if (config) {
       logger.info(
-        `Stopping Labs workflow ${config.id} for workspace ${config.workspaceId} and provider ${config.provider}`
+        `Stopping Labs workflow for workspace ${config.workspaceId} and provider ${config.provider}`
       );
       await stopRetrieveTranscriptsWorkflow(config);
       await config.setIsActive(false);
