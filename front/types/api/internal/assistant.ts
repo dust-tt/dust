@@ -88,8 +88,6 @@ const ContentFragmentInputWithContentNodeSchema = t.intersection([
   t.type({
     nodeId: t.string,
     nodeDataSourceViewId: t.string,
-    contentType: getSupportedContentNodeContentTypeSchema(),
-    sourceUrl: t.union([t.string, t.null]),
   }),
 ]);
 
@@ -144,15 +142,9 @@ export function isContentFragmentInputWithFileId(
 }
 
 export function isContentFragmentInputWithContentNode(
-  fragment: Omit<ContentFragmentInputType, "contentType"> & {
-    contentType?: string | undefined | null;
-  }
+  fragment: Omit<ContentFragmentInputType, "contentType">
 ): fragment is ContentFragmentInputWithContentNode {
-  return (
-    "nodeId" in fragment &&
-    !!fragment.contentType &&
-    isSupportedContentNodeFragmentContentType(fragment.contentType)
-  );
+  return "nodeId" in fragment && "nodeDataSourceViewId" in fragment;
 }
 
 export const InternalPostContentFragmentRequestBodySchema = t.intersection([
