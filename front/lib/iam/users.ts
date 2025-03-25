@@ -180,11 +180,13 @@ export async function mergeUserIdentities({
   primaryUserId,
   secondaryUserId,
   enforceEmailMatch = true,
+  revokeSecondaryUser = false,
 }: {
   auth: Authenticator;
   primaryUserId: string;
   secondaryUserId: string;
   enforceEmailMatch?: boolean;
+  revokeSecondaryUser?: boolean;
 }): Promise<
   Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
 > {
@@ -290,8 +292,12 @@ export async function mergeUserIdentities({
     }
   );
 
-  // Revoke the secondary user's membership in the workspace.
-  await revokeAndTrackMembership(auth.getNonNullableWorkspace(), secondaryUser);
+  if (revokeSecondaryUser) {
+    await revokeAndTrackMembership(
+      auth.getNonNullableWorkspace(),
+      secondaryUser
+    );
+  }
 
   return new Ok({
     primaryUser,
