@@ -76,7 +76,7 @@ async function handler(
         });
       }
 
-      await server.updateServer(auth, {
+      await server.updateMetadata(auth, {
         name,
         url,
         description,

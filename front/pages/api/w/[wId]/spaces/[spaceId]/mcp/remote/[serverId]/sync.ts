@@ -72,7 +72,7 @@ async function handler(
 
   const metadata = await fetchServerData(server.url);
 
-  await server.updateServer(auth, {
+  await server.updateMetadata(auth, {
     name: metadata.name,
     description: metadata.description,
     cachedTools: metadata.tools,

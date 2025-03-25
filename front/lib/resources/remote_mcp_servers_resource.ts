@@ -37,9 +37,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
     space: SpaceResource
   ) {
-    if (!space.canWrite(auth)) {
-      throw new Error("Unauthorized write attempt");
-    }
+    assert(space.canWrite(auth), "The user is not authorized to create an MCP server");
 
     const server = await RemoteMCPServer.create({
       ...blob,
@@ -126,7 +124,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    assert(this.canWrite(auth), "Unauthorized delete attempt");
+    assert(this.canWrite(auth), "The user is not authorized to delete this MCP server");
     const deletedCount = await RemoteMCPServer.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -143,7 +141,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    assert(this.canWrite(auth), "Unauthorized delete attempt");
+    assert(this.canWrite(auth), "The user is not authorized to delete this MCP server");
     const deletedCount = await RemoteMCPServer.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -158,7 +156,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
 
   // Mutation.
 
-  async updateServer(
+  async updateMetadata(
     auth: Authenticator,
     {
       name,
@@ -176,7 +174,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       lastSyncAt: Date;
     }
   ) {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
+    assert(this.canWrite(auth), "The user is not authorized to update this MCP server");
     await this.update({
       name,
       description,
