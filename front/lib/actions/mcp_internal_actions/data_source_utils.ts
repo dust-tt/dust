@@ -2,7 +2,7 @@ import { MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-// TODO(mcp): extract this in a common location where we would have all the resources.
+// TODO(mcp): extract this in a common location where we would have all the resources (maybe the sdk).
 const dataSourceViewUriSchema = z
   .string()
   .startsWith("data_source_view://dust/w/")
