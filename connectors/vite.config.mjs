@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [],
   test: {
     globals: true,
+    setupFiles: "./vite.setup.ts",
+    globalSetup: "./vite.globalSetup.ts",
   },
   resolve: {
     alias: {

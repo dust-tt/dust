@@ -1,6 +1,7 @@
 import { fetchTree } from "@connectors/connectors/salesforce/lib/salesforce_api";
 import { getConnectorAndCredentials } from "@connectors/connectors/salesforce/lib/utils";
 import { sync } from "@connectors/lib/remote_databases/activities";
+import { parseInternalId } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import type { ModelId } from "@connectors/types";
 import { MIME_TYPES } from "@connectors/types";
@@ -28,7 +29,7 @@ export async function syncSalesforceConnection(connectorId: ModelId) {
     connector,
     // Only keep the table name in the remote table id.
     internalTableIdToRemoteTableId: (internalTableId: string) =>
-      internalTableId.split(".").pop() ?? internalTableId,
+      parseInternalId(internalTableId).tableName ?? internalTableId,
   });
 
   await syncSucceeded(connectorId);

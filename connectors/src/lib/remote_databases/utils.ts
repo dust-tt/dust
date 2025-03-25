@@ -182,7 +182,7 @@ export const saveNodesFromPermissions = async ({
       );
     }
 
-    const [database, schema, table] = internalId.split(".");
+    const { databaseName, schemaName, tableName } = parseInternalId(internalId);
     const internalType = getContentNodeTypeFromInternalId(internalId);
     switch (internalType) {
       case "database":
@@ -196,7 +196,7 @@ export const saveNodesFromPermissions = async ({
               await RemoteDatabaseModel.create({
                 connectorId,
                 internalId,
-                name: database as string,
+                name: databaseName,
                 permission: "selected",
               });
             } else {
@@ -221,8 +221,8 @@ export const saveNodesFromPermissions = async ({
               await RemoteSchemaModel.create({
                 connectorId,
                 internalId,
-                name: schema as string,
-                databaseName: database as string,
+                name: schemaName as string,
+                databaseName: databaseName as string,
                 permission: "selected",
               });
             } else {
@@ -247,9 +247,9 @@ export const saveNodesFromPermissions = async ({
               await RemoteTableModel.create({
                 connectorId,
                 internalId,
-                name: table as string,
-                schemaName: schema as string,
-                databaseName: database as string,
+                name: tableName as string,
+                schemaName: schemaName as string,
+                databaseName: databaseName as string,
                 permission: "selected",
               });
             } else {
@@ -267,4 +267,50 @@ export const saveNodesFromPermissions = async ({
   }
 
   return new Ok(undefined);
+};
+
+/**
+ * Builds an internal ID from a database name, schema name, and table name.
+ * If the schema name or table name is not provided, it will be returned as null.
+ * As we use "." as the separator in the internal ID, we use "__DUST_DOT__" as the replacement in the input.
+ *
+ * @param databaseName - The name of the database.
+ * @param schemaName - The name of the schema.
+ * @param tableName - The name of the table.
+ */
+export const buildInternalId = ({
+  databaseName,
+  schemaName,
+  tableName,
+}: {
+  databaseName: string;
+  schemaName?: string;
+  tableName?: string;
+}) => {
+  return [databaseName, schemaName, tableName]
+    .filter((name) => name !== undefined)
+    .map((name) => name!.replace(".", "__DUST_DOT__"))
+    .join(".");
+};
+
+/**
+ * Reverses the buildInternalId function.
+ */
+
+export const parseInternalId = (
+  internalId: string
+): {
+  databaseName: string;
+  schemaName?: string;
+  tableName?: string;
+} => {
+  const [databaseName, schemaName, tableName] = internalId
+    .split(".")
+    .map((name) => name.replace("__DUST_DOT__", "."));
+  if (!databaseName) {
+    throw new Error(
+      "Invalid internal ID, it requires at least a database name: " + internalId
+    );
+  }
+  return { databaseName, schemaName, tableName };
 };

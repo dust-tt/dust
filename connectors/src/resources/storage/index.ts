@@ -1,4 +1,5 @@
 import assert from "assert";
+import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 
 import logger from "@connectors/logger/logger";
@@ -31,6 +32,12 @@ types.setTypeParser(types.builtins.INT8, function (val: unknown) {
   );
   return Number(val);
 });
+
+if (process.env.NODE_ENV === "test") {
+  const namespace = cls.createNamespace("test-namespace");
+
+  Sequelize.useCLS(namespace);
+}
 
 export const sequelizeConnection = new Sequelize(
   dbConfig.getRequiredDatabaseURI(),
