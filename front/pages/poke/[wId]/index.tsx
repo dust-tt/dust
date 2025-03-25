@@ -36,7 +36,7 @@ import {
 } from "@app/lib/api/workspace";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/resources/storage/models/plans";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";

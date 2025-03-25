@@ -2,7 +2,7 @@ import _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";

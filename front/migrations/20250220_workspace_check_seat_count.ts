@@ -1,5 +1,5 @@
 import { checkSeatCountForWorkspace } from "@app/lib/api/workspace";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/resources/storage/models/plans";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,

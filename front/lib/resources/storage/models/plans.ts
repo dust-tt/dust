@@ -15,7 +15,8 @@ import type {
 } from "@app/types";
 import { SUBSCRIPTION_STATUSES } from "@app/types";
 
-export class Plan extends BaseModel<Plan> {
+export class PlanModel extends BaseModel<PlanModel> {
+
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -42,7 +43,7 @@ export class Plan extends BaseModel<Plan> {
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
 }
-Plan.init(
+PlanModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -160,8 +161,8 @@ export class Subscription extends WorkspaceAwareModel<Subscription> {
   declare startDate: Date;
   declare endDate: Date | null;
 
-  declare planId: ForeignKey<Plan["id"]>;
-  declare plan: NonAttribute<Plan>;
+  declare planId: ForeignKey<PlanModel["id"]>;
+  declare plan: NonAttribute<PlanModel>;
 
   declare stripeSubscriptionId: string | null;
 
@@ -252,10 +253,10 @@ Subscription.addHook(
 );
 
 // Plan <> Subscription relationship: attribute "planId" in Subscription
-Plan.hasMany(Subscription, {
+PlanModel.hasMany(Subscription, {
   foreignKey: { name: "planId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Subscription.belongsTo(Plan, {
+Subscription.belongsTo(PlanModel, {
   foreignKey: { name: "planId", allowNull: false },
 });

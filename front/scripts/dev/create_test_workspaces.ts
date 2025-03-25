@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
-import { Plan } from "@app/lib/models/plan";
+import { Plan } from "@app/lib/resources/storage/models/plans";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";

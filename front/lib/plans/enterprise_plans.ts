@@ -1,10 +1,9 @@
 import type { Attributes } from "sequelize";
-
-import type { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import { ENT_PLAN_FAKE_CODE } from "@app/lib/plans/plan_codes";
 
 export type PlanAttributes = Omit<
-  Attributes<Plan>,
+  Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 

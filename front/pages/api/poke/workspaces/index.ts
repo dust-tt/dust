@@ -6,7 +6,8 @@ import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getWorkspaceVerifiedDomain } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -155,7 +156,7 @@ async function handler(
           attributes: ["workspaceId"],
           include: [
             {
-              model: Plan,
+              model: PlanResource.model,
               as: "plan",
               where: {
                 code: { [Op.ne]: FREE_TEST_PLAN_CODE },
@@ -253,7 +254,7 @@ async function handler(
             required: false,
             include: [
               {
-                model: Plan,
+                model: PlanResource.model,
                 as: "plan",
               },
             ],

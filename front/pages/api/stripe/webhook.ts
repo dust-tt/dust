@@ -12,7 +12,9 @@ import {
 } from "@app/lib/api/email";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { Workspace } from "@app/lib/models/workspace";
 import {
   assertStripeSubscriptionIsValid,
@@ -163,7 +165,7 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            const plan = await Plan.findOne({
+            const plan = await PlanModel.findOne({
               where: { code: planCode },
             });
             if (!plan) {
@@ -177,7 +179,7 @@ async function handler(
                 where: { workspaceId: workspace.id, status: "active" },
                 include: [
                   {
-                    model: Plan,
+                    model: PlanResource.model,
                     as: "plan",
                   },
                 ],

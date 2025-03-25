@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Plan, Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import {
   FREE_NO_PLAN_CODE,

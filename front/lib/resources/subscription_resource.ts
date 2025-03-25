@@ -10,8 +10,8 @@ import type Stripe from "stripe";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
-import { Plan } from "@app/lib/models/plan";
+import { PlanResource } from "@app/lib/resources/plan_resource";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -108,7 +108,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         },
         include: [
           {
-            model: Plan,
+            model: PlanResource.model,
             as: "plan",
             required: true,
           },
@@ -162,7 +162,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     const subscriptions = await Subscription.findAll({
       where: { workspaceId: owner.id },
-      include: [Plan],
+      include: [PlanResource.model],
     });
 
     return subscriptions.map(
@@ -180,7 +180,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource | null> {
     const res = await Subscription.findOne({
       where: { stripeSubscriptionId },
-      include: [Plan],
+      include: [PlanResource.model],
     });
 
     if (!res) {
@@ -631,14 +631,11 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
-    const newPlan = await Plan.findOne({
-      where: { code: planCode },
-    });
+  private static async findPlanOrThrow(planCode: string): Promise<PlanResource> {
+    const newPlan = await PlanResource.fetchByPlanCode(planCode);
     if (!newPlan) {
       throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);
     }
-
     return newPlan;
   }
 

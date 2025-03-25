@@ -6,10 +6,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 
 export const PlanTypeSchema = t.type({
   code: t.string,
@@ -77,8 +78,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
-      const plans: PlanType[] = planModels.map((plan) =>
+      const planResources = await PlanResource.fetchAll({ order: [["createdAt", "ASC"]] });
+      const plans: PlanType[] = planResources.map((plan) =>
         renderPlanFromModel({ plan })
       );
 
@@ -100,8 +101,8 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-
-      await Plan.upsert({
+      //TODO : implement and use PlanResource.upsert
+      await PlanModel.upsert({
         code: body.code,
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,

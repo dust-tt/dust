@@ -63,7 +63,8 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import {
@@ -140,7 +141,7 @@ async function main() {
 
   await ExtensionConfigurationModel.sync({ alter: true });
 
-  await Plan.sync({ alter: true });
+  await PlanResource.model.sync({ alter: true });
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
 

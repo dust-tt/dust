@@ -1,19 +1,16 @@
-import { Plan } from "@app/lib/models/plan";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
+
 
 const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
-    const res = await Plan.update(
+    const res = await PlanResource.setMessageLimits(
       {
         maxMessages: 100,
         maxMessagesTimeframe: "day",
-      },
-      {
-        where: {
-          code: "PRO_PLAN_SEAT_29",
-        },
-      }
+      }, PRO_PLAN_SEAT_29_CODE,
     );
 
     logger.info(

@@ -1,14 +1,15 @@
 import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { isDevelopment, isTest } from "@app/types";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 
 export type PlanAttributes = Omit<
-  Attributes<Plan>,
+  Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 
@@ -81,16 +82,12 @@ if (isDevelopment() || isTest()) {
  */
 export const upsertProPlans = async () => {
   for (const planData of PRO_PLANS_DATA) {
-    const plan = await Plan.findOne({
-      where: {
-        code: planData.code,
-      },
-    });
+    const plan = await PlanResource.fetchByPlanCode(planData.code);
     if (plan === null) {
-      await Plan.create(planData);
+      await PlanResource.makeNew(planData);
       console.log(`Pro plan ${planData.code} created.`);
     } else {
-      await plan.update(planData);
+      await plan.resetWithData(planData);
       console.log(`Pro plan ${planData.code} updated.`);
     }
   }
