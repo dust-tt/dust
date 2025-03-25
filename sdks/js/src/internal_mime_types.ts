@@ -141,7 +141,7 @@ export const INTERNAL_MIME_TYPES = {
   }),
 };
 
-export const MIME_TYPES_VALUES = Object.values(INTERNAL_MIME_TYPES).flatMap((value) =>
+export const INTERNAL_MIME_TYPES_VALUES = Object.values(INTERNAL_MIME_TYPES).flatMap((value) =>
   Object.values(value).map((v) => v)
 );
 
@@ -200,5 +200,5 @@ export type DustMimeType =
   | GongMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
-  return (MIME_TYPES_VALUES as string[]).includes(mimeType);
+  return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
 }

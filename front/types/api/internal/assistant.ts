@@ -1,4 +1,4 @@
-import { MIME_TYPES_VALUES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
@@ -36,7 +36,7 @@ export const getSupportedInlinedContentType = () => {
 };
 
 const [first, second, ...rest] = [
-  ...MIME_TYPES_VALUES,
+  ...INTERNAL_MIME_TYPES_VALUES,
   ...getSupportedNonImageMimeTypes(),
 ];
 export const getSupportedContentNodeContentTypeSchema = () => {
@@ -59,7 +59,10 @@ export const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (
-    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+    [
+      ...INTERNAL_MIME_TYPES_VALUES,
+      ...getSupportedNonImageMimeTypes(),
+    ] as string[]
   ).includes(contentType);
 };
 
@@ -67,7 +70,10 @@ export const isSupportedContentNodeFragmentContentType = (
   contentType: string
 ): contentType is SupportedContentNodeContentType => {
   return (
-    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+    [
+      ...INTERNAL_MIME_TYPES_VALUES,
+      ...getSupportedNonImageMimeTypes(),
+    ] as string[]
   ).includes(contentType);
 };
 
