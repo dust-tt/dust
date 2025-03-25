@@ -23,10 +23,6 @@ function isConversationIncludableFileContentType(
     return false;
   }
   // TODO(attach-ds): Filter out content Types that are folders
-  console.log(
-    "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< HERE 2",
-    contentType
-  );
   return true;
 }
 

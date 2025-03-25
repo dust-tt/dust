@@ -14,6 +14,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
+  ContentNodeType,
   ModelId,
   Result,
   SupportedFileContentType,
@@ -33,6 +34,7 @@ interface ContentFragmentBlob {
   fileId: ModelId | null;
   nodeId: string | null;
   nodeDataSourceViewId: ModelId | null;
+  nodeType: ContentNodeType | null;
   sourceUrl: string | null;
   textBytes: number | null;
   title: string;
@@ -116,6 +118,7 @@ export async function getContentFragmentBlob(
       textBytes: file.fileSize,
       nodeId: null,
       nodeDataSourceViewId: null,
+      nodeType: null,
       title,
     });
   } else if (isContentFragmentInputWithContentNode(cf)) {
@@ -168,14 +171,10 @@ export async function getContentFragmentBlob(
       );
     }
 
-    console.log(
-      ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> HERE",
-      cf,
-      contentNode
-    );
     return new Ok({
       nodeId: contentNode.internalId,
       nodeDataSourceViewId: getResourceIdFromSId(cf.nodeDataSourceViewId),
+      nodeType: contentNode.type,
       contentType: contentNode.mimeType,
       sourceUrl: contentNode.sourceUrl,
       textBytes: null,
