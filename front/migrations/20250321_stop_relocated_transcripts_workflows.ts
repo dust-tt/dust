@@ -1,4 +1,3 @@
-#!/usr/bin/env ts-node-script
 import type { Logger } from "pino";
 
 import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
