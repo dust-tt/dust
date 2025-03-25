@@ -18,6 +18,7 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
+import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 
 const SF_API_VERSION = "57.0";
 
@@ -162,7 +163,10 @@ export const fetchTree = async ({
               .map(async (schema) => {
                 const tablesRes = await fetchTables({
                   credentials,
-                  parentInternalId: `${schema.database_name}.${schema.name}`,
+                  parentInternalId: buildInternalId({
+                    databaseName: schema.database_name,
+                    schemaName: schema.name,
+                  }),
                 });
                 if (tablesRes.isErr()) {
                   throw tablesRes.error;
