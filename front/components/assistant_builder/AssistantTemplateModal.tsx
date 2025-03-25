@@ -57,7 +57,7 @@ export function AssistantTemplateModal({
                 <div className="flex max-h-32 max-w-lg flex-row gap-3">
                   <Avatar size="lg" visual={assistantTemplate.pictureUrl} />
                   <div className="flex flex-col gap-1">
-                    <span className="text-lg font-medium text-foreground dark:text-foreground-night">
+                    <span className="heading-lg text-foreground dark:text-foreground-night">
                       @{assistantTemplate.handle}
                     </span>
                     <Link

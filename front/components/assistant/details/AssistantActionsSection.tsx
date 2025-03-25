@@ -330,7 +330,7 @@ interface ActionSectionProps {
 function ActionSection({ title, children }: ActionSectionProps) {
   return (
     <div>
-      <div className="text-text-foreground dark:text-text-foreground-night pb-2 text-lg font-medium">
+      <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2">
         {title}
       </div>
       {children}

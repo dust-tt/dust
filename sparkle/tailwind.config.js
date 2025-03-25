@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 const colors = require("tailwindcss/colors");
+const plugin = require("tailwindcss/plugin");
 
 const safeColorsArray = [
   "gray",
@@ -163,8 +164,101 @@ module.exports = {
       "2xl": "1536px",
     },
     fontFamily: {
-      sans: ["'darkmode-off-cc'", "sans-serif"],
-      objektiv: ["'objektiv-mk1'", "sans-serif"],
+      sans: ["Geist", "sans-serif"],
+      mono: ["Geist Mono", "monospace"],
+    },
+    fontSize: {
+      xs: [
+        "12px",
+        {
+          lineHeight: "16px",
+          letterSpacing: "normal",
+        },
+      ],
+      sm: [
+        "14px",
+        {
+          lineHeight: "20px",
+          letterSpacing: "-0.28px",
+        },
+      ],
+      base: [
+        "16px",
+        {
+          lineHeight: "24px",
+          letterSpacing: "-0.32px",
+        },
+      ],
+      lg: [
+        "18px",
+        {
+          lineHeight: "28px",
+          letterSpacing: "-0.36px",
+        },
+      ],
+      xl: [
+        "20px",
+        {
+          lineHeight: "26px",
+          letterSpacing: "-0.4px",
+        },
+      ],
+      "2xl": [
+        "24px",
+        {
+          lineHeight: "32px",
+          letterSpacing: "-0.96px",
+        },
+      ],
+      "3xl": [
+        "32px",
+        {
+          lineHeight: "40px",
+          letterSpacing: "-1.28px",
+        },
+      ],
+      "4xl": [
+        "40px",
+        {
+          lineHeight: "48px",
+          letterSpacing: "-2.4px",
+        },
+      ],
+      "5xl": [
+        "48px",
+        {
+          lineHeight: "56px",
+          letterSpacing: "-2.88px",
+        },
+      ],
+      "6xl": [
+        "56px",
+        {
+          lineHeight: "56px",
+          letterSpacing: "-3.36px",
+        },
+      ],
+      "7xl": [
+        "64px",
+        {
+          lineHeight: "64px",
+          letterSpacing: "-3.84px",
+        },
+      ],
+      "8xl": [
+        "72px",
+        {
+          lineHeight: "72px",
+          letterSpacing: "-4.32px",
+        },
+      ],
+      "9xl": [
+        "80px",
+        {
+          lineHeight: "80px",
+          letterSpacing: "-4.8px",
+        },
+      ],
     },
     extend: {
       borderRadius: {
@@ -467,8 +561,8 @@ module.exports = {
           DEFAULT: colors.gray[50],
           night: colors.gray[950],
           foreground: {
-            DEFAULT: colors.gray[500],
-            night: colors.gray[500],
+            DEFAULT: colors.gray[600],
+            night: colors.gray[400],
           },
           background: {
             DEFAULT: colors.gray[50],
@@ -617,6 +711,195 @@ module.exports = {
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
     require("@tailwindcss/container-queries"),
+    plugin(function ({ addBase, theme }) {
+      addBase({
+        ".s-label-xs": {
+          fontSize: theme("fontSize.xs[0]"),
+          lineHeight: theme("fontSize.xs[1].lineHeight"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-label-sm": {
+          fontSize: theme("fontSize.sm[0]"),
+          lineHeight: theme("fontSize.sm[1].lineHeight"),
+          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-label-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-heading-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-lg": {
+          fontSize: theme("fontSize.lg[0]"),
+          lineHeight: theme("fontSize.lg[1].lineHeight"),
+          letterSpacing: theme("fontSize.lg[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-xl": {
+          fontSize: theme("fontSize.xl[0]"),
+          lineHeight: theme("fontSize.xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.xl[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-2xl": {
+          fontSize: theme("fontSize.2xl[0]"),
+          lineHeight: theme("fontSize.2xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.2xl[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-3xl": {
+          fontSize: theme("fontSize.3xl[0]"),
+          lineHeight: theme("fontSize.3xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.3xl[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".s-heading-4xl": {
+          fontSize: theme("fontSize.4xl[0]"),
+          lineHeight: theme("fontSize.4xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.4xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        ".s-heading-5xl": {
+          fontSize: theme("fontSize.5xl[0]"),
+          lineHeight: theme("fontSize.5xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.5xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        ".s-heading-6xl": {
+          fontSize: theme("fontSize.6xl[0]"),
+          lineHeight: theme("fontSize.6xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.6xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        ".s-heading-7xl": {
+          fontSize: theme("fontSize.7xl[0]"),
+          lineHeight: theme("fontSize.7xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.7xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        ".s-heading-8xl": {
+          fontSize: theme("fontSize.8xl[0]"),
+          lineHeight: theme("fontSize.8xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.8xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        ".s-heading-9xl": {
+          fontSize: theme("fontSize.9xl[0]"),
+          lineHeight: theme("fontSize.9xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.9xl[1].letterSpacing"),
+          fontWeight: "500",
+        },
+        // Mono heading styles
+        ".s-heading-mono-lg": {
+          fontSize: theme("fontSize.lg[0]"),
+          lineHeight: theme("fontSize.lg[1].lineHeight"),
+          letterSpacing: theme("fontSize.lg[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-xl": {
+          fontSize: theme("fontSize.xl[0]"),
+          lineHeight: theme("fontSize.xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-2xl": {
+          fontSize: theme("fontSize.2xl[0]"),
+          lineHeight: theme("fontSize.2xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.2xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-3xl": {
+          fontSize: theme("fontSize.3xl[0]"),
+          lineHeight: theme("fontSize.3xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.3xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-4xl": {
+          fontSize: theme("fontSize.4xl[0]"),
+          lineHeight: theme("fontSize.4xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.4xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-5xl": {
+          fontSize: theme("fontSize.5xl[0]"),
+          lineHeight: theme("fontSize.5xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.5xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-6xl": {
+          fontSize: theme("fontSize.6xl[0]"),
+          lineHeight: theme("fontSize.6xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.6xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-7xl": {
+          fontSize: theme("fontSize.7xl[0]"),
+          lineHeight: theme("fontSize.7xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.7xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-8xl": {
+          fontSize: theme("fontSize.8xl[0]"),
+          lineHeight: theme("fontSize.8xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.8xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-heading-mono-9xl": {
+          fontSize: theme("fontSize.9xl[0]"),
+          lineHeight: theme("fontSize.9xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.9xl[1].letterSpacing"),
+          fontWeight: "400",
+          fontFamily: theme("fontFamily.mono"),
+        },
+        ".s-copy-xs": {
+          fontSize: theme("fontSize.xs[0]"),
+          lineHeight: theme("fontSize.xs[1].lineHeight"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
+          fontWeight: "400",
+        },
+        ".s-copy-sm": {
+          fontSize: theme("fontSize.sm[0]"),
+          lineHeight: theme("fontSize.sm[1].lineHeight"),
+          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          fontWeight: "400",
+        },
+        ".s-copy-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "400",
+        },
+        ".s-copy-lg": {
+          fontSize: theme("fontSize.lg[0]"),
+          lineHeight: theme("fontSize.lg[1].lineHeight"),
+          letterSpacing: theme("fontSize.lg[1].letterSpacing"),
+          fontWeight: "400",
+        },
+        ".s-copy-xl": {
+          fontSize: theme("fontSize.xl[0]"),
+          lineHeight: theme("fontSize.xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.xl[1].letterSpacing"),
+          fontWeight: "400",
+        },
+      });
+    }),
   ],
   prefix: "s-",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
@@ -626,6 +909,39 @@ module.exports = {
     "s-grid-rows-3",
     "s-grid-rows-4",
     "s-grid-rows-5",
+    // Add label classes to safelist
+    "s-label-xs",
+    "s-label-sm",
+    "s-label-base",
+    // Add copy classes to safelist
+    "s-copy-xs",
+    "s-copy-sm",
+    "s-copy-base",
+    "s-copy-lg",
+    "s-copy-xl",
+    // Add heading classes to safelist to ensure they're always included
+    "s-heading-base",
+    "s-heading-lg",
+    "s-heading-xl",
+    "s-heading-2xl",
+    "s-heading-3xl",
+    "s-heading-4xl",
+    "s-heading-5xl",
+    "s-heading-6xl",
+    "s-heading-7xl",
+    "s-heading-8xl",
+    "s-heading-9xl",
+    // Add mono heading classes to safelist
+    "s-heading-mono-lg",
+    "s-heading-mono-xl",
+    "s-heading-mono-2xl",
+    "s-heading-mono-3xl",
+    "s-heading-mono-4xl",
+    "s-heading-mono-5xl",
+    "s-heading-mono-6xl",
+    "s-heading-mono-7xl",
+    "s-heading-mono-8xl",
+    "s-heading-mono-9xl",
   ],
   colors: customColors,
 };

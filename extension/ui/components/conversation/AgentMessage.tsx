@@ -265,6 +265,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "tool_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -551,13 +552,13 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
+            <div className="heading-base">
               {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>

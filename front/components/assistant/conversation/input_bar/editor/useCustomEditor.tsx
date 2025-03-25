@@ -14,6 +14,7 @@ import { URLDetectionExtension } from "@app/components/assistant/conversation/in
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isMobile } from "@app/lib/utils";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
@@ -195,7 +196,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (nodeId: string | null) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
 }
 
 const useCustomEditor = ({
@@ -216,7 +217,7 @@ const useCustomEditor = ({
     MentionWithPasteExtension.configure({
       HTMLAttributes: {
         class:
-          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-medium",
+          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
       suggestion: makeGetAssistantSuggestions(),
     }),

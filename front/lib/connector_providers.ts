@@ -449,21 +449,21 @@ export const isConnectorProviderAssistantDefaultSelected = (
 ): boolean => {
   switch (provider) {
     case "confluence":
-    case "slack":
-    case "notion":
     case "github":
+    case "gong":
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "notion":
+    case "slack":
     case "zendesk":
-    case "gong":
       return true;
     // As of today (07/02/2025), the default selected provider are going to be used for semantic search
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
-    case "snowflake":
     case "bigquery":
-    case "webcrawler":
     case "salesforce":
+    case "snowflake":
+    case "webcrawler":
       return false;
     default:
       assertNever(provider);
@@ -473,25 +473,11 @@ export const isConnectorProviderAssistantDefaultSelected = (
 export const isConnectionIdRequiredForProvider = (
   provider: ConnectorProvider
 ): boolean => {
-  switch (provider) {
-    case "confluence":
-    case "slack":
-    case "notion":
-    case "github":
-    case "google_drive":
-    case "intercom":
-    case "microsoft":
-    case "zendesk":
-    case "snowflake":
-    case "bigquery":
-    case "salesforce":
-    case "gong":
-      return true;
-    case "webcrawler":
-      return false;
-    default:
-      assertNever(provider);
+  if (provider === "webcrawler") {
+    return false;
   }
+  // By default, the connection ID will always be required.
+  return true;
 };
 
 export function getDefaultDataSourceName(
@@ -508,4 +494,28 @@ export function getDefaultDataSourceDescription(
   return suffix
     ? `Managed Data Source for ${provider} (${suffix})`
     : `Managed Data Source for ${provider}`;
+}
+
+export function isConnectorTypeTrackable(
+  connectorType: ConnectorProvider
+): boolean {
+  switch (connectorType) {
+    case "google_drive":
+    case "github":
+    case "notion":
+    case "microsoft":
+    case "confluence":
+    case "intercom":
+    case "webcrawler":
+    case "snowflake":
+    case "zendesk":
+    case "bigquery":
+    case "salesforce":
+    case "gong":
+      return true;
+    case "slack":
+      return false;
+    default:
+      assertNever(connectorType);
+  }
 }

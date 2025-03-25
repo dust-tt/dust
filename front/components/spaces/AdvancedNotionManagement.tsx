@@ -233,7 +233,7 @@ export function AdvancedNotionManagement({
 
   return (
     <>
-      <div className="p-1 text-xl font-bold">
+      <div className="heading-xl p-1">
         Advanced Notion Management - Manual URL sync
       </div>
 

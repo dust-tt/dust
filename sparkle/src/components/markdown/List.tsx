@@ -43,9 +43,7 @@ export function OlBlock({
   );
 }
 
-export const liBlockVariants = cva([
-  "s-break-words first:s-pt-0 last:s-pb-0 s-py-1 @md:s-py-2",
-]);
+export const liBlockVariants = cva(["s-break-words first:s-pt-0 last:s-pb-0"]);
 
 interface LiBlockProps {
   children: React.ReactNode;

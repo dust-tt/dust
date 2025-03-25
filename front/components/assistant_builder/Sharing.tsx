@@ -200,7 +200,7 @@ export function SharingButton({
                 setNewScope={setNewScope}
                 origin="page"
               />
-              <div className="text-sm text-element-700">
+              <div className="text-sm text-muted-foreground">
                 <div>
                   {SCOPE_INFO[newScope].text}{" "}
                   {agentUsage && newScope !== "private" ? usageText : null}
@@ -212,10 +212,10 @@ export function SharingButton({
                 <Page.Separator />
                 <div className="flex flex-row justify-between">
                   <div>
-                    <div className="text-base font-bold text-element-800">
+                    <div className="heading-base text-muted-foreground">
                       Slack integration
                     </div>
-                    <div className="text-sm text-element-700">
+                    <div className="text-sm text-muted-foreground">
                       {slackChannelSelected.length === 0 ? (
                         <>Set as default agent for specific&nbsp;channels.</>
                       ) : (
@@ -268,10 +268,10 @@ export function SharingButton({
                 <Page.Separator />
                 <div className="flex w-full flex-row">
                   <div className="grow">
-                    <div className="text-base font-bold text-element-800">
+                    <div className="heading-base text-muted-foreground">
                       Link
                     </div>
-                    <div className="text-sm text-element-700">
+                    <div className="text-sm text-muted-foreground">
                       Shareable direct&nbsp;URL
                     </div>
                   </div>
