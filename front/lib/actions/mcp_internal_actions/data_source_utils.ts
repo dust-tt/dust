@@ -28,7 +28,7 @@ export const createServer = (): McpServer => {
         content: [
           {
             type: "text",
-            text: `Got the URI: ${uri.split("/").slice(-1)[0]} and the mimeType ${mimeType}`,
+            text: `Got the URI: ${uri} and the mimeType ${mimeType}`,
           },
         ],
       };
