@@ -24,6 +24,7 @@ const ACTION_RUNNING_LABELS: Record<AgentActionPublicType["type"], string> = {
   conversation_include_file_action: "Including file ",
   reasoning_action: "Reasoning",
   search_labels_action: "Searching labels",
+  tool_action: "Calling an external tool",
 };
 
 export function AgentMessageActions({
