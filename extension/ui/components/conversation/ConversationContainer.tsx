@@ -21,7 +21,7 @@ import type {
   ContentFragmentType,
   ExtensionWorkspaceType,
 } from "@dust-tt/client";
-import { Page, useSendNotification } from "@dust-tt/sparkle";
+import { cn, Page, useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -234,7 +234,11 @@ export function ConversationContainer({
           </div>
           <div
             id="assistant-input-header"
-            className="sticky bottom-0 pb-4 z-20  w-full bg-white dark:bg-slate-950"
+            className={cn(
+              "sticky bottom-0 pb-4 z-20  w-full",
+              "bg-background text-foreground",
+              "dark:bg-background-night dark:text-foreground-night"
+            )}
           >
             <AssistantInputBar
               owner={owner}
