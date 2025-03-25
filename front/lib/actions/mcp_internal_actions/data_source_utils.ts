@@ -1,8 +1,5 @@
 import { MIME_TYPES } from "@dust-tt/client";
-import {
-  McpServer,
-  ResourceTemplate,
-} from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 // TODO(mcp): extract this in a common location where we would have all the resources.
@@ -24,53 +21,6 @@ export const createServer = (): McpServer => {
         resources: {},
         tools: {},
       },
-    }
-  );
-
-  server.resource(
-    "data_source_view",
-    new ResourceTemplate(
-      "data_source_view://dust/w/{wId}/data_source_views/{dsvId}",
-      {
-        list: () => ({
-          resources: [
-            {
-              name: "data_source_view",
-              uri: "data_source_view://dust/w/{wId}/data_source_views/{dsvId}",
-              mimeType: MIME_TYPES.DATA_SOURCE_VIEW,
-            },
-          ],
-        }),
-      }
-    ),
-    async (uri, { wId, dsvId }) => ({
-      contents: [
-        {
-          uri: uri.href,
-          mimeType: MIME_TYPES.DATA_SOURCE_VIEW,
-          text: `Data source view ${dsvId} for workspace ${wId}`,
-        },
-      ],
-    })
-  );
-
-  server.tool(
-    "show-name",
-    "Displays the name of the data source.",
-    {
-      uri: dataSourceViewUriSchema,
-      mimeType: z.literal(MIME_TYPES.DATA_SOURCE_VIEW),
-    },
-    () => {
-      return {
-        isError: false,
-        content: [
-          {
-            type: "text",
-            text: `Not implemented yet.`,
-          },
-        ],
-      };
     }
   );
 
