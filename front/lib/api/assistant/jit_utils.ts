@@ -18,7 +18,7 @@ import {
 function isConversationIncludableFileContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  // We allow including everything except images.and content node folders.
+  // We allow including everything except images.
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
