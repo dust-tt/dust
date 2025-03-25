@@ -1,6 +1,7 @@
 import type { DustMimeType } from "@dust-tt/client";
 
 import type { MessageType, MessageVisibility } from "./assistant/conversation";
+import type { ContentNodeType } from "./core/content_node";
 import type { DataSourceViewContentNode } from "./data_source_view";
 import type { SupportedFileContentType } from "./files";
 import type { ModelId } from "./shared/model_id";
@@ -24,6 +25,7 @@ export type ContentFragmentType = {
   fileId: string | null;
   nodeId: string | null;
   nodeDataSourceViewId: string | null;
+  nodeType: ContentNodeType | null;
   snippet: string | null;
   generatedTables: string[];
   created: number;

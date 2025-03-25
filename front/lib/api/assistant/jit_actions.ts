@@ -42,15 +42,16 @@ import type {
 import { assertNever } from "@app/types";
 
 /**
- * Returns a list of supporting actions that should be made available to the model alongside this action.
- * These actions provide additional functionality that can be useful when using this action,
- * but they are not required - the model may choose to use them or not.
+ * Returns a list of supporting actions that should be made available to the model alongside this
+ * action.  These actions provide additional functionality that can be useful when using this
+ * action, but they are not required - the model may choose to use them or not.
  *
- * For example, a retrieval action with auto tags may return a search_tags action
- * to help the model find relevant tags, but the model can still use the retrieval
- * action without searching for tags first.
+ * For example, a retrieval action with auto tags may return a search_tags action to help the model
+ * find relevant tags, but the model can still use the retrieval action without searching for tags
+ * first.
  *
- * TODO(mcp): in a MCP world, the supporting actions are part of the MCP server tools for the main action. Should be removed once everything has been migrated to MCP.
+ * TODO(mcp): in a MCP world, the supporting actions are part of the MCP server tools for the main
+ * action. Should be removed once everything has been migrated to MCP.
  */
 function getSupportingActions(
   agentActions: AgentActionConfigurationType[]
@@ -122,7 +123,8 @@ async function getJITActions(
 
       if (filesUsableAsTableQuery.length > 0) {
         const action: TablesQueryConfigurationType = {
-          // The description here is the description of the data, a meta description of the action is prepended automatically.
+          // The description here is the description of the data, a meta description of the action
+          // is prepended automatically.
           description:
             DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_DATA_DESCRIPTION,
           type: "tables_query_configuration",
@@ -156,7 +158,8 @@ async function getJITActions(
       if (filesUsableAsRetrievalQuery.length > 0) {
         const dataSources: DataSourceConfiguration[] =
           filesUsableAsRetrievalQuery
-            // For each searchable content node, we add its datasourceview with itself as parent filter.
+            // For each searchable content node, we add its datasourceview with itself as parent
+            // filter.
             .filter((f) => isConversationContentNodeType(f))
             .map((f) => ({
               workspaceId: auth.getNonNullableWorkspace().sId,
