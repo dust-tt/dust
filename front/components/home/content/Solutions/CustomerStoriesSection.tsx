@@ -66,9 +66,7 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
       <Carousel className="w-full">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <H2 from={fromColor} to={toColor}>
-              {title}
-            </H2>
+            <H2>{title}</H2>
           </div>
           <div className="flex gap-4">
             <CarouselPrevious />

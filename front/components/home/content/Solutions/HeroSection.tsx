@@ -33,8 +33,6 @@ export const HeroSection: FC<HeroSectionProps> = ({
   uptitle,
   title,
   description,
-  fromColor,
-  toColor,
   visuals,
   ctaButtons,
 }) => {
@@ -56,11 +54,11 @@ export const HeroSection: FC<HeroSectionProps> = ({
     <div className="container flex w-full flex-col py-6">
       <Grid>
         <div className="col-span-12 mx-auto flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%] lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%] 2xl:col-span-6">
-          <P size="lg">Dust for {uptitle}</P>
-          <H1 from={fromColor} to={toColor}>
-            {title}
-          </H1>
-          <P size="lg" className="pb-6 text-slate-50">
+          <P size="lg" className="text-muted-foreground">
+            Dust for {uptitle}
+          </P>
+          <H1>{title}</H1>
+          <P size="lg" className="pb-6">
             {description}
           </P>
           {ctaButtons && (

@@ -36,11 +36,11 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "font-objektiv text-4xl font-bold tracking-tight md:text-5xl lg:text-5xl py-2 text-left",
-  h2: "font-objektiv text-3xl font-bold tracking-tight lg:text-4xl xl:text-5xl py-2 text-left",
-  h3: "font-objektiv text-xl font-bold tracking-tight lg:text-2xl xl:text-3xl py-1 text-left",
-  h4: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-2xl text-left",
-  h5: "font-objektiv text-lg font-bold tracking-tight lg:text-xl xl:text-xl text-left",
+  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2 text-left",
+  h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2 text-left",
+  h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1 text-left",
+  h4: "heading-lg lg:heading-xl xl:heading-2xl text-left",
+  h5: "heading-lg lg:heading-xl xl:heading-xl text-left",
 };
 
 interface ContentProps {
@@ -51,33 +51,16 @@ interface ContentProps {
 }
 
 interface HContentProps {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
-  from?: string;
-  to?: string;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
 
 const createHeadingComponent = (Tag: TagName) => {
-  const Component: React.FC<HContentProps> = ({
-    children,
-    from = "",
-    to = "",
-    className = "",
-  }) => {
+  const Component: React.FC<HContentProps> = ({ children, className = "" }) => {
     return (
-      <Tag
-        className={classNames(
-          className,
-          hClasses[Tag],
-          from ? "bg-gradient-to-br bg-clip-text text-transparent" : "",
-          from,
-          to
-        )}
-      >
-        {children}
-      </Tag>
+      <Tag className={classNames(className, hClasses[Tag])}>{children}</Tag>
     );
   };
   Component.displayName = Tag.toUpperCase();
@@ -95,11 +78,11 @@ export const Span = ({ children, className = "" }: ContentProps) => (
 );
 
 const pClasses = {
-  xxs: "font-objektiv text-xs text-muted-foreground md:text-sm leading-relaxed",
-  xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
-  sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
-  md: "font-objektiv text-lg md:text-lg text-primary-400 lg:text-xl leading-relaxed",
-  lg: "font-objektiv text-lg md:text-xl text-primary-400 lg:text-2xl drop-shadow leading-relaxed",
+  xxs: "copy-xs text-muted-foreground md:text-sm",
+  xs: "copy-sm text-foreground md:text-base",
+  sm: "copy-base text-foreground md:text-lg",
+  md: "copy-lg md:text-lg text-foreground lg:text-xl",
+  lg: "copy-lg md:text-xl text-foreground lg:text-2xl",
 };
 
 interface PProps {
@@ -142,9 +125,11 @@ export const P = ({
 };
 
 const aClasses = {
-  primary: "text-action-400 hover:text-action-400 active:text-action-600",
-  secondary: "text-slate-200 hover:text-slate-100 active:text-muted-foreground",
-  tertiary: "text-slate-400 hover:text-slate-100 active:text-muted-foreground",
+  primary: "text-highlight hover:text-highlight active:text-highlight-400",
+  secondary:
+    "text-foreground hover:text-primary-800 active:text-muted-foreground",
+  tertiary:
+    "text-muted-foreground hover:text-primary-500 active:text-muted-foreground",
 };
 
 interface AProps extends AnchorHTMLAttributes<HTMLAnchorElement> {

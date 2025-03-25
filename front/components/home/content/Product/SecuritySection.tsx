@@ -11,9 +11,7 @@ export function SecuritySection() {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 from="from-yellow-200" to="to-amber-400">
-              Built with enterprise-grade security
-            </H2>
+            <H2>Built with enterprise-grade security</H2>
             <P size="lg">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. Avoid
