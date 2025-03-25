@@ -90,8 +90,8 @@ export function PriceTable({
       >
         <div
           className={classNames(
-            size === "xs" ? "s-text-2xl" : "s-text-3xl",
-            "s-w-full s-text-right s-font-semibold",
+            size === "xs" ? "s-heading-2xl" : "s-heading-3xl",
+            "s-w-full s-text-right",
             "s-text-foreground"
           )}
         >
@@ -100,17 +100,16 @@ export function PriceTable({
         <div className="-s-mt-2 s-flex s-flex-row s-items-baseline s-gap-2">
           <span
             className={classNames(
-              size === "xs" ? "s-text-3xl" : "s-text-4xl",
-              textColorTable[color],
-              "s-font-bold"
+              size === "xs" ? "s-heading-3xl" : "s-heading-4xl",
+              textColorTable[color]
             )}
           >
             {price}
           </span>
           <span
             className={classNames(
-              "s-font-bold s-text-foreground",
-              size === "xs" ? "s-text-base" : "s-text-lg"
+              "s-text-foreground",
+              size === "xs" ? "s-heading-base" : "s-heading-lg"
             )}
           >
             {priceLabel}

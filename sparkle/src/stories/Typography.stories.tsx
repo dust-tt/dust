@@ -33,6 +33,7 @@ const extraTextSizes = {
 };
 
 const headingSizes = {
+  base: "s-heading-base",
   lg: "s-heading-lg",
   xl: "s-heading-xl",
   "2xl": "s-heading-2xl",

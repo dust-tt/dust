@@ -74,8 +74,8 @@ export default function DropzoneOverlay({
           {visual}
         </div>
       </div>
-      <div className="s-text-xl s-font-bold">{title}</div>
-      <div className="s-font-base s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="s-heading-xl">{title}</div>
+      <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
         {description}
       </div>
     </div>

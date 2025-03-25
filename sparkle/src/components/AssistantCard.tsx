@@ -65,7 +65,7 @@ export const AssistantCard = React.forwardRef<
           <div
             className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
           >
-            <h3 className="s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all s-text-base s-font-semibold">
+            <h3 className="s-heading-base s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-break-all">
               {title}
             </h3>
             <p

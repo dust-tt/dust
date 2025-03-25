@@ -798,9 +798,7 @@ export function ConnectorPermissionsModal({
                 <div className="flex w-full flex-col gap-4">
                   {OptionsComponent && plan && (
                     <>
-                      <div className="p-1 text-xl font-bold">
-                        Connector options
-                      </div>
+                      <div className="heading-xl p-1">Connector options</div>
                       <div className="p-1">
                         <div className="border-y">
                           <OptionsComponent
@@ -812,7 +810,7 @@ export function ConnectorPermissionsModal({
                   )}
                   {!connectorConfiguration.isResourceSelectionDisabled && (
                     <>
-                      <div className="p-1 text-xl font-bold">
+                      <div className="heading-xl p-1">
                         {connectorConfiguration.selectLabel}
                       </div>
                       <ContentNodeTree
