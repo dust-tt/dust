@@ -21,6 +21,7 @@ import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_clien
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 
 // Copied from front/hooks/useEventSource.ts
 const RECONNECT_DELAY = 5000; // 5 seconds.
@@ -85,7 +86,7 @@ export async function streamConversationToSlack(
         },
         "Retryable error in Slack answer stream."
       );
-      await new Promise((resolve) => setTimeout(resolve, RECONNECT_DELAY));
+      await setTimeoutAsync(RECONNECT_DELAY);
       reconnectAttempts++;
     } else {
       return streamRes;
