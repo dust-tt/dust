@@ -230,7 +230,10 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return url.hostname.endsWith("zendesk.com");
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}` };
     },
   },
   intercom: {
@@ -243,7 +246,10 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       );
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}` };
     },
   },
 };
