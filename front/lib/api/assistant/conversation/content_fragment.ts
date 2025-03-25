@@ -1,10 +1,15 @@
 import type { DustMimeType } from "@dust-tt/client";
 
+import config from "@app/lib/api/config";
+import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { getSearchFilterFromDataSourceViews } from "@app/lib/search";
+import logger from "@app/logger/logger";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -14,10 +19,12 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
+  CoreAPI,
   Err,
   extensionsForContentType,
   isContentFragmentInputWithContentNode,
   isContentFragmentInputWithFileId,
+  isSupportedContentNodeFragmentContentType,
   Ok,
 } from "@app/types";
 
@@ -112,11 +119,65 @@ export async function getContentFragmentBlob(
       title,
     });
   } else if (isContentFragmentInputWithContentNode(cf)) {
+    // For ContentFragmentInputWithContentNode we retrieve the content node from core to validate
+    // that it exists and that we have access to it + retrieve its contentType and nodeType.
+    const dsView = await DataSourceViewResource.fetchById(
+      auth,
+      cf.nodeDataSourceViewId
+    );
+    // If dsView is not defined it means it does not exist of we don't have access to it.
+    if (!dsView) {
+      return new Err(
+        new Error("Unknown data source view for content fragment input")
+      );
+    }
+
+    const searchFilter = getSearchFilterFromDataSourceViews(
+      auth.getNonNullableWorkspace(),
+      [dsView],
+      {
+        excludedNodeMimeTypes: [],
+        includeDataSources: false,
+        viewType: "all",
+        nodeIds: [cf.nodeId],
+      }
+    );
+
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const searchRes = await coreAPI.searchNodes({
+      filter: searchFilter,
+    });
+    if (searchRes.isErr()) {
+      return new Err(
+        new Error("Unknown content node for content fragment input")
+      );
+    }
+    const [coreContentNode] = searchRes.value.nodes;
+    if (!coreContentNode) {
+      return new Err(
+        new Error("Unknown content node for content fragment input")
+      );
+    }
+    const contentNode = getContentNodeFromCoreNode(coreContentNode, "all");
+
+    if (!isSupportedContentNodeFragmentContentType(contentNode.mimeType)) {
+      return new Err(
+        new Error(
+          "Unsupported content node fragment mime type: " + contentNode.mimeType
+        )
+      );
+    }
+
+    console.log(
+      ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> HERE",
+      cf,
+      contentNode
+    );
     return new Ok({
-      contentType: cf.contentType,
-      nodeId: cf.nodeId,
+      nodeId: contentNode.internalId,
       nodeDataSourceViewId: getResourceIdFromSId(cf.nodeDataSourceViewId),
-      sourceUrl: cf.sourceUrl,
+      contentType: contentNode.mimeType,
+      sourceUrl: contentNode.sourceUrl,
       textBytes: null,
       fileId: null,
       title,
