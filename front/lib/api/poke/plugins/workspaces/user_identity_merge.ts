@@ -30,6 +30,13 @@ export const userIdentityMergePlugin = createPlugin({
           "If true, the secondary user's email will not be checked against the primary user's email.",
         default: false,
       },
+      revokeSecondaryUser: {
+        type: "boolean",
+        label: "Revoke secondary user",
+        description:
+          "If true, the secondary user will be revoked from the workspace after the merge.",
+        default: false,
+      },
     },
   },
   execute: async (auth, _, args) => {
@@ -45,6 +52,7 @@ export const userIdentityMergePlugin = createPlugin({
       primaryUserId,
       secondaryUserId,
       enforceEmailMatch: !args.ignoreEmailMatch,
+      revokeSecondaryUser: args.revokeSecondaryUser,
     });
 
     if (mergeResult.isErr()) {
