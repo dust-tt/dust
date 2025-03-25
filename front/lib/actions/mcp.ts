@@ -1,4 +1,4 @@
-import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import type {
@@ -26,15 +26,27 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
+export function validateInternalMCPServerId(
+  serverId: string
+): serverId is InternalMCPServerIdType {
+  return AVAILABLE_INTERNAL_MCPSERVER_IDS.some(
+    (validServerId) => validServerId === serverId
+  );
+}
+
+export type InternalMCPServerIdType =
+  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
+
 export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
 
   //TODO(mcp): handle hosted and client
   serverType: "internal" | "remote";
-  internalMCPServerId: (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null;
+  internalMCPServerId: InternalMCPServerIdType | null;
   remoteMCPServerId: string | null; // Hold the sId of the remote MCP server.
 
+  // TODO(mcp): add dataSourceConfigurationId fk here
   type: "mcp_server_configuration";
 
   name: string;
