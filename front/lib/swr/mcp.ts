@@ -2,27 +2,27 @@ import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetMCPServerResourcesResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/resources";
+import type { GetMCPServerToolsResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/tools";
 import type { LightWorkspaceType } from "@app/types";
 
-export function useInternalMcpServerResources({
+export function useInternalMcpServerTools({
   owner,
   serverId,
 }: {
   owner: LightWorkspaceType;
   serverId: string | null;
 }) {
-  const configFetcher: Fetcher<GetMCPServerResourcesResponseBody> = fetcher;
+  const configFetcher: Fetcher<GetMCPServerToolsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    serverId ? `/api/w/${owner.sId}/mcp/${serverId}/resources` : null,
+    serverId ? `/api/w/${owner.sId}/mcp/${serverId}/tools` : null,
     configFetcher
   );
 
-  const resources = useMemo(() => (data ? data.resources : null), [data]);
+  const tools = useMemo(() => (data ? data.tools : null), [data]);
 
   return {
-    resources,
+    tools,
     isLoading: !error && !data,
     isError: error,
     mutate,

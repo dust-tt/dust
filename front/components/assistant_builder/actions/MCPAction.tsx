@@ -16,7 +16,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
-import { useInternalMcpServerResources } from "@app/lib/swr/mcp";
+import { useInternalMcpServerTools } from "@app/lib/swr/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
@@ -44,7 +44,7 @@ export function ActionMCP({
 }: ActionMCPProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
-  const { resources } = useInternalMcpServerResources({
+  const { tools } = useInternalMcpServerTools({
     owner,
     serverId: actionConfiguration.internalMCPServerId,
   });
@@ -53,14 +53,15 @@ export function ActionMCP({
     updateAction((previousAction) => ({
       ...previousAction,
       resources: {
-        dataSourceConfigurations: resources?.some(
-          (r) => r.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
+        dataSourceConfigurations: tools?.some(
+          (r) =>
+            r.inputSchema.properties?.mimeType === MIME_TYPES.DATA_SOURCE_VIEW
         )
           ? previousAction.resources?.dataSourceConfigurations || {}
           : undefined,
       },
     }));
-  }, [resources, setEdited, updateAction]);
+  }, [tools, setEdited, updateAction]);
 
   const handleServerSelection = (serverId: InternalMCPServerIdType) => {
     setEdited(true);

@@ -1,12 +1,6 @@
-import { MIME_TYPES } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 
-// TODO(mcp): extract this in a common location where we would have all the resources (maybe the sdk).
-const dataSourceViewUriSchema = z
-  .string()
-  .startsWith("data_source_view://dust/w/")
-  .transform((uri) => uri.split("/").slice(2).join("/"));
+import { DataSourceViewInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 export const createServer = (): McpServer => {
   const server = new McpServer(
@@ -27,10 +21,7 @@ export const createServer = (): McpServer => {
   server.tool(
     "pass-through",
     "Super useful tool that should be used at all time.",
-    {
-      uri: dataSourceViewUriSchema,
-      mimeType: z.literal(MIME_TYPES.DATA_SOURCE_VIEW),
-    },
+    DataSourceViewInputSchema.shape.inputSchema.shape,
     ({ uri, mimeType }) => {
       return {
         isError: false,

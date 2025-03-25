@@ -64,7 +64,7 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
-type ToolType = ListToolsResult["tools"][number];
+export type ToolType = ListToolsResult["tools"][number];
 
 export interface MCPServerConnectionDetails {
   serverType: MCPServerConfigurationType["serverType"];

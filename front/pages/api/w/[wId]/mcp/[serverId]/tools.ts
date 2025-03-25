@@ -1,20 +1,21 @@
-import type { Resource } from "@modelcontextprotocol/sdk/types.js";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { validateInternalMCPServerId } from "@app/lib/actions/mcp";
-import { getMCPServerResources } from "@app/lib/actions/mcp_actions";
+import type { ToolType } from "@app/lib/actions/mcp_actions";
+import { listMCPServerTools } from "@app/lib/actions/mcp_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export type GetMCPServerResourcesResponseBody = {
-  resources: Pick<Resource, "name" | "description" | "mimeType" | "uri">[];
+// TODO(mcp): put a richer type here, add some safeguard by checking the inputSchema.
+export type GetMCPServerToolsResponseBody = {
+  tools: ToolType[];
 };
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<GetMCPServerResourcesResponseBody>>,
+  res: NextApiResponse<WithAPIErrorResponse<GetMCPServerToolsResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { serverId } = req.query;
@@ -61,18 +62,13 @@ async function handler(
         });
       }
 
-      const resources = await getMCPServerResources({
+      const tools = await listMCPServerTools({
         serverType: "internal",
         internalMCPServerId: serverId,
       });
 
       return res.status(200).json({
-        resources: resources.map((resource) => ({
-          name: resource.name,
-          description: resource.description,
-          uri: resource.uri,
-          mimeType: resource.mimeType,
-        })),
+        tools,
       });
     default:
       return apiError(req, res, {
