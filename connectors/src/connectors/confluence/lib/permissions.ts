@@ -19,7 +19,7 @@ import {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function isConfluenceSpaceModel(
   confluenceSpace: unknown
@@ -52,7 +52,7 @@ export function createContentNodeFromSpace(
     expandable: isExpandable,
     permission,
     lastUpdatedAt: null,
-    mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.SPACE,
   };
 }
 
@@ -74,7 +74,7 @@ export function createContentNodeFromPage(
     expandable: isExpandable,
     permission: "read",
     lastUpdatedAt: null,
-    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.PAGE,
   };
 }
 

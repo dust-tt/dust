@@ -17,7 +17,7 @@ import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_reso
 import { ZendeskArticleResource } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -171,7 +171,7 @@ export async function syncArticle({
     loggerArgs: { ...loggerArgs, articleId: article.id },
     upsertContext: { sync_type: "batch" },
     title: article.title,
-    mimeType: MIME_TYPES.ZENDESK.ARTICLE,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.ARTICLE,
     async: true,
   });
   await articleInDb.update({ lastUpsertedTs: new Date(currentSyncDateMs) });

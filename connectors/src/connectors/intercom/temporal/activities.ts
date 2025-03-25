@@ -43,7 +43,7 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 const INTERCOM_ARTICLE_BATCH_SIZE = 20;
@@ -179,7 +179,7 @@ export async function syncHelpCenterOnlyActivity({
     title: helpCenterOnIntercom.display_name || "Help Center",
     parents: [helpCenterInternalId],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.HELP_CENTER,
     timestampMs: currentSyncMs,
   });
 
@@ -555,7 +555,7 @@ export async function syncTeamOnlyActivity({
       ...(syncAllActivated ? [getTeamsInternalId(connectorId)] : []),
     ],
     parentId: syncAllActivated ? getTeamsInternalId(connectorId) : null,
-    mimeType: MIME_TYPES.INTERCOM.TEAM,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
     timestampMs: currentSyncMs,
   });
 
@@ -685,7 +685,7 @@ export async function syncAllTeamsActivity({
       title: teamOnIntercom.name,
       parents: [folderId, getTeamsInternalId(connectorId)],
       parentId: getTeamsInternalId(connectorId),
-      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
       timestampMs: currentSyncMs,
     });
 
@@ -870,6 +870,6 @@ export async function upsertIntercomTeamsFolderActivity({
     title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
   });
 }
