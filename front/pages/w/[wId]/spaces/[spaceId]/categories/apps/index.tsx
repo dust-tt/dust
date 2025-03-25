@@ -6,7 +6,10 @@ import { CapabilitiesList } from "@app/components/spaces/CapabilitiesList";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import type { ServerInfo } from "@app/lib/actions/mcp_internal_actions";
+import type {
+  InternalMCPServerId,
+  ServerInfo,
+} from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -21,7 +24,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
-    serverInfos: ServerInfo[];
+    serverIds: InternalMCPServerId[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -45,11 +48,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  let serverInfos: ServerInfo[] = [];
+  let serverIds: InternalMCPServerId[] = [];
 
   if (space.kind === "system") {
-    const servers = Object.values(internalMCPServers);
-    serverInfos = servers.map((server) => server.serverInfo);
+    serverIds = Object.keys(internalMCPServers) as InternalMCPServerId[];
   }
 
   const isBuilder = auth.isBuilder();
@@ -73,7 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       plan,
       registryApps,
-      serverInfos,
+      serverIds,
       space: space.toJSON(),
       subscription,
     },
@@ -85,13 +87,13 @@ export default function Space({
   owner,
   space,
   registryApps,
-  serverInfos,
+  serverIds,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   if (space.kind === "system") {
     return (
-      <CapabilitiesList owner={owner} space={space} serverInfos={serverInfos} />
+      <CapabilitiesList owner={owner} space={space} serverIds={serverIds} />
     );
   }
 

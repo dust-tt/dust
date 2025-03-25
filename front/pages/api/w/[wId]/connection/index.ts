@@ -1,0 +1,68 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import logger from "@app/logger/logger";
+import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { OAuthAPI } from "@app/types";
+
+export const PostConnectionBodySchema = t.type({
+  connectionId: t.string,
+  internalMCPServerId: t.string,
+});
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<WithAPIErrorResponse<void>>,
+  auth: Authenticator
+): Promise<void> {
+  const owner = auth.getNonNullableWorkspace();
+
+  switch (req.method) {
+    case "POST":
+      const bodyValidation = PostConnectionBodySchema.decode(req.body);
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const validatedBody = bodyValidation.right;
+      const { connectionId, internalMCPServerId } = validatedBody;
+
+      const connectionResource = await MCPServerConnectionResource.makeNew({
+        connectionId,
+        connectionType: "workspace",
+        serverType: "internal",
+        internalMCPServerId: internalMCPServerId as InternalMCPServerId,
+        workspaceId: owner.id,
+      });
+
+      return res.status(200).json({});
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported.",
+        },
+      });
+  }
+}
+
+export default withSessionAuthenticationForWorkspace(handler);

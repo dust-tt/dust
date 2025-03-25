@@ -11,6 +11,7 @@ import { useCallback } from "react";
 
 import type {
   AuthorizationInfo,
+  InternalMCPServerId,
   ServerInfo,
 } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
@@ -19,36 +20,32 @@ import { setupOAuthConnection } from "@app/types";
 
 type RowData = {
   icon: ComponentType;
+  serverId: InternalMCPServerId;
   serverInfo: ServerInfo;
   onClick?: () => void;
 };
 
 export const CapabilitiesList = ({
-  serverInfos,
+  serverIds,
   owner,
 }: {
   space: SpaceType;
-  serverInfos: ServerInfo[];
+  serverIds: InternalMCPServerId[];
   owner: LightWorkspaceType;
 }) => {
   const sendNotification = useSendNotification();
 
   const saveOAuthConnection = useCallback(
-    async (
-      connectionId: string | null,
-      provider: string,
-      useConnectorConnection?: boolean
-    ) => {
+    async (connectionId: string | null, serverId: InternalMCPServerId) => {
       try {
-        const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
+        const response = await fetch(`/api/w/${owner.sId}/connections`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             connectionId,
-            provider,
-            useConnectorConnection,
+            internalMCPServerId: serverId,
           }),
         });
         if (!response.ok) {
@@ -81,7 +78,10 @@ export const CapabilitiesList = ({
   );
 
   const handleConnect = useCallback(
-    async (authorizationInfo: AuthorizationInfo) => {
+    async (
+      authorizationInfo: AuthorizationInfo,
+      serverId: InternalMCPServerId
+    ) => {
       const cRes = await setupOAuthConnection({
         dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
         owner,
@@ -99,7 +99,7 @@ export const CapabilitiesList = ({
         return;
       }
 
-      await saveOAuthConnection(cRes.value.connection_id, "google_drive");
+      await saveOAuthConnection(cRes.value.connection_id, serverId);
     },
     [owner, sendNotification, saveOAuthConnection]
   );
@@ -118,8 +118,9 @@ export const CapabilitiesList = ({
       {
         id: "action",
         cell: (info: CellContext<RowData, string>) => {
-          const authorizationInfo = info.row.original.serverInfo.authorization;
-          if (!authorizationInfo) {
+          const { serverId, serverInfo } = info.row.original;
+          const { authorization } = serverInfo;
+          if (!authorization) {
             return null;
           }
 
@@ -131,7 +132,7 @@ export const CapabilitiesList = ({
                 label={"Connect"}
                 size="xs"
                 onClick={() => {
-                  void handleConnect(authorizationInfo);
+                  void handleConnect(authorization, serverId);
                 }}
               />
             </DataTable.CellContent>
@@ -143,9 +144,9 @@ export const CapabilitiesList = ({
       },
     ];
   };
-  const rows = serverInfos.map((serverInfo) => ({
-    icon: internalMCPServers["helloworld"].icon,
-    serverInfo,
+  const rows = serverIds.map((serverId) => ({
+    icon: internalMCPServers[serverId].icon,
+    serverInfo: internalMCPServers[serverId].serverInfo,
     handleConnect,
     onClick: () => {
       console.log("clicked");

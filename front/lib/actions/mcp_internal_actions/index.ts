@@ -7,7 +7,8 @@ import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constant
 import { helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
 
-type InternalMCPServerId = (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
+export type InternalMCPServerId =
+  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
