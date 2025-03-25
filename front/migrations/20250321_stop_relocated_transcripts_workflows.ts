@@ -33,14 +33,18 @@ async function pauseWorkflowsForWorkspace(
 
 makeScript(
   {
-    workspaceId: { type: "string", required: false },
+    workspaceIds: { type: "string", required: false },
   },
-  async ({ workspaceId, execute }, logger) => {
-    if (workspaceId) {
+  async ({ workspaceIds, execute }, logger) => {
+    if (!workspaceIds) {
+      logger.error("Usage: Workspace IDs are required (comma-separated)");
+      throw new Error("Workspace IDs are required");
+    }
+
+    const ids = workspaceIds.split(",").map((id) => id.trim());
+
+    for (const workspaceId of ids) {
       await pauseWorkflowsForWorkspace(workspaceId, logger, execute);
-    } else {
-      logger.error("Usage: Workspace ID is required");
-      throw new Error("Workspace ID is required");
     }
   }
 );
