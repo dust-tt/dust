@@ -1,9 +1,8 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { CodedError, WebAPIPlatformError } from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/response/ConversationsListResponse";
 
+import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -158,15 +157,13 @@ export async function joinChannel(
       return new Ok({ result: "already_joined", channel: channelInfo.channel });
     }
   } catch (e) {
-    const slackError = e as CodedError;
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = slackError as WebAPIPlatformError;
-      if (platformError.data.error === "missing_scope") {
+    if (isSlackWebAPIPlatformError(e)) {
+      if (e.data.error === "missing_scope") {
         logger.error(
           {
             channelId,
             connectorId,
-            error: platformError,
+            error: e,
           },
           "Could not join the channel because of a missing scope. Please re-authorize your Slack connection and try again."
         );
@@ -184,9 +181,19 @@ export async function joinChannel(
         },
         "Can't join the channel"
       );
-      return new Err(e as Error);
-    }
-  }
 
-  return new Err(new Error(`Can't join the channel`));
+      return new Err(e);
+    }
+
+    logger.error(
+      {
+        connectorId,
+        channelId,
+        error: e,
+      },
+      "Can't join the channel. Unknown error."
+    );
+
+    return new Err(new Error(`Can't join the channel`));
+  }
 }
