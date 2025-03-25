@@ -199,7 +199,9 @@ export const fetchTree = async ({
                     `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
                   );
                   return {
-                    name: schema.name + " (not synced, too many tables)",
+                    name:
+                      schema.name +
+                      ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
                     database_name: credentials.project_id,
                     tables: [],
                   };
