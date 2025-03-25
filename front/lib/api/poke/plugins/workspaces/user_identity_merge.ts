@@ -15,13 +15,13 @@ export const userIdentityMergePlugin = createPlugin({
         type: "string",
         label: "Primary user ID",
         description:
-          "User ID of the primary user (the one that will remain after the merge)",
+          "User ID of the primary user (the one that will remain after the merge - likely the one with all the conversations history)",
       },
       secondaryUserId: {
         type: "string",
         label: "Secondary user ID",
         description:
-          "User ID of the secondary user (the one that won't be kept after the merge)",
+          "User ID of the secondary user (the one that won't be kept after the merge - likely the new SSO one)",
       },
       ignoreEmailMatch: {
         type: "boolean",
