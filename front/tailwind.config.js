@@ -736,6 +736,24 @@ module.exports = {
     require("tailwindcss-animate"),
     plugin(function ({ addBase, theme }) {
       addBase({
+        ".label-xs": {
+          fontSize: theme("fontSize.xs[0]"),
+          lineHeight: theme("fontSize.xs[1].lineHeight"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".label-sm": {
+          fontSize: theme("fontSize.sm[0]"),
+          lineHeight: theme("fontSize.sm[1].lineHeight"),
+          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          fontWeight: "600",
+        },
+        ".label-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "600",
+        },
         ".heading-base": {
           fontSize: theme("fontSize.base[0]"),
           lineHeight: theme("fontSize.base[1].lineHeight"),
