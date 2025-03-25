@@ -118,6 +118,8 @@ export const serviceProviders: ServiceProvider[] = [
   },
 ];
 
+const OPEN_AI_STRUCTURED_OUTPUT_SUPPORT_CUTOFF_DATE = 1734393600;
+
 export async function checkProvider(
   owner: WorkspaceType,
   providerId: string,
@@ -186,4 +188,29 @@ export async function getProviderLLMModels(
   }
   const models = await modelsRes.json();
   return { models: models.models };
+}
+
+export function supportsResponseFormat(model: {
+  provider_id: string;
+  model_id: string;
+  created?: number;
+}): boolean {
+  // Currently only supporting openai structured outputs
+  if (model.provider_id !== "openai") {
+    return false;
+  }
+
+  // Check for specialized models that don't support response format.
+  // This will not necessarily be holistic of all model families in the future.
+  // For future families not in this list that lack support for structured outputs,
+  // customers will still see an error message from openai when running the app.
+  if (model.model_id.includes("transcribe") || model.model_id.includes("tts")) {
+    return false;
+  }
+
+  // Use date heuristic for standard models
+  return (
+    model.created !== undefined &&
+    model.created >= OPEN_AI_STRUCTURED_OUTPUT_SUPPORT_CUTOFF_DATE
+  );
 }

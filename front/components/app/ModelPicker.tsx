@@ -31,7 +31,11 @@ export default function ModelPicker({
   };
   readOnly: boolean;
   isAdmin: boolean;
-  onModelUpdate: (model: { provider_id: string; model_id: string }) => void;
+  onModelUpdate: (model: {
+    provider_id: string;
+    model_id: string;
+    created?: number;
+  }) => void;
   chatOnly?: boolean;
   embedOnly?: boolean;
 }) {
@@ -148,6 +152,7 @@ export default function ModelPicker({
                             onModelUpdate({
                               provider_id: p.providerId,
                               model_id: m.id,
+                              created: m.created,
                             })
                           }
                         />
