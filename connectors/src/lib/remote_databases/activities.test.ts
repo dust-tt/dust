@@ -13,7 +13,7 @@ import {
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { itInTransaction } from "@connectors/tests/utils";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 import { sync } from "./activities";
 
@@ -79,7 +79,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
       });
 
       const remoteDB = await RemoteDatabaseModel.findOne({
@@ -97,7 +97,7 @@ describe("sync remote databases", async () => {
         title: "test-db",
         parents: ["test-db"],
         parentId: null,
-        mimeType: MIME_TYPES.BIGQUERY.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.DATABASE,
       });
     }
   );
@@ -148,7 +148,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
       });
 
       const remoteDatabase = await RemoteDatabaseModel.findOne({
@@ -175,7 +175,7 @@ describe("sync remote databases", async () => {
         title: "test-schema",
         parents: ["test-db.test-schema", "test-db"],
         parentId: "test-db",
-        mimeType: MIME_TYPES.BIGQUERY.SCHEMA,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.SCHEMA,
       });
     }
   );
@@ -249,7 +249,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
         internalTableIdToRemoteTableId,
       });
 
@@ -276,7 +276,7 @@ describe("sync remote databases", async () => {
         ],
         parentId: "test-db.test-schema",
         title: "test-table",
-        mimeType: MIME_TYPES.BIGQUERY.TABLE,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
       });
     }
   );
@@ -321,7 +321,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
       });
 
       expect(deleteDataSourceFolder).toHaveBeenCalledWith({
@@ -363,7 +363,7 @@ describe("sync remote databases", async () => {
     await sync({
       remoteDBTree: undefined,
       connector: connector,
-      mimeTypes: MIME_TYPES.BIGQUERY,
+      mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     });
 
     expect(await RemoteDatabaseModel.count()).toEqual(0);
@@ -426,7 +426,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
       });
 
       // Check database model
@@ -467,7 +467,7 @@ describe("sync remote databases", async () => {
         title: "test.db",
         parents: ["test__DUST_DOT__db"],
         parentId: null,
-        mimeType: MIME_TYPES.BIGQUERY.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.DATABASE,
       });
 
       expect(upsertDataSourceFolder).toHaveBeenCalledWith({
@@ -479,7 +479,7 @@ describe("sync remote databases", async () => {
           "test__DUST_DOT__db",
         ],
         parentId: "test__DUST_DOT__db",
-        mimeType: MIME_TYPES.BIGQUERY.SCHEMA,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.SCHEMA,
       });
 
       // Verify upsertDataSourceRemoteTable call
@@ -499,7 +499,7 @@ describe("sync remote databases", async () => {
         ],
         parentId: "test__DUST_DOT__db.test__DUST_DOT__schema",
         title: "test.table",
-        mimeType: MIME_TYPES.BIGQUERY.TABLE,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
       });
     }
   );
@@ -565,7 +565,7 @@ describe("sync remote databases", async () => {
       await sync({
         remoteDBTree,
         connector: connector,
-        mimeTypes: MIME_TYPES.BIGQUERY,
+        mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
         internalTableIdToRemoteTableId,
       });
 
@@ -583,7 +583,7 @@ describe("sync remote databases", async () => {
         ],
         parentId: "test-db.test-schema",
         title: "test-table",
-        mimeType: MIME_TYPES.BIGQUERY.TABLE,
+        mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
       });
     }
   );
