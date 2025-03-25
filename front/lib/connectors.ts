@@ -232,7 +232,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     urlNormalizer: (url: URL): UrlCandidate => {
       return { url: url.toString() };
     },
-  }
+  },
 };
 
 // Extract a channel node ID from a Slack client URL
