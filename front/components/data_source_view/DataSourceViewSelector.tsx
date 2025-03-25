@@ -292,6 +292,29 @@ export function DataSourceViewsSelector({
     // return hasRemote !== hasNonRemote;
   }, [searchResultNodes, useCase]);
 
+  const handleSelectAll = useCallback(() => {
+    setSearchSpaceText("");
+
+    // Update all selections in a single state update.
+    setSelectionConfigurations((prevState) => {
+      const newState = searchResultNodes.reduce(
+        (acc, item) => updateSelection(item, acc),
+        prevState
+      );
+      return newState;
+    });
+
+    // Scroll to last item if there are results. Not perfect but no perfect solution here.
+    if (searchResultNodes.length > 0) {
+      setSearchResult(searchResultNodes[searchResultNodes.length - 1]);
+    }
+  }, [
+    setSearchSpaceText,
+    setSelectionConfigurations,
+    updateSelection,
+    searchResultNodes,
+  ]);
+
   return (
     <div>
       <SearchInputWithPopover
@@ -314,19 +337,7 @@ export function DataSourceViewsSelector({
           );
         }}
         displayItemCount={useCase === "assistantBuilder"}
-        onSelectAll={
-          displaySelectAllButton
-            ? () => {
-                setSearchSpaceText("");
-                searchResultNodes.forEach((item) => {
-                  setSelectionConfigurations((prevState) =>
-                    updateSelection(item, prevState)
-                  );
-                });
-                setSearchResult(searchResultNodes[0]); // We scroll to the first item. Not perfect but no perfect solution here.
-              }
-            : undefined
-        }
+        onSelectAll={displaySelectAllButton ? handleSelectAll : undefined}
         contentMessage={contentMessage}
         renderItem={(item, selected) => {
           return (
