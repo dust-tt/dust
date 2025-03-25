@@ -4,6 +4,7 @@ import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 
@@ -58,15 +59,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   static async makeNew<T extends keyof ConnectorProviderModelMapping>(
     type: T,
     blob: Omit<CreationAttributes<ConnectorModel>, "type">,
-    specificBlob: ConnectorProviderModelMapping[T]
+    specificBlob: ConnectorProviderModelMapping[T],
+    transaction?: Transaction
   ) {
-    return sequelizeConnection.transaction(async (transaction) => {
+    const createConnector = async (t: Transaction) => {
       const connector = await ConnectorModel.create(
         {
           ...blob,
           type,
         },
-        { transaction }
+        { transaction: t }
       );
 
       const connectorRes = new this(ConnectorModel, connector.get());
@@ -74,13 +76,19 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       const configuration = await connectorRes.strategy.makeNew(
         connector.id,
         specificBlob,
-        transaction
+        t
       );
 
       connectorRes.configuration = configuration;
 
       return connectorRes;
-    });
+    };
+
+    if (transaction) {
+      return createConnector(transaction);
+    }
+
+    return sequelizeConnection.transaction(createConnector);
   }
 
   static async listByType(
