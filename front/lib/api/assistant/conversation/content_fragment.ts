@@ -152,13 +152,13 @@ export async function getContentFragmentBlob(
     });
     if (searchRes.isErr()) {
       return new Err(
-        new Error("Unknown content node for content fragment input")
+        new Error("Content node not found for content fragment input")
       );
     }
     const [coreContentNode] = searchRes.value.nodes;
     if (!coreContentNode) {
       return new Err(
-        new Error("Unknown content node for content fragment input")
+        new Error("Content node not found for content fragment input")
       );
     }
     const contentNode = getContentNodeFromCoreNode(coreContentNode, "all");
