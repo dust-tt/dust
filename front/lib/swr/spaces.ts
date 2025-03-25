@@ -784,7 +784,7 @@ export function useSpacesSearch({
   };
 }
 
-export function useSpaceSearchWithInfiniteScroll({
+export function useSpacesSearchWithInfiniteScroll({
   disabled = false,
   includeDataSources = false,
   nodeIds,
