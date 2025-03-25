@@ -551,13 +551,13 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
+            <div className="text-base font-semibold">
               {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>

@@ -552,15 +552,7 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => {
-        return (
-          <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
-              {AssitantName(agentConfiguration, canMention)}
-            </div>
-          </div>
-        );
-      }}
+      renderName={() => AssistantName(agentConfiguration, canMention)}
       type="agent"
       citations={citations}
     >
@@ -678,7 +670,7 @@ export function AgentMessage({
   }
 }
 
-function AssitantName(
+function AssistantName(
   assistant: LightAgentConfigurationType,
   canMention: boolean = true
 ) {
