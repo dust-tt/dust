@@ -395,7 +395,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    return UserResource.fetchByModelIds(memberships.map((m) => m.userId));
+    const users = await UserResource.fetchByModelIds(
+      memberships.map((m) => m.userId)
+    );
+
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+
+    // Only return users that have an active membership in the workspace.
+    return users.filter((user) =>
+      workspaceMemberships.some((m) => m.userId === user.id)
+    );
   }
 
   async addMembers(
