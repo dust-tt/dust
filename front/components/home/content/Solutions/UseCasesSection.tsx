@@ -35,7 +35,7 @@ export function UseCasesSection({
     <section className="w-full py-12">
       <div className="mb-12">
         <H2>{useCase.sectionTitle}</H2>
-        <P size="lg" className="pb-6 text-slate-50">
+        <P size="lg" className="pb-6 text-muted-foreground">
           {useCase.sectionDescription}
         </P>
       </div>

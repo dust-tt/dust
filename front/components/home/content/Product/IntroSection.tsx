@@ -49,7 +49,7 @@ export function IntroSection() {
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
-            <P size="lg" className="text-slate-50">
+            <P size="lg" className="text-muted-foreground">
               Build custom AI agents: secure, connected to your company
               knowledge, and powered by the best AI models.
             </P>
