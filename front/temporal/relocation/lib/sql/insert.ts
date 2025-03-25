@@ -32,6 +32,12 @@ export function generateParameterizedInsertStatements(
       for (const col of columns) {
         rowPlaceholders.push(`$${paramIndex++}`);
 
+        // Special case: `autoReadChannelPatterns` is a JSONB column that needs to be stringified.
+        if (col === "autoReadChannelPatterns") {
+          params.push(JSON.stringify(row[col]));
+          continue;
+        }
+
         // Array of plain objects are serialized to JSON strings.
         const serialized = isArrayOfPlainObjects(row[col])
           ? JSON.stringify(row[col])
