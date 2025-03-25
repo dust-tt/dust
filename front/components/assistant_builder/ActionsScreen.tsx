@@ -231,9 +231,9 @@ export default function ActionsScreen({
           break;
 
         case "MCP":
-          if (action.configuration.resources.dataSourceConfigurations) {
+          if (action.configuration.dataSourceConfigurations) {
             Object.values(
-              action.configuration.resources.dataSourceConfigurations
+              action.configuration.dataSourceConfigurations
             ).forEach((config) => {
               addActionToSpace(config.dataSourceView.spaceId);
             });
