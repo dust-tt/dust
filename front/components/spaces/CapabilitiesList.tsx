@@ -6,34 +6,36 @@ import {
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { ComponentType } from "react";
 import { useCallback } from "react";
 
 import type {
   AuthorizationInfo,
   InternalMCPServerId,
-  ServerInfo,
 } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
+import { useMCPServerConnections } from "@app/lib/swr/remote_mcp";
 import type { LightWorkspaceType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type RowData = {
-  icon: ComponentType;
-  serverId: InternalMCPServerId;
-  serverInfo: ServerInfo;
-  onClick?: () => void;
+  id: InternalMCPServerId;
+  onClick: () => void;
 };
 
 export const CapabilitiesList = ({
-  serverIds,
+  capabilities,
   owner,
 }: {
   space: SpaceType;
-  serverIds: InternalMCPServerId[];
+  capabilities: InternalMCPServerId[];
   owner: LightWorkspaceType;
 }) => {
   const sendNotification = useSendNotification();
+  const { connections, isConnectionsLoading, mutateConnections } =
+    useMCPServerConnections({
+      workspaceId: owner.sId,
+    });
 
   const saveOAuthConnection = useCallback(
     async (connectionId: string | null, serverId: InternalMCPServerId) => {
@@ -53,23 +55,24 @@ export const CapabilitiesList = ({
             type: "error",
             title: "Failed to connect provider",
             description:
-              "Could not connect to your transcripts provider. Please try again.",
+              "Could not connect to your provider. Please try again.",
           });
         } else {
           sendNotification({
             type: "success",
             title: "Provider connected",
             description:
-              "Your transcripts provider has been connected successfully.",
+              "Your capability provider has been connected successfully.",
           });
         }
+        void mutateConnections();
         return response;
       } catch (error) {
         sendNotification({
           type: "error",
           title: "Failed to connect provider",
           description:
-            "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+            "Unexpected error trying to connect to your capability provider. Please try again. Error: " +
             error,
         });
       }
@@ -93,7 +96,7 @@ export const CapabilitiesList = ({
       if (cRes.isErr()) {
         sendNotification({
           type: "error",
-          title: "Failed to connect Google Drive",
+          title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorizationInfo.provider]}`,
           description: cRes.error.message,
         });
         return;
@@ -104,53 +107,114 @@ export const CapabilitiesList = ({
     [owner, sendNotification, saveOAuthConnection]
   );
 
+  const handleDisconnect = useCallback(
+    async (connection: string) => {
+      try {
+        const response = await fetch(
+          `/api/w/${owner.sId}/connections/${connection}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (!response.ok) {
+          sendNotification({
+            type: "error",
+            title: "Failed to dicconnect provider",
+            description:
+              "Could not dicconnect to your provider. Please try again.",
+          });
+        } else {
+          sendNotification({
+            type: "success",
+            title: "Provider disconnected",
+            description:
+              "Your capability provider has been disconnected successfully.",
+          });
+        }
+        void mutateConnections();
+        return response;
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to disconnect provider",
+          description:
+            "Unexpected error trying to disconnect to your capability provider. Please try again. Error: " +
+            error,
+        });
+      }
+    },
+    [sendNotification]
+  );
+
   const getTableColumns = (): ColumnDef<RowData, string>[] => {
     return [
       {
         id: "name",
         cell: (info: CellContext<RowData, string>) => (
-          <DataTable.CellContent icon={info.row.original.icon}>
+          <DataTable.CellContent
+            icon={internalMCPServers[info.row.original.id].icon}
+          >
             {info.getValue()}
           </DataTable.CellContent>
         ),
-        accessorFn: (row: RowData) => row.serverInfo.name,
+        accessorFn: (row: RowData): string =>
+          internalMCPServers[row.id].serverInfo.name,
       },
       {
         id: "action",
         cell: (info: CellContext<RowData, string>) => {
-          const { serverId, serverInfo } = info.row.original;
+          const { id } = info.row.original;
+          const serverInfo = internalMCPServers[id].serverInfo;
+          const connection = connections.find(
+            (c) => c.internalMCPServerId === id
+          );
+
           const { authorization } = serverInfo;
           if (!authorization) {
             return null;
           }
 
-          return (
+          return connection ? (
+            <DataTable.CellContent>
+              <Button
+                variant="warning"
+                disabled={isConnectionsLoading}
+                icon={Cog6ToothIcon}
+                label={"Disconnect"}
+                size="xs"
+                onClick={() => {
+                  void handleDisconnect(connection.sId);
+                }}
+              />
+            </DataTable.CellContent>
+          ) : (
             <DataTable.CellContent>
               <Button
                 variant="outline"
+                disabled={isConnectionsLoading}
                 icon={Cog6ToothIcon}
                 label={"Connect"}
                 size="xs"
                 onClick={() => {
-                  void handleConnect(authorization, serverId);
+                  void handleConnect(authorization, id);
                 }}
               />
             </DataTable.CellContent>
           );
         },
+        accessorFn: (row: RowData): string => row.id,
         meta: {
-          className: "w-12",
+          className: "w-36",
         },
       },
     ];
   };
-  const rows = serverIds.map((serverId) => ({
-    icon: internalMCPServers[serverId].icon,
-    serverInfo: internalMCPServers[serverId].serverInfo,
-    handleConnect,
-    onClick: () => {
-      console.log("clicked");
-    },
+  const rows: RowData[] = capabilities.map((id) => ({
+    id,
+    onClick: () => {},
   }));
   const columns = getTableColumns();
 

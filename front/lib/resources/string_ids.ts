@@ -29,6 +29,7 @@ const RESOURCES_PREFIX = {
   tracker: "trk",
   template: "tpl",
   extension: "ext",
+  mcp_server_connection: "con",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

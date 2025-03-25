@@ -6,8 +6,8 @@ const serverInfo = {
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
   authorization: {
-    provider: "github" as const,
-    use_case: "platform_actions" as const,
+    provider: "google_drive" as const,
+    use_case: "connection" as const,
   },
 };
 

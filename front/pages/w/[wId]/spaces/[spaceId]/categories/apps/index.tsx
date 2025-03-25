@@ -24,7 +24,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
-    serverIds: InternalMCPServerId[];
+    capabilities: InternalMCPServerId[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -48,10 +48,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  let serverIds: InternalMCPServerId[] = [];
+  let capabilities: InternalMCPServerId[] = [];
 
   if (space.kind === "system") {
-    serverIds = Object.keys(internalMCPServers) as InternalMCPServerId[];
+    capabilities = Object.keys(internalMCPServers) as InternalMCPServerId[];
   }
 
   const isBuilder = auth.isBuilder();
@@ -75,7 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       plan,
       registryApps,
-      serverIds,
+      capabilities,
       space: space.toJSON(),
       subscription,
     },
@@ -87,13 +87,17 @@ export default function Space({
   owner,
   space,
   registryApps,
-  serverIds,
+  capabilities,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
   if (space.kind === "system") {
     return (
-      <CapabilitiesList owner={owner} space={space} serverIds={serverIds} />
+      <CapabilitiesList
+        owner={owner}
+        space={space}
+        capabilities={capabilities}
+      />
     );
   }
 
