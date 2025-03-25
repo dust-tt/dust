@@ -231,8 +231,13 @@ export default function ActionsScreen({
           break;
 
         case "MCP":
-          //TODO(mcp): add action to space when it leverage datasources configurations
-          // Iterate over the datasources configurations and add the action to the respective spaces
+          if (action.configuration.resources.dataSourceConfigurations) {
+            Object.values(
+              action.configuration.resources.dataSourceConfigurations
+            ).forEach((config) => {
+              addActionToSpace(config.dataSourceView.spaceId);
+            });
+          }
           break;
 
         case "WEB_NAVIGATION":
