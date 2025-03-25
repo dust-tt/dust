@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { fetchServerMetadata } from "@app/lib/api/mcp";
+import { fetchServerData } from "@app/lib/actions/mcp_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 
 async function handler(
   req: NextApiRequest,
@@ -15,11 +16,10 @@ async function handler(
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
-  const { wId, spaceId, serverId } = req.query;
+  const { wId, serverId } = req.query;
 
   if (
     typeof wId !== "string" ||
-    typeof spaceId !== "string" ||
     typeof serverId !== "string"
   ) {
     return apiError(req, res, {
@@ -52,18 +52,6 @@ async function handler(
     });
   }
 
-  const space = await SpaceResource.fetchById(auth, spaceId);
-
-  if (!space) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "Space not found",
-      },
-    });
-  }
-
   // Find the specific remote MCP server
   const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 
@@ -87,14 +75,11 @@ async function handler(
     });
   }
 
-  const metadata = await fetchServerMetadata(server.url);
+  const metadata = await fetchServerData(server.url);
 
-  await server.updateSettings(auth, {
+  await server.updateServer(auth, {
     name: metadata.name,
     description: metadata.description,
-  });
-
-  await server.updateTools(auth, {
     cachedTools: metadata.tools,
     lastSyncAt: new Date(),
   });

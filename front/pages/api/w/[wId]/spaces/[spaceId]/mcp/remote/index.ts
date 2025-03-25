@@ -2,7 +2,7 @@ import { randomBytes } from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { fetchServerMetadata } from "@app/lib/api/mcp";
+import { fetchServerData } from "@app/lib/actions/mcp_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -10,23 +10,36 @@ import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_se
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
+import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
+import logger from "@app/logger/logger";
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<MCPApiResponse | GetRemoteMCPServersResponseBody>
   >,
-  auth: Authenticator
+  auth: Authenticator,
+  { space }: { space: SpaceResource },
 ): Promise<void> {
   const { method } = req;
-  const { wId, spaceId } = req.query;
+  const { wId } = req.query;
 
-  if (typeof wId !== "string" || typeof spaceId !== "string") {
+  if (typeof wId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
         message: "Invalid path parameters.",
+      },
+    });
+  }
+
+  if (!space.canRead(auth)) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "data_source_view_not_found",
+        message: "The data source view you requested was not found.",
       },
     });
   }
@@ -53,7 +66,6 @@ async function handler(
   }
 
   const workspace = auth.workspace();
-  const space = await SpaceResource.fetchById(auth, spaceId);
 
   if (!workspace || !space) {
     return apiError(req, res, {
@@ -83,7 +95,7 @@ async function handler(
           servers: serverResponses,
         });
       } catch (error) {
-        console.error("Error listing remote MCP servers:", error);
+        logger.error("Error listing remote MCP servers:", error);
         return apiError(req, res, {
           status_code: 500,
           api_error: {
@@ -125,7 +137,7 @@ async function handler(
         });
       }
 
-      const metadata = await fetchServerMetadata(url);
+      const metadata = await fetchServerData(url);
       const sharedSecret = randomBytes(32).toString("hex");
 
       const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
@@ -138,7 +150,8 @@ async function handler(
           lastSyncAt: new Date(),
           sharedSecret,
         },
-        space
+        space,
+        auth,
       );
 
       return res.status(201).json({
@@ -167,4 +180,6 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(withResourceFetchingFromRoute(handler, {
+  space: { requireCanRead: true },
+}));

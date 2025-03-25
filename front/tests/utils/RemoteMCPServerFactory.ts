@@ -4,8 +4,7 @@ import { RequestMethod } from "node-mocks-http";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { WorkspaceType } from "@app/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Authenticator } from "@app/lib/auth";
 
 type Tool = {
   name: string;
@@ -43,29 +42,7 @@ export class RemoteMCPServerFactory {
         lastSyncAt: new Date(),
         sharedSecret,
       },
-      space
+      space,
     );
-  }
-
-  /**
-   * Helper function to set up a test environment with workspace, space, and request/response objects
-   */
-  static async setupTest(
-    db: any,
-    role: "builder" | "user" | "admin" = "builder",
-    method: RequestMethod = "GET"
-  ) {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role,
-      method,
-    });
-
-    const space = await SpaceFactory.global(workspace, db);
-
-    // Set up common query parameters
-    req.query.wId = workspace.sId;
-    req.query.spaceId = space.sId;
-
-    return { req, res, workspace, space };
   }
 }

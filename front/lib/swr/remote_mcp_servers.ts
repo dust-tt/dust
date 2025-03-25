@@ -114,49 +114,60 @@ export function useDeleteRemoteMCPServer(
 }
 
 /**
- * Hook to synchronize with a remote MCP server
- * This can either create a new server using a URL or sync an existing server by its ID
+ * Hook to create a new MCP server from a URL
  */
-export function useSyncRemoteMCPServer(
+export function useCreateRemoteMCPServer(
   owner: LightWorkspaceType,
-  space: SpaceType
+  space: SpaceType,
 ) {
   const { mutateServers } = useRemoteMCPServers({
     disabled: true,
     owner,
     space,
-  });
-  // Create a new server with the provided URL
-  const syncByUrl = async (
-    owner: LightWorkspaceType,
-    space: SpaceType,
-    url: string
-  ): Promise<MCPApiResponse> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      }
-    );
+  })
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        error.api_error?.message || "Failed to synchronize server"
+    const createWithUrlSync = async (
+      url: string
+    ): Promise<MCPApiResponse> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        }
       );
-    }
+  
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(
+          error.api_error?.message || "Failed to synchronize server"
+        );
+      }
+  
+      void mutateServers();
+      return response.json();
+    };
 
-    void mutateServers();
-    return response.json();
-  };
+  return { createWithUrlSync };
+}
 
-  const syncById = async (
-    owner: LightWorkspaceType,
-    space: SpaceType,
-    serverId: string
-  ): Promise<MCPApiResponse> => {
+/**
+ * Hook to synchronize with a remote MCP server
+ */
+export function useSyncRemoteMCPServer(
+  owner: LightWorkspaceType,
+  space: SpaceType,
+  serverId: string,
+) {
+  const { mutateServer } = useRemoteMCPServer({
+    disabled: true,
+    owner,
+    space,
+    serverId: serverId || ""
+  })
+
+  const syncServer = async (): Promise<MCPApiResponse> => {
     const response = await fetch(
       `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}/sync`,
       { method: "POST" }
@@ -169,11 +180,11 @@ export function useSyncRemoteMCPServer(
       );
     }
 
-    void mutateServers();
+    void mutateServer();
     return response.json();
   };
 
-  return { syncByUrl, syncById };
+  return { syncServer };
 }
 
 /**
@@ -181,18 +192,17 @@ export function useSyncRemoteMCPServer(
  */
 export function useUpdateRemoteMCPServer(
   owner: LightWorkspaceType,
-  space: SpaceType
+  space: SpaceType,
+  serverId: string,
 ) {
-  const { mutateServers } = useRemoteMCPServers({
+  const { mutateServer } = useRemoteMCPServer({
     disabled: true,
     owner,
     space,
+    serverId,
   });
 
   const updateServer = async (
-    owner: LightWorkspaceType,
-    space: SpaceType,
-    serverId: string,
     data: {
       name: string;
       url: string;
@@ -214,7 +224,7 @@ export function useUpdateRemoteMCPServer(
       throw new Error(error.api_error?.message || "Failed to update server");
     }
 
-    void mutateServers();
+    void mutateServer();
     return response.json();
   };
 

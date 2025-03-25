@@ -34,7 +34,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
 
   static async makeNew(
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
-    space: SpaceResource
+    space: SpaceResource,
   ) {
     const server = await RemoteMCPServer.create({
       ...blob,
@@ -153,41 +153,30 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
 
   // Mutation.
 
-  async updateSettings(
+  async updateServer(
     auth: Authenticator,
     {
       name,
       description,
       url,
       sharedSecret,
+      cachedTools,
+      lastSyncAt,
     }: {
       name?: string;
       description?: string | null;
       url?: string;
       sharedSecret?: string;
-    }
-  ) {
-    assert(this.canWrite(auth), "Unauthorized write attempt");
-    await this.update({
-      name,
-      description,
-      url,
-      sharedSecret,
-    });
-  }
-
-  async updateTools(
-    auth: Authenticator,
-    {
-      cachedTools,
-      lastSyncAt,
-    }: {
       cachedTools: { name: string; description: string }[];
       lastSyncAt: Date;
     }
   ) {
     assert(this.canWrite(auth), "Unauthorized write attempt");
     await this.update({
+      name,
+      description,
+      url,
+      sharedSecret,
       cachedTools,
       lastSyncAt,
     });

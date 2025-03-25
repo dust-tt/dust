@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { MCPApiResponse } from "@app/types/mcp";
@@ -11,14 +10,13 @@ import type { MCPApiResponse } from "@app/types/mcp";
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<MCPApiResponse>>,
-  auth: Authenticator
+  auth: Authenticator,
 ): Promise<void> {
   const { method } = req;
-  const { wId, spaceId, serverId } = req.query;
+  const { wId, serverId } = req.query;
 
   if (
     typeof wId !== "string" ||
-    typeof spaceId !== "string" ||
     typeof serverId !== "string"
   ) {
     return apiError(req, res, {
@@ -30,35 +28,12 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can manage MCP servers.",
-      },
-    });
-  }
-
   if (auth.workspace()?.sId !== wId) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message: "You don't have access to this workspace.",
-      },
-    });
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-
-  if (!space) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "Space not found",
       },
     });
   }
@@ -104,27 +79,13 @@ async function handler(
         });
       }
 
-      const updateSettingsData: any = {};
-      if (name) {
-        updateSettingsData.name = name;
-      }
-      if (url) {
-        updateSettingsData.url = url;
-      }
-      if (description !== undefined) {
-        updateSettingsData.description = description;
-      }
-
-      if (Object.keys(updateSettingsData).length > 0) {
-        await server.updateSettings(auth, updateSettingsData);
-      }
-
-      if (tools) {
-        await server.updateTools(auth, {
-          cachedTools: tools,
-          lastSyncAt: new Date(),
-        });
-      }
+      await server.updateServer(auth, {
+        name,
+        url,
+        description,
+        cachedTools: tools,
+        lastSyncAt: new Date(),
+      });
 
       return res.status(200).json({
         success: true,
