@@ -1,8 +1,6 @@
 import { describe, expect, vi } from "vitest";
 
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./sync";
@@ -23,15 +21,11 @@ vi.mock(import("@app/lib/api/mcp"), async (importOriginal) => {
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => {
   itInTransaction("should return 404 when server doesn't exist", async (db) => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role: "builder",
-      method: "POST",
-    });
-
-    const space = await SpaceFactory.global(workspace, db);
-
-    req.query.wId = workspace.sId;
-    req.query.spaceId = space.sId;
+    const { req, res } = await RemoteMCPServerFactory.setupTest(
+      db,
+      "builder",
+      "POST"
+    );
     req.query.serverId = "non-existent-server-id";
 
     await handler(req, res);
@@ -48,27 +42,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => 
   itInTransaction(
     "should return 403 when user is not a builder",
     async (db) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "user",
-        method: "POST",
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
-      const server = await RemoteMCPServerResource.makeNew(
-        {
-          workspaceId: workspace.id,
-          name: "Test Server",
-          url: "https://test-server.example.com",
-          description: "Test description",
-          cachedTools: [],
-          lastSyncAt: new Date(),
-          sharedSecret: "secret",
-        },
-        space
-      );
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
+      const { req, res, workspace, space } =
+        await RemoteMCPServerFactory.setupTest(db, "user", "POST");
+      const server = await RemoteMCPServerFactory.create(workspace, space);
       req.query.serverId = server.sId;
 
       await handler(req, res);
@@ -85,27 +61,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => 
 
   itInTransaction("only POST method is supported", async (db) => {
     for (const method of ["GET", "DELETE", "PUT", "PATCH"] as const) {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "builder",
-        method,
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
-      const server = await RemoteMCPServerResource.makeNew(
-        {
-          workspaceId: workspace.id,
-          name: "Test Server",
-          url: "https://test-server.example.com",
-          description: "Test description",
-          cachedTools: [],
-          lastSyncAt: new Date(),
-          sharedSecret: "secret",
-        },
-        space
-      );
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
+      const { req, res, workspace, space } =
+        await RemoteMCPServerFactory.setupTest(db, "builder", method);
+      const server = await RemoteMCPServerFactory.create(workspace, space);
       req.query.serverId = server.sId;
 
       await handler(req, res);

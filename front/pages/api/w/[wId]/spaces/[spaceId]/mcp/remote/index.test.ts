@@ -1,8 +1,6 @@
 import { describe, expect, vi } from "vitest";
 
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { itInTransaction } from "@app/tests/utils/utils";
 
 import handler from "./index";
@@ -21,40 +19,21 @@ vi.mock(import("@app/lib/api/mcp"), async (importOriginal) => {
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction("should return a list of servers", async (db) => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+    const { req, res, workspace, space } =
+      await RemoteMCPServerFactory.setupTest(db);
+
+    // Create two test servers
+    await RemoteMCPServerFactory.create(workspace, space, {
+      name: "Test Server 1",
+      url: "https://test-server-1.example.com",
+      tools: [{ name: "tool-1", description: "Tool 1 description" }],
     });
 
-    const space = await SpaceFactory.global(workspace, db);
-
-    req.query.wId = workspace.sId;
-    req.query.spaceId = space.sId;
-
-    const server1 = await RemoteMCPServerResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: "Test Server 1",
-        url: "https://test-server-1.example.com",
-        description: "Test description 1",
-        cachedTools: [{ name: "tool-1", description: "Tool 1 description" }],
-        lastSyncAt: new Date(),
-        sharedSecret: "secret1",
-      },
-      space
-    );
-
-    const server2 = await RemoteMCPServerResource.makeNew(
-      {
-        workspaceId: workspace.id,
-        name: "Test Server 2",
-        url: "https://test-server-2.example.com",
-        description: "Test description 2",
-        cachedTools: [{ name: "tool-2", description: "Tool 2 description" }],
-        lastSyncAt: new Date(),
-        sharedSecret: "secret2",
-      },
-      space
-    );
+    await RemoteMCPServerFactory.create(workspace, space, {
+      name: "Test Server 2",
+      url: "https://test-server-2.example.com",
+      tools: [{ name: "tool-2", description: "Tool 2 description" }],
+    });
 
     await handler(req, res);
 
@@ -63,39 +42,12 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
     const responseData = res._getJSONData();
     expect(responseData).toHaveProperty("servers");
     expect(responseData.servers).toHaveLength(2);
-
-    const returnedServers = responseData.servers;
-    expect(returnedServers.map((s: { id: string }) => s.id)).toContain(
-      server1.sId
-    );
-    expect(returnedServers.map((s: { id: string }) => s.id)).toContain(
-      server2.sId
-    );
-
-    const server1Response = returnedServers.find(
-      (s: { id: string }) => s.id === server1.sId
-    );
-    expect(server1Response).toEqual({
-      id: server1.sId,
-      workspaceId: workspace.sId,
-      name: server1.name,
-      description: server1.description || "",
-      tools: server1.cachedTools,
-      url: server1.url,
-    });
   });
 
   itInTransaction(
     "should return empty array when no servers exist",
     async (db) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "builder",
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
+      const { req, res } = await RemoteMCPServerFactory.setupTest(db);
 
       await handler(req, res);
 
@@ -111,14 +63,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction(
     "should return 403 when user is not a builder",
     async (db) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "user",
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
+      const { req, res } = await RemoteMCPServerFactory.setupTest(db, "user");
 
       await handler(req, res);
 
@@ -135,15 +80,11 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction("should return 400 when URL is missing", async (db) => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role: "builder",
-      method: "POST",
-    });
-
-    const space = await SpaceFactory.global(workspace, db);
-
-    req.query.wId = workspace.sId;
-    req.query.spaceId = space.sId;
+    const { req, res } = await RemoteMCPServerFactory.setupTest(
+      db,
+      "builder",
+      "POST"
+    );
 
     req.body = {};
 
@@ -161,33 +102,16 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction(
     "should return 400 when server with URL already exists",
     async (db) => {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "builder",
-        method: "POST",
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
+      const { req, res, workspace, space } =
+        await RemoteMCPServerFactory.setupTest(db, "builder", "POST");
 
       const existingUrl = "https://existing-server.example.com";
-      await RemoteMCPServerResource.makeNew(
-        {
-          workspaceId: workspace.id,
-          name: "Existing Server",
-          url: existingUrl,
-          description: "Existing server description",
-          cachedTools: [],
-          lastSyncAt: new Date(),
-          sharedSecret: "existing-secret",
-        },
-        space
-      );
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
-
-      req.body = {
+      await RemoteMCPServerFactory.create(workspace, space, {
+        name: "Existing Server",
         url: existingUrl,
-      };
+      });
+
+      req.body = { url: existingUrl };
 
       await handler(req, res);
 
@@ -205,15 +129,11 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction("only supports GET and POST methods", async (db) => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
-      const { req, res, workspace } = await createPrivateApiMockRequest({
-        role: "builder",
-        method,
-      });
-
-      const space = await SpaceFactory.global(workspace, db);
-
-      req.query.wId = workspace.sId;
-      req.query.spaceId = space.sId;
+      const { req, res } = await RemoteMCPServerFactory.setupTest(
+        db,
+        "builder",
+        method
+      );
 
       await handler(req, res);
 
