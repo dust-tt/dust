@@ -54,7 +54,7 @@ function addItem(items: string[], newItem: string) {
 ### [GEN6] Comments must be sentences wrapped at 100 characters
 
 Comments must be full sentences (starting with a capital letter and ending with a period) and must
-be wrapped at 100 characters. Wrapping at a lower
+be wrapped at 100 characters. Wrapping at a lower characer count should be avoided.
 
 Example:
 
