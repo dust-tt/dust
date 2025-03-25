@@ -139,7 +139,7 @@ export const InputBarAttachmentsPicker = ({
         <DropdownMenuSearchbar
           ref={searchbarRef}
           name="search-files"
-          placeholder="Search knowledge or attach files"
+          placeholder="Search knowledge"
           value={search}
           onChange={setSearch}
           disabled={isLoading}
@@ -174,6 +174,7 @@ export const InputBarAttachmentsPicker = ({
                       })}
                       disabled={
                         attachedNodeIds.includes(item.internalId) ||
+                        // TODO(attac-ds): remove this condition
                         item.type === "folder"
                       }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
