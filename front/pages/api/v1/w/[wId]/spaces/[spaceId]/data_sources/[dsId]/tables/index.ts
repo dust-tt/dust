@@ -323,41 +323,6 @@ async function handler(
 
       const tableId = maybeTableId || generateRandomModelSId();
 
-      const tRes = await coreAPI.getTables({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      });
-
-      if (tRes.isErr()) {
-        logger.error(
-          {
-            dataSourceId: dataSource.sId,
-            workspaceId: owner.id,
-            error: tRes.error,
-          },
-          "Failed to retrieve tables."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to retrieve tables.",
-            data_source_error: tRes.error,
-          },
-        });
-      }
-
-      const tableWithSameName = tRes.value.tables.find((t) => t.name === name);
-      if (tableWithSameName && tableWithSameName.table_id !== tableId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Tables names must be unique within a data source.",
-          },
-        });
-      }
-
       // Prohibit passing parents when not coming from connectors.
       if (!auth.isSystemKey() && parents) {
         return apiError(req, res, {

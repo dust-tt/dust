@@ -2684,6 +2684,26 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        // Check if there is already a table with that name in the data source.
+        let stmt = tx
+            .prepare("SELECT id FROM tables WHERE data_source = $1 AND name = $2 AND table_id != $3 LIMIT 1")
+            .await?;
+        let r = tx
+            .query(
+                &stmt,
+                &[
+                    &data_source_row_id,
+                    &upsert_params.name,
+                    &upsert_params.table_id,
+                ],
+            )
+            .await?;
+
+        if !r.is_empty() {
+            // We already have a table with that name but a different table id, it is not allowed
+            return Err(anyhow!("Tables names must be unique within a data source."));
+        }
+
         let stmt = tx
             .prepare(
                 "INSERT INTO tables \
