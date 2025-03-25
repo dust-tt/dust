@@ -52,8 +52,7 @@ function generateConnectorRelativeMimeTypes<
   );
 }
 
-export const MIME_TYPES = {
-  CONFLUENCE: generateMimeTypes({
+const CONTENT_NODE_MIME_TYPES = {
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
@@ -140,6 +139,15 @@ export const MIME_TYPES = {
     provider: "gong",
     resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
+};
+
+const TOOL_INPUT_MIME_TYPES = {
+  DATA_SOURCE_CONFIGURATION: "application/vnd.dust.data-source-configuration",
+};
+
+export const MIME_TYPES = {
+  ...CONTENT_NODE_MIME_TYPES,
+  ...TOOL_INPUT_MIME_TYPES,
 };
 
 export const MIME_TYPES_VALUES = Object.values(MIME_TYPES).flatMap((value) =>
