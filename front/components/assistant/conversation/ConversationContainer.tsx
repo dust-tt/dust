@@ -112,10 +112,9 @@ export function ConversationContainer({
     const messageData = { input, mentions, contentFragments };
 
     try {
-      // Update the local state immediately and fire the
-      // request. Since the API will return the updated
-      // data, there is no need to start a new revalidation
-      // and we can directly populate the cache.
+      // Update the local state immediately and fire the request. Since the API will return the
+      // updated data, there is no need to start a new revalidation and we can directly populate the
+      // cache.
       await mutateMessages(
         async (currentMessagePages) => {
           const result = await submitMessage({
@@ -173,8 +172,7 @@ export function ConversationContainer({
       await mutateConversations();
       scrollConversationsToTop();
     } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
+      // If the API errors, the original data will be rolled back by SWR automatically.
       console.error("Failed to post message:", err);
       return new Err({
         code: "internal_error",

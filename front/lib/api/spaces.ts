@@ -280,7 +280,7 @@ export async function searchContenNodesInSpace(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const searchFilterResult = getSearchFilterFromDataSourceViews(
+  const searchFilter = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     dataSourceViews,
     {
@@ -292,7 +292,7 @@ export async function searchContenNodesInSpace(
 
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: searchFilterResult,
+    filter: searchFilter,
     options,
   });
 
