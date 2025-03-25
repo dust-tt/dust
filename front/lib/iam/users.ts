@@ -2,6 +2,7 @@ import type { Session } from "@auth0/nextjs-auth0";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -288,6 +289,9 @@ export async function mergeUserIdentities({
       },
     }
   );
+
+  // Revoke the secondary user's membership in the workspace.
+  await revokeAndTrackMembership(auth.getNonNullableWorkspace(), secondaryUser);
 
   return new Ok({
     primaryUser,
