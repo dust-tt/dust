@@ -153,8 +153,8 @@ export const MIME_TYPES = {
   ...TOOL_INPUT_MIME_TYPES,
 };
 
-export const MIME_TYPES_VALUES = Object.values(MIME_TYPES).flatMap((value) =>
-  Object.values(value).map((v) => v)
+export const MIME_TYPES_VALUES = Object.values(CONTENT_NODE_MIME_TYPES).flatMap(
+  (value) => Object.values(value).map((v) => v)
 );
 
 export type BigQueryMimeType =
