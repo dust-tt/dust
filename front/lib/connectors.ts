@@ -233,6 +233,19 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return { url: url.toString() };
     },
   },
+  intercom: {
+    matcher: (url: URL): boolean => {
+      return (
+        (url.hostname.includes("intercom.com") &&
+          url.hostname.startsWith("app")) ||
+        // custom help center domains (websiteTurnedOn is true)
+        url.hostname.startsWith("help")
+      );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString() };
+    },
+  },
 };
 
 // Extract a channel node ID from a Slack client URL
