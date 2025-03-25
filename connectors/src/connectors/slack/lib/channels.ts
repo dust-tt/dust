@@ -15,7 +15,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ConnectorPermission } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 import { getSlackClient } from "./slack_client";
 
@@ -117,7 +117,7 @@ export async function updateSlackChannelInCoreDb(
     title: `#${channelOnDb.slackChannelName}`,
     parentId: null,
     parents: [folderId],
-    mimeType: MIME_TYPES.SLACK.CHANNEL,
+    mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
     sourceUrl: getSlackChannelSourceUrl(channelId, slackConfiguration),
     providerVisibility: channelOnDb.private ? "private" : "public",
     timestampMs,

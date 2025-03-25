@@ -22,7 +22,7 @@ import {
 } from "@connectors/lib/remote_databases/utils";
 import type { ContentNode } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the Salesforce account.
@@ -58,7 +58,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -87,7 +87,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -120,7 +120,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -153,20 +153,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SALESFORCE)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.SALESFORCE
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
   ]);
@@ -209,7 +213,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         )
       );
       return new Ok(schemaContentNodes);
@@ -238,7 +242,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     availableTables.forEach((table) => {
@@ -251,7 +255,7 @@ export const fetchSyncedChildren = async ({
           getContentNodeFromInternalId(
             schemaToAddInternalId,
             "none",
-            MIME_TYPES.SALESFORCE
+            INTERNAL_MIME_TYPES.SALESFORCE
           )
         );
       }
@@ -273,7 +277,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     return new Ok(tables);

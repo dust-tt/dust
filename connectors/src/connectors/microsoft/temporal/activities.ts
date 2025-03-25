@@ -55,7 +55,7 @@ import {
 } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { cacheWithRedis, MIME_TYPES } from "@connectors/types";
+import { cacheWithRedis, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
@@ -220,7 +220,7 @@ export async function getRootNodesToSyncFromResources(
         parents: [createdOrUpdatedResource.internalId],
         parentId: null,
         title: createdOrUpdatedResource.name ?? "",
-        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
@@ -516,7 +516,7 @@ export async function syncFiles({
         parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
         parentId: parentsOfParent[0],
         title: createdOrUpdatedResource.name ?? "Untitled Folder",
-        mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
         sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
       }),
     { concurrency: 5 }
@@ -723,7 +723,7 @@ export async function syncDeltaForRootNodesInDrive({
           parents,
           parentId: parents[1] || null,
           title: blob.name ?? "Untitled Folder",
-          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
           sourceUrl: blob.webUrl ?? undefined,
         });
 
@@ -938,7 +938,7 @@ async function updateDescendantsParentsInCore({
     parents,
     parentId: parents[1] || null,
     title: folder.name ?? "Untitled Folder",
-    mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
     sourceUrl: folder.webUrl ?? undefined,
   });
 

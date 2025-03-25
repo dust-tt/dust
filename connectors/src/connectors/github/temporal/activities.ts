@@ -66,7 +66,7 @@ import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // Only allow documents up to 5mb to be processed.
 const MAX_DOCUMENT_TXT_LEN = 5000000;
@@ -329,7 +329,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: MIME_TYPES.GITHUB.ISSUE,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUE,
     async: true,
   });
 
@@ -544,7 +544,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: MIME_TYPES.GITHUB.DISCUSSION,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
     async: true,
   });
 
@@ -1012,7 +1012,7 @@ export async function githubCodeSyncActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
     sourceUrl: getRepoUrl(repoLogin, repoName),
   });
 
@@ -1232,7 +1232,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: MIME_TYPES.GITHUB.CODE_FILE,
+            mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
             async: true,
           });
 
@@ -1276,7 +1276,7 @@ export async function githubCodeSyncActivity({
           parents,
           parentId: parents[1],
           title: d.dirName,
-          mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
           sourceUrl: d.sourceUrl,
         });
 
@@ -1420,7 +1420,7 @@ export async function githubUpsertRepositoryFolderActivity({
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
     sourceUrl: getRepoUrl(repoLogin, repoName),
-    mimeType: MIME_TYPES.GITHUB.REPOSITORY,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
   });
 }
 
@@ -1445,7 +1445,7 @@ export async function githubUpsertIssuesFolderActivity({
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.ISSUES,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
     sourceUrl: getIssuesUrl(getRepoUrl(repoLogin, repoName)),
   });
 }
@@ -1474,7 +1474,7 @@ export async function githubUpsertDiscussionsFolderActivity({
       getRepositoryInternalId(repoId),
     ],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
     sourceUrl: getDiscussionsUrl(getRepoUrl(repoLogin, repoName)),
   });
 }

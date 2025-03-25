@@ -52,7 +52,7 @@ function generateConnectorRelativeMimeTypes<
   );
 }
 
-const CONTENT_NODE_MIME_TYPES = {
+export const CONTENT_NODE_MIME_TYPES = {
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
@@ -148,7 +148,7 @@ const TOOL_INPUT_MIME_TYPES = {
   },
 };
 
-export const MIME_TYPES = {
+export const INTERNAL_MIME_TYPES = {
   ...CONTENT_NODE_MIME_TYPES,
   ...TOOL_INPUT_MIME_TYPES,
 };
@@ -158,43 +158,43 @@ export const MIME_TYPES_VALUES = Object.values(CONTENT_NODE_MIME_TYPES).flatMap(
 );
 
 export type BigQueryMimeType =
-  (typeof MIME_TYPES.BIGQUERY)[keyof typeof MIME_TYPES.BIGQUERY];
+  (typeof INTERNAL_MIME_TYPES.BIGQUERY)[keyof typeof INTERNAL_MIME_TYPES.BIGQUERY];
 
 export type ConfluenceMimeType =
-  (typeof MIME_TYPES.CONFLUENCE)[keyof typeof MIME_TYPES.CONFLUENCE];
+  (typeof INTERNAL_MIME_TYPES.CONFLUENCE)[keyof typeof INTERNAL_MIME_TYPES.CONFLUENCE];
 
 export type GithubMimeType =
-  (typeof MIME_TYPES.GITHUB)[keyof typeof MIME_TYPES.GITHUB];
+  (typeof INTERNAL_MIME_TYPES.GITHUB)[keyof typeof INTERNAL_MIME_TYPES.GITHUB];
 
 export type GoogleDriveMimeType =
-  (typeof MIME_TYPES.GOOGLE_DRIVE)[keyof typeof MIME_TYPES.GOOGLE_DRIVE];
+  (typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE)[keyof typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE];
 
 export type IntercomMimeType =
-  (typeof MIME_TYPES.INTERCOM)[keyof typeof MIME_TYPES.INTERCOM];
+  (typeof INTERNAL_MIME_TYPES.INTERCOM)[keyof typeof INTERNAL_MIME_TYPES.INTERCOM];
 
 export type MicrosoftMimeType =
-  (typeof MIME_TYPES.MICROSOFT)[keyof typeof MIME_TYPES.MICROSOFT];
+  (typeof INTERNAL_MIME_TYPES.MICROSOFT)[keyof typeof INTERNAL_MIME_TYPES.MICROSOFT];
 
 export type NotionMimeType =
-  (typeof MIME_TYPES.NOTION)[keyof typeof MIME_TYPES.NOTION];
+  (typeof INTERNAL_MIME_TYPES.NOTION)[keyof typeof INTERNAL_MIME_TYPES.NOTION];
 
 export type SlackMimeType =
-  (typeof MIME_TYPES.SLACK)[keyof typeof MIME_TYPES.SLACK];
+  (typeof INTERNAL_MIME_TYPES.SLACK)[keyof typeof INTERNAL_MIME_TYPES.SLACK];
 
 export type SnowflakeMimeType =
-  (typeof MIME_TYPES.SNOWFLAKE)[keyof typeof MIME_TYPES.SNOWFLAKE];
+  (typeof INTERNAL_MIME_TYPES.SNOWFLAKE)[keyof typeof INTERNAL_MIME_TYPES.SNOWFLAKE];
 
 export type WebcrawlerMimeType =
-  (typeof MIME_TYPES.WEBCRAWLER)[keyof typeof MIME_TYPES.WEBCRAWLER];
+  (typeof INTERNAL_MIME_TYPES.WEBCRAWLER)[keyof typeof INTERNAL_MIME_TYPES.WEBCRAWLER];
 
 export type ZendeskMimeType =
-  (typeof MIME_TYPES.ZENDESK)[keyof typeof MIME_TYPES.ZENDESK];
+  (typeof INTERNAL_MIME_TYPES.ZENDESK)[keyof typeof INTERNAL_MIME_TYPES.ZENDESK];
 
 export type SalesforceMimeType =
-  (typeof MIME_TYPES.SALESFORCE)[keyof typeof MIME_TYPES.SALESFORCE];
+  (typeof INTERNAL_MIME_TYPES.SALESFORCE)[keyof typeof INTERNAL_MIME_TYPES.SALESFORCE];
 
 export type GongMimeType =
-  (typeof MIME_TYPES.GONG)[keyof typeof MIME_TYPES.GONG];
+  (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
 
 export type DustMimeType =
   | BigQueryMimeType
@@ -212,5 +212,5 @@ export type DustMimeType =
   | GongMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
-  return (MIME_TYPES_VALUES as string[]).includes(mimeType);
+  return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
 }

@@ -24,7 +24,7 @@ import type {
   ContentNode,
 } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { EXCLUDE_SCHEMAS, MIME_TYPES } from "@connectors/types";
+import { EXCLUDE_SCHEMAS, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the BigQuery account.
@@ -60,7 +60,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
@@ -98,7 +98,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
@@ -133,7 +133,7 @@ export const fetchAvailableChildrenInBigQuery = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         );
       })
     );
@@ -166,20 +166,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.BIGQUERY)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.BIGQUERY
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     ),
   ]);
@@ -222,7 +226,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.BIGQUERY
+          INTERNAL_MIME_TYPES.BIGQUERY
         )
       );
       return new Ok(schemaContentNodes);
@@ -251,7 +255,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     );
     availableTables.forEach((table) => {
@@ -264,7 +268,7 @@ export const fetchSyncedChildren = async ({
           getContentNodeFromInternalId(
             schemaToAddInternalId,
             "none",
-            MIME_TYPES.BIGQUERY
+            INTERNAL_MIME_TYPES.BIGQUERY
           )
         );
       }
@@ -286,7 +290,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.BIGQUERY
+        INTERNAL_MIME_TYPES.BIGQUERY
       )
     );
     return new Ok(tables);
