@@ -26,7 +26,7 @@ import {
 } from "@app/lib/content_nodes";
 import {
   useSpaces,
-  useSpaceSearchWithInfiniteScroll,
+  useSpacesSearchWithInfiniteScroll,
 } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
@@ -80,7 +80,7 @@ export const InputBarAttachmentsPicker = ({
     isSearchValidating,
     hasMore,
     nextPage,
-  } = useSpaceSearchWithInfiniteScroll({
+  } = useSpacesSearchWithInfiniteScroll({
     includeDataSources: true,
     owner,
     search: searchQuery,
