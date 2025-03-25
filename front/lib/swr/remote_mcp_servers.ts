@@ -96,11 +96,18 @@ export function useDeleteRemoteMCPServer() {
       }
     );
 
+    const { mutateServers } = useRemoteMCPServers({
+      disabled: true,
+      owner,
+      space
+    });
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.api_error?.message || "Failed to delete server");
     }
 
+    void mutateServers();
     return response.json();
   };
 
@@ -127,6 +134,12 @@ export function useSyncRemoteMCPServer() {
       }
     );
 
+    const { mutateServers } = useRemoteMCPServers({
+      disabled: true,
+      owner,
+      space
+    });
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(
@@ -134,6 +147,7 @@ export function useSyncRemoteMCPServer() {
       );
     }
 
+    void mutateServers();
     return response.json();
   };
 
@@ -147,6 +161,12 @@ export function useSyncRemoteMCPServer() {
       { method: "POST" }
     );
 
+    const { mutateServers } = useRemoteMCPServers({
+      disabled: true,
+      owner,
+      space
+    });
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(
@@ -154,6 +174,7 @@ export function useSyncRemoteMCPServer() {
       );
     }
 
+    void mutateServers();
     return response.json();
   };
 
@@ -184,11 +205,18 @@ export function useUpdateRemoteMCPServer() {
       }
     );
 
+    const { mutateServers } = useRemoteMCPServers({
+      disabled: true,
+      owner,
+      space
+    });
+
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.api_error?.message || "Failed to update server");
     }
 
+    void mutateServers();
     return response.json();
   };
 

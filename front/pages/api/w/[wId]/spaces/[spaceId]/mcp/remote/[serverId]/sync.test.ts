@@ -6,7 +6,6 @@ import { itInTransaction } from "@app/tests/utils/utils";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./sync";
-import { beforeEach } from "node:test";
 
 vi.mock(import("@app/lib/api/mcp"), async (importOriginal) => {
   const mod = await importOriginal();
