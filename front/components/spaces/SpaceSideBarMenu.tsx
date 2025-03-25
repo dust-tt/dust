@@ -217,6 +217,11 @@ const SYSTEM_SPACE_ITEMS = [
     visual: CloudArrowLeftRightIcon,
     category: "managed" as DataSourceViewCategory,
   },
+  {
+    label: "Capabilities",
+    visual: CommandLineIcon,
+    category: "apps" as DataSourceViewCategory,
+  },
 ];
 
 const SystemSpaceMenu = ({

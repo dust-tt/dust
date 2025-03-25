@@ -2,9 +2,12 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
+import { CapabilitiesList } from "@app/components/spaces/CapabilitiesList";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import type { ServerInfo } from "@app/lib/actions/mcp_internal_actions";
+import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
@@ -18,6 +21,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
+    serverInfos: ServerInfo[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -41,6 +45,13 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
+  let serverInfos: ServerInfo[] = [];
+
+  if (space.kind === "system") {
+    const servers = Object.values(internalMCPServers);
+    serverInfos = servers.map((server) => server.serverInfo);
+  }
+
   const isBuilder = auth.isBuilder();
   const canWriteInSpace = space.canWrite(auth);
 
@@ -62,6 +73,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       plan,
       registryApps,
+      serverInfos,
       space: space.toJSON(),
       subscription,
     },
@@ -73,8 +85,15 @@ export default function Space({
   owner,
   space,
   registryApps,
+  serverInfos,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
+
+  if (space.kind === "system") {
+    return (
+      <CapabilitiesList owner={owner} space={space} serverInfos={serverInfos} />
+    );
+  }
 
   return (
     <SpaceAppsList
