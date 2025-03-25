@@ -4,7 +4,6 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type {
   Implementation,
   ListToolsResult,
-  Resource,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
@@ -65,6 +64,8 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
+type ToolType = ListToolsResult["tools"][number];
+
 export interface MCPServerConnectionDetails {
   serverType: MCPServerConfigurationType["serverType"];
   internalMCPServerId?:
@@ -80,9 +81,9 @@ function makeMCPConfigurations({
   listToolsResult,
 }: {
   config: MCPServerConfigurationType;
-  listToolsResult: ListToolsResult;
+  listToolsResult: ToolType[];
 }): MCPToolConfigurationType[] {
-  return listToolsResult.tools.map((tool) => {
+  return listToolsResult.map((tool) => {
     return {
       id: config.id,
       sId: generateRandomModelSId(),
@@ -358,7 +359,11 @@ export async function tryGetMCPTools(
         // Connect to the MCP server.
         const mcpClient = await connectToMCPServer(action);
 
-        const r: ListToolsResult = await mcpClient.listTools();
+        const r: ToolType[] = await listMCPServerTools({
+          serverType: action.serverType,
+          internalMCPServerId: action.internalMCPServerId,
+          remoteMCPServerId: action.remoteMCPServerId,
+        });
 
         // Close immediately after listing tools.
         await mcpClient.close();
@@ -384,20 +389,20 @@ export async function tryGetMCPTools(
   return configurations.flat();
 }
 
-export async function getMCPServerResources(
+export async function listMCPServerTools(
   connectionDetails: MCPServerConnectionDetails
-): Promise<Resource[]> {
+): Promise<ToolType[]> {
   const mcpClient = await connectToMCPServer(connectionDetails);
 
-  let serverResources: Resource[] = [];
+  let allTools: ToolType[] = [];
   let nextPageCursor;
   do {
-    const { resources, nextCursor } = await mcpClient.listResources();
+    const { tools, nextCursor } = await mcpClient.listTools();
     nextPageCursor = nextCursor;
-    serverResources = [...serverResources, ...resources];
+    allTools = [...allTools, ...tools];
   } while (nextPageCursor);
 
   await mcpClient.close();
 
-  return serverResources;
+  return allTools;
 }
