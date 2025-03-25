@@ -736,6 +736,12 @@ module.exports = {
     require("tailwindcss-animate"),
     plugin(function ({ addBase, theme }) {
       addBase({
+        ".heading-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "600",
+        },
         ".heading-lg": {
           fontSize: theme("fontSize.lg[0]"),
           lineHeight: theme("fontSize.lg[1].lineHeight"),
@@ -922,6 +928,7 @@ module.exports = {
     "copy-lg",
     "copy-xl",
     // Add heading classes to safelist
+    "heading-base",
     "heading-lg",
     "heading-xl",
     "heading-2xl",

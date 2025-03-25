@@ -99,7 +99,7 @@ const textVariants = cva("s-select-none s-font-semibold", {
 
 const getColor = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-bg-slate-300";
+    return "s-bg-primary-300";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -128,7 +128,7 @@ const getColor = (name: string) => {
 
 const getTextVariant = (name: string) => {
   if (/\+/.test(name)) {
-    return "s-text-slate-700";
+    return "s-text-muted-foreground";
   }
   let hash = 0;
   for (let i = 0; i < name.length; i++) {

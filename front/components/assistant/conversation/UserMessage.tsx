@@ -51,7 +51,9 @@ export function UserMessage({
     <ConversationMessage
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName ?? undefined}
-      renderName={(name) => <div className="text-base font-medium">{name}</div>}
+      renderName={(name) => (
+        <div className="text-base font-semibold">{name}</div>
+      )}
       type="user"
       citations={citations}
     >

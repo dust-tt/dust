@@ -33,7 +33,7 @@ export function QuickStartGuide() {
               />
             </div>
             <div className="col-span-3 flex flex-col gap-2">
-              <h5 className="text-xl font-semibold">
+              <h5 className="heading-xl">
                 👋 Hello <span className="text-highlight-500">@agents</span>
               </h5>
               <p>
@@ -54,10 +54,8 @@ export function QuickStartGuide() {
               alt="Input bar"
             />
             <div className="col-span-3 flex flex-col gap-4">
-              <h5 className="text-xl font-semibold">
-                👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Agents
-              </h5>
-              <p className="font-medium">
+              <h5 className="heading-xl">👩‍🎨🦸‍♀️🥷🧑‍🚀 Multiple Agents</h5>
+              <p className="font-semibold">
                 Specialized agents can help answer questions, really well.
               </p>
               <p>
@@ -75,10 +73,8 @@ export function QuickStartGuide() {
               </p>
             </div>
             <div className="col-span-3 flex flex-col gap-4">
-              <h5 className="text-xl font-semibold">
-                🛠️ Build your own Agents
-              </h5>
-              <p className="font-medium">
+              <h5 className="heading-xl">🛠️ Build your own Agents</h5>
+              <p className="font-semibold">
                 Agents start with an "instruction": a text telling what you want
                 them to do.
               </p>
@@ -91,7 +87,8 @@ export function QuickStartGuide() {
               <p>
                 And you can give them access to knowledge.
                 <br />
-                We call them <span className="font-medium">Data sources.</span>
+                We call them{" "}
+                <span className="font-semibold">Data sources.</span>
               </p>
               <p>
                 With the right Data source, agents can answer questions like{" "}
@@ -106,9 +103,7 @@ export function QuickStartGuide() {
             </div>
 
             <div className="col-span-6 flex flex-col gap-4">
-              <h5 className="text-xl font-semibold">
-                📚 What are Data sources?
-              </h5>
+              <h5 className="heading-xl">📚 What are Data sources?</h5>
               <p>
                 To augment your agents with knowledge, you give them data in
                 three ways:

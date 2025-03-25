@@ -28,7 +28,7 @@ export function BarHeader({
 }: BarHeaderProps) {
   const titleClasses = classNames(
     "s-text-foreground dark:s-text-foreground-night",
-    "s-text-base s-font-bold s-truncate s-grow"
+    "s-heading-base s-truncate s-grow"
   );
   const buttonBarClasses = "s-flex s-gap-1";
 
