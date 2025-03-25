@@ -18,10 +18,10 @@ import {
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { setTimeoutAsync } from "@connectors/lib/async_utils";
 
 // Copied from front/hooks/useEventSource.ts
 const RECONNECT_DELAY = 5000; // 5 seconds.
