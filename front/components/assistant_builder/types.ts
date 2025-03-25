@@ -30,10 +30,10 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@app/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 
 export const ACTION_MODES = [
@@ -130,6 +130,9 @@ export type AssistantBuilderMCPServerConfiguration = {
   serverType: MCPServerConfigurationType["serverType"];
   internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
   remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
+  resources: {
+    dataSourceConfigurations?: DataSourceViewSelectionConfigurations;
+  };
 };
 
 // Builder State
@@ -366,6 +369,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
       serverType: "internal",
       internalMCPServerId: null,
       remoteMCPServerId: null,
+      resources: {},
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
