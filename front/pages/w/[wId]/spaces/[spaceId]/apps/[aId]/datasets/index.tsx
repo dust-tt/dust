@@ -161,7 +161,7 @@ export default function DatasetsView({
                           className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night"
                         >
                           <div className="flex items-center justify-between">
-                            <p className="truncate text-base font-bold text-action-500">
+                            <p className="heading-base truncate text-highlight-500">
                               {d.name}
                             </p>
                             {readOnly ? null : (
