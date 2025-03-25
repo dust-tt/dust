@@ -142,7 +142,10 @@ const CONTENT_NODE_MIME_TYPES = {
 };
 
 const TOOL_INPUT_MIME_TYPES = {
-  DATA_SOURCE_CONFIGURATION: "application/vnd.dust.data-source-configuration",
+  // If we get other similar mime types we'll add an util function just like above.
+  CONFIGURATION: {
+    DATA_SOURCE: "application/vnd.dust.data-source-configuration",
+  },
 };
 
 export const MIME_TYPES = {

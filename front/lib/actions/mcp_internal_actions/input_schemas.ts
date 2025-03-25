@@ -5,5 +5,5 @@ export const DataSourceConfigurationInputSchema = z.object({
   uri: z.literal(
     "data_source_configuration://dust/w/{wId}/data_source_configurations/{dscId}"
   ),
-  mimeType: z.literal(MIME_TYPES.DATA_SOURCE_CONFIGURATION),
+  mimeType: z.literal(MIME_TYPES.CONFIGURATION.DATA_SOURCE),
 });
