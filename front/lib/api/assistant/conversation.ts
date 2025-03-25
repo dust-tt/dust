@@ -17,6 +17,7 @@ import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
+import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -98,8 +99,6 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
-
-import { getContentFragmentGroupIds } from "./permissions";
 
 function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
