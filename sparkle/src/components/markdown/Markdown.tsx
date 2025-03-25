@@ -29,12 +29,12 @@ import { cn } from "@sparkle/lib/utils";
 
 const sizes = {
   p: "s-text-sm @sm:s-text-base @sm:s-leading-7",
-  h1: "s-text-3xl @sm:s-text-4xl s-font-semibold",
-  h2: "s-text-2xl @sm:s-text-3xl s-font-semibold",
-  h3: "s-text-xl @sm:s-text-2xl s-font-semibold",
-  h4: "s-text-lg @sm:s-text-xl s-font-semibold",
-  h5: "s-text-base @sm:s-text-lg s-font-semibold",
-  h6: "s-text-sm @sm:s-text-base s-font-semibold",
+  h1: "s-text-3xl s-font-semibold",
+  h2: "s-text-2xl s-font-semibold",
+  h3: "s-text-xl s-font-semibold",
+  h4: "s-text-lg s-font-semibold",
+  h5: "s-text-base s-font-bold",
+  h6: "s-text-base s-font-regular s-italic",
 };
 
 function showUnsupportedDirective() {
