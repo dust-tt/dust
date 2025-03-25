@@ -334,7 +334,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "truncate font-mono text-sm",
-                              "text-slate-700 dark:text-slate-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Name:{" "}
@@ -343,7 +343,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "truncate font-mono text-sm",
-                              "text-slate-700 dark:text-slate-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Domain:{" "}
@@ -355,7 +355,7 @@ export function APIKeys({
                             <p
                               className={classNames(
                                 "truncate font-mono text-sm",
-                                "text-slate-700 dark:text-slate-700-night"
+                                "text-muted-foreground dark:text-muted-foreground-night"
                               )}
                             >
                               Scoped to space:{" "}

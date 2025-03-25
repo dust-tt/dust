@@ -550,8 +550,8 @@ function Suggestions({
       <div className="relative flex flex-col">
         <div
           className={classNames(
-            "flex items-center gap-2 text-base font-bold",
-            "text-element-800 dark:text-element-800-night"
+            "heading-base flex items-center gap-2",
+            "text-muted-foreground dark:text-muted-foreground-night"
           )}
         >
           <div>Tips</div>

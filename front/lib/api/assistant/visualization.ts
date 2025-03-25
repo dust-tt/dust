@@ -116,7 +116,7 @@ const SineCosineChart = () => {
   const data = generateData();
   return (
     <div style={{ width: "800px", height: "500px" }} className="p-4 mx-auto bg-white">
-      <h2 className="text-2xl font-bold mb-4 text-center">
+      <h2 className="heading-2xl mb-4 text-center">
         Sine and Cosine Functions
       </h2>
 

@@ -713,6 +713,12 @@ module.exports = {
     require("@tailwindcss/container-queries"),
     plugin(function ({ addBase, theme }) {
       addBase({
+        ".s-heading-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "600",
+        },
         ".s-heading-lg": {
           fontSize: theme("fontSize.lg[0]"),
           lineHeight: theme("fontSize.lg[1].lineHeight"),
@@ -892,6 +898,7 @@ module.exports = {
     "s-copy-lg",
     "s-copy-xl",
     // Add heading classes to safelist to ensure they're always included
+    "s-heading-base",
     "s-heading-lg",
     "s-heading-xl",
     "s-heading-2xl",
