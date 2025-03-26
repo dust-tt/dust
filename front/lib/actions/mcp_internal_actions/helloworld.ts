@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { RocketIcon } from "lucide-react";
 
 const serverInfo = {
   name: "hello-world-server",
@@ -32,5 +31,4 @@ export const createServer = (): McpServer => {
 export const helloWorldServer = {
   createServer,
   serverInfo,
-  icon: RocketIcon,
 };

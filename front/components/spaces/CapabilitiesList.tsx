@@ -152,9 +152,7 @@ export const CapabilitiesList = ({
       {
         id: "name",
         cell: (info: CellContext<RowData, string>) => (
-          <DataTable.CellContent
-            icon={internalMCPServers[info.row.original.id].icon}
-          >
+          <DataTable.CellContent>
             {info.getValue()}
             <div className="text-sm text-gray-500">
               {internalMCPServers[info.row.original.id].serverInfo?.description}

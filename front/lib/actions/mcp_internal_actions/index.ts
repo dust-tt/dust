@@ -43,7 +43,6 @@ export const internalMCPServers: Record<
   {
     createServer: () => McpServer;
     serverInfo: ServerInfo;
-    icon: ComponentType;
   }
 > = {
   helloworld: helloWorldServer,
