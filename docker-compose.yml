@@ -70,6 +70,7 @@ services:
       - xpack.license.self_generated.type=basic
       - xpack.ml.use_auto_machine_memory_percent=true
       - ES_JAVA_OPTS=-Xms${ES_LOCAL_HEAP_INIT} -Xmx${ES_LOCAL_HEAP_MAX}
+      - action.auto_create_index=false
     ulimits:
       memlock:
         soft: -1
