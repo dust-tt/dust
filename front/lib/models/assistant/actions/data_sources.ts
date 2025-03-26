@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -25,13 +26,16 @@ export class AgentDataSourceConfiguration extends WorkspaceAwareModel<AgentDataS
   declare dataSourceId: ForeignKey<DataSourceModel["id"]>;
   declare dataSourceViewId: ForeignKey<DataSourceViewModel["id"]>;
 
-  // AgentDataSourceConfiguration can be used by both the retrieval and the process actions'
-  // configurations.
+  // AgentDataSourceConfiguration can be used by both the retrieval, the process
+  // and the MCP actions' configurations.
   declare retrievalConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
   > | null;
   declare processConfigurationId: ForeignKey<
     AgentRetrievalConfiguration["id"]
+  > | null;
+  declare mcpServerConfigurationId: ForeignKey<
+    AgentMCPServerConfiguration["id"]
   > | null;
 
   declare dataSource: NonAttribute<DataSourceModel>;
@@ -75,6 +79,7 @@ AgentDataSourceConfiguration.init(
     indexes: [
       { fields: ["retrievalConfigurationId"] },
       { fields: ["processConfigurationId"] },
+      { fields: ["mcpServerConfigurationId"] },
       { fields: ["dataSourceId"] },
       { fields: ["dataSourceViewId"] },
     ],
