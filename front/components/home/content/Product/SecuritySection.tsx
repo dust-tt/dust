@@ -12,7 +12,7 @@ export function SecuritySection() {
         <div className="col-span-12 mb-6">
           <div>
             <H2>Built with enterprise-grade security</H2>
-            <P size="lg">
+            <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. Avoid
               shadow IT and benefit from Enterprise-level privacy from model
