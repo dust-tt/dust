@@ -110,8 +110,6 @@ export const Metrics: MetricProps = {
       description: <>time savings on employee questions</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
