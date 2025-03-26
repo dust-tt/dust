@@ -109,7 +109,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     return new Ok(connections);
   }
 
-  static async findByWorkspaceAndMCPServer({
+  static async findByMCPServer({
     auth,
     remoteMCPServerId,
     internalMCPServerId,
@@ -124,15 +124,8 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
         remoteMCPServerId: undefined;
       }): Promise<Result<MCPServerConnectionResource, DustError>> {
-    const owner = auth.workspace();
-
-    if (!owner) {
-      return new Err(new DustError("unauthorized", "Unauthorized"));
-    }
-
     const connections = await this.baseFetch(auth, {
       where: {
-        workspaceId: owner.id,
         ...(remoteMCPServerId
           ? { remoteMCPServerId, serverType: "remote" }
           : { internalMCPServerId, serverType: "internal" }),
@@ -149,17 +142,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   }: {
     auth: Authenticator;
   }): Promise<MCPServerConnectionResource[]> {
-    const owner = auth.workspace();
-
-    if (!owner) {
-      return [];
-    }
-
-    const connections = await this.model.findAll({
-      where: {
-        workspaceId: owner.id,
-      },
-    });
+    const connections = await this.baseFetch(auth);
 
     return connections.map(
       (connection) =>
