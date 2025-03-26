@@ -29,7 +29,7 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1 className="text-red-400">Transform how work gets done</H1>
+            <H1>Transform how work gets done</H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
@@ -57,7 +57,6 @@ export function IntroSection() {
         </div>
         <TrustedBy />
         <ValuePropSection />
-        {/* <MetricSection {...METRICS}></MetricSection> */}
       </div>
     </div>
   );
