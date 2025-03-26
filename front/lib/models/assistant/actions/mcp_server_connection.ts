@@ -5,6 +5,7 @@ import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
 export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection> {
@@ -13,6 +14,8 @@ export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection
 
   declare connectionId: string;
   declare connectionType: "workspace" | "personal";
+
+  declare userId: ForeignKey<UserModel["id"]>;
 
   declare serverType: "internal" | "remote";
 

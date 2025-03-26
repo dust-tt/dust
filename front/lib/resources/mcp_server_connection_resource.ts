@@ -43,7 +43,10 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       "Only the admin can create an MCP server connection"
     );
 
-    const server = await MCPServerConnection.create(blob);
+    const server = await MCPServerConnection.create({
+      ...blob,
+      userId: auth.getNonNullableUser().id,
+    });
     return new this(MCPServerConnection, server.get());
   }
 
