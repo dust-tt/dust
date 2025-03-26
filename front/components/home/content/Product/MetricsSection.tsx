@@ -1,4 +1,3 @@
-// import { MetricSection } from "@app/components/home/ContentBlocks";
 import { MetricSection } from "../../ContentBlocks";
 
 const METRICS = {
@@ -24,8 +23,6 @@ const METRICS = {
       logo: "/static/landing/logos/didomi.png",
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
 };
 
 export function MetricsSection() {

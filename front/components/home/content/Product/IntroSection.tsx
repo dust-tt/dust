@@ -2,24 +2,8 @@ import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { ValuePropSection } from "@app/components/home/content/Product/ValuePropSection";
-// import { MetricSection } from "@app/components/home/ContentBlocks";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
-
-// const METRICS = {
-//   metrics: [
-//     {
-//       value: "90%",
-//       description: <>Weekly active users at Alan</>,
-//     },
-//     {
-//       value: "50,000",
-//       description: <>Annual hours saved at Qonto</>,
-//     },
-//   ],
-//   from: "from-amber-200",
-//   to: "to-amber-500",
-// };
 
 const VideoPlayer = () => {
   return (
