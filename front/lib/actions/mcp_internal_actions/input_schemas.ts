@@ -2,8 +2,10 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
 export const DataSourceConfigurationInputSchema = z.object({
-  uri: z.literal(
-    "data_source_configuration://dust/w/{wId}/data_source_configurations/{dscId}"
-  ),
+  uri: z
+    .string()
+    .regex(
+      /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/
+    ),
   mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
 });
