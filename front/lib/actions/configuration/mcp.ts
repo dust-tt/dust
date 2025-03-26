@@ -1,9 +1,13 @@
 import { Op } from "sequelize";
 
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { Workspace } from "@app/lib/models/workspace";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations({
@@ -25,6 +29,27 @@ export async function fetchMCPServerActionConfigurations({
     return new Map();
   }
 
+  // Find the associated data sources configurations.
+  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
+    where: {
+      mcpServerConfigurationId: {
+        [Op.in]: mcpServerConfigurations.map((r) => r.id),
+      },
+    },
+    include: [
+      {
+        model: DataSourceViewModel,
+        as: "dataSourceView",
+        include: [
+          {
+            model: Workspace,
+            as: "workspace",
+          },
+        ],
+      },
+    ],
+  });
+
   const actionsByConfigurationId = new Map<
     ModelId,
     MCPServerConfigurationType[]
@@ -33,6 +58,11 @@ export async function fetchMCPServerActionConfigurations({
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, id, sId, serverType, internalMCPServerId } =
       config;
+
+    const dataSourceConfiguration =
+      dataSourceConfigurations.filter(
+        (ds) => ds.mcpServerConfigurationId === config.id
+      ) ?? [];
 
     let remoteMCPServerId: string | null = null;
     if (serverType === "remote" && config.remoteMCPServerId) {
@@ -65,6 +95,7 @@ export async function fetchMCPServerActionConfigurations({
         serverType,
         internalMCPServerId,
         remoteMCPServerId,
+        dataSources: dataSourceConfiguration.map(getDataSource),
       });
     }
   }
