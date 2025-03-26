@@ -77,7 +77,7 @@ export function ActionMCP({
     setEdited(true);
     updateAction((previousAction) => ({
       ...previousAction,
-      dataSources: dsConfigs,
+      dataSourceConfigurations: dsConfigs,
     }));
   };
 
