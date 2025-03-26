@@ -1,3 +1,4 @@
+import assert from "assert";
 import type { WhereOptions } from "sequelize";
 import type {
   Attributes,
@@ -33,7 +34,15 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     super(MCPServerConnection, blob);
   }
 
-  static async makeNew(blob: CreationAttributes<MCPServerConnection>) {
+  static async makeNew(
+    auth: Authenticator,
+    blob: CreationAttributes<MCPServerConnection>
+  ) {
+    assert(
+      auth.isAdmin(),
+      "Only the admin can create an MCP server connection"
+    );
+
     const server = await MCPServerConnection.create(blob);
     return new this(MCPServerConnection, server.get());
   }
@@ -161,6 +170,11 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    assert(
+      auth.isAdmin(),
+      "Only the admin can delete an MCP server connection"
+    );
+
     try {
       await this.model.destroy({
         where: {

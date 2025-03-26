@@ -53,13 +53,16 @@ async function handler(
       const validatedBody = bodyValidation.right;
       const { connectionId, internalMCPServerId } = validatedBody;
 
-      const connectionResource = await MCPServerConnectionResource.makeNew({
-        connectionId,
-        connectionType: "workspace",
-        serverType: "internal",
-        internalMCPServerId: internalMCPServerId as InternalMCPServerId,
-        workspaceId: owner.id,
-      });
+      const connectionResource = await MCPServerConnectionResource.makeNew(
+        auth,
+        {
+          connectionId,
+          connectionType: "workspace",
+          serverType: "internal",
+          internalMCPServerId: internalMCPServerId as InternalMCPServerId,
+          workspaceId: owner.id,
+        }
+      );
 
       return res
         .status(200)
