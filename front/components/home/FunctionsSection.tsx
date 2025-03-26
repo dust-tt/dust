@@ -143,7 +143,7 @@ function FunctionsSection() {
         title={
           <div className="flex flex-col gap-4">
             <H2>Custom AI agents for every function</H2>
-            <P size="lg">
+            <P size="lg" className="text-muted-foreground">
               Whether you're a developer, marketer, or data scientist, Dust
               helps you perform sophisticated tasks, automate processes and
               extract powerful insights faster than ever before.

@@ -25,7 +25,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Marketing",
   title: <>Create On-Brand Content At Scale</>,
-  accentColor: "bg-brand-orange-golden",
+  accentColor: "text-brand-orange-golden",
   description: (
     <>
       Scale content production, maintain brand consistency,
