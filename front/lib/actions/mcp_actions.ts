@@ -74,6 +74,16 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
+export type ToolType = ListToolsResult["tools"][number];
+
+export interface MCPServerConnectionDetails {
+  serverType: MCPServerConfigurationType["serverType"];
+  internalMCPServerId?:
+    | MCPServerConfigurationType["internalMCPServerId"]
+    | null;
+  remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
+}
+
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
 export type MCPToolMetadata = {
