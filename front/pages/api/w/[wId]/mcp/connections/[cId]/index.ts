@@ -31,7 +31,7 @@ async function handler(
     return apiError(req, res, {
       status_code: 404,
       api_error: {
-        type: "connection_not_found",
+        type: "mcp_server_connection_not_found",
         message: "Connection not found",
       },
     });

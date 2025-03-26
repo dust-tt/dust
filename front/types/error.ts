@@ -108,7 +108,7 @@ const API_ERROR_TYPES = [
   // Trackers:
   "tracker_not_found",
   // MCP Server Connections:
-  "connection_not_found",
+  "mcp_server_connection_not_found",
   // Conversation:
   ...CONVERSATION_ERROR_TYPES,
 ] as const;
