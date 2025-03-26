@@ -2,6 +2,7 @@ use crate::oauth::{
     connection::{
         Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
     },
+    credential::Credential,
     providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
@@ -33,6 +34,7 @@ impl Provider for IntercomConnectionProvider {
     async fn finalize(
         &self,
         _connection: &Connection,
+        _related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -44,7 +46,8 @@ impl Provider for IntercomConnectionProvider {
             "redirect_uri": redirect_uri,
         });
 
-        let req = reqwest::Client::new()
+        let req = self
+            .reqwest_client()
             .post("https://api.intercom.io/auth/eagle/token")
             .header("Content-Type", "application/json")
             .json(&body);
@@ -68,7 +71,11 @@ impl Provider for IntercomConnectionProvider {
         })
     }
 
-    async fn refresh(&self, _connection: &Connection) -> Result<RefreshResult, ProviderError> {
+    async fn refresh(
+        &self,
+        _connection: &Connection,
+        _related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError> {
         Err(ProviderError::ActionNotSupportedError(
             "Intercom access tokens do not expire".to_string(),
         ))?

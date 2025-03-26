@@ -1,4 +1,3 @@
-import type { APIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { QueryTypes } from "sequelize";
 
@@ -6,6 +5,7 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { apiError } from "@app/logger/withlogging";
+import type { APIErrorResponse } from "@app/types";
 
 export type GetWorkspaceAnalyticsResponse = {
   memberCount: number;
@@ -63,9 +63,9 @@ interface MemberCountQueryResult {
 }
 
 interface ActiveUsersQueryResult {
-  last_7_days_active_users: number;
+  nb_active_users_last_7_days: number;
   wow_growth_pct: number;
-  last_30_days_active_users: number;
+  nb_active_users_last_30_days: number;
   mom_growth_pct: number;
 }
 
@@ -97,53 +97,83 @@ async function getAnalytics(
         }
       ),
       replicaDb.query<ActiveUsersQueryResult>(
-        `WITH activity_periods AS (
+        `
+        WITH
+          raw_counts AS (
+            SELECT
+              COUNT(
+                DISTINCT (
+                  CASE
+                    WHEN "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '7 days' THEN "userId"
+                    ELSE NULL
+                  END
+                )
+              ) AS "nb_active_users_last_7_days",
+              COUNT(
+                DISTINCT (
+                  CASE
+                    WHEN "user_messages"."createdAt" < CURRENT_DATE - INTERVAL '7 days'
+                    AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '14 days' THEN "userId"
+                    ELSE NULL
+                  END
+                )
+              ) AS "nb_active_users_previous_7_days",
+              COUNT(
+                DISTINCT (
+                  CASE
+                    WHEN "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '30 days' THEN "userId"
+                    ELSE NULL
+                  END
+                )
+              ) AS "nb_active_users_last_30_days",
+              COUNT(
+                DISTINCT (
+                  CASE
+                    WHEN "user_messages"."createdAt" < CURRENT_DATE - INTERVAL '30 days'
+                    AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '60 days' THEN "userId"
+                    ELSE NULL
+                  END
+                )
+              ) AS "nb_active_users_previous_30_days"
+            FROM
+              "user_messages"
+              JOIN "messages" ON "messages"."userMessageId" = "user_messages"."id"
+              JOIN "conversations" ON "messages"."conversationId" = "conversations"."id"
+              JOIN "workspaces" ON "conversations"."workspaceId" = "workspaces"."id"
+            WHERE
+              "workspaces"."sId" = :wId
+              AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '60 days'
+          ),
+          calculations AS (
+            SELECT
+              "nb_active_users_last_7_days",
+              CASE
+                WHEN "nb_active_users_previous_7_days" = 0 THEN NULL
+                ELSE (
+                  "nb_active_users_last_7_days"::float - "nb_active_users_previous_7_days"::float
+                ) / "nb_active_users_previous_7_days"::float
+              END AS "wow_growth_pct",
+              "nb_active_users_last_30_days",
+              CASE
+                WHEN "nb_active_users_previous_30_days" = 0 THEN NULL
+                ELSE (
+                  "nb_active_users_last_30_days"::float - "nb_active_users_previous_30_days"::float
+                ) / "nb_active_users_previous_30_days"::float
+              END AS "mom_growth_pct"
+            FROM
+              raw_counts
+          )
         SELECT
-          "user_messages"."userId",
-          COUNT(*) AS message_count,
-          CASE
-            WHEN "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '7 days' THEN 'last_7_days'
-            WHEN "user_messages"."createdAt" < CURRENT_DATE - INTERVAL '7 days' AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '14 days' THEN 'previous_7_days'
-            WHEN "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '30 days' THEN 'last_30_days'
-            WHEN "user_messages"."createdAt" < CURRENT_DATE - INTERVAL '30 days' AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '60 days' THEN 'previous_30_days'
-          END AS period
-        FROM "user_messages"
-        JOIN "messages" ON "messages"."userMessageId" = "user_messages"."id"
-        JOIN "conversations" ON "messages"."conversationId" = "conversations"."id"
-        JOIN "workspaces" ON "conversations"."workspaceId" = "workspaces"."id"
-        WHERE "workspaces"."sId" = :wId
-          AND "user_messages"."createdAt" >= CURRENT_DATE - INTERVAL '60 days'
-        GROUP BY "user_messages"."userId", period
-        HAVING COUNT(*) >= :messageCountThreshold
-      ),
-      aggregated_counts AS (
-        SELECT
-          period,
-          COUNT("userId") AS active_users
-        FROM activity_periods
-        GROUP BY period
-      ),
-      growth_calculations AS (
-        SELECT
-          COALESCE(MAX(CASE WHEN period = 'last_7_days' THEN active_users END), 0) AS "last_7_days_active_users",
-          COALESCE(MAX(CASE WHEN period IN ('last_30_days', 'last_7_days', 'previous_7_days') THEN active_users END), 0) AS "last_30_days_active_users",
-          (COALESCE(MAX(CASE WHEN period = 'last_7_days' THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_7_days' THEN active_users END), 0))::FLOAT
-          / GREATEST(COALESCE(MAX(CASE WHEN period = 'previous_7_days' THEN active_users END), 1), 1) * 100 AS "wow_growth_pct",
-          (COALESCE(MAX(CASE WHEN period IN ('last_30_days', 'last_7_days', 'previous_7_days') THEN active_users END), 0) - COALESCE(MAX(CASE WHEN period = 'previous_30_days' THEN active_users END), 0))::FLOAT
-          / GREATEST(COALESCE(MAX(CASE WHEN period = 'previous_30_days' THEN active_users END), 1), 1) * 100 AS "mom_growth_pct"
-        FROM aggregated_counts
-      )
-      SELECT
-        "last_7_days_active_users",
-        ROUND(wow_growth_pct::Decimal, 2) AS "wow_growth_pct",
-        "last_30_days_active_users",
-        ROUND(mom_growth_pct::Decimal, 2) AS "mom_growth_pct"
-      FROM growth_calculations;
-      `,
+          "nb_active_users_last_7_days",
+          "wow_growth_pct",
+          "nb_active_users_last_30_days",
+          "mom_growth_pct"
+        FROM
+          calculations;
+        `,
         {
           replacements: {
             wId,
-            messageCountThreshold: 1,
           },
           type: QueryTypes.SELECT,
         }
@@ -209,12 +239,12 @@ async function getAnalytics(
   return {
     memberCount: memberCountResults[0].member_count,
     monthlyActiveUsers: {
-      count: activeUsersResult[0].last_30_days_active_users,
-      growth: activeUsersResult[0].mom_growth_pct,
+      count: activeUsersResult[0].nb_active_users_last_30_days,
+      growth: activeUsersResult[0].mom_growth_pct * 100,
     },
     weeklyActiveUsers: {
-      count: activeUsersResult[0].last_7_days_active_users,
-      growth: activeUsersResult[0].wow_growth_pct,
+      count: activeUsersResult[0].nb_active_users_last_7_days,
+      growth: activeUsersResult[0].wow_growth_pct * 100,
     },
     averageWeeklyDailyActiveUsers: {
       count: averageWeeklyDauResult[0].last_7_days_average_daily_active_users,

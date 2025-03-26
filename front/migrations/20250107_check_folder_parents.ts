@@ -1,10 +1,10 @@
-import { concurrentExecutor } from "@dust-tt/types";
 import { Op, QueryTypes } from "sequelize";
 
 import { getCoreReplicaDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { concurrentExecutor } from "@app/types";
 
 const coreSequelize = getCoreReplicaDbConnection();
 const DATASOURCE_BATCH_SIZE = 25;

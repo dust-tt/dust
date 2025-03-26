@@ -13,20 +13,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceViewSelectionConfiguration,
-  DataSourceViewType,
-  SpaceType,
-  SubscriptionType,
-  SupportedModel,
-  TrackerConfigurationStateType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
-  TRACKER_FREQUENCIES,
-} from "@dust-tt/types";
 import { capitalize } from "lodash";
 import { LockIcon } from "lucide-react";
 import { useRouter } from "next/router";
@@ -41,8 +27,22 @@ import {
 } from "@app/components/sparkle/AppLayoutTitle";
 import TrackerBuilderDataSourceModal from "@app/components/trackers/TrackerBuilderDataSourceModal";
 import { TrackerDataSourceSelectedTree } from "@app/components/trackers/TrackerDataSourceSelectedTree";
-import { isConnectorTypeTrackable } from "@app/lib/document_upsert_hooks/hooks/tracker/consts";
+import { isConnectorTypeTrackable } from "@app/lib/connector_providers";
 import { isEmailValid } from "@app/lib/utils";
+import type {
+  APIError,
+  DataSourceViewSelectionConfiguration,
+  DataSourceViewType,
+  SpaceType,
+  SubscriptionType,
+  SupportedModel,
+  TrackerConfigurationStateType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  TRACKER_FREQUENCIES,
+} from "@app/types";
 
 export const TrackerBuilder = ({
   owner,
@@ -373,7 +373,6 @@ export const TrackerBuilder = ({
                 disabled={isSubmitting || isDeleting}
               />
             )}
-            r
           </div>
         </div>
 

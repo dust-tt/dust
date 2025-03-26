@@ -1,19 +1,19 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import {
-  concurrentExecutor,
-  CoreAPI,
-  isConnectorProvider,
-  Ok,
-} from "@dust-tt/types";
 import assert from "assert";
 import _ from "lodash";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { withRetries } from "@app/lib/utils/retries";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { ConnectorProvider } from "@app/types";
+import {
+  concurrentExecutor,
+  CoreAPI,
+  isConnectorProvider,
+  Ok,
+  withRetries,
+} from "@app/types";
 
 type MigratorAction = "transform" | "clean";
 
@@ -91,7 +91,7 @@ export function isOldGithuRepoId(internalId: string): boolean {
   return /^\d+$/.test(internalId);
 }
 
-const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
+const migrators: Partial<Record<ConnectorProvider, ProviderMigrator | null>> = {
   slack: {
     transformer: (nodeId, parents) => {
       const channelId = slackNodeIdToChannelId(nodeId);
@@ -477,6 +477,7 @@ async function migrateDocument({
 
   if (execute) {
     await withRetries(
+      logger,
       async () => {
         const updateRes = await coreAPI.updateDataSourceDocumentParents({
           projectId: dataSource.dustAPIProjectId,
@@ -579,6 +580,7 @@ async function migrateTable({
 
   if (execute) {
     await withRetries(
+      logger,
       async () => {
         const updateRes = await coreAPI.updateTableParents({
           projectId: dataSource.dustAPIProjectId,

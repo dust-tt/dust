@@ -14,12 +14,16 @@ export const getServerSideProps = withSuperUserAuthRequirements<object>(
 
 export default function ListPokePlugins() {
   return (
-    <div className="mx-auto h-full flex-grow flex-col items-center justify-center p-8 pt-8">
-      <PluginList resourceType="global" />
+    <div className="h-full flex-grow flex-col items-center justify-center p-8 pt-8">
+      <PluginList
+        pluginResourceTarget={{
+          resourceType: "global",
+        }}
+      />
     </div>
   );
 }
 
 ListPokePlugins.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Plugins">{page}</PokeLayout>;
 };

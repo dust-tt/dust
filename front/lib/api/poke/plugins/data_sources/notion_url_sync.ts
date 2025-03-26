@@ -1,17 +1,15 @@
+import { isLeft } from "fp-ts/lib/Either";
+
+import config from "@app/lib/api/config";
+import { createPlugin } from "@app/lib/api/poke/types";
+import logger from "@app/logger/logger";
 import {
   concurrentExecutor,
   ConnectorsAPI,
   Err,
   NotionFindUrlResponseSchema,
   Ok,
-} from "@dust-tt/types";
-import { isLeft } from "fp-ts/lib/Either";
-
-import config from "@app/lib/api/config";
-import { createPlugin } from "@app/lib/api/poke/types";
-import type { Authenticator } from "@app/lib/auth";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import logger from "@app/logger/logger";
+} from "@app/types";
 
 const NOTION_OPERATIONS = ["Sync urls", "Delete urls"] as const;
 
@@ -39,32 +37,16 @@ export const notionUrlSyncPlugin = createPlugin({
       },
     },
   },
-  isVisible: async (
-    auth: Authenticator,
-    resourceId: string | undefined
-  ): Promise<boolean> => {
-    if (!resourceId) {
-      return false;
-    }
-    const dataSource = await DataSourceResource.fetchById(auth, resourceId);
+  isApplicableTo: (auth, dataSource) => {
     if (!dataSource) {
       return false;
     }
 
     return dataSource.connectorProvider === "notion";
   },
-  execute: async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
-    }
-
-    if (dataSource.connectorProvider !== "notion") {
-      return new Err(new Error("Data source is not Notion."));
     }
 
     const { connectorId } = dataSource;
@@ -93,7 +75,7 @@ export const notionUrlSyncPlugin = createPlugin({
     if (operation === "Sync urls") {
       const res = await syncNotionUrls({
         urlsArray,
-        dataSourceId,
+        dataSourceId: dataSource.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
         method: "sync",
       });
@@ -112,7 +94,7 @@ export const notionUrlSyncPlugin = createPlugin({
     } else if (operation === "Delete urls") {
       const res = await deleteUrls({
         urlsArray,
-        dataSourceId,
+        dataSourceId: dataSource.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
       if (res.some((r) => !r.success)) {

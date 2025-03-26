@@ -1,3 +1,9 @@
+import type { CreationOptional } from "sequelize";
+import { DataTypes } from "sequelize";
+
+import type { TemplateActionType } from "@app/components/assistant_builder/types";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type {
   AssistantCreativityLevel,
   ModelIdType,
@@ -5,13 +11,7 @@ import type {
   TemplateTagCodeType,
   TemplateVisibility,
   TimeframeUnit,
-} from "@dust-tt/types";
-import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
-
-import type { TemplateActionType } from "@app/components/assistant_builder/types";
-import { frontSequelize } from "@app/lib/resources/storage";
-import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
+} from "@app/types";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;

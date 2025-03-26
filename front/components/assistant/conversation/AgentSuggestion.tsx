@@ -7,12 +7,6 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ConversationType,
-  LightAgentConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useMemo, useState } from "react";
 
@@ -21,6 +15,12 @@ import { createThreadVersionParam } from "@app/components/assistant/conversation
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  ConversationType,
+  LightAgentConfigurationType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
 
 interface AgentSuggestionProps {
   conversation: ConversationType;

@@ -1,4 +1,3 @@
-import type { WithConnectorsAPIErrorReponse } from "@dust-tt/types";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
@@ -11,6 +10,7 @@ import { getChannels } from "@connectors/connectors/slack/temporal/activities";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { sequelizeConnection } from "@connectors/resources/storage";
+import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 
 const PatchSlackChannelsLinkedWithAgentReqBodySchema = t.type({
   agent_configuration_id: t.string,

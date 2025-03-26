@@ -25,20 +25,20 @@ import {
   SliderToggle,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  DataSourceType,
-  LightWorkspaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isAdmin, isBuilder } from "@dust-tt/types";
 import { useState } from "react";
 
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import type { SlackChannel } from "@app/components/assistant_builder/SlackIntegration";
 import { SlackAssistantDefaultManager } from "@app/components/assistant_builder/SlackIntegration";
 import { useAgentConfiguration, useAgentUsage } from "@app/lib/swr/assistants";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  DataSourceType,
+  LightWorkspaceType,
+  WorkspaceType,
+} from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 
 type ConfirmationModalDataType = {
   title: string;
@@ -200,7 +200,7 @@ export function SharingButton({
                 setNewScope={setNewScope}
                 origin="page"
               />
-              <div className="text-sm text-element-700">
+              <div className="text-sm text-muted-foreground">
                 <div>
                   {SCOPE_INFO[newScope].text}{" "}
                   {agentUsage && newScope !== "private" ? usageText : null}
@@ -212,10 +212,10 @@ export function SharingButton({
                 <Page.Separator />
                 <div className="flex flex-row justify-between">
                   <div>
-                    <div className="text-base font-bold text-element-800">
+                    <div className="heading-base text-muted-foreground">
                       Slack integration
                     </div>
-                    <div className="text-sm text-element-700">
+                    <div className="text-sm text-muted-foreground">
                       {slackChannelSelected.length === 0 ? (
                         <>Set as default agent for specific&nbsp;channels.</>
                       ) : (
@@ -268,10 +268,10 @@ export function SharingButton({
                 <Page.Separator />
                 <div className="flex w-full flex-row">
                   <div className="grow">
-                    <div className="text-base font-bold text-element-800">
+                    <div className="heading-base text-muted-foreground">
                       Link
                     </div>
-                    <div className="text-sm text-element-700">
+                    <div className="text-sm text-muted-foreground">
                       Shareable direct&nbsp;URL
                     </div>
                   </div>

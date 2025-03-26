@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { isSnowflakeCredentials, MIME_TYPES } from "@dust-tt/types";
-
 import {
   connectToSnowflake,
   fetchTree,
@@ -14,6 +11,8 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, isSnowflakeCredentials } from "@connectors/types";
 
 export async function syncSnowflakeConnection(connectorId: ModelId) {
   const localLogger = logger.child({
@@ -56,7 +55,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     localLogger.info("Connection is not read-only, garbage collecting");
     // We garbage collect everything that was synced as nothing will be marked as used.
     await sync({
-      mimeTypes: MIME_TYPES.SNOWFLAKE,
+      mimeTypes: INTERNAL_MIME_TYPES.SNOWFLAKE,
       connector,
     });
 
@@ -75,7 +74,7 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
 
     await sync({
       remoteDBTree: tree,
-      mimeTypes: MIME_TYPES.SNOWFLAKE,
+      mimeTypes: INTERNAL_MIME_TYPES.SNOWFLAKE,
       connector,
     });
 

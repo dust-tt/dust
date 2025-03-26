@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type { WorkflowInfo } from "@temporalio/workflow";
 import {
   continueAsNew,
@@ -19,6 +18,7 @@ import {
   makeConfluenceSpaceSyncWorkflowIdFromParentId,
   makeConfluenceSyncTopLevelChildPagesWorkflowIdFromParentId,
 } from "@connectors/connectors/confluence/temporal/workflow_ids";
+import type { ModelId } from "@connectors/types";
 
 const {
   confluenceGetSpaceBlobActivity,

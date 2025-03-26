@@ -3,8 +3,6 @@ import type {
   UpsertTableResponseType,
 } from "@dust-tt/client";
 import { UpsertDatabaseTableRequestSchema } from "@dust-tt/client";
-import type { WithAPIErrorResponse } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
@@ -16,6 +14,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 /**
  * @swagger
@@ -104,7 +104,7 @@ import { apiError } from "@app/logger/withlogging";
  *                 description: Description of the table
  *               timestamp:
  *                 type: number
- *                 description: Reserved for internal use, should not be set. Unix timestamp (in seconds) of the time the document was last updated (e.g. 1698225000).
+ *                 description: Unix timestamp (in milliseconds) for the table (e.g. 1736365559000).
  *               tags:
  *                 type: array
  *                 items:
@@ -276,7 +276,6 @@ async function handler(
       } = r.data;
 
       let mimeType: string;
-      let title: string;
       if (auth.isSystemKey()) {
         // If the request is from a system key, the request must provide both title and mimeType.
         if (!r.data.mime_type) {
@@ -299,20 +298,7 @@ async function handler(
         }
 
         mimeType = r.data.mime_type;
-        title = r.data.title;
       } else {
-        // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
-        if (r.data.timestamp) {
-          logger.info(
-            {
-              workspaceId: owner.id,
-              dataSourceId: dataSource.sId,
-              timestamp: r.data.timestamp,
-              currentDate: Date.now(),
-            },
-            "[ContentNode] User-set timestamp."
-          );
-        }
         // If the request is from a regular API key, the request must not provide mimeType.
         if (r.data.mime_type) {
           return apiError(req, res, {
@@ -324,59 +310,18 @@ async function handler(
           });
         }
         mimeType = "application/vnd.dust.table";
-
-        // If the request is from a regular API key, and the title is provided, we use it.
-        // Otherwise we default to either:
-        // - the title tag if any
-        // - the name of the table
-        if (r.data.title) {
-          title = r.data.title;
-        } else {
-          const titleTag = tags?.find((t) => t.startsWith("title:"));
-          if (titleTag) {
-            title = titleTag.substring(6);
-          } else {
-            title = name;
-          }
-        }
       }
+      // If the title is provided, we use it.
+      // Otherwise, we default to either:
+      // - the title tag if any
+      // - the name of the table
+      const titleInTags = tags
+        ?.find((t) => t.startsWith("title:"))
+        ?.substring(6)
+        ?.trim();
+      const title = r.data.title?.trim() || titleInTags || name;
 
       const tableId = maybeTableId || generateRandomModelSId();
-
-      const tRes = await coreAPI.getTables({
-        projectId: dataSource.dustAPIProjectId,
-        dataSourceId: dataSource.dustAPIDataSourceId,
-      });
-
-      if (tRes.isErr()) {
-        logger.error(
-          {
-            dataSourceId: dataSource.sId,
-            workspaceId: owner.id,
-            error: tRes.error,
-          },
-          "Failed to retrieve tables."
-        );
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to retrieve tables.",
-            data_source_error: tRes.error,
-          },
-        });
-      }
-
-      const tableWithSameName = tRes.value.tables.find((t) => t.name === name);
-      if (tableWithSameName && tableWithSameName.table_id !== tableId) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Tables names must be unique within a data source.",
-          },
-        });
-      }
 
       // Prohibit passing parents when not coming from connectors.
       if (!auth.isSystemKey() && parents) {
@@ -452,6 +397,7 @@ async function handler(
         title,
         mimeType,
         sourceUrl: sourceUrl ?? null,
+        checkNameUniqueness: true,
       });
 
       if (upsertRes.isErr()) {

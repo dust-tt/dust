@@ -17,15 +17,6 @@ import {
   TrashIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  CoreAPIDocument,
-  CoreAPILightDocument,
-  DataSourceViewType,
-  LightContentNode,
-  PlanType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, getSupportedNonImageFileExtensions } from "@dust-tt/types";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -35,6 +26,15 @@ import {
   useUpdateDataSourceViewDocument,
 } from "@app/lib/swr/data_source_view_documents";
 import { useFileProcessedContent } from "@app/lib/swr/file";
+import type {
+  CoreAPIDocument,
+  CoreAPILightDocument,
+  DataSourceViewType,
+  LightContentNode,
+  PlanType,
+  WorkspaceType,
+} from "@app/types";
+import { Err, getSupportedNonImageFileExtensions } from "@app/types";
 
 const MAX_NAME_CHARS = 32;
 
@@ -51,7 +51,7 @@ function isCoreAPIDocumentType(
 }
 
 interface Document {
-  name: string;
+  title: string;
   text: string;
   tags: string[];
   sourceUrl: string;
@@ -79,7 +79,7 @@ export const DocumentUploadOrEditModal = ({
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentState, setDocumentState] = useState<Document>({
-    name: "",
+    title: "",
     text: "",
     tags: [],
     sourceUrl: "",
@@ -91,7 +91,7 @@ export const DocumentUploadOrEditModal = ({
   });
 
   const [editionStatus, setEditionStatus] = useState({
-    name: false,
+    title: false,
     content: false,
   });
 
@@ -151,12 +151,11 @@ export const DocumentUploadOrEditModal = ({
     async (document: Document) => {
       setIsUpsertingDocument(true);
       const body = {
-        name: initialId ?? document.name,
-        title: initialId ?? document.name,
+        title: initialId ?? document.title,
         mime_type: document.mimeType ?? "text/plain",
         timestamp: null,
         parent_id: null,
-        parents: [initialId ?? document.name],
+        parents: [initialId ?? document.title],
         section: { prefix: null, content: document.text, sections: [] },
         text: null,
         source_url: document.sourceUrl || undefined,
@@ -178,7 +177,7 @@ export const DocumentUploadOrEditModal = ({
       if (upsertRes) {
         onClose(true);
         setDocumentState({
-          name: "",
+          title: "",
           text: "",
           tags: [],
           sourceUrl: "",
@@ -186,7 +185,7 @@ export const DocumentUploadOrEditModal = ({
         });
         setEditionStatus({
           content: false,
-          name: false,
+          title: false,
         });
         setHasChanged(false);
       }
@@ -213,11 +212,11 @@ export const DocumentUploadOrEditModal = ({
   // We don't disable the save button, we show an error message instead.
   const onSave = useCallback(async () => {
     if (!isValidDocument) {
-      if (documentState.name.trim() === "") {
+      if (documentState.title.trim() === "") {
         sendNotification({
           type: "error",
-          title: "Missing document name",
-          description: "You must provide a name for the document.",
+          title: "Missing document title",
+          description: "You must provide a title for the document.",
         });
         return;
       }
@@ -279,7 +278,7 @@ export const DocumentUploadOrEditModal = ({
         setFileId(fileBlobs[0].fileId);
         setDocumentState((prev) => ({
           ...prev,
-          name: prev.name.length > 0 ? prev.name : selectedFile.name,
+          title: prev.title.length > 0 ? prev.title : selectedFile.name,
           mimeType: selectedFile.type,
           sourceUrl:
             prev.sourceUrl.length > 0
@@ -302,7 +301,7 @@ export const DocumentUploadOrEditModal = ({
   useEffect(() => {
     if (!initialId) {
       setDocumentState({
-        name: "",
+        title: "",
         text: "",
         tags: [],
         sourceUrl: "",
@@ -311,7 +310,7 @@ export const DocumentUploadOrEditModal = ({
     } else if (document && isCoreAPIDocumentType(document)) {
       setDocumentState((prev) => ({
         ...prev,
-        name: initialId,
+        title: initialId,
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",
@@ -322,9 +321,9 @@ export const DocumentUploadOrEditModal = ({
 
   // Effect: Validate the document state
   useEffect(() => {
-    const isNameValid = documentState.name.trim().length > 0;
+    const isTitleValid = documentState.title.trim().length > 0;
     const isContentValid = documentState.text.trim().length > 0;
-    setIsValidDocument(isNameValid && isContentValid);
+    setIsValidDocument(isTitleValid && isContentValid);
   }, [documentState]);
 
   return (
@@ -354,24 +353,24 @@ export const DocumentUploadOrEditModal = ({
               ) : (
                 <div className="space-y-4 p-4">
                   <div>
-                    <Page.SectionHeader title="Document name" />
+                    <Page.SectionHeader title="Document title" />
                     <Input
                       placeholder="Document title"
-                      name="name"
+                      name="title"
                       maxLength={MAX_NAME_CHARS}
-                      value={documentState.name}
+                      value={documentState.title}
                       disabled={!!initialId}
                       onChange={(e) => {
-                        setEditionStatus((prev) => ({ ...prev, name: true }));
+                        setEditionStatus((prev) => ({ ...prev, title: true }));
                         setDocumentState((prev) => ({
                           ...prev,
-                          name: e.target.value,
+                          title: e.target.value,
                         }));
                         setHasChanged(true);
                       }}
                       message={
-                        !documentState.name && editionStatus.name
-                          ? "You must provide a name."
+                        !documentState.title && editionStatus.title
+                          ? "You must provide a title."
                           : null
                       }
                       messageStatus="error"
@@ -472,7 +471,7 @@ export const DocumentUploadOrEditModal = ({
                       <div className="pt-4">
                         <Page.SectionHeader
                           title=""
-                          description="Labels can be set to filter Data Source retrieval or provide a user-friendly title for programmatically uploaded documents (`title:User-friendly Title`)."
+                          description="Labels can be set to filter Data Source retrieval."
                           action={{
                             label: "Add label",
                             variant: "ghost",

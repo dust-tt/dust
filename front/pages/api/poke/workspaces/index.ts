@@ -1,10 +1,3 @@
-import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  SubscriptionType,
-  WithAPIErrorResponse,
-  WorkspaceDomain,
-} from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -32,6 +25,13 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  SubscriptionType,
+  WithAPIErrorResponse,
+  WorkspaceDomain,
+} from "@app/types";
 
 export type PokeWorkspaceType = LightWorkspaceType & {
   createdAt: string;

@@ -1,12 +1,14 @@
-import type { WithAPIErrorResponse } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import type { PluginListItem } from "@app/lib/api/poke/types";
+import { fetchPluginResource } from "@app/lib/api/poke/utils";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
+import type { WithAPIErrorResponse } from "@app/types";
+import { isSupportedResourceType } from "@app/types";
 
 export interface PokeListPluginsForScopeResponseBody {
   plugins: PluginListItem[];
@@ -19,7 +21,7 @@ async function handler(
   >,
   session: SessionWithUser
 ): Promise<void> {
-  const auth = await Authenticator.fromSuperUserSession(session, null);
+  let auth = await Authenticator.fromSuperUserSession(session, null);
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
@@ -32,8 +34,11 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const { resourceType, resourceId } = req.query;
-      if (typeof resourceType !== "string") {
+      const { resourceType, resourceId, workspaceId } = req.query;
+      if (
+        typeof resourceType !== "string" ||
+        !isSupportedResourceType(resourceType)
+      ) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -53,14 +58,29 @@ async function handler(
         });
       }
 
+      if (workspaceId && typeof workspaceId !== "string") {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid workspace id type.",
+          },
+        });
+      }
+
+      // If the run targets a specific workspace, use a workspace-scoped authenticator.
+      if (workspaceId) {
+        auth = await Authenticator.fromSuperUserSession(session, workspaceId);
+      }
+
       const plugins = pluginManager.getPluginsForResourceType(resourceType);
 
-      const visiblePluginResults = await Promise.all(
-        plugins.map((p) => !resourceId || p.isVisible(auth, resourceId))
-      );
+      const resource = resourceId
+        ? await fetchPluginResource(auth, resourceType, resourceId)
+        : null;
 
       const pluginList = plugins
-        .filter((_, i) => visiblePluginResults[i])
+        .filter((p) => !resourceId || p.isApplicableTo(auth, resource))
         .map((p) => ({
           id: p.manifest.id,
           name: p.manifest.name,

@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { changeWorkspaceName } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
 export const renameWorkspace = createPlugin({
   manifest: {
@@ -17,7 +16,7 @@ export const renameWorkspace = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const newName = args.newName.trim();
     if (newName.length < 5) {
       return new Err(

@@ -8,12 +8,12 @@ import {
   UserGroupIcon,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, UserType } from "@dust-tt/types";
 import React, { useCallback, useState } from "react";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { isEmailValid } from "@app/lib/utils";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { LightWorkspaceType, UserType } from "@app/types";
 
 interface BatchAddMembersPopoverProps {
   owner: LightWorkspaceType;

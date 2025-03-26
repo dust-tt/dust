@@ -2,6 +2,30 @@ import type {
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
 } from "@dust-tt/client";
+import assert from "assert";
+import type { Transaction } from "sequelize";
+
+import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
+import { default as apiConfig, default as config } from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
+import { sendGitHubDeletionEmail } from "@app/lib/api/email";
+import { upsertTableFromCsv } from "@app/lib/api/tables";
+import { getMembers } from "@app/lib/api/workspace";
+import type { Authenticator } from "@app/lib/auth";
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
+import { DustError } from "@app/lib/error";
+import { getDustDataSourcesBucket } from "@app/lib/file_storage";
+import { Lock } from "@app/lib/lock";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { ServerSideTracking } from "@app/lib/tracking/server";
+import { enqueueUpsertTable } from "@app/lib/upsert_queue";
+import logger from "@app/logger/logger";
+import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
   AdminCommandType,
   ConnectorProvider,
@@ -19,7 +43,8 @@ import type {
   Result,
   WithConnector,
   WorkspaceType,
-} from "@dust-tt/types";
+} from "@app/types";
+import { validateUrl } from "@app/types";
 import {
   assertNever,
   concurrentExecutor,
@@ -33,30 +58,7 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
-} from "@dust-tt/types";
-import { validateUrl } from "@dust-tt/types/src/shared/utils/url_utils";
-import assert from "assert";
-import type { Transaction } from "sequelize";
-
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { default as apiConfig, default as config } from "@app/lib/api/config";
-import { sendGitHubDeletionEmail } from "@app/lib/api/email";
-import { upsertTableFromCsv } from "@app/lib/api/tables";
-import { getMembers } from "@app/lib/api/workspace";
-import type { Authenticator } from "@app/lib/auth";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
-import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes";
-import { DustError } from "@app/lib/error";
-import { Lock } from "@app/lib/lock";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
-import { ServerSideTracking } from "@app/lib/tracking/server";
-import { enqueueUpsertTable } from "@app/lib/upsert_queue";
-import logger from "@app/logger/logger";
-import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
+} from "@app/types";
 
 export async function getDataSources(
   auth: Authenticator,
@@ -115,7 +117,34 @@ export async function hardDeleteDataSource(
 ) {
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
+  // Delete all files in the data source's bucket.
   const { dustAPIProjectId } = dataSource;
+
+  const files = await getDustDataSourcesBucket().getFiles({
+    prefix: dustAPIProjectId,
+  });
+
+  const chunkSize = 32;
+  const chunks = [];
+  for (let i = 0; i < files.length; i += chunkSize) {
+    chunks.push(files.slice(i, i + chunkSize));
+  }
+
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    if (!chunk) {
+      continue;
+    }
+    await Promise.all(
+      chunk.map((f) => {
+        return (async () => {
+          await f.delete();
+        })();
+      })
+    );
+  }
+
+  // Delete all connectors associated with the data source.
   if (dataSource.connectorId && dataSource.connectorProvider) {
     if (
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable &&
@@ -148,6 +177,7 @@ export async function hardDeleteDataSource(
     }
   }
 
+  // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const coreDeleteRes = await coreAPI.deleteDataSource({
     projectId: dustAPIProjectId,
@@ -335,31 +365,15 @@ export async function upsertDocument({
       : section || null;
 
   const nonNullTags = tags || [];
+
   const titleInTags = nonNullTags
     .find((t) => t.startsWith("title:"))
     ?.substring(6);
-  if (!titleInTags) {
-    nonNullTags.push(`title:${title}`);
-  }
-
   if (titleInTags && titleInTags !== title) {
     logger.warn(
       { dataSourceId: dataSource.sId, documentId, titleInTags, title },
       "Inconsistency between tags and title."
     );
-  }
-
-  // Add selection of tags as prefix to the section if they are present.
-  let tagsPrefix = "";
-  ["title", "author"].forEach((t) => {
-    nonNullTags.forEach((tag) => {
-      if (tag.startsWith(t + ":") && tag.length > t.length + 1) {
-        tagsPrefix += `$${t} : ${tag.slice(t.length + 1)}\n`;
-      }
-    });
-  });
-  if (tagsPrefix && generatedSection) {
-    generatedSection.prefix = tagsPrefix;
   }
 
   if (!generatedSection) {
@@ -569,17 +583,18 @@ export async function upsertTable({
       },
     Omit<DustError, "code"> & {
       code:
-        | "invalid_csv_and_file"
-        | "missing_csv"
         | "data_source_error"
-        | "invalid_csv_content"
-        | "invalid_url"
-        | "table_not_found"
         | "file_not_found"
-        | "title_too_long"
+        | "internal_error"
+        | "invalid_csv_and_file"
+        | "invalid_csv_content"
         | "invalid_parent_id"
         | "invalid_parents"
-        | "internal_error";
+        | "invalid_url"
+        | "missing_csv"
+        | "table_not_found"
+        | "title_is_empty"
+        | "title_too_long";
     }
   >
 > {
@@ -619,12 +634,15 @@ export async function upsertTable({
     });
   }
 
+  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
   if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
       name: "dust_error",
       code: "title_too_long",
-      message: `Invalid title: title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
+      message:
+        "Invalid title:" +
+        `title too long (max ${MAX_NODE_TITLE_LENGTH} characters).`,
     });
   }
 
@@ -664,6 +682,8 @@ export async function upsertTable({
     }
     standardizedSourceUrl = standardized;
   }
+
+  const title = titleEmpty ? UNTITLED_TITLE : params.title;
 
   if (async) {
     if (fileId) {
@@ -724,17 +744,27 @@ export async function upsertTable({
         csv: null,
         fileId: fileId ?? null,
         truncate,
-        title: params.title,
+        title,
         mimeType: params.mimeType,
         sourceUrl: standardizedSourceUrl,
       },
     });
     if (enqueueRes.isErr()) {
+      logger.error(
+        {
+          error: enqueueRes.error,
+          workspaceId: owner.sId,
+          dataSourceId: dataSource.sId,
+          tableId,
+        },
+        "Error enqueueing the table for asynchronous upsert."
+      );
+
       return new Err({
         name: "dust_error",
         code: "data_source_error",
         message:
-          "There was an error enqueueing the the document for asynchronous upsert.",
+          "There was an error enqueueing the table for asynchronous upsert.",
       });
     }
     return new Ok({
@@ -756,7 +786,7 @@ export async function upsertTable({
     tableParents,
     fileId: fileId ?? null,
     truncate,
-    title: params.title,
+    title,
     mimeType: params.mimeType,
     sourceUrl: standardizedSourceUrl,
   });
@@ -773,7 +803,7 @@ export async function upsertTable({
     if (tableRes.error.type === "invalid_request_error") {
       return new Err({
         name: "dust_error",
-        code: "invalid_parent_id",
+        code: "invalid_csv_and_file",
         message: "Invalid request body: " + tableRes.error.message,
       });
     }
@@ -1107,8 +1137,19 @@ export async function pauseAllManagedDataSources(
   return new Ok(res);
 }
 
-export async function resumeAllManagedDataSources(auth: Authenticator) {
+export async function resumeAllManagedDataSources(
+  auth: Authenticator,
+  providers?: ConnectorProvider[]
+) {
   const dataSources = await getAllManagedDataSources(auth);
+
+  const filteredDataSources = dataSources.filter(
+    // If no providers are provided, resume all data sources.
+    (ds) =>
+      !providers ||
+      (ds.connectorProvider !== null &&
+        providers.includes(ds.connectorProvider))
+  );
 
   const connectorsAPI = new ConnectorsAPI(
     config.getConnectorsAPIConfig(),
@@ -1116,7 +1157,7 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   );
 
   const res = await concurrentExecutor(
-    dataSources,
+    filteredDataSources,
     async (ds) => {
       assert(ds.connectorId, "Connector ID is required");
 
@@ -1153,4 +1194,15 @@ export async function resumeAllManagedDataSources(auth: Authenticator) {
   }
 
   return new Ok(res);
+}
+
+export async function computeDataSourceStatistics(
+  dataSource: DataSourceResource
+) {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  return coreAPI.getDataSourceStats({
+    projectId: dataSource.dustAPIProjectId,
+    dataSourceId: dataSource.dustAPIDataSourceId,
+  });
 }

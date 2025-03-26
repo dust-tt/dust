@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateWorkspaceConversationsRetention } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
 export const conversationsRetentionPlugin = createPlugin({
   manifest: {
@@ -18,7 +17,7 @@ export const conversationsRetentionPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const retentionDays = args.retentionDays;
 
     if (retentionDays !== -1 && retentionDays < 1) {

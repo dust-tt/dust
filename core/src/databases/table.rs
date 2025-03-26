@@ -7,8 +7,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::info;
 
+use crate::search_stores::search_store::NodeItem;
 use crate::{
-    data_sources::node::{Node, NodeType, ProviderVisibility},
+    data_sources::node::ProviderVisibility,
     databases::{csv::UpsertQueueCSVContent, database::HasValue, table_schema::TableSchema},
     databases_store::store::DatabasesStore,
     project::Project,
@@ -150,6 +151,9 @@ impl Table {
     pub fn data_source_id(&self) -> &str {
         &self.data_source_id
     }
+    pub fn data_source_internal_id(&self) -> &str {
+        &self.data_source_internal_id
+    }
     pub fn created(&self) -> u64 {
         self.created
     }
@@ -194,6 +198,12 @@ impl Table {
     }
     pub fn remote_database_secret_id(&self) -> Option<&str> {
         self.remote_database_secret_id.as_deref()
+    }
+    pub fn table_id_for_dbml(&self) -> &str {
+        match self.remote_database_table_id() {
+            Some(id) if !id.is_empty() => id,
+            _ => self.name(), // Note from seb: kept self.name() as it was the previous behavior, but shouldn't it be self.table_id()?
+        }
     }
     pub fn table_type(&self) -> Result<TableType> {
         match (
@@ -250,7 +260,9 @@ impl Table {
 
         // Delete the table node from the search index.
         if let Some(search_store) = search_store {
-            search_store.delete_node(Node::from(self.clone())).await?;
+            search_store
+                .delete_node(NodeItem::Table(self.clone()))
+                .await?;
         }
 
         Ok(())
@@ -271,7 +283,9 @@ impl Table {
             )
             .await?;
 
-        search_store.index_node(Node::from(self.clone())).await?;
+        search_store
+            .index_node(NodeItem::Table(self.clone()))
+            .await?;
         Ok(())
     }
 
@@ -308,25 +322,6 @@ impl Table {
             provider_visibility: self.provider_visibility().clone(),
             rows,
         })
-    }
-}
-
-impl From<Table> for Node {
-    fn from(table: Table) -> Node {
-        Node::new(
-            &table.data_source_id,
-            &table.data_source_internal_id,
-            &table.table_id,
-            NodeType::Table,
-            table.timestamp,
-            &table.title,
-            &table.mime_type,
-            table.provider_visibility,
-            table.parents.get(1).cloned(),
-            table.parents,
-            table.source_url,
-            Some(table.tags),
-        )
     }
 }
 
@@ -371,11 +366,7 @@ impl LocalTable {
             let rows = rows.clone();
             tokio::task::spawn_blocking(move || {
                 for (row_index, row) in rows.iter().enumerate() {
-                    let object = match row.value().as_object() {
-                        Some(object) => object,
-                        None => Err(anyhow!("Row {} is not an object", row_index,))?,
-                    };
-                    match object.keys().find(|key| match key.chars().next() {
+                    match row.value().keys().find(|key| match key.chars().next() {
                         Some(c) => c.is_ascii_uppercase(),
                         None => false,
                     }) {
@@ -667,11 +658,11 @@ impl Filterable for Table {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Row {
     pub row_id: String,
-    pub value: Value,
+    pub value: serde_json::Map<String, serde_json::Value>,
 }
 
 impl Row {
-    pub fn new(row_id: String, value: Value) -> Self {
+    pub fn new(row_id: String, value: serde_json::Map<String, serde_json::Value>) -> Self {
         Row { row_id, value }
     }
 
@@ -790,19 +781,19 @@ impl Row {
         }
         .unwrap_or_else(|| row_idx.to_string());
 
-        Ok(Row::new(row_id, Value::Object(value_map)))
+        Ok(Row::new(row_id, value_map))
     }
 
     pub fn row_id(&self) -> &str {
         &self.row_id
     }
-    pub fn content(&self) -> &Value {
+    pub fn content(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
     }
 }
 
 impl HasValue for Row {
-    fn value(&self) -> &Value {
+    fn value(&self) -> &serde_json::Map<String, serde_json::Value> {
         &self.value
     }
 }
@@ -811,23 +802,27 @@ impl HasValue for Row {
 mod tests {
     use super::*;
     use crate::utils;
-    use serde_json::json;
 
     #[tokio::test]
     async fn test_local_table_to_dbml() -> anyhow::Result<()> {
-        let row_1 = json!({
-            "user_id": 1,
-            "temperature": 1.2,
-            "label": "foo",
-            "ready": true,
-        });
-        let row_2 = json!({
-            "user_id": 2,
-            "temperature": 2.4,
-            "label": "bar",
-            "ready": false,
-            "description": "not null anymore and prety long so that it's not shown in note",
-        });
+        let row_1 = serde_json::Map::from_iter([
+            ("user_id".to_string(), 1.into()),
+            ("temperature".to_string(), 1.2.into()),
+            ("label".to_string(), "foo".into()),
+            ("ready".to_string(), true.into()),
+        ]);
+
+        let row_2 = serde_json::Map::from_iter([
+            ("user_id".to_string(), 2.into()),
+            ("temperature".to_string(), 2.4.into()),
+            ("label".to_string(), "bar".into()),
+            ("ready".to_string(), false.into()),
+            (
+                "description".to_string(),
+                "not null anymore and prety long so that it's not shown in note".into(),
+            ),
+        ]);
+
         let rows = Arc::new(vec![
             Row::new("1".to_string(), row_1),
             Row::new("2".to_string(), row_2),
@@ -881,14 +876,18 @@ mod tests {
         assert_eq!(row.row_id(), "0");
         assert_eq!(
             row.content(),
-            &json!({
-                "test": 1,
-                "date": {
-                    "type": "datetime",
-                    "epoch": 1609459200000_i64,
-                    "string_value": "2021-01-01T00:00:00Z"
-                }
-            })
+            &serde_json::Map::from_iter([
+                ("test".to_string(), 1.into()),
+                (
+                    "date".to_string(),
+                    serde_json::Map::from_iter([
+                        ("type".to_string(), "datetime".into()),
+                        ("epoch".to_string(), 1609459200000_i64.into()),
+                        ("string_value".to_string(), "2021-01-01T00:00:00Z".into()),
+                    ])
+                    .into()
+                )
+            ])
         );
 
         let record = vec!["123a", "March 2, 2021"];

@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use futures::SinkExt;
-use serde_json::Value;
 use std::io::Cursor;
 use tokio_postgres::{types::ToSql, NoTls};
 use tracing::info;
@@ -121,7 +120,8 @@ impl DatabasesStore for PostgresDatabasesStore {
             .map(|row| {
                 let row_id: String = row.get(1);
                 let data: String = row.get(2);
-                let content: Value = serde_json::from_str(&data)?;
+                let content: serde_json::Map<String, serde_json::Value> =
+                    serde_json::from_str(&data)?;
                 Ok(Row::new(row_id, content))
             })
             .collect::<Result<Vec<_>>>()?;
@@ -198,8 +198,7 @@ impl DatabasesStore for PostgresDatabasesStore {
 
             for row in rows {
                 // Escape special characters in content
-                let escaped_content = row
-                    .content()
+                let escaped_content = serde_json::Value::Object(row.content().clone())
                     .to_string()
                     // Postgresql [doc](https://www.postgresql.org/docs/current/sql-copy.html)
                     // Backslash characters (\) can be used in the COPY data to quote data characters that might otherwise be taken as row or column delimiters.
@@ -256,7 +255,10 @@ impl DatabasesStore for PostgresDatabasesStore {
                 let table_ids: Vec<&str> = vec![table_id; chunk.len()];
                 let row_ids: Vec<&str> = chunk.iter().map(|r| r.row_id()).collect();
                 let createds: Vec<i64> = vec![now; chunk.len()];
-                let contents: Vec<String> = chunk.iter().map(|r| r.content().to_string()).collect();
+                let contents: Vec<String> = chunk
+                    .iter()
+                    .map(|r| serde_json::Value::Object(r.content().clone()).to_string())
+                    .collect();
 
                 c.execute(&stmt, &[&table_ids, &row_ids, &createds, &contents])
                     .await?;

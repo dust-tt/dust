@@ -1,14 +1,14 @@
 import { Tree } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
 import { useCallback } from "react";
 
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
 
 const getUseResourceHook =
   (
@@ -24,20 +24,17 @@ const getUseResourceHook =
       viewType,
     });
     return {
-      resources: res.nodes.map((n) => ({
-        ...n,
-        preventSelection:
-          n.preventSelection || (viewType === "table" && n.type !== "table"),
-      })),
+      resources: res.nodes,
+      totalResourceCount: res.totalNodesCount,
       isResourcesLoading: res.isNodesLoading,
       isResourcesError: res.isNodesError,
+      isResourcesTruncated: !res.totalNodesCountIsAccurate,
     };
   };
 
 interface DataSourceViewPermissionTreeProps {
   dataSourceView: DataSourceViewType;
   isRoundedBackground?: boolean;
-  isSearchEnabled?: boolean;
   onDocumentViewClick: (documentId: string) => void;
   owner: LightWorkspaceType;
   parentId?: string | null;
@@ -54,7 +51,6 @@ interface DataSourceViewPermissionTreeProps {
 export function DataSourceViewPermissionTree({
   dataSourceView,
   isRoundedBackground,
-  isSearchEnabled,
   onDocumentViewClick,
   owner,
   parentId,
@@ -75,7 +71,6 @@ export function DataSourceViewPermissionTree({
 
   return (
     <ContentNodeTree
-      isSearchEnabled={isSearchEnabled}
       isRoundedBackground={isRoundedBackground}
       onDocumentViewClick={onDocumentViewClick}
       showExpand={showExpand}

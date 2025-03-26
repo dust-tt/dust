@@ -1,14 +1,13 @@
-import { isModjoCredentials, OAuthAPI } from "@dust-tt/types";
 import { either } from "fp-ts";
 import { pipe } from "fp-ts/function";
 import * as t from "io-ts";
 
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
 import logger from "@app/logger/logger";
+import { isModjoCredentials, OAuthAPI } from "@app/types";
 
 const ModjoSpeakerSchema = t.partial({
   contactId: t.union([t.number, t.undefined]),
@@ -122,8 +121,6 @@ export async function retrieveModjoTranscripts(
     );
     return [];
   }
-
-  const workspace = auth.getNonNullableWorkspace();
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const modjoApiKeyRes = await oauthApi.getCredentials({
@@ -144,10 +141,7 @@ export async function retrieveModjoTranscripts(
 
   const modjoApiKey = modjoApiKeyRes.value.credential.content.api_key;
 
-  const flags = await getFeatureFlags(workspace);
-  const daysOfHistory = flags.includes("labs_transcripts_full_storage")
-    ? 14
-    : 1;
+  const daysOfHistory = 14;
 
   const fromDateTime = new Date(
     Date.now() - daysOfHistory * 24 * 60 * 60 * 1000

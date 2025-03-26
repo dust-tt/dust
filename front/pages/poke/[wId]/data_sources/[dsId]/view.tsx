@@ -1,6 +1,4 @@
 import { Input, Page, TextArea } from "@dust-tt/sparkle";
-import type { CoreAPIDocument } from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -10,6 +8,8 @@ import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { CoreAPIDocument } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   document: CoreAPIDocument;
@@ -50,13 +50,25 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   };
 });
 
-export default function DataSourceUpsert({
+export default function DataSourceDocumentView({
   document,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="max-w-4xl">
       <div className="pt-6">
         <Page.Vertical align="stretch">
+          <div className="pt-4">
+            <Page.SectionHeader title="Document ID" />
+            <div className="pt-4">
+              <Input
+                placeholder="Document ID"
+                name="document"
+                disabled={true}
+                value={document.document_id}
+              />
+            </div>
+          </div>
+
           <div className="pt-4">
             <Page.SectionHeader title="Document title" />
             <div className="pt-4">
@@ -90,7 +102,7 @@ export default function DataSourceUpsert({
                 rows={20}
                 readOnly={true}
                 className={classNames(
-                  "font-mono text-normal block w-full min-w-0 flex-1 rounded-md",
+                  "text-normal block w-full min-w-0 flex-1 rounded-md font-mono",
                   "border-structure-200 bg-structure-50",
                   "focus:border-gray-300 focus:ring-0"
                 )}
@@ -126,6 +138,6 @@ export default function DataSourceUpsert({
   );
 }
 
-DataSourceUpsert.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+DataSourceDocumentView.getLayout = (page: ReactElement) => {
+  return <PokeLayout title="View Document">{page}</PokeLayout>;
 };

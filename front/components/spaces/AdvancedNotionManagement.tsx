@@ -14,13 +14,13 @@ import {
   TrashIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, WorkspaceType } from "@dust-tt/types";
-import { GetPostNotionSyncResponseBodySchema } from "@dust-tt/types";
 import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
 
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
+import type { DataSourceType, WorkspaceType } from "@app/types";
+import { GetPostNotionSyncResponseBodySchema } from "@app/types";
 
 interface TableData {
   url: string;
@@ -233,7 +233,7 @@ export function AdvancedNotionManagement({
 
   return (
     <>
-      <div className="p-1 text-xl font-bold">
+      <div className="heading-xl p-1">
         Advanced Notion Management - Manual URL sync
       </div>
 

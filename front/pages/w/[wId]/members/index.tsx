@@ -11,14 +11,6 @@ import {
   SearchInput,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  PlanType,
-  SubscriptionPerSeatPricing,
-  SubscriptionType,
-  UserType,
-  WorkspaceDomain,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
@@ -45,7 +37,14 @@ import {
 } from "@app/lib/api/workspace";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getPerSeatSubscriptionPricing } from "@app/lib/plans/subscription";
+import type {
+  PlanType,
+  SubscriptionPerSeatPricing,
+  SubscriptionType,
+  UserType,
+  WorkspaceDomain,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
@@ -59,10 +58,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 }>(async (context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
-  const user = auth.user();
-  const subscription = auth.subscription();
+  const user = auth.user()?.toJSON();
+  const subscriptionResource = auth.subscriptionResource();
 
-  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
+  if (!owner || !user || !auth.isAdmin() || !plan || !subscriptionResource) {
     return {
       notFound: true,
     };
@@ -81,7 +80,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       samlAcsUrl: makeSamlAcsUrl(owner),
     };
 
-  const perSeatPricing = await getPerSeatSubscriptionPricing(subscription);
+  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
+  const subscription = subscriptionResource.toJSON();
 
   return {
     props: {

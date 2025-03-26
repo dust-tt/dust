@@ -39,6 +39,10 @@ path = "bin/elasticsearch/backfill_folders_index.rs"
 name = "qdrant_create_collection"
 path = "bin/qdrant/create_collection.rs"
 
+[[bin]]
+name = "qdrant_shard_rebalance_suggestions"
+path = "bin/qdrant/qdrant_shard_rebalance_suggestions.rs"
+
 # [[bin]]
 # name = "qdrant_migrator"
 # path = "bin/qdrant/migrator.rs"
@@ -51,10 +55,13 @@ path = "bin/qdrant/create_collection.rs"
 name = "qdrant_delete_orphaned_points"
 path = "bin/qdrant/delete_orphaned_points.rs"
 
-
 # [[bin]]
 # name = "oauth_generate_key"
 # path = "bin/oauth_generate_key.rs"
+
+[[bin]]
+name = "salesforce"
+path = "bin/salesforce.rs"
 
 # MIGRATIONS
 
@@ -69,6 +76,10 @@ path = "bin/migrations/20241203_fix_created_dsdocs.rs"
 [[bin]]
 name = "elasticsearch_backfill_document_tags_index"
 path = "bin/migrations/20250205_backfill_document_tags_index.rs"
+
+[[bin]]
+name = "backfill_elasticsearch_text_size"
+path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
 
 [[test]]
 name = "oauth_connections_test"
@@ -130,7 +141,7 @@ reqwest = { version = "0.12", features = ["json"] }
 tracing-bunyan-formatter = "0.3.9"
 http = "1.1.0"
 sqids = "0.4.1"
-ring = "0.17.8"
+ring = "0.17.14"
 jsonwebtoken = "9.3.0"
 rslock = { version = "0.4.0", default-features = false, features = ["tokio-comp"] }
 snowflake-connector-rs = { git = "https://github.com/dust-tt/snowflake-connector-rs", rev = "5a16356" }
@@ -143,3 +154,6 @@ elasticsearch = "8.15.0-alpha.1"
 elasticsearch-dsl = "0.4"
 unicode-normalization = "0.1.24"
 dateparser = "0.2.1"
+once_cell = "1.18"
+redis = { version = "0.24.0", features = ["tokio-comp"] }
+humantime = "2.2.0"

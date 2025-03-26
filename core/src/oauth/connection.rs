@@ -22,7 +22,7 @@ use std::time::Duration;
 use std::{env, fmt};
 use tracing::{error, info};
 
-use super::providers::utils::ProviderHttpRequestError;
+use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
 // We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
@@ -33,6 +33,8 @@ pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
 // Buffer of time in ms before the expiry of an access token within which we will attempt to
 // refresh it.
 pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;
+
+pub static CONNECTION_ID_PREFIX: &str = "con";
 
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
@@ -96,6 +98,16 @@ pub enum ConnectionProvider {
     Salesforce,
 }
 
+impl FromStr for ConnectionProvider {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match serde_json::from_str(&format!("\"{}\"", s)) {
+            Ok(v) => Ok(v),
+            Err(_) => Err(ParseError::new()),
+        }
+    }
+}
+
 impl fmt::Display for ConnectionProvider {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -129,14 +141,47 @@ pub struct RefreshResult {
 pub trait Provider {
     fn id(&self) -> ConnectionProvider;
 
+    fn reqwest_client(&self) -> reqwest::Client {
+        if let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
+            env::var("PROXY_HOST"),
+            env::var("PROXY_PORT"),
+            env::var("PROXY_USER_NAME"),
+            env::var("PROXY_USER_PASSWORD"),
+        ) {
+            match reqwest::Proxy::all(format!(
+                "http://{}:{}@{}:{}",
+                proxy_user_name, proxy_user_password, proxy_host, proxy_port
+            )) {
+                Ok(proxy) => match reqwest::Client::builder().proxy(proxy).build() {
+                    Ok(client) => client,
+                    Err(e) => {
+                        error!(error = ?e, "Failed to create client with proxy");
+                        reqwest::Client::new()
+                    }
+                },
+                Err(e) => {
+                    error!(error = ?e, "Failed to create proxy, falling back to no proxy");
+                    reqwest::Client::new()
+                }
+            }
+        } else {
+            reqwest::Client::new()
+        }
+    }
+
     async fn finalize(
         &self,
         connection: &Connection,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError>;
 
-    async fn refresh(&self, connection: &Connection) -> Result<RefreshResult, ProviderError>;
+    async fn refresh(
+        &self,
+        connection: &Connection,
+        related_credentials: Option<Credential>,
+    ) -> Result<RefreshResult, ProviderError>;
 
     // This method scrubs raw_json to remove information that should not exfill `oauth`, in
     // particular the `refresh_token`. By convetion the `access_token` should be scrubbed as well
@@ -301,6 +346,7 @@ pub struct Connection {
     encrypted_access_token: Option<Vec<u8>>,
     encrypted_refresh_token: Option<Vec<u8>>,
     encrypted_raw_json: Option<Vec<u8>>,
+    related_credential_id: Option<String>,
 }
 
 impl Connection {
@@ -316,6 +362,7 @@ impl Connection {
         encrypted_access_token: Option<Vec<u8>>,
         encrypted_refresh_token: Option<Vec<u8>>,
         encrypted_raw_json: Option<Vec<u8>>,
+        related_credential_id: Option<String>,
     ) -> Self {
         Connection {
             connection_id,
@@ -329,13 +376,14 @@ impl Connection {
             encrypted_access_token,
             encrypted_refresh_token,
             encrypted_raw_json,
+            related_credential_id,
         }
     }
 
     pub fn connection_id_from_row_id_and_secret(row_id: i64, secret: &str) -> Result<String> {
         Ok(format!(
             "{}-{}",
-            utils::make_id("con", row_id as u64)?,
+            utils::make_id(CONNECTION_ID_PREFIX, row_id as u64)?,
             secret
         ))
     }
@@ -351,7 +399,7 @@ impl Connection {
         let (prefix, row_id) = utils::parse_id(parts[0])?;
         let secret = parts[1].to_string();
 
-        if prefix != "con" {
+        if prefix != CONNECTION_ID_PREFIX {
             return Err(anyhow::anyhow!(
                 "Invalid connection_id prefix: {}",
                 connection_id
@@ -433,9 +481,13 @@ impl Connection {
         }
     }
 
+    pub fn related_credential_id(&self) -> Option<String> {
+        self.related_credential_id.clone()
+    }
+
     async fn reload(&mut self, store: Box<dyn OAuthStore + Sync + Send>) -> Result<()> {
         let connection = store
-            .retrieve_connection(self.provider, &self.connection_id)
+            .retrieve_connection_by_provider(self.provider, &self.connection_id)
             .await?;
 
         self.created = connection.created;
@@ -448,6 +500,7 @@ impl Connection {
         self.encrypted_access_token = connection.encrypted_access_token;
         self.encrypted_refresh_token = connection.encrypted_refresh_token;
         self.encrypted_raw_json = connection.encrypted_raw_json;
+        self.related_credential_id = connection.related_credential_id;
 
         Ok(())
     }
@@ -457,8 +510,11 @@ impl Connection {
         provider: ConnectionProvider,
         metadata: serde_json::Value,
         migrated_credentials: Option<MigratedCredentials>,
+        related_credential_id: Option<String>,
     ) -> Result<Self> {
-        let mut c = store.create_connection(provider, metadata).await?;
+        let mut c = store
+            .create_connection(provider, metadata, related_credential_id)
+            .await?;
 
         if let Some(creds) = migrated_credentials {
             c.redirect_uri = Some(creds.redirect_uri);
@@ -535,8 +591,13 @@ impl Connection {
 
         let now = utils::now();
 
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
         let finalize = provider(self.provider)
-            .finalize(self, code, redirect_uri)
+            .finalize(self, credential, code, redirect_uri)
             .await?;
 
         self.status = ConnectionStatus::Finalized;
@@ -681,7 +742,12 @@ impl Connection {
 
         let now = utils::now();
 
-        let refresh = provider(self.provider).refresh(self).await?;
+        let credential = match self.related_credential_id() {
+            Some(id) => store.retrieve_credential(&id).await.ok(),
+            None => None,
+        };
+
+        let refresh = provider(self.provider).refresh(self, credential).await?;
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);

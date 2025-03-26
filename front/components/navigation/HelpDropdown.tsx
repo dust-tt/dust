@@ -13,19 +13,19 @@ import {
   SlackLogo,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  MentionType,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { GLOBAL_AGENTS_SID } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type {
+  AgentMention,
+  MentionType,
+  UserTypeWithWorkspaces,
+  WorkspaceType,
+} from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 
 export function HelpDropdown({
   owner,
@@ -73,7 +73,10 @@ export function HelpDropdown({
           messageData: {
             input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
             mentions: mentionsWithHelp,
-            contentFragments: [],
+            contentFragments: {
+              uploaded: [],
+              contentNodes: [],
+            },
           },
         });
         if (conversationRes.isErr()) {
@@ -127,7 +130,7 @@ export function HelpDropdown({
         <DropdownMenuItem
           label="Join the Slack Community"
           icon={SlackLogo}
-          href="https://join.slack.com/t/dustcommunity/shared_invite/zt-2tu2obwzo-ZyT1dUR6~qwSncVpIy7yTA"
+          href="https://dust-community.tightknit.community/join"
           target="_blank"
         />
         <DropdownMenuLabel label="Ask questions" />

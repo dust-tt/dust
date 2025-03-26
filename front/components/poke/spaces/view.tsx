@@ -1,5 +1,3 @@
-import type { PokeSpaceType } from "@dust-tt/types";
-
 import {
   PokeTable,
   PokeTableBody,
@@ -9,6 +7,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { PokeSpaceType } from "@app/types";
 
 interface ViewSpaceTableProps {
   space: PokeSpaceType;
@@ -24,6 +23,10 @@ export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
           </div>
           <PokeTable>
             <PokeTableBody>
+              <PokeTableRow>
+                <PokeTableHead>Space ID</PokeTableHead>
+                <PokeTableCellWithCopy label={`${space.id}`} />
+              </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>sId</PokeTableHead>
                 <PokeTableCellWithCopy label={space.sId} />

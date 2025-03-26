@@ -9,8 +9,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { LightWorkspaceType, SpaceType } from "@dust-tt/types";
-import { assertNever, slugify } from "@dust-tt/types";
 import { sortBy } from "lodash";
 import React, { useContext, useMemo } from "react";
 
@@ -19,6 +17,8 @@ import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSel
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
+import type { LightWorkspaceType, SpaceType } from "@app/types";
+import { assertNever, slugify } from "@app/types";
 
 export function isActionDustAppRunValid(
   action: AssistantBuilderActionConfiguration
@@ -64,6 +64,12 @@ export function ActionDustAppRun({
   );
 
   const noDustApp = dustApps.length === 0;
+
+  const hasNoDustAppsInAllowedSpaces = useMemo(() => {
+    // No n^2 complexity.
+    const allowedSet = new Set(allowedSpaces.map((space) => space.sId));
+    return dustApps.every((app) => !allowedSet.has(app.space.sId));
+  }, [dustApps, allowedSpaces]);
 
   if (!action.configuration) {
     return null;
@@ -141,7 +147,7 @@ export function ActionDustAppRun({
                 const appsInSpace = space
                   ? dustApps.filter((app) => app.space.sId === space.sId)
                   : dustApps;
-                if (appsInSpace.length === 0) {
+                if (appsInSpace.length === 0 || hasNoDustAppsInAllowedSpaces) {
                   return <>No Dust Apps available.</>;
                 }
 

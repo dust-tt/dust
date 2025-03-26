@@ -15,8 +15,6 @@ import {
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { ModelProviderIdType, WorkspaceType } from "@dust-tt/types";
-import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@dust-tt/types";
 import { isEqual, uniqBy } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 
@@ -26,6 +24,8 @@ import {
   USED_MODEL_CONFIGS,
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { ModelProviderIdType, WorkspaceType } from "@app/types";
+import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
 
 type ProviderStates = Record<ModelProviderIdType, boolean>;
 
@@ -155,7 +155,7 @@ export function ProviderManagementModal({
           <SheetTitle>Manage Providers</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="dark:divide-gray-200-night mt-8 divide-y divide-gray-200">
+          <div className="mt-8 divide-y divide-gray-200 dark:divide-gray-200-night">
             <div className="flex items-center justify-between px-4 pb-4">
               <span className="text-left font-bold text-foreground dark:text-foreground-night">
                 Make all providers available

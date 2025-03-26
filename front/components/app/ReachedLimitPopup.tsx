@@ -8,13 +8,13 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
-import type { SubscriptionType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { NextRouter } from "next/router";
 import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type WorkspaceLimit =
   | "cant_invite_no_seats_available"

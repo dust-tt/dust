@@ -1,6 +1,6 @@
+import Head from "next/head";
 import React from "react";
 
-import RootLayout from "@app/components/app/RootLayout";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
@@ -12,14 +12,17 @@ export interface PokeLayoutProps {
 
 export default function PokeLayout({
   children,
+  title,
 }: {
   children: React.ReactNode;
+  title: string;
 }) {
   return (
     <ThemeProvider>
-      <RootLayout>
-        <PokeLayoutContent>{children}</PokeLayoutContent>
-      </RootLayout>
+      <Head>
+        <title>{"Poke - " + title}</title>
+      </Head>
+      <PokeLayoutContent>{children}</PokeLayoutContent>
     </ThemeProvider>
   );
 }

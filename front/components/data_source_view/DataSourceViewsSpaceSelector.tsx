@@ -1,11 +1,4 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
 import type { Dispatch, SetStateAction } from "react";
 import { useMemo } from "react";
 
@@ -13,6 +6,13 @@ import { SpaceSelector } from "@app/components/assistant_builder/spaces/SpaceSel
 import type { useCaseDataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { DataSourceViewsSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { useSpaces } from "@app/lib/swr/spaces";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
 interface DataSourceViewsSpaceSelectorProps {
   allowedSpaces?: SpaceType[];
@@ -56,8 +56,9 @@ export const DataSourceViewsSpaceSelector = ({
   }
 
   if (filteredSpaces.length === 1) {
-    const dataSourceViewsForSpace = filteredSpaces[0]
-      ? dataSourceViews.filter((dsv) => dsv.spaceId === filteredSpaces[0].sId)
+    const [space] = filteredSpaces;
+    const dataSourceViewsForSpace = space
+      ? dataSourceViews.filter((dsv) => dsv.spaceId === space.sId)
       : dataSourceViews;
 
     return (
@@ -69,6 +70,7 @@ export const DataSourceViewsSpaceSelector = ({
         setSelectionConfigurations={setSelectionConfigurations}
         viewType={viewType}
         isRootSelectable={isRootSelectable}
+        space={space}
       />
     );
   }
@@ -87,6 +89,10 @@ export const DataSourceViewsSpaceSelector = ({
           return <>No data source in this space.</>;
         }
 
+        if (!space) {
+          return <>No space selected.</>;
+        }
+
         return (
           <DataSourceViewsSelector
             owner={owner}
@@ -96,6 +102,7 @@ export const DataSourceViewsSpaceSelector = ({
             setSelectionConfigurations={setSelectionConfigurations}
             viewType={viewType}
             isRootSelectable={isRootSelectable}
+            space={space}
           />
         );
       }}

@@ -1,7 +1,6 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { upgradeWorkspaceToBusinessPlan } from "@app/lib/api/workspace";
+import { Err, Ok } from "@app/types";
 
 export const upgradeToBusinessPlan = createPlugin({
   manifest: {
@@ -17,7 +16,7 @@ export const upgradeToBusinessPlan = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     if (!args.confirm) {
       return new Err(new Error("Please confirm the upgrade to business plan."));
     }

@@ -1,14 +1,10 @@
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
   ModelStatic,
+  Transaction,
   WhereOptions,
 } from "sequelize";
 
@@ -24,6 +20,8 @@ import { getConnectorProviderStrategy } from "@connectors/resources/connector/st
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
+import type { ConnectorType } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -61,15 +59,16 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
   static async makeNew<T extends keyof ConnectorProviderModelMapping>(
     type: T,
     blob: Omit<CreationAttributes<ConnectorModel>, "type">,
-    specificBlob: ConnectorProviderModelMapping[T]
+    specificBlob: ConnectorProviderModelMapping[T],
+    transaction?: Transaction
   ) {
-    return sequelizeConnection.transaction(async (transaction) => {
+    const createConnector = async (t: Transaction) => {
       const connector = await ConnectorModel.create(
         {
           ...blob,
           type,
         },
-        { transaction }
+        { transaction: t }
       );
 
       const connectorRes = new this(ConnectorModel, connector.get());
@@ -77,13 +76,19 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       const configuration = await connectorRes.strategy.makeNew(
         connector.id,
         specificBlob,
-        transaction
+        t
       );
 
       connectorRes.configuration = configuration;
 
       return connectorRes;
-    });
+    };
+
+    if (transaction) {
+      return createConnector(transaction);
+    }
+
+    return sequelizeConnection.transaction(createConnector);
   }
 
   static async listByType(

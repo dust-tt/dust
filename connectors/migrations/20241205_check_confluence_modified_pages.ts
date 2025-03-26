@@ -1,4 +1,3 @@
-import { ConfluenceClientError } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import {
@@ -11,6 +10,7 @@ import {
   ProviderWorkflowError,
 } from "@connectors/lib/error";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { ConfluenceClientError } from "@connectors/types";
 
 makeScript(
   {

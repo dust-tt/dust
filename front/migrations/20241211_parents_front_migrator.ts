@@ -1,5 +1,3 @@
-import type { ConnectorProvider } from "@dust-tt/types";
-import { concurrentExecutor, isConnectorProvider } from "@dust-tt/types";
 import _ from "lodash";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -8,6 +6,8 @@ import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { makeScript } from "@app/scripts/helpers";
+import type { ConnectorProvider } from "@app/types";
+import { concurrentExecutor, isConnectorProvider } from "@app/types";
 
 type ProviderMigrator = (parents: string[]) => string[];
 
@@ -50,7 +50,7 @@ export function getUpdatedConfluenceId(internalId: string): string {
 
 /// Migrator: oldParents => newParents idempotently
 /// we put null values if no migration is needed
-const migrators: Record<ConnectorProvider, ProviderMigrator | null> = {
+const migrators: Partial<Record<ConnectorProvider, ProviderMigrator | null>> = {
   slack: (parents) =>
     parents.map(
       (parent) => `slack-channel-` + _.last(parent.split(`slack-channel-`))!

@@ -1,4 +1,3 @@
-import type { PlanType, WithAPIErrorResponse } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,6 +9,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { Plan } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
+import type { PlanType, WithAPIErrorResponse } from "@app/types";
 
 export const PlanTypeSchema = t.type({
   code: t.string,
@@ -28,6 +28,7 @@ export const PlanTypeSchema = t.type({
       isGithubAllowed: t.boolean,
       isIntercomAllowed: t.boolean,
       isWebCrawlerAllowed: t.boolean,
+      isSalesforceAllowed: t.boolean,
     }),
     dataSources: t.type({
       count: t.number,
@@ -114,6 +115,7 @@ async function handler(
         isManagedGithubAllowed: body.limits.connections.isGithubAllowed,
         isManagedIntercomAllowed: body.limits.connections.isIntercomAllowed,
         isManagedWebCrawlerAllowed: body.limits.connections.isWebCrawlerAllowed,
+        isManagedSalesforceAllowed: body.limits.connections.isSalesforceAllowed,
         maxDataSourcesCount: body.limits.dataSources.count,
         maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
         maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

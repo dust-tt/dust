@@ -1,11 +1,9 @@
-import type { AdminCommandType } from "@dust-tt/types";
-import { CONNECTORS_ERROR_TYPES, ConnectorsAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { isManaged, isWebsite } from "@app/lib/data_sources";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import type { AdminCommandType } from "@app/types";
+import { CONNECTORS_ERROR_TYPES, ConnectorsAPI, Err, Ok } from "@app/types";
 
 export const markConnectorAsErrorPlugin = createPlugin({
   manifest: {
@@ -22,12 +20,7 @@ export const markConnectorAsErrorPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, dataSourceId, args) => {
-    if (!dataSourceId) {
-      return new Err(new Error("Data source not found."));
-    }
-
-    const dataSource = await DataSourceResource.fetchById(auth, dataSourceId);
+  execute: async (auth, dataSource, args) => {
     if (!dataSource) {
       return new Err(new Error("Data source not found."));
     }

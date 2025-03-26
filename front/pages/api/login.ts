@@ -1,9 +1,3 @@
-import type {
-  ActiveRoleType,
-  Result,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getTokenFromMembershipInvitationUrl } from "@app/lib/api/invitation";
@@ -25,8 +19,8 @@ import {
 } from "@app/lib/iam/workspaces";
 import type { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
-import { subscriptionForWorkspace } from "@app/lib/plans/subscription";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { getSignUpUrl } from "@app/lib/signup";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -34,6 +28,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type { ActiveRoleType, Result, WithAPIErrorResponse } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as
 // all the checks (decoding the JWT) have been run before. Simply create the membership if
@@ -270,12 +266,13 @@ async function handleRegularSignupFlow(
       );
     }
 
-    const workspaceSubscription = await subscriptionForWorkspace(
-      renderLightWorkspaceType({ workspace: existingWorkspace })
-    );
+    const workspaceSubscription =
+      await SubscriptionResource.fetchActiveByWorkspace(
+        renderLightWorkspaceType({ workspace: existingWorkspace })
+      );
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
-      workspaceSubscription
+      workspaceSubscription.toJSON()
     );
     // Redirect to existing workspace if no seats available, requiring an invite.
     if (

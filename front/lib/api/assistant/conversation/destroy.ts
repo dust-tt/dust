@@ -1,9 +1,7 @@
-import type { ConversationWithoutContentType, ModelId } from "@dust-tt/types";
-import { removeNulls } from "@dust-tt/types";
 import { chunk } from "lodash";
 
 import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
-import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
+import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
 import { AgentConversationIncludeFileAction } from "@app/lib/models/assistant/actions/conversation/include_file";
@@ -11,6 +9,7 @@ import { AgentDustAppRunAction } from "@app/lib/models/assistant/actions/dust_ap
 import { AgentProcessAction } from "@app/lib/models/assistant/actions/process";
 import { AgentReasoningAction } from "@app/lib/models/assistant/actions/reasoning";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
+import { AgentSearchLabelsAction } from "@app/lib/models/assistant/actions/search_labels";
 import { AgentTablesQueryAction } from "@app/lib/models/assistant/actions/tables_query";
 import { AgentWebsearchAction } from "@app/lib/models/assistant/actions/websearch";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
@@ -27,6 +26,8 @@ import {
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
+import type { ConversationWithoutContentType, ModelId } from "@app/types";
+import { removeNulls } from "@app/types";
 
 const DESTROY_MESSAGE_BATCH = 50;
 
@@ -60,6 +61,9 @@ async function destroyActionsRelatedResources(agentMessageIds: Array<ModelId>) {
     where: { agentMessageId: agentMessageIds },
   });
   await AgentBrowseAction.destroy({
+    where: { agentMessageId: agentMessageIds },
+  });
+  await AgentSearchLabelsAction.destroy({
     where: { agentMessageId: agentMessageIds },
   });
   await AgentConversationIncludeFileAction.destroy({
@@ -144,15 +148,8 @@ async function destroyConversationDataSource(
   );
 
   if (dataSource) {
-    // Perform a soft delete and initiate a workflow for permanent deletion of the data source.
-    const r = await softDeleteDataSourceAndLaunchScrubWorkflow(
-      auth,
-      dataSource
-    );
-
-    if (r.isErr()) {
-      throw new Error(`Failed to delete data source: ${r.error.message}`);
-    }
+    // Directly delete the data source.
+    await hardDeleteDataSource(auth, dataSource);
   }
 }
 

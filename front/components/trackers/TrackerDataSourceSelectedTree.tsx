@@ -5,11 +5,7 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -22,6 +18,13 @@ import {
   canBeExpanded,
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 export const TrackerDataSourceSelectedTree = ({
   owner,
@@ -30,10 +33,8 @@ export const TrackerDataSourceSelectedTree = ({
   owner: LightWorkspaceType;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
 }) => {
+  const router = useRouter();
   const { isDark } = useTheme();
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
   return (
@@ -41,9 +42,6 @@ export const TrackerDataSourceSelectedTree = ({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {orderDatasourceViewSelectionConfigurationByImportance(
@@ -75,9 +73,10 @@ export const TrackerDataSourceSelectedTree = ({
                   parentId={null}
                   onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                    setDocumentToDisplay(documentId);
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
                   }}
-                  viewType={"all"}
+                  viewType="all"
                 />
               )}
               {dsConfig.selectedResources.map((node) => {
@@ -114,7 +113,16 @@ export const TrackerDataSourceSelectedTree = ({
                               setDataSourceViewToDisplay(
                                 dsConfig.dataSourceView
                               );
-                              setDocumentToDisplay(node.internalId);
+                              setQueryParam(
+                                router,
+                                DocumentViewRawContentKey,
+                                "true"
+                              );
+                              setQueryParam(
+                                router,
+                                "documentId",
+                                node.internalId
+                              );
                             }
                           }}
                           className={classNames(
@@ -134,7 +142,12 @@ export const TrackerDataSourceSelectedTree = ({
                       parentId={node.internalId}
                       onDocumentViewClick={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                        setDocumentToDisplay(documentId);
+                        setQueryParam(
+                          router,
+                          DocumentViewRawContentKey,
+                          "true"
+                        );
+                        setQueryParam(router, "documentId", documentId);
                       }}
                       viewType={"all"}
                     />

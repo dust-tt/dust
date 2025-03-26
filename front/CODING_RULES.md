@@ -30,23 +30,46 @@ therefore acceptable.
 
 ### [GEN5] No mutation of function parameters
 
-Never mutate arrays or objects passed as parameters to functions. Create and return new instances instead. This includes avoiding methods like `splice` that mutate arrays in place.
+Never mutate arrays or objects passed as parameters to functions. Create and return new instances
+instead. This includes avoiding methods like `splice` that mutate arrays in place.
 
-Reviewer: If you detect parameter mutation in the code (including array methods like `splice`), request the author to refactor the code to create and return new instances instead.
+Reviewer: If you detect parameter mutation in the code (including array methods like `splice`),
+request the author to refactor the code to create and return new instances instead.
 
 Example:
 
 ```
 // BAD
 function addItem(items: string[], newItem: string) {
-items.push(newItem);
-return items;
+  items.push(newItem);
+  return items;
 }
 
 // GOOD
 function addItem(items: string[], newItem: string) {
-return [...items, newItem];
+  return [...items, newItem];
 }
+```
+
+### [GEN6] Comments must be sentences wrapped at 100 characters
+
+Comments must be full sentences (starting with a capital letter and ending with a period) and must
+be wrapped at 100 characters. Wrapping at a lower characer count should be avoided.
+
+Example:
+
+```
+// BAD
+// this is a comment that is neither a full sentence nor wrapped at 100 characers / it should be wrapped because otherwise it's really hard to read
+
+// BAD
+// This comment is a valid sentence but it
+// is wrapped at a lower character count than
+// 100. It should be wrapped at 100 characters.
+
+// GOOD
+// This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
+// and supports consistency of our code style.
 ```
 
 ## SECURITY

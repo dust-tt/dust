@@ -56,6 +56,7 @@ export const ExampleSearchInput: Story = {
     placeholder: "Search...",
     value: "",
     disabled: false,
+    onChange: () => console.log("hey"),
   },
   render: (args) => {
     const [value, setValue] = React.useState(args.value);
@@ -92,24 +93,28 @@ export function SearchInputWithPopoverScrollableExample() {
       onOpenChange={setOpen}
       items={filteredItems}
       onItemSelect={(item) => console.log(item)}
+      onSelectAll={() => console.log("select all")}
       contentMessage={{
-        title: "Yo",
-        variant: "amber",
+        title: "You can add a custom message here",
+        variant: "pink",
         icon: InformationCircleIcon,
         className: "s-w-full",
         size: "lg",
       }}
+      displayItemCount={true}
+      totalItems={100}
       renderItem={(item, selected) => (
         <div
           key={item}
           role="option"
           className={cn(
-            "s-cursor-pointer s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+            "s-cursor-pointer s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
             selected && "s-bg-primary-100"
           )}
           onClick={() => {
             setValue(item);
             setOpen(false);
+            console.log("clicked", item);
           }}
         >
           {item}

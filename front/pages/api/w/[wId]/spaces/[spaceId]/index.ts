@@ -1,13 +1,3 @@
-import type {
-  DataSourceWithAgentsUsageType,
-  SpaceType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  DATA_SOURCE_VIEW_CATEGORIES,
-  PatchSpaceRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { uniq } from "lodash";
@@ -23,6 +13,16 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceWithAgentsUsageType,
+  SpaceType,
+  UserType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES,
+  PatchSpaceRequestBodySchema,
+} from "@app/types";
 
 type SpaceCategoryInfo = {
   usage: DataSourceWithAgentsUsageType;

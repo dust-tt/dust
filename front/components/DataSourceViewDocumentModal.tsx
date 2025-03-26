@@ -6,36 +6,38 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { DataSourceViewType, LightWorkspaceType } from "@dust-tt/types";
 import { useMemo } from "react";
 
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useDataSourceViewDocument } from "@app/lib/swr/data_source_view_documents";
+import type { DataSourceViewType, LightWorkspaceType } from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 interface DataSourceViewDocumentModalProps {
   dataSourceView: DataSourceViewType | null;
-  documentId: string | null;
-  isOpen: boolean;
-  onClose: () => void;
   owner: LightWorkspaceType;
+  onClose?: () => void;
 }
 
 export default function DataSourceViewDocumentModal({
   dataSourceView,
-  documentId,
-  isOpen,
-  onClose,
   owner,
+  onClose,
 }: DataSourceViewDocumentModalProps) {
+  const params = useQueryParams([DocumentViewRawContentKey, "documentId"]);
+  const isOpen = params[DocumentViewRawContentKey].value === "true";
+
   const { document, isDocumentLoading, isDocumentError } =
     useDataSourceViewDocument({
-      documentId,
+      documentId: params.documentId.value ?? null,
       dataSourceView,
       owner,
+      disabled: !params.documentId.value || !dataSourceView,
     });
 
   const { title, text } = useMemo(() => {
     if (!document) {
-      return { title: documentId ?? undefined, text: undefined };
+      return { title: params.documentId.value ?? undefined, text: undefined };
     }
 
     const titleTag = document.tags.find((tag: string) =>
@@ -46,14 +48,24 @@ export default function DataSourceViewDocumentModal({
       title: titleTag ? titleTag.split("title:")[1] : undefined,
       text: document.text,
     };
-  }, [document, documentId]);
+  }, [document, params.documentId.value]);
+
+  const onSheetClose = () => {
+    params.setParams({
+      documentId: undefined,
+      [DocumentViewRawContentKey]: undefined,
+    });
+    if (onClose) {
+      onClose();
+    }
+  };
 
   return (
     <Sheet
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          onSheetClose();
         }
       }}
     >
@@ -94,7 +106,7 @@ export default function DataSourceViewDocumentModal({
                   <div className="mb-4 mt-8 text-sm text-foreground dark:text-foreground-night">
                     Content of the document:
                   </div>
-                  <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800 dark:bg-structure-100-night dark:text-element-800">
+                  <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800 dark:bg-structure-100-night dark:text-element-800-night">
                     {text}
                   </pre>
                 </>

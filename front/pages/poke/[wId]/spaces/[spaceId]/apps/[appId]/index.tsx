@@ -4,13 +4,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ScrollArea,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  LightWorkspaceType,
-  SpecificationType,
-} from "@dust-tt/types";
-import { CoreAPI } from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import type { InferGetServerSidePropsType } from "next";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -28,6 +23,13 @@ import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import type {
+  AppType,
+  LightWorkspaceType,
+  SpecificationType,
+  WorkspaceType,
+} from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   app: AppType;
@@ -102,10 +104,10 @@ export default function AppPage({
       <ViewAppTable app={app} owner={owner} />
       <div className="mt-4 flex grow flex-col gap-y-4">
         <PluginList
-          resourceType="apps"
-          workspaceResource={{
-            workspace: owner,
+          pluginResourceTarget={{
             resourceId: app.sId,
+            resourceType: "apps",
+            workspace: owner,
           }}
         />
         <AppSpecification
@@ -185,25 +187,27 @@ function AppSpecification({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem
-                  label="Current"
-                  onClick={() => {
-                    void router.push(`${pathname}?hash=`);
-                  }}
-                />
-                {specificationHashes.map((hash) => (
+                <ScrollArea className="h-96">
                   <DropdownMenuItem
-                    label={
-                      registryApp?.app?.appHash === hash
-                        ? `${hash} [registry]`
-                        : hash
-                    }
-                    key={hash}
+                    label="Current"
                     onClick={() => {
-                      void router.push(`${pathname}?hash=${hash}`);
+                      void router.push(`${pathname}?hash=`);
                     }}
                   />
-                ))}
+                  {specificationHashes.map((hash) => (
+                    <DropdownMenuItem
+                      label={
+                        registryApp?.app?.appHash === hash
+                          ? `${hash} [registry]`
+                          : hash
+                      }
+                      key={hash}
+                      onClick={() => {
+                        void router.push(`${pathname}?hash=${hash}`);
+                      }}
+                    />
+                  ))}
+                </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
@@ -232,6 +236,9 @@ function AppSpecification({
   );
 }
 
-AppPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+AppPage.getLayout = (
+  page: ReactElement,
+  { owner, app }: { owner: WorkspaceType; app: AppType }
+) => {
+  return <PokeLayout title={`${owner.name} - ${app.name}`}>{page}</PokeLayout>;
 };

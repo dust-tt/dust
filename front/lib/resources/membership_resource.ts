@@ -1,12 +1,4 @@
 import type {
-  LightWorkspaceType,
-  MembershipRoleType,
-  ModelId,
-  RequireAtLeastOne,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-import type {
   Attributes,
   FindOptions,
   IncludeOptions,
@@ -24,6 +16,14 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger, { auditLog } from "@app/logger/logger";
+import type {
+  LightWorkspaceType,
+  MembershipRoleType,
+  ModelId,
+  RequireAtLeastOne,
+  Result,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -70,15 +70,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   static async getMembershipsForWorkspace({
     workspace,
     transaction,
+    includeUser = false,
   }: {
     workspace: LightWorkspaceType;
     transaction?: Transaction;
+    includeUser?: boolean;
   }): Promise<MembershipsWithTotal> {
     const orderedResourcesFromModels = (resources: MembershipModel[]) =>
       resources
         .sort((a, b) => a.startAt.getTime() - b.startAt.getTime())
         .map(
-          (resource) => new MembershipResource(MembershipModel, resource.get())
+          (resource) =>
+            new MembershipResource(MembershipModel, resource.get(), {
+              user: resource.user?.get(),
+            })
         );
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
@@ -88,6 +93,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     const findOptions: FindOptions<InferAttributes<MembershipModel>> = {
       where: whereClause,
       transaction,
+      include: includeUser ? [{ model: UserModel, required: true }] : [],
     };
 
     const { rows, count } = await MembershipModel.findAndCountAll(findOptions);

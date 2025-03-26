@@ -1,21 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-import type {
-  ConversationType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  ModelId,
-  Result,
-  UserType,
-} from "@dust-tt/types";
-import {
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@dust-tt/types";
 import assert from "assert";
 import type {
   Attributes,
@@ -49,6 +34,17 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import logger from "@app/logger/logger";
+import type {
+  ConversationType,
+  DataSourceViewCategory,
+  DataSourceViewType,
+  ModelId,
+  Result,
+  UserType,
+} from "@app/types";
+import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+
+import type { UserResource } from "./user_resource";
 
 const getDataSourceCategory = (
   dataSourceResource: DataSourceResource
@@ -128,20 +124,20 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   static async createDataSourceAndDefaultView(
     blob: Omit<CreationAttributes<DataSourceModel>, "editedAt" | "vaultId">,
     space: SpaceResource,
-    editedByUser?: UserType | null,
+    editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
     const createDataSourceAndView = async (t: Transaction) => {
       const dataSource = await DataSourceResource.makeNew(
         blob,
         space,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
       return this.createDefaultViewInSpaceFromDataSourceIncludingAllDocuments(
         space,
         dataSource,
-        editedByUser,
+        editedByUser?.toJSON(),
         t
       );
     };
@@ -157,7 +153,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     space: SpaceResource,
     dataSource: DataSourceResource,
     parentsIn: string[],
-    editedByUser?: UserType | null
+    editedByUser?: UserResource | null
   ) {
     return this.makeNew(
       {
@@ -168,7 +164,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       },
       space,
       dataSource,
-      editedByUser
+      editedByUser?.toJSON()
     );
   }
 
@@ -316,6 +312,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         },
       ],
       where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
         vaultId: spaces.map((s) => s.id),
       },
     });
@@ -360,7 +357,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       FetchDataSourceViewOptions,
       "limit" | "order"
     >
-  ) {
+  ): Promise<DataSourceViewResource | null> {
     const [dataSourceView] = await DataSourceViewResource.fetchByIds(
       auth,
       [id],
@@ -392,7 +389,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -408,7 +405,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByConversation(
@@ -429,6 +426,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {},
       {
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
           dataSourceId: dataSource.id,
         },
@@ -532,7 +530,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       );
     }
 
-    // Check parentsToAdd  exist in core as part of this data source view.
+    // Check parentsToAdd exist in core as part of this data source view.
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
     const coreRes = await coreAPI.searchNodes({

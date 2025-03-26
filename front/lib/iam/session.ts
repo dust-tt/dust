@@ -1,5 +1,3 @@
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
-import { isString } from "@dust-tt/types";
 import type {
   GetServerSidePropsContext,
   GetServerSidePropsResult,
@@ -19,6 +17,8 @@ import {
 } from "@app/lib/iam/users";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
+import type { UserTypeWithWorkspaces } from "@app/types";
+import { isString } from "@app/types";
 
 /**
  * Retrieves the user for a given session

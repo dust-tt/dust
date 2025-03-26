@@ -1,8 +1,7 @@
-import { Err, Ok } from "@dust-tt/types";
-
 import { createPlugin } from "@app/lib/api/poke/types";
 import { updateExtensionConfiguration } from "@app/lib/api/workspace";
 import { isDomain } from "@app/lib/utils";
+import { Err, Ok } from "@app/types";
 
 export const extensionBlacklistDomainsPlugin = createPlugin({
   manifest: {
@@ -20,7 +19,7 @@ export const extensionBlacklistDomainsPlugin = createPlugin({
       },
     },
   },
-  execute: async (auth, resourceId, args) => {
+  execute: async (auth, _, args) => {
     const domains = args.domains
       ? args.domains
           .split(",")

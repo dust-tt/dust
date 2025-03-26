@@ -2,7 +2,6 @@ import {
   Button,
   ContentMessage,
   Hoverable,
-  Icon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -10,9 +9,9 @@ import {
   SheetTitle,
   SparklesIcon,
 } from "@dust-tt/sparkle";
-import type { ConnectorProvider } from "@dust-tt/types";
 
 import { REMOTE_DATABASE_CONNECTOR_PROVIDERS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
 type DataSourceViewSelectionModalProps = {
   isOpen: boolean;
@@ -37,11 +36,7 @@ export const ConnectorDataUpdatedModal = ({
         }}
       >
         <SheetHeader hideButton>
-          <SheetTitle />
-          <div className="p-1 text-xl font-bold">
-            <Icon visual={SparklesIcon} className="text-brand" size="lg" />
-            <div>Data sync in progress...</div>
-          </div>
+          <SheetTitle icon={SparklesIcon}>Data sync in progress...</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <ContentMessage variant="amber">

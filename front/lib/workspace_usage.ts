@@ -1,8 +1,3 @@
-import type {
-  AgentConfigurationType,
-  ModelId,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
@@ -18,6 +13,11 @@ import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_f
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import type {
+  LightAgentConfigurationType,
+  ModelId,
+  WorkspaceType,
+} from "@app/types";
 
 export interface WorkspaceUsageQueryResult {
   createdAt: string;
@@ -390,7 +390,7 @@ export async function getAssistantUsageData(
   startDate: Date,
   endDate: Date,
   workspace: WorkspaceType,
-  agentConfiguration: AgentConfigurationType
+  agentConfiguration: LightAgentConfigurationType
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();

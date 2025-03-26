@@ -1,33 +1,43 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+
+import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes";
+import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
   ContentNodesViewType,
+  ContentNodeWithParent,
   CoreAPIContentNode,
-  DataSourceViewContentNode,
   DataSourceViewType,
-} from "@dust-tt/types";
-import { assertNever, MIME_TYPES } from "@dust-tt/types";
-
-import { SPREADSHEET_MIME_TYPES } from "@app/lib/content_nodes";
-import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
-  MIME_TYPES.SLACK.CHANNEL,
-  MIME_TYPES.GITHUB.DISCUSSIONS,
-  MIME_TYPES.GITHUB.ISSUES,
-  MIME_TYPES.INTERCOM.TEAM,
-  MIME_TYPES.ZENDESK.TICKETS,
+  INTERNAL_MIME_TYPES.SLACK.CHANNEL,
+  INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
+  INTERNAL_MIME_TYPES.GITHUB.ISSUES,
+  INTERNAL_MIME_TYPES.INTERCOM.TEAM,
+] as readonly string[];
+
+export const NON_SEARCHABLE_NODES_MIME_TYPES = [
+  INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
+  INTERNAL_MIME_TYPES.GITHUB.ISSUE,
+  INTERNAL_MIME_TYPES.INTERCOM.CONVERSATION,
+  INTERNAL_MIME_TYPES.SLACK.MESSAGES,
+  INTERNAL_MIME_TYPES.SLACK.THREAD,
 ] as readonly string[];
 
 export const FOLDERS_TO_HIDE_IF_EMPTY_MIME_TYPES = [
-  MIME_TYPES.NOTION.UNKNOWN_FOLDER,
-  MIME_TYPES.NOTION.SYNCING_FOLDER,
-  MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
-  MIME_TYPES.GITHUB.DISCUSSIONS,
-  MIME_TYPES.GITHUB.ISSUES,
+  INTERNAL_MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+  INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
+  INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+  INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
+  INTERNAL_MIME_TYPES.GITHUB.ISSUES,
 ] as readonly string[];
 
 export const FOLDERS_SELECTION_PREVENTED_MIME_TYPES = [
-  MIME_TYPES.NOTION.SYNCING_FOLDER,
+  INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
 ] as readonly string[];
+
+export const UNTITLED_TITLE = "Untitled Document";
 
 export function getContentNodeInternalIdFromTableId(
   dataSourceView: DataSourceViewResource | DataSourceViewType,
@@ -51,6 +61,7 @@ export function getContentNodeInternalIdFromTableId(
     case "slack":
     case "zendesk":
     case "webcrawler":
+    case "gong":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
@@ -70,24 +81,21 @@ function isExpandable(
     // if we aren't in tables/all view, spreadsheets are not expandable
     !(
       !["table", "all"].includes(viewType) &&
-      SPREADSHEET_MIME_TYPES.includes(node.mime_type)
+      SPREADSHEET_INTERNAL_MIME_TYPES.includes(node.mime_type)
     )
   );
 }
 
 export function getContentNodeFromCoreNode(
-  dataSourceView: DataSourceViewType,
   coreNode: CoreAPIContentNode,
   viewType: ContentNodesViewType
-): DataSourceViewContentNode {
+): ContentNodeWithParent {
   return {
     internalId: coreNode.node_id,
     parentInternalId: coreNode.parent_id ?? null,
-    // TODO(2025-01-27 aubin): remove this once the handling of nodes without a title has been improved in the api/v1
+    // TODO(2025-01-27 aubin): remove this once the corresponding titles are backfilled.
     title:
-      coreNode.title === "Untitled document"
-        ? coreNode.node_id
-        : coreNode.title,
+      coreNode.title === UNTITLED_TITLE ? coreNode.node_id : coreNode.title,
     sourceUrl: coreNode.source_url ?? null,
     permission: "read",
     lastUpdatedAt: coreNode.timestamp,
@@ -96,10 +104,9 @@ export function getContentNodeFromCoreNode(
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
     mimeType: coreNode.mime_type,
-    preventSelection: FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(
-      coreNode.mime_type
-    ),
+    preventSelection:
+      FOLDERS_SELECTION_PREVENTED_MIME_TYPES.includes(coreNode.mime_type) ||
+      (viewType === "table" && coreNode.node_type !== "table"),
     parentTitle: coreNode.parent_title,
-    dataSourceView,
   };
 }

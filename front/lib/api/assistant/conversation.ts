@@ -1,55 +1,9 @@
-import type {
-  AgentActionSpecificEvent,
-  AgentActionSuccessEvent,
-  AgentDisabledErrorEvent,
-  AgentErrorEvent,
-  AgentGenerationCancelledEvent,
-  AgentMessageErrorEvent,
-  AgentMessageNewEvent,
-  AgentMessageSuccessEvent,
-  AgentMessageType,
-  AgentMessageWithRankType,
-  ContentFragmentContextType,
-  ContentFragmentInputWithFileIdType,
-  ContentFragmentType,
-  ConversationTitleEvent,
-  ConversationType,
-  ConversationVisibility,
-  ConversationWithoutContentType,
-  GenerationTokensEvent,
-  LightAgentConfigurationType,
-  MentionType,
-  PlanType,
-  Result,
-  UserMessageContext,
-  UserMessageErrorEvent,
-  UserMessageNewEvent,
-  UserMessageType,
-  UserMessageWithRankType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  ConversationError,
-  Err,
-  getSmallWhitelistedModel,
-  getTimeframeSecondsFromLiteral,
-  isAgentMention,
-  isAgentMessageType,
-  isContentFragmentType,
-  isProviderWhitelisted,
-  isUserMessageType,
-  md5,
-  Ok,
-  rateLimiter,
-  removeNulls,
-} from "@dust-tt/types";
 import { isEqual, keyBy, sortBy, uniq } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 import { runActionStreamed } from "@app/lib/actions/server";
+import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
@@ -63,6 +17,7 @@ import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
+import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -83,6 +38,7 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -93,8 +49,72 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isEmailValid } from "@app/lib/utils";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import type {
+  AgentActionSuccessEvent,
+  AgentDisabledErrorEvent,
+  AgentErrorEvent,
+  AgentGenerationCancelledEvent,
+  AgentMessageErrorEvent,
+  AgentMessageNewEvent,
+  AgentMessageSuccessEvent,
+  AgentMessageType,
+  AgentMessageWithRankType,
+  ContentFragmentContextType,
+  ContentFragmentInputWithContentNode,
+  ContentFragmentInputWithFileIdType,
+  ContentFragmentType,
+  ConversationTitleEvent,
+  ConversationType,
+  ConversationVisibility,
+  ConversationWithoutContentType,
+  GenerationTokensEvent,
+  LightAgentConfigurationType,
+  MaxMessagesTimeframeType,
+  MentionType,
+  PlanType,
+  Result,
+  UserMessageContext,
+  UserMessageErrorEvent,
+  UserMessageNewEvent,
+  UserMessageType,
+  UserMessageWithRankType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  ConversationError,
+  Err,
+  getSmallWhitelistedModel,
+  isAgentMention,
+  isAgentMessageType,
+  isContentFragmentInputWithContentNode,
+  isContentFragmentType,
+  isProviderWhitelisted,
+  isUserMessageType,
+  md5,
+  Ok,
+  removeNulls,
+} from "@app/types";
+
+function getTimeframeSecondsFromLiteral(
+  timeframeLiteral: MaxMessagesTimeframeType
+): number {
+  switch (timeframeLiteral) {
+    case "day":
+      return 60 * 60 * 24; // 1 day.
+
+    // Lifetime is intentionally mapped to a 30-day period.
+    case "lifetime":
+      return 60 * 60 * 24 * 30; // 30 days.
+
+    default:
+      return 0;
+  }
+}
 
 /**
  * Conversation Creation, update and deletion
@@ -110,10 +130,7 @@ export async function createConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<ConversationType> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.create({
     sId: generateRandomModelSId(),
@@ -154,15 +171,12 @@ export async function updateConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
-      workspaceId: auth.workspace()?.id,
+      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -193,14 +207,12 @@ export async function deleteConversation(
     destroy?: boolean;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
-  if (!auth.workspace()) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
       sId: conversationId,
-      workspaceId: auth.workspace()?.id,
+      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -232,14 +244,8 @@ export async function getUserConversations(
   includeDeleted?: boolean,
   includeTest?: boolean
 ): Promise<ConversationWithoutContentType[]> {
-  const owner = auth.workspace();
-  const user = auth.user();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
-  if (!user) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
 
   const participations = await ConversationParticipant.findAll({
     attributes: ["userId", "updatedAt", "conversationId"],
@@ -307,7 +313,7 @@ async function createOrUpdateParticipation({
   user,
   conversation,
 }: {
-  user: UserType | null;
+  user: UserResource | null;
   conversation: ConversationType;
 }) {
   if (user) {
@@ -350,10 +356,7 @@ export async function getConversation(
   includeDeleted?: boolean,
   threadVersion?: number
 ): Promise<Result<ConversationType, ConversationError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const conversation = await Conversation.findOne({
     where: {
@@ -456,8 +459,7 @@ export async function getConversationMessageType(
   conversation: ConversationType | ConversationWithoutContentType,
   messageId: string
 ): Promise<"user_message" | "agent_message" | "content_fragment" | null> {
-  const owner = auth.workspace();
-  if (!owner) {
+  if (!auth.workspace()) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
@@ -493,10 +495,7 @@ export async function generateConversationTitle(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   const model = getSmallWhitelistedModel(owner);
   if (!model) {
@@ -856,7 +855,7 @@ export async function* postUserMessage(
         type: "user_message",
         visibility: "visible",
         version: 0,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context,
@@ -943,11 +942,11 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds(
-        nonNullResults.map(({ m }) => m.configuration),
+      await updateConversationRequestedGroupIds(auth, {
+        agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
-        t
-      );
+        t,
+      });
 
       return {
         userMessage,
@@ -1388,7 +1387,7 @@ export async function* editUserMessage(
         type: "user_message",
         visibility: m.visibility,
         version: m.version,
-        user,
+        user: user?.toJSON() ?? null,
         mentions,
         content,
         context: message.context,
@@ -1489,11 +1488,11 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds(
-        nonNullResults.map(({ m }) => m.configuration),
+      await updateConversationRequestedGroupIds(auth, {
+        agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
-        t
-      );
+        t,
+      });
 
       return {
         userMessage,
@@ -1702,11 +1701,11 @@ export async function* retryAgentMessage(
         }
       );
 
-      await updateConversationRequestedGroupIds(
-        [message.configuration],
+      await updateConversationRequestedGroupIds(auth, {
+        agents: [message.configuration],
         conversation,
-        t
-      );
+        t,
+      });
 
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
@@ -1824,7 +1823,7 @@ export async function* retryAgentMessage(
 export async function postNewContentFragment(
   auth: Authenticator,
   conversation: ConversationType,
-  cf: ContentFragmentInputWithFileIdType,
+  cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, Error>> {
   const owner = auth.workspace();
@@ -1849,8 +1848,8 @@ export async function postNewContentFragment(
   }
 
   const supersededContentFragmentId = cf.supersededContentFragmentId;
-  // If the request is superseding an existing content fragment, we need to validate
-  // that it exists and is part of the conversation.
+  // If the request is superseding an existing content fragment, we need to validate that it exists
+  // and is part of the conversation.
   if (supersededContentFragmentId) {
     const found = conversation.content.some((versions) => {
       const latest = versions[versions.length - 1];
@@ -1918,6 +1917,15 @@ export async function postNewContentFragment(
           transaction: t,
         }
       );
+
+      if (isContentFragmentInputWithContentNode(cf)) {
+        await updateConversationRequestedGroupIds(auth, {
+          contentFragment: cf,
+          conversation,
+          t,
+        });
+      }
+
       return { contentFragment, messageRow };
     }
   );
@@ -2014,22 +2022,22 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_output":
-      case "tables_query_model_output":
-      case "process_params":
-      case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
+      case "dust_app_run_block":
+      case "dust_app_run_params":
       case "generation_tokens":
+      case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "retrieval_params":
+      case "search_labels_params":
+      case "tables_query_model_output":
+      case "tables_query_output":
+      case "tables_query_started":
+      case "websearch_params":
+      case "tool_params":
         yield event;
         break;
 
@@ -2113,30 +2121,61 @@ async function isMessagesLimitReached({
 }
 
 /**
- * Update the conversation requestedGroupIds based on the mentioned agents.
- * This function is purely additive - requirements are never removed.
+ * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
+ * additive - requirements are never removed.
  *
- * Each agent's requestedGroupIds represents a set of requirements that must be
- * satisfied. When an agent is mentioned in a conversation, its requirements are
- * added to the conversation's requirements.
+ * Each agent's requestedGroupIds represents a set of requirements that must be satisfied. When an
+ * agent is mentioned in a conversation, its requirements are added to the conversation's
+ * requirements.
  *
- * Within each requirement (sub-array), groups are combined with OR logic.
- * Different requirements (different sub-arrays) are combined with AND logic.
+ * - Within each requirement (sub-array), groups are combined with OR logic.
+ * - Different requirements (different sub-arrays) are combined with AND logic.
  */
 export async function updateConversationRequestedGroupIds(
-  mentionedAgents: LightAgentConfigurationType[],
-  conversation: ConversationType,
-  t: Transaction
+  auth: Authenticator,
+  {
+    agents,
+    contentFragment,
+    conversation,
+    t,
+  }: {
+    agents?: LightAgentConfigurationType[];
+    contentFragment?: ContentFragmentInputWithContentNode;
+    conversation: ConversationType;
+    t: Transaction;
+  }
 ): Promise<void> {
-  const newRequirements = mentionedAgents.flatMap(
-    (agent) => agent.requestedGroupIds
+  let newRequirements: string[][] = [];
+  if (agents) {
+    newRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+  }
+  if (contentFragment) {
+    const rawRequestedGroupIds = await getContentFragmentGroupIds(
+      auth,
+      contentFragment
+    );
+    const requestedGroupIds = rawRequestedGroupIds.map((gs) =>
+      gs.map((gId) =>
+        GroupResource.modelIdToSId({
+          id: gId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      )
+    );
+    newRequirements.push(...requestedGroupIds);
+  }
+  // Remove duplicates and sort each requirement.
+  newRequirements = _.uniqWith(
+    newRequirements.map((r) => sortBy(r)),
+    isEqual
   );
   const currentRequirements = conversation.requestedGroupIds;
 
   // Check if each new requirement already exists in current requirements.
   const areAllRequirementsPresent = newRequirements.every((newReq) =>
-    currentRequirements.some((currentReq) =>
-      isEqual(sortBy(newReq), sortBy(currentReq))
+    currentRequirements.some(
+      // newReq was sorted, so we need to sort currentReq as well.
+      (currentReq) => isEqual(newReq, sortBy(currentReq))
     )
   );
 
@@ -2149,7 +2188,8 @@ export async function updateConversationRequestedGroupIds(
   const requirementsToAdd = newRequirements.filter(
     (newReq) =>
       !currentRequirements.some((currentReq) =>
-        isEqual(sortBy(newReq), sortBy(currentReq))
+        // newReq was sorted, so we need to sort currentReq as well.
+        isEqual(newReq, sortBy(currentReq))
       )
   );
 
@@ -2173,9 +2213,8 @@ export async function updateConversationRequestedGroupIds(
 
   // Hotfix: Postgres requires all subarrays to be of the same length
   //
-  // since a requirement (subarray) is a set of groups that are linked with OR
-  // logic we can just repeat the last element of each requirement until all
-  // requirements have the maximal length.
+  // since a requirement (subarray) is a set of groups that are linked with OR logic we can just
+  // repeat the last element of each requirement until all requirements have the maximal length.
   const longestRequirement = allRequirements.reduce(
     (max, req) => Math.max(max, req.length),
     0

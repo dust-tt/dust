@@ -1,5 +1,3 @@
-import type { SpaceType, WithAPIErrorResponse } from "@dust-tt/types";
-import { PostSpaceRequestBodySchema } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -11,6 +9,8 @@ import { DustError } from "@app/lib/error";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
+import type { SpaceType, WithAPIErrorResponse } from "@app/types";
+import { PostSpaceRequestBodySchema } from "@app/types";
 
 export type GetSpacesResponseBody = {
   spaces: SpaceType[];

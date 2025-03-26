@@ -14,28 +14,10 @@ import {
   DropdownMenuTrigger,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorProvider,
-  ConnectorType,
-  DataSourceType,
-  DataSourceWithConnectorDetailsType,
-  LightWorkspaceType,
-  PlanType,
-  Result,
-  SpaceType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  Err,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
-import { CreateConnectionConfirmationModal } from "@app/components/data_source/CreateConnectionConfirmationModal";
+import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -48,6 +30,23 @@ import {
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  ConnectorProvider,
+  ConnectorType,
+  DataSourceType,
+  LightWorkspaceType,
+  PlanType,
+  Result,
+  SpaceType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isOAuthProvider,
+  Ok,
+  setupOAuthConnection,
+} from "@app/types";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;
@@ -57,7 +56,6 @@ export type DataSourceIntegration = {
 type AddConnectionMenuProps = {
   owner: WorkspaceType;
   plan: PlanType;
-  existingDataSources: DataSourceWithConnectorDetailsType[];
   setIsProviderLoading: (provider: ConnectorProvider, value: boolean) => void;
   onCreated(dataSource: DataSourceType): void;
   integrations: DataSourceIntegration[];
@@ -97,7 +95,6 @@ export async function setupConnection({
 export const AddConnectionMenu = ({
   owner,
   plan,
-  existingDataSources,
   setIsProviderLoading,
   onCreated,
   integrations,
@@ -284,28 +281,19 @@ export const AddConnectionMenu = ({
       configuration.connectorProvider
     );
 
-    const existingDataSource = existingDataSources.find(
-      (view) => view.connectorProvider === integration.connectorProvider
-    );
-    if (
-      !existingDataSource ||
-      !existingDataSource.connector ||
-      integration.setupWithSuffix
-    ) {
-      if (!isProviderAllowed) {
-        setShowUpgradePopup(true);
+    if (!isProviderAllowed) {
+      setShowUpgradePopup(true);
+    } else {
+      if (isBuilt) {
+        setShowConfirmConnection({
+          isOpen: true,
+          integration,
+        });
       } else {
-        if (isBuilt) {
-          setShowConfirmConnection({
-            isOpen: true,
-            integration,
-          });
-        } else {
-          setShowPreviewPopupForProvider({
-            isOpen: true,
-            connector: integration.connectorProvider,
-          });
-        }
+        setShowPreviewPopupForProvider({
+          isOpen: true,
+          connector: integration.connectorProvider,
+        });
       }
     }
   };
@@ -411,8 +399,9 @@ export const AddConnectionMenu = ({
             case "zendesk":
             case "salesforce":
             case "webcrawler":
+            case "gong":
               return (
-                <CreateConnectionConfirmationModal
+                <CreateConnectionOAuthModal
                   key={`${c}-${isOpen}`}
                   connectorProviderConfiguration={CONNECTOR_CONFIGURATIONS[c]}
                   isOpen={isOpen}

@@ -1,13 +1,10 @@
 import { Page } from "@dust-tt/sparkle";
-import type {
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useCallback } from "react";
 
 import { AssistantBrowser } from "@app/components/assistant/AssistantBrowser";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 interface AssistantBrowserContainerProps {
   onAgentConfigurationClick: (agentId: string) => void;

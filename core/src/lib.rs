@@ -33,7 +33,18 @@ pub mod databases {
         pub mod bigquery;
         pub mod get_remote_database;
         pub mod remote_database;
+
         pub mod snowflake;
+
+        pub mod salesforce {
+            pub mod salesforce;
+            pub mod sandbox {
+                pub mod convert;
+                pub mod error;
+                pub mod extract;
+                pub mod structured_query;
+            }
+        }
     }
     pub mod transient_database;
 }
@@ -100,6 +111,7 @@ pub mod databases_store {
     pub mod store;
 }
 
+pub mod cache;
 pub mod cached_request;
 pub mod consts;
 

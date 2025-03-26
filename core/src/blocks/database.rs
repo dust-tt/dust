@@ -106,18 +106,20 @@ impl Block for Database {
         let tables = load_tables_from_identifiers(&table_identifiers, env).await?;
 
         match execute_query(tables, &query, env.store.clone()).await {
-            Ok((results, schema)) => Ok(BlockResult {
+            Ok((results, schema, query)) => Ok(BlockResult {
                 value: json!({
                     "results": results,
                     "schema": schema,
+                    "query": query,
                 }),
                 meta: None,
             }),
             Err(e) => match &e {
                 // If the actual query failed, we don't fail the block, instead we return a block result with an error inside.
-                QueryDatabaseError::ExecutionError(s) => Ok(BlockResult {
+                QueryDatabaseError::ExecutionError(s, q) => Ok(BlockResult {
                     value: json!({
                         "error": s,
+                        "query": q,
                     }),
                     meta: None,
                 }),

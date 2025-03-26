@@ -1,23 +1,20 @@
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewCategory,
-  DataSourceViewContentNode,
-  DataSourceViewType,
-  LightWorkspaceType,
-  SpaceType,
-} from "@dust-tt/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@dust-tt/types";
 import { useMemo } from "react";
-import type { Fetcher } from "swr";
+import type { Fetcher, KeyedMutator } from "swr";
 
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   fetcher,
+  fetcherWithBody,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
   PostSpacesResponseBody,
@@ -29,6 +26,20 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type {
+  PostSpaceSearchRequestBody,
+  PostSpaceSearchResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/search";
+import type {
+  ContentNodesViewType,
+  DataSourceViewCategory,
+  DataSourceViewContentNode,
+  DataSourceViewType,
+  LightWorkspaceType,
+  SearchWarningCode,
+  SpaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
@@ -596,53 +607,65 @@ const DEFAULT_SEARCH_LIMIT = 15;
 
 export function useSpaceSearch({
   dataSourceViews,
-  owner,
-  viewType,
-  search,
   disabled = false,
-  limit = DEFAULT_SEARCH_LIMIT,
   includeDataSources = false,
+  owner,
+  search,
+  space,
+  viewType,
+  pagination,
 }: {
   dataSourceViews: DataSourceViewType[];
-  owner: LightWorkspaceType;
-  viewType: ContentNodesViewType;
-  search: string;
   disabled?: boolean;
-  limit?: number;
   includeDataSources: boolean;
-}) {
-  const body = {
-    datasourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
+  owner: LightWorkspaceType;
+  search: string;
+  space: SpaceType;
+  viewType: ContentNodesViewType;
+  warningCode?: SearchWarningCode;
+  pagination?: CursorPaginationParams;
+}): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  mutate: KeyedMutator<PostSpaceSearchResponseBody>;
+  searchResultNodes: DataSourceViewContentNode[];
+  total: number;
+  warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
+} {
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
+  const body: PostSpaceSearchRequestBody = {
+    dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
     includeDataSources,
-    limit,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
     query: search,
     viewType,
   };
 
-  const spaceId = dataSourceViews[0]?.spaceId;
-
-  // Only create a key if we have a valid search.
-  const key =
-    search?.length >= MIN_SEARCH_QUERY_SIZE && spaceId
-      ? [`/api/w/${owner.sId}/spaces/${spaceId}/search`, body]
+  // Only perform a query if we have a valid search.
+  const url =
+    search.length >= MIN_SEARCH_QUERY_SIZE
+      ? `/api/w/${owner.sId}/spaces/${space.sId}/search?${params}`
       : null;
 
-  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
-    key as [string, typeof body],
-    async ([url, postBody]) => {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(postBody),
-      });
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
 
-      if (!res.ok) {
-        throw new Error("Failed to fetch search results");
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return null;
       }
 
-      return res.json();
+      return fetcherWithBody([url, body, "POST"]);
     },
     {
       revalidateOnFocus: false,
@@ -652,13 +675,110 @@ export function useSpaceSearch({
   );
 
   return {
-    searchResultNodes: useMemo(
-      () => data?.nodes ?? [],
-      [data]
-    ) as DataSourceViewContentNode[],
+    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    total: data?.total ?? 0,
     isSearchLoading: isLoading,
     isSearchError: error,
     mutate,
     isSearchValidating: isValidating,
+    warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
+  };
+}
+
+type BaseSearchParams = {
+  disabled?: boolean;
+  includeDataSources: boolean;
+  owner: LightWorkspaceType;
+  spaceIds?: string[];
+  viewType: ContentNodesViewType;
+  pagination?: CursorPaginationParams;
+};
+
+// Text search variant
+type TextSearchParams = BaseSearchParams & {
+  search: string;
+  nodeIds?: undefined;
+  searchSourceUrls?: boolean;
+};
+
+// Node ID search variant
+type NodeIdSearchParams = BaseSearchParams & {
+  search?: undefined;
+  nodeIds: string[];
+  searchSourceUrls?: undefined;
+};
+
+type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
+
+export function useSpacesSearch({
+  disabled = false,
+  includeDataSources = false,
+  nodeIds,
+  owner,
+  search,
+  spaceIds,
+  viewType,
+  pagination,
+  searchSourceUrls = false,
+}: SpacesSearchParams): {
+  isSearchLoading: boolean;
+  isSearchError: boolean;
+  isSearchValidating: boolean;
+  mutate: KeyedMutator<PostWorkspaceSearchResponseBody>;
+  searchResultNodes: DataSourceContentNode[];
+  warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
+} {
+  const params = new URLSearchParams();
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
+
+  const body = {
+    includeDataSources,
+    limit: pagination?.limit ?? DEFAULT_SEARCH_LIMIT,
+    nodeIds,
+    query: search,
+    searchSourceUrls,
+    spaceIds,
+    viewType,
+  };
+
+  // Only perform a query if we have a valid search
+  const url =
+    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
+      ? `/api/w/${owner.sId}/search?${params}`
+      : null;
+
+  const fetchKey = JSON.stringify([url + "?" + params.toString(), body]);
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return null;
+      }
+
+      return fetcherWithBody([url, body, "POST"]);
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      disabled,
+    }
+  );
+
+  return {
+    searchResultNodes: useMemo(() => data?.nodes ?? [], [data]),
+    isSearchLoading: isLoading,
+    isSearchError: error,
+    mutate,
+    isSearchValidating: isValidating,
+    warningCode: data?.warningCode,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }

@@ -1,16 +1,15 @@
-import type {
-  CoreAPIError,
-  CoreAPITable,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { CoreAPI, Err, Ok } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
+import type {
+  CoreAPIError,
+  CoreAPITable,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 type NotFoundError = {
   type: "table_not_found" | "file_not_found";
@@ -135,13 +134,13 @@ export async function upsertTableFromCsv({
       });
     }
 
-    // Table upserts can come from both upsert_table and conversations use-cases (internal CSV apis
-    // and JIT).
-    if (!["upsert_table", "conversation"].includes(file.useCase)) {
+    const VALID_USE_CASES = ["upsert_table", "conversation", "tool_output"];
+    if (!VALID_USE_CASES.includes(file.useCase)) {
       return new Err({
         type: "invalid_request_error",
-        message:
-          "The file provided has not the expected `upsert_table` use-case",
+        message: `The file provided has not the expected use-case. Expected one of: ${VALID_USE_CASES.join(
+          ", "
+        )}`,
       });
     }
   }

@@ -1,10 +1,3 @@
-import type {
-  AgentMessageStatus,
-  ConversationVisibility,
-  MessageVisibility,
-  ParticipantActionType,
-  UserMessageOrigin,
-} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -14,6 +7,13 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  AgentMessageStatus,
+  ConversationVisibility,
+  MessageVisibility,
+  ParticipantActionType,
+  UserMessageOrigin,
+} from "@app/types";
 
 export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare createdAt: CreationOptional<Date>;

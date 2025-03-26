@@ -1,8 +1,5 @@
-import type { ModelId, Result } from "@dust-tt/types";
-import type { ContentNode } from "@dust-tt/types";
-import { Err } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
-import { Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
@@ -15,8 +12,17 @@ import {
   RemoteSchemaModel,
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
-import { getContentNodeTypeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
-import { getContentNodeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
+import {
+  getContentNodeFromInternalId,
+  getContentNodeTypeFromInternalId,
+} from "@connectors/lib/remote_databases/content_nodes";
+import {
+  buildInternalId,
+  parseInternalId,
+} from "@connectors/lib/remote_databases/utils";
+import type { ContentNode } from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the existing content nodes for a parent in the Salesforce account.
@@ -52,7 +58,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -61,6 +67,7 @@ export const fetchAvailableChildrenInSalesforce = async ({
   const parentType = getContentNodeTypeFromInternalId(parentInternalId);
 
   if (parentType === "database") {
+    const { databaseName } = parseInternalId(parentInternalId);
     const syncedSchemas = await RemoteSchemaModel.findAll({
       where: { connectorId, permission: "selected" },
     });
@@ -70,20 +77,24 @@ export const fetchAvailableChildrenInSalesforce = async ({
 
     return new Ok(
       allSchemas.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName: row.name,
+        });
         const permission = syncedSchemasInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
   }
 
   if (parentType === "schema") {
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const syncedTables = await RemoteTableModel.findAll({
       where: { connectorId },
     });
@@ -98,14 +109,18 @@ export const fetchAvailableChildrenInSalesforce = async ({
     }
     return new Ok(
       allTablesRes.value.map((row) => {
-        const internalId = `${parentInternalId}.${row.name}`;
+        const internalId = buildInternalId({
+          databaseName,
+          schemaName,
+          tableName: row.name,
+        });
         const permission = syncedTablesInternalIds.includes(internalId)
           ? "read"
           : "none";
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         );
       })
     );
@@ -138,20 +153,24 @@ export const fetchReadNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SALESFORCE)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.SALESFORCE
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     ),
   ]);
@@ -194,7 +213,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.SALESFORCE
+          INTERNAL_MIME_TYPES.SALESFORCE
         )
       );
       return new Ok(schemaContentNodes);
@@ -223,17 +242,20 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     availableTables.forEach((table) => {
-      const schemaToAdd = `${table.databaseName}.${table.schemaName}`;
-      if (!schemas.find((s) => s.internalId === schemaToAdd)) {
+      const schemaToAddInternalId = buildInternalId({
+        databaseName: table.databaseName,
+        schemaName: table.schemaName,
+      });
+      if (!schemas.find((s) => s.internalId === schemaToAddInternalId)) {
         schemas.push(
           getContentNodeFromInternalId(
-            schemaToAdd,
+            schemaToAddInternalId,
             "none",
-            MIME_TYPES.SALESFORCE
+            INTERNAL_MIME_TYPES.SALESFORCE
           )
         );
       }
@@ -243,7 +265,7 @@ export const fetchSyncedChildren = async ({
 
   // Since we have all tables in the database, we can just return all the tables we have for this schema.
   if (parentType === "schema") {
-    const [databaseName, schemaName] = parentInternalId.split(".");
+    const { databaseName, schemaName } = parseInternalId(parentInternalId);
     const availableTables = await RemoteTableModel.findAll({
       where: {
         connectorId,
@@ -255,7 +277,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SALESFORCE
+        INTERNAL_MIME_TYPES.SALESFORCE
       )
     );
     return new Ok(tables);
@@ -264,64 +286,38 @@ export const fetchSyncedChildren = async ({
   return new Ok([]);
 };
 
-/**
- * Gets the content nodes for a list of internalIds.
- */
-export const getBatchContentNodes = async ({
-  connectorId,
-  internalIds,
-}: {
-  connectorId: ModelId;
-  internalIds: string[];
-}): Promise<Result<ContentNode[], Error>> => {
-  const tables = await RemoteTableModel.findAll({
-    where: { connectorId },
-  });
+const STANDARD_OBJECT_PREFIXES = [
+  "Account",
+  "Asset",
+  "Campaign",
+  "Category",
+  "Case",
+  "Contact",
+  "Content",
+  "Contract",
+  "Conversation",
+  "Email",
+  "Entitlement",
+  "Event",
+  "Knowledge",
+  "Lead",
+  "Note",
+  "Opportunity",
+  "Order",
+  "Partner",
+  "Pricebook",
+  "Problem",
+  "Product",
+  "Quote",
+  "Service",
+  "Task",
+  "Territory",
+  "User",
+  "Voice",
+] as const;
 
-  const nodes: ContentNode[] = [];
-  for (const internalId of internalIds) {
-    if (tables.find((table) => table.internalId.startsWith(internalId))) {
-      const node = getContentNodeFromInternalId(
-        internalId,
-        "read",
-        MIME_TYPES.SALESFORCE
-      );
-      nodes.push(node);
-    }
-  }
-
-  return new Ok(nodes);
-};
-
-/**
- * Retrieves the parent IDs of a content node in hierarchical order.
- * The first ID is the internal ID of the content node itself.
- * Quite straightforward for Salesforce as we can extract the parent IDs from the internalId.
- *
- * Note that this part may cause discrepancies between the response of core and the response of the connector since
- * core will consider parents starting from the root (what was selected by the user).
- * If such logs were to pop up they will be ignored.
- */
-export const getContentNodeParents = ({
-  internalId,
-}: {
-  internalId: string;
-}): Result<string[], Error> => {
-  const [database, schema, table] = internalId.split(".");
-  const internalType = getContentNodeTypeFromInternalId(internalId);
-
-  if (internalType === "database") {
-    return new Ok([internalId]);
-  }
-  if (internalType === "schema") {
-    return new Ok([internalId, `${database}`]);
-  }
-  if (internalType === "table") {
-    return new Ok([internalId, `${database}.${schema}`, `${database}`]);
-  }
-  return new Err(
-    new Error(
-      `Invalid internalId: ${internalId}. Extracted: Database=${database}, Schema=${schema}, Table=${table}.`
-    )
+export const isStandardObjectPrefix = (objectName: string) => {
+  return STANDARD_OBJECT_PREFIXES.some((prefix) =>
+    objectName.startsWith(prefix)
   );
 };

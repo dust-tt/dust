@@ -12,7 +12,8 @@ import {
   Updater,
   useReactTable,
 } from "@tanstack/react-table";
-import React, { ReactNode, useEffect, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { ReactNode, useEffect, useRef, useState } from "react";
 
 import {
   Avatar,
@@ -27,10 +28,12 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Icon,
   IconButton,
   Pagination,
   ScrollArea,
   ScrollBar,
+  Spinner,
   Tooltip,
 } from "@sparkle/components";
 import { useCopyToClipboard } from "@sparkle/hooks";
@@ -43,7 +46,6 @@ import {
 } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
-import { Icon } from "./Icon";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
 const cellHeight = "s-h-12";
@@ -53,6 +55,7 @@ declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
+    sizeRatio?: number;
   }
 }
 
@@ -64,6 +67,16 @@ interface TBaseData {
 
 interface ColumnBreakpoint {
   [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
+}
+
+function shouldRenderColumn(
+  windowWidth: number,
+  breakpoint?: keyof typeof breakpoints
+): boolean {
+  if (!breakpoint) {
+    return true;
+  }
+  return windowWidth >= breakpoints[breakpoint];
 }
 
 interface DataTableProps<TData extends TBaseData> {
@@ -82,16 +95,6 @@ interface DataTableProps<TData extends TBaseData> {
   setSorting?: (sorting: SortingState) => void;
   isServerSideSorting?: boolean;
   disablePaginationNumbers?: boolean;
-}
-
-function shouldRenderColumn(
-  windowWidth: number,
-  breakpoint?: keyof typeof breakpoints
-): boolean {
-  if (!breakpoint) {
-    return true;
-  }
-  return windowWidth >= breakpoints[breakpoint];
 }
 
 export function DataTable<TData extends TBaseData>({
@@ -267,6 +270,262 @@ export function DataTable<TData extends TBaseData>({
   );
 }
 
+export interface ScrollableDataTableProps<TData extends TBaseData>
+  extends DataTableProps<TData> {
+  maxHeight?: string;
+  onLoadMore?: () => void;
+  isLoading?: boolean;
+}
+
+// cellHeight in pixels
+const COLUMN_HEIGHT = 48;
+const MIN_COLUMN_WIDTH = 40;
+
+export function ScrollableDataTable<TData extends TBaseData>({
+  data,
+  totalRowCount,
+  columns,
+  className,
+  widthClassName = "s-w-full",
+  columnsBreakpoints = {},
+  maxHeight = "s-h-100",
+  onLoadMore,
+  isLoading = false,
+}: ScrollableDataTableProps<TData>) {
+  const windowSize = useWindowSize();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [tableWidth, setTableWidth] = useState(0);
+
+  // Monitor table width changes
+  useEffect(() => {
+    if (!tableContainerRef.current) {
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setTableWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(tableContainerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const table = useReactTable({
+    data,
+    columns,
+    rowCount: totalRowCount,
+    getCoreRowModel: getCoreRowModel(),
+    enableColumnResizing: true,
+  });
+
+  useEffect(() => {
+    if (!tableContainerRef.current || !table || !tableWidth) {
+      return;
+    }
+    const columns = table.getAllColumns();
+
+    // Calculate ideal widths and handle minimums
+    const idealSizing = columns.reduce(
+      (acc, column) => {
+        const ratio = column.columnDef.meta?.sizeRatio || 0;
+        const calculated = Math.max(
+          Math.floor((ratio / 100) * tableWidth),
+          MIN_COLUMN_WIDTH
+        );
+        return { ...acc, [column.id]: calculated };
+      },
+      {} as Record<string, number>
+    );
+
+    // Ensure total width matches tableWidth
+    const totalIdealWidth = Object.values(idealSizing).reduce(
+      (a, b) => a + b,
+      0
+    );
+    const widthDifference = tableWidth - totalIdealWidth;
+
+    // adjust the largest column with leftover size
+    if (widthDifference !== 0) {
+      const adjustColumnId = Object.entries(idealSizing).sort(
+        (a, b) => b[1] - a[1]
+      )[0][0];
+
+      idealSizing[adjustColumnId] += widthDifference;
+    }
+    table.setColumnSizing(idealSizing);
+  }, [table, tableWidth]);
+
+  // Get the current column sizing from the table for rendering
+  const columnSizing = table.getState().columnSizing;
+
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => COLUMN_HEIGHT,
+  });
+
+  // Intersection observer for infinite loading
+  useEffect(() => {
+    if (!onLoadMore || !loadMoreRef.current) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // retrieving the sentinel div
+        if (entries[0].isIntersecting && !isLoading) {
+          onLoadMore();
+        }
+      },
+      {
+        root: tableContainerRef.current,
+        rootMargin: "200% 0% 0% 0%",
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => {
+      if (loadMoreRef.current) {
+        observer.unobserve(loadMoreRef.current);
+      }
+      observer.disconnect();
+    };
+  }, [onLoadMore, isLoading]);
+
+  return (
+    <div className={cn("s-flex s-flex-col s-gap-2", className, widthClassName)}>
+      <div
+        className={cn(
+          "s-relative s-overflow-y-auto s-overflow-x-hidden",
+          maxHeight
+        )}
+        ref={tableContainerRef}
+      >
+        <div className="s-relative">
+          <DataTable.Root className="s-w-full s-table-fixed">
+            <DataTable.Header className="s-sticky s-top-0 s-z-20 s-bg-white s-shadow-sm dark:s-bg-background-night">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <DataTable.Row
+                  key={headerGroup.id}
+                  widthClassName={widthClassName}
+                >
+                  {headerGroup.headers.map((header) => {
+                    const breakpoint = columnsBreakpoints[header.id];
+                    if (
+                      !windowSize.width ||
+                      !shouldRenderColumn(windowSize.width, breakpoint)
+                    ) {
+                      return null;
+                    }
+
+                    return (
+                      <DataTable.Head
+                        column={header.column}
+                        key={header.id}
+                        className="s-max-w-0"
+                        style={{
+                          width: columnSizing[header.id],
+                          minWidth: columnSizing[header.id],
+                        }}
+                      >
+                        <div className="s-flex s-w-full s-items-center s-space-x-1">
+                          <span className="s-truncate">
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </span>
+                        </div>
+                      </DataTable.Head>
+                    );
+                  })}
+                </DataTable.Row>
+              ))}
+            </DataTable.Header>
+            <DataTable.Body
+              className="s-relative s-w-full"
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <DataTable.Row
+                    key={row.id}
+                    id={row.id}
+                    widthClassName={widthClassName}
+                    onClick={row.original.onClick}
+                    className="s-absolute s-w-full"
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const breakpoint = columnsBreakpoints[cell.column.id];
+                      if (
+                        !windowSize.width ||
+                        !shouldRenderColumn(windowSize.width, breakpoint)
+                      ) {
+                        return null;
+                      }
+
+                      return (
+                        <DataTable.Cell
+                          column={cell.column}
+                          key={cell.id}
+                          id={cell.id}
+                          className="s-max-w-0"
+                          style={{
+                            width: columnSizing[cell.column.id],
+                            minWidth: columnSizing[cell.column.id],
+                          }}
+                        >
+                          <div className="s-flex s-items-center s-space-x-1">
+                            <span className="s-truncate">
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              )}
+                            </span>
+                          </div>
+                        </DataTable.Cell>
+                      );
+                    })}
+                  </DataTable.Row>
+                );
+              })}
+            </DataTable.Body>
+          </DataTable.Root>
+          {/*sentinel div used for the intersection observer*/}
+          <div
+            ref={loadMoreRef}
+            className="s-absolute s-bottom-0 s-h-1 s-w-full"
+          />
+        </div>
+
+        {isLoading && (
+          <div className="s-sticky s-bottom-0 s-left-0 s-right-0 s-flex s-justify-center s-bg-white/80 s-py-2 s-backdrop-blur-sm dark:s-bg-background-night/80">
+            <div className="s-flex s-items-center s-gap-2 s-text-sm s-text-muted-foreground">
+              <Spinner size="xs" />
+              <span>Loading more data...</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
   containerClassName?: string;
@@ -325,7 +584,7 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-medium s-capitalize",
+        "s-py-2 s-pl-2 s-pr-3 s-text-left s-text-xs s-font-semibold s-capitalize",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
@@ -369,7 +628,7 @@ DataTable.Row = function Row({
   return (
     <tr
       className={cn(
-        "s-group/dt s-border-b s-transition-colors s-duration-300 s-ease-out",
+        "s-group/dt s-justify-center s-border-b s-transition-colors s-duration-300 s-ease-out",
         "s-border-separator dark:s-border-separator-night",
         onClick
           ? "s-cursor-pointer hover:s-bg-muted dark:hover:s-bg-muted-night"

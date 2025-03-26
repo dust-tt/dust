@@ -4,8 +4,8 @@ import type {
   DustAPI,
   UserMessageType,
 } from "@dust-tt/client";
-import type { LightAgentConfigurationType, Result } from "@dust-tt/types";
-import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/types";
+import type { LightAgentConfigurationType, Result } from "@dust-tt/client";
+import { ACTION_RUNNING_LABELS, assertNever, Err, Ok } from "@dust-tt/client";
 import type { ChatPostMessageResponse, WebClient } from "@slack/web-api";
 import slackifyMarkdown from "slackify-markdown";
 
@@ -18,9 +18,14 @@ import {
 import { annotateCitations } from "@connectors/connectors/slack/chat/citations";
 import { makeConversationUrl } from "@connectors/connectors/slack/chat/utils";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
+import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import type { SlackChatBotMessage } from "@connectors/lib/models/slack";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+
+// Copied from front/hooks/useEventSource.ts
+const RECONNECT_DELAY = 5000; // 5 seconds.
+const MAX_RECONNECT_ATTEMPTS = 10;
 
 interface StreamConversationToSlackParams {
   assistantName: string;
@@ -45,17 +50,72 @@ const initialBackoffTime = 1_000;
 
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
-  {
+  conversationData: StreamConversationToSlackParams
+): Promise<Result<undefined, Error>> {
+  const { assistantName, connector, conversation, agentConfigurations } =
+    conversationData;
+
+  // Immediately post the conversation URL once available.
+  await postSlackMessageUpdate(
+    {
+      messageUpdate: {
+        isComplete: false,
+        isThinking: true,
+        assistantName,
+        agentConfigurations,
+      },
+      ...conversationData,
+    },
+    { adhereToRateLimit: false }
+  );
+
+  let streamRes: Result<undefined, Error>;
+  let reconnectAttempts = 0;
+  do {
+    streamRes = await streamAgentAnswerToSlack(dustAPI, conversationData);
+
+    if (
+      streamRes.isErr() &&
+      streamRes.error instanceof SlackAnswerRetryableError
+    ) {
+      logger.warn(
+        {
+          connectorId: connector.id,
+          conversationId: conversation.sId,
+          error: streamRes.error,
+        },
+        "Retryable error in Slack answer stream."
+      );
+      await setTimeoutAsync(RECONNECT_DELAY);
+      reconnectAttempts++;
+    } else {
+      return streamRes;
+    }
+  } while (reconnectAttempts < MAX_RECONNECT_ATTEMPTS);
+
+  return streamRes;
+}
+
+class SlackAnswerRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+async function streamAgentAnswerToSlack(
+  dustAPI: DustAPI,
+  conversationData: StreamConversationToSlackParams
+) {
+  const {
     assistantName,
-    connector,
     conversation,
     mainMessage,
-    slack,
     userMessage,
     slackChatBotMessage,
     agentConfigurations,
-  }: StreamConversationToSlackParams
-): Promise<Result<undefined, Error>> {
+    slack,
+  } = conversationData;
+
   const {
     slackChannelId,
     slackClient,
@@ -63,62 +123,6 @@ export async function streamConversationToSlack(
     slackUserInfo,
     slackUserId,
   } = slack;
-
-  let lastSentDate = new Date();
-  let backoffTime = initialBackoffTime;
-
-  const postSlackMessageUpdate = async (
-    messageUpdate: SlackMessageUpdate,
-    { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
-      adhereToRateLimit: true,
-    }
-  ) => {
-    if (
-      lastSentDate.getTime() + backoffTime > new Date().getTime() &&
-      adhereToRateLimit
-    ) {
-      return;
-    }
-
-    lastSentDate = new Date();
-    if (adhereToRateLimit) {
-      // Linear increase of backoff time.
-      backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
-    }
-
-    const response = await slackClient.chat.update({
-      ...makeMessageUpdateBlocksAndText(
-        conversationUrl,
-        connector.workspaceId,
-        messageUpdate
-      ),
-      channel: slackChannelId,
-      thread_ts: slackMessageTs,
-      ts: mainMessage.ts as string,
-    });
-
-    if (response.error) {
-      logger.error(
-        {
-          connectorId: connector.id,
-          conversationId: conversation.sId,
-          err: response.error,
-        },
-        "Failed to update Slack message."
-      );
-    }
-  };
-
-  const conversationUrl = makeConversationUrl(
-    connector.workspaceId,
-    conversation.sId
-  );
-
-  // Immediately post the conversation URL once available.
-  await postSlackMessageUpdate(
-    { isComplete: false, isThinking: true, assistantName, agentConfigurations },
-    { adhereToRateLimit: false }
-  );
 
   const streamRes = await dustAPI.streamAgentAnswerEvents({
     conversation,
@@ -133,29 +137,32 @@ export async function streamConversationToSlack(
   const actions: AgentActionPublicType[] = [];
   for await (const event of streamRes.value.eventStream) {
     switch (event.type) {
-      case "retrieval_params":
-      case "dust_app_run_params":
-      case "dust_app_run_block":
-      case "tables_query_started":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "process_params":
-      case "websearch_params":
       case "browse_params":
       case "conversation_include_file_params":
-      case "github_get_pull_request_params":
-      case "github_create_issue_params":
+      case "dust_app_run_block":
+      case "dust_app_run_params":
+      case "process_params":
       case "reasoning_started":
       case "reasoning_thinking":
       case "reasoning_tokens":
+      case "retrieval_params":
+      case "search_labels_params":
+      case "tables_query_model_output":
+      case "tables_query_output":
+      case "tables_query_started":
+      case "websearch_params":
+      case "tool_params":
         await postSlackMessageUpdate(
           {
-            isComplete: false,
-            isThinking: true,
-            assistantName,
-            agentConfigurations,
-            text: answer,
-            thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            messageUpdate: {
+              isComplete: false,
+              isThinking: true,
+              assistantName,
+              agentConfigurations,
+              text: answer,
+              thinkingAction: ACTION_RUNNING_LABELS[event.action.type],
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
@@ -177,11 +184,11 @@ export async function streamConversationToSlack(
         );
       }
       case "error": {
-        return new Err(
-          new Error(
-            `Error: code: ${event.content.code} message: ${event.content.message}`
-          )
-        );
+        const message = `Error: code: ${event.content.code} message: ${event.content.message}`;
+        if (event.content.code === "stream_error") {
+          return new Err(new SlackAnswerRetryableError(message));
+        }
+        return new Err(new Error(message));
       }
 
       case "agent_action_success": {
@@ -212,11 +219,14 @@ export async function streamConversationToSlack(
           break;
         }
         await postSlackMessageUpdate({
-          isComplete: false,
-          text: slackContent,
-          assistantName,
-          agentConfigurations,
-          footnotes,
+          messageUpdate: {
+            isComplete: false,
+            text: slackContent,
+            assistantName,
+            agentConfigurations,
+            footnotes,
+          },
+          ...conversationData,
         });
         break;
       }
@@ -234,11 +244,14 @@ export async function streamConversationToSlack(
 
         await postSlackMessageUpdate(
           {
-            isComplete: true,
-            text: slackContent,
-            assistantName,
-            agentConfigurations,
-            footnotes,
+            messageUpdate: {
+              isComplete: true,
+              text: slackContent,
+              assistantName,
+              agentConfigurations,
+              footnotes,
+            },
+            ...conversationData,
           },
           { adhereToRateLimit: false }
         );
@@ -272,7 +285,78 @@ export async function streamConversationToSlack(
     }
   }
 
-  return new Err(new Error("Failed to get the final answer from Dust"));
+  return new Err(
+    new SlackAnswerRetryableError("Failed to get the final answer from Dust")
+  );
+}
+
+async function postSlackMessageUpdate(
+  {
+    messageUpdate,
+    slack,
+    connector,
+    conversation,
+    mainMessage,
+  }: {
+    messageUpdate: SlackMessageUpdate;
+    slack: {
+      slackChannelId: string;
+      slackClient: WebClient;
+      slackMessageTs: string;
+      slackUserInfo: SlackUserInfo;
+      slackUserId: string | null;
+    };
+    connector: ConnectorResource;
+    conversation: ConversationPublicType;
+    mainMessage: ChatPostMessageResponse;
+  },
+  { adhereToRateLimit }: { adhereToRateLimit: boolean } = {
+    adhereToRateLimit: true,
+  }
+) {
+  let lastSentDate = new Date();
+  let backoffTime = initialBackoffTime;
+
+  const { slackChannelId, slackMessageTs, slackClient } = slack;
+  const conversationUrl = makeConversationUrl(
+    connector.workspaceId,
+    conversation.sId
+  );
+
+  if (
+    lastSentDate.getTime() + backoffTime > new Date().getTime() &&
+    adhereToRateLimit
+  ) {
+    return;
+  }
+
+  lastSentDate = new Date();
+  if (adhereToRateLimit) {
+    // Linear increase of backoff time.
+    backoffTime = Math.min(backoffTime + initialBackoffTime, maxBackoffTime);
+  }
+
+  const response = await slackClient.chat.update({
+    ...makeMessageUpdateBlocksAndText(
+      conversationUrl,
+      connector.workspaceId,
+      messageUpdate
+    ),
+    channel: slackChannelId,
+    thread_ts: slackMessageTs,
+    ts: mainMessage.ts as string,
+  });
+
+  if (response.error) {
+    logger.error(
+      {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+        err: response.error,
+      },
+      "Failed to update Slack message."
+    );
+  }
 }
 
 /**

@@ -1,6 +1,5 @@
-import type { WorkspaceType } from "@dust-tt/types";
-
 import type { GetProvidersCheckResponseBody } from "@app/pages/api/w/[wId]/providers/[pId]/check";
+import type { WorkspaceType } from "@app/types";
 
 import type { useProviders } from "./swr/apps";
 
@@ -117,7 +116,6 @@ export const serviceProviders: ServiceProvider[] = [
     built: true,
     enabled: false,
   },
-  { providerId: "gmail", name: "Gmail", built: false, enabled: false },
 ];
 
 export async function checkProvider(

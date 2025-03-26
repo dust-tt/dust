@@ -4,10 +4,10 @@ import {
   SliderToggle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import type { APIError, DataSourceType, WorkspaceType } from "@dust-tt/types";
 import { useState } from "react";
 
 import { useConnectorConfig } from "@app/lib/swr/connectors";
+import type { APIError, DataSourceType, WorkspaceType } from "@app/types";
 
 export function GithubCodeEnableView({
   owner,

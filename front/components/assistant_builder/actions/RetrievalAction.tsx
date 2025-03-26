@@ -1,5 +1,4 @@
 import { Checkbox } from "@dust-tt/sparkle";
-import type { SpaceType, WorkspaceType } from "@dust-tt/types";
 import { useEffect, useState } from "react";
 
 import { TimeUnitDropdown } from "@app/components/assistant_builder/actions/TimeDropdown";
@@ -12,6 +11,7 @@ import type {
   AssistantBuilderTimeFrame,
 } from "@app/components/assistant_builder/types";
 import { classNames } from "@app/lib/utils";
+import type { SpaceType, WorkspaceType } from "@app/types";
 
 export function hasErrorActionRetrievalSearch(
   action: AssistantBuilderActionConfiguration
@@ -214,7 +214,7 @@ export function ActionRetrievalExhaustive({
         <input
           type="text"
           className={classNames(
-            "dark:border-gray-300-night h-8 w-16 rounded-md border-gray-300 text-center text-sm",
+            "h-8 w-16 rounded-md border-gray-300 text-center text-sm dark:border-gray-300-night",
             !timeFrameError
               ? "focus:border-action-500 focus:ring-action-500"
               : "border-red-500 focus:border-red-500 focus:ring-red-500",

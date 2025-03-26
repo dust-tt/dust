@@ -5,6 +5,7 @@ use bb8_postgres::PostgresConnectionManager;
 use std::collections::HashMap;
 use tokio_postgres::NoTls;
 
+use crate::data_sources::node::NodeESDocument;
 use crate::{
     blocks::block::BlockType,
     cached_request::CachedRequest,
@@ -73,6 +74,7 @@ pub struct TableUpsertParams {
     pub title: String,
     pub mime_type: String,
     pub provider_visibility: Option<ProviderVisibility>,
+    pub check_name_uniqueness: Option<bool>,
 }
 
 pub struct FolderUpsertParams {
@@ -361,7 +363,10 @@ pub trait Store {
         parents: &Vec<String>,
     ) -> Result<()>;
 
-    async fn count_nodes_children(&self, nodes: &Vec<Node>) -> Result<HashMap<String, u64>>;
+    async fn count_nodes_children(
+        &self,
+        nodes: &Vec<NodeESDocument>,
+    ) -> Result<HashMap<String, u64>>;
 
     // LLM Cache
     async fn llm_cache_get(
@@ -601,6 +606,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
        timestamp                    BIGINT NOT NULL,
        node_id                      TEXT NOT NULL,
        title                        TEXT NOT NULL,
+       text_size                    BIGINT,
        mime_type                    TEXT NOT NULL,
        provider_visibility          TEXT,
        parents                      TEXT[] NOT NULL,
@@ -621,7 +627,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 31] = [
+pub const SQL_INDEXES: [&'static str; 34] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -686,6 +692,12 @@ pub const SQL_INDEXES: [&'static str; 31] = [
         idx_data_sources_nodes_table ON data_sources_nodes(\"table\");",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_folder ON data_sources_nodes(folder);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_document ON data_sources_nodes(data_source, document);",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_table ON data_sources_nodes(data_source, \"table\");",
+    "CREATE INDEX IF NOT EXISTS
+        idx_data_sources_nodes_data_source_folder ON data_sources_nodes(data_source, folder);",
     "CREATE INDEX IF NOT EXISTS
         idx_data_sources_nodes_parents_second ON data_sources_nodes (data_source, (parents[2]));",
     "CREATE INDEX IF NOT EXISTS

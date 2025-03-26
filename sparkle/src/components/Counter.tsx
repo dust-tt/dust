@@ -47,12 +47,40 @@ const counterVariants = cva(
       {
         isInButton: false,
         variant: "outline",
-        className: "s-bg-slate-200 s-text-slate-900",
+        className: "s-bg-primary-200 s-text-primary-900",
       },
       {
         isInButton: false,
         variant: ["ghost", "ghost-secondary"],
         className: "s-text-primary dark:s-text-primary-night",
+      },
+      {
+        isInButton: true,
+        variant: "primary",
+        className:
+          "s-bg-primary-600 dark:s-bg-primary-400 s-text-white dark:s-text-primary-900 s-font-semibold",
+      },
+      {
+        isInButton: true,
+        variant: "highlight",
+        className: "s-bg-highlight-400 s-text-white s-font-semibold",
+      },
+      {
+        isInButton: true,
+        variant: "warning",
+        className: "s-bg-warning-400 s-text-white s-font-semibold",
+      },
+      {
+        isInButton: true,
+        variant: "outline",
+        className:
+          "s-bg-primary-200 dark:s-bg-primary-700 s-text-primary-700 dark:s-text-primary-300 s-font-semibold",
+      },
+      {
+        isInButton: true,
+        variant: ["ghost", "ghost-secondary"],
+        className:
+          "s-bg-primary-200 dark:s-bg-primary-700 s-text-primary-700 dark:s-text-primary-300 s-font-semibold",
       },
     ],
     defaultVariants: {

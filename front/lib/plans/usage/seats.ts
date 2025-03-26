@@ -1,7 +1,6 @@
-import { cacheWithRedis } from "@dust-tt/types";
-
 import { Workspace } from "@app/lib/models/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { cacheWithRedis } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function countActiveSeatsInWorkspace(

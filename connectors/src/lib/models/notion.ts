@@ -1,9 +1,9 @@
-import type { NotionBlockType, PageObjectProperties } from "@dust-tt/types";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { sequelizeConnection } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
+import type { NotionBlockType, PageObjectProperties } from "@connectors/types";
 
 export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorState> {
   declare createdAt: CreationOptional<Date>;
@@ -12,7 +12,9 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare fullResyncStartTime?: CreationOptional<Date>;
 
   declare lastGarbageCollectionFinishTime?: Date;
-  declare parentsLastUpdatedAt?: Date;
+  declare parentsLastUpdatedAt?: Date | null;
+
+  declare notionWorkspaceId: string;
 }
 NotionConnectorState.init(
   {
@@ -37,6 +39,10 @@ NotionConnectorState.init(
     parentsLastUpdatedAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    notionWorkspaceId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {

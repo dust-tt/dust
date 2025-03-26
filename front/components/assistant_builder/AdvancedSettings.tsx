@@ -9,19 +9,6 @@ import {
   ScrollArea,
   ScrollBar,
 } from "@dust-tt/sparkle";
-import type {
-  AssistantCreativityLevel,
-  ModelConfigurationType,
-  ModelIdType,
-  SupportedModel,
-} from "@dust-tt/types";
-import {
-  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
-  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
-  GPT_4O_MODEL_ID,
-  MISTRAL_LARGE_MODEL_ID,
-} from "@dust-tt/types";
 import React from "react";
 
 import type { AssistantBuilderState } from "@app/components/assistant_builder/types";
@@ -29,10 +16,23 @@ import { getModelProviderLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import { classNames } from "@app/lib/utils";
+import type {
+  AssistantCreativityLevel,
+  ModelConfigurationType,
+  ModelIdType,
+  SupportedModel,
+} from "@app/types";
+import {
+  ASSISTANT_CREATIVITY_LEVEL_DISPLAY_NAMES,
+  ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
+  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
+  GPT_4O_MODEL_ID,
+  MISTRAL_LARGE_MODEL_ID,
+} from "@app/types";
 
 const BEST_PERFORMING_MODELS_ID: ModelIdType[] = [
   GPT_4O_MODEL_ID,
-  CLAUDE_3_5_SONNET_20241022_MODEL_ID,
+  CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
 ] as const;
 

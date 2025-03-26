@@ -5,16 +5,11 @@ import {
   IconButton,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  ContentNodesViewType,
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
+import { useRouter } from "next/router";
 import { useContext, useState } from "react";
 
 import { AssistantBuilderContext } from "@app/components/assistant_builder/AssistantBuilderContext";
-import { DataSourceTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceTagsFilterDropdown";
+import { DataSourceViewTagsFilterDropdown } from "@app/components/assistant_builder/tags/DataSourceViewTagsFilterDropdown";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
@@ -27,6 +22,14 @@ import {
   getDisplayNameForDataSource,
 } from "@app/lib/data_sources";
 import { classNames } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  ContentNodesViewType,
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { DocumentViewRawContentKey } from "@app/types";
 
 interface DataSourceSelectionSectionProps {
   dataSourceConfigurations: DataSourceViewSelectionConfigurations;
@@ -43,11 +46,9 @@ export default function DataSourceSelectionSection({
   owner,
   viewType,
 }: DataSourceSelectionSectionProps) {
+  const router = useRouter();
   const { isDark } = useTheme();
   const { dataSourceViews } = useContext(AssistantBuilderContext);
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
@@ -58,9 +59,6 @@ export default function DataSourceSelectionSection({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
 
       <div className="overflow-hidden pt-4">
@@ -111,7 +109,7 @@ export default function DataSourceSelectionSection({
                   className="whitespace-nowrap"
                   actions={
                     onSave && (
-                      <DataSourceTagsFilterDropdown
+                      <DataSourceViewTagsFilterDropdown
                         owner={owner}
                         dataSourceConfigurations={dataSourceConfigurations}
                         currentDataSourceConfiguration={dsConfig}
@@ -128,7 +126,12 @@ export default function DataSourceSelectionSection({
                       parentId={null}
                       onDocumentViewClick={(documentId: string) => {
                         setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                        setDocumentToDisplay(documentId);
+                        setQueryParam(
+                          router,
+                          DocumentViewRawContentKey,
+                          "true"
+                        );
+                        setQueryParam(router, "documentId", documentId);
                       }}
                       viewType={viewType}
                     />
@@ -167,7 +170,16 @@ export default function DataSourceSelectionSection({
                                   setDataSourceViewToDisplay(
                                     dsConfig.dataSourceView
                                   );
-                                  setDocumentToDisplay(node.internalId);
+                                  setQueryParam(
+                                    router,
+                                    DocumentViewRawContentKey,
+                                    "true"
+                                  );
+                                  setQueryParam(
+                                    router,
+                                    "documentId",
+                                    node.internalId
+                                  );
                                 }
                               }}
                               className={classNames(
@@ -187,7 +199,12 @@ export default function DataSourceSelectionSection({
                           parentId={node.internalId}
                           onDocumentViewClick={(documentId: string) => {
                             setDataSourceViewToDisplay(dsConfig.dataSourceView);
-                            setDocumentToDisplay(documentId);
+                            setQueryParam(
+                              router,
+                              DocumentViewRawContentKey,
+                              "true"
+                            );
+                            setQueryParam(router, "documentId", documentId);
                           }}
                           viewType={viewType}
                         />

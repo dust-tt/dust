@@ -1,22 +1,23 @@
-import type {
-  ContentNodesViewType,
-  DataSourceViewType,
-  LightWorkspaceType,
-} from "@dust-tt/types";
-import type { PaginationState } from "@tanstack/react-table";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
+import type { CursorPaginationParams } from "@app/lib/api/pagination";
 import {
-  appendPaginationParams,
   fetcher,
   fetcherMultiple,
   fetcherWithBody,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/data_source_views";
+import type { PostTagSearchBody } from "@app/pages/api/w/[wId]/data_source_views/tags/search";
 import type { GetDataSourceViewContentNodes } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/content-nodes";
 import type { GetDataSourceConfigurationResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/configuration";
+import type {
+  ContentNodesViewType,
+  DataSourceViewType,
+  LightWorkspaceType,
+} from "@app/types";
+import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 type DataSourceViewsAndInternalIds = {
   dataSourceView: DataSourceViewType;
@@ -113,7 +114,7 @@ export function useDataSourceViewContentNodes({
   dataSourceView?: DataSourceViewType;
   internalIds?: string[];
   parentId?: string;
-  pagination?: PaginationState;
+  pagination?: CursorPaginationParams;
   viewType?: ContentNodesViewType;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
@@ -125,9 +126,16 @@ export function useDataSourceViewContentNodes({
   mutateRegardlessOfQueryParams: KeyedMutator<GetDataSourceViewContentNodes>;
   nodes: GetDataSourceViewContentNodes["nodes"];
   totalNodesCount: number;
+  totalNodesCountIsAccurate: boolean;
+  nextPageCursor: string | null;
 } {
   const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
+  if (pagination?.cursor) {
+    params.append("cursor", pagination.cursor);
+  }
+  if (pagination?.limit) {
+    params.append("limit", pagination.limit.toString());
+  }
 
   const url = dataSourceView
     ? `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_source_views/${dataSourceView.sId}/content-nodes?${params}`
@@ -169,6 +177,8 @@ export function useDataSourceViewContentNodes({
     mutateRegardlessOfQueryParams,
     nodes: useMemo(() => (data ? data.nodes : []), [data]),
     totalNodesCount: data ? data.total : 0,
+    totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
+    nextPageCursor: data?.nextPageCursor || null,
   };
 }
 
@@ -195,5 +205,54 @@ export function useDataSourceViewConnectorConfiguration({
     mutateConfiguration: mutate,
     isConfigurationLoading: !disabled && !error && !data,
     isConfigurationError: error,
+  };
+}
+
+export function useDataSourceViewSearchTags({
+  dataSourceViews,
+  disabled = false,
+  owner,
+  query,
+}: {
+  dataSourceViews: DataSourceViewType[];
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+  query: string;
+}) {
+  const url =
+    query.length >= MIN_SEARCH_QUERY_SIZE
+      ? `/api/w/${owner.sId}/data_source_views/tags/search`
+      : null;
+
+  const body: PostTagSearchBody = {
+    query,
+    queryType: "match",
+    dataSourceViewIds: dataSourceViews.map((dsv) => dsv.sId),
+  };
+
+  const fetchKey = JSON.stringify([url, body]);
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    fetchKey,
+    async () => {
+      if (!url) {
+        return null;
+      }
+
+      return fetcherWithBody([url, body, "POST"]);
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      disabled,
+    }
+  );
+
+  return {
+    tags: useMemo(() => data?.tags || [], [data]),
+    isLoading,
+    isError: !!error,
+    mutate,
+    isValidating,
   };
 }

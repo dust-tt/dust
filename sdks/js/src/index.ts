@@ -37,6 +37,7 @@ import type {
   PublicPostConversationsRequestBody,
   PublicPostMessageFeedbackRequestBody,
   PublicPostMessagesRequestBody,
+  SearchRequestBodyType,
   UserMessageErrorEvent,
 } from "./types";
 import {
@@ -55,6 +56,7 @@ import {
   GetConversationsResponseSchema,
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
+  GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   MeResponseSchema,
@@ -62,6 +64,7 @@ import {
   PostContentFragmentResponseSchema,
   PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
+  PostWorkspaceSearchResponseBodySchema,
   Result,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
@@ -69,8 +72,8 @@ import {
   UpsertFolderResponseSchema,
 } from "./types";
 
+export * from "./internal_mime_types";
 export * from "./types";
-
 interface DustResponse {
   status: number;
   ok: boolean;
@@ -718,14 +721,15 @@ export class DustAPI {
                 pendingEvents.push(data as AgentMessageSuccessEvent);
                 break;
               }
-              case "retrieval_params":
-              case "dust_app_run_params":
-              case "dust_app_run_block":
-              case "tables_query_params":
-              case "tables_query_output":
-              case "process_params":
-              case "websearch_params":
               case "browse_params":
+              case "dust_app_run_block":
+              case "dust_app_run_params":
+              case "process_params":
+              case "retrieval_params":
+              case "search_labels_params":
+              case "tables_query_output":
+              case "tables_query_params":
+              case "websearch_params":
                 pendingEvents.push(data as AgentActionSpecificEvent);
                 break;
             }
@@ -1135,6 +1139,37 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.apps);
+  }
+
+  async getSpaces() {
+    const res = await this.request({
+      method: "GET",
+      path: "spaces",
+    });
+
+    const r = await this._resultFromResponse(GetSpacesResponseSchema, res);
+
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.spaces);
+  }
+
+  async searchNodes(searchParams: SearchRequestBodyType) {
+    const res = await this.request({
+      method: "POST",
+      path: "search",
+      body: searchParams,
+    });
+
+    const r = await this._resultFromResponse(
+      PostWorkspaceSearchResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.nodes);
   }
 
   private async _fetchWithError(

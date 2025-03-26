@@ -1,25 +1,20 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
   RetrievePermissionsErrorCode,
   UpdateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { ConnectorManagerError } from "@connectors/connectors/interface";
-import { BaseConnectorManager } from "@connectors/connectors/interface";
+import {
+  BaseConnectorManager,
+  ConnectorManagerError,
+} from "@connectors/connectors/interface";
 import { getSalesforceCredentials } from "@connectors/connectors/salesforce/lib/oauth";
 import {
   fetchAvailableChildrenInSalesforce,
   fetchReadNodes,
   fetchSyncedChildren,
-  getBatchContentNodes,
-  getContentNodeParents,
 } from "@connectors/connectors/salesforce/lib/permissions";
 import {
   getSalesforceConnection,
@@ -37,13 +32,11 @@ import {
   RemoteTableModel,
 } from "@connectors/lib/models/remote_databases";
 import { SalesforceConfigurationModel } from "@connectors/lib/models/salesforce";
-import {
-  getConnector,
-  saveNodesFromPermissions,
-} from "@connectors/lib/remote_databases/utils";
+import { saveNodesFromPermissions } from "@connectors/lib/remote_databases/utils";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "salesforce",
@@ -67,6 +60,11 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       },
       {}
     );
+    const launchResult = await launchSalesforceSyncWorkflow(connector.id);
+    if (launchResult.isErr()) {
+      await connector.delete();
+      throw launchResult.error;
+    }
 
     return new Ok(connector.id.toString());
   }
@@ -213,12 +211,12 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async sync({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     fromTs,
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    logger.info({ fromTs }, "To be implemented");
-    throw new Error("Method sync not implemented.");
+    return launchSalesforceSyncWorkflow(this.connectorId);
   }
 
   /**
@@ -290,6 +288,15 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     return fetchRes;
   }
 
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
+  }
+
   async setPermissions({
     permissions,
   }: {
@@ -315,48 +322,6 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorRes = await getConnector({
-      connectorId: this.connectorId,
-      logger,
-    });
-    if (connectorRes.isErr()) {
-      return connectorRes;
-    }
-    const connector = connectorRes.value.connector;
-
-    const nodesRes = await getBatchContentNodes({
-      connectorId: connector.id,
-      internalIds,
-    });
-    if (nodesRes.isErr()) {
-      return nodesRes;
-    }
-    return new Ok(nodesRes.value);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const parentsRes = getContentNodeParents({ internalId });
-    if (parentsRes.isErr()) {
-      return parentsRes;
-    }
-    return new Ok(parentsRes.value);
   }
 
   async pause(): Promise<Result<undefined, Error>> {

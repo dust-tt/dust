@@ -19,7 +19,7 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "0e9889c787",
       appHash:
-        "4e896f08ef6c2c69c97610c861cd444e3d34c839eab44f9b4fd7dd1d166c40a2",
+        "4ca72349dd72e1140d47efe96eda954e0e7b2cea2c36088b6da0ca083b23c3e2",
     },
     config: {
       MODEL: {
@@ -131,13 +131,13 @@ export const BaseDustProdActionRegistry = {
     app: {
       appId: "b4f205e453",
       appHash:
-        "4c422305b747430c646454c11127a01855cf43b74b977ed76b417f783619db51",
+        "d6c762512b6d716f7e13151cf2c245bf51e1923f54859303ca7b144d4ac6dc3f",
     },
     config: {
       MODEL: {
         // `provider_id` and `model_id` must be set by caller.
         use_cache: false,
-        function_call: "execute_sql_query",
+        function_call: "execute_query",
       },
     },
   },

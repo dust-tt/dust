@@ -12,16 +12,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  RunConfig,
-  RunType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
+
+import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -140,7 +136,7 @@ export function ViewAppAPIModal({
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:

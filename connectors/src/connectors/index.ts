@@ -1,15 +1,10 @@
-import type {
-  ConnectorProvider,
-  ModelId,
-  Result,
-  SlackConfigurationType,
-  WebCrawlerConfiguration,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
+import type { ConnectorProvider, Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
 import { GithubConnectorManager } from "@connectors/connectors/github";
+import { GongConnectorManager } from "@connectors/connectors/gong";
 import { GoogleDriveConnectorManager } from "@connectors/connectors/google_drive";
 import { IntercomConnectorManager } from "@connectors/connectors/intercom";
 import type {
@@ -23,7 +18,12 @@ import { SlackConnectorManager } from "@connectors/connectors/slack";
 import { SnowflakeConnectorManager } from "@connectors/connectors/snowflake";
 import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type {
+  SlackConfigurationType,
+  WebCrawlerConfiguration,
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 type ConnectorManager =
   | NotionConnectorManager
@@ -66,9 +66,10 @@ export function getConnectorManager({
       return new ZendeskConnectorManager(connectorId);
     case "bigquery":
       return new BigQueryConnectorManager(connectorId);
-    // TODO(salesforce): implement this
     case "salesforce":
       return new SalesforceConnectorManager(connectorId);
+    case "gong":
+      return new GongConnectorManager(connectorId);
     default:
       assertNever(connectorProvider);
   }
@@ -127,9 +128,10 @@ export function createConnector({
       return ZendeskConnectorManager.create(params);
     case "bigquery":
       return BigQueryConnectorManager.create(params);
-    // TODO(salesforce): implement this
     case "salesforce":
       return SalesforceConnectorManager.create(params);
+    case "gong":
+      return GongConnectorManager.create(params);
     default:
       assertNever(connectorProvider);
   }

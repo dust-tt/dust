@@ -1,5 +1,3 @@
-import { concurrentExecutor, CoreAPI } from "@dust-tt/types";
-
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
@@ -12,6 +10,7 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import { concurrentExecutor, CoreAPI } from "@app/types";
 
 export async function processDataSourceTables({
   destIds,
@@ -97,6 +96,11 @@ export async function processDataSourceTables({
           },
           "[Core] Failed to upsert table"
         );
+        return upsertRes;
+      }
+
+      // Return early if there are no rows to upsert.
+      if (d.rows.length === 0) {
         return upsertRes;
       }
 

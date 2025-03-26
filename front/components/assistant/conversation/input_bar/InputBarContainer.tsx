@@ -6,15 +6,15 @@ import {
   FullscreenExitIcon,
   FullscreenIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AgentMention,
-  LightAgentConfigurationType,
-  UserMessageType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { getSupportedFileExtensions } from "@dust-tt/types";
 import { EditorContent } from "@tiptap/react";
-import React, { useContext, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
 import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
@@ -26,8 +26,23 @@ import useCustomEditor, {
   getJSONFromText,
 } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
+import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
+import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isNodeCandidate } from "@app/lib/connectors";
+import { getSpaceAccessPriority } from "@app/lib/spaces";
+import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  AgentMention,
+  DataSourceViewContentNode,
+  LightAgentConfigurationType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
+import { getSupportedFileExtensions } from "@app/types";
 
 export const INPUT_BAR_ACTIONS = [
   "attachment",
@@ -52,6 +67,8 @@ export interface InputBarContainerProps {
   fileUploaderService?: FileUploaderService;
   currentMessageValue?: UserMessageType;
   className?: string;
+  onNodeSelect?: (node: DataSourceViewContentNode) => void;
+  attachedNodes: DataSourceViewContentNode[];
 }
 
 const InputBarContainer = React.forwardRef<
@@ -73,28 +90,120 @@ const InputBarContainer = React.forwardRef<
       fileUploaderService,
       currentMessageValue,
       className,
+      onNodeSelect,
+      attachedNodes,
     }: InputBarContainerProps,
     ref: React.Ref<EditorService>
   ) => {
     const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-
+    const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
     const [isExpanded, setIsExpanded] = useState(false);
-    function handleExpansionToggle() {
-      setIsExpanded((currentExpanded) => !currentExpanded);
-      // Focus at the end of the document when toggling expansion.
-      editorService.focusEnd();
-    }
+    const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+      UrlCandidate | NodeCandidate | null
+    >(null);
+    const [selectedNode, setSelectedNode] =
+      useState<DataSourceViewContentNode | null>(null);
 
-    function resetEditorContainerSize() {
-      setIsExpanded(false);
-    }
+    const handleUrlDetected = useCallback(
+      (candidate: UrlCandidate | NodeCandidate | null) => {
+        if (candidate) {
+          setNodeOrUrlCandidate(candidate);
+        }
+      },
+      []
+    );
+
+    // TODO: remove once attach from datasources is released
+    const isAttachedFromDataSourceActivated = featureFlags.includes(
+      "attach_from_datasources"
+    );
 
     const { editor, editorService } = useCustomEditor({
       suggestions,
       onEnterKeyDown,
       resetEditorContainerSize,
       disableAutoFocus,
+      ...(isAttachedFromDataSourceActivated && {
+        onUrlDetected: handleUrlDetected,
+      }),
     });
+
+    useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
+
+    const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
+    const spacesMap = useMemo(
+      () =>
+        Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
+      [spaces]
+    );
+
+    const { searchResultNodes, isSearchLoading } = useSpacesSearch(
+      isNodeCandidate(nodeOrUrlCandidate)
+        ? {
+            // NodeIdSearchParams
+            nodeIds: nodeOrUrlCandidate?.node ? [nodeOrUrlCandidate.node] : [],
+            includeDataSources: true,
+            owner,
+            viewType: "all",
+            disabled:
+              isSpacesLoading ||
+              !nodeOrUrlCandidate ||
+              !isAttachedFromDataSourceActivated,
+            spaceIds: spaces.map((s) => s.sId),
+          }
+        : {
+            // TextSearchParams
+            search: nodeOrUrlCandidate?.url || "",
+            searchSourceUrls: true,
+            includeDataSources: true,
+            owner,
+            viewType: "all",
+            disabled:
+              isSpacesLoading ||
+              !nodeOrUrlCandidate ||
+              !isAttachedFromDataSourceActivated,
+            spaceIds: spaces.map((s) => s.sId),
+          }
+    );
+
+    useEffect(() => {
+      if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
+        return;
+      }
+
+      if (searchResultNodes.length > 0) {
+        const nodesWithViews = searchResultNodes.flatMap((node) => {
+          const { dataSourceViews, ...rest } = node;
+          return dataSourceViews.map((view) => ({
+            ...rest,
+            dataSourceView: view,
+            spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
+          }));
+        });
+
+        if (nodesWithViews.length > 0) {
+          const sortedNodes = nodesWithViews.sort(
+            (a, b) => b.spacePriority - a.spacePriority
+          );
+          const node = sortedNodes[0];
+          onNodeSelect(node);
+          setSelectedNode(node);
+        }
+
+        // Reset node candidate after processing.
+        // FIXME: This causes reset to early and it requires pasting the url twice.
+        setNodeOrUrlCandidate(null);
+      } else {
+        setNodeOrUrlCandidate(null);
+      }
+    }, [
+      searchResultNodes,
+      onNodeSelect,
+      isSearchLoading,
+      editorService,
+      spacesMap,
+      nodeOrUrlCandidate,
+    ]);
 
     React.useImperativeHandle(ref, () => editorService, [editorService]);
 
@@ -127,6 +236,16 @@ const InputBarContainer = React.forwardRef<
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    function handleExpansionToggle() {
+      setIsExpanded((currentExpanded) => !currentExpanded);
+      // Focus at the end of the document when toggling expansion.
+      editorService.focusEnd();
+    }
+
+    function resetEditorContainerSize() {
+      setIsExpanded(false);
+    }
+
     const contentEditableClasses = cn(
       "inline-block w-full",
       "border-0 px-2 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
@@ -151,7 +270,6 @@ const InputBarContainer = React.forwardRef<
               : "max-h-64"
           )}
         />
-
         {(!hideSendButton || actions.length > 0) && (
           <div className="flex flex-row items-end justify-between gap-2 self-stretch pb-3 pr-3 sm:flex-col sm:border-0">
             <div className="flex items-center py-0 sm:py-3.5">
@@ -171,15 +289,28 @@ const InputBarContainer = React.forwardRef<
                     type="file"
                     multiple={true}
                   />
-                  <Button
-                    variant="ghost-secondary"
-                    icon={AttachmentIcon}
-                    size="xs"
-                    tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                    }}
-                  />
+                  {featureFlags.includes("attach_from_datasources") ? (
+                    <InputBarAttachmentsPicker
+                      fileUploaderService={fileUploaderService}
+                      owner={owner}
+                      isLoading={false}
+                      onNodeSelect={
+                        onNodeSelect ||
+                        ((node) => console.log(`Selected ${node.title}`))
+                      }
+                      attachedNodes={attachedNodes}
+                    />
+                  ) : (
+                    <Button
+                      variant="ghost-secondary"
+                      icon={AttachmentIcon}
+                      size="xs"
+                      tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
+                      onClick={() => {
+                        fileInputRef.current?.click();
+                      }}
+                    />
+                  )}
                 </>
               )}
               {(actions.includes("assistants-list") ||

@@ -1,8 +1,3 @@
-import type {
-  DataSourceViewContentNode,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import { ContentNodesViewTypeCodec, removeNulls } from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -10,11 +5,16 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
-import { getOffsetPaginationParams } from "@app/lib/api/pagination";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  DataSourceViewContentNode,
+  WithAPIErrorResponse,
+} from "@app/types";
+import { ContentNodesViewTypeCodec, removeNulls } from "@app/types";
 
 const GetContentNodesOrChildrenRequestBody = t.type({
   internalIds: t.union([t.array(t.union([t.string, t.null])), t.undefined]),
@@ -25,6 +25,8 @@ const GetContentNodesOrChildrenRequestBody = t.type({
 export type PokeGetDataSourceViewContentNodes = {
   nodes: DataSourceViewContentNode[];
   total: number;
+  totalIsAccurate: boolean;
+  nextPageCursor: string | null;
 };
 
 // This endpoints serves two purposes:
@@ -122,7 +124,7 @@ async function handler(
     });
   }
 
-  const paginationRes = getOffsetPaginationParams(req);
+  const paginationRes = getCursorPaginationParams(req);
   if (paginationRes.isErr()) {
     return apiError(req, res, {
       status_code: 400,

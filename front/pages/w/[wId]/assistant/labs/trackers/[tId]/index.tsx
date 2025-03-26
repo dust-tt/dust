@@ -1,14 +1,3 @@
-import type {
-  DataSourceViewSelectionConfigurations,
-  DataSourceViewType,
-  PlanType,
-  SpaceType,
-  SubscriptionType,
-  TrackerConfigurationStateType,
-  TrackerConfigurationType,
-  TrackerDataSourceConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 
 import { TrackerBuilder } from "@app/components/trackers/TrackerBuilder";
@@ -20,6 +9,17 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import logger from "@app/logger/logger";
+import type {
+  DataSourceViewSelectionConfigurations,
+  DataSourceViewType,
+  PlanType,
+  SpaceType,
+  SubscriptionType,
+  TrackerConfigurationStateType,
+  TrackerConfigurationType,
+  TrackerDataSourceConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   baseUrl: string;

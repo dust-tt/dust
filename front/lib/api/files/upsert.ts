@@ -1,24 +1,8 @@
-import { isSupportedPlainTextContentType } from "@dust-tt/client";
-import type {
-  FileUseCase,
-  Result,
-  SupportedFileContentType,
-} from "@dust-tt/types";
 import {
-  assertNever,
-  CoreAPI,
-  Err,
-  getSmallWhitelistedModel,
-  isSupportedDelimitedTextContentType,
-  isSupportedImageContentType,
-  Ok,
-  removeNulls,
-  slugify,
-  TABLE_PREFIX,
-} from "@dust-tt/types";
+  isDustMimeType,
+  isSupportedPlainTextContentType,
+} from "@dust-tt/client";
 
-import { runAction } from "@app/lib/actions/server";
-import config from "@app/lib/api/config";
 import type {
   UpsertDocumentArgs,
   UpsertTableArgs,
@@ -28,180 +12,28 @@ import {
   upsertDocument,
   upsertTable,
 } from "@app/lib/api/data_sources";
+import { generateSnippet } from "@app/lib/api/files/snippet";
 import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-
-const ENABLE_LLM_SNIPPETS = false;
-
-async function generateSnippet(
-  auth: Authenticator,
-  {
-    file,
-    dataSource,
-  }: {
-    file: FileResource;
-    dataSource: DataSourceResource;
-  }
-): Promise<Result<string, Error>> {
-  const startTime = Date.now();
-  const owner = auth.getNonNullableWorkspace();
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-
-  if (isSupportedImageContentType(file.contentType)) {
-    return new Err(
-      new Error("Image files are not supported for file snippets.")
-    );
-  }
-
-  if (isSupportedDelimitedTextContentType(file.contentType)) {
-    const schemaRes = await coreAPI.tableValidateCSVContent({
-      projectId: dataSource.dustAPIProjectId,
-      dataSourceId: dataSource.dustAPIDataSourceId,
-      bucket: file.getBucketForVersion("processed").name,
-      bucketCSVPath: file.getCloudStoragePath(auth, "processed"),
-    });
-
-    if (schemaRes.isErr()) {
-      return new Err(new Error("Invalid CSV content"));
-    }
-
-    let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
-    if (snippet.length > 256) {
-      snippet = snippet.slice(0, 242) + "... (truncated)";
-    }
-
-    return new Ok(snippet);
-  }
-
-  if (isSupportedPlainTextContentType(file.contentType)) {
-    let content = await getFileContent(auth, file);
-    if (!content) {
-      return new Err(new Error("Failed to get file content"));
-    }
-
-    if (!ENABLE_LLM_SNIPPETS) {
-      // Take the first 256 characters
-      if (content.length > 256) {
-        return new Ok(content.slice(0, 242) + "... (truncated)");
-      } else {
-        return new Ok(content);
-      }
-    }
-
-    const model = getSmallWhitelistedModel(owner);
-    if (!model) {
-      return new Err(
-        new Error(`Failed to find a whitelisted model to generate title`)
-      );
-    }
-
-    const appConfig = cloneBaseConfig(
-      getDustProdAction("conversation-file-summarizer").config
-    );
-    appConfig.MODEL.provider_id = model.providerId;
-    appConfig.MODEL.model_id = model.modelId;
-
-    const resTokenize = await coreAPI.tokenize({
-      text: content,
-      providerId: model.providerId,
-      modelId: model.modelId,
-    });
-
-    if (resTokenize.isErr()) {
-      return new Err(
-        new Error(
-          `Error tokenizing content: ${resTokenize.error.code} ${resTokenize.error.message}`
-        )
-      );
-    }
-
-    const tokensCount = resTokenize.value.tokens.length;
-    const allowedTokens = model.contextSize * 0.9;
-    if (tokensCount > allowedTokens) {
-      // Truncate the content to the context size * 0.9 using cross product
-      const truncateLength = Math.floor(
-        (allowedTokens * content.length) / tokensCount
-      );
-
-      logger.warn(
-        {
-          tokensCount,
-          contentLength: content.length,
-          contextSize: model.contextSize,
-        },
-        `Truncating content to ${truncateLength} characters`
-      );
-
-      content = content.slice(0, truncateLength);
-    }
-
-    const res = await runAction(
-      auth,
-      "conversation-file-summarizer",
-      appConfig,
-      [
-        {
-          content: content,
-        },
-      ]
-    );
-
-    if (res.isErr()) {
-      return new Err(
-        new Error(
-          `Error generating snippet: ${res.error.type} ${res.error.message}`
-        )
-      );
-    }
-
-    const {
-      status: { run },
-      traces,
-      results,
-    } = res.value;
-
-    switch (run) {
-      case "errored":
-        const error = removeNulls(traces.map((t) => t[1][0][0].error)).join(
-          ", "
-        );
-        return new Err(new Error(`Error generating snippet: ${error}`));
-      case "succeeded":
-        if (!results || results.length === 0) {
-          return new Err(
-            new Error(
-              `Error generating snippet: no results returned while run was successful`
-            )
-          );
-        }
-        const snippet = results[0][0].value as string;
-        const endTime = Date.now();
-        logger.info(
-          {
-            workspaceId: owner.sId,
-            fileId: file.sId,
-          },
-          `Snippet generation took ${endTime - startTime}ms`
-        );
-
-        return new Ok(snippet);
-      case "running":
-        return new Err(
-          new Error(`Snippet generation is still running, should never happen.`)
-        );
-      default:
-        assertNever(run);
-    }
-  }
-
-  return new Err(new Error("Unsupported file type"));
-}
+import type {
+  CoreAPIDataSourceDocumentSection,
+  FileUseCase,
+  Result,
+  SupportedFileContentType,
+} from "@app/types";
+import {
+  assertNever,
+  Err,
+  isSupportedImageContentType,
+  Ok,
+  slugify,
+  TABLE_PREFIX,
+} from "@app/types";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
@@ -255,6 +87,81 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   return new Ok(undefined);
 };
 
+// Upload seachable document to dataSource
+// We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
+const upsertSectionDocumentToDatasource: ProcessingFunction = async (
+  auth,
+  { file, dataSource, upsertArgs }
+) => {
+  // Get the content of the file.
+  const content = await getFileContent(auth, file);
+  if (!content) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message:
+        "There was an error upserting the document: failed to get file content.",
+    });
+  }
+
+  // Parse the content of the file to get the section.
+  let section: CoreAPIDataSourceDocumentSection | null = null;
+  try {
+    section = JSON.parse(content);
+  } catch (e) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+    });
+  }
+
+  const upsertDocumentRes = await upsertDocument({
+    auth,
+    dataSource,
+    title: file.fileName,
+    mime_type: file.contentType,
+    document_id: file.sId,
+    source_url: file.getPrivateUrl(auth),
+    parents: [file.sId],
+    section,
+    tags: [
+      `title:${file.fileName}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+    ],
+    light_document_output: true,
+    ...upsertArgs,
+  });
+
+  if (upsertDocumentRes.isErr()) {
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: "There was an error upserting the document.",
+      data_source_error: upsertDocumentRes.error,
+    });
+  }
+
+  return new Ok(undefined);
+};
+
+const updateUseCaseMetadata = async (
+  file: FileResource,
+  tableIds: string[]
+) => {
+  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
+  if (file.useCaseMetadata) {
+    await file.setUseCaseMetadata({
+      ...file.useCaseMetadata,
+      generatedTables: [
+        ...(file.useCaseMetadata.generatedTables ?? []),
+        ...tableIds,
+      ],
+    });
+  }
+};
+
 const upsertTableToDatasource: ProcessingFunction = async (
   auth,
   { file, dataSource, upsertArgs }
@@ -282,7 +189,10 @@ const upsertTableToDatasource: ProcessingFunction = async (
         `fileId:${file.sId}`,
         `fileName:${file.fileName}`,
       ],
-      parents: [tableId],
+      parentId: isUpsertTableArgs(upsertArgs)
+        ? upsertArgs?.parentId
+        : upsertArgs?.parent_id ?? null,
+      parents: upsertArgs?.parents ?? [tableId],
       async: false,
       title,
       mimeType: file.contentType,
@@ -298,21 +208,12 @@ const upsertTableToDatasource: ProcessingFunction = async (
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: "There was an error upserting the table.",
+      message: `There was an error upserting the table. Error: ${upsertTableRes.error.message}`,
       data_source_error: upsertTableRes.error,
     });
   }
 
-  // Note from seb : it would be better to merge useCase and useCaseMetadata to be able to specify what each use case is able to do / requires via typing.
-  if (file.useCaseMetadata) {
-    await file.setUseCaseMetadata({
-      ...file.useCaseMetadata,
-      generatedTables: [
-        ...(file.useCaseMetadata.generatedTables ?? []),
-        tableId,
-      ],
-    });
-  }
+  await updateUseCaseMetadata(file, [tableId]);
 
   return new Ok(undefined);
 };
@@ -332,16 +233,21 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     return new Err(new Error("Invalid upsert args"));
   }
 
+  const tableIds: string[] = [];
+
   const upsertWorksheet = async (
     worksheetName: string,
     worksheetContent: string
   ) => {
     const title = `${file.fileName} ${worksheetName}`;
+    const tableId = `${file.sId}-${slugify(worksheetName)}`;
     const upsertTableArgs: UpsertTableArgs = {
       ...upsertArgs,
       title,
       name: slugify(title),
-      tableId: `${file.sId}-${slugify(worksheetName)}`,
+      tableId,
+      parentId: file.sId,
+      parents: [tableId, file.sId],
       description: "Table uploaded from excel file",
       truncate: true,
       mimeType: "text/csv",
@@ -362,6 +268,8 @@ const upsertExcelToDatasource: ProcessingFunction = async (
       file: worksheetFile,
       reqOrString: worksheetContent,
     });
+
+    tableIds.push(tableId);
 
     await upsertTableToDatasource(auth, {
       file: worksheetFile,
@@ -401,8 +309,11 @@ const upsertExcelToDatasource: ProcessingFunction = async (
     });
   } else {
     await upsertWorksheet(worksheetName, worksheetContent);
-    return new Ok(undefined);
   }
+
+  await updateUseCaseMetadata(file, tableIds);
+
+  return new Ok(undefined);
 };
 
 // Processing for datasource upserts.
@@ -445,6 +356,12 @@ const getProcessingFunction = ({
       } else {
         return undefined;
       }
+    case "application/vnd.dust.section.json":
+      if (useCase === "tool_output") {
+        return upsertSectionDocumentToDatasource;
+      } else {
+        return undefined;
+      }
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     case "application/vnd.ms-excel":
       if (useCase === "conversation" || useCase === "upsert_table") {
@@ -464,6 +381,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedPlainTextContentType(contentType)) {
+    return undefined;
+  }
+
+  // Processing is assumed to be irrelevant for internal mime types.
+  if (isDustMimeType(contentType)) {
     return undefined;
   }
 
@@ -544,6 +466,19 @@ export async function processAndUpsertToDataSource(
       code: "invalid_request_error",
       message: "File is not supported for upsert.",
     });
+  }
+
+  // When we upsert a file we don't want to be able to pass section or text in Upsert Args
+  // We want to return an Error in the future but we start by logging the error to see if there are
+  // places that are using it and need to be updated. first
+  if (upsertArgs && ("section" in upsertArgs || "text" in upsertArgs)) {
+    logger.error(
+      {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+      },
+      "We should not pass section or text in Upsert Args anymore when upserting a file."
+    );
   }
 
   const [processingRes, snippetRes] = await Promise.all([

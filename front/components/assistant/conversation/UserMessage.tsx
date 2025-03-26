@@ -8,12 +8,6 @@ import {
   PencilSquareIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  ConversationType,
-  MentionType,
-  UserMessageType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { useRouter } from "next/router";
 import { useMemo, useRef, useState } from "react";
 import type { Components } from "react-markdown";
@@ -27,11 +21,21 @@ import {
   getCiteDirective,
 } from "@app/components/markdown/CiteBlock";
 import {
+  ContentNodeMentionBlock,
+  contentNodeMentionDirective,
+} from "@app/components/markdown/ContentNodeMentionBlock";
+import {
   MentionBlock,
   mentionDirective,
 } from "@app/components/markdown/MentionBlock";
 import { useEditMessage } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type {
+  ConversationType,
+  MentionType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
 
 interface UserMessageProps {
   citations?: React.ReactElement[];
@@ -54,6 +58,7 @@ export function UserMessage({
     () => ({
       sup: CiteBlock,
       mention: MentionBlock,
+      content_node_mention: ContentNodeMentionBlock,
     }),
     []
   );
@@ -180,7 +185,7 @@ export function UserMessage({
   }
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective],
+    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
     []
   );
 
@@ -188,7 +193,7 @@ export function UserMessage({
     <ConversationMessage
       pictureUrl={message.user?.image || message.context.profilePictureUrl}
       name={message.context.fullName ?? undefined}
-      renderName={(name) => <div className="text-base font-medium">{name}</div>}
+      renderName={(name) => <div className="heading-base">{name}</div>}
       type="user"
       buttons={buttons}
       citations={citations}

@@ -1,10 +1,10 @@
-import { MIME_TYPES } from "@dust-tt/types";
 import { makeScript } from "scripts/helpers";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("notion", {});
@@ -21,7 +21,7 @@ makeScript({}, async ({ execute }, logger) => {
           parents: [folderId],
           parentId: null,
           title: "Syncing",
-          mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
         });
         logger.info(
           `Upserted folder ${folderId} for connector ${connector.id}`

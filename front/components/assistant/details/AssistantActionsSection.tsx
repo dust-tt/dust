@@ -3,10 +3,10 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  CommandIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
-  GithubIcon,
   Icon,
   IconButton,
   Label,
@@ -17,39 +17,30 @@ import {
   SparklesIcon,
   Tree,
 } from "@dust-tt/sparkle";
-import type {
-  AgentActionConfigurationType,
-  AgentConfigurationType,
-  ConnectorProvider,
-  ContentNodesViewType,
-  DataSourceConfiguration,
-  DataSourceTag,
-  DataSourceViewType,
-  DustAppRunConfigurationType,
-  LightWorkspaceType,
-  RetrievalConfigurationType,
-  TablesQueryConfigurationType,
-  TagsFilter,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  GLOBAL_AGENTS_SID,
-  isBrowseConfiguration,
-  isDustAppRunConfiguration,
-  isGithubCreateIssueConfiguration,
-  isGithubGetPullRequestConfiguration,
-  isProcessConfiguration,
-  isReasoningConfiguration,
-  isRetrievalConfiguration,
-  isTablesQueryConfiguration,
-  isWebsearchConfiguration,
-} from "@dust-tt/types";
 import _ from "lodash";
+import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
+import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
+import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
+import {
+  isBrowseConfiguration,
+  isDustAppRunConfiguration,
+  isMCPServerConfiguration,
+  isProcessConfiguration,
+  isReasoningConfiguration,
+  isRetrievalConfiguration,
+  isTablesQueryConfiguration,
+  isWebsearchConfiguration,
+} from "@app/lib/actions/types/guards";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
@@ -62,6 +53,21 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { classNames } from "@app/lib/utils";
+import { setQueryParam } from "@app/lib/utils/router";
+import type {
+  AgentConfigurationType,
+  ConnectorProvider,
+  ContentNodesViewType,
+  DataSourceTag,
+  DataSourceViewType,
+  LightWorkspaceType,
+  TagsFilter,
+} from "@app/types";
+import {
+  assertNever,
+  DocumentViewRawContentKey,
+  GLOBAL_AGENTS_SID,
+} from "@app/types";
 
 interface AssistantActionsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -299,26 +305,15 @@ function renderOtherAction(
         </div>
       </ActionSection>
     );
+  } else if (isMCPServerConfiguration(action)) {
+    return (
+      <ActionSection title={action.name} key={`other-${index}`}>
+        <Icon visual={CommandIcon} size="sm" />
+        <div>{action.description}</div>
+      </ActionSection>
+    );
   } else if (isBrowseConfiguration(action)) {
     return null;
-  } else if (isGithubGetPullRequestConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can retrieve pull requests from Github.</div>
-        </div>
-      </ActionSection>
-    );
-  } else if (isGithubCreateIssueConfiguration(action)) {
-    return (
-      <ActionSection title="Github" key={`other-${index}`}>
-        <div className="flex gap-2 text-muted-foreground">
-          <Icon visual={GithubIcon} size="sm" />
-          <div>Agent can create issues on Github.</div>
-        </div>
-      </ActionSection>
-    );
   } else if (
     !isRetrievalConfiguration(action) &&
     !isTablesQueryConfiguration(action)
@@ -335,7 +330,7 @@ interface ActionSectionProps {
 function ActionSection({ title, children }: ActionSectionProps) {
   return (
     <div>
-      <div className="text-text-foreground dark:text-text-foreground-night pb-2 text-lg font-medium">
+      <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2">
         {title}
       </div>
       {children}
@@ -356,10 +351,8 @@ function DataSourceViewsSection({
   dataSourceConfigurations,
   viewType,
 }: DataSourceViewsSectionProps) {
+  const router = useRouter();
   const { isDark } = useTheme();
-  const [documentToDisplay, setDocumentToDisplay] = useState<string | null>(
-    null
-  );
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
 
@@ -368,9 +361,6 @@ function DataSourceViewsSection({
       <DataSourceViewDocumentModal
         owner={owner}
         dataSourceView={dataSourceViewToDisplay}
-        documentId={documentToDisplay}
-        isOpen={!!documentToDisplay}
-        onClose={() => setDocumentToDisplay(null)}
       />
       <Tree>
         {dataSourceConfigurations.map((dsConfig) => {
@@ -418,7 +408,8 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   onDocumentViewClick={(documentId: string) => {
                     setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(documentId);
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
                   }}
                   viewType={viewType}
                 />
@@ -429,7 +420,10 @@ function DataSourceViewsSection({
                   dataSourceView={dataSourceView}
                   dataSourceConfiguration={dsConfig}
                   setDataSourceViewToDisplay={setDataSourceViewToDisplay}
-                  setDocumentToDisplay={setDocumentToDisplay}
+                  setDocumentToDisplay={(documentId: string) => {
+                    setQueryParam(router, DocumentViewRawContentKey, "true");
+                    setQueryParam(router, "documentId", documentId);
+                  }}
                   viewType={viewType}
                 />
               )}

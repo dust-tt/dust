@@ -51,6 +51,7 @@ async function main() {
 
           for (const f of selectedFolders) {
             const gDriveObject = await getGoogleDriveObject({
+              connectorId: c.id,
               authCredentials,
               driveObjectId: f.folderId,
             });

@@ -1,10 +1,4 @@
 import { Button, Page } from "@dust-tt/sparkle";
-import type {
-  ContentFragmentType,
-  PokeAgentMessageType,
-  UserMessageType,
-} from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -15,8 +9,16 @@ import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeConversation } from "@app/poke/swr";
+import type {
+  ContentFragmentType,
+  PokeAgentMessageType,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
+  workspace: WorkspaceType;
   workspaceId: string;
   conversationId: string;
   conversationDataSourceId: string | null;
@@ -56,6 +58,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
       conversationId: cId,
       conversationDataSourceId: conversationDataSource?.sId ?? null,
       multiActionsApp,
+      workspace: auth.getNonNullableWorkspace(),
     },
   };
 });
@@ -79,16 +82,18 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
 const AgentMessageView = ({
   message,
   multiActionsApp,
+  workspaceId,
 }: {
   message: PokeAgentMessageType;
   multiActionsApp: Action;
+  workspaceId: string;
 }) => {
   return (
     <div className="ml-4 pt-2 text-sm text-element-700">
       <div className="font-bold">
         [agent] @{message.configuration.name} {"(sId="}
         <a
-          href={`/poke/${multiActionsApp.app.workspaceId}/assistants/${message.configuration.sId}`}
+          href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
           className="text-action-500"
         >
@@ -171,6 +176,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
 
 const ConversationPage = ({
   workspaceId,
+  workspace,
   conversationId,
   conversationDataSourceId,
   multiActionsApp,
@@ -180,7 +186,13 @@ const ConversationPage = ({
   return (
     <>
       {conversation && (
-        <div className="mx-auto max-w-4xl pt-8">
+        <div className="max-w-4xl">
+          <h3 className="text-xl font-bold">
+            Conversation of workspace:{" "}
+            <a href={`/poke/${workspaceId}`} className="text-action-500">
+              {workspace.name}
+            </a>
+          </h3>
           <Page.Vertical align="stretch">
             <div className="flex space-x-2">
               <Button
@@ -210,6 +222,7 @@ const ConversationPage = ({
                             key={`message-${i}-${j}`}
                             multiActionsApp={multiActionsApp}
                             message={m}
+                            workspaceId={workspaceId}
                           />
                         );
                       }
@@ -243,8 +256,13 @@ const ConversationPage = ({
   );
 };
 
-ConversationPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+ConversationPage.getLayout = (
+  page: ReactElement,
+  { workspace }: { workspace: WorkspaceType }
+) => {
+  return (
+    <PokeLayout title={`${workspace.name} - Conversation`}>{page}</PokeLayout>
+  );
 };
 
 export default ConversationPage;

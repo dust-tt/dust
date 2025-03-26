@@ -1,8 +1,7 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
-
 import { getTemporalClient } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 import { QUEUE_NAME } from "./config";
 import { upsertDocumentWorkflow } from "./workflows";

@@ -14,13 +14,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import React, { useMemo, useRef, useState } from "react";
 
 import AssistantBuilderCustomUpload from "@app/components/assistant_builder/avatar_picker/AssistantBuilderCustomUpload";
 import AssistantBuilderEmojiPicker from "@app/components/assistant_builder/avatar_picker/AssistantBuilderEmojiPicker";
 import type { AvatarPickerTabElement } from "@app/components/assistant_builder/avatar_picker/types";
+import type { WorkspaceType } from "@app/types";
 
 type AvatarUrlTabId = "droids" | "spirits";
 type TabId = AvatarUrlTabId | "emojis" | "upload";

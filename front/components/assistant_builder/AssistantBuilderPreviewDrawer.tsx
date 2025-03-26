@@ -17,12 +17,6 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type {
-  AssistantBuilderRightPanelStatus,
-  AssistantBuilderRightPanelTab,
-  ModelConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { Separator } from "@radix-ui/react-select";
 import { useContext, useEffect } from "react";
 
@@ -42,9 +36,15 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { getDefaultActionConfiguration } from "@app/components/assistant_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
-import { ACTION_SPECIFICATIONS } from "@app/lib/api/assistant/actions/utils";
+import { ACTION_SPECIFICATIONS } from "@app/lib/actions/utils";
 import { useUser } from "@app/lib/swr/user";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type {
+  AssistantBuilderRightPanelStatus,
+  AssistantBuilderRightPanelTab,
+  ModelConfigurationType,
+  WorkspaceType,
+} from "@app/types";
 
 interface AssistantBuilderRightPanelProps {
   screen: BuilderScreen;
@@ -111,7 +111,7 @@ export default function AssistantBuilderRightPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="shrink-0 bg-white pt-5">
+      <div className="shrink-0 pt-5">
         <Tabs
           value={rightPanelStatus.tab ?? "Preview"}
           onValueChange={(t) =>

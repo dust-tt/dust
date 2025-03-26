@@ -1,6 +1,3 @@
-import type { ConversationWithoutContentType, Result } from "@dust-tt/types";
-import { ConversationError } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import {
@@ -9,6 +6,9 @@ import {
 } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
 import { Conversation } from "@app/lib/models/assistant/conversation";
+import type { ConversationWithoutContentType, Result } from "@app/types";
+import { ConversationError } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export async function getConversationWithoutContent(
   auth: Authenticator,

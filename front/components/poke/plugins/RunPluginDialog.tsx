@@ -7,7 +7,6 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { PluginWorkspaceResource } from "@dust-tt/types";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -19,17 +18,18 @@ import {
 } from "@app/components/poke/shadcn/ui/alert";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
 import { usePokePluginManifest, useRunPokePlugin } from "@app/poke/swr/plugins";
+import type { PluginResourceTarget } from "@app/types";
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
-  workspaceResource?: PluginWorkspaceResource;
+  pluginResourceTarget: PluginResourceTarget;
 };
 
 export function RunPluginDialog({
   onClose,
   plugin,
-  workspaceResource,
+  pluginResourceTarget,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
@@ -37,12 +37,11 @@ export function RunPluginDialog({
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: !open,
     pluginId: plugin?.id,
-    workspaceResource,
   });
 
   const { doRunPlugin } = useRunPokePlugin({
     pluginId: plugin.id,
-    workspaceResource,
+    pluginResourceTarget,
   });
 
   const handleClose = () => {
@@ -104,7 +103,7 @@ export function RunPluginDialog({
                 <div className="mb-4 mt-4">
                   <div className="mb-2 font-medium">Result:</div>
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-800 p-4">
-                    <pre className="font-mono whitespace-pre-wrap break-words text-sm text-slate-200">
+                    <pre className="whitespace-pre-wrap break-words font-mono text-sm text-slate-200">
                       {JSON.stringify(result.value, null, 2)}
                     </pre>
                   </div>

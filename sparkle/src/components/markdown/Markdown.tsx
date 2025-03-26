@@ -28,13 +28,13 @@ import { sanitizeContent } from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 const sizes = {
-  p: "s-text-sm @sm:s-text-base @sm:s-leading-7",
-  h1: "s-text-3xl @sm:s-text-4xl s-font-semibold",
-  h2: "s-text-2xl @sm:s-text-3xl s-font-semibold",
-  h3: "s-text-xl @sm:s-text-2xl s-font-semibold",
-  h4: "s-text-lg @sm:s-text-xl s-font-bold",
-  h5: "s-text-base @sm:s-text-lg s-font-medium",
-  h6: "s-text-sm @sm:s-text-base s-font-bold",
+  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+  h1: "s-heading-3xl",
+  h2: "s-heading-2xl",
+  h3: "s-heading-xl",
+  h4: "s-heading-lg",
+  h5: "s-text-base s-font-bold",
+  h6: "s-text-base s-font-regular s-italic",
 };
 
 function showUnsupportedDirective() {
@@ -199,7 +199,7 @@ export function Markdown({
       input: Input,
       blockquote: BlockquoteBlock,
       hr: () => (
-        <div className="s-my-6 s-border-b s-border-structure-200 dark:s-border-structure-200-night" />
+        <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
       code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
@@ -255,8 +255,8 @@ function LinkBlock({
       rel="noopener noreferrer"
       className={cn(
         "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-        "dark:s-text-highlight-night s-text-highlight",
-        "hover:s-text-action-400 dark:hover:s-text-action-400-night",
+        "s-text-highlight dark:s-text-highlight-night",
+        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
         "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
       )}
     >

@@ -1,10 +1,3 @@
-import type { Result } from "@dust-tt/types";
-import {
-  Err,
-  FrontDataSourceDocumentSection,
-  Ok,
-  UpsertContextSchema,
-} from "@dust-tt/types";
 import { Storage } from "@google-cloud/storage";
 import * as t from "io-ts";
 import { v4 as uuidv4 } from "uuid";
@@ -14,6 +7,13 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/withlogging";
 import { launchUpsertDocumentWorkflow } from "@app/temporal/upsert_queue/client";
 import { launchUpsertTableWorkflow } from "@app/temporal/upsert_tables/client";
+import type { Result } from "@app/types";
+import {
+  Err,
+  FrontDataSourceDocumentSection,
+  Ok,
+  UpsertContextSchema,
+} from "@app/types";
 
 export const EnqueueUpsertDocument = t.type({
   workspaceId: t.string,

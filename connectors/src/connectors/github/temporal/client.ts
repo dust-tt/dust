@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import type {
   WorkflowExecutionDescription,
   WorkflowHandle,
@@ -33,6 +32,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "github" });
 

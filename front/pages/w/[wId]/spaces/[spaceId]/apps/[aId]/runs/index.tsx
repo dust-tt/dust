@@ -1,8 +1,4 @@
-import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
-import type { AppType } from "@dust-tt/types";
-import type { SubscriptionType } from "@dust-tt/types";
-import type { RunRunType, RunStatus } from "@dust-tt/types";
+import { Button, cn, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -16,6 +12,10 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
+import type { AppType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
+import type { RunRunType, RunStatus } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -150,8 +150,14 @@ export default function RunsView({
                 key={tab.name}
                 className={classNames(
                   tab.runType == runType
-                    ? "border-gray-700 bg-gray-700 text-white hover:bg-gray-800"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-700",
+                    ? cn(
+                        "border-border bg-primary-700 text-foreground hover:bg-primary-800",
+                        "dark:border-border-night dark:bg-primary-300 dark:text-foreground-night dark:hover:bg-primary-200"
+                      )
+                    : cn(
+                        "border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
+                        "dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night dark:hover:bg-muted-background-night dark:hover:text-muted-foreground-night"
+                      ),
                   tabIdx === 0 ? "rounded-l-2xl border-r-0" : "",
                   tabIdx === tabs.length - 1 ? "rounded-r-2xl border-l-0" : "",
                   "flex flex-1 cursor-pointer flex-row border px-3 text-sm font-medium focus:z-10"
@@ -167,7 +173,8 @@ export default function RunsView({
           <div className="flex flex-initial">
             <div className="flex">
               <Button
-                variant="ghost"
+                variant="outline"
+                size="xs"
                 disabled={offset < limit}
                 onClick={() => {
                   if (offset >= limit) {
@@ -181,7 +188,8 @@ export default function RunsView({
             </div>
             <div className="ml-2 flex">
               <Button
-                variant="ghost"
+                variant="outline"
+                size="xs"
                 disabled={offset + limit >= total}
                 onClick={() => {
                   if (offset + limit < total) {
@@ -195,7 +203,7 @@ export default function RunsView({
         </div>
 
         {runs.length > 0 ? (
-          <div className="mt-4 flex flex-auto pl-1 text-sm text-gray-700">
+          <div className="mt-4 flex flex-auto pl-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
             Showing runs {offset + 1} - {last} of {total} runs
           </div>
         ) : null}
@@ -204,14 +212,14 @@ export default function RunsView({
           <ul role="list" className="space-y-4">
             {runs.map((run) => (
               <li key={run.run_id} className="px-0">
-                <div className="rounded border border-gray-300 px-4 py-4">
+                <div className="rounded border border-border px-4 py-4 dark:border-border-night">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-initial">
                       <Link
                         href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                         className="block"
                       >
-                        <p className="font-mono truncate text-base text-action-500">
+                        <p className="truncate font-mono text-base text-highlight-500 dark:text-highlight-500-night">
                           {run.run_id.slice(0, 8)}...
                           {run.run_id.slice(-8)}
                         </p>
@@ -231,25 +239,25 @@ export default function RunsView({
                     </div>
                   </div>
                   <div className="mt-2 flex justify-between">
-                    <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-gray-700">
+                    <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {run.status.blocks.map((block) => (
                         <span
                           key={`${block.block_type}-${block.name}`}
                           className={classNames(
                             "rounded-md px-1 text-sm font-semibold",
                             block.status == "succeeded"
-                              ? "bg-gray-100"
+                              ? "bg-primary-100"
                               : "bg-red-100"
                           )}
                         >
                           {block.name}
                         </span>
                       ))}
-                      <span className="font-mono ml-2 pt-1 text-xs text-gray-700">
+                      <span className="ml-2 pt-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
                         ({inputCount(run.status)} inputs)
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center pr-1 text-sm text-gray-500 sm:mt-0">
+                    <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground dark:text-muted-foreground-night sm:mt-0">
                       <p>{timeAgoFrom(run.created)} ago</p>
                     </div>
                   </div>
@@ -257,7 +265,7 @@ export default function RunsView({
               </li>
             ))}
             {runs.length == 0 ? (
-              <div className="mt-10 flex flex-col items-center justify-center text-sm text-gray-500">
+              <div className="mt-10 flex flex-col items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <p>No runs found 🔎</p>
                 {runType == "local" ? (
                   <p className="mt-2">

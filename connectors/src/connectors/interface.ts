@@ -1,13 +1,13 @@
+import type { Result } from "@dust-tt/client";
+
 import type {
   ConnectorConfiguration,
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
-  ModelId,
-  Result,
-} from "@dust-tt/types";
-
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+} from "@connectors/types";
+import type { ModelId } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export type CreateConnectorErrorCode = "INVALID_CONFIGURATION";
 
@@ -71,15 +71,6 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   >;
 
-  abstract setPermissions(params: {
-    permissions: Record<string, ConnectorPermission>;
-  }): Promise<Result<void, Error>>;
-
-  abstract retrieveBatchContentNodes(params: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>>;
-
   /**
    * Retrieves the parent IDs of a content node in hierarchical order.
    * The first ID is the internal ID of the content node itself.
@@ -88,6 +79,10 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     internalId: string;
     memoizationKey?: string;
   }): Promise<Result<string[], Error>>;
+
+  abstract setPermissions(params: {
+    permissions: Record<string, ConnectorPermission>;
+  }): Promise<Result<void, Error>>;
 
   abstract setConfigurationKey(params: {
     configKey: string;

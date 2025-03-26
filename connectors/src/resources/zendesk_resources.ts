@@ -1,5 +1,5 @@
-import type { ContentNode, Result } from "@dust-tt/types";
-import { MIME_TYPES, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Ok } from "@dust-tt/client";
 import type {
   Attributes,
   CreationAttributes,
@@ -17,42 +17,45 @@ import {
   getTicketsInternalId,
 } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
-  ZendeskArticle,
-  ZendeskBrand,
-  ZendeskCategory,
-  ZendeskConfiguration,
-  ZendeskTicket,
+  ZendeskArticleModel,
+  ZendeskBrandModel,
+  ZendeskCategoryModel,
+  ZendeskConfigurationModel,
+  ZendeskTicketModel,
 } from "@connectors/lib/models/zendesk";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types"; // Attributes are marked as read-only to reflect the stateless nature of our Resource.
+import type { ContentNode } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskConfigurationResource
-  extends ReadonlyAttributesType<ZendeskConfiguration> {}
+  extends ReadonlyAttributesType<ZendeskConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskConfigurationResource extends BaseResource<ZendeskConfiguration> {
-  static model: ModelStatic<ZendeskConfiguration> = ZendeskConfiguration;
+export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurationModel> {
+  static model: ModelStatic<ZendeskConfigurationModel> =
+    ZendeskConfigurationModel;
 
   constructor(
-    model: ModelStatic<ZendeskConfiguration>,
-    blob: Attributes<ZendeskConfiguration>
+    model: ModelStatic<ZendeskConfigurationModel>,
+    blob: Attributes<ZendeskConfigurationModel>
   ) {
-    super(ZendeskConfiguration, blob);
+    super(ZendeskConfigurationModel, blob);
   }
 
   static async makeNew({
     blob,
     transaction,
   }: {
-    blob: CreationAttributes<ZendeskConfiguration>;
+    blob: CreationAttributes<ZendeskConfigurationModel>;
     transaction?: Transaction;
   }): Promise<ZendeskConfigurationResource> {
-    const configuration = await ZendeskConfiguration.create(
+    const configuration = await ZendeskConfigurationModel.create(
       { ...blob },
       transaction && { transaction }
     );
@@ -62,7 +65,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
   static async fetchByConnectorId(
     connectorId: number
   ): Promise<ZendeskConfigurationResource | null> {
-    const configuration = await ZendeskConfiguration.findOne({
+    const configuration = await ZendeskConfigurationModel.findOne({
       where: { connectorId },
     });
     return configuration && new this(this.model, configuration.get());
@@ -106,17 +109,17 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskBrandResource
-  extends ReadonlyAttributesType<ZendeskBrand> {}
+  extends ReadonlyAttributesType<ZendeskBrandModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
-  static model: ModelStatic<ZendeskBrand> = ZendeskBrand;
+export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
+  static model: ModelStatic<ZendeskBrandModel> = ZendeskBrandModel;
 
   constructor(
-    model: ModelStatic<ZendeskBrand>,
-    blob: Attributes<ZendeskBrand>
+    model: ModelStatic<ZendeskBrandModel>,
+    blob: Attributes<ZendeskBrandModel>
   ) {
-    super(ZendeskBrand, blob);
+    super(ZendeskBrandModel, blob);
   }
 
   async postFetchHook(): Promise<void> {
@@ -154,10 +157,10 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     blob,
     transaction,
   }: {
-    blob: CreationAttributes<ZendeskBrand>;
+    blob: CreationAttributes<ZendeskBrandModel>;
     transaction?: Transaction;
   }): Promise<ZendeskBrandResource> {
-    const brand = await ZendeskBrand.create(
+    const brand = await ZendeskBrandModel.create(
       { ...blob },
       transaction && { transaction }
     );
@@ -191,7 +194,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchByConnector(
     connector: ConnectorResource
   ): Promise<ZendeskBrandResource[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId: connector.id },
     });
     return brands.map((brand) => new this(this.model, brand.get()));
@@ -204,7 +207,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskBrandResource | null> {
-    const blob = await ZendeskBrand.findOne({
+    const blob = await ZendeskBrandModel.findOne({
       where: { connectorId, brandId },
     });
     return blob && new this(this.model, blob.get());
@@ -217,7 +220,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     subdomain: string;
   }): Promise<ZendeskBrandResource | null> {
-    const blob = await ZendeskBrand.findOne({
+    const blob = await ZendeskBrandModel.findOne({
       where: { connectorId, subdomain },
     });
     return blob && new this(this.model, blob.get());
@@ -230,7 +233,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number;
     brandIds: number[];
   }): Promise<ZendeskBrandResource[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, brandId: { [Op.in]: brandIds } },
     });
     return brands.map((brand) => new this(this.model, brand.get()));
@@ -239,7 +242,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchAllReadOnly(
     connectorId: number
   ): Promise<ZendeskBrandResource[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: {
         connectorId,
         [Op.or]: [
@@ -252,7 +255,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   }
 
   static async fetchAllBrandIds(connectorId: number): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId },
       attributes: ["brandId"],
     });
@@ -262,7 +265,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchHelpCenterReadAllowedBrandIds(
     connectorId: number
   ): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, helpCenterPermission: "read" },
       attributes: ["brandId"],
     });
@@ -272,7 +275,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchHelpCenterReadForbiddenBrandIds(
     connectorId: number
   ): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, helpCenterPermission: "none" },
       attributes: ["brandId"],
     });
@@ -282,7 +285,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchTicketsAllowedBrandIds(
     connectorId: number
   ): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, ticketsPermission: "read" },
       attributes: ["brandId"],
     });
@@ -292,7 +295,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
   static async fetchTicketsReadForbiddenBrandIds(
     connectorId: number
   ): Promise<number[]> {
-    const brands = await ZendeskBrand.findAll({
+    const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, ticketsPermission: "none" },
       attributes: ["brandId"],
     });
@@ -303,7 +306,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
     connectorId: number,
     transaction?: Transaction
   ) {
-    await ZendeskBrand.destroy({ where: { connectorId }, transaction });
+    await ZendeskBrandModel.destroy({ where: { connectorId }, transaction });
   }
 
   toContentNode(connectorId: number): ContentNode {
@@ -321,7 +324,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
           ? "read"
           : "none",
       lastUpdatedAt: this.updatedAt.getTime(),
-      mimeType: MIME_TYPES.ZENDESK.BRAND,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.BRAND,
     };
   }
 
@@ -339,7 +342,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       expandable: true,
       permission: this.helpCenterPermission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
     };
   }
 
@@ -360,7 +363,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
       expandable: expandable,
       permission: this.ticketsPermission,
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
     };
   }
 }
@@ -368,27 +371,27 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrand> {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskCategoryResource
-  extends ReadonlyAttributesType<ZendeskCategory> {}
+  extends ReadonlyAttributesType<ZendeskCategoryModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
-  static model: ModelStatic<ZendeskCategory> = ZendeskCategory;
+export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> {
+  static model: ModelStatic<ZendeskCategoryModel> = ZendeskCategoryModel;
 
   constructor(
-    model: ModelStatic<ZendeskCategory>,
-    blob: Attributes<ZendeskCategory>
+    model: ModelStatic<ZendeskCategoryModel>,
+    blob: Attributes<ZendeskCategoryModel>
   ) {
-    super(ZendeskCategory, blob);
+    super(ZendeskCategoryModel, blob);
   }
 
   static async makeNew({
     blob,
     transaction,
   }: {
-    blob: CreationAttributes<ZendeskCategory>;
+    blob: CreationAttributes<ZendeskCategoryModel>;
     transaction?: Transaction;
   }): Promise<ZendeskCategoryResource> {
-    const category = await ZendeskCategory.create(
+    const category = await ZendeskCategoryModel.create(
       { ...blob },
       transaction && { transaction }
     );
@@ -426,7 +429,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   static async fetchByConnector(
     connector: ConnectorResource
   ): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId: connector.id },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -441,7 +444,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     brandId: number;
     categoryId: number;
   }): Promise<ZendeskCategoryResource | null> {
-    const category = await ZendeskCategory.findOne({
+    const category = await ZendeskCategoryModel.findOne({
       where: { connectorId, brandId, categoryId },
     });
     return category && new this(this.model, category.get());
@@ -456,7 +459,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     brandId: number;
     categoryIds: number[];
   }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -469,7 +472,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     brandId: number;
   }): Promise<number[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, permission: "read" },
       attributes: ["categoryId"],
     });
@@ -479,7 +482,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   static async fetchBrandIdsOfReadOnlyCategories(
     connectorId: number
   ): Promise<number[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, permission: "read" },
       attributes: [[fn("DISTINCT", col("brandId")), "brandId"]],
     });
@@ -495,7 +498,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     brandId: number;
     batchSize?: number | null;
   }): Promise<number[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       attributes: ["categoryId"],
       where: { connectorId, brandId, permission: "read" },
       ...(batchSize && { limit: batchSize }),
@@ -510,7 +513,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -523,7 +526,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -536,7 +539,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, permission: "none" },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -545,7 +548,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
   static async fetchAllReadOnly(
     connectorId: number
   ): Promise<ZendeskCategoryResource[]> {
-    const categories = await ZendeskCategory.findAll({
+    const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, permission: "read" },
     });
     return categories.map((category) => new this(this.model, category.get()));
@@ -560,7 +563,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     brandId: number;
     categoryId: number;
   }): Promise<void> {
-    await ZendeskCategory.destroy({
+    await ZendeskCategoryModel.destroy({
       where: { connectorId, brandId, categoryId },
     });
   }
@@ -574,7 +577,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     brandId: number;
     categoryIds: number[];
   }): Promise<number> {
-    return ZendeskCategory.destroy({
+    return ZendeskCategoryModel.destroy({
       where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
   }
@@ -583,7 +586,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
     connectorId: number,
     transaction: Transaction
   ) {
-    await ZendeskCategory.destroy({ where: { connectorId }, transaction });
+    await ZendeskCategoryModel.destroy({ where: { connectorId }, transaction });
   }
 
   async grantPermissions(): Promise<void> {
@@ -612,7 +615,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
       expandable: expandable,
       permission,
       lastUpdatedAt: this.updatedAt.getTime(),
-      mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     };
   }
 
@@ -629,27 +632,27 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategory> {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskTicketResource
-  extends ReadonlyAttributesType<ZendeskTicket> {}
+  extends ReadonlyAttributesType<ZendeskTicketModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
-  static model: ModelStatic<ZendeskTicket> = ZendeskTicket;
+export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
+  static model: ModelStatic<ZendeskTicketModel> = ZendeskTicketModel;
 
   constructor(
-    model: ModelStatic<ZendeskTicket>,
-    blob: Attributes<ZendeskTicket>
+    model: ModelStatic<ZendeskTicketModel>,
+    blob: Attributes<ZendeskTicketModel>
   ) {
-    super(ZendeskTicket, blob);
+    super(ZendeskTicketModel, blob);
   }
 
   static async makeNew({
     blob,
     transaction,
   }: {
-    blob: CreationAttributes<ZendeskTicket>;
+    blob: CreationAttributes<ZendeskTicketModel>;
     transaction?: Transaction;
   }): Promise<ZendeskTicketResource> {
-    const article = await ZendeskTicket.create(
+    const article = await ZendeskTicketModel.create(
       { ...blob },
       transaction && { transaction }
     );
@@ -697,7 +700,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
-      mimeType: MIME_TYPES.ZENDESK.TICKET,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKET,
     };
   }
 
@@ -719,7 +722,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     expirationDate: Date;
     batchSize: number;
   }): Promise<{ brandId: number; ticketId: number }[]> {
-    const tickets = await ZendeskTicket.findAll({
+    const tickets = await ZendeskTicketModel.findAll({
       attributes: ["brandId", "ticketId"],
       where: { connectorId, ticketUpdatedAt: { [Op.lt]: expirationDate } },
       limit: batchSize,
@@ -739,7 +742,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
     ticketId: number;
   }): Promise<ZendeskTicketResource | null> {
-    const ticket = await ZendeskTicket.findOne({
+    const ticket = await ZendeskTicketModel.findOne({
       where: { connectorId, brandId, ticketId },
     });
     return ticket && new this(this.model, ticket.get());
@@ -754,7 +757,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
     ticketIds: number[];
   }): Promise<ZendeskTicketResource[]> {
-    const tickets = await ZendeskTicket.findAll({
+    const tickets = await ZendeskTicketModel.findAll({
       where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
@@ -767,7 +770,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     connectorId: number;
     brandId: number;
   }): Promise<ZendeskTicketResource[]> {
-    const tickets = await ZendeskTicket.findAll({
+    const tickets = await ZendeskTicketModel.findAll({
       where: { connectorId, brandId },
     });
     return tickets.map((ticket) => new this(this.model, ticket.get()));
@@ -782,7 +785,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
     batchSize?: number | null;
   }): Promise<number[]> {
-    const tickets = await ZendeskTicket.findAll({
+    const tickets = await ZendeskTicketModel.findAll({
       where: { connectorId, brandId },
       attributes: ["ticketId"],
       ...(batchSize && { limit: batchSize }),
@@ -799,7 +802,9 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
     ticketId: number;
   }): Promise<void> {
-    await ZendeskTicket.destroy({ where: { connectorId, brandId, ticketId } });
+    await ZendeskTicketModel.destroy({
+      where: { connectorId, brandId, ticketId },
+    });
   }
 
   static async deleteByTicketIds({
@@ -811,7 +816,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     brandId: number;
     ticketIds: number[];
   }): Promise<void> {
-    await ZendeskTicket.destroy({
+    await ZendeskTicketModel.destroy({
       where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
   }
@@ -820,34 +825,34 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicket> {
     connectorId: number,
     transaction: Transaction
   ) {
-    await ZendeskTicket.destroy({ where: { connectorId }, transaction });
+    await ZendeskTicketModel.destroy({ where: { connectorId }, transaction });
   }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskArticleResource
-  extends ReadonlyAttributesType<ZendeskArticle> {}
+  extends ReadonlyAttributesType<ZendeskArticleModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
-  static model: ModelStatic<ZendeskArticle> = ZendeskArticle;
+export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
+  static model: ModelStatic<ZendeskArticleModel> = ZendeskArticleModel;
 
   constructor(
-    model: ModelStatic<ZendeskArticle>,
-    blob: Attributes<ZendeskArticle>
+    model: ModelStatic<ZendeskArticleModel>,
+    blob: Attributes<ZendeskArticleModel>
   ) {
-    super(ZendeskArticle, blob);
+    super(ZendeskArticleModel, blob);
   }
 
   static async makeNew({
     blob,
     transaction,
   }: {
-    blob: CreationAttributes<ZendeskArticle>;
+    blob: CreationAttributes<ZendeskArticleModel>;
     transaction?: Transaction;
   }): Promise<ZendeskArticleResource> {
-    const article = await ZendeskArticle.create(
+    const article = await ZendeskArticleModel.create(
       { ...blob },
       transaction && { transaction }
     );
@@ -899,7 +904,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
       permission: this.permission,
       lastUpdatedAt: this.updatedAt.getTime(),
       preventSelection: true,
-      mimeType: MIME_TYPES.ZENDESK.ARTICLE,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.ARTICLE,
     };
   }
 
@@ -932,7 +937,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     batchSize: number;
     cursor: number | null;
   }): Promise<{ articleIds: number[]; cursor: number | null }> {
-    const articles = await ZendeskArticle.findAll({
+    const articles = await ZendeskArticleModel.findAll({
       attributes: ["id", "articleId"],
       where: {
         connectorId,
@@ -957,7 +962,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     articleId: number;
   }): Promise<ZendeskArticleResource | null> {
-    const article = await ZendeskArticle.findOne({
+    const article = await ZendeskArticleModel.findOne({
       where: { connectorId, brandId, articleId },
     });
     return article && new this(this.model, article.get());
@@ -972,7 +977,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     articleIds: number[];
   }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
+    const articles = await ZendeskArticleModel.findAll({
       where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
     return articles.map((article) => new this(this.model, article.get()));
@@ -987,7 +992,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     categoryId: number;
   }): Promise<ZendeskArticleResource[]> {
-    const articles = await ZendeskArticle.findAll({
+    const articles = await ZendeskArticleModel.findAll({
       where: { connectorId, brandId, categoryId },
     });
     return articles.map((article) => new this(this.model, article.get()));
@@ -1002,7 +1007,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     articleId: number;
   }) {
-    await ZendeskArticle.destroy({
+    await ZendeskArticleModel.destroy({
       where: { connectorId, brandId, articleId },
     });
   }
@@ -1016,7 +1021,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     articleIds: number[];
   }) {
-    await ZendeskArticle.destroy({
+    await ZendeskArticleModel.destroy({
       where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
   }
@@ -1030,7 +1035,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     brandId: number;
     categoryId: number;
   }) {
-    await ZendeskArticle.destroy({
+    await ZendeskArticleModel.destroy({
       where: { connectorId, brandId, categoryId },
     });
   }
@@ -1039,6 +1044,6 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticle> {
     connectorId: number,
     transaction: Transaction
   ) {
-    await ZendeskArticle.destroy({ where: { connectorId }, transaction });
+    await ZendeskArticleModel.destroy({ where: { connectorId }, transaction });
   }
 }

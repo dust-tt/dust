@@ -19,6 +19,7 @@ import {
   SheetContainer,
   SheetContent,
   SheetHeader,
+  SheetTitle,
   Spinner,
   Tabs,
   TabsList,
@@ -26,12 +27,7 @@ import {
   Tooltip,
   ValueCard,
 } from "@dust-tt/sparkle";
-import type {
-  AgentConfigurationScope,
-  AgentConfigurationType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isBuilder, removeNulls } from "@dust-tt/types";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useState } from "react";
 
 import { AssistantDetailsButtonBar } from "@app/components/assistant/AssistantDetailsButtonBar";
@@ -46,6 +42,12 @@ import {
   useUpdateAgentScope,
 } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
+import type {
+  AgentConfigurationScope,
+  AgentConfigurationType,
+  WorkspaceType,
+} from "@app/types";
+import { isBuilder, removeNulls } from "@app/types";
 
 const PERIODS = [
   { value: 7, label: "Last 7 days" },
@@ -86,7 +88,7 @@ function AssistantDetailsInfo({
 
       {agentConfiguration?.instructions ? (
         <div className="flex flex-col gap-5">
-          <div className="text-lg font-bold text-foreground dark:text-foreground-night">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
             Instructions
           </div>
           <ReadOnlyTextArea content={agentConfiguration.instructions} />
@@ -149,8 +151,8 @@ function AssistantDetailsPerformance({
           <ValueCard
             title="Active Users"
             content={
-              <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                <div className="flex flex-col gap-1 text-lg font-bold">
+              <div className="heading-lg text-foreground dark:text-foreground-night">
+                <div className="heading-lg flex flex-col gap-1">
                   {agentAnalytics?.users ? (
                     <>
                       <div className="truncate text-foreground dark:text-foreground-night">
@@ -189,7 +191,7 @@ function AssistantDetailsPerformance({
           <ValueCard
             title="Reactions"
             content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
+              <div className="heading-lg flex flex-row gap-2">
                 {agentConfiguration.scope !== "global" &&
                 agentAnalytics?.feedbacks ? (
                   <>
@@ -216,7 +218,7 @@ function AssistantDetailsPerformance({
           <ValueCard
             title="Conversations"
             content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
+              <div className="heading-lg flex flex-row gap-2">
                 <div className="flex flex-row items-center">
                   <div>
                     <ChatBubbleLeftRightIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
@@ -234,7 +236,7 @@ function AssistantDetailsPerformance({
           <ValueCard
             title="Messages"
             content={
-              <div className="flex flex-row gap-2 text-lg font-bold">
+              <div className="heading-lg flex flex-row gap-2">
                 <div className="flex flex-row items-center">
                   <div>
                     <ChatBubbleThoughtIcon className="h-6 w-6 pr-2 text-muted-foreground dark:text-muted-foreground-night" />
@@ -305,10 +307,10 @@ export function AssistantDetails({
         <div className="flex grow flex-col gap-1">
           <div
             className={classNames(
-              "font-bold text-foreground dark:text-foreground-night",
+              "text-foreground dark:text-foreground-night",
               agentConfiguration?.name && agentConfiguration.name.length > 20
-                ? "text-md"
-                : "text-lg"
+                ? "heading-md"
+                : "heading-lg"
             )}
           >{`@${agentConfiguration?.name ?? ""}`}</div>
           {agentConfiguration?.status === "active" && (
@@ -349,6 +351,9 @@ export function AssistantDetails({
     <Sheet open={!!assistantId} onOpenChange={onClose}>
       <SheetContent size="lg">
         <SheetHeader className="flex flex-col gap-5 pb-0 text-sm text-foreground dark:text-foreground-night">
+          <VisuallyHidden>
+            <SheetTitle />
+          </VisuallyHidden>
           <DescriptionSection />
           {isBuilder(owner) && (
             <Tabs value={selectedTab}>

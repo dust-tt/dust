@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import {
   executeChild,
   proxyActivities,
@@ -9,6 +8,7 @@ import {
 import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/slack/temporal/activities";
+import type { ModelId } from "@connectors/types";
 
 import { getWeekEnd, getWeekStart } from "../lib/utils";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
@@ -22,13 +22,14 @@ const {
   reportInitialSyncProgressActivity,
   getChannelsToGarbageCollect,
   attemptChannelJoinActivity,
-  deleteChannel,
   deleteChannelsFromConnectorDb,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
 });
 
-const { syncThread, syncNonThreaded } = proxyActivities<typeof activities>({
+const { deleteChannel, syncThread, syncNonThreaded } = proxyActivities<
+  typeof activities
+>({
   startToCloseTimeout: "30 minutes",
 });
 

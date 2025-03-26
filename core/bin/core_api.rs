@@ -29,13 +29,14 @@ use tracing::{error, info, Level};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_subscriber::prelude::*;
 
+use dust::search_stores::search_store::NodeItem;
 use dust::{
     api_keys::validate_api_key,
     app,
     blocks::block::BlockType,
     data_sources::{
         data_source::{self, Section},
-        node::{Node, ProviderVisibility},
+        node::ProviderVisibility,
         qdrant::QdrantClients,
     },
     databases::{
@@ -268,14 +269,12 @@ async fn projects_delete(
 
     // Delete the project
     match state.store.delete_project(&project).await {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to delete project",
-                Some(e),
-            )
-        }
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to delete project",
+            Some(e),
+        ),
         Ok(()) => (
             StatusCode::OK,
             Json(APIResponse {
@@ -354,7 +353,7 @@ async fn projects_clone(
         Ok(_) => (),
     }
 
-    return (
+    (
         StatusCode::OK,
         Json(APIResponse {
             error: None,
@@ -362,7 +361,7 @@ async fn projects_clone(
                 "project": project,
             })),
         }),
-    );
+    )
 }
 
 /// Check a specification
@@ -543,14 +542,11 @@ async fn datasets_register(
         Ok(d) => {
             // First retrieve the latest hash of the dataset to avoid registering if it matches the
             // current hash.
-            let current_hash = match state
+            let current_hash = state
                 .store
                 .latest_dataset_hash(&project, &d.dataset_id())
                 .await
-            {
-                Err(_) => None,
-                Ok(hash) => hash,
-            };
+                .unwrap_or_else(|_| None);
             if !(current_hash.is_some() && current_hash.unwrap() == d.hash()) {
                 match state.store.register_dataset(&project, &d).await {
                     Err(e) => error_response(
@@ -1040,13 +1036,10 @@ async fn runs_create_stream(
             });
         }
         Err((_, api_error)) => {
-            let error = match api_error.0.error {
-                Some(error) => error,
-                None => APIError {
-                    code: "internal_server_error".to_string(),
-                    message: "The app execution failed unexpectedly".to_string(),
-                },
-            };
+            let error = api_error.0.error.unwrap_or_else(|| APIError {
+                code: "internal_server_error".to_string(),
+                message: "The app execution failed unexpectedly".to_string(),
+            });
             let _ = tx.send(json!({
                 "type": "error",
                 "content": {
@@ -1483,6 +1476,7 @@ async fn data_sources_retrieve(
                             "data_source_id": ds.data_source_id(),
                             "data_source_internal_id": ds.internal_id(),
                             "config": ds.config(),
+                            "name": ds.name(),
                         },
                     })),
                 }),
@@ -1582,14 +1576,8 @@ async fn data_sources_documents_update_tags(
     Json(payload): Json<DataSourcesDocumentsUpdateTagsPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let add_tags = match payload.add_tags {
-        Some(tags) => tags,
-        None => vec![],
-    };
-    let remove_tags = match payload.remove_tags {
-        Some(tags) => tags,
-        None => vec![],
-    };
+    let add_tags = payload.add_tags.unwrap_or_else(|| vec![]);
+    let remove_tags = payload.remove_tags.unwrap_or_else(|| vec![]);
     let add_tags_set: HashSet<String> = add_tags.iter().cloned().collect();
     let remove_tags_set: HashSet<String> = remove_tags.iter().cloned().collect();
 
@@ -1846,11 +1834,9 @@ async fn data_sources_documents_upsert(
     Json(payload): Json<DataSourcesDocumentsUpsertPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
     let project = project::Project::new_from_id(project_id);
-    let light_document_output = match payload.light_document_output {
-        Some(v) => v,
-        None => false,
-    };
+    let light_document_output = payload.light_document_output.unwrap_or_else(|| false);
 
+    // TODO(2025-03-17 aubin) - Add generic validation on node upserts instead of duplicating it for folders, tables, documents.
     if payload.parents.get(0) != Some(&payload.document_id) {
         return error_response(
             StatusCode::BAD_REQUEST,
@@ -1881,6 +1867,15 @@ async fn data_sources_documents_upsert(
                 );
             }
         }
+    }
+
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert document - title is empty",
+            None,
+        );
     }
 
     match state
@@ -2189,6 +2184,7 @@ async fn data_sources_documents_retrieve(
                                 "created": ds.created(),
                                 "data_source_id": ds.data_source_id(),
                                 "config": ds.config(),
+                                "name": ds.name(),
                             },
                         })),
                     }),
@@ -2401,6 +2397,7 @@ struct DatabasesTablesUpsertPayload {
     parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
+    check_name_uniqueness: Option<bool>,
 
     // Remote DB specifics
     remote_database_table_id: Option<String>,
@@ -2451,6 +2448,15 @@ async fn tables_upsert(
         }
     }
 
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert table - title is empty",
+            None,
+        );
+    }
+
     match state
         .store
         .upsert_data_source_table(
@@ -2469,13 +2475,14 @@ async fn tables_upsert(
                 title: payload.title,
                 mime_type: payload.mime_type,
                 provider_visibility: payload.provider_visibility,
+                check_name_uniqueness: payload.check_name_uniqueness,
             },
         )
         .await
     {
         Ok(table) => match state
             .search_store
-            .index_node(Node::from(table.clone()))
+            .index_node(NodeItem::Table(table.clone()))
             .await
         {
             Ok(_) => (
@@ -2846,31 +2853,25 @@ async fn tables_csv_upsert(
         .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load table",
-                Some(e),
-            )
-        }
-        Ok(None) => {
-            return error_response(
-                StatusCode::NOT_FOUND,
-                "table_not_found",
-                &format!("No table found for id `{}`", table_id),
-                None,
-            )
-        }
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
         Ok(Some(table)) => match LocalTable::from_table(table) {
-            Err(e) => {
-                return error_response(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_table",
-                    "Table is not local",
-                    Some(e),
-                )
-            }
+            Err(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_table",
+                "Table is not local",
+                Some(e),
+            ),
             Ok(table) => {
                 match table
                     .upsert_csv_content(
@@ -2878,21 +2879,16 @@ async fn tables_csv_upsert(
                         state.databases_store.clone(),
                         &payload.bucket,
                         &payload.bucket_csv_path,
-                        match payload.truncate {
-                            Some(v) => v,
-                            None => false,
-                        },
+                        payload.truncate.unwrap_or_else(|| false),
                     )
                     .await
                 {
-                    Err(e) => {
-                        return error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to upsert rows",
-                            Some(e),
-                        )
-                    }
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to upsert rows",
+                        Some(e),
+                    ),
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {
@@ -2926,52 +2922,41 @@ async fn tables_rows_upsert(
         .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load table",
-                Some(e),
-            )
-        }
-        Ok(None) => {
-            return error_response(
-                StatusCode::NOT_FOUND,
-                "table_not_found",
-                &format!("No table found for id `{}`", table_id),
-                None,
-            )
-        }
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "table_not_found",
+            &format!("No table found for id `{}`", table_id),
+            None,
+        ),
         Ok(Some(table)) => match LocalTable::from_table(table) {
-            Err(e) => {
-                return error_response(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_table",
-                    "Table is not local",
-                    Some(e),
-                )
-            }
+            Err(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_table",
+                "Table is not local",
+                Some(e),
+            ),
             Ok(table) => {
                 match table
                     .upsert_rows(
                         state.store.clone(),
                         state.databases_store.clone(),
                         payload.rows,
-                        match payload.truncate {
-                            Some(v) => v,
-                            None => false,
-                        },
+                        payload.truncate.unwrap_or_else(|| false),
                     )
                     .await
                 {
-                    Err(e) => {
-                        return error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to upsert rows",
-                            Some(e),
-                        )
-                    }
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to upsert rows",
+                        Some(e),
+                    ),
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {
@@ -3015,64 +3000,52 @@ async fn tables_rows_retrieve(
         .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load table",
-                Some(e),
-            )
-        }
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
         Ok(table) => match table.filter(|table| table.match_filter(&view_filter)) {
-            None => {
-                return error_response(
-                    StatusCode::NOT_FOUND,
-                    "table_not_found",
-                    &format!("No table found for id `{}`", table_id),
-                    None,
-                )
-            }
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                &format!("No table found for id `{}`", table_id),
+                None,
+            ),
             Some(table) => match LocalTable::from_table(table) {
-                Err(e) => {
-                    return error_response(
-                        StatusCode::BAD_REQUEST,
-                        "invalid_table",
-                        "Table is not local",
-                        Some(e),
-                    )
-                }
+                Err(e) => error_response(
+                    StatusCode::BAD_REQUEST,
+                    "invalid_table",
+                    "Table is not local",
+                    Some(e),
+                ),
                 Ok(table) => {
                     match table
                         .retrieve_row(state.databases_store.clone(), &row_id)
                         .await
                     {
-                        Err(e) => {
-                            return error_response(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                                "internal_server_error",
-                                "Failed to load row",
-                                Some(e),
-                            )
-                        }
-                        Ok(None) => {
-                            return error_response(
-                                StatusCode::NOT_FOUND,
-                                "table_row_not_found",
-                                &format!("No table row found for id `{}`", row_id),
-                                None,
-                            )
-                        }
-                        Ok(Some(row)) => {
-                            return (
-                                StatusCode::OK,
-                                Json(APIResponse {
-                                    error: None,
-                                    response: Some(json!({
-                                        "row": row,
-                                    })),
-                                }),
-                            )
-                        }
+                        Err(e) => error_response(
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal_server_error",
+                            "Failed to load row",
+                            Some(e),
+                        ),
+                        Ok(None) => error_response(
+                            StatusCode::NOT_FOUND,
+                            "table_row_not_found",
+                            &format!("No table row found for id `{}`", row_id),
+                            None,
+                        ),
+                        Ok(Some(row)) => (
+                            StatusCode::OK,
+                            Json(APIResponse {
+                                error: None,
+                                response: Some(json!({
+                                    "row": row,
+                                })),
+                            }),
+                        ),
                     }
                 }
             },
@@ -3091,48 +3064,40 @@ async fn tables_rows_delete(
         .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load table",
-                Some(e),
-            )
-        }
-        Ok(None) => {
-            return (
-                StatusCode::NOT_FOUND,
-                Json(APIResponse {
-                    error: Some(APIError {
-                        code: "table_not_found".to_string(),
-                        message: format!("No table found for id `{}`", table_id),
-                    }),
-                    response: None,
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(APIResponse {
+                error: Some(APIError {
+                    code: "table_not_found".to_string(),
+                    message: format!("No table found for id `{}`", table_id),
                 }),
-            )
-        }
+                response: None,
+            }),
+        ),
         Ok(Some(table)) => match LocalTable::from_table(table) {
-            Err(e) => {
-                return error_response(
-                    StatusCode::BAD_REQUEST,
-                    "invalid_table",
-                    "Table is not local",
-                    Some(e),
-                )
-            }
+            Err(e) => error_response(
+                StatusCode::BAD_REQUEST,
+                "invalid_table",
+                "Table is not local",
+                Some(e),
+            ),
             Ok(table) => {
                 match table
                     .delete_row(state.databases_store.clone(), &row_id)
                     .await
                 {
-                    Err(e) => {
-                        return error_response(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                            "internal_server_error",
-                            "Failed to delete row",
-                            Some(e),
-                        )
-                    }
+                    Err(e) => error_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "internal_server_error",
+                        "Failed to delete row",
+                        Some(e),
+                    ),
                     Ok(_) => (
                         StatusCode::OK,
                         Json(APIResponse {
@@ -3183,23 +3148,19 @@ async fn tables_rows_list(
         .load_data_source_table(&project, &data_source_id, &table_id)
         .await
     {
-        Err(e) => {
-            return error_response(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "internal_server_error",
-                "Failed to load table",
-                Some(e),
-            )
-        }
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to load table",
+            Some(e),
+        ),
         Ok(table) => match table.filter(|table| table.match_filter(&view_filter)) {
-            None => {
-                return error_response(
-                    StatusCode::NOT_FOUND,
-                    "table_not_found",
-                    &format!("No table found for id `{}`", table_id),
-                    None,
-                )
-            }
+            None => error_response(
+                StatusCode::NOT_FOUND,
+                "table_not_found",
+                &format!("No table found for id `{}`", table_id),
+                None,
+            ),
             Some(table) => match LocalTable::from_table(table) {
                 Err(e) => error_response(
                     StatusCode::BAD_REQUEST,
@@ -3289,6 +3250,15 @@ async fn folders_upsert(
         }
     }
 
+    if payload.title.trim().is_empty() {
+        return error_response(
+            StatusCode::BAD_REQUEST,
+            "title_is_empty",
+            "Failed to upsert folder - title is empty",
+            None,
+        );
+    }
+
     match state
         .store
         .upsert_data_source_folder(
@@ -3314,7 +3284,7 @@ async fn folders_upsert(
         ),
         Ok(folder) => match state
             .search_store
-            .index_node(Node::from(folder.clone()))
+            .index_node(NodeItem::Folder(folder.clone()))
             .await
         {
             Ok(_) => (
@@ -3467,7 +3437,10 @@ async fn folders_delete(
             .store
             .delete_data_source_folder(&project, &data_source_id, &folder_id)
             .await?;
-        state.search_store.delete_node(Node::from(folder)).await?;
+        state
+            .search_store
+            .delete_node(NodeItem::Folder(folder))
+            .await?;
         Ok(())
     }
     .await;
@@ -3501,7 +3474,7 @@ async fn nodes_search(
     State(state): State<Arc<APIState>>,
     Json(payload): Json<NodesSearchPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    let (nodes, hit_count, hit_count_is_accurate, next_cursor) = match state
+    let (nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code) = match state
         .search_store
         .search_nodes(
             payload.query,
@@ -3511,9 +3484,13 @@ async fn nodes_search(
         )
         .await
     {
-        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor)) => {
-            (nodes, hit_count, hit_count_is_accurate, next_cursor)
-        }
+        Ok((nodes, hit_count, hit_count_is_accurate, next_cursor, warning_code)) => (
+            nodes,
+            hit_count,
+            hit_count_is_accurate,
+            next_cursor,
+            warning_code,
+        ),
         Err(e) => {
             return error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -3533,9 +3510,64 @@ async fn nodes_search(
                 "hit_count": hit_count,
                 "hit_count_is_accurate": hit_count_is_accurate,
                 "next_page_cursor": next_cursor,
+                "warning_code": warning_code,
             })),
         }),
     )
+}
+
+async fn data_sources_stats(
+    Path((project_id, data_source_id)): Path<(i64, String)>,
+    State(state): State<Arc<APIState>>,
+) -> (StatusCode, Json<APIResponse>) {
+    let project = project::Project::new_from_id(project_id);
+    match state
+        .store
+        .load_data_source(&project, &data_source_id)
+        .await
+    {
+        Err(e) => error_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "internal_server_error",
+            "Failed to retrieve data source",
+            Some(e),
+        ),
+        Ok(None) => error_response(
+            StatusCode::NOT_FOUND,
+            "data_source_not_found",
+            &format!("No data source found for id `{}`", data_source_id),
+            None,
+        ),
+        Ok(Some(data_source)) => {
+            match state
+                .search_store
+                .get_data_source_stats(data_source.data_source_id().to_string())
+                .await
+            {
+                Ok(Some(data_source_stats)) => (
+                    StatusCode::OK,
+                    Json(APIResponse {
+                        error: None,
+                        response: Some(json!({
+                            "data_source": data_source_stats
+                        })),
+                    }),
+                ),
+                Ok(None) => error_response(
+                    StatusCode::NOT_FOUND,
+                    "data_source_not_found",
+                    &format!("No data source indexed for id `{}`", data_source_id),
+                    None,
+                ),
+                Err(e) => error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal_server_error",
+                    "Failed to get stats relative to data source",
+                    Some(e),
+                ),
+            }
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -3636,14 +3668,12 @@ async fn databases_query_run(
                 })
                 .collect::<Option<Vec<Table>>>()
             {
-                None => {
-                    return error_response(
-                        StatusCode::NOT_FOUND,
-                        "table_not_found",
-                        "No table found",
-                        None,
-                    )
-                }
+                None => error_response(
+                    StatusCode::NOT_FOUND,
+                    "table_not_found",
+                    "No table found",
+                    None,
+                ),
                 Some(tables) => match execute_query(tables, &payload.query, state.store.clone())
                     .await
                 {
@@ -3653,7 +3683,7 @@ async fn databases_query_run(
                         "The query returned too many rows",
                         None,
                     ),
-                    Err(QueryDatabaseError::ExecutionError(s)) => {
+                    Err(QueryDatabaseError::ExecutionError(s, _)) => {
                         error_response(StatusCode::BAD_REQUEST, "query_execution_error", &s, None)
                     }
                     Err(e) => error_response(
@@ -3662,13 +3692,14 @@ async fn databases_query_run(
                         "Failed to run query",
                         Some(e.into()),
                     ),
-                    Ok((results, schema)) => (
+                    Ok((results, schema, query)) => (
                         StatusCode::OK,
                         Json(APIResponse {
                             error: None,
                             response: Some(json!({
                                 "schema": schema,
                                 "results": results,
+                                "query": query,
                             })),
                         }),
                     ),
@@ -4099,6 +4130,7 @@ fn main() {
 
         //Search
         .route("/nodes/search", post(nodes_search))
+        .route("/projects/:project_id/data_sources/:data_source_id/stats", get(data_sources_stats))
         .route("/tags/search", post(tags_search))
 
         // Misc

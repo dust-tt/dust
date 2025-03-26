@@ -1,16 +1,16 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Label } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
+import dynamic from "next/dynamic";
+
+import { shallowBlockClone } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 import type {
   AppType,
   SpecificationBlockType,
   SpecificationType,
-} from "@dust-tt/types";
-import type { BlockType, RunType } from "@dust-tt/types";
-import dynamic from "next/dynamic";
-
-import { shallowBlockClone } from "@app/lib/utils";
+} from "@app/types";
+import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
 

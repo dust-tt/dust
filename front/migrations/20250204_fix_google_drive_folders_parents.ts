@@ -1,13 +1,13 @@
-import type { ProviderVisibility } from "@dust-tt/types";
-import { concurrentExecutor, CoreAPI, Ok } from "@dust-tt/types";
 import { QueryTypes } from "sequelize";
 
 import apiConfig from "@app/lib/api/config";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { withRetries } from "@app/lib/utils/retries";
 import type Logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import type { ProviderVisibility } from "@app/types";
+import { concurrentExecutor, CoreAPI, Ok } from "@app/types";
+import { withRetries } from "@app/types";
 
 const QUERY_BATCH_SIZE = 256;
 const NODE_CONCURRENCY = 16;
@@ -77,6 +77,7 @@ async function migrateNode({
 
   if (execute) {
     await withRetries(
+      logger,
       async () => {
         const updateRes = await coreAPI.upsertDataSourceFolder({
           projectId: dataSource.dustAPIProjectId,

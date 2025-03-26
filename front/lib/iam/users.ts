@@ -1,9 +1,8 @@
 import type { Session } from "@auth0/nextjs-auth0";
-import type { Result, UserProviderType } from "@dust-tt/types";
-import { Err, Ok, sanitizeString } from "@dust-tt/types";
 import type { PostIdentitiesRequestProviderEnum } from "auth0";
 
 import { getAuth0ManagemementClient } from "@app/lib/api/auth0";
+import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -13,6 +12,8 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
+import type { Result, UserProviderType } from "@app/types";
+import { Err, Ok, sanitizeString } from "@app/types";
 
 interface LegacyProviderInfo {
   provider: UserProviderType;
@@ -30,7 +31,7 @@ async function fetchUserWithLegacyProvider(
 
   // If a legacy user is found, attach the Auth0 user ID (sub) to the existing user account.
   if (user) {
-    await user.updateAuth0Sub(sub);
+    await user.updateAuth0Sub({ sub, provider });
   }
 
   return user;
@@ -178,10 +179,14 @@ export async function mergeUserIdentities({
   auth,
   primaryUserId,
   secondaryUserId,
+  enforceEmailMatch = true,
+  revokeSecondaryUser = false,
 }: {
   auth: Authenticator;
   primaryUserId: string;
   secondaryUserId: string;
+  enforceEmailMatch?: boolean;
+  revokeSecondaryUser?: boolean;
 }): Promise<
   Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
 > {
@@ -195,7 +200,7 @@ export async function mergeUserIdentities({
     return new Err(new Error("Primary or secondary user not found."));
   }
 
-  if (primaryUser.email !== secondaryUser.email) {
+  if (enforceEmailMatch && primaryUser.email !== secondaryUser.email) {
     return new Err(
       new Error("Primary and secondary user emails do not match.")
     );
@@ -210,6 +215,16 @@ export async function mergeUserIdentities({
   if (!primaryMemberships.some((m) => m.workspaceId === workspaceId)) {
     return new Err(
       new Error("Primary must have a membership in the workspace.")
+    );
+  }
+
+  // Ensure that secondary user has a membership in the workspace.
+  const secondaryMemberships = await MembershipResource.fetchByUserIds([
+    secondaryUser.id,
+  ]);
+  if (!secondaryMemberships.some((m) => m.workspaceId === workspaceId)) {
+    return new Err(
+      new Error("Secondary must have a membership in the workspace.")
     );
   }
 
@@ -276,6 +291,13 @@ export async function mergeUserIdentities({
       },
     }
   );
+
+  if (revokeSecondaryUser) {
+    await revokeAndTrackMembership(
+      auth.getNonNullableWorkspace(),
+      secondaryUser
+    );
+  }
 
   return new Ok({
     primaryUser,

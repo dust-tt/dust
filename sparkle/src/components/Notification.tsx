@@ -30,8 +30,8 @@ function NotificationContent({ type, title, description }: NotificationType) {
     <div
       className={cn(
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-center s-gap-2 s-rounded-xl s-border",
-        "s-border-structure-100 dark:s-border-structure-100-night",
-        "s-bg-structure-0 dark:s-bg-structure-0-night",
+        "s-border-border dark:s-border-border-night",
+        "s-bg-background dark:s-bg-background-night",
         "s-p-4 s-shadow-xl"
       )}
     >
@@ -39,7 +39,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
         <Icon
           size="lg"
           visual={CheckCircleIcon}
-          className="s-pt-0.5 s-text-success-500 dark:s-text-success-500-night"
+          className="s-pt-0.5 s-text-success-600 dark:s-text-success-400-night"
           aria-hidden="true"
         />
       ) : (
@@ -55,7 +55,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
           className={cn(
             "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
             type === "success"
-              ? "s-text-success-500 dark:s-text-success-500-night"
+              ? "s-text-success-600 dark:s-text-success-400-night"
               : "s-text-warning-500 dark:s-text-warning-500-night"
           )}
         >
@@ -64,7 +64,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
         {description && (
           <div
             className={cn(
-              "s-text-element-700 dark:s-text-element-700-night",
+              "s-text-muted-foreground dark:s-text-muted-foreground-night",
               "s-line-clamp-3 s-pr-2 s-text-sm s-font-normal"
             )}
           >

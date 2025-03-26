@@ -3,7 +3,6 @@ import React from "react";
 
 import { ScrollBar } from "@sparkle/components/ScrollArea";
 import { ScrollArea, Separator } from "@sparkle/index_with_tw_base";
-import { cn } from "@sparkle/lib/utils";
 
 const meta: Meta<typeof ScrollArea> = {
   title: "Primitives/ScrollArea",
@@ -31,6 +30,7 @@ export const ScrollAreaDemo: Story = {
               <Separator className="s-my-2" />
             </React.Fragment>
           ))}
+          <ScrollBar orientation="vertical" />
         </ScrollArea>
       </div>
       <div className="s-h-[400px]">
@@ -104,8 +104,12 @@ export const ScrollWithActiveState: Story = {
     return (
       <div className="s-flex s-flex-col s-gap-4">
         <ScrollArea
-          className={cn("s-h-[200px] s-w-[350px] s-rounded-xl s-border")}
-          appearance="default"
+          className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white"
+          scrollStyles={{
+            active:
+              "s-shadow-md s-border-highlight-200 dark:s-border-highlight-200-night",
+            inactive: "s-border-border dark:s-border-border-night",
+          }}
         >
           <div>
             {Array.from({ length: 20 }).map((_, i) => (

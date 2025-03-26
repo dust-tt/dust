@@ -8,14 +8,9 @@ import {
   Label,
   PlusCircleIcon,
   PlusIcon,
+  useSendNotification,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import type {
-  DatasetEntry,
-  DatasetSchema,
-  DatasetType,
-  DatasetViewType,
-} from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -25,6 +20,12 @@ import { checkDatasetData, DATASET_DATA_TYPES } from "@app/lib/datasets";
 import { getDatasetTypes, getValueType } from "@app/lib/datasets";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import { classNames } from "@app/lib/utils";
+import type {
+  DatasetEntry,
+  DatasetSchema,
+  DatasetType,
+  DatasetViewType,
+} from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -188,6 +189,7 @@ export default function DatasetView({
   viewType: DatasetViewType;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const sendNotification = useSendNotification();
 
   if (!dataset) {
     dataset = {
@@ -322,6 +324,18 @@ export default function DatasetView({
 
   const handleKeyUpdate = (i: number, newKey: string) => {
     const oldKey = datasetKeys[i];
+
+    // Check that the new key is not already in the dataset
+    // If it is, append a number to the new key otherwise it will mess up the dataset since keys and data are not linked.
+    if (datasetKeys.includes(newKey)) {
+      newKey = newKey + "_1";
+      sendNotification({
+        title: "Key already exists",
+        description: "Please choose a different key",
+        type: "error",
+      });
+    }
+
     const data = datasetData.map((d) => {
       d[newKey] = d[oldKey];
       delete d[oldKey];
@@ -640,10 +654,10 @@ export default function DatasetView({
                       <TextareaAutosize
                         minRows={1}
                         className={classNames(
-                          "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
+                          "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal italic placeholder-gray-400 ring-0 focus:ring-0",
                           readOnly
                             ? "text-gray-500"
-                            : "dark:text-gray-700-night text-gray-700"
+                            : "text-gray-700 dark:text-gray-700-night"
                         )}
                         readOnly={readOnly}
                         placeholder="Property description"
@@ -704,7 +718,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "font-mono col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 text-[13px] dark:bg-slate-100-night",
+                            "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px] dark:bg-slate-100-night",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               isTypeValidForDataset(
@@ -742,7 +756,7 @@ export default function DatasetView({
                             <TextareaAutosize
                               minRows={1}
                               className={classNames(
-                                "font-mono w-full resize-none border-0 bg-transparent px-1 py-0 text-[13px] font-normal ring-0 focus:ring-0",
+                                "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono text-[13px] font-normal ring-0 focus:ring-0",
                                 readOnly
                                   ? "text-gray-500"
                                   : "text-gray-700 dark:text-gray-600"
@@ -762,7 +776,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <div className="flex-initial">
                             <XCircleIcon
-                              className="dark:text-gray-300-night h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500"
+                              className="h-4 w-4 cursor-pointer text-gray-300 hover:text-red-500 dark:text-gray-300-night"
                               onClick={() => {
                                 handleDeleteEntry(i);
                               }}
@@ -771,7 +785,7 @@ export default function DatasetView({
                         ) : null}
                         <div className="flex-initial">
                           <PlusCircleIcon
-                            className="dark:text-gray-300-night h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500"
+                            className="h-5 w-5 cursor-pointer text-gray-300 hover:text-emerald-500 dark:text-gray-300-night"
                             onClick={() => {
                               handleNewEntry(i);
                             }}

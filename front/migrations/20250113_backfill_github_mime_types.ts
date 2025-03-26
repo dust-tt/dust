@@ -1,5 +1,5 @@
-import type { GithubMimeType } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
+import type { GithubMimeType } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
@@ -55,11 +55,11 @@ function matchGithubInternalIdType(internalId: string): {
 function getMimeTypeForNodeId(nodeId: string): GithubMimeType {
   switch (matchGithubInternalIdType(nodeId).type) {
     case "REPO_CODE":
-      return MIME_TYPES.GITHUB.CODE_ROOT;
+      return INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT;
     case "REPO_CODE_DIR":
-      return MIME_TYPES.GITHUB.CODE_DIRECTORY;
+      return INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY;
     case "REPO_CODE_FILE":
-      return MIME_TYPES.GITHUB.CODE_FILE;
+      return INTERNAL_MIME_TYPES.GITHUB.CODE_FILE;
     default:
       throw new Error(`Unreachable: unrecognized node_id: ${nodeId}`);
   }

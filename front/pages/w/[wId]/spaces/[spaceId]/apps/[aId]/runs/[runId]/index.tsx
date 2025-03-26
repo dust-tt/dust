@@ -6,13 +6,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  RunType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useContext, useState } from "react";
@@ -27,6 +20,13 @@ import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import type {
+  AppType,
+  RunType,
+  SpecificationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -171,10 +171,10 @@ export default function AppRun({
               <div className="flex items-center">
                 <span>
                   Viewing run:{" "}
-                  <span className="font-mono ml-1 hidden text-gray-600 sm:inline">
+                  <span className="ml-1 hidden font-mono text-gray-600 sm:inline">
                     {run.run_id}
                   </span>
-                  <span className="font-mono ml-1 text-gray-600 sm:hidden">
+                  <span className="ml-1 font-mono text-gray-600 sm:hidden">
                     {run.run_id.slice(0, 8)}...{run.run_id.slice(-8)}
                   </span>
                 </span>
@@ -183,10 +183,10 @@ export default function AppRun({
                 <div className="flex items-center text-xs italic text-gray-400">
                   <span>
                     Specification Hash:{" "}
-                    <span className="font-mono ml-1 hidden text-gray-400 sm:inline">
+                    <span className="ml-1 hidden font-mono text-gray-400 sm:inline">
                       {run.app_hash}
                     </span>
-                    <span className="font-mono ml-1 text-gray-400 sm:hidden">
+                    <span className="ml-1 font-mono text-gray-400 sm:hidden">
                       {run.app_hash.slice(0, 8)}...{run.app_hash.slice(-8)}
                     </span>
                   </span>

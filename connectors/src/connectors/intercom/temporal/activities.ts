@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import { Op } from "sequelize";
 
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
@@ -35,15 +33,17 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import {
-  IntercomCollection,
-  IntercomConversation,
-  IntercomHelpCenter,
-  IntercomTeam,
-  IntercomWorkspace,
+  IntercomCollectionModel,
+  IntercomConversationModel,
+  IntercomHelpCenterModel,
+  IntercomTeamModel,
+  IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const INTERCOM_CONVO_BATCH_SIZE = 20;
 const INTERCOM_ARTICLE_BATCH_SIZE = 20;
@@ -95,7 +95,7 @@ export async function saveIntercomConnectorStartSync({
  * We sync all the help centers that are in DB.
  */
 export async function getHelpCenterIdsToSyncActivity(connectorId: ModelId) {
-  const helpCenters = await IntercomHelpCenter.findAll({
+  const helpCenters = await IntercomHelpCenterModel.findAll({
     attributes: ["helpCenterId"],
     where: {
       connectorId: connectorId,
@@ -130,7 +130,7 @@ export async function syncHelpCenterOnlyActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const helpCenterOnDb = await IntercomHelpCenter.findOne({
+  const helpCenterOnDb = await IntercomHelpCenterModel.findOne({
     where: {
       connectorId,
       helpCenterId,
@@ -179,12 +179,12 @@ export async function syncHelpCenterOnlyActivity({
     title: helpCenterOnIntercom.display_name || "Help Center",
     parents: [helpCenterInternalId],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM.HELP_CENTER,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.HELP_CENTER,
     timestampMs: currentSyncMs,
   });
 
   // If all children collections are not allowed anymore we delete the Help Center data
-  const collectionsWithReadPermission = await IntercomCollection.findAll({
+  const collectionsWithReadPermission = await IntercomCollectionModel.findAll({
     where: {
       connectorId,
       helpCenterId: helpCenterId,
@@ -222,7 +222,7 @@ export async function getLevel1CollectionsIdsActivity({
   connectorId: ModelId;
   helpCenterId: string;
 }): Promise<string[]> {
-  const level1Collections = await IntercomCollection.findAll({
+  const level1Collections = await IntercomCollectionModel.findAll({
     where: {
       connectorId,
       helpCenterId: helpCenterId,
@@ -264,7 +264,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
     },
@@ -280,7 +280,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     };
   }
 
-  const collectionOnDB = await IntercomCollection.findOne({
+  const collectionOnDB = await IntercomCollectionModel.findOne({
     where: {
       connectorId,
       helpCenterId,
@@ -340,6 +340,7 @@ export async function syncLevel1CollectionWithChildrenActivity({
     region: intercomWorkspace.region,
     currentSyncMs,
   });
+
   return {
     collectionId,
     action: "upserted",
@@ -368,7 +369,7 @@ export async function syncArticleBatchActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
     },
@@ -377,7 +378,7 @@ export async function syncArticleBatchActivity({
     throw new Error("[Intercom] IntercomWorkspace not found");
   }
 
-  const helpCenter = await IntercomHelpCenter.findOne({
+  const helpCenter = await IntercomHelpCenterModel.findOne({
     where: {
       connectorId,
     },
@@ -403,7 +404,7 @@ export async function syncArticleBatchActivity({
       ? result.pages.page + 1
       : null;
 
-  const collectionsInRead = await IntercomCollection.findAll({
+  const collectionsInRead = await IntercomCollectionModel.findAll({
     where: {
       connectorId,
       helpCenterId,
@@ -415,11 +416,16 @@ export async function syncArticleBatchActivity({
   await concurrentExecutor(
     articles,
     async (article) => {
-      const parentCollectionIdAsString = article.parent_id
-        ? article.parent_id.toString()
-        : null;
+      const parentCollectionIds = article.parent_ids.map((id) => id.toString());
+      if (parentCollectionIds.length === 0) {
+        logger.warn(
+          { ...loggerArgs, articleId: article.id },
+          "[Intercom] Article has no parent."
+        );
+        return;
+      }
       const parentCollection = collectionsInRead.find(
-        (c) => c.collectionId === parentCollectionIdAsString
+        (c) => c.collectionId === parentCollectionIds[0]
       );
       if (parentCollection) {
         await upsertArticle({
@@ -434,6 +440,11 @@ export async function syncArticleBatchActivity({
           dataSourceConfig,
           loggerArgs,
         });
+      } else {
+        logger.warn(
+          { ...loggerArgs, articleId: article.id },
+          "[Intercom] Article has no parent collection."
+        );
       }
     },
     { concurrency: 4 }
@@ -466,7 +477,7 @@ export async function syncTeamOnlyActivity({
     dataSourceId: dataSourceConfig.dataSourceId,
   };
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: { connectorId: connector.id },
   });
 
@@ -474,7 +485,7 @@ export async function syncTeamOnlyActivity({
     throw new Error("Error retrieving intercom workspace to update connector");
   }
 
-  const teamOnDB = await IntercomTeam.findOne({
+  const teamOnDB = await IntercomTeamModel.findOne({
     where: {
       connectorId,
       teamId,
@@ -544,7 +555,7 @@ export async function syncTeamOnlyActivity({
       ...(syncAllActivated ? [getTeamsInternalId(connectorId)] : []),
     ],
     parentId: syncAllActivated ? getTeamsInternalId(connectorId) : null,
-    mimeType: MIME_TYPES.INTERCOM.TEAM,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
     timestampMs: currentSyncMs,
   });
 
@@ -566,7 +577,7 @@ export async function getNextConversationBatchToSyncActivity({
 }): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
 
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
     },
@@ -662,7 +673,7 @@ export async function syncAllTeamsActivity({
   const teamsOnIntercom = await fetchIntercomTeams({ accessToken });
 
   for (const teamOnIntercom of teamsOnIntercom) {
-    const teamOnDb = await IntercomTeam.findOne({
+    const teamOnDb = await IntercomTeamModel.findOne({
       where: { connectorId, teamId: teamOnIntercom.id },
     });
     const folderId = getTeamInternalId(connectorId, teamOnIntercom.id);
@@ -674,14 +685,14 @@ export async function syncAllTeamsActivity({
       title: teamOnIntercom.name,
       parents: [folderId, getTeamsInternalId(connectorId)],
       parentId: getTeamsInternalId(connectorId),
-      mimeType: MIME_TYPES.INTERCOM.TEAM,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAM,
       timestampMs: currentSyncMs,
     });
 
     // We create a team in db with permission "none" because if it was not already in db it means that it was not explicitly selected by the user.
     // We need to create these teams to make it possible to delete the entries in the core db when the user unselects the All Conversations button.
     if (!teamOnDb) {
-      await IntercomTeam.create({
+      await IntercomTeamModel.create({
         connectorId,
         teamId: teamOnIntercom.id,
         name: teamOnIntercom.name,
@@ -708,7 +719,7 @@ export async function deleteRevokedTeamsActivity({
   const connector = await _getIntercomConnectorOrRaise(connectorId);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  const unauthorizedTeams = await IntercomTeam.findAll({
+  const unauthorizedTeams = await IntercomTeamModel.findAll({
     attributes: ["teamId"],
     where: { connectorId, permission: "none" },
   });
@@ -732,7 +743,7 @@ export async function getNextRevokedConversationsBatchToDeleteActivity({
 }: {
   connectorId: ModelId;
 }): Promise<string[]> {
-  const authorizedTeams = await IntercomTeam.findAll({
+  const authorizedTeams = await IntercomTeamModel.findAll({
     attributes: ["teamId"],
     where: {
       connectorId,
@@ -740,7 +751,7 @@ export async function getNextRevokedConversationsBatchToDeleteActivity({
     },
   });
   const authorizedTeamIds = authorizedTeams.map((t) => t.teamId);
-  const conversations = await IntercomConversation.findAll({
+  const conversations = await IntercomConversationModel.findAll({
     attributes: ["conversationId"],
     where: {
       connectorId,
@@ -763,7 +774,7 @@ export async function getNextOldConversationsBatchToDeleteActivity({
 }: {
   connectorId: ModelId;
 }): Promise<string[]> {
-  const conversations = await IntercomConversation.findAll({
+  const conversations = await IntercomConversationModel.findAll({
     attributes: ["conversationId"],
     where: {
       connectorId,
@@ -812,7 +823,7 @@ export async function setSyncAllConversationsStatusActivity({
   connectorId: ModelId;
   status: IntercomSyncAllConversationsStatus;
 }): Promise<void> {
-  await IntercomWorkspace.update(
+  await IntercomWorkspaceModel.update(
     {
       syncAllConversations: status,
     },
@@ -832,7 +843,7 @@ export async function getSyncAllConversationsStatusActivity({
 }: {
   connectorId: ModelId;
 }): Promise<IntercomSyncAllConversationsStatus> {
-  const intercomWorkspace = await IntercomWorkspace.findOne({
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
     where: {
       connectorId,
     },
@@ -859,6 +870,6 @@ export async function upsertIntercomTeamsFolderActivity({
     title: "Conversations",
     parents: [getTeamsInternalId(connectorId)],
     parentId: null,
-    mimeType: MIME_TYPES.INTERCOM.TEAMS_FOLDER,
+    mimeType: INTERNAL_MIME_TYPES.INTERCOM.TEAMS_FOLDER,
   });
 }

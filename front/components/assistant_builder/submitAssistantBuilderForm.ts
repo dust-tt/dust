@@ -1,14 +1,3 @@
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  PostOrPatchAgentConfigurationRequestBody,
-  Result,
-  RetrievalTimeframe,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
-
 import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant_builder/legacy_agent";
 import { removeLeadingAt } from "@app/components/assistant_builder/NamingScreen";
 import { getTableIdForContentNode } from "@app/components/assistant_builder/shared";
@@ -20,15 +9,21 @@ import type {
 import {
   DEFAULT_BROWSE_ACTION_DESCRIPTION,
   DEFAULT_BROWSE_ACTION_NAME,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-  DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/api/assistant/actions/constants";
+} from "@app/lib/actions/constants";
+import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  PostOrPatchAgentConfigurationRequestBody,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
@@ -180,6 +175,19 @@ export async function submitAssistantBuilderForm({
           },
         ];
 
+      case "MCP":
+        //TODO(mcp): handle configuration of datasources
+        return [
+          {
+            type: "mcp_server_configuration",
+            name: a.name,
+            description: a.description,
+            serverType: a.configuration.serverType,
+            internalMCPServerId: a.configuration.internalMCPServerId,
+            remoteMCPServerId: a.configuration.remoteMCPServerId,
+          },
+        ];
+
       case "PROCESS":
         return [
           {
@@ -213,24 +221,6 @@ export async function submitAssistantBuilderForm({
             tagsFilter: a.configuration.tagsFilter,
             relativeTimeFrame: timeFrame,
             schema: a.configuration.schema,
-          },
-        ];
-
-      case "GITHUB_GET_PULL_REQUEST":
-        return [
-          {
-            type: "github_get_pull_request_configuration",
-            name: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_NAME,
-            description: DEFAULT_GITHUB_GET_PULL_REQUEST_ACTION_DESCRIPTION,
-          },
-        ];
-
-      case "GITHUB_CREATE_ISSUE":
-        return [
-          {
-            type: "github_create_issue_configuration",
-            name: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_NAME,
-            description: DEFAULT_GITHUB_CREATE_ISSUE_ACTION_DESCRIPTION,
           },
         ];
 

@@ -1,14 +1,3 @@
-import type {
-  ContentFragmentType,
-  ConversationType,
-  ConversationWithoutContentType,
-  UserMessageType,
-  WithAPIErrorResponse,
-} from "@dust-tt/types";
-import {
-  ConversationError,
-  InternalPostConversationsRequestBodySchema,
-} from "@dust-tt/types";
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -24,6 +13,17 @@ import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
+import type {
+  ContentFragmentType,
+  ConversationType,
+  ConversationWithoutContentType,
+  UserMessageType,
+  WithAPIErrorResponse,
+} from "@app/types";
+import {
+  ConversationError,
+  InternalPostConversationsRequestBodySchema,
+} from "@app/types";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -81,7 +81,7 @@ async function handler(
 
       const baseContext = {
         username: user.username,
-        fullName: user.fullName,
+        fullName: user.fullName(),
         email: user.email,
       };
 
@@ -148,7 +148,7 @@ async function handler(
             context: {
               timezone: message.context.timezone,
               username: user.username,
-              fullName: user.fullName,
+              fullName: user.fullName(),
               email: user.email,
               profilePictureUrl: message.context.profilePictureUrl,
               origin: "web",

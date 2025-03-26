@@ -9,9 +9,9 @@ const SvgGoogleSlide = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#FDE68A" d="m14 2 6 6h-6V2Z" />
+    <path fill="#FFE262" d="m14 2 6 6h-6V2Z" />
     <path
-      fill="#FBBF24"
+      fill="#FFBE2C"
       d="M4 4a2 2 0 0 1 2-2h8v4a2 2 0 0 0 2 2h4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4Z"
     />
     <path fill="#fff" d="M8 11h8v2H8z" />

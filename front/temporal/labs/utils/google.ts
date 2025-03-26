@@ -1,10 +1,12 @@
-import type { ModelId } from "@dust-tt/types";
+import { Err, Ok } from "@dust-tt/client";
+import type { drive_v3 } from "googleapis";
 import { google } from "googleapis";
 
 import type { Authenticator } from "@app/lib/auth";
 import { getTranscriptsGoogleAuth } from "@app/lib/labs/transcripts/utils/helpers";
 import type { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type { Logger } from "@app/logger/logger";
+import type { ModelId, Result } from "@app/types";
 
 export async function retrieveRecentGoogleTranscripts(
   {
@@ -60,15 +62,26 @@ export async function retrieveGoogleTranscripts(
   auth: Authenticator,
   transcriptsConfiguration: LabsTranscriptsConfigurationResource,
   localLogger: Logger
-): Promise<string[]> {
-  const fileIdsToProcess = [];
-  const recentTranscriptFiles = await retrieveRecentGoogleTranscripts(
-    {
-      auth,
-      userId: transcriptsConfiguration.userId,
-    },
-    localLogger
-  );
+): Promise<Result<string[], Error>> {
+  const fileIdsToProcess: string[] = [];
+
+  let recentTranscriptFiles: drive_v3.Schema$File[] | null = null;
+
+  try {
+    recentTranscriptFiles = await retrieveRecentGoogleTranscripts(
+      {
+        auth,
+        userId: transcriptsConfiguration.userId,
+      },
+      localLogger
+    );
+  } catch (error) {
+    localLogger.error(
+      { error, transcriptsConfiguration },
+      "[retrieveGoogleTranscripts] Error retrieving recent Google transcripts."
+    );
+    return new Err(error as Error);
+  }
 
   for (const recentTranscriptFile of recentTranscriptFiles) {
     const { id: fileId } = recentTranscriptFile;
@@ -92,7 +105,7 @@ export async function retrieveGoogleTranscripts(
 
     fileIdsToProcess.push(fileId);
   }
-  return fileIdsToProcess;
+  return new Ok(fileIdsToProcess);
 }
 
 export async function retrieveGoogleTranscriptContent(

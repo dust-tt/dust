@@ -1,11 +1,5 @@
 // Maxmimum allowed number of unconsumed invitations per workspace per day.
 import type { NotificationType } from "@dust-tt/sparkle";
-import type {
-  ActiveRoleType,
-  MembershipInvitationType,
-  RoleType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import { mutate } from "swr";
 
 import type { ConfirmDataType } from "@app/components/Confirm";
@@ -13,6 +7,12 @@ import type {
   PostInvitationRequestBody,
   PostInvitationResponseBody,
 } from "@app/pages/api/w/[wId]/invitations";
+import type {
+  ActiveRoleType,
+  MembershipInvitationType,
+  RoleType,
+  WorkspaceType,
+} from "@app/types";
 
 export const MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY = 300;
 

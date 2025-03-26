@@ -14,26 +14,24 @@ describe("GET /api/oauth/pkce", () => {
     vi.clearAllMocks();
   });
 
-  itInTransaction(
-    "returns 400 when domain doesn't end with .salesforce.com",
-    async () => {
-      const { req, res } = await createPrivateApiMockRequest({
-        method: "GET",
-        role: "admin",
-      });
-      req.query.domain = "https://test.invalid.com";
+  itInTransaction("returns 400 when domain is not valid", async () => {
+    const { req, res } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    req.query.domain = "https://test.invalid.com";
 
-      await handler(req, res);
+    await handler(req, res);
 
-      expect(res._getStatusCode()).toBe(400);
-      expect(res._getJSONData()).toEqual({
-        error: {
-          type: "invalid_request_error",
-          message: "The domain must end with .salesforce.com",
-        },
-      });
-    }
-  );
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "The domain must be a valid Salesforce domain and in https://... format",
+      },
+    });
+  });
 
   itInTransaction(
     "returns 400 when domain doesn't start with https://",
@@ -50,7 +48,8 @@ describe("GET /api/oauth/pkce", () => {
       expect(res._getJSONData()).toEqual({
         error: {
           type: "invalid_request_error",
-          message: "The domain must start with https://",
+          message:
+            "The domain must be a valid Salesforce domain and in https://... format",
         },
       });
     }

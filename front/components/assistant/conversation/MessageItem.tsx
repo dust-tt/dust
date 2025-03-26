@@ -7,14 +7,8 @@ import {
   DocumentTextIcon,
   Icon,
   SlackLogo,
+  useSendNotification,
 } from "@dust-tt/sparkle";
-import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  ConversationType,
-  MessageWithContentFragmentsType,
-  UserType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import React from "react";
 import { useSWRConfig } from "swr";
 
@@ -23,6 +17,12 @@ import type { FeedbackSelectorProps } from "@app/components/assistant/conversati
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import type {
+  ConversationType,
+  MessageWithContentFragmentsType,
+  UserType,
+  WorkspaceType,
+} from "@app/types";
 
 interface MessageItemProps {
   conversation: ConversationType;

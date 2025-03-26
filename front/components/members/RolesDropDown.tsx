@@ -7,10 +7,10 @@ import {
   DropdownMenuTrigger,
   IconButton,
 } from "@dust-tt/sparkle";
-import type { ActiveRoleType } from "@dust-tt/types";
-import { ACTIVE_ROLES } from "@dust-tt/types";
 
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import type { ActiveRoleType } from "@app/types";
+import { ACTIVE_ROLES } from "@app/types";
 
 interface RoleDropDownProps {
   onChange: (role: ActiveRoleType) => void;

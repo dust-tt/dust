@@ -10,13 +10,14 @@ const activityProxies = proxyActivities<typeof activities>({
 const {
   deleteAgentsActivity,
   deleteAppsActivity,
-  deleteTrackersActivity,
   deleteConversationsActivity,
   deleteMembersActivity,
+  deletePluginRunsActivity,
   deleteRunOnDustAppsActivity,
   deleteSpacesActivity,
-  deleteWorkspaceActivity,
+  deleteTrackersActivity,
   deleteTranscriptsActivity,
+  deleteWorkspaceActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
@@ -44,13 +45,19 @@ export async function scrubSpaceWorkflow({
 
 export async function deleteWorkspaceWorkflow({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
-  const isDeletable = await isWorkflowDeletableActivity({ workspaceId });
+  const isDeletable = await isWorkflowDeletableActivity({
+    workspaceId,
+    workspaceHasBeenRelocated,
+  });
   if (!isDeletable) {
     return;
   }
+
   await deleteConversationsActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
@@ -59,5 +66,6 @@ export async function deleteWorkspaceWorkflow({
   await deleteMembersActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
+  await deletePluginRunsActivity({ workspaceId });
   await deleteWorkspaceActivity({ workspaceId });
 }

@@ -1,24 +1,16 @@
 import {
   Button,
-  ContextItem,
   DocumentIcon,
   MagicIcon,
   Page,
   PencilSquareIcon,
   SearchInput,
 } from "@dust-tt/sparkle";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@dust-tt/types";
 import _ from "lodash";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { createRef, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AssistantTemplateModal } from "@app/components/assistant_builder/AssistantTemplateModal";
 import { TemplateGrid } from "@app/components/assistant_builder/TemplateGrid";
@@ -28,6 +20,13 @@ import AppLayout, { appLayoutBack } from "@app/components/sparkle/AppLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
+import type {
+  SubscriptionType,
+  TemplateTagCodeType,
+  TemplateTagsType,
+  WorkspaceType,
+} from "@app/types";
+import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   flow: BuilderFlow;
@@ -71,6 +70,7 @@ export default function CreateAssistant({
   const [templateSearchTerm, setTemplateSearchTerm] = useState<string | null>(
     null
   );
+  const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     router.query.templateId ? (router.query.templateId as string) : null
   );
@@ -82,15 +82,48 @@ export default function CreateAssistant({
     tags: TemplateTagCodeType[];
   }>({ templates: [], tags: [] });
 
+  const filterTemplates = useCallback(
+    (searchTerm = templateSearchTerm) => {
+      const templatesToDisplay = assistantTemplates.filter((template) => {
+        // Check if template has valid tags
+        if (!isTemplateTagCodeArray(template.tags)) {
+          return false;
+        }
+
+        // Filter by selected tags (show templates that match ANY selected tag)
+        if (
+          selectedTags.length > 0 &&
+          !selectedTags.some((tag) => template.tags.includes(tag))
+        ) {
+          return false;
+        }
+
+        // Filter by search term
+        if (searchTerm) {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            template.handle.toLowerCase().includes(searchLower) ||
+            template.description?.toLowerCase().includes(searchLower) ||
+            false
+          );
+        }
+
+        return true;
+      });
+
+      setFilteredTemplates({
+        templates: templatesToDisplay,
+        tags: _.uniq(
+          assistantTemplates.map((template) => template.tags).flat()
+        ),
+      });
+    },
+    [assistantTemplates, selectedTags, templateSearchTerm]
+  );
+
   useEffect(() => {
-    const templatesToDisplay = assistantTemplates.filter((template) => {
-      return isTemplateTagCodeArray(template.tags);
-    });
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
-    });
-  }, [assistantTemplates]);
+    filterTemplates();
+  }, [assistantTemplates, filterTemplates, selectedTags]);
 
   const openTemplateModal = useCallback(
     async (templateId: string) => {
@@ -117,70 +150,15 @@ export default function CreateAssistant({
 
   const handleSearch = (searchTerm: string) => {
     setTemplateSearchTerm(searchTerm);
-    const templatesFilteredFromSearch =
-      searchTerm === ""
-        ? assistantTemplates
-        : assistantTemplates.filter(
-            (template) =>
-              template.handle
-                .toLowerCase()
-                .includes(searchTerm.toLowerCase()) ||
-              template.description
-                ?.toLowerCase()
-                .includes(searchTerm.toLowerCase())
-          );
-    const templatesToDisplay = templatesFilteredFromSearch.filter(
-      (template) => {
-        return isTemplateTagCodeArray(template.tags);
-      }
+    filterTemplates(searchTerm);
+  };
+
+  const handleTagClick = (tagName: TemplateTagCodeType) => {
+    setSelectedTags((prevTags) =>
+      prevTags.includes(tagName)
+        ? prevTags.filter((tag) => tag !== tagName)
+        : [...prevTags, tagName]
     );
-    setFilteredTemplates({
-      templates: templatesToDisplay,
-      tags: _.uniq(templatesToDisplay.map((template) => template.tags).flat()),
-    });
-  };
-
-  const tagsRefsMap = useRef<{
-    [key: string]: React.MutableRefObject<HTMLDivElement | null>;
-  }>({});
-
-  useEffect(() => {
-    Object.keys(templateTagsMapping).forEach((tag: string) => {
-      tagsRefsMap.current[tag] = tagsRefsMap.current[tag] || createRef();
-    });
-  }, [templateTagsMapping]);
-
-  const scrollToTag = (tagName: string) => {
-    const SCROLL_OFFSET = 64; // Header size
-    const scrollToElement = tagsRefsMap.current[tagName]?.current;
-    const scrollContainerElement = document.getElementById("main-content");
-
-    if (!scrollToElement || !scrollContainerElement) {
-      return;
-    }
-    const scrollToElementRect = scrollToElement.getBoundingClientRect();
-    const scrollContainerRect = scrollContainerElement.getBoundingClientRect();
-    const scrollTargetPosition =
-      scrollToElementRect.top -
-      scrollContainerRect.top +
-      scrollContainerElement.scrollTop -
-      SCROLL_OFFSET;
-
-    scrollContainerElement.scrollTo({
-      top: scrollTargetPosition,
-      behavior: "smooth",
-    });
-
-    setTimeout(() => {
-      triggerShakeAnimation(scrollToElement);
-    }, 1000);
-  };
-
-  const triggerShakeAnimation = (element: HTMLElement): void => {
-    element.classList.add("animate-shake");
-    setTimeout(() => {
-      element.classList.remove("animate-shake");
-    }, 500);
   };
 
   return (
@@ -233,44 +211,24 @@ export default function CreateAssistant({
                   .map((tagName) => (
                     <Button
                       label={templateTagsMapping[tagName].label}
-                      variant="outline"
+                      variant={
+                        selectedTags.includes(tagName) ? "primary" : "outline"
+                      }
                       key={tagName}
                       size="xs"
-                      onClick={() => scrollToTag(tagName)}
+                      onClick={() => handleTagClick(tagName)}
                     />
                   ))}
               </div>
             </div>
             <Page.Separator />
             <div className="flex flex-col pb-56">
-              {templateSearchTerm?.length ? (
-                <>
-                  <TemplateGrid
-                    templates={filteredTemplates.templates}
-                    openTemplateModal={openTemplateModal}
-                  />
-                </>
-              ) : (
-                <>
-                  {filteredTemplates.tags.map((tagName) => {
-                    const templatesForTag = filteredTemplates.templates.filter(
-                      (item) => item.tags.includes(tagName)
-                    );
-                    return (
-                      <div key={tagName} ref={tagsRefsMap.current[tagName]}>
-                        <ContextItem.SectionHeader
-                          title={templateTagsMapping[tagName].label}
-                          hasBorder={false}
-                        />
-                        <TemplateGrid
-                          templates={templatesForTag}
-                          openTemplateModal={openTemplateModal}
-                        />
-                      </div>
-                    );
-                  })}
-                </>
-              )}
+              <TemplateGrid
+                templates={filteredTemplates.templates}
+                openTemplateModal={openTemplateModal}
+                templateTagsMapping={templateTagsMapping}
+                selectedTags={selectedTags}
+              />
             </div>
           </div>
         </Page>

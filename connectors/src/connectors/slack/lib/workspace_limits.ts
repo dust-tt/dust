@@ -1,5 +1,5 @@
-import type { Result, WorkspaceDomain } from "@dust-tt/types";
-import { cacheWithRedis, Err, Ok } from "@dust-tt/types";
+import type { Result, WorkspaceDomainType } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/response/UsersInfoResponse";
 
@@ -11,6 +11,7 @@ import { getDustAPI } from "@connectors/lib/data_sources";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import { cacheWithRedis } from "@connectors/types";
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -45,7 +46,7 @@ export const getActiveMemberEmailsMemoized = cacheWithRedis(
 
 async function getVerifiedDomainsForWorkspace(
   connector: ConnectorResource
-): Promise<WorkspaceDomain[]> {
+): Promise<WorkspaceDomainType[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
   const dustAPI = getDustAPI(ds);
@@ -210,7 +211,7 @@ export async function isBotAllowed(
 
     return new Err(
       new SlackExternalUserError(
-        "To enable custom interactions between Slack bots and Dust agents, email us at support@dust.tt."
+        "To enable Slack Workflows to call Dust agents, email us at support@dust.tt."
       )
     );
   }

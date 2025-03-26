@@ -14,15 +14,20 @@
   top: 4px;
 }
 
-@keyframes bgblink {
-  0%,
-  100% {
-    @apply s-bg-primary-50;
+@keyframes collapse-down {
+  from {
+    height: 0;
   }
-
-  50% {
-    @apply s-bg-purple-100;
+  to {
+    height: var(--radix-collapsible-content-height);
   }
 }
 
-@import url("https://use.typekit.net/jnb2umy.css");
+@keyframes collapse-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
+}

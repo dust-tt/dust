@@ -16,7 +16,7 @@ use axum::{
     Router,
 };
 use hyper::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
@@ -38,22 +38,60 @@ async fn index() -> &'static str {
 }
 
 #[derive(Deserialize)]
+struct RelatedCredentialPayload {
+    content: serde_json::Map<String, serde_json::Value>,
+    metadata: CredentialMetadata,
+}
+
+#[derive(Deserialize)]
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
     // Optionally present secret fields (migration case).
     migrated_credentials: Option<MigratedCredentials>,
+    // Optionally present related credential for creating a new credential.
+    related_credential: Option<RelatedCredentialPayload>,
 }
 
 async fn connections_create(
     State(state): State<Arc<OAuthState>>,
     Json(payload): Json<ConnectionCreatePayload>,
 ) -> (StatusCode, Json<APIResponse>) {
+    // Handle credential creation if related_credential is provided
+    let related_credential_id = if let Some(related_credential) = payload.related_credential {
+        // Use the credential content and metadata from the payload
+        let credential_content = related_credential.content;
+        let credential_metadata = related_credential.metadata;
+
+        // Create credential
+        match Credential::create(
+            state.store.clone(),
+            crate::oauth::credential::CredentialProvider::Salesforce,
+            credential_metadata,
+            credential_content,
+        )
+        .await
+        {
+            Ok(credential) => Some(credential.credential_id().to_string()),
+            Err(e) => {
+                return error_response(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "credential_creation_failed",
+                    "Failed to create credential",
+                    Some(e),
+                );
+            }
+        }
+    } else {
+        None
+    };
+
     match Connection::create(
         state.store.clone(),
         payload.provider,
         payload.metadata,
         payload.migrated_credentials,
+        related_credential_id,
     )
     .await
     {
@@ -95,7 +133,7 @@ async fn connections_finalize(
 ) -> (StatusCode, Json<APIResponse>) {
     match state
         .store
-        .retrieve_connection(payload.provider, &connection_id)
+        .retrieve_connection_by_provider(payload.provider, &connection_id)
         .await
     {
         Err(e) => error_response(
@@ -144,20 +182,41 @@ async fn connections_finalize(
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct ConnectionAccessTokenPayload {
     provider: ConnectionProvider,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ConnectionAccessTokenResponse {
+    pub connection: ConnectionInfo,
+    pub access_token: String,
+    access_token_expiry: Option<u64>,
+    scrubbed_raw_json: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ConnectionInfo {
+    connection_id: String,
+    created: u64,
+    pub provider: ConnectionProvider,
+    status: connection::ConnectionStatus,
+    pub metadata: serde_json::Value,
+}
+
+async fn deprecated_connections_access_token(
+    State(state): State<Arc<OAuthState>>,
+    Path(connection_id): Path<String>,
+    Json(_payload): Json<ConnectionAccessTokenPayload>,
+) -> (StatusCode, Json<APIResponse>) {
+    connections_access_token(State(state), Path(connection_id)).await
 }
 
 async fn connections_access_token(
     State(state): State<Arc<OAuthState>>,
     Path(connection_id): Path<String>,
-    Json(payload): Json<ConnectionAccessTokenPayload>,
 ) -> (StatusCode, Json<APIResponse>) {
-    match state
-        .store
-        .retrieve_connection(payload.provider, &connection_id)
-        .await
-    {
+    match state.store.retrieve_connection(&connection_id).await {
         Err(e) => error_response(
             StatusCode::NOT_FOUND,
             "connection_not_found",
@@ -181,17 +240,17 @@ async fn connections_access_token(
                 StatusCode::OK,
                 Json(APIResponse {
                     error: None,
-                    response: Some(json!({
-                        "connection": {
-                            "connection_id": c.connection_id(),
-                            "created": c.created(),
-                            "provider": c.provider(),
-                            "status": c.status(),
-                            "metadata": c.metadata(),
+                    response: Some(json!(ConnectionAccessTokenResponse {
+                        connection: ConnectionInfo {
+                            connection_id: c.connection_id(),
+                            created: c.created(),
+                            provider: c.provider(),
+                            status: c.status(),
+                            metadata: c.metadata().clone(),
                         },
-                        "access_token": access_token,
-                        "access_token_expiry": c.access_token_expiry(),
-                        "scrubbed_raw_json": scrubbed_raw_json,
+                        access_token,
+                        access_token_expiry: c.access_token_expiry(),
+                        scrubbed_raw_json: scrubbed_raw_json.unwrap_or_default(),
                     })),
                 }),
             ),
@@ -318,7 +377,11 @@ pub async fn create_app() -> Result<Router> {
         )
         .route(
             "/connections/:connection_id/access_token",
-            post(connections_access_token),
+            post(deprecated_connections_access_token),
+        )
+        .route(
+            "/connections/:connection_id/access_token",
+            get(connections_access_token),
         )
         .route("/credentials", post(credentials_create))
         .route("/credentials/:credential_id", get(credentials_retrieve))

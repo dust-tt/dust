@@ -1,11 +1,3 @@
-import type {
-  AgentConfigurationScope,
-  AgentReasoningEffort,
-  AgentStatus,
-  GlobalAgentStatus,
-  ModelIdType,
-  ModelProviderIdType,
-} from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -13,6 +5,14 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type {
+  AgentConfigurationScope,
+  AgentReasoningEffort,
+  AgentStatus,
+  GlobalAgentStatus,
+  ModelIdType,
+  ModelProviderIdType,
+} from "@app/types";
 
 /**
  * Agent configuration

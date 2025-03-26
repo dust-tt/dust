@@ -25,7 +25,12 @@ export {
 export { Chip } from "./Chip";
 export * from "./Citation";
 export { default as CollapseButton } from "./CollapseButton";
-export { Collapsible } from "./Collapsible";
+export {
+  Collapsible,
+  CollapsibleComponent,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "./Collapsible";
 export { ColorPicker } from "./ColorPicker";
 export { default as ConfettiBackground } from "./ConfettiBackground";
 export { Container } from "./Container";
@@ -39,7 +44,7 @@ export {
 } from "./ConversationMessage";
 export { Counter } from "./Counter";
 export type { DataTableMoreButtonProps, MenuItem } from "./DataTable";
-export { DataTable } from "./DataTable";
+export { DataTable, ScrollableDataTable } from "./DataTable";
 export {
   Dialog,
   DialogClose,

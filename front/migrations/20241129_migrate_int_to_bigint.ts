@@ -1,10 +1,10 @@
-import { assertNever } from "@dust-tt/types";
 import assert from "assert";
 import chalk from "chalk";
 import type { PoolClient } from "pg";
 import { Pool } from "pg";
 
 import { makeScript } from "@app/scripts/helpers";
+import { assertNever } from "@app/types";
 
 // Types.
 interface MigrationConfig {

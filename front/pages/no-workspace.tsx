@@ -1,11 +1,10 @@
 import {
   BarHeader,
   Button,
+  DustLogoSquare,
   Icon,
-  LogoSquareColorLogo,
   Page,
 } from "@dust-tt/sparkle";
-import type { UserTypeWithWorkspaces } from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -17,6 +16,7 @@ import {
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import logger from "@app/logger/logger";
+import type { UserTypeWithWorkspaces } from "@app/types";
 
 // Fetch workspace details for scenarios where auto-join is disabled.
 async function fetchWorkspaceDetails(
@@ -144,20 +144,20 @@ export default function NoWorkspace({
       <div className="mx-auto mt-40 flex max-w-2xl flex-col gap-8">
         <div className="flex flex-col gap-2">
           <div className="items-left justify-left flex flex-row">
-            <Icon visual={LogoSquareColorLogo} size="md" />
+            <Icon visual={DustLogoSquare} size="md" />
           </div>
-          <span className="text-2xl font-bold text-foreground dark:text-foreground-night">
+          <span className="heading-2xl text-foreground dark:text-foreground-night">
             Hello {userFirstName}!
           </span>
         </div>
         <div>
           {status === "auto-join-disabled" && (
             <div className="flex flex-col gap-4">
-              <span className="text-lg font-bold text-element-700 dark:text-element-700-night">
+              <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
                 {workspaceVerifiedDomain ?? workspaceName} already has a Dust
                 workspace.
               </span>
-              <span className="text-md text-element-700 dark:text-element-700-night">
+              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
                 To join the existing workspace of your company,
                 <span className="font-semibold">
                   {" "}
@@ -167,7 +167,7 @@ export default function NoWorkspace({
                 then use the link provided in the invitation email to access the
                 workspace.
               </span>
-              <span className="text-md text-element-700 dark:text-element-700-night">
+              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
                 If you're looking to establish{" "}
                 <span className="font-semibold">
                   {" "}
@@ -179,10 +179,10 @@ export default function NoWorkspace({
           )}
           {status === "revoked" && (
             <div className="flex flex-col gap-4">
-              <span className="text-lg font-semibold text-element-700 dark:text-element-700-night">
+              <span className="heading-lg text-muted-foreground dark:text-muted-foreground-night">
                 You no longer have access to {workspaceName}'s Dust workspace.
               </span>
-              <span className="text-md text-element-700 dark:text-element-700-night">
+              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
                 You may have been removed from the workspace or the workspace
                 may have reached its maximum number of users.
                 <br />
@@ -192,13 +192,10 @@ export default function NoWorkspace({
                 </span>{" "}
                 for more informations or to add you again.
               </span>
-              <span className="text-md text-element-700 dark:text-element-700-night">
+              <span className="copy-md text-muted-foreground dark:text-muted-foreground-night">
                 If you're looking to establish{" "}
-                <span className="font-semibold">
-                  {" "}
-                  a new, separate workspace
-                </span>{" "}
-                continue with the following step:
+                <strong>a new, separate workspace</strong> continue with the
+                following step:
               </span>
             </div>
           )}

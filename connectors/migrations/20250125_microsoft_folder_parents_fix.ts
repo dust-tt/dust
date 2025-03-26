@@ -1,4 +1,3 @@
-import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
 import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { makeScript } from "scripts/helpers";
@@ -9,6 +8,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 async function backfillConnector(
   connector: ConnectorResource,
@@ -55,7 +55,7 @@ async function backfillConnector(
           title: folderResource.name ?? "Untitled folder",
           parents,
           parentId: parents[1] ?? null,
-          mimeType: MIME_TYPES.MICROSOFT.FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
           sourceUrl: folderResource.webUrl ?? undefined,
         });
       }

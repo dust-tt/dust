@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, MIME_TYPES, Ok, slugify } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
@@ -29,7 +29,8 @@ import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { DataSourceConfig } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, slugify } from "@connectors/types";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
 
@@ -144,7 +145,7 @@ async function processSheet({
     return new Err(new Error("Worksheet has no id"));
   }
   const content = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetContent(client, worksheetInternalId)
+    getWorksheetContent(localLogger, client, worksheetInternalId)
   );
 
   const loggerArgs = {
@@ -205,8 +206,13 @@ async function processSheet({
       })),
     ];
 
+    if (!spreadsheet.listItem?.fields) {
+      localLogger.warn("Unexpected missing fields for spreadsheet");
+    }
+
     const tags = await getColumnsFromListItem(
       spreadsheet,
+      spreadsheet.listItem?.fields,
       await getClient(connector.connectionId),
       localLogger
     );
@@ -294,7 +300,7 @@ export async function handleSpreadSheet({
 
   const worksheetsRes = await wrapMicrosoftGraphAPIWithResult(() =>
     getAllPaginatedEntities((nextLink) =>
-      getWorksheets(client, documentId, nextLink)
+      getWorksheets(localLogger, client, documentId, nextLink)
     )
   );
 
@@ -325,7 +331,7 @@ export async function handleSpreadSheet({
     title: file.name ?? "Untitled spreadsheet",
     parents,
     parentId: parentInternalId,
-    mimeType: MIME_TYPES.MICROSOFT.SPREADSHEET,
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET,
     sourceUrl: file.webUrl ?? undefined,
   });
 

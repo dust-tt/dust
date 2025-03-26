@@ -1,20 +1,10 @@
 import type {
-  ConnectorProvider,
   DataSourceType,
   LightContentNode,
   TimeframeUnit,
-} from "@dust-tt/types";
-import {
-  assertNever,
-  isGoogleSheetContentNodeInternalId,
-} from "@dust-tt/types";
+} from "@app/types";
+import { assertNever, isGoogleSheetContentNodeInternalId } from "@app/types";
 
-export const FILTERING_MODES = ["SEARCH", "TIMEFRAME"] as const;
-export type FilteringMode = (typeof FILTERING_MODES)[number];
-export const FILTERING_MODE_TO_LABEL: Record<FilteringMode, string> = {
-  SEARCH: "Search",
-  TIMEFRAME: "Timeframe",
-};
 export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   hour: "hour(s)",
   day: "day(s)",
@@ -22,36 +12,6 @@ export const TIME_FRAME_UNIT_TO_LABEL: Record<TimeframeUnit, string> = {
   month: "month(s)",
   year: "year(s)",
 };
-
-const CONNECTOR_PROVIDER_TO_RESOURCE_NAME: Record<
-  ConnectorProvider,
-  {
-    singular: string;
-    plural: string;
-  }
-> = {
-  confluence: { singular: "space", plural: "spaces" },
-  microsoft: { singular: "folder", plural: "folders" },
-  notion: { singular: "page", plural: "pages" },
-  google_drive: { singular: "folder", plural: "folders" },
-  slack: { singular: "channel", plural: "channels" },
-  github: { singular: "repository", plural: "repositories" },
-  intercom: { singular: "element", plural: "elements" },
-  webcrawler: { singular: "page", plural: "pages" },
-  snowflake: { singular: "table", plural: "tables" },
-  zendesk: { singular: "element", plural: "elements" },
-  bigquery: { singular: "table", plural: "tables" },
-  // TODO(salesforce): double check this
-  salesforce: { singular: "record", plural: "records" },
-};
-
-export const getConnectorProviderResourceName = (
-  connectorProvider: ConnectorProvider,
-  plural: boolean
-) =>
-  CONNECTOR_PROVIDER_TO_RESOURCE_NAME[connectorProvider][
-    plural ? "plural" : "singular"
-  ];
 
 export const DROID_AVATARS_BASE_PATH = "/static/droidavatar/";
 
@@ -285,6 +245,7 @@ export function getTableIdForContentNode(
     throw new Error(`ContentNode type ${contentNode.type} is not supported`);
   }
 
+  // We specify whether the connector supports TableQuery as a safeguard in case somehow a non-table node was selected.
   switch (dataSource.connectorProvider) {
     case "google_drive":
       if (!isGoogleSheetContentNodeInternalId(contentNode.internalId)) {
@@ -296,22 +257,20 @@ export function getTableIdForContentNode(
 
     // For static tables, the tableId is the contentNode internalId.
     case null:
-    case "snowflake":
+    case "bigquery":
     case "microsoft":
     case "notion":
-    case "bigquery":
-      return contentNode.internalId;
-
-    // TODO(salesforce): double check this
     case "salesforce":
+    case "snowflake":
       return contentNode.internalId;
 
     case "confluence":
+    case "github":
+    case "gong":
     case "intercom":
     case "slack":
-    case "github":
-    case "zendesk":
     case "webcrawler":
+    case "zendesk":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );

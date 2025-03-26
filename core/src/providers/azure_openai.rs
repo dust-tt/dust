@@ -3,9 +3,9 @@ use crate::providers::embedder::{Embedder, EmbedderVector};
 use crate::providers::llm::ChatFunction;
 use crate::providers::llm::Tokens;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM};
-use crate::providers::openai::completion;
 use crate::providers::openai::embed;
 use crate::providers::openai::streamed_completion;
+use crate::providers::openai::{completion, REMAINING_TOKENS_MARGIN};
 use crate::providers::provider::{Provider, ProviderID};
 use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, decode_async, encode_async};
 use crate::providers::tiktoken::tiktoken::{
@@ -601,10 +601,17 @@ impl Embedder for AzureOpenAIEmbedder {
             None,
             Some(self.model_id.clone()),
             text,
-            match extras {
+            match &extras {
                 Some(e) => match e.get("openai_user") {
                     Some(u) => Some(u.to_string()),
                     None => None,
+                },
+                None => None,
+            },
+            match &extras {
+                Some(e) => match e.get("enforce_rate_limit_margin") {
+                    Some(Value::Bool(true)) => Some(REMAINING_TOKENS_MARGIN),
+                    _ => None,
                 },
                 None => None,
             },

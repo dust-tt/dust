@@ -1,6 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { getZendeskGarbageCollectionWorkflowId } from "@dust-tt/types";
-
 import {
   getArticleInternalId,
   getCategoryInternalId,
@@ -29,6 +26,8 @@ import {
   ZendeskConfigurationResource,
   ZendeskTicketResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { getZendeskGarbageCollectionWorkflowId } from "@connectors/types";
 
 /**
  * Retrieves the IDs of the Brands whose tickets are to be deleted.

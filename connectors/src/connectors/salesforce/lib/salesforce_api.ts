@@ -1,5 +1,5 @@
-import type { Result } from "@dust-tt/types";
-import { Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { Connection } from "jsforce";
 import jsforce from "jsforce";
 
@@ -11,12 +11,14 @@ import {
   isValidSchemaInternalId,
 } from "@connectors/connectors/salesforce/lib/internal_ids";
 import type { SalesforceAPICredentials } from "@connectors/connectors/salesforce/lib/oauth";
+import { isStandardObjectPrefix } from "@connectors/connectors/salesforce/lib/permissions";
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
+import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 
 const SF_API_VERSION = "57.0";
 
@@ -128,6 +130,9 @@ export async function fetchTables({
     return new Ok(
       tables.sobjects
         .filter((obj) => (isCustomSchema ? obj.custom : !obj.custom))
+        .filter((obj) => {
+          return isCustomSchema ? true : isStandardObjectPrefix(obj.name);
+        })
         .map((obj) => ({
           name: obj.name,
           database_name: INTERNAL_ID_DATABASE,
@@ -158,7 +163,10 @@ export const fetchTree = async ({
               .map(async (schema) => {
                 const tablesRes = await fetchTables({
                   credentials,
-                  parentInternalId: `${schema.database_name}.${schema.name}`,
+                  parentInternalId: buildInternalId({
+                    databaseName: schema.database_name,
+                    schemaName: schema.name,
+                  }),
                 });
                 if (tablesRes.isErr()) {
                   throw tablesRes.error;

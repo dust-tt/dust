@@ -96,32 +96,46 @@ const SolutionsMenuConfig: MenuConfig = {
   title: "Solutions",
   items: [
     {
-      title: "Customer Support",
-      href: "/home/solutions/customer-support",
-    },
-    {
       title: "Sales",
       href: "/home/solutions/sales",
     },
     {
-      title: "Engineering",
-      href: "/home/solutions/engineering",
+      title: "Customer Support",
+      href: "/home/solutions/customer-support",
     },
     {
       title: "Marketing & Content",
       href: "/home/solutions/marketing",
     },
     {
-      title: "Recruiting & People",
-      href: "/home/solutions/recruiting-people",
+      title: "Engineering",
+      href: "/home/solutions/engineering",
     },
     {
       title: "Data & Analytics",
       href: "/home/solutions/data-analytics",
     },
     {
-      title: "Knowledge Management",
+      title: "Knowledge",
       href: "/home/solutions/knowledge",
+    },
+    {
+      title: "IT",
+      href: "/home/solutions/it",
+    },
+    {
+      title: "Legal",
+      href: "/home/solutions/legal",
+    },
+
+    {
+      title: "People",
+      href: "/home/solutions/recruiting-people",
+    },
+
+    {
+      title: "Productivity",
+      href: "/home/solutions/productivity",
     },
   ],
 };
@@ -130,7 +144,7 @@ const DevelopersMenuConfig: MenuConfig = {
   title: "Developers",
   items: [
     {
-      title: "Dust Apps & API",
+      title: "Developer Platform",
       href: "/home/solutions/dust-platform",
     },
     {
@@ -181,7 +195,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Events",
-      href: "https://www.youtube.com/playlist?list=PLv-ZZddHqz5B7ORswb588oAtRHMYAMVDb",
+      href: "https://lu.ma/dust",
       isExternal: true,
     },
     {
@@ -274,12 +288,12 @@ export const menuConfig: DocsConfig = {
   mainNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: SolutionsMenuConfig.title,
       label: "Dust for...",
-      rows: 4,
+      rows: 5,
       items: SolutionsMenuConfig.items,
     },
     {
@@ -312,7 +326,7 @@ export const menuConfig: DocsConfig = {
   mobileNav: [
     {
       title: "Product",
-      href: "/home",
+      href: "/home/product",
     },
     {
       title: "Pricing",
@@ -357,7 +371,7 @@ export const menuConfig: DocsConfig = {
       items: [
         {
           title: "Product",
-          href: "/home",
+          href: "/home/product",
         },
         {
           title: "Pricing",

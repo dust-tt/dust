@@ -1,6 +1,5 @@
 import assert from "node:assert";
 
-import { concurrentExecutor, MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 import { makeScript } from "scripts/helpers";
 
@@ -10,6 +9,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { WebCrawlerFolder } from "@connectors/lib/models/webcrawler";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
 
 async function migrateConnector(
   connector: ConnectorResource,
@@ -57,7 +57,7 @@ async function migrateConnector(
           parents,
           parentId: parents[1] || null,
           title: getDisplayNameForFolder(folder),
-          mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
         });
       }
     },

@@ -67,6 +67,7 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
                             | FieldType::Interval => TableSchemaFieldType::Text,
                         },
                         possible_values: None,
+                        non_filterable: None,
                     })
                     .collect(),
             )),
@@ -94,7 +95,7 @@ impl BigQueryRemoteDatabase {
     pub async fn execute_query(
         &self,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let job = Job {
             configuration: Some(JobConfiguration {
                 query: Some(JobConfigurationQuery {
@@ -222,13 +223,11 @@ impl BigQueryRemoteDatabase {
                     );
                 }
 
-                Ok(QueryResult {
-                    value: serde_json::Value::Object(map),
-                })
+                Ok(QueryResult { value: map })
             })
             .collect::<Result<Vec<QueryResult>>>()?;
 
-        Ok((parsed_rows, schema))
+        Ok((parsed_rows, schema, query.to_string()))
     }
 
     pub async fn get_query_plan(
@@ -263,7 +262,10 @@ impl BigQueryRemoteDatabase {
                         ResponseError {
                             error: NestedResponseError { message, code, .. },
                         },
-                } => QueryDatabaseError::ExecutionError(format!("{} (code={})", message, code)),
+                } => QueryDatabaseError::ExecutionError(
+                    format!("{} (code={})", message, code),
+                    Some(query.to_string()),
+                ),
                 _ => QueryDatabaseError::GenericError(anyhow!("Error inserting job: {}", e)),
             })?;
 
@@ -309,14 +311,15 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
-    ) -> Result<(Vec<QueryResult>, TableSchema), QueryDatabaseError> {
+    ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Ensure that query is a SELECT query and only uses tables that are allowed.
         let plan = self.get_query_plan(query).await?;
 
         if !plan.is_select_query {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query is not a SELECT query"
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!("Query is not a SELECT query"),
+                Some(query.to_string()),
+            ))?
         }
 
         let used_tables: HashSet<&str> = plan
@@ -333,10 +336,13 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .collect::<Vec<_>>();
 
         if !used_forbidden_tables.is_empty() {
-            Err(QueryDatabaseError::ExecutionError(format!(
-                "Query uses tables that are not allowed: {}",
-                used_forbidden_tables.join(", ")
-            )))?
+            Err(QueryDatabaseError::ExecutionError(
+                format!(
+                    "Query uses tables that are not allowed: {}",
+                    used_forbidden_tables.join(", ")
+                ),
+                Some(query.to_string()),
+            ))?
         }
 
         self.execute_query(query).await
@@ -349,11 +355,14 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
                 if parts.len() != 3 {
                     Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
                 }
-                let (dataset_id, table_id) = (parts[1], parts[2]);
+                let (dataset_id, table_id) = (
+                    parts[1].replace("__DUST_DOT__", "."),
+                    parts[2].replace("__DUST_DOT__", "."),
+                );
 
                 self.client
                     .table()
-                    .get(&self.project_id, dataset_id, table_id, None)
+                    .get(&self.project_id, &dataset_id, &table_id, None)
                     .await
                     .map_err(|e| anyhow!("Error getting table metadata: {}", e))
             }))

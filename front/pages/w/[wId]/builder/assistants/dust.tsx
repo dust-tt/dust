@@ -2,21 +2,12 @@ import {
   Avatar,
   CloudArrowDownIcon,
   ContextItem,
-  LogoSquareColorLogo,
+  DustLogoSquare,
   Page,
   PlusIcon,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  DataSourceType,
-  DataSourceViewType,
-  LightAgentConfigurationType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 
@@ -29,6 +20,15 @@ import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
+import type {
+  APIError,
+  DataSourceType,
+  DataSourceViewType,
+  LightAgentConfigurationType,
+  SpaceType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -204,7 +204,7 @@ export default function EditDustAssistant({
       <div className="h-12" />
       <Page.Header
         title="Dust Agent"
-        icon={LogoSquareColorLogo}
+        icon={DustLogoSquare}
         description="The Dust agent is a general purpose agent that has context on your company data."
       />
       <div className="flex flex-col space-y-8 pb-8 pt-8">

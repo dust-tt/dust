@@ -15,7 +15,7 @@ const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
       full: "s-w-full",
     },
     border: {
-      true: "s-border-b s-border-border-dark dark:s-border-border-dark-night",
+      true: "s-border-b s-border-border dark:s-border-border-night",
     },
   },
   defaultVariants: {
@@ -72,30 +72,29 @@ const TabsTrigger = React.forwardRef<
     return (
       <TabsPrimitive.Trigger
         ref={ref}
-        className={cn(
-          "s-h-11",
-          "disabled:s-pointer-events-none data-[state=active]:s-shadow-inner-border dark:data-[state=active]:s-shadow-inner-border-night",
-          className
-        )}
+        className={cn("s-h-11", "disabled:s-pointer-events-none", className)}
         disabled={disabled}
         asChild
         {...props}
       >
-        <div>
-          <Button
-            variant={buttonVariant}
-            size="sm"
-            label={label}
-            tooltip={tooltip}
-            icon={icon}
-            disabled={disabled}
-            href={href}
-            target={target}
-            rel={rel}
-            replace={replace}
-            shallow={shallow}
-          />
-        </div>
+        <Button
+          variant={buttonVariant}
+          size="sm"
+          label={label}
+          tooltip={tooltip}
+          icon={icon}
+          disabled={disabled}
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          shallow={shallow}
+          className={cn(
+            "s-relative",
+            "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
+            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
+          )}
+        />
       </TabsPrimitive.Trigger>
     );
   }

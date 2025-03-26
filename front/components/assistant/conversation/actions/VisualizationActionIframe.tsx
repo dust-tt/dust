@@ -10,13 +10,6 @@ import {
   SheetTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  CommandResultMap,
-  LightWorkspaceType,
-  VisualizationRPCCommand,
-  VisualizationRPCRequest,
-} from "@dust-tt/types";
-import { assertNever, isVisualizationRPCRequest } from "@dust-tt/types";
 import type { SetStateAction } from "react";
 import {
   useCallback,
@@ -29,6 +22,13 @@ import {
 
 import { useVisualizationRetry } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
+import type {
+  CommandResultMap,
+  LightWorkspaceType,
+  VisualizationRPCCommand,
+  VisualizationRPCRequest,
+} from "@app/types";
+import { assertNever, isVisualizationRPCRequest } from "@app/types";
 
 export type Visualization = {
   code: string;

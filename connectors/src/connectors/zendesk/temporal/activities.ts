@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-import { MIME_TYPES } from "@dust-tt/types";
 import _ from "lodash";
 
 import {
@@ -32,7 +30,7 @@ import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
@@ -42,6 +40,8 @@ import {
   ZendeskCategoryResource,
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -57,7 +57,7 @@ export async function zendeskConnectorStartSync(
   if (res.isErr()) {
     throw res.error;
   }
-  const cursor = await ZendeskTimestampCursor.findOne({
+  const cursor = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
 
@@ -77,11 +77,11 @@ export async function saveZendeskConnectorSuccessSync(
   }
 
   // initializing the timestamp cursor if it does not exist (first sync, not incremental)
-  const cursors = await ZendeskTimestampCursor.findOne({
+  const cursors = await ZendeskTimestampCursorModel.findOne({
     where: { connectorId },
   });
   if (!cursors) {
-    await ZendeskTimestampCursor.create({
+    await ZendeskTimestampCursorModel.create({
       connectorId,
       timestampCursor: new Date(currentSyncDateMs),
     });
@@ -153,7 +153,7 @@ export async function syncZendeskBrandActivity({
       parents: [helpCenterNode.internalId],
       parentId: null,
       title: helpCenterNode.title,
-      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
       timestampMs: currentSyncDateMs,
     });
 
@@ -172,7 +172,7 @@ export async function syncZendeskBrandActivity({
         parents,
         parentId: parents[1],
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -218,7 +218,7 @@ export async function syncZendeskBrandActivity({
         parents: [folderId],
         parentId: null,
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -235,7 +235,7 @@ export async function syncZendeskBrandActivity({
       parents: [ticketsNode.internalId],
       parentId: null,
       title: ticketsNode.title,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
       timestampMs: currentSyncDateMs,
     });
   } else {
@@ -485,7 +485,7 @@ export async function syncZendeskCategoryActivity({
     parents,
     parentId,
     title: fetchedCategory.name,
-    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
     timestampMs: currentSyncDateMs,
   });

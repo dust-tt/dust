@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { assertNever, Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 
 import type {
   CreateConnectorErrorCode,
@@ -25,10 +20,7 @@ import {
   forbidSyncZendeskCategory,
   forbidSyncZendeskHelpCenter,
 } from "@connectors/connectors/zendesk/lib/help_center_permissions";
-import {
-  getBrandInternalId,
-  getIdsFromInternalId,
-} from "@connectors/connectors/zendesk/lib/id_conversions";
+import { getIdsFromInternalId } from "@connectors/connectors/zendesk/lib/id_conversions";
 import {
   retrieveAllSelectedNodes,
   retrieveChildrenNodes,
@@ -51,18 +43,17 @@ import {
 } from "@connectors/connectors/zendesk/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { ZendeskTimestampCursor } from "@connectors/lib/models/zendesk";
+import { ZendeskTimestampCursorModel } from "@connectors/lib/models/zendesk";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import {
-  ZendeskArticleResource,
-  ZendeskBrandResource,
-  ZendeskCategoryResource,
-  ZendeskConfigurationResource,
-  ZendeskTicketResource,
-} from "@connectors/resources/zendesk_resources";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import { ZendeskConfigurationResource } from "@connectors/resources/zendesk_resources";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodesViewType,
+} from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
 
 export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   static async create({
@@ -282,7 +273,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
     // launching an incremental workflow taking the diff starting from the given timestamp
     if (fromTs) {
-      const cursors = await ZendeskTimestampCursor.findOne({
+      const cursors = await ZendeskTimestampCursorModel.findOne({
         where: { connectorId },
       });
       if (!cursors) {
@@ -294,7 +285,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       const result = await launchZendeskSyncWorkflow(connector);
       return result.isErr() ? result : new Ok(connector.id.toString());
     } else {
-      await ZendeskTimestampCursor.destroy({ where: { connectorId } });
+      await ZendeskTimestampCursorModel.destroy({ where: { connectorId } });
     }
 
     // launching a full sync workflow otherwise
@@ -348,6 +339,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
       // Unhandled error, throwing to get a 500.
       throw e;
     }
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // TODO: Implement this.
+    return new Ok([internalId]);
   }
 
   /**
@@ -513,211 +513,6 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
-  }
-
-  /**
-   * Retrieves a batch of content nodes given their internal IDs.
-   */
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const brandIds: number[] = [];
-    const brandHelpCenterIds: number[] = [];
-    const brandTicketsIds: number[] = [];
-    const categoryIdsPerBrandId: Record<number, number[]> = [];
-    const articleIdsPerBrandId: Record<number, number[]> = [];
-    const ticketIdsPerBrandId: Record<number, number[]> = [];
-    internalIds.forEach((internalId) => {
-      const { type, objectIds } = getIdsFromInternalId(
-        this.connectorId,
-        internalId
-      );
-      switch (type) {
-        case "brand": {
-          brandIds.push(objectIds.brandId);
-          return;
-        }
-        case "tickets": {
-          brandTicketsIds.push(objectIds.brandId);
-          return;
-        }
-        case "help-center": {
-          brandHelpCenterIds.push(objectIds.brandId);
-          return;
-        }
-        case "category": {
-          // initializing the array if it does not exist
-          categoryIdsPerBrandId[objectIds.brandId] ||= [];
-          categoryIdsPerBrandId[objectIds.brandId]?.push(objectIds.categoryId);
-          return;
-        }
-        case "article": {
-          // initializing the array if it does not exist
-          articleIdsPerBrandId[objectIds.brandId] ||= [];
-          articleIdsPerBrandId[objectIds.brandId]?.push(objectIds.articleId);
-          return;
-        }
-        case "ticket": {
-          // initializing the array if it does not exist
-          ticketIdsPerBrandId[objectIds.brandId] ||= [];
-          ticketIdsPerBrandId[objectIds.brandId]?.push(objectIds.ticketId);
-          return;
-        }
-        default: {
-          assertNever(type);
-        }
-      }
-    });
-
-    const { connectorId } = this;
-
-    const allBrandIds = [
-      ...new Set([...brandIds, ...brandTicketsIds, ...brandHelpCenterIds]),
-    ];
-    const allBrands = await ZendeskBrandResource.fetchByBrandIds({
-      connectorId,
-      brandIds: allBrandIds,
-    });
-    const brands = allBrands.filter((brand) =>
-      brandIds.includes(brand.brandId)
-    );
-    const brandHelpCenters = allBrands.filter((brand) =>
-      brandHelpCenterIds.includes(brand.brandId)
-    );
-    const brandTickets = allBrands.filter((brand) =>
-      brandTicketsIds.includes(brand.brandId)
-    );
-
-    const categories: ZendeskCategoryResource[] = [];
-    for (const [brandId, categoryIds] of Object.entries(
-      categoryIdsPerBrandId
-    ) as unknown as [number, number[]][]) {
-      categories.push(
-        ...(await ZendeskCategoryResource.fetchByCategoryIds({
-          connectorId,
-          brandId,
-          categoryIds,
-        }))
-      );
-    }
-    const articles: ZendeskArticleResource[] = [];
-    for (const [brandId, articleIds] of Object.entries(
-      articleIdsPerBrandId
-    ) as unknown as [number, number[]][]) {
-      articles.push(
-        ...(await ZendeskArticleResource.fetchByArticleIds({
-          connectorId,
-          brandId,
-          articleIds,
-        }))
-      );
-    }
-    const tickets: ZendeskTicketResource[] = [];
-    for (const [brandId, ticketIds] of Object.entries(
-      ticketIdsPerBrandId
-    ) as unknown as [number, number[]][]) {
-      tickets.push(
-        ...(await ZendeskTicketResource.fetchByTicketIds({
-          connectorId,
-          brandId,
-          ticketIds,
-        }))
-      );
-    }
-
-    return new Ok([
-      ...brands.map((brand) => brand.toContentNode(connectorId)),
-      ...brandHelpCenters.map((brand) =>
-        brand.getHelpCenterContentNode(connectorId, { richTitle: true })
-      ),
-      ...brandTickets.map((brand) =>
-        brand.getTicketsContentNode(connectorId, { richTitle: true })
-      ),
-      ...categories.map((category) =>
-        category.toContentNode(connectorId, { expandable: true })
-      ),
-      ...articles.map((article) => article.toContentNode(connectorId)),
-      ...tickets.map((ticket) => ticket.toContentNode(connectorId)),
-    ]);
-  }
-
-  /**
-   * Retrieves the parent IDs of a content node in hierarchical order.
-   * The first ID is the internal ID of the content node itself.
-   */
-  async retrieveContentNodeParents({
-    internalId,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    const { connectorId } = this;
-
-    const { type, objectIds } = getIdsFromInternalId(connectorId, internalId);
-    const { brandId } = objectIds;
-    switch (type) {
-      case "brand": {
-        return new Ok([internalId]);
-      }
-      /// Help Centers and tickets are just beneath their brands, so they have one parent.
-      case "help-center":
-      case "tickets": {
-        return new Ok([
-          internalId,
-          getBrandInternalId({ connectorId, brandId }),
-        ]);
-      }
-      case "category": {
-        const category = await ZendeskCategoryResource.fetchByCategoryId({
-          connectorId,
-          ...objectIds,
-        });
-        if (category) {
-          return new Ok(category.getParentInternalIds(connectorId));
-        } else {
-          logger.error(
-            { connectorId, ...objectIds },
-            "[Zendesk] Category not found"
-          );
-          return new Err(new Error("Category not found"));
-        }
-      }
-      case "article": {
-        const article = await ZendeskArticleResource.fetchByArticleId({
-          connectorId,
-          ...objectIds,
-        });
-        if (article) {
-          return new Ok(article.getParentInternalIds(connectorId));
-        } else {
-          logger.error(
-            { connectorId, ...objectIds },
-            "[Zendesk] Article not found"
-          );
-          return new Err(new Error("Article not found"));
-        }
-      }
-      case "ticket": {
-        const ticket = await ZendeskTicketResource.fetchByTicketId({
-          connectorId,
-          ...objectIds,
-        });
-        if (ticket) {
-          return new Ok(ticket.getParentInternalIds(connectorId));
-        } else {
-          logger.error(
-            { connectorId, ...objectIds },
-            "[Zendesk] Ticket not found"
-          );
-          return new Err(new Error("Ticket not found"));
-        }
-      }
-      default:
-        assertNever(type);
-    }
   }
 
   async setConfigurationKey({

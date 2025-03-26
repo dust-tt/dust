@@ -1,11 +1,11 @@
-import { Button, Icon, LogoSquareColorLogo, Page } from "@dust-tt/sparkle";
-import { isString } from "@dust-tt/types";
+import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { isString } from "@app/types";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",
@@ -46,7 +46,7 @@ function getMaintenancePageInfo(
               application. This temporary interruption ensures a smooth
               transition of your organization's data.
             </p>
-            <h4 className="text-xl font-bold text-white">What's happening?</h4>
+            <h4 className="heading-xl text-white">What's happening?</h4>
             <p className={defaultErrorMessageClassName}>
               As discussed with your team, we're moving your account to a
               different regional infrastructure. All your data, settings, and
@@ -107,7 +107,7 @@ export default function MaintenancePage({
       <main className="z-10 mx-6">
         <div className="flex h-full flex-col items-center justify-center">
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={LogoSquareColorLogo} size="lg" />
+            <Icon visual={DustLogoSquare} size="lg" />
             <div className="mx-20 flex flex-col items-center gap-6">
               <Page.Header
                 title={

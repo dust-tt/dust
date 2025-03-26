@@ -1,16 +1,13 @@
 import {
+  BracesIcon,
   Button,
   Chip,
   Dialog,
+  DialogContainer,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
-import type {
-  ConnectorType,
-  CoreAPIDataSource,
-  DataSourceType,
-} from "@dust-tt/types";
 import { JsonViewer } from "@textea/json-viewer";
 import Link from "next/link";
 import { useState } from "react";
@@ -24,6 +21,11 @@ import {
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import type {
+  ConnectorType,
+  CoreAPIDataSource,
+  DataSourceType,
+} from "@app/types";
 
 export function ViewDataSourceTable({
   connector,
@@ -66,7 +68,8 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                label="🤓 Show raw objects"
+                icon={BracesIcon}
+                label="Show raw objects"
               />
             </div>
             {isPaused && isRunning && (
@@ -253,7 +256,7 @@ function RawObjectsModal({
         <DialogHeader>
           <DialogTitle>Data source raw objects</DialogTitle>
         </DialogHeader>
-        <div className="mx-2 my-4 overflow-y-auto">
+        <DialogContainer>
           <span className="text-sm font-bold">dataSource</span>
           <JsonViewer
             theme={isDark ? "dark" : "light"}
@@ -275,7 +278,7 @@ function RawObjectsModal({
             rootName={false}
             defaultInspectDepth={1}
           />
-        </div>
+        </DialogContainer>
       </DialogContent>
     </Dialog>
   );

@@ -1,9 +1,4 @@
 import { Input } from "@dust-tt/sparkle";
-import type {
-  DataSourceType,
-  DocumentType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
@@ -13,6 +8,7 @@ import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
+import type { DataSourceType, DocumentType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
   owner: WorkspaceType;
@@ -129,10 +125,10 @@ export default function DataSourceView({
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <div className="mt-8 flex flex-col">
+    <div className="max-w-4xl">
+      <div className="flex flex-col">
         <div className="sm:col-span-6">
-          <div className="mt-1 flex rounded-md shadow-sm">
+          <div className="mt-1 flex rounded-md">
             <Input
               type="text"
               autoComplete="off"
@@ -264,6 +260,13 @@ export default function DataSourceView({
   );
 }
 
-DataSourceView.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+DataSourceView.getLayout = (
+  page: ReactElement,
+  { owner, dataSource }: { owner: WorkspaceType; dataSource: DataSourceType }
+) => {
+  return (
+    <PokeLayout title={`${owner.name} - Search ${dataSource.name}`}>
+      {page}
+    </PokeLayout>
+  );
 };

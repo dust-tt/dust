@@ -5,56 +5,36 @@ import type {
   MetricProps,
 } from "@app/components/home/content/Solutions/BenefitsSection";
 import type {
+  HeroProps,
+  pageSettingsProps,
+  ROIProps,
+} from "@app/components/home/content/Solutions/configs/utils";
+import type {
   CustomerStory,
   QuoteProps,
 } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import type { SolutionSectionAssistantBlockProps } from "@app/components/home/SolutionSection";
-
-// Interface definitions
-interface pageSettingsProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  from: string;
-  to: string;
-}
-
-interface HeroProps {
-  uptitle: string;
-  title: React.ReactNode;
-  description: React.ReactNode;
-  visuals: {
-    src: string;
-    alt: string;
-    depth: number;
-  }[];
-  ctaButtons: {
-    primary: {
-      label: string;
-      href: string;
-      icon: typeof RocketIcon;
-    };
-    secondary: {
-      label: string;
-      href: string;
-    };
-  };
-}
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
   uptitle: "Customer Support",
   title: <>Instant knowledge, exceptional support</>,
-  from: "from-sky-200",
-  to: "to-sky-500",
+  from: "from-blue-200",
+  to: "to-blue-200",
   description: (
     <>
-      Equip your&nbsp;team with AI&nbsp;agents to&nbsp;accelerate issue
-      resolution and&nbsp;increase customer satisfaction.
+      Equip your team with AI agents to accelerate issue resolution and increase
+      customer satisfaction.
     </>
   ),
+  bulletPoints: [
+    "Deflect tickets by integrating AI agents directly in your product",
+    "Speed up ticket resolution from your staff",
+    "Identify and anticipate customer needs",
+    "Convert tickets into searchable knowledge base",
+  ],
+  image: "/static/landing/support/ticketResolution.png",
 };
 
 export const Hero: HeroProps = {
@@ -103,7 +83,7 @@ export const Benefits: BenefitsProps = {
       icon: RocketIcon,
       title: "Resolve issues faster",
       description:
-        "Surface relevant information from all connected knowledge bases and draft messages in 50+ languages.",
+        "Deflect Tier 1 tickets, surface relevant information from your knowledge bases and draft messages in 50+ languages.",
     },
     {
       icon: UserGroupIcon,
@@ -131,40 +111,46 @@ export const Metrics: MetricProps = {
       description: <>saved weekly per agent</>,
     },
   ],
-  from: "from-amber-200",
-  to: "to-amber-500",
+  from: "from-golden-200",
+  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
   sectionTitle: "Your use cases, your way",
   sectionDescription:
-    "Customize and automate tasks without writing a single line of code.",
+    "Create custom AI agents without writing a single line of code.",
   items: [
+    {
+      title: "Ticket deflection",
+      content:
+        "Integrate AI agents in your product interface to deflect Tier 1 tickets and reduce support workload.",
+      images: ["/static/landing/support/ticketDeflection.png"],
+    },
     {
       title: "Ticket resolution",
       content:
         "Speed up resolution by suggesting tailored responses drawn from your knowledge base and past solutions.",
-      images: ["/static/landing/solutions/support1.png"],
+      images: ["/static/landing/support/ticketResolution.png"],
     },
     {
-      title: "Agent coaching",
-      content:
-        "Offer feedback to support agents using real-time best practices and ticket insights for consistent, quality service.",
-      images: ["/static/landing/solutions/support2.png"],
-    },
-    {
-      title: "Documentation builder",
+      title: "Knowledge base augmentation",
       content:
         "Convert resolved tickets into searchable articles and FAQs, capturing best practices for future use.",
-      images: ["/static/landing/solutions/support3.png"],
+      images: ["/static/landing/support/docExpert.png"],
     },
     {
-      title: "Customer insights",
+      title: "Ticket insights",
       content:
-        "Identify trends from customer feedback, helping teams proactively improve service and satisfaction.",
-      images: ["/static/landing/solutions/support4.png"],
+        "Turn support interactions into learning opportunities that enhance your offering and service standards.",
+      images: ["/static/landing/support/ticketInsights.png"],
     },
   ],
+};
+
+export const ROI: ROIProps = {
+  number: "50%",
+  subtitle: "reduction in ticket resolution time",
+  logo: "/static/landing/logos/malt.png",
 };
 
 export const Quote: QuoteProps = {
@@ -202,52 +188,5 @@ export const Stories: CustomerStory[] = [
       "Lifen uses Dust AI agents to boost team productivity and save hours of work each week.",
     href: "https://blog.dust.tt/customer-story-lifen/",
     src: "https://blog.dust.tt/content/images/size/w2000/2024/11/lifen_dust_customer_story.jpg",
-  },
-];
-
-export const AssistantExamples: SolutionSectionAssistantBlockProps[] = [
-  {
-    emoji: "🤝",
-    backgroundColor: "bg-sky-300",
-    name: "@ticketSolver",
-    description: (
-      <>
-        Speeds up resolution by suggesting tailored responses drawn from your
-        knowledge base and past solutions.
-      </>
-    ),
-  },
-  {
-    emoji: "📡",
-    backgroundColor: "bg-sky-300",
-    name: "@supportAnalyst",
-    description: (
-      <>
-        Offers feedback to support agents using real-time best practices and
-        ticket insights for consistent, quality service.
-      </>
-    ),
-  },
-  {
-    emoji: "🔮",
-    backgroundColor: "bg-sky-300",
-    name: "@docExpert",
-    description: (
-      <>
-        Converts resolved tickets into searchable articles and FAQs, capturing
-        best practices for future use.
-      </>
-    ),
-  },
-  {
-    emoji: "💡",
-    backgroundColor: "bg-sky-300",
-    name: "@CSInsights",
-    description: (
-      <>
-        Identifies trends from customer feedback, helping teams proactively
-        improve service and satisfaction.
-      </>
-    ),
   },
 ];

@@ -1,4 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
 import _ from "lodash";
 import type { Client } from "node-zendesk";
 import { createClient } from "node-zendesk";
@@ -19,6 +18,7 @@ import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
 import type { ZendeskCategoryResource } from "@connectors/resources/zendesk_resources";
 import { ZendeskBrandResource } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
 
 const ZENDESK_RATE_LIMIT_MAX_RETRIES = 5;
 const ZENDESK_RATE_LIMIT_TIMEOUT_SECONDS = 60;
@@ -396,7 +396,7 @@ export async function fetchZendeskTickets(
     const response = await fetchFromZendeskWithRetries({
       url:
         url ?? // using the URL if we got one, reconstructing it otherwise
-        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?start_time=${startTime}`,
+        `https://${brandSubdomain}.zendesk.com/api/v2/incremental/tickets/cursor?per_page=250&start_time=${startTime}`,
       accessToken,
     });
     return {

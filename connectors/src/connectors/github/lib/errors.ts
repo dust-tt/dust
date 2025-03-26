@@ -1,9 +1,17 @@
 import { RequestError } from "octokit";
 
-export function isGithubRequestErrorNotFound(
-  error: unknown
-): error is RequestError {
-  return error instanceof RequestError && error.status === 404;
+export function isGithubRequestErrorNotFound(error: unknown): error is {
+  name: string;
+  status: number;
+  message: string;
+} {
+  return (
+    error instanceof Error &&
+    "name" in error &&
+    error.name === "HttpError" &&
+    "status" in error &&
+    error.status === 404
+  );
 }
 
 export function isGithubRequestRedirectCountExceededError(
@@ -21,5 +29,14 @@ export function isBadCredentials(error: unknown): error is RequestError {
     error instanceof RequestError &&
     error.status === 401 &&
     error.message.includes("Bad credentials")
+  );
+}
+
+export function isGraphQLNotFound(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    "errors" in error &&
+    Array.isArray(error.errors) &&
+    error.errors.some((e) => e.type === "NOT_FOUND")
   );
 }

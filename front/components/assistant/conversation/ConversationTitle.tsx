@@ -3,14 +3,12 @@ import {
   Button,
   CheckIcon,
   ClipboardCheckIcon,
-  IconButton,
   LinkIcon,
   PencilSquareIcon,
   Popover,
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import type { WorkspaceType } from "@dust-tt/types";
 import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import React, { useCallback, useRef, useState } from "react";
@@ -24,6 +22,7 @@ import {
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
+import type { WorkspaceType } from "@app/types";
 
 export function ConversationTitle({
   owner,
@@ -117,10 +116,10 @@ export function ConversationTitle({
         }}
       />
       <div className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-4">
-        <div className="flex min-w-0 flex-row items-center gap-4">
+        <div className="flex min-w-0 flex-row items-center gap-4 text-muted-foreground dark:text-muted-foreground-night">
           {!isEditingTitle ? (
             <div className="min-w-0 overflow-hidden truncate">
-              <span className="font-bold">{conversation?.title || ""}</span>
+              {conversation?.title || ""}
             </div>
           ) : (
             <div className="w-[84%]">
@@ -173,26 +172,27 @@ export function ConversationTitle({
                 }}
                 className="flex items-center"
               >
-                <IconButton icon={CheckIcon} variant="highlight" />
+                <Button size="mini" icon={CheckIcon} variant="primary" />
               </div>
-              <IconButton
+              <Button
                 icon={XMarkIcon}
+                size="mini"
                 onClick={() => {
                   setIsEditingTitle(false);
                   setEditedTitle("");
                 }}
-                variant="highlight"
+                variant="outline"
               />
             </div>
           ) : (
-            <IconButton
+            <Button
               icon={PencilSquareIcon}
               onClick={() => {
                 setEditedTitle(conversation?.title || "");
                 setIsEditingTitle(true);
               }}
-              size="sm"
-              variant="outline"
+              size="mini"
+              variant="ghost-secondary"
             />
           )}
         </div>

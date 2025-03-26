@@ -9,15 +9,6 @@ import {
   ScrollArea,
   Spinner,
 } from "@dust-tt/sparkle";
-import type {
-  APIError,
-  BuilderSuggestionsType,
-  LightAgentConfigurationType,
-  ModelConfigurationType,
-  Result,
-  WorkspaceType,
-} from "@dust-tt/types";
-import { Err, md5, Ok } from "@dust-tt/types";
 import { CharacterCount } from "@tiptap/extension-character-count";
 import Document from "@tiptap/extension-document";
 import { History } from "@tiptap/extension-history";
@@ -42,6 +33,15 @@ import {
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import { classNames } from "@app/lib/utils";
 import { debounce } from "@app/lib/utils/debounce";
+import type {
+  APIError,
+  BuilderSuggestionsType,
+  LightAgentConfigurationType,
+  ModelConfigurationType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { Err, md5, Ok } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -550,8 +550,8 @@ function Suggestions({
       <div className="relative flex flex-col">
         <div
           className={classNames(
-            "flex items-center gap-2 text-base font-bold",
-            "text-element-800 dark:text-element-800-night"
+            "heading-base flex items-center gap-2",
+            "text-muted-foreground dark:text-muted-foreground-night"
           )}
         >
           <div>Tips</div>

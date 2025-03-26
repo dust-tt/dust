@@ -1,10 +1,5 @@
-import type {
-  ConnectorPermission,
-  ContentNode,
-  ContentNodesViewType,
-  Result,
-} from "@dust-tt/types";
-import { cacheWithRedis, ConfluenceClientError, Err, Ok } from "@dust-tt/types";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 
 import {
   getConfluenceAccessToken,
@@ -13,20 +8,8 @@ import {
   listConfluenceSpaces,
 } from "@connectors/connectors/confluence/lib/confluence_api";
 import type { ConfluenceSpaceType } from "@connectors/connectors/confluence/lib/confluence_client";
+import { getConfluenceIdFromInternalId } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
-  getConfluencePageParentIds,
-  getSpaceHierarchy,
-} from "@connectors/connectors/confluence/lib/hierarchy";
-import {
-  getConfluenceIdFromInternalId,
-  isInternalPageId,
-  isInternalSpaceId,
-  makeSpaceInternalId,
-} from "@connectors/connectors/confluence/lib/internal_ids";
-import {
-  checkPageHasChildren,
-  createContentNodeFromPage,
-  createContentNodeFromSpace,
   retrieveAvailableSpaces,
   retrieveHierarchyForParent,
 } from "@connectors/connectors/confluence/lib/permissions";
@@ -45,16 +28,16 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   ConfluenceConfiguration,
-  ConfluencePage,
   ConfluenceSpace,
 } from "@connectors/lib/models/confluence";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types/data_source_config";
+import type { ConnectorPermission, ContentNode } from "@connectors/types";
+import type { DataSourceConfig } from "@connectors/types";
+import { ConfluenceClientError } from "@connectors/types";
 
 const logger = mainLogger.child({
   connector: "confluence",
@@ -424,137 +407,6 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     return new Ok(undefined);
   }
 
-  async retrieveBatchContentNodes({
-    internalIds,
-  }: {
-    internalIds: string[];
-    viewType: ContentNodesViewType;
-  }): Promise<Result<ContentNode[], Error>> {
-    const connectorState = await ConfluenceConfiguration.findOne({
-      where: {
-        connectorId: this.connectorId,
-      },
-    });
-    if (!connectorState) {
-      return new Err(new Error("Confluence configuration not found"));
-    }
-
-    const spaceIds: string[] = [];
-    const pageIds: string[] = [];
-
-    internalIds.forEach((internalId) => {
-      if (isInternalSpaceId(internalId)) {
-        spaceIds.push(getConfluenceIdFromInternalId(internalId));
-      } else if (isInternalPageId(internalId)) {
-        pageIds.push(getConfluenceIdFromInternalId(internalId));
-      }
-    });
-
-    const [confluenceSpaces, confluencePages] = await Promise.all([
-      ConfluenceSpace.findAll({
-        where: {
-          connectorId: this.connectorId,
-          spaceId: spaceIds,
-        },
-      }),
-      ConfluencePage.findAll({
-        where: {
-          connectorId: this.connectorId,
-          pageId: pageIds,
-        },
-      }),
-    ]);
-
-    const spaceContentNodes: ContentNode[] = confluenceSpaces.map((space) => {
-      return createContentNodeFromSpace(space, connectorState.url, "read", {
-        isExpandable: true,
-      });
-    });
-
-    const pageContentNodes: ContentNode[] = await concurrentExecutor(
-      confluencePages,
-      async (page) => {
-        let parentId: string;
-        let parentType: "page" | "space";
-
-        if (page.parentId) {
-          parentId = page.parentId;
-          parentType = "page";
-        } else {
-          parentId = page.spaceId;
-          parentType = "space";
-        }
-        const isExpandable = await checkPageHasChildren(
-          this.connectorId,
-          page.pageId
-        );
-
-        return createContentNodeFromPage(
-          { id: parentId, type: parentType },
-          connectorState.url,
-          page,
-          isExpandable
-        );
-      },
-      { concurrency: 8 }
-    );
-
-    const contentNodes = spaceContentNodes.concat(pageContentNodes);
-    return new Ok(contentNodes);
-  }
-
-  async retrieveContentNodeParents({
-    internalId,
-    memoizationKey,
-  }: {
-    internalId: string;
-    memoizationKey?: string;
-  }): Promise<Result<string[], Error>> {
-    if (isInternalSpaceId(internalId)) {
-      return new Ok([internalId]);
-    }
-
-    if (isInternalPageId(internalId)) {
-      const confluenceId = getConfluenceIdFromInternalId(internalId);
-      const currentPage = await ConfluencePage.findOne({
-        attributes: ["pageId", "parentId", "spaceId"],
-        where: {
-          connectorId: this.connectorId,
-          pageId: confluenceId,
-        },
-      });
-
-      if (!currentPage) {
-        return new Err(new Error("Confluence page not found."));
-      }
-
-      // If the page does not have a parentId, return only the spaceId.
-      if (!currentPage.parentId) {
-        return new Ok([internalId, makeSpaceInternalId(currentPage.spaceId)]);
-      }
-
-      // if a memoization key is provided, use it to cache the hierarchy which
-      // is expensive to compute
-      const cachedHierarchy = memoizationKey
-        ? await cacheWithRedis(
-            getSpaceHierarchy,
-            () => memoizationKey,
-            60 * 60 * 1000,
-            undefined
-          )(this.connectorId, currentPage.spaceId)
-        : undefined;
-
-      const parentIds = await getConfluencePageParentIds(
-        this.connectorId,
-        currentPage,
-        cachedHierarchy
-      );
-      return new Ok(parentIds);
-    }
-
-    return new Ok([]);
-  }
-
   async pause(): Promise<Result<undefined, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
@@ -585,6 +437,15 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
     }
 
     return new Ok(undefined);
+  }
+
+  async retrieveContentNodeParents({
+    internalId,
+  }: {
+    internalId: string;
+  }): Promise<Result<string[], Error>> {
+    // Confluence only let you select spaces (root nodes).
+    return new Ok([internalId]);
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

@@ -10,11 +10,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { DataSourceType, SpaceType, WorkspaceType } from "@dust-tt/types";
-import { assertNever } from "@dust-tt/types";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
+
+import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
+import { assertNever } from "@app/types";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
@@ -92,7 +93,7 @@ export function ViewFolderAPIModal({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-element-700">Space ID:</span>
-                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
                       {space.sId}
                     </code>
                   </div>
@@ -100,7 +101,7 @@ export function ViewFolderAPIModal({
                     <span className="text-sm text-element-700">
                       Data Source ID:
                     </span>
-                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
                       {dataSource.sId}
                     </code>
                   </div>
@@ -122,7 +123,7 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -156,7 +157,7 @@ export function ViewFolderAPIModal({
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:

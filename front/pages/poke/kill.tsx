@@ -139,7 +139,7 @@ const KillPage = () => {
 };
 
 KillPage.getLayout = (page: ReactElement) => {
-  return <PokeLayout>{page}</PokeLayout>;
+  return <PokeLayout title="Kill Switches">{page}</PokeLayout>;
 };
 
 export default KillPage;

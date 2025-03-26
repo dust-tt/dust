@@ -1,10 +1,4 @@
 import { Button, ClipboardIcon } from "@dust-tt/sparkle";
-import type {
-  AppType,
-  SpecificationBlockType,
-  TraceType,
-  WorkspaceType,
-} from "@dust-tt/types";
 import {
   CheckCircleIcon,
   ChevronDownIcon,
@@ -15,6 +9,12 @@ import {
 import { useEffect, useState } from "react";
 
 import { useRunBlock } from "@app/lib/swr/apps";
+import type {
+  AppType,
+  SpecificationBlockType,
+  TraceType,
+  WorkspaceType,
+} from "@app/types";
 
 const ENABLE_TOP_LEVEL_AUTO_EXPAND = false;
 
@@ -298,7 +298,7 @@ export function InnerLogs({ trace }: { trace: TraceType }) {
       <div className="flex flex-initial">
         <InformationCircleIcon className="mt-0.5 h-4 w-4 text-gray-400" />
       </div>
-      <div className="font-mono flex flex-1">
+      <div className="flex flex-1 font-mono">
         <ValueViewer value={logs} topLevel={true} k={null} block={null} />
       </div>
     </div>
@@ -486,7 +486,7 @@ export default function Output({
                   ) {
                     return (
                       <div key={i} className="ml-1 flex flex-auto flex-row">
-                        <div className="font-mono mr-2 flex text-sm text-gray-300">
+                        <div className="mr-2 flex font-mono text-sm text-gray-300">
                           {i}:
                         </div>
                         <Logs trace={trace} />
@@ -537,7 +537,7 @@ export default function Output({
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
-                    <div className="font-mono mr-2 flex text-sm text-gray-300">
+                    <div className="mr-2 flex font-mono text-sm text-gray-300">
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />

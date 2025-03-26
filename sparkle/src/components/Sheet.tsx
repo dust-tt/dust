@@ -3,7 +3,7 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
-import { Button, ScrollArea } from "@sparkle/components";
+import { Button, Icon, ScrollArea } from "@sparkle/components";
 import { XMarkIcon } from "@sparkle/icons";
 import { cn } from "@sparkle/lib/utils";
 
@@ -98,7 +98,11 @@ const SheetContent = React.forwardRef<
     <FocusScope trapped={trapFocusScope} asChild>
       <SheetPrimitive.Content
         ref={ref}
-        className={cn(sheetVariants({ size, side }), className, "s-sheet")}
+        className={cn(
+          sheetVariants({ size, side }),
+          className,
+          "s-sheet s-text-foreground dark:s-text-foreground-night"
+        )}
         {...props}
       >
         {children}
@@ -139,7 +143,7 @@ const SheetContainer = ({ children }: React.HTMLAttributes<HTMLDivElement>) => {
     <ScrollArea
       className={cn(
         "s-w-full s-flex-grow",
-        "s-border-t s-border-border-dark/60 s-transition-all s-duration-300 dark:s-border-border-dark-night/60"
+        "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
       )}
     >
       <div className="s-relative s-flex s-flex-col s-gap-5 s-p-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night">
@@ -204,19 +208,23 @@ const SheetFooter = ({
 );
 SheetFooter.displayName = "SheetFooter";
 
+interface SheetTitleProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
+  icon?: React.ComponentType;
+}
+
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
-    ref={ref}
-    className={cn(
-      "s-text-lg s-font-semibold",
-      "s-text-foreground dark:s-text-foreground-night",
-      className
-    )}
-    {...props}
-  />
+  SheetTitleProps
+>(({ className, icon, ...props }, ref) => (
+  <>
+    {icon && <Icon visual={icon} size="lg" className="s-text-foreground" />}
+    <SheetPrimitive.Title
+      ref={ref}
+      className={cn("s-heading-lg", className)}
+      {...props}
+    />
+  </>
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
 

@@ -8,7 +8,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { BillingPeriod, PlanType, WorkspaceType } from "@dust-tt/types";
 import type { ReactNode } from "react";
 import React, { useState } from "react";
 
@@ -25,6 +24,7 @@ import {
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { classNames } from "@app/lib/utils";
+import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
 
 export type PriceTableDisplay = "landing" | "subscribe";
 

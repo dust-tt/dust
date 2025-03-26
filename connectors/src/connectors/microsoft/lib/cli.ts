@@ -1,10 +1,3 @@
-import type {
-  AdminSuccessResponseType,
-  CheckFileGenericResponseType,
-  MicrosoftCommandType,
-} from "@dust-tt/types";
-import { microsoftIncrementalSyncWorkflowId } from "@dust-tt/types";
-
 import { getConnectorManager } from "@connectors/connectors";
 import { getClient } from "@connectors/connectors/microsoft";
 import {
@@ -21,9 +14,15 @@ import { syncFiles } from "@connectors/connectors/microsoft/temporal/activities"
 import { launchMicrosoftIncrementalSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import { throwOnError } from "@connectors/lib/cli";
 import { terminateWorkflow } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
+import type {
+  AdminSuccessResponseType,
+  CheckFileGenericResponseType,
+  MicrosoftCommandType,
+} from "@connectors/types";
+import { microsoftIncrementalSyncWorkflowId } from "@connectors/types";
 
 const getConnector = async (args: { [key: string]: string | undefined }) => {
   if (args.wId) {
@@ -86,16 +85,22 @@ export const microsoft = async ({
       const { nodeType, itemAPIPath } = typeAndPathFromInternalId(
         args.internalId
       );
-
+      const logger = getActivityLogger(connector);
       const client = await getClient(connector.connectionId);
       const driveItem = (await getItem(
+        logger,
         client,
         itemAPIPath + nodeType === "file"
           ? `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
           : ""
       )) as DriveItem;
 
-      const columns = await getColumnsFromListItem(driveItem, client, logger);
+      const columns = await getColumnsFromListItem(
+        driveItem,
+        driveItem.listItem?.fields,
+        client,
+        logger
+      );
 
       const microsoftNodeResource =
         await MicrosoftNodeResource.fetchByInternalId(
@@ -211,6 +216,7 @@ export const microsoft = async ({
 
     case "skip-file": {
       const connector = await getConnector(args);
+      const logger = getActivityLogger(connector);
       if (!args.internalId) {
         throw new Error("Missing --internalId argument");
       }
@@ -224,6 +230,7 @@ export const microsoft = async ({
 
       const client = await getClient(connector.connectionId);
       const file = (await getItem(
+        logger,
         client,
         itemAPIPath + `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
       )) as DriveItem;

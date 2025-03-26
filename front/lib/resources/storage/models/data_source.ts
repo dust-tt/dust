@@ -1,4 +1,3 @@
-import type { ConnectorProvider } from "@dust-tt/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -7,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { ConnectorProvider } from "@app/types";
 
 export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSourceModel> {
   declare id: CreationOptional<number>;
@@ -85,7 +85,7 @@ DataSourceModel.init(
       { fields: ["workspaceId", "name", "deletedAt"], unique: true },
       { fields: ["workspaceId", "connectorProvider"] },
       { fields: ["workspaceId", "vaultId"] },
-      { fields: ["workspaceId", "conversationId"] },
+      { fields: ["workspaceId", "conversationId"], unique: true },
       { fields: ["dustAPIProjectId"] },
     ],
   }

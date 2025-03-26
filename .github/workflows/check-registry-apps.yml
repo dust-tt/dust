@@ -40,10 +40,6 @@ jobs:
           cache: "npm"
           cache-dependency-path: ./front/package-lock.json
 
-      - name: Build types
-        working-directory: types
-        run: npm install && npm run build
-
       - name: Build sdks/js
         working-directory: sdks/js
         run: npm install && npm run build

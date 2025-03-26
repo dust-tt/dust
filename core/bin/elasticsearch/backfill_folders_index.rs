@@ -51,7 +51,7 @@ async fn list_data_source_nodes(
 
     let stmt = c
         .prepare(
-            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dns.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id \
+            "SELECT dsn.timestamp, dsn.title, dsn.mime_type, dsn.provider_visibility, dsn.parents, dsn.node_id, dsn.document, dsn.\"table\", dsn.folder, dns.tags_array, ds.data_source_id, ds.internal_id, dsn.source_url, dsn.id, dsn.text_size \
                FROM data_sources_nodes dsn JOIN data_sources ds ON dsn.data_source = ds.id \
                WHERE dsn.id > $1 AND folder IS NOT NULL ORDER BY dsn.id ASC LIMIT $2",
         )
@@ -82,12 +82,14 @@ async fn list_data_source_nodes(
             };
             let source_url: Option<String> = row.get::<_, Option<String>>(11);
             let row_id = row.get::<_, i64>(12);
+            let text_size = row.get::<_, Option<i64>>(13);
             (
                 Node::new(
                     &data_source_id,
                     &data_source_internal_id,
                     &node_id,
                     node_type,
+                    text_size,
                     timestamp as u64,
                     &title,
                     &mime_type,

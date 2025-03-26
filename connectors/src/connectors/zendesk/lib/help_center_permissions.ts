@@ -1,5 +1,3 @@
-import type { ModelId } from "@dust-tt/types";
-
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskBrand,
@@ -10,6 +8,7 @@ import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
 } from "@connectors/resources/zendesk_resources";
+import type { ModelId } from "@connectors/types";
 
 /**
  * Marks a help center as permission "read".
