@@ -12,7 +12,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
-import type { AppType, WorkspaceType } from "@app/types";
+import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
 /**
@@ -74,6 +74,7 @@ export type AppLayoutNavigation = {
   current: boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlag?: WhitelistableFeature;
 };
 
 export type TabAppLayoutNavigation = {
@@ -219,6 +220,7 @@ export const subNavigationAdmin = ({
           current: current === "capabilities",
           subMenuLabel: current === "capabilities" ? subMenuLabel : undefined,
           subMenu: current === "capabilities" ? subMenu : undefined,
+          featureFlag: "mcp_actions",
         },
         {
           id: "providers",

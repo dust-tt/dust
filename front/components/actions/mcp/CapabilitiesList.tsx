@@ -16,7 +16,7 @@ import {
   useCreateMCPServerConnection,
   useDeleteMCPServerConnection,
   useMCPServerConnections,
-} from "@app/lib/swr/remote_mcp_servers";
+} from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";

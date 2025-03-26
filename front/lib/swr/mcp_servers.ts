@@ -241,7 +241,7 @@ export function useMCPServerConnections({
   }> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/connections`,
+    `/api/w/${owner.sId}/mcp/connections`,
     connectionsFetcher,
     {
       disabled,
@@ -273,7 +273,7 @@ export function useCreateMCPServerConnection({
     connectionId: string;
     internalMCPServerId: InternalMCPServerId;
   }): Promise<{ success: boolean; connection: MCPServerConnectionType }> => {
-    const response = await fetch(`/api/w/${owner.sId}/connections`, {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/connections`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -308,7 +308,7 @@ export function useDeleteMCPServerConnection({
     connectionId: string;
   }): Promise<{ success: boolean }> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/connections/${connectionId}`,
+      `/api/w/${owner.sId}/mcp/connections/${connectionId}`,
       {
         method: "DELETE",
         headers: {
