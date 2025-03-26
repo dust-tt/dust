@@ -40,7 +40,7 @@ export function FooterNavigation() {
                         {item.title}
                       </FooterLink>
                     ) : (
-                      <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-primary-400 no-underline outline-none">
+                      <div className="copy-xs block select-none py-2 pt-4 uppercase text-primary-800 no-underline outline-none">
                         {item.title}
                       </div>
                     )}
@@ -68,7 +68,7 @@ function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
       target={isExternal ? "_blank" : undefined}
       {...props}
     >
-      <A variant="tertiary" className="text-sm">
+      <A variant="secondary" className="label-sm">
         {children}
       </A>
     </Link>

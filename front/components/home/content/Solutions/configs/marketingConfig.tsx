@@ -29,8 +29,8 @@ export const pageSettings: pageSettingsProps = {
   to: "to-golden-200",
   description: (
     <>
-      Scale content production, maintain brand consistency, and optimize reach
-      across channels.
+      Scale content production, maintain brand consistency,
+      and&nbsp;optimize&nbsp;reach across channels.
     </>
   ),
   bulletPoints: [

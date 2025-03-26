@@ -40,12 +40,7 @@ export function Landing() {
       />
       <FunctionsSection />
       <FutureSection />
-      <DemoVideoSection
-        demoVideo={DemoVideo}
-        fromColor="from-sky-200"
-        toColor="to-sky-500"
-        fullWidth={true}
-      />
+      <DemoVideoSection demoVideo={DemoVideo} fullWidth={true} />
       <BlogSection />
       <div
         className={classNames(

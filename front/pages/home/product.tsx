@@ -10,6 +10,7 @@ import { UbiquitySection } from "@app/components/home/content/Product/UbiquitySe
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
+import { FunctionsSection } from "@app/components/home/FunctionsSection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { classNames } from "@app/lib/utils";
@@ -65,7 +66,7 @@ export function Landing() {
           </Link>
         </div>
       </div>
-      {/* <VerticalSection /> */}
+      <FunctionsSection />
     </>
   );
 }

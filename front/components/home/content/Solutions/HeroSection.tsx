@@ -2,7 +2,7 @@ import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { FC } from "react";
 
-import { Grid, H1, P } from "@app/components/home/ContentComponents";
+import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 
 interface Visual {
   src: string;
@@ -14,9 +14,8 @@ interface HeroSectionProps {
   uptitle: string;
   title: React.ReactNode;
   description: React.ReactNode;
-  fromColor: string;
-  toColor: string;
   visuals: Visual[];
+  accentColor?: string;
   ctaButtons?: {
     primary?: {
       label: string;
@@ -34,6 +33,7 @@ export const HeroSection: FC<HeroSectionProps> = ({
   title,
   description,
   visuals,
+  accentColor = "text-brand-hunter-green",
   ctaButtons,
 }) => {
   const MainVisual = () => (
@@ -54,9 +54,9 @@ export const HeroSection: FC<HeroSectionProps> = ({
     <div className="container flex w-full flex-col py-6">
       <Grid>
         <div className="col-span-12 mx-auto flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%] lg:col-span-6 lg:col-start-1 lg:h-[100%] lg:max-w-[100%] 2xl:col-span-6">
-          <P size="lg" className="text-muted-foreground">
+          <H2 size="lg" className={accentColor} mono>
             Dust for {uptitle}
-          </P>
+          </H2>
           <H1>{title}</H1>
           <P size="lg" className="pb-6">
             {description}
