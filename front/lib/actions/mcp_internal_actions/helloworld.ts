@@ -1,6 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-const serverInfo = {
+import type { ServerInfo } from "@app/lib/actions/mcp_internal_actions";
+
+const serverInfo: ServerInfo = {
   name: "hello-world-server",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
@@ -8,7 +10,7 @@ const serverInfo = {
     provider: "google_drive" as const,
     use_case: "connection" as const,
   },
-  pictureUrl: "https://dust.tt/static/emojis/bg-violet-800/rocket/1f680",
+  icon: "Rocket",
 };
 
 export const createServer = (): McpServer => {

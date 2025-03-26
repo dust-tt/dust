@@ -6,13 +6,17 @@ import {
   DataTable,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import React from "react";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type {
   InternalMCPServerId,
   ServerInfo,
 } from "@app/lib/actions/mcp_internal_actions";
-import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
+import {
+  internalMCPServers,
+  MCP_SERVER_ICONS,
+} from "@app/lib/actions/mcp_internal_actions";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -48,7 +52,11 @@ export const CapabilitiesList = ({
               className={classNames("flex flex-row items-center gap-2 py-3")}
             >
               <div>
-                <Avatar visual={info.getValue().pictureUrl} />{" "}
+                <Avatar
+                  visual={React.createElement(
+                    MCP_SERVER_ICONS[info.getValue().icon || "Rocket"]
+                  )}
+                />
               </div>
               <div className="flex min-w-0 grow flex-col">
                 <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">

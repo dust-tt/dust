@@ -1,3 +1,4 @@
+import { RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
@@ -14,10 +15,17 @@ export type AuthorizationInfo = {
   use_case: OAuthUseCase;
 };
 
+export const MCP_SERVER_ICONS = {
+  Rocket: RocketIcon,
+  Sparkle: SparklesIcon,
+} as const;
+
+type MCPIconType = keyof typeof MCP_SERVER_ICONS;
+
 export type ServerInfo = Implementation & {
   authorization?: AuthorizationInfo;
   description?: string;
-  pictureUrl?: string;
+  icon?: MCPIconType;
 };
 
 export const connectToInternalMCPServer = async (
