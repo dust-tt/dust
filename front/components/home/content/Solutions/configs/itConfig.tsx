@@ -106,15 +106,26 @@ export const Metrics: MetricProps = {
   metrics: [
     {
       value: "30%",
-      description: <>fewer IT tickets</>,
+      description: (
+        <>
+          Fewer IT
+          <br />
+          tickets
+        </>
+      ),
     },
     {
       value: "4h",
-      description: <> saved weekly filling RFP</>,
+      description: (
+        <>
+          {" "}
+          Saved weekly
+          <br />
+          filling RFP
+        </>
+      ),
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
