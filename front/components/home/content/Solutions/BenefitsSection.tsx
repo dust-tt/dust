@@ -1,5 +1,4 @@
 import { Avatar, Hover3D, Icon } from "@dust-tt/sparkle";
-import type { FC } from "react";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { Grid, H2 } from "@app/components/home/ContentComponents";
@@ -23,8 +22,6 @@ export interface MetricProps {
     value: string;
     description: React.ReactNode;
   }[];
-  from: string;
-  to: string;
 }
 
 interface BenefitsSectionProps {
@@ -63,11 +60,11 @@ export function BenefitsSection({
                   visual={
                     <Icon
                       visual={benefit.icon}
-                      className="text-slate-300"
+                      className="text-primary-200"
                       size="xl"
                     />
                   }
-                  backgroundColor="bg-slate-700"
+                  backgroundColor="bg-primary-700"
                 />
               </Hover3D>
             </ImgBlock>
