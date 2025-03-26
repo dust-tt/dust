@@ -13,7 +13,7 @@ export interface HeroProps {
   uptitle: string;
   title: React.ReactNode;
   description: React.ReactNode;
-  accentColor: string;
+  accentColor?: string;
   visuals: {
     src: string;
     alt: string;
