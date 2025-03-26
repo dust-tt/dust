@@ -11,10 +11,18 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-export const PostConnectionBodySchema = t.type({
-  connectionId: t.string,
-  internalMCPServerId: t.string,
-});
+export const PostConnectionBodySchema = t.union([
+  t.type({
+    connectionId: t.string,
+    internalMCPServerId: t.string,
+    remoteMCPServerId: t.undefined,
+  }),
+  t.type({
+    connectionId: t.string,
+    remoteMCPServerId: t.number,
+    internalMCPServerId: t.undefined,
+  }),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -51,15 +59,17 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, internalMCPServerId } = validatedBody;
+      const { connectionId, internalMCPServerId, remoteMCPServerId } =
+        validatedBody;
 
       const connectionResource = await MCPServerConnectionResource.makeNew(
         auth,
         {
           connectionId,
           connectionType: "workspace",
-          serverType: "internal",
+          serverType: internalMCPServerId ? "internal" : "remote",
           internalMCPServerId: internalMCPServerId as InternalMCPServerId,
+          remoteMCPServerId,
           workspaceId: owner.id,
         }
       );
