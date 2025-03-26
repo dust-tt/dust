@@ -313,7 +313,7 @@ export async function upsertArticle({
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
-      title: article.title,
+      title: safeSubstring(article.title, 0, 254),
       url: articleUrl,
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
@@ -325,7 +325,7 @@ export async function upsertArticle({
     articleOnDb = await IntercomArticleModel.create({
       connectorId: connectorId,
       articleId: article.id,
-      title: safeSubstring(article.title, 0, 255),
+      title: safeSubstring(article.title, 0, 254),
       url: articleUrl,
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
