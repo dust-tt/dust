@@ -8,6 +8,7 @@ const serverInfo = {
     provider: "google_drive" as const,
     use_case: "connection" as const,
   },
+  pictureUrl: "https://dust.tt/static/emojis/bg-violet-800/rocket/1f680",
 };
 
 export const createServer = (): McpServer => {

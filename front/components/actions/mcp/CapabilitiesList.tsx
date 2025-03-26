@@ -1,5 +1,7 @@
 import {
+  Avatar,
   Button,
+  classNames,
   Cog6ToothIcon,
   DataTable,
   useSendNotification,
@@ -10,6 +12,7 @@ import { useCallback } from "react";
 import type {
   AuthorizationInfo,
   InternalMCPServerId,
+  ServerInfo,
 } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import {
@@ -107,20 +110,34 @@ export const CapabilitiesList = ({
     [deleteMCPServerConnection, sendNotification]
   );
 
-  const getTableColumns = (): ColumnDef<RowData, string>[] => {
+  const getTableColumns = (): (
+    | ColumnDef<RowData, ServerInfo>
+    | ColumnDef<RowData, string>
+  )[] => {
     return [
       {
         id: "name",
-        cell: (info: CellContext<RowData, string>) => (
+        cell: (info: CellContext<RowData, ServerInfo>) => (
           <DataTable.CellContent>
-            {info.getValue()}
-            <div className="text-sm text-gray-500">
-              {internalMCPServers[info.row.original.id].serverInfo?.description}
+            <div
+              className={classNames("flex flex-row items-center gap-2 py-3")}
+            >
+              <div>
+                <Avatar visual={info.getValue().pictureUrl} />{" "}
+              </div>
+              <div className="flex min-w-0 grow flex-col">
+                <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+                  {info.getValue().name}
+                </div>
+                <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  {info.getValue().description}
+                </div>
+              </div>
             </div>
           </DataTable.CellContent>
         ),
-        accessorFn: (row: RowData): string =>
-          internalMCPServers[row.id].serverInfo.name,
+        accessorFn: (row: RowData): ServerInfo =>
+          internalMCPServers[row.id].serverInfo,
       },
       {
         id: "action",
