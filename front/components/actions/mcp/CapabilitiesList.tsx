@@ -4,26 +4,17 @@ import {
   classNames,
   Cog6ToothIcon,
   DataTable,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useCallback } from "react";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type {
-  AuthorizationInfo,
   InternalMCPServerId,
   ServerInfo,
 } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
-import {
-  useCreateMCPServerConnection,
-  useDeleteMCPServerConnection,
-  useMCPServerConnections,
-} from "@app/lib/swr/mcp_servers";
+import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
-import { setupOAuthConnection } from "@app/types";
-import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type RowData = {
   id: InternalMCPServerId;
