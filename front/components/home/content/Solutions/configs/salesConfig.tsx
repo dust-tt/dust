@@ -28,8 +28,7 @@ export const pageSettings: pageSettingsProps = {
       Smart automations, <br></br>more deals
     </>
   ),
-  from: "from-green-200",
-  to: "to-green-200",
+  accentColor: "text-brand-red-rose",
   description: (
     <>
       Optimize every touchpoint, automate administrative overhead, and close

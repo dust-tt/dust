@@ -27,10 +27,7 @@ function CardCarousel({ title, children }: CardCarouselProps) {
 
         <CarouselContent className="-ml-2 -mr-2">
           {React.Children.map(children, (child, index) => (
-            <CarouselItem
-              key={index}
-              className="basis-full pl-2 pr-2 sm:basis-1/2 lg:basis-1/3"
-            >
+            <CarouselItem key={index} className="sm:basis-1/2 lg:basis-1/3">
               {child}
             </CarouselItem>
           ))}

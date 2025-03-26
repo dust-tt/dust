@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Data & Analytics",
   title: <>Turn Data Into Business Decisions</>,
-  from: "from-purple-300",
-  to: "to-purple-300",
+  accentColor: "text-brand-red-rose",
   description: (
     <>
       Transform complex data into instant insights, automate queries, and

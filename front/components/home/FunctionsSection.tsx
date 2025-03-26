@@ -142,9 +142,7 @@ function FunctionsSection() {
       <CardCarousel
         title={
           <div className="flex flex-col gap-4">
-            <H2 className="text-golden-200">
-              Custom AI agents for every function
-            </H2>
+            <H2>Custom AI agents for every function</H2>
             <P size="lg">
               Whether you're a developer, marketer, or data scientist, Dust
               helps you perform sophisticated tasks, automate processes and

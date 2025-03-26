@@ -1,7 +1,9 @@
-import { Button, ChevronRightIcon } from "@dust-tt/sparkle";
+import { Button, ChevronRightIcon, Icon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Link from "next/link";
 import React from "react";
+
+import { H3, P } from "@app/components/home/ContentComponents";
 
 interface FunctionCardProps {
   title: string;
@@ -44,8 +46,8 @@ export function FunctionCard({
   href,
 }: FunctionCardProps) {
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-3xl">
-      <div className={`h-60 w-full px-4 py-4 ${colorVariants[color].visual}`}>
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className={`h-60 w-full px-4 ${colorVariants[color].visual}`}>
         <div className="flex h-full w-full items-center justify-center">
           <img
             src={visualSrc}
@@ -55,21 +57,27 @@ export function FunctionCard({
         </div>
       </div>
 
-      <div className={`flex flex-grow flex-col p-5 ${cardVariants({ color })}`}>
-        <h3 className="heading-2xl text-foreground">{title}</h3>
-
-        <ul className="copy-base mt-4 flex-grow space-y-3">
-          {features.map((feature, i) => (
-            <li
-              key={i}
-              className="flex min-h-6 items-start gap-3 text-foreground"
-            >
-              <ChevronRightIcon className="mt-1 h-4 w-4 flex-shrink-0" />
-              {feature}
-            </li>
-          ))}
-        </ul>
-
+      <div
+        className={`flex flex-grow flex-col gap-2 p-8 ${cardVariants({ color })}`}
+      >
+        <H3 className="text-white" mono>
+          {title}
+        </H3>
+        <P size="sm" className="flex-grow font-medium text-white/80">
+          <ul>
+            {features.map((feature, i) => (
+              <li
+                key={i}
+                className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
+              >
+                <div className="pt-0.5">
+                  <Icon visual={ChevronRightIcon} size="sm" />
+                </div>
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </P>
         <div className="mt-4">
           <Link href={href} shallow>
             <Button variant="outline" label="Learn more" size="sm" />

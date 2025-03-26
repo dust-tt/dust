@@ -25,8 +25,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Engineering",
   title: <>Ship Better Code, Reduce Interruptions</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Streamline incident response, automate documentation, and keep your team

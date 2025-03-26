@@ -34,16 +34,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    shape,
-    gtmTrackingId,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
-  const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
 
@@ -52,31 +47,6 @@ export default function LandingLayout({
     setHasAcceptedCookies(hasAccepted);
     setShowCookieBanner(!hasAccepted);
   }, [acceptedCookie]);
-
-  useEffect(() => {
-    setCurrentShape(shape);
-  }, [shape]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
-        setCurrentShape(
-          (prevShape) =>
-            (prevShape - 1 + shapeNamesArray.length) % shapeNamesArray.length
-        );
-      } else if (event.key === "ArrowRight") {
-        setCurrentShape(
-          (prevShape) => (prevShape + 1) % shapeNamesArray.length
-        );
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   return (
     <>
