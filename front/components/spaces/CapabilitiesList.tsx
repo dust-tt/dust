@@ -1,4 +1,3 @@
-import type { SpaceType } from "@dust-tt/client";
 import {
   Button,
   Cog6ToothIcon,
@@ -27,7 +26,6 @@ export const CapabilitiesList = ({
   capabilities,
   owner,
 }: {
-  space: SpaceType;
   capabilities: InternalMCPServerId[];
   owner: LightWorkspaceType;
 }) => {

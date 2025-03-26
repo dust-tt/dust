@@ -17,6 +17,7 @@ export type AuthorizationInfo = {
 
 export type ServerInfo = Implementation & {
   authorization?: AuthorizationInfo;
+  description?: string;
 };
 
 export const connectToInternalMCPServer = async (

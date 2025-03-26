@@ -47,7 +47,8 @@ export type SubNavigationAdminId =
   | "members"
   | "providers"
   | "api_keys"
-  | "dev_secrets";
+  | "dev_secrets"
+  | "capabilities";
 
 export type SubNavigationAppId =
   | "specification"
@@ -140,6 +141,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/developers/capabilities",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -209,6 +211,15 @@ export const subNavigationAdmin = ({
       label: "Developers",
       variant: "primary",
       menus: [
+        {
+          id: "capabilities",
+          label: "Capabilities",
+          icon: CommandLineIcon,
+          href: `/w/${owner.sId}/developers/capabilities`,
+          current: current === "capabilities",
+          subMenuLabel: current === "capabilities" ? subMenuLabel : undefined,
+          subMenu: current === "capabilities" ? subMenu : undefined,
+        },
         {
           id: "providers",
           label: "Providers",

@@ -2,12 +2,9 @@ import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { CapabilitiesList } from "@app/components/spaces/CapabilitiesList";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
-import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type { ActionApp } from "@app/lib/registry";
@@ -21,7 +18,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     isAdmin: boolean;
     registryApps: ActionApp[] | null;
     space: SpaceType;
-    capabilities: InternalMCPServerId[];
   }
 >(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
@@ -45,12 +41,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
     };
   }
 
-  let capabilities: InternalMCPServerId[] = [];
-
-  if (space.kind === "system") {
-    capabilities = Object.keys(internalMCPServers) as InternalMCPServerId[];
-  }
-
   const isBuilder = auth.isBuilder();
   const canWriteInSpace = space.canWrite(auth);
 
@@ -72,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       owner,
       plan,
       registryApps,
-      capabilities,
       space: space.toJSON(),
       subscription,
     },
@@ -84,19 +73,8 @@ export default function Space({
   owner,
   space,
   registryApps,
-  capabilities,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
-
-  if (space.kind === "system") {
-    return (
-      <CapabilitiesList
-        owner={owner}
-        space={space}
-        capabilities={capabilities}
-      />
-    );
-  }
 
   return (
     <SpaceAppsList
