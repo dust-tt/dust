@@ -131,7 +131,7 @@ export type AssistantBuilderMCPServerConfiguration = {
   internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
   remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
 
-  dataSourceConfigurations?: DataSourceViewSelectionConfigurations;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
 // Builder State
@@ -368,6 +368,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
       serverType: "internal",
       internalMCPServerId: null,
       remoteMCPServerId: null,
+      dataSourceConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,

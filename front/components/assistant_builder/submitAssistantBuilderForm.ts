@@ -190,13 +190,13 @@ export async function submitAssistantBuilderForm({
             serverType: a.configuration.serverType,
             internalMCPServerId: a.configuration.internalMCPServerId,
             remoteMCPServerId: a.configuration.remoteMCPServerId,
-            dataSources:
-              a.configuration.dataSourceConfigurations &&
-              processDataSourceViewSelectionConfigurations({
-                owner,
-                dataSourceConfigurations:
-                  a.configuration.dataSourceConfigurations,
-              }),
+            dataSources: a.configuration.dataSourceConfigurations
+              ? processDataSourceViewSelectionConfigurations({
+                  owner,
+                  dataSourceConfigurations:
+                    a.configuration.dataSourceConfigurations,
+                })
+              : null,
           },
         ];
 
