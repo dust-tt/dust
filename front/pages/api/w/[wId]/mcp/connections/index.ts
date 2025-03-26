@@ -3,18 +3,24 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { ioTsEnum } from "@app/types";
+
+export type AvailableInternalMcpServerId =
+  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
 
 export const PostConnectionBodySchema = t.union([
   t.type({
     connectionId: t.string,
-    internalMCPServerId: t.string,
+    internalMCPServerId: ioTsEnum<AvailableInternalMcpServerId>(
+      AVAILABLE_INTERNAL_MCPSERVER_IDS
+    ),
     remoteMCPServerId: t.undefined,
   }),
   t.type({
@@ -34,8 +40,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "GET":
       const connections = await MCPServerConnectionResource.listByWorkspace({
@@ -68,9 +72,8 @@ async function handler(
           connectionId,
           connectionType: "workspace",
           serverType: internalMCPServerId ? "internal" : "remote",
-          internalMCPServerId: internalMCPServerId as InternalMCPServerId,
+          internalMCPServerId,
           remoteMCPServerId,
-          workspaceId: owner.id,
         }
       );
 
