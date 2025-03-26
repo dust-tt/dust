@@ -1181,6 +1181,7 @@ export async function createAgentActionConfiguration(
         serverType: action.serverType,
         internalMCPServerId: action.internalMCPServerId,
         remoteMCPServerId: action.remoteMCPServerId,
+        dataSources: action.dataSources,
       });
     }
     default:
