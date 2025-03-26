@@ -1,8 +1,7 @@
-import type { UserMessageType, WorkspaceType } from "@dust-tt/types";
-
 import type { EditorService } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
 import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import type { UserMessageType, WorkspaceType } from "@app/types";
 
 interface MessageEditorProps {
   message: UserMessageType;
@@ -35,6 +34,7 @@ export function MessageEditor({
       agentConfigurations={agentConfigurations}
       owner={owner}
       hideSendButton={true}
+      attachedNodes={[]}
       disableSendButton={false}
     />
   );

@@ -1,4 +1,4 @@
-import { isEqual, keyBy, sortBy, uniq } from "lodash";
+import { isEqual, keyBy, sortBy, uniq, uniqWith } from "lodash";
 import type { Transaction } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
@@ -2165,7 +2165,7 @@ export async function updateConversationRequestedGroupIds(
     newRequirements.push(...requestedGroupIds);
   }
   // Remove duplicates and sort each requirement.
-  newRequirements = _.uniqWith(
+  newRequirements = uniqWith(
     newRequirements.map((r) => sortBy(r)),
     isEqual
   );
