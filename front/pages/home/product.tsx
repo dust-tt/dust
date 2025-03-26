@@ -33,11 +33,7 @@ export function Landing() {
     <>
       <ProductIntroSection />
       <CapabilitySection />
-      <DemoVideoSection
-        demoVideo={DemoVideo}
-        fromColor="from-sky-200"
-        toColor="to-sky-500"
-      />
+      <DemoVideoSection demoVideo={DemoVideo} />
       <UbiquitySection />
       <ExtensibilitySection page="default" />
       <SecuritySection />

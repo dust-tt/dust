@@ -921,6 +921,12 @@ module.exports = {
           letterSpacing: theme("fontSize.xl[1].letterSpacing"),
           fontWeight: "400",
         },
+        ".copy-2xl": {
+          fontSize: theme("fontSize.2xl[0]"),
+          lineHeight: theme("fontSize.2xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.2xl[1].letterSpacing"),
+          fontWeight: "400",
+        },
       });
     }),
   ],

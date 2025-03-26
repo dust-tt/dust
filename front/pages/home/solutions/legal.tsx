@@ -75,11 +75,7 @@ export default function Legal() {
             />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <DemoVideoSection
-              demoVideo={DemoVideo}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <DemoVideoSection demoVideo={DemoVideo} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />

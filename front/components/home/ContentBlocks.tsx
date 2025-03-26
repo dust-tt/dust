@@ -1,4 +1,4 @@
-import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import { ArrowRightSIcon, Button, cn, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -33,22 +33,33 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   const renderContent = () => {
     if (Array.isArray(content)) {
       return content.map((item, index) => (
-        <P key={index} size="md">
+        <P key={index} size="md" className="text-muted-foreground">
           {item}
         </P>
       ));
     } else {
-      return <P size="md">{content}</P>;
+      return (
+        <P size="md" className="text-muted-foreground">
+          {content}
+        </P>
+      );
     }
   };
 
   return (
-    <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="ml-[10%] pr-[20%] lg:m-0 lg:pr-[28%]">
+    <div
+      className={classNames(
+        "flex flex-col gap-2 overflow-hidden bg-muted-background",
+        className
+      )}
+    >
+      <div className="flex aspect-video items-center justify-center bg-primary-800 p-8">
         {children ? children : null}
       </div>
-      <div className="flex flex-col px-0 py-6">
-        <H3 className="text-foreground">{title}</H3>
+      <div className="flex flex-col gap-4 p-6">
+        <H3 className="text-foreground" mono>
+          {title}
+        </H3>
         {renderContent()}
       </div>
     </div>
@@ -76,13 +87,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-muted-background",
+        "flex h-full w-full flex-col overflow-hidden bg-muted-background",
         "group transition duration-300 ease-out",
         "hover:bg-primary-100"
       )}
     >
       {children ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -94,8 +105,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
                 className: classNames(
                   "absolute h-full w-full object-cover",
                   "brightness-100 transition duration-300 ease-out",
-                  "group-hover:brightness-110",
-                  "border border-border rounded-t-2xl"
+                  "group-hover:brightness-110"
                 ),
               });
             }
@@ -103,10 +113,12 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
           })}
         </div>
       ) : null}
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col p-8">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground">{title}</H5>
-          <P size="xs" className="line-clamp-3 text-foreground">
+          <H5 className="line-clamp-2 text-foreground" mono>
+            {title}
+          </H5>
+          <P size="sm" className="line-clamp-3 text-muted-foreground">
             {content}
           </P>
         </div>
@@ -219,8 +231,16 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 lg:col-span-10 lg:col-start-2">
-    <div className="flex justify-center">
+  <div className="col-span-12 flex flex-col items-center justify-center lg:col-span-10 lg:col-start-2">
+    <div
+      className={cn(
+        "flex max-w-[500px] flex-col items-center p-4 text-center italic text-foreground",
+        "lg:copy-2xl copy-base xs:copy-lg sm:copy-xl md:copy-xl"
+      )}
+    >
+      &ldquo; {quote} &rdquo;
+    </div>
+    <div className="align-center flex justify-center">
       <div className="flex items-center justify-center">
         <Image
           src={logo}
@@ -229,19 +249,27 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
           alt="Company Logo"
           className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
         />
-        <P
-          size="sm"
-          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
-        >
-          <Strong>
-            <span className="text-hunter-green">{name}</span>
-          </Strong>
-          <br /> {title}
-        </P>
+        <div className="flex flex-col">
+          <P
+            size="md"
+            className={cn(
+              "text-foreground",
+              "xs:copy-left copy-base sm:copy-lg md:copy-xl"
+            )}
+          >
+            <Strong>{name}</Strong>
+          </P>
+          <P
+            size="sm"
+            className={cn(
+              "-mt-1 italic text-muted-foreground",
+              "xs:copy-left copy-sm xs:copy-base sm:copy-lg md:copy-lg"
+            )}
+          >
+            {title}
+          </P>
+        </div>
       </div>
-    </div>
-    <div className="lg:copy-2xl copy-base flex flex-col items-center rounded-4xl p-4 text-center italic text-foreground xs:copy-lg md:copy-xl sm:text-xl">
-      &ldquo; {quote} &rdquo;
     </div>
   </div>
 );
@@ -424,13 +452,23 @@ export function ContentBlock({
   description,
   image,
   imageAlt,
-  page = "default",
 }: {
   title: string;
   description: string;
   image: string;
   imageAlt: string;
-  page?: string;
 }) {
-  // ... existing code ...
+  return (
+    <div className="flex flex-col gap-4">
+      <Image
+        src={image}
+        alt={imageAlt}
+        width={1200}
+        height={630}
+        className="w-full"
+      />
+      <H2>{title}</H2>
+      <P>{description}</P>
+    </div>
+  );
 }
