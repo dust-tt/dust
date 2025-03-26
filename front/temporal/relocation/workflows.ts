@@ -19,9 +19,13 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types";
+import { concurrentExecutor } from "@app/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
+const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
+const TEMPORAL_FRONT_TABLE_RELOCATION_CONCURRENCY = 10;
+const TEMPORAL_CONNECTORS_TABLE_RELOCATION_CONCURRENCY = 10;
 
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
@@ -122,21 +126,24 @@ export async function workspaceRelocateFrontWorkflow({
     await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
 
   // 2) Relocate front tables to the destination region.
-  for (const tableName of tablesOrder) {
-    await executeChild(workspaceRelocateFrontTableWorkflow, {
-      workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
-      searchAttributes: parentSearchAttributes,
-      args: [
-        {
-          sourceRegion,
-          tableName,
-          destRegion,
-          workspaceId,
-        },
-      ],
-      memo,
-    });
-  }
+  await concurrentExecutor(
+    tablesOrder,
+    async (tableName) =>
+      executeChild(workspaceRelocateFrontTableWorkflow, {
+        workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            sourceRegion,
+            tableName,
+            destRegion,
+            workspaceId,
+          },
+        ],
+        memo,
+      }),
+    { concurrency: TEMPORAL_FRONT_TABLE_RELOCATION_CONCURRENCY }
+  );
 
   // 3) Relocate the associated files from the file storage to the destination region.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
@@ -312,21 +319,24 @@ export async function workspaceRelocateConnectorsWorkflow({
   });
 
   // 3) Relocate connectors tables to the destination region for each connector.
-  for (const c of connectors) {
-    await executeChild(workspaceRelocateConnectorWorkflow, {
-      workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
-      searchAttributes: parentSearchAttributes,
-      args: [
-        {
-          connectorId: c.id,
-          destRegion,
-          sourceRegion,
-          workspaceId,
-        },
-      ],
-      memo,
-    });
-  }
+  await concurrentExecutor(
+    connectors,
+    async (c) =>
+      executeChild(workspaceRelocateConnectorWorkflow, {
+        workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            connectorId: c.id,
+            destRegion,
+            sourceRegion,
+            workspaceId,
+          },
+        ],
+        memo,
+      }),
+    { concurrency: TEMPORAL_CONNECTORS_TABLE_RELOCATION_CONCURRENCY }
+  );
 }
 
 export async function workspaceRelocateConnectorWorkflow({
@@ -473,21 +483,24 @@ export async function workspaceRelocateCoreWorkflow({
     hasMoreRows = hasMore;
     currentId = lastId;
 
-    for (const dsc of dataSourceCoreIds) {
-      await executeChild(workspaceRelocateDataSourceCoreWorkflow, {
-        workflowId: `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${dsc.id}`,
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            dataSourceCoreIds: dsc,
-            destRegion,
-            sourceRegion,
-            workspaceId,
-          },
-        ],
-        memo,
-      });
-    }
+    await concurrentExecutor(
+      dataSourceCoreIds,
+      async (dsc) =>
+        executeChild(workspaceRelocateDataSourceCoreWorkflow, {
+          workflowId: `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${dsc.id}`,
+          searchAttributes: parentSearchAttributes,
+          args: [
+            {
+              dataSourceCoreIds: dsc,
+              destRegion,
+              sourceRegion,
+              workspaceId,
+            },
+          ],
+          memo,
+        }),
+      { concurrency: TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY }
+    );
   } while (hasMoreRows);
 }
 
