@@ -29,10 +29,7 @@ interface BenefitsSectionProps {
   page?: string;
 }
 
-export function BenefitsSection({
-  benefits,
-  page = "default",
-}: BenefitsSectionProps) {
+export function BenefitsSection({ benefits }: BenefitsSectionProps) {
   return (
     <section className="w-full py-12 pb-0">
       <Grid>
