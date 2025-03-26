@@ -15,7 +15,10 @@ import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run"
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessConfigurationType } from "@app/lib/actions/process";
 import type { ReasoningConfigurationType } from "@app/lib/actions/reasoning";
-import type { RetrievalConfigurationType } from "@app/lib/actions/retrieval";
+import type {
+  DataSourceConfiguration,
+  RetrievalConfigurationType,
+} from "@app/lib/actions/retrieval";
 import type { TablesQueryConfigurationType } from "@app/lib/actions/tables_query";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
@@ -115,7 +118,7 @@ async function initializeBuilderAction(
   } else if (isReasoningConfiguration(action)) {
     return getReasoningActionConfiguration(action);
   } else if (isMCPServerConfiguration(action)) {
-    return getMCPServerActionConfiguration(action);
+    return getMCPServerActionConfiguration(action, dataSourceViews);
   } else {
     assertNever(action);
   }
@@ -221,24 +224,38 @@ function getReasoningActionConfiguration(
   return builderAction;
 }
 
-function getMCPServerActionConfiguration(
-  action: MCPServerConfigurationType
-): AssistantBuilderActionConfiguration {
+async function getMCPServerActionConfiguration(
+  action: MCPServerConfigurationType,
+  dataSourceViews: DataSourceViewResource[]
+): Promise<AssistantBuilderActionConfiguration> {
   const builderAction = getDefaultMCPServerActionConfiguration();
   if (builderAction.type !== "MCP") {
     throw new Error("MCP action configuration is not valid");
   }
 
-  builderAction.configuration = { ...action };
+  builderAction.configuration.serverType = action.serverType;
+  builderAction.configuration.internalMCPServerId = action.internalMCPServerId;
+  builderAction.configuration.remoteMCPServerId = action.remoteMCPServerId;
+
   builderAction.name = action.name + "_" + generateRandomModelSId();
   builderAction.description =
     action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
+
+  builderAction.configuration.dataSourceConfigurations = action.dataSources
+    ? await renderDataSourcesConfigurations(
+        { ...action, dataSources: action.dataSources },
+        dataSourceViews
+      )
+    : null;
 
   return builderAction;
 }
 
 async function renderDataSourcesConfigurations(
-  action: RetrievalConfigurationType | ProcessConfigurationType,
+  action:
+    | RetrievalConfigurationType
+    | ProcessConfigurationType
+    | (MCPServerConfigurationType & { dataSources: DataSourceConfiguration[] }),
   dataSourceViews: DataSourceViewResource[]
 ): Promise<DataSourceViewSelectionConfigurations> {
   const selectedResources = action.dataSources.map((ds) => ({
