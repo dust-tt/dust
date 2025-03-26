@@ -207,14 +207,15 @@ export const MetricSection = ({ metrics }: MetricComponentProps) => (
     )}
   >
     {metrics.map((metric, index) => (
-      <div key={index} className="flex flex-col items-center text-center">
-        {metric.logo && (
-          <Image alt="alan" src={metric.logo} width={200} height={100} />
-        )}
-        <H1>{metric.value}</H1>
-
-        <div className="flex flex-col items-center">
-          <P size="lg" className="max-w-[400px] text-foreground">
+      <div key={index} className="flex flex-col items-center justify-center">
+        <div className="flex aspect-square h-56 w-56 flex-col items-center justify-center rounded-full bg-brand-tea-green p-6 text-center">
+          {metric.logo && (
+            <Image alt="alan" src={metric.logo} width={200} height={100} />
+          )}
+          <H1 className="text-brand-hunter-green">
+            <span className="font-bold">{metric.value}</span>
+          </H1>
+          <P size="md" className="capitalize text-foreground">
             {metric.description}
           </P>
         </div>
