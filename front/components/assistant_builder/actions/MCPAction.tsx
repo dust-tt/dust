@@ -1,20 +1,29 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
+import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
+import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
+import { useInternalMcpServerTools } from "@app/lib/swr/mcp";
+import type {
+  DataSourceViewSelectionConfigurations,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
 
-type ActionMCPProps = {
+interface ActionMCPProps {
   owner: LightWorkspaceType;
   allowedSpaces: SpaceType[];
   actionConfiguration: AssistantBuilderMCPServerConfiguration;
@@ -24,27 +33,83 @@ type ActionMCPProps = {
     ) => AssistantBuilderMCPServerConfiguration
   ) => void;
   setEdited: (edited: boolean) => void;
-};
+}
 
 export function ActionMCP({
+  owner,
+  allowedSpaces,
   actionConfiguration,
   updateAction,
   setEdited,
 }: ActionMCPProps) {
-  const [selectedInternalMCPServerId, setSelectedInternalMCPServerId] =
-    useState<(typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null>(
-      actionConfiguration.internalMCPServerId
-    );
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
+
+  const { tools } = useInternalMcpServerTools({
+    owner,
+    serverId: actionConfiguration.internalMCPServerId,
+  });
+
+  useEffect(() => {
+    updateAction((previousAction) => ({
+      ...previousAction,
+      resources: {
+        dataSourceConfigurations: tools?.some(
+          (r) =>
+            r.inputSchema.mimeType ===
+            INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+        )
+          ? previousAction.dataSourceConfigurations || {}
+          : undefined,
+      },
+    }));
+  }, [tools, setEdited, updateAction]);
+
+  const handleServerSelection = (serverId: InternalMCPServerIdType) => {
+    setEdited(true);
+    updateAction((previousAction) => ({
+      ...previousAction,
+      serverType: "internal",
+      internalMCPServerId: serverId,
+    }));
+  };
+
+  const handleDataSourceConfigUpdate = (
+    dsConfigs: DataSourceViewSelectionConfigurations
+  ) => {
+    setEdited(true);
+    updateAction((previousAction) => ({
+      ...previousAction,
+      dataSources: dsConfigs,
+    }));
+  };
 
   return (
     <>
+      {actionConfiguration.dataSourceConfigurations && (
+        <AssistantBuilderDataSourceModal
+          isOpen={showDataSourcesModal}
+          setOpen={setShowDataSourcesModal}
+          owner={owner}
+          onSave={handleDataSourceConfigUpdate}
+          initialDataSourceConfigurations={
+            actionConfiguration.dataSourceConfigurations
+          }
+          allowedSpaces={allowedSpaces}
+          viewType="document"
+        />
+      )}
+
       <div>Will expose all the tools available via an MCP Server.</div>
       <div>For testing purposes, pick an internal server</div>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             isSelect
-            label={selectedInternalMCPServerId ?? "Select a internal server"}
+            label={
+              actionConfiguration.internalMCPServerId ??
+              "Select a internal server"
+            }
             className="w-48"
           />
         </DropdownMenuTrigger>
@@ -53,19 +118,23 @@ export function ActionMCP({
             <DropdownMenuItem
               key={id}
               label={id}
-              onClick={() => {
-                setSelectedInternalMCPServerId(id);
-                updateAction((previousAction) => ({
-                  ...previousAction,
-                  serverType: "internal",
-                  internalMCPServerId: id,
-                }));
-                setEdited(true);
-              }}
+              onClick={() => handleServerSelection(id)}
             />
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {actionConfiguration.dataSourceConfigurations && (
+        <DataSourceSelectionSection
+          owner={owner}
+          dataSourceConfigurations={
+            actionConfiguration.dataSourceConfigurations
+          }
+          openDataSourceModal={() => setShowDataSourcesModal(true)}
+          onSave={handleDataSourceConfigUpdate}
+          viewType="document"
+        />
+      )}
     </>
   );
 }
