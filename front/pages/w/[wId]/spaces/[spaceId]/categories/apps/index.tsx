@@ -6,10 +6,7 @@ import { CapabilitiesList } from "@app/components/spaces/CapabilitiesList";
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import type {
-  InternalMCPServerId,
-  ServerInfo,
-} from "@app/lib/actions/mcp_internal_actions";
+import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";

@@ -17,8 +17,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<void>>,
   auth: Authenticator
 ): Promise<void> {
-  const owner = auth.getNonNullableWorkspace();
-
   switch (req.method) {
     case "DELETE":
       const connectionResource = await MCPServerConnectionResource.fetchById(

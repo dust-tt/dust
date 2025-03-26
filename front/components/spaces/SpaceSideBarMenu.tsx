@@ -10,7 +10,7 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import { sortBy, uniqBy } from "lodash";
-import { useRouter } from "next/router";
+import router, { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -33,6 +33,7 @@ import {
   useSpaces,
   useSpacesAsAdmin,
 } from "@app/lib/swr/spaces";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -217,11 +218,6 @@ const SYSTEM_SPACE_ITEMS = [
     visual: CloudArrowLeftRightIcon,
     category: "managed" as DataSourceViewCategory,
   },
-  {
-    label: "Capabilities",
-    visual: CommandLineIcon,
-    category: "apps" as DataSourceViewCategory,
-  },
 ];
 
 const SystemSpaceMenu = ({
@@ -231,6 +227,13 @@ const SystemSpaceMenu = ({
   owner: LightWorkspaceType;
   space: SpaceType;
 }) => {
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  const isFeatureFlagEnabled = featureFlags.includes("mcp_actions");
+  const { setNavigationSelection } = usePersistedNavigationSelection();
+  const appPath = `/w/${owner.sId}/spaces/${space.sId}/categories/apps`;
   return (
     <Tree variant="navigator">
       {SYSTEM_SPACE_ITEMS.map((item) => (
@@ -243,6 +246,19 @@ const SystemSpaceMenu = ({
           visual={item.visual}
         />
       ))}
+      {isFeatureFlagEnabled && (
+        <Tree.Item
+          isNavigatable
+          label="Capabilities"
+          type="leaf"
+          onItemClick={async () => {
+            await setNavigationSelection({ lastSpaceId: space.sId });
+            void router.push(appPath);
+          }}
+          isSelected={router.asPath === appPath}
+          visual={CommandLineIcon}
+        />
+      )}
     </Tree>
   );
 };
@@ -256,7 +272,7 @@ const SystemSpaceItem = ({
   space,
   visual,
 }: {
-  category: Exclude<DataSourceViewCategory, "apps">;
+  category: DataSourceViewCategory;
   label: string;
   owner: LightWorkspaceType;
   space: SpaceType;

@@ -77,7 +77,7 @@ export const CapabilitiesList = ({
         });
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, mutateConnections]
   );
 
   const handleConnect = useCallback(
@@ -146,7 +146,7 @@ export const CapabilitiesList = ({
         });
       }
     },
-    [sendNotification]
+    [owner.sId, sendNotification, mutateConnections]
   );
 
   const getTableColumns = (): ColumnDef<RowData, string>[] => {
@@ -158,6 +158,9 @@ export const CapabilitiesList = ({
             icon={internalMCPServers[info.row.original.id].icon}
           >
             {info.getValue()}
+            <div className="text-sm text-gray-500">
+              {internalMCPServers[info.row.original.id].serverInfo?.description}
+            </div>
           </DataTable.CellContent>
         ),
         accessorFn: (row: RowData): string =>

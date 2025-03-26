@@ -1,20 +1,20 @@
-import {
-  Op,
-  WhereOptions,
-  type Attributes,
-  type CreationAttributes,
-  type ModelStatic,
-  type Transaction,
+import type { WhereOptions } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
-import { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import { ResourceFindOptions } from "@app/lib/resources/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 

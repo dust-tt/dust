@@ -3,13 +3,11 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  MCPServerConnectionResource,
-  MCPServerConnectionType,
-} from "@app/lib/resources/mcp_server_connection_resource";
+import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
