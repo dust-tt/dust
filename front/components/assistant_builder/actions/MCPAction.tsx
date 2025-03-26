@@ -52,15 +52,13 @@ export function ActionMCP({
   useEffect(() => {
     updateAction((previousAction) => ({
       ...previousAction,
-      resources: {
-        dataSourceConfigurations: tools?.some(
-          (r) =>
-            r.inputSchema.mimeType ===
-            INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
-        )
-          ? previousAction.dataSourceConfigurations || {}
-          : undefined,
-      },
+      dataSourceConfigurations: tools?.some(
+        (r) =>
+          r.inputSchema.mimeType ===
+          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
+      )
+        ? previousAction.dataSourceConfigurations || {}
+        : null,
     }));
   }, [tools, setEdited, updateAction]);
 
