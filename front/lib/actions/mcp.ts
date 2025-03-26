@@ -1,6 +1,7 @@
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -46,11 +47,13 @@ export type MCPServerConfigurationType = {
   internalMCPServerId: InternalMCPServerIdType | null;
   remoteMCPServerId: string | null; // Hold the sId of the remote MCP server.
 
-  // TODO(mcp): add dataSourceConfigurationId fk here
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
+
+  dataSources: DataSourceConfiguration[];
+  // TODO(mcp): add other kind of configurations here such as table query.
 };
 
 export type MCPToolConfigurationType = Omit<
