@@ -4,7 +4,10 @@
 // future based on user feedback.
 export const PROCESS_ACTION_TOP_K = 768;
 
-export const AVAILABLE_INTERNAL_MCPSERVER_IDS = ["helloworld"] as const;
+export const AVAILABLE_INTERNAL_MCPSERVER_IDS = [
+  "helloworld",
+  "data-source-utils",
+] as const;
 
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
