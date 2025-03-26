@@ -174,7 +174,7 @@ export const InputBarAttachmentsPicker = ({
                       })}
                       disabled={
                         attachedNodeIds.includes(item.internalId) ||
-                        // TODO(attac-ds): remove this condition
+                        // TODO(attach-ds): remove this condition
                         item.type === "folder"
                       }
                       description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}

@@ -713,6 +713,30 @@ module.exports = {
     require("@tailwindcss/container-queries"),
     plugin(function ({ addBase, theme }) {
       addBase({
+        ".s-label-xs": {
+          fontSize: theme("fontSize.xs[0]"),
+          lineHeight: theme("fontSize.xs[1].lineHeight"),
+          letterSpacing: theme("fontSize.xs[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-label-sm": {
+          fontSize: theme("fontSize.sm[0]"),
+          lineHeight: theme("fontSize.sm[1].lineHeight"),
+          letterSpacing: theme("fontSize.sm[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-label-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "700",
+        },
+        ".s-heading-base": {
+          fontSize: theme("fontSize.base[0]"),
+          lineHeight: theme("fontSize.base[1].lineHeight"),
+          letterSpacing: theme("fontSize.base[1].letterSpacing"),
+          fontWeight: "600",
+        },
         ".s-heading-lg": {
           fontSize: theme("fontSize.lg[0]"),
           lineHeight: theme("fontSize.lg[1].lineHeight"),
@@ -885,6 +909,10 @@ module.exports = {
     "s-grid-rows-3",
     "s-grid-rows-4",
     "s-grid-rows-5",
+    // Add label classes to safelist
+    "s-label-xs",
+    "s-label-sm",
+    "s-label-base",
     // Add copy classes to safelist
     "s-copy-xs",
     "s-copy-sm",
@@ -892,6 +920,7 @@ module.exports = {
     "s-copy-lg",
     "s-copy-xl",
     // Add heading classes to safelist to ensure they're always included
+    "s-heading-base",
     "s-heading-lg",
     "s-heading-xl",
     "s-heading-2xl",

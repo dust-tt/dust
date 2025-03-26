@@ -723,6 +723,7 @@ const EXTENSION_WHITELIST = [
   ".adoc", // AsciiDoc
   ".tex", // LaTeX
   ".txt",
+  ".patch",
 
   // Shell & Scripts
   ".sh",

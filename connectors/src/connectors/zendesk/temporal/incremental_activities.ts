@@ -26,7 +26,7 @@ import {
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieves the timestamp cursor, which is the start date of the last successful incremental sync.
@@ -156,7 +156,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
               parents,
               parentId: parents[1],
               title: category.name,
-              mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+              mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
               sourceUrl: category.url,
             });
           } else {

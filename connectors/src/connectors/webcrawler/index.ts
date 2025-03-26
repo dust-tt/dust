@@ -32,8 +32,8 @@ import type {
 import type { DataSourceConfig } from "@connectors/types";
 import {
   DepthOptions,
+  INTERNAL_MIME_TYPES,
   isDepthOption,
-  MIME_TYPES,
   WEBCRAWLER_MAX_PAGES,
   WebCrawlerHeaderRedactedValue,
 } from "@connectors/types";
@@ -214,7 +214,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
             permission: "read",
             type: "folder",
             lastUpdatedAt: folder.updatedAt.getTime(),
-            mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
+            mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
           };
         })
         .concat(

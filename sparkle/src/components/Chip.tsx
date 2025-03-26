@@ -3,7 +3,6 @@ import React, { ComponentType, ReactNode } from "react";
 
 import {
   AnimatedText,
-  IconButton,
   LinkWrapper,
   LinkWrapperProps,
 } from "@sparkle/components/";
@@ -168,12 +167,13 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           </span>
         )}
         {onRemove && (
-          <IconButton
-            variant="outline"
-            icon={XMarkIcon}
-            size={size}
-            onClick={onRemove ?? undefined}
-          />
+          <div onClick={onRemove ?? undefined}>
+            <Icon
+              visual={XMarkIcon}
+              size={size}
+              className="s-text-primary-700 hover:s-text-primary-500"
+            />
+          </div>
         )}
       </div>
     );

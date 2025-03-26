@@ -19,7 +19,10 @@ import type {
   AdminSuccessResponseType,
   SlackCommandType,
 } from "@connectors/types";
-import { isSlackbotWhitelistType, MIME_TYPES } from "@connectors/types";
+import {
+  INTERNAL_MIME_TYPES,
+  isSlackbotWhitelistType,
+} from "@connectors/types";
 
 export async function maybeLaunchSlackSyncWorkflowForChannelId(
   connectorId: number,
@@ -276,7 +279,7 @@ export const slack = async ({
         title: `#${channel.name}`,
         parentId: null,
         parents: [slackChannelInternalIdFromSlackChannelId(args.channelId)],
-        mimeType: MIME_TYPES.SLACK.CHANNEL,
+        mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
         sourceUrl: getSlackChannelSourceUrl(args.channelId, slackConfiguration),
         providerVisibility: channel.private ? "private" : "public",
       });

@@ -92,12 +92,14 @@ const connectToMCPServer = async ({
   serverType,
   internalMCPServerId,
   remoteMCPServerId,
+  remoteMCPServerUrl,
 }: {
   serverType: MCPServerConfigurationType["serverType"];
   internalMCPServerId?:
     | MCPServerConfigurationType["internalMCPServerId"]
     | null;
   remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
+  remoteMCPServerUrl?: string | null;
 }) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -122,25 +124,31 @@ const connectToMCPServer = async ({
       break;
 
     case "remote":
-      if (!remoteMCPServerId) {
-        throw new Error(
-          "Remote MCP server ID is required for remote server type."
-        );
-      }
+      const url = remoteMCPServerUrl
+        ? new URL(remoteMCPServerUrl)
+        : await (async () => {
+            if (!remoteMCPServerId) {
+              throw new Error(
+                `Remote MCP server ID or URL is required for remote server type.`
+              );
+            }
 
-      const remoteMCPServer = await RemoteMCPServer.findOne({
-        where: {
-          sId: remoteMCPServerId,
-        },
-      });
+            const remoteMCPServer = await RemoteMCPServer.findOne({
+              where: {
+                sId: remoteMCPServerId,
+              },
+            });
 
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${remoteMCPServerId} not found for remote server type.`
-        );
-      }
+            if (!remoteMCPServer) {
+              throw new Error(
+                `Remote MCP server with remoteMCPServerId ${remoteMCPServerId} not found for remote server type.`
+              );
+            }
 
-      const sseTransport = new SSEClientTransport(new URL(remoteMCPServer.url));
+            return new URL(remoteMCPServer.url);
+          })();
+
+      const sseTransport = new SSEClientTransport(url);
       await mcpClient.connect(sseTransport);
       break;
 
@@ -162,6 +170,32 @@ function extractMetadataFromServerVersion(r: Implementation | undefined): {
         ? r.description
         : DEFAULT_MCP_ACTION_DESCRIPTION) ?? DEFAULT_MCP_ACTION_DESCRIPTION,
   };
+}
+
+export async function fetchServerData(url: string) {
+  const mcpClient = await connectToMCPServer({
+    serverType: "remote",
+    remoteMCPServerUrl: url,
+  });
+
+  try {
+    const serverVersion = mcpClient.getServerVersion();
+    const metadata = extractMetadataFromServerVersion(serverVersion);
+
+    const toolsResult = await mcpClient.listTools();
+    const serverTools = toolsResult.tools.map((tool) => ({
+      name: tool.name,
+      description: tool.description || "",
+    }));
+
+    return {
+      name: metadata.name,
+      description: metadata.description,
+      tools: serverTools,
+    };
+  } finally {
+    await mcpClient.close();
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

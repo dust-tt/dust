@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-import { MIME_TYPES_VALUES } from "./internal_mime_types";
+import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -204,7 +204,7 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
-  | (typeof MIME_TYPES_VALUES)[number]
+  | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
 >();

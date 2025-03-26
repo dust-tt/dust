@@ -2,6 +2,7 @@ import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import {
   Button,
   ChevronDownIcon,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -47,7 +48,13 @@ export const LoginPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen flex-col p-4 dark:bg-slate-950 dark:text-slate-50">
+      <div
+        className={cn(
+          "flex h-screen flex-col p-4",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
         <div className="flex flex-1 flex-col items-center justify-center gap-8">
           <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
             <Link to="https://dust.tt" target="_blank">
@@ -111,7 +118,13 @@ export const LoginPage = () => {
 
   if (isAuthenticated && !isUserSetup && user?.workspaces.length) {
     return (
-      <div className="flex h-screen flex-col gap-2 p-4 dark:bg-slate-950 dark:text-slate-50">
+      <div
+        className={cn(
+          "flex h-screen flex-col gap-2 p-4",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
           <Page.SectionHeader title="Almost there" />
           <DropdownMenu>

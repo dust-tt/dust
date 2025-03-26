@@ -25,6 +25,7 @@ import type {
   ContentFragmentMessageTypeModel,
   ContentFragmentType,
   ContentFragmentVersion,
+  ContentNodeType,
   ConversationType,
   ModelConfigurationType,
   ModelId,
@@ -257,8 +258,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     let fileStringId: string | null = null;
     let snippet: string | null = null;
     let generatedTables: string[] = [];
-    let nodeId: string | null = null;
-    let nodeDataSourceViewId: string | null = null;
 
     if (this.fileId) {
       const file = await FileResource.fetchByModelId(this.fileId);
@@ -269,24 +268,23 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       }
     }
 
-    if (this.nodeId) {
-      nodeId = this.nodeId;
-    }
-
-    if (this.nodeDataSourceViewId) {
-      nodeDataSourceViewId = DataSourceViewResource.modelIdToSId({
-        id: this.nodeDataSourceViewId,
-        workspaceId: owner.id,
-      });
-    }
+    const nodeId: string | null = this.nodeId || null;
+    const nodeDataSourceViewId: string | null = this.nodeDataSourceViewId
+      ? DataSourceViewResource.modelIdToSId({
+          id: this.nodeDataSourceViewId,
+          workspaceId: owner.id,
+        })
+      : null;
+    const nodeType: ContentNodeType | null = this.nodeType || null;
 
     return {
       id: message.id,
       fileId: fileStringId,
-      snippet: snippet,
-      generatedTables: generatedTables,
-      nodeId: nodeId,
-      nodeDataSourceViewId: nodeDataSourceViewId,
+      snippet,
+      generatedTables,
+      nodeId,
+      nodeDataSourceViewId,
+      nodeType,
       sId: message.sId,
       created: message.createdAt.getTime(),
       type: "content_fragment",
@@ -623,7 +621,9 @@ export async function renderLightContentFragmentForModel(
       {
         type: "text",
         text: renderContentFragmentXml({
-          contentFragmentId: contentFragment.sId,
+          // Use fileId as contentFragmentId to provide a consistent identifier for the model
+          // to reference content fragments across different actions like include_file.
+          contentFragmentId: fileStringId ?? contentFragment.sId,
           contentType,
           title,
           version: contentFragmentVersion,

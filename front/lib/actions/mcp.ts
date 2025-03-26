@@ -264,6 +264,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     await Promise.all(
       content.map(async (i) => {
+        // Check if content is of a supported type.
+
         await AgentMCPActionOutputItem.create({
           workspaceId: owner.id,
           agentMCPActionId: action.id,

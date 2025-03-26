@@ -89,10 +89,10 @@ interface PagePProps {
 }
 
 const PsizeClasses = {
-  xs: "s-text-xs",
-  sm: "s-text-sm",
-  md: "s-text-base",
-  lg: "s-text-lg",
+  xs: "s-copy-xs",
+  sm: "s-copy-sm",
+  md: "s-copy-base",
+  lg: "s-copy-lg",
 };
 
 Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
@@ -119,12 +119,12 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   const Component = variant;
 
   const hSizes = {
-    h1: "s-text-4xl s-font-bold",
-    h2: "s-text-3xl s-font-bold",
-    h3: "s-text-2xl s-font-bold",
-    h4: "s-text-xl s-font-semibold",
-    h5: "s-text-lg s-font-semibold",
-    h6: "s-text-base s-font-semibold",
+    h1: "s-heading-4xl",
+    h2: "s-heading-3xl",
+    h3: "s-heading-2xl",
+    h4: "s-heading-xl",
+    h5: "s-heading-lg",
+    h6: "s-heading-base",
   };
 
   return (

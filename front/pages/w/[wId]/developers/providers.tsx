@@ -197,7 +197,7 @@ function ProviderListItem({
           <div className="flex items-center gap-2">
             <p
               className={cn(
-                "truncate text-base font-bold",
+                "heading-base truncate",
                 isEnabled
                   ? "text-foreground dark:text-foreground-night"
                   : "text-primary-500 dark:text-primary-500-night"
