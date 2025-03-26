@@ -670,6 +670,11 @@ const EXTENSION_WHITELIST = [
   ".cpp",
   ".hpp",
   ".php",
+  ".neon", // PHP configuration
+  ".phtml", // PHP template
+  ".twig", // PHP template
+  ".xhtml", // XML/HTML
+  ".xsd", // XML Schema Definition
 
   // .NET Ecosystem
   ".cs",
