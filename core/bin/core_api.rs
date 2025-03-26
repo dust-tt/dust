@@ -2397,6 +2397,7 @@ struct DatabasesTablesUpsertPayload {
     parent_id: Option<String>,
     parents: Vec<String>,
     source_url: Option<String>,
+    check_name_uniqueness: Option<bool>,
 
     // Remote DB specifics
     remote_database_table_id: Option<String>,
@@ -2474,6 +2475,7 @@ async fn tables_upsert(
                 title: payload.title,
                 mime_type: payload.mime_type,
                 provider_visibility: payload.provider_visibility,
+                check_name_uniqueness: payload.check_name_uniqueness,
             },
         )
         .await

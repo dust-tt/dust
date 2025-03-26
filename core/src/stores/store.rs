@@ -74,6 +74,7 @@ pub struct TableUpsertParams {
     pub title: String,
     pub mime_type: String,
     pub provider_visibility: Option<ProviderVisibility>,
+    pub check_name_uniqueness: Option<bool>,
 }
 
 pub struct FolderUpsertParams {

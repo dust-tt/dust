@@ -397,6 +397,7 @@ async function handler(
         title,
         mimeType,
         sourceUrl: sourceUrl ?? null,
+        checkNameUniqueness: true,
       });
 
       if (upsertRes.isErr()) {
