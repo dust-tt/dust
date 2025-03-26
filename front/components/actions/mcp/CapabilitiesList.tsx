@@ -9,6 +9,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useCallback } from "react";
 
+import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type {
   AuthorizationInfo,
   InternalMCPServerId,
@@ -36,79 +37,12 @@ export const CapabilitiesList = ({
   capabilities: InternalMCPServerId[];
   owner: LightWorkspaceType;
 }) => {
-  const sendNotification = useSendNotification();
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
   });
 
-  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
-  const { deleteMCPServerConnection } = useDeleteMCPServerConnection({ owner });
-  const handleConnect = useCallback(
-    async (
-      authorizationInfo: AuthorizationInfo,
-      serverId: InternalMCPServerId
-    ) => {
-      const cRes = await setupOAuthConnection({
-        dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-        owner,
-        provider: authorizationInfo.provider,
-        useCase: authorizationInfo.use_case,
-        extraConfig: {},
-      });
-
-      if (cRes.isErr()) {
-        sendNotification({
-          type: "error",
-          title: `Failed to connect ${OAUTH_PROVIDER_NAMES[authorizationInfo.provider]}`,
-          description: cRes.error.message,
-        });
-        return;
-      }
-      const res = await createMCPServerConnection({
-        connectionId: cRes.value.connection_id,
-        internalMCPServerId: serverId,
-      });
-      if (res.success) {
-        sendNotification({
-          type: "success",
-          title: "Provider connected",
-          description:
-            "Your capability provider has been connected successfully.",
-        });
-      } else {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description: "Could not connect to your provider. Please try again.",
-        });
-      }
-    },
-    [owner, sendNotification, createMCPServerConnection]
-  );
-
-  const handleDisconnect = useCallback(
-    async (connectionId: string) => {
-      const res = await deleteMCPServerConnection({
-        connectionId,
-      });
-      if (res.success) {
-        sendNotification({
-          type: "success",
-          title: "Provider disconnected",
-          description:
-            "Your capability provider has been disconnected successfully.",
-        });
-      } else {
-        sendNotification({
-          type: "error",
-          title: "Failed to disconnect provider",
-          description:
-            "Could not disconnect to your provider. Please try again.",
-        });
-      }
-    },
-    [deleteMCPServerConnection, sendNotification]
-  );
+  const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
+    useMCPConnectionManagement({ owner });
 
   const getTableColumns = (): (
     | ColumnDef<RowData, ServerInfo>
@@ -162,7 +96,9 @@ export const CapabilitiesList = ({
                 label={"Disconnect"}
                 size="xs"
                 onClick={() => {
-                  void handleDisconnect(connection.sId);
+                  void deleteMCPServerConnection({
+                    connectionId: connection.sId,
+                  });
                 }}
               />
             </DataTable.CellContent>
@@ -175,7 +111,10 @@ export const CapabilitiesList = ({
                 label={"Connect"}
                 size="xs"
                 onClick={() => {
-                  void handleConnect(authorization, id);
+                  void createAndSaveMCPServerConnection({
+                    authorizationInfo: authorization,
+                    serverId: id,
+                  });
                 }}
               />
             </DataTable.CellContent>

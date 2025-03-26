@@ -1,3 +1,4 @@
+import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -265,7 +266,7 @@ export function useCreateMCPServerConnection({
     disabled: true,
     owner,
   });
-
+  const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
     internalMCPServerId,
@@ -284,6 +285,21 @@ export function useCreateMCPServerConnection({
       }),
     });
     if (response.ok) {
+      sendNotification({
+        type: "success",
+        title: "Provider connected",
+        description:
+          "Your capability provider has been connected successfully.",
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to connect provider",
+        description: "Could not connect to your provider. Please try again.",
+      });
+    }
+
+    if (response.ok) {
       void mutateConnections();
     }
     return response.json();
@@ -301,6 +317,7 @@ export function useDeleteMCPServerConnection({
     disabled: true,
     owner,
   });
+  const sendNotification = useSendNotification();
 
   const deleteMCPServerConnection = async ({
     connectionId,
@@ -317,7 +334,19 @@ export function useDeleteMCPServerConnection({
       }
     );
     if (response.ok) {
+      sendNotification({
+        type: "success",
+        title: "Provider disconnected",
+        description:
+          "Your capability provider has been disconnected successfully.",
+      });
       void mutateConnections();
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to disconnect provider",
+        description: "Could not disconnect to your provider. Please try again.",
+      });
     }
 
     return response.json();
