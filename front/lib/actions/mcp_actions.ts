@@ -84,6 +84,7 @@ function makeMCPConfigurations({
       name: tool.name,
       description: tool.description ?? null,
       inputSchema: tool.inputSchema,
+      dataSources: config.dataSources,
     };
   });
 }
