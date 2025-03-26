@@ -52,7 +52,7 @@ export type MCPServerConfigurationType = {
   name: string;
   description: string | null;
 
-  dataSources: DataSourceConfiguration[];
+  dataSources: DataSourceConfiguration[] | null;
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 

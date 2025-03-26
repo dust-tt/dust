@@ -136,13 +136,12 @@ const MCPServerActionConfigurationSchema = t.type({
   internalMCPServerId: t.union([
     // TODO(mcp): find a correct way to reuse AVAILABLE_INTERNAL_MCPSERVER_IDS here.
     t.literal("helloworld"),
-    t.literal("data-source-utils"),
     t.null,
   ]),
   remoteMCPServerId: t.union([t.string, t.null]),
 
   dataSources: t.union([
-    t.undefined,
+    t.null,
     t.array(
       t.type({
         dataSourceViewId: t.string,
