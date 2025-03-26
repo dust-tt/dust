@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { AgentProcessConfiguration } from "@app/lib/models/assistant/actions/process";
 import { AgentRetrievalConfiguration } from "@app/lib/models/assistant/actions/retrieval";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -135,6 +135,15 @@ AgentProcessConfiguration.hasMany(AgentDataSourceConfiguration, {
 });
 AgentDataSourceConfiguration.belongsTo(AgentProcessConfiguration, {
   foreignKey: { name: "processConfigurationId", allowNull: true },
+});
+
+// MCP server config <> Data source config
+AgentMCPServerConfiguration.hasMany(AgentDataSourceConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+AgentDataSourceConfiguration.belongsTo(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerConfigurationId", allowNull: true },
 });
 
 // Data source config <> Data source
