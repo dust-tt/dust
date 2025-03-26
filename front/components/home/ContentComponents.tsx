@@ -53,15 +53,21 @@ interface ContentProps {
 interface HContentProps {
   children: React.ReactNode;
   className?: string;
+  mono?: boolean;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
 
 const createHeadingComponent = (Tag: TagName) => {
-  const Component: React.FC<HContentProps> = ({ children, className = "" }) => {
-    return (
-      <Tag className={classNames(className, hClasses[Tag])}>{children}</Tag>
-    );
+  const Component: React.FC<HContentProps> = ({
+    children,
+    className = "",
+    mono = false,
+  }) => {
+    const baseClasses = mono
+      ? hClasses[Tag].replace(/heading-/g, "heading-mono-")
+      : hClasses[Tag];
+    return <Tag className={classNames(className, baseClasses)}>{children}</Tag>;
   };
   Component.displayName = Tag.toUpperCase();
   return Component;
@@ -78,11 +84,11 @@ export const Span = ({ children, className = "" }: ContentProps) => (
 );
 
 const pClasses = {
-  xxs: "copy-xs text-muted-foreground md:text-sm",
-  xs: "copy-sm text-foreground md:text-base",
-  sm: "copy-base text-foreground md:text-lg",
-  md: "copy-lg md:text-lg text-foreground lg:text-xl",
-  lg: "copy-lg md:text-xl text-foreground lg:text-2xl",
+  xxs: "copy-xs",
+  xs: "copy-sm",
+  sm: "copy-base",
+  md: "copy-lg",
+  lg: "copy-xl",
 };
 
 interface PProps {

@@ -8,13 +8,17 @@ export function CapabilitySection() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <H2>Tailor AI agents to your team needs</H2>
-        <P size="lg">
+        <H2>
+          Tailor AI agents
+          <br />
+          to your team needs
+        </H2>
+        <P size="lg" className="text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P>
       </div>
 
-      <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
         <ImgBlock
           title={<>Build agents with custom instructions and tools</>}
           content={

@@ -60,34 +60,20 @@ export default function Productivity() {
         />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
-            <BenefitsSection
-              benefits={Benefits}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <BenefitsSection benefits={Benefits} />
             <MetricSection {...Metrics} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <UseCasesSection
-              useCase={UseCases}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <UseCasesSection useCase={UseCases} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <DemoVideoSection
-              demoVideo={DemoVideo}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <DemoVideoSection demoVideo={DemoVideo} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
             />
           </div>
           <TrustedBy />
