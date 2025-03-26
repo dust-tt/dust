@@ -344,7 +344,7 @@ export async function processTranscriptActivity(
     await transcriptsConfiguration.recordHistory({
       configurationId: transcriptsConfiguration.id,
       fileId,
-      fileName: transcriptTitle,
+      fileName: transcriptTitle.substring(0, 255),
       workspaceId: owner.id,
     });
   } catch (error) {
