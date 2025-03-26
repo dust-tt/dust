@@ -1,8 +1,8 @@
 import { CommandLineIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
+import { CapabilitiesList } from "@app/components/actions/mcp/CapabilitiesList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import { CapabilitiesList } from "@app/components/spaces/CapabilitiesList";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
