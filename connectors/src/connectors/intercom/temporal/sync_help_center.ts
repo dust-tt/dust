@@ -32,7 +32,11 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
+import {
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+  safeSubstring,
+} from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -321,7 +325,7 @@ export async function upsertArticle({
     articleOnDb = await IntercomArticleModel.create({
       connectorId: connectorId,
       articleId: article.id,
-      title: article.title,
+      title: safeSubstring(article.title, 0, 255),
       url: articleUrl,
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
