@@ -12,7 +12,11 @@ import type {
   InternalMCPServerId,
 } from "@app/lib/actions/mcp_internal_actions";
 import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
-import { useMCPServerConnections } from "@app/lib/swr/remote_mcp";
+import {
+  useCreateMCPServerConnection,
+  useDeleteMCPServerConnection,
+  useMCPServerConnections,
+} from "@app/lib/swr/remote_mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 import { setupOAuthConnection } from "@app/types";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
@@ -30,54 +34,12 @@ export const CapabilitiesList = ({
   owner: LightWorkspaceType;
 }) => {
   const sendNotification = useSendNotification();
-  const { connections, isConnectionsLoading, mutateConnections } =
-    useMCPServerConnections({
-      workspaceId: owner.sId,
-    });
+  const { connections, isConnectionsLoading } = useMCPServerConnections({
+    owner,
+  });
 
-  const saveOAuthConnection = useCallback(
-    async (connectionId: string | null, serverId: InternalMCPServerId) => {
-      try {
-        const response = await fetch(`/api/w/${owner.sId}/connections`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            connectionId,
-            internalMCPServerId: serverId,
-          }),
-        });
-        if (!response.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to connect provider",
-            description:
-              "Could not connect to your provider. Please try again.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Provider connected",
-            description:
-              "Your capability provider has been connected successfully.",
-          });
-        }
-        void mutateConnections();
-        return response;
-      } catch (error) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description:
-            "Unexpected error trying to connect to your capability provider. Please try again. Error: " +
-            error,
-        });
-      }
-    },
-    [owner.sId, sendNotification, mutateConnections]
-  );
-
+  const { createMCPServerConnection } = useCreateMCPServerConnection({ owner });
+  const { deleteMCPServerConnection } = useDeleteMCPServerConnection({ owner });
   const handleConnect = useCallback(
     async (
       authorizationInfo: AuthorizationInfo,
@@ -99,52 +61,50 @@ export const CapabilitiesList = ({
         });
         return;
       }
-
-      await saveOAuthConnection(cRes.value.connection_id, serverId);
+      const res = await createMCPServerConnection({
+        connectionId: cRes.value.connection_id,
+        internalMCPServerId: serverId,
+      });
+      if (res.success) {
+        sendNotification({
+          type: "success",
+          title: "Provider connected",
+          description:
+            "Your capability provider has been connected successfully.",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to connect provider",
+          description: "Could not connect to your provider. Please try again.",
+        });
+      }
     },
-    [owner, sendNotification, saveOAuthConnection]
+    [owner, sendNotification, createMCPServerConnection]
   );
 
   const handleDisconnect = useCallback(
-    async (connection: string) => {
-      try {
-        const response = await fetch(
-          `/api/w/${owner.sId}/connections/${connection}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        if (!response.ok) {
-          sendNotification({
-            type: "error",
-            title: "Failed to dicconnect provider",
-            description:
-              "Could not dicconnect to your provider. Please try again.",
-          });
-        } else {
-          sendNotification({
-            type: "success",
-            title: "Provider disconnected",
-            description:
-              "Your capability provider has been disconnected successfully.",
-          });
-        }
-        void mutateConnections();
-        return response;
-      } catch (error) {
+    async (connectionId: string) => {
+      const res = await deleteMCPServerConnection({
+        connectionId,
+      });
+      if (res.success) {
+        sendNotification({
+          type: "success",
+          title: "Provider disconnected",
+          description:
+            "Your capability provider has been disconnected successfully.",
+        });
+      } else {
         sendNotification({
           type: "error",
           title: "Failed to disconnect provider",
           description:
-            "Unexpected error trying to disconnect to your capability provider. Please try again. Error: " +
-            error,
+            "Could not disconnect to your provider. Please try again.",
         });
       }
     },
-    [owner.sId, sendNotification, mutateConnections]
+    [deleteMCPServerConnection, sendNotification]
   );
 
   const getTableColumns = (): ColumnDef<RowData, string>[] => {

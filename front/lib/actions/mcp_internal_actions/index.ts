@@ -1,7 +1,6 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
-import type { ComponentType } from "react";
 
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import { helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";

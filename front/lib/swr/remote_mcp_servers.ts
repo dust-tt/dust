@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { MCPApiResponse, MCPResponse } from "@app/types/mcp";
@@ -225,4 +227,101 @@ export function useUpdateRemoteMCPServer(
   };
 
   return { updateServer };
+}
+
+export function useMCPServerConnections({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const connectionsFetcher: Fetcher<{
+    connections: MCPServerConnectionType[];
+  }> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/connections`,
+    connectionsFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    connections: useMemo(() => (data ? data.connections : []), [data]),
+    isConnectionsLoading: !error && !data,
+    isConnectionsError: error,
+    mutateConnections: mutate,
+  };
+}
+
+export function useCreateMCPServerConnection({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { mutateConnections } = useMCPServerConnections({
+    disabled: true,
+    owner,
+  });
+
+  const createMCPServerConnection = async ({
+    connectionId,
+    internalMCPServerId,
+  }: {
+    connectionId: string;
+    internalMCPServerId: InternalMCPServerId;
+  }): Promise<{ success: boolean; connection: MCPServerConnectionType }> => {
+    const response = await fetch(`/api/w/${owner.sId}/connections`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        connectionId,
+        internalMCPServerId: internalMCPServerId,
+      }),
+    });
+    if (response.ok) {
+      void mutateConnections();
+    }
+    return response.json();
+  };
+
+  return { createMCPServerConnection };
+}
+
+export function useDeleteMCPServerConnection({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { mutateConnections } = useMCPServerConnections({
+    disabled: true,
+    owner,
+  });
+
+  const deleteMCPServerConnection = async ({
+    connectionId,
+  }: {
+    connectionId: string;
+  }): Promise<{ success: boolean }> => {
+    const response = await fetch(
+      `/api/w/${owner.sId}/connections/${connectionId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (response.ok) {
+      void mutateConnections();
+    }
+
+    return response.json();
+  };
+
+  return { deleteMCPServerConnection };
 }

@@ -20,7 +20,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | { connection: MCPServerConnectionType }
+      | { success: boolean; connection: MCPServerConnectionType }
       | { connections: MCPServerConnectionType[] }
     >
   >,
@@ -61,7 +61,9 @@ async function handler(
         workspaceId: owner.id,
       });
 
-      return res.status(200).json({ connection: connectionResource.toJSON() });
+      return res
+        .status(200)
+        .json({ success: true, connection: connectionResource.toJSON() });
 
     default:
       return apiError(req, res, {
