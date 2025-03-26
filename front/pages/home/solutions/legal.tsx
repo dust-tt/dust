@@ -53,26 +53,14 @@ export default function Legal() {
   return (
     <>
       <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
-        <HeroSection
-          {...Hero}
-          fromColor={pageSettings.from}
-          toColor={pageSettings.to}
-        />
+        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
-            <BenefitsSection
-              benefits={Benefits}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <BenefitsSection benefits={Benefits} />
             <MetricSection {...Metrics} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <UseCasesSection
-              useCase={UseCases}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <UseCasesSection useCase={UseCases} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <DemoVideoSection demoVideo={DemoVideo} />
@@ -82,8 +70,6 @@ export default function Legal() {
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
             />
           </div>
           <TrustedBy />

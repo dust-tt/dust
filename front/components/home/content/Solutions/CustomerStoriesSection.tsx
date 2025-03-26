@@ -27,8 +27,6 @@ export interface QuoteProps {
 interface CustomerStoriesSectionProps {
   title?: string;
   stories: CustomerStory[];
-  fromColor?: string;
-  toColor?: string;
 }
 
 export const defaultCustomerStories: CustomerStory[] = [
