@@ -74,6 +74,16 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
+export type ToolType = ListToolsResult["tools"][number];
+
+export interface MCPServerConnectionDetails {
+  serverType: MCPServerConfigurationType["serverType"];
+  internalMCPServerId?:
+    | MCPServerConfigurationType["internalMCPServerId"]
+    | null;
+  remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
+}
+
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
 export type MCPToolMetadata = {
@@ -107,9 +117,9 @@ function makeMCPConfigurations({
   listToolsResult,
 }: {
   config: MCPServerConfigurationType;
-  listToolsResult: ListToolsResult;
+  listToolsResult: ToolType[];
 }): MCPToolConfigurationType[] {
-  return listToolsResult.tools.map((tool) => {
+  return listToolsResult.map((tool) => {
     return {
       id: config.id,
       sId: generateRandomModelSId(),
@@ -294,7 +304,7 @@ export async function getMCPServerMetadataLocally(
         internalMCPServerId: config.internalMCPServerId,
       });
 
-      const r = await mcpClient.getServerVersion();
+      const r = mcpClient.getServerVersion();
       const tools = await mcpClient.listTools();
       await mcpClient.close();
 
@@ -323,7 +333,7 @@ export async function getMCPServerMetadataLocally(
 }
 
 /**
- * Try to call a MCP tool.
+ * Try to call an MCP tool.
  *
  * This function will potentially fail if the server is remote as it will try to connect to it.
  */
@@ -390,13 +400,11 @@ export async function tryGetMCPTools(
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
       try {
-        // Connect to the MCP server.
-        const mcpClient = await connectToMCPServer(action);
-
-        const r: ListToolsResult = await mcpClient.listTools();
-
-        // Close immediately after listing tools.
-        await mcpClient.close();
+        const r: ToolType[] = await listMCPServerTools({
+          serverType: action.serverType,
+          internalMCPServerId: action.internalMCPServerId,
+          remoteMCPServerId: action.remoteMCPServerId,
+        });
 
         return makeMCPConfigurations({
           config: action,
@@ -417,4 +425,22 @@ export async function tryGetMCPTools(
   );
 
   return configurations.flat();
+}
+
+export async function listMCPServerTools(
+  connectionDetails: MCPServerConnectionDetails
+): Promise<ToolType[]> {
+  const mcpClient = await connectToMCPServer(connectionDetails);
+
+  let allTools: ToolType[] = [];
+  let nextPageCursor;
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+    nextPageCursor = nextCursor;
+    allTools = [...allTools, ...tools];
+  } while (nextPageCursor);
+
+  await mcpClient.close();
+
+  return allTools;
 }

@@ -111,6 +111,9 @@ const API_ERROR_TYPES = [
   "mcp_server_connection_not_found",
   // Conversation:
   ...CONVERSATION_ERROR_TYPES,
+  // MCP:
+  "mcp_auth_error",
+  "invalid_mcp_server_id",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
