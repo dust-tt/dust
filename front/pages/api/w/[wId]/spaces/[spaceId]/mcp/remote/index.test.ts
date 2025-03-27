@@ -47,13 +47,25 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
     await RemoteMCPServerFactory.create(workspace, space, {
       name: "Test Server 1",
       url: "https://test-server-1.example.com",
-      tools: [{ name: "tool-1", description: "Tool 1 description" }],
+      tools: [
+        {
+          name: "tool-1",
+          description: "Tool 1 description",
+          inputSchema: undefined,
+        },
+      ],
     });
 
     await RemoteMCPServerFactory.create(workspace, space, {
       name: "Test Server 2",
       url: "https://test-server-2.example.com",
-      tools: [{ name: "tool-2", description: "Tool 2 description" }],
+      tools: [
+        {
+          name: "tool-2",
+          description: "Tool 2 description",
+          inputSchema: undefined,
+        },
+      ],
     });
 
     await handler(req, res);
