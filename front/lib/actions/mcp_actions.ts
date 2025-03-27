@@ -304,7 +304,7 @@ export async function getMCPServerMetadataLocally(
         internalMCPServerId: config.internalMCPServerId,
       });
 
-      const r = await mcpClient.getServerVersion();
+      const r = mcpClient.getServerVersion();
       const tools = await mcpClient.listTools();
       await mcpClient.close();
 
@@ -333,7 +333,7 @@ export async function getMCPServerMetadataLocally(
 }
 
 /**
- * Try to call a MCP tool.
+ * Try to call an MCP tool.
  *
  * This function will potentially fail if the server is remote as it will try to connect to it.
  */
