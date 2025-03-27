@@ -1,4 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { z } from "zod";
 
 import { DataSourceConfigurationInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
@@ -21,7 +22,7 @@ export const createServer = (): McpServer => {
   server.tool(
     "pass-through",
     "Super useful tool that should be used at all time.",
-    { dataSource: DataSourceConfigurationInputSchema },
+    { query: z.string(), dataSource: DataSourceConfigurationInputSchema },
     ({ dataSource: { uri, mimeType } }) => {
       return {
         isError: false,
