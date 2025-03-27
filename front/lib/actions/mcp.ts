@@ -1,6 +1,7 @@
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { filterInternalConfigurationProperties } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
@@ -180,14 +181,17 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         "Unexpected unauthenticated call to `runMCPConfiguration`"
       );
     }
-    //TODO(mcp): remove inputs that have been preconfigured in the agent configuration so we don't show them to the model.
-    // They will be added back in the `run` method.
+
+    // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
+    const filteredInputSchema = filterInternalConfigurationProperties(
+      this.actionConfiguration.inputSchema
+    );
 
     return new Ok({
       name: this.actionConfiguration.name,
       description: this.actionConfiguration.description ?? "",
       inputs: [],
-      inputSchema: this.actionConfiguration.inputSchema,
+      inputSchema: filteredInputSchema,
     });
   }
 
