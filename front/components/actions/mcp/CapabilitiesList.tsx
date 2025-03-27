@@ -78,8 +78,6 @@ export const CapabilitiesList = ({
         id: "action",
         cell: (info: CellContext<RowData, Capability>) => {
           const { id, authorization } = info.getValue();
-
-          console.log(info.getValue());
           const connection = connections.find(
             (c) => c.internalMCPServerId === id
           );
