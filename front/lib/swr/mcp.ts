@@ -19,10 +19,10 @@ export function useInternalMcpServerMetadata({
     configFetcher
   );
 
-  const tools = useMemo(() => (data ? data.metadata : null), [data]);
+  const metadata = useMemo(() => (data ? data.metadata : null), [data]);
 
   return {
-    tools,
+    metadata,
     isLoading: !error && !data,
     isError: error,
     mutate,
