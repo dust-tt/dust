@@ -3,25 +3,31 @@ import {
   Button,
   classNames,
   Cog6ToothIcon,
+  CommandLineIcon,
   DataTable,
+  RocketIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React from "react";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type {
-  InternalMCPServerId,
-  ServerInfo,
-} from "@app/lib/actions/mcp_internal_actions";
-import {
-  internalMCPServers,
-  MCP_SERVER_ICONS,
-} from "@app/lib/actions/mcp_internal_actions";
+  AllowedIconType,
+  MCPServerMetadata,
+} from "@app/lib/actions/mcp_actions";
+import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 
+const MCP_SERVER_ICONS: Record<AllowedIconType, React.ElementType> = {
+  command: CommandLineIcon,
+  rocket: RocketIcon,
+} as const;
+
+type Capability = MCPServerMetadata & { id: InternalMCPServerId };
+
 type RowData = {
-  id: InternalMCPServerId;
+  capability: Capability;
   onClick: () => void;
 };
 
@@ -29,7 +35,7 @@ export const CapabilitiesList = ({
   capabilities,
   owner,
 }: {
-  capabilities: InternalMCPServerId[];
+  capabilities: Capability[];
   owner: LightWorkspaceType;
 }) => {
   const { connections, isConnectionsLoading } = useMCPServerConnections({
@@ -39,14 +45,11 @@ export const CapabilitiesList = ({
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
     useMCPConnectionManagement({ owner });
 
-  const getTableColumns = (): (
-    | ColumnDef<RowData, ServerInfo>
-    | ColumnDef<RowData, string>
-  )[] => {
+  const getTableColumns = (): ColumnDef<RowData, Capability>[] => {
     return [
       {
         id: "name",
-        cell: (info: CellContext<RowData, ServerInfo>) => (
+        cell: (info: CellContext<RowData, Capability>) => (
           <DataTable.CellContent>
             <div
               className={classNames("flex flex-row items-center gap-2 py-3")}
@@ -69,19 +72,18 @@ export const CapabilitiesList = ({
             </div>
           </DataTable.CellContent>
         ),
-        accessorFn: (row: RowData): ServerInfo =>
-          internalMCPServers[row.id].serverInfo,
+        accessorKey: "capability",
       },
       {
         id: "action",
-        cell: (info: CellContext<RowData, string>) => {
-          const { id } = info.row.original;
-          const serverInfo = internalMCPServers[id].serverInfo;
+        cell: (info: CellContext<RowData, Capability>) => {
+          const { id, authorization } = info.getValue();
+
+          console.log(info.getValue());
           const connection = connections.find(
             (c) => c.internalMCPServerId === id
           );
 
-          const { authorization } = serverInfo;
           if (!authorization) {
             return null;
           }
@@ -119,15 +121,15 @@ export const CapabilitiesList = ({
             </DataTable.CellContent>
           );
         },
-        accessorFn: (row: RowData): string => row.id,
+        accessorKey: "capability",
         meta: {
           className: "w-36",
         },
       },
     ];
   };
-  const rows: RowData[] = capabilities.map((id) => ({
-    id,
+  const rows: RowData[] = capabilities.map((capability) => ({
+    capability,
     onClick: () => {},
   }));
   const columns = getTableColumns();

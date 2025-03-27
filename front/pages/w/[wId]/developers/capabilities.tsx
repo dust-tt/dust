@@ -4,8 +4,10 @@ import type { InferGetServerSidePropsType } from "next";
 import { CapabilitiesList } from "@app/components/actions/mcp/CapabilitiesList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
-import { internalMCPServers } from "@app/lib/actions/mcp_internal_actions";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -13,7 +15,7 @@ import type { SubscriptionType, WorkspaceType } from "@app/types";
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  capabilities: InternalMCPServerId[];
+  capabilities: (MCPServerMetadata & { id: InternalMCPServerId })[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -30,12 +32,25 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
 
-  const capabilities = Object.keys(internalMCPServers) as InternalMCPServerId[];
+  const capabilitiesMetadata = await Promise.all(
+    AVAILABLE_INTERNAL_MCPSERVER_IDS.map(async (internalMCPServerId) => {
+      const metadata = await getMCPServerMetadataLocally({
+        serverType: "internal",
+        internalMCPServerId,
+      });
+      return {
+        ...metadata,
+        tools: [],
+        id: internalMCPServerId,
+      };
+    })
+  );
+
   return {
     props: {
       owner,
       isAdmin: auth.isAdmin(),
-      capabilities,
+      capabilities: capabilitiesMetadata,
       subscription,
     },
   };

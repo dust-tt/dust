@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { ServerInfo } from "@app/lib/actions/mcp_internal_actions";
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 
-const serverInfo: ServerInfo = {
+const serverInfo: Omit<MCPServerMetadata, "tools"> = {
   name: "hello-world-server",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
@@ -10,7 +10,7 @@ const serverInfo: ServerInfo = {
     provider: "google_drive" as const,
     use_case: "connection" as const,
   },
-  icon: "Rocket",
+  icon: "rocket",
 };
 
 export const createServer = (): McpServer => {
@@ -29,9 +29,4 @@ export const createServer = (): McpServer => {
   });
 
   return server;
-};
-
-export const helloWorldServer = {
-  createServer,
-  serverInfo,
 };

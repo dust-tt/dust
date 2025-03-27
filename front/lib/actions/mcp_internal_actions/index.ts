@@ -1,39 +1,17 @@
-import { RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Implementation } from "@modelcontextprotocol/sdk/types.js";
 
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import { helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
+import { createServer as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
 
 export type InternalMCPServerId =
   (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
-
-export type AuthorizationInfo = {
-  provider: OAuthProvider;
-  use_case: OAuthUseCase;
-};
-
-export const MCP_SERVER_ICONS = {
-  Rocket: RocketIcon,
-  Sparkle: SparklesIcon,
-} as const;
-
-type MCPIconType = keyof typeof MCP_SERVER_ICONS;
-
-export type ServerInfo = Implementation & {
-  authorization?: AuthorizationInfo;
-  description?: string;
-  icon?: MCPIconType;
-};
 
 export const connectToInternalMCPServer = async (
   internalMCPServerId: InternalMCPServerId,
   transport: InMemoryTransport
 ): Promise<McpServer> => {
-  const server: McpServer =
-    internalMCPServers[internalMCPServerId].createServer();
+  const server: McpServer = internalMCPServers[internalMCPServerId]();
 
   if (!server) {
     throw new Error(
@@ -46,12 +24,7 @@ export const connectToInternalMCPServer = async (
   return server;
 };
 
-export const internalMCPServers: Record<
-  InternalMCPServerId,
+export const internalMCPServers: Record<InternalMCPServerId, () => McpServer> =
   {
-    createServer: () => McpServer;
-    serverInfo: ServerInfo;
-  }
-> = {
-  helloworld: helloWorldServer,
-};
+    helloworld: helloWorldServer,
+  };
