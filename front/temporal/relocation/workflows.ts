@@ -7,6 +7,7 @@ import {
 } from "@temporalio/workflow";
 
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import type * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
@@ -19,7 +20,6 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
 import type { ModelId } from "@app/types";
-import { concurrentExecutor } from "@app/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;

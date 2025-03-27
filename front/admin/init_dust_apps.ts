@@ -10,9 +10,9 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import logger from "@app/logger/logger";
-import { concurrentExecutor, isDevelopment } from "@app/types";
+import { isDevelopment } from "@app/types";
 
 const DEFAULT_WORKSPACE_NAME = "dust-apps";
 const DEFAULT_SPACE_NAME = "Public Dust Apps";
