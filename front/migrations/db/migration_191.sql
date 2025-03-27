@@ -15,4 +15,3 @@ CREATE INDEX CONCURRENTLY "mcp_server_connections_workspace_id_internal_m_c_p_se
 
 CREATE INDEX CONCURRENTLY "mcp_server_connections_workspace_id_remote_m_c_p_server_id" ON "mcp_server_connections" ("workspaceId", "remoteMCPServerId");
 
-ALTER TABLE "remote_mcp_servers" DROP COLUMN "sId"
