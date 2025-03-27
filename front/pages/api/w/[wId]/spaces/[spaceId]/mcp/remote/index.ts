@@ -7,7 +7,7 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/remote_mcp_servers";
+import type { GetRemoteMCPServersResponseBody } from "@app/lib/swr/mcp_servers";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";

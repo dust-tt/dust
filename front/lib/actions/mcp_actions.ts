@@ -11,6 +11,7 @@ import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
   DEFAULT_MCP_ACTION_ICON,
   DEFAULT_MCP_ACTION_NAME,
+  DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
@@ -23,9 +24,17 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import type { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type {
+  LightWorkspaceType,
+  OAuthProvider,
+  OAuthUseCase,
+  Result,
+} from "@app/types";
 import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
@@ -73,16 +82,23 @@ export type MCPToolMetadata = {
   inputSchema: Record<string, unknown> | undefined;
 };
 
-const ALLOWED_ICONS = ["command", "tool"] as const;
-type AllowedIconType = (typeof ALLOWED_ICONS)[number];
+const ALLOWED_ICONS = ["command", "rocket"] as const;
+export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
 
 const isAllowedIconType = (icon: string): icon is AllowedIconType =>
   ALLOWED_ICONS.includes(icon as AllowedIconType);
 
+export type AuthorizationInfo = {
+  provider: OAuthProvider;
+  use_case: OAuthUseCase;
+};
+
 export type MCPServerMetadata = {
   name: string;
+  version: string;
   description: string;
   icon: AllowedIconType;
+  authorization?: AuthorizationInfo;
   tools: MCPToolMetadata[];
 };
 
@@ -153,10 +169,16 @@ const connectToMCPServer = async ({
                 `Remote MCP server ID or URL is required for remote server type.`
               );
             }
+            const id = getResourceIdFromSId(remoteMCPServerId);
+            if (!id) {
+              throw new Error(
+                `Remote MCP server ID is invalid for remote server type.`
+              );
+            }
 
             const remoteMCPServer = await RemoteMCPServer.findOne({
               where: {
-                sId: remoteMCPServerId,
+                id,
               },
             });
 
@@ -186,6 +208,11 @@ function extractMetadataFromServerVersion(
   if (r) {
     return {
       name: r.name ?? DEFAULT_MCP_ACTION_NAME,
+      version: r.version ?? DEFAULT_MCP_ACTION_VERSION,
+      authorization:
+        "authorization" in r && typeof r.authorization === "object"
+          ? (r.authorization as AuthorizationInfo)
+          : undefined,
       description:
         "description" in r && typeof r.description === "string" && r.description
           ? r.description
@@ -199,6 +226,7 @@ function extractMetadataFromServerVersion(
 
   return {
     name: DEFAULT_MCP_ACTION_NAME,
+    version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_ACTION_ICON,
   };
@@ -280,6 +308,8 @@ export async function getMCPServerMetadataLocally(
       const { remoteMCPServer } = config;
       return {
         name: remoteMCPServer.name,
+        // TODO(mcp): add version on remoteMCPServer
+        version: DEFAULT_MCP_ACTION_VERSION,
         description:
           remoteMCPServer.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
         // TODO(mcp): add icon on remoteMCPServer
