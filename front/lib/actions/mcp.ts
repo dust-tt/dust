@@ -229,7 +229,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await tryCallMCPTool({
+    const r = await tryCallMCPTool(auth, {
       owner,
       actionConfiguration,
       rawInputs,
