@@ -1283,6 +1283,7 @@ async function* runAction(
       rawInputs: inputs,
       functionCallId,
       step,
+      specification,
     });
 
     for await (const event of eventStream) {
@@ -1328,6 +1329,7 @@ async function* runAction(
     ).run(auth, {
       agentConfiguration: configuration,
       conversation,
+      specification,
       agentMessage,
       rawInputs: inputs,
       functionCallId,

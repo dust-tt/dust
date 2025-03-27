@@ -201,6 +201,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       agentConfiguration,
       agentMessage,
       rawInputs,
+      specification,
       functionCallId,
       step,
     }: BaseActionRunParams

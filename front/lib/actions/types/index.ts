@@ -102,6 +102,7 @@ export interface BaseActionRunParams {
   rawInputs: Record<string, unknown>;
   functionCallId: string | null;
   step: number;
+  specification?: AgentActionSpecification | null;
 }
 
 export abstract class BaseActionConfigurationServerRunner<
