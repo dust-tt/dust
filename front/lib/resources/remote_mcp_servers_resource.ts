@@ -6,6 +6,7 @@ import type {
   Transaction,
 } from "sequelize";
 
+import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -179,7 +180,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       description?: string | null;
       url?: string;
       sharedSecret?: string;
-      cachedTools: { name: string; description: string }[];
+      cachedTools: MCPToolMetadata[];
       lastSyncAt: Date;
     }
   ) {
