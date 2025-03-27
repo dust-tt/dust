@@ -32,7 +32,11 @@ import {
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { concurrentExecutor, INTERNAL_MIME_TYPES } from "@connectors/types";
+import {
+  concurrentExecutor,
+  INTERNAL_MIME_TYPES,
+  safeSubstring,
+} from "@connectors/types";
 
 const turndownService = new TurndownService();
 
@@ -309,8 +313,8 @@ export async function upsertArticle({
 
   if (articleOnDb) {
     articleOnDb = await articleOnDb.update({
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       authorId: article.author_id,
       parentId: parentCollection.collectionId,
       parentType: article.parent_type === "collection" ? "collection" : null,
@@ -321,8 +325,8 @@ export async function upsertArticle({
     articleOnDb = await IntercomArticleModel.create({
       connectorId: connectorId,
       articleId: article.id,
-      title: article.title,
-      url: articleUrl,
+      title: safeSubstring(article.title, 0, 254),
+      url: safeSubstring(articleUrl, 0, 254),
       intercomWorkspaceId: article.workspace_id,
       authorId: article.author_id,
       parentId: parentCollection.collectionId,

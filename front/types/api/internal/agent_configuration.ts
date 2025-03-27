@@ -133,8 +133,23 @@ const ReasoningActionConfigurationSchema = t.type({
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
   serverType: t.union([t.literal("internal"), t.literal("remote")]),
-  internalMCPServerId: t.union([t.literal("helloworld"), t.null]),
+  internalMCPServerId: t.union([
+    // TODO(mcp): find a correct way to reuse AVAILABLE_INTERNAL_MCPSERVER_IDS here.
+    t.literal("helloworld"),
+    t.null,
+  ]),
   remoteMCPServerId: t.union([t.string, t.null]),
+
+  dataSources: t.union([
+    t.null,
+    t.array(
+      t.type({
+        dataSourceViewId: t.string,
+        workspaceId: t.string,
+        filter: DataSourceFilterCodec,
+      })
+    ),
+  ]),
 });
 
 const ProcessActionConfigurationSchema = t.type({

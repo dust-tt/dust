@@ -490,6 +490,7 @@ export async function createOrUpgradeAgentConfiguration({
           remoteMCPServerId: action.remoteMCPServerId,
           name: action.name,
           description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+          dataSources: action.dataSources,
         },
         agentConfigurationRes.value
       );

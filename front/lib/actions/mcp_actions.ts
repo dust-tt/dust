@@ -28,7 +28,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -87,6 +87,7 @@ function makeMCPConfigurations({
       name: tool.name,
       description: tool.description ?? null,
       inputSchema: tool.inputSchema,
+      dataSources: config.dataSources,
     };
   });
 }
@@ -333,7 +334,7 @@ export async function tryCallMCPTool({
       },
       `Error calling MCP tool, returning error.`
     );
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }
 
