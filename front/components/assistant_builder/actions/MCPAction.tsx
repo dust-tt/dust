@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -62,24 +62,28 @@ export function ActionMCP({
     }));
   }, [tools, setEdited, updateAction]);
 
-  const handleServerSelection = (serverId: InternalMCPServerIdType) => {
-    setEdited(true);
-    updateAction((previousAction) => ({
-      ...previousAction,
-      serverType: "internal",
-      internalMCPServerId: serverId,
-    }));
-  };
+  const handleServerSelection = useCallback(
+    (serverId: InternalMCPServerIdType) => {
+      setEdited(true);
+      updateAction((previousAction) => ({
+        ...previousAction,
+        serverType: "internal",
+        internalMCPServerId: serverId,
+      }));
+    },
+    [setEdited, updateAction]
+  );
 
-  const handleDataSourceConfigUpdate = (
-    dsConfigs: DataSourceViewSelectionConfigurations
-  ) => {
-    setEdited(true);
-    updateAction((previousAction) => ({
-      ...previousAction,
-      dataSourceConfigurations: dsConfigs,
-    }));
-  };
+  const handleDataSourceConfigUpdate = useCallback(
+    (dsConfigs: DataSourceViewSelectionConfigurations) => {
+      setEdited(true);
+      updateAction((previousAction) => ({
+        ...previousAction,
+        dataSourceConfigurations: dsConfigs,
+      }));
+    },
+    [setEdited, updateAction]
+  );
 
   return (
     <>
