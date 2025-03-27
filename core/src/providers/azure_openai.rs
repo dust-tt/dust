@@ -43,15 +43,17 @@ struct AzureOpenAIDeployment {
     created_at: u64,
     updated_at: u64,
     object: String,
+    capabilities: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct AzureOpenAIDeployments {
     data: Vec<AzureOpenAIDeployment>,
+    object: Option<String>,
 }
 
 async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenAIDeployment>> {
-    let url = format!("{}openai/deployments?api-version=2022-12-01", endpoint);
+    let url = format!("{}openai/deployments?api-version=2024-10-21", endpoint);
 
     let res = reqwest::Client::new()
         .get(url)
@@ -60,10 +62,12 @@ async fn get_deployments(endpoint: &str, api_key: &str) -> Result<Vec<AzureOpenA
         .await?;
 
     let status = res.status();
+    let body = res.text().await?;
     if status != StatusCode::OK {
         Err(anyhow!(
-            "Failed to retrieve `azure_openai` Deployments: status_code={}",
-            status
+            "Failed to retrieve `azure_openai` Deployments: status_code={}, {}",
+            status,
+            body
         ))?;
     }
 
@@ -86,7 +90,7 @@ async fn get_deployment(
     deployment_id: &str,
 ) -> Result<AzureOpenAIDeployment> {
     let url = format!(
-        "{}openai/deployments/{}?api-version=2022-12-01",
+        "{}openai/deployments/{}?api-version=2024-10-21",
         endpoint, deployment_id
     );
 
