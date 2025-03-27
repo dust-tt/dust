@@ -7,7 +7,7 @@ import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 /**
  * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
  */
-function hasMimeType(
+function hasPropertyMatchingMimeType(
   obj: Record<string, any>,
   mimeType: InternalConfigurationMimeType
 ): boolean {
@@ -23,7 +23,7 @@ function hasMimeType(
 
     // Recursively check nested objects, but avoid null values
     if (value !== null && typeof value === "object") {
-      if (hasMimeType(value, mimeType)) {
+      if (hasPropertyMatchingMimeType(value, mimeType)) {
         return true;
       }
     }
@@ -52,7 +52,7 @@ export function serverRequiresInternalConfiguration({
       return false;
     }
 
-    return hasMimeType(tool.inputSchema, mimeType);
+    return hasPropertyMatchingMimeType(tool.inputSchema, mimeType);
   });
 }
 
