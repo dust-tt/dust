@@ -80,6 +80,8 @@ export function ViewFolderAPIModal({
     }
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent>
@@ -118,7 +120,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
@@ -152,7 +154,7 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"

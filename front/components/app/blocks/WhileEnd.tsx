@@ -59,6 +59,8 @@ export function While({
     onBlockUpdate(b);
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Block
       owner={owner}
@@ -109,7 +111,7 @@ export function While({
                 )}
               >
                 <CodeEditor
-                  data-color-mode="light"
+                  data-color-mode={theme === "dark" ? "dark" : "light"}
                   readOnly={readOnly}
                   value={block.spec.condition_code}
                   language="js"

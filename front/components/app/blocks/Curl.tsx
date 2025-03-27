@@ -186,7 +186,7 @@ export default function Curl({
           <div className="flex w-full font-normal">
             <div className="w-full">
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.headers_code}
                 language="js"
