@@ -1000,6 +1000,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: retrievalConfig.id,
           processConfigurationId: null,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1090,6 +1091,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: null,
           processConfigurationId: processConfig.id,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1164,24 +1166,38 @@ export async function createAgentActionConfiguration(
       });
     }
     case "mcp_server_configuration": {
-      const mcpConfig = await AgentMCPServerConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-        serverType: action.serverType,
-        internalMCPServerId: action.internalMCPServerId,
-      });
+      return frontSequelize.transaction(async (t) => {
+        const mcpConfig = await AgentMCPServerConfiguration.create(
+          {
+            sId: generateRandomModelSId(),
+            agentConfigurationId: agentConfiguration.id,
+            workspaceId: owner.id,
+            serverType: action.serverType,
+            internalMCPServerId: action.internalMCPServerId,
+          },
+          { transaction: t }
+        );
 
-      return new Ok({
-        id: mcpConfig.id,
-        sId: mcpConfig.sId,
-        type: "mcp_server_configuration",
-        name: action.name,
-        description: action.description,
-        serverType: action.serverType,
-        internalMCPServerId: action.internalMCPServerId,
-        remoteMCPServerId: action.remoteMCPServerId,
-        dataSources: action.dataSources,
+        if (action.dataSources) {
+          await _createAgentDataSourcesConfigData(auth, t, {
+            dataSourceConfigurations: action.dataSources,
+            retrievalConfigurationId: null,
+            processConfigurationId: null,
+            mcpConfigurationId: mcpConfig.id,
+          });
+        }
+
+        return new Ok({
+          id: mcpConfig.id,
+          sId: mcpConfig.sId,
+          type: "mcp_server_configuration",
+          name: action.name,
+          description: action.description,
+          serverType: action.serverType,
+          internalMCPServerId: action.internalMCPServerId,
+          remoteMCPServerId: action.remoteMCPServerId,
+          dataSources: action.dataSources,
+        });
       });
     }
     default:
@@ -1203,10 +1219,12 @@ async function _createAgentDataSourcesConfigData(
     dataSourceConfigurations,
     retrievalConfigurationId,
     processConfigurationId,
+    mcpConfigurationId,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
     retrievalConfigurationId: ModelId | null;
     processConfigurationId: ModelId | null;
+    mcpConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1260,6 +1278,7 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            mcpServerConfigurationId: mcpConfigurationId,
             tagsMode,
             tagsIn,
             tagsNotIn,

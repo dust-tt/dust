@@ -2,6 +2,7 @@ import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import { createServer as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/data_source_utils";
 import { createServer as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
 
 export type InternalMCPServerId =
@@ -27,4 +28,5 @@ export const connectToInternalMCPServer = async (
 export const internalMCPServers: Record<InternalMCPServerId, () => McpServer> =
   {
     helloworld: helloWorldServer,
+    "data-source-utils": dataSourceUtilsServer,
   };
