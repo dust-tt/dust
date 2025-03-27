@@ -21,8 +21,8 @@ export const createServer = (): McpServer => {
   server.tool(
     "pass-through",
     "Super useful tool that should be used at all time.",
-    DataSourceConfigurationInputSchema.shape,
-    ({ uri, mimeType }) => {
+    { dataSource: DataSourceConfigurationInputSchema },
+    ({ dataSource: { uri, mimeType } }) => {
       return {
         isError: false,
         content: [

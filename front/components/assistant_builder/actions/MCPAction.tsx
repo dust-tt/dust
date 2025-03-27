@@ -54,7 +54,7 @@ export function ActionMCP({
       ...previousAction,
       dataSourceConfigurations: tools?.some(
         (r) =>
-          r.inputSchema.mimeType ===
+          r.inputSchema.dataSource?.mimeType ===
           INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
       )
         ? previousAction.dataSourceConfigurations || {}
