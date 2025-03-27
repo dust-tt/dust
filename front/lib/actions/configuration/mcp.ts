@@ -3,22 +3,26 @@ import { Op } from "sequelize";
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
-import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { Workspace } from "@app/lib/models/workspace";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
 
-export async function fetchMCPServerActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
+export async function fetchMCPServerActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: "light" | "full";
+  }
+): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
@@ -75,7 +79,8 @@ export async function fetchMCPServerActionConfigurations({
         );
       }
 
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
+      const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+        auth,
         config.remoteMCPServerId
       );
       if (!remoteMCPServer) {
@@ -86,9 +91,9 @@ export async function fetchMCPServerActionConfigurations({
       remoteMCPServerId = remoteMCPServer.sId;
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      metadata = await getMCPServerMetadata({
+      metadata = await getMCPServerMetadataLocally({
         serverType: "remote",
-        remoteMCPServerId: remoteMCPServer.sId,
+        remoteMCPServer,
       });
     } else if (serverType === "internal") {
       if (!config.internalMCPServerId) {
@@ -97,7 +102,7 @@ export async function fetchMCPServerActionConfigurations({
         );
       }
 
-      metadata = await getMCPServerMetadata({
+      metadata = await getMCPServerMetadataLocally({
         serverType: "internal",
         internalMCPServerId: config.internalMCPServerId,
       });

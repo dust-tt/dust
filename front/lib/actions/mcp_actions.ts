@@ -22,6 +22,7 @@ import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import type { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
@@ -245,7 +246,7 @@ export async function fetchRemoteServerMetaDataByURL(
  *
  * This function is safe to call even if the server is remote as it will not connect to the server and use the cached metadata.
  */
-export async function getMCPServerMetadata(
+export async function getMCPServerMetadataLocally(
   config:
     | {
         serverType: "internal";
@@ -253,7 +254,7 @@ export async function getMCPServerMetadata(
       }
     | {
         serverType: "remote";
-        remoteMCPServerId: string;
+        remoteMCPServer: RemoteMCPServerResource;
       }
 ): Promise<MCPServerMetadata> {
   const { serverType } = config;
@@ -275,24 +276,8 @@ export async function getMCPServerMetadata(
       };
 
     case "remote":
-      if (!config.remoteMCPServerId) {
-        throw new Error(
-          `Remote MCP server ID is required for remote server type.`
-        );
-      }
-
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
-        config.remoteMCPServerId
-      );
-
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
-        );
-      }
-
       // TODO(mcp): add a background job to update the metadata by calling updateRemoteMCPServerMetadata.
-
+      const { remoteMCPServer } = config;
       return {
         name: remoteMCPServer.name,
         description:
