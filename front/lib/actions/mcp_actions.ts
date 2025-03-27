@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_ICON,
   DEFAULT_MCP_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type {
@@ -20,8 +21,8 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import type { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import {
   generateRandomModelSId,
   getResourceIdFromSId,
@@ -68,6 +69,25 @@ const Schema = z.union([
 ]);
 
 export type MCPToolResultContent = z.infer<typeof Schema>;
+
+export type MCPToolMetadata = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown> | undefined;
+};
+
+const ALLOWED_ICONS = ["command", "tool"] as const;
+type AllowedIconType = (typeof ALLOWED_ICONS)[number];
+
+const isAllowedIconType = (icon: string): icon is AllowedIconType =>
+  ALLOWED_ICONS.includes(icon as AllowedIconType);
+
+export type MCPServerMetadata = {
+  name: string;
+  description: string;
+  icon: AllowedIconType;
+  tools: MCPToolMetadata[];
+};
 
 function makeMCPConfigurations({
   config,
@@ -169,20 +189,46 @@ const connectToMCPServer = async ({
   return mcpClient;
 };
 
-function extractMetadataFromServerVersion(r: Implementation | undefined): {
-  name: string;
-  description: string;
-} {
+function extractMetadataFromServerVersion(
+  r: Implementation | undefined
+): Omit<MCPServerMetadata, "tools"> {
+  if (r) {
+    return {
+      name: r.name ?? DEFAULT_MCP_ACTION_NAME,
+      description:
+        "description" in r && typeof r.description === "string" && r.description
+          ? r.description
+          : DEFAULT_MCP_ACTION_DESCRIPTION,
+      icon:
+        "icon" in r && typeof r.icon === "string" && isAllowedIconType(r.icon)
+          ? r.icon
+          : DEFAULT_MCP_ACTION_ICON,
+    };
+  }
+
   return {
-    name: r?.name ?? DEFAULT_MCP_ACTION_NAME,
-    description:
-      (r && "description" in r && typeof r.description === "string"
-        ? r.description
-        : DEFAULT_MCP_ACTION_DESCRIPTION) ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+    name: DEFAULT_MCP_ACTION_NAME,
+    description: DEFAULT_MCP_ACTION_DESCRIPTION,
+    icon: DEFAULT_MCP_ACTION_ICON,
   };
 }
 
-export async function fetchServerData(url: string) {
+function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
+  return tools.tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description || "",
+    inputSchema: tool.inputSchema.properties
+      ? (JSON.parse(JSON.stringify(tool.inputSchema.properties)) as Record<
+          string,
+          unknown
+        >)
+      : undefined,
+  }));
+}
+
+export async function fetchRemoteServerMetaDataByURL(
+  url: string
+): Promise<MCPServerMetadata> {
   const mcpClient = await connectToMCPServer({
     serverType: "remote",
     remoteMCPServerUrl: url,
@@ -193,14 +239,10 @@ export async function fetchServerData(url: string) {
     const metadata = extractMetadataFromServerVersion(serverVersion);
 
     const toolsResult = await mcpClient.listTools();
-    const serverTools = toolsResult.tools.map((tool) => ({
-      name: tool.name,
-      description: tool.description || "",
-    }));
+    const serverTools = extractMetadataFromTools(toolsResult);
 
     return {
-      name: metadata.name,
-      description: metadata.description,
+      ...metadata,
       tools: serverTools,
     };
   } finally {
@@ -208,49 +250,24 @@ export async function fetchServerData(url: string) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function updateRemoteMCPServerMetadata(config: {
-  serverType: "remote";
-  remoteMCPServerId: string;
-}) {
-  const id = getResourceIdFromSId(config.remoteMCPServerId);
-  if (!id) {
-    throw new Error(`Remote MCP server ID is invalid for remote server type.`);
-  }
-
-  const remoteMCPServer = await RemoteMCPServer.findOne({
-    where: {
-      id,
-    },
-  });
-
-  if (!remoteMCPServer) {
-    throw new Error(
-      `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
-    );
-  }
-
-  const mcpClient = await connectToMCPServer(config);
-  const r = await mcpClient.getServerVersion();
-  await mcpClient.close();
-
-  const metadata = extractMetadataFromServerVersion(r);
-
-  await remoteMCPServer.update(metadata);
-}
-
 /**
  * Get the metadata of the MCP server.
  *
  * This function is safe to call even if the server is remote as it will not connect to the server and use the cached metadata.
  */
-export async function getMCPServerMetadata(
-  config: AgentMCPServerConfiguration
-): Promise<{
-  name: string;
-  description: string;
-}> {
-  switch (config.serverType) {
+export async function getMCPServerMetadataLocally(
+  config:
+    | {
+        serverType: "internal";
+        internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
+      }
+    | {
+        serverType: "remote";
+        remoteMCPServer: RemoteMCPServerResource;
+      }
+): Promise<MCPServerMetadata> {
+  const { serverType } = config;
+  switch (serverType) {
     case "internal":
       // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
       const mcpClient = await connectToMCPServer({
@@ -259,36 +276,28 @@ export async function getMCPServerMetadata(
       });
 
       const r = await mcpClient.getServerVersion();
+      const tools = await mcpClient.listTools();
       await mcpClient.close();
 
-      return extractMetadataFromServerVersion(r);
+      return {
+        ...extractMetadataFromServerVersion(r),
+        tools: extractMetadataFromTools(tools),
+      };
+
     case "remote":
-      if (!config.remoteMCPServerId) {
-        throw new Error(
-          `Remote MCP server ID is required for remote server type.`
-        );
-      }
-
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
-        config.remoteMCPServerId
-      );
-
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${config.sId} not found.`
-        );
-      }
-
       // TODO(mcp): add a background job to update the metadata by calling updateRemoteMCPServerMetadata.
-
+      const { remoteMCPServer } = config;
       return {
         name: remoteMCPServer.name,
         description:
           remoteMCPServer.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        // TODO(mcp): add icon on remoteMCPServer
+        icon: DEFAULT_MCP_ACTION_ICON,
+        tools: remoteMCPServer.cachedTools,
       };
 
     default:
-      assertNever(config.serverType);
+      assertNever(serverType);
   }
 }
 

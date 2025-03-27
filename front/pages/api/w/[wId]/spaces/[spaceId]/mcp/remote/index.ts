@@ -1,7 +1,7 @@
 import { randomBytes } from "crypto";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchServerData } from "@app/lib/actions/mcp_actions";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -137,7 +137,7 @@ async function handler(
         });
       }
 
-      const metadata = await fetchServerData(url);
+      const metadata = await fetchRemoteServerMetaDataByURL(url);
       const sharedSecret = randomBytes(32).toString("hex");
 
       const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(
