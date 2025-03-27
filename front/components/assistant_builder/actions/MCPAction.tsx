@@ -16,13 +16,13 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
+import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { useInternalMcpServerMetadata } from "@app/lib/swr/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
