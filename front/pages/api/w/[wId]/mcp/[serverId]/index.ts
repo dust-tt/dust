@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateInternalMCPServerId } from "@app/lib/actions/mcp";
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -42,19 +41,8 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      if (!validateInternalMCPServerId(serverId)) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_mcp_server_id",
-            message: "Only internal MCP server ids are supported.",
-          },
-        });
-      }
-
-      const metadata = await getMCPServerMetadataLocally({
-        serverType: "internal",
-        internalMCPServerId: serverId,
+      const metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId: serverId,
       });
 
       return res.status(200).json({ metadata });

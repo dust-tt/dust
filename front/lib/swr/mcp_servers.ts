@@ -2,9 +2,12 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
-import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  GetConnectionsResponseBody,
+  PostConnectionResponseBody,
+} from "@app/pages/api/w/[wId]/mcp/connections";
+import type { GetMCPServersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { MCPApiResponse, MCPResponse } from "@app/types/mcp";
 
@@ -237,9 +240,7 @@ export function useMCPServerConnections({
   owner: LightWorkspaceType;
   disabled?: boolean;
 }) {
-  const connectionsFetcher: Fetcher<{
-    connections: MCPServerConnectionType[];
-  }> = fetcher;
+  const connectionsFetcher: Fetcher<GetConnectionsResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${owner.sId}/mcp/connections`,
@@ -269,11 +270,11 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
-    internalMCPServerId,
+    mcpServerId,
   }: {
     connectionId: string;
-    internalMCPServerId: InternalMCPServerId;
-  }): Promise<{ success: boolean; connection: MCPServerConnectionType }> => {
+    mcpServerId: string;
+  }): Promise<PostConnectionResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp/connections`, {
       method: "POST",
       headers: {
@@ -281,7 +282,7 @@ export function useCreateMCPServerConnection({
       },
       body: JSON.stringify({
         connectionId,
-        internalMCPServerId: internalMCPServerId,
+        mcpServerId,
       }),
     });
     if (response.ok) {
@@ -353,4 +354,31 @@ export function useDeleteMCPServerConnection({
   };
 
   return { deleteMCPServerConnection };
+}
+
+export function useMcpServers({
+  owner,
+  space,
+  filter,
+}: {
+  owner: LightWorkspaceType;
+  space?: SpaceType;
+  filter: "internal" | "remote" | "all";
+}) {
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+
+  const url = space
+    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp?filter=${filter}`
+    : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
+
+  const mcpServers = useMemo(() => (data ? data.mcpServers : []), [data]);
+
+  return {
+    mcpServers,
+    isLoading: !error && !data,
+    isError: error,
+    mutate,
+  };
 }

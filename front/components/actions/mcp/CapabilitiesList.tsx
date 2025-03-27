@@ -15,7 +15,6 @@ import type {
   AllowedIconType,
   MCPServerMetadata,
 } from "@app/lib/actions/mcp_actions";
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -24,7 +23,7 @@ const MCP_SERVER_ICONS: Record<AllowedIconType, React.ElementType> = {
   rocket: RocketIcon,
 } as const;
 
-type Capability = MCPServerMetadata & { id: InternalMCPServerId };
+type Capability = MCPServerMetadata;
 
 type RowData = {
   capability: Capability;
@@ -112,7 +111,7 @@ export const CapabilitiesList = ({
                 onClick={() => {
                   void createAndSaveMCPServerConnection({
                     authorizationInfo: authorization,
-                    serverId: id,
+                    mcpServerId: id,
                   });
                 }}
               />

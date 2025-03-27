@@ -1,21 +1,18 @@
-import { CommandLineIcon, Page } from "@dust-tt/sparkle";
+import { CommandLineIcon, Page, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
 import { CapabilitiesList } from "@app/components/actions/mcp/CapabilitiesList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
+import { useMcpServers } from "@app/lib/swr/mcp_servers";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  capabilities: (MCPServerMetadata & { id: InternalMCPServerId })[];
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscription();
@@ -32,25 +29,10 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
     };
   }
 
-  const capabilitiesMetadata = await Promise.all(
-    AVAILABLE_INTERNAL_MCPSERVER_IDS.map(async (internalMCPServerId) => {
-      const metadata = await getMCPServerMetadataLocally({
-        serverType: "internal",
-        internalMCPServerId,
-      });
-      return {
-        ...metadata,
-        tools: [],
-        id: internalMCPServerId,
-      };
-    })
-  );
-
   return {
     props: {
       owner,
       isAdmin: auth.isAdmin(),
-      capabilities: capabilitiesMetadata,
       subscription,
     },
   };
@@ -58,9 +40,18 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
 
 export default function Capabilities({
   owner,
-  capabilities,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: false,
+  });
+  const { mcpServers } = useMcpServers({
+    owner,
+    space: (spaces ?? []).find((space) => space.kind === "system"),
+    filter: "all",
+  });
+
   return (
     <AppLayout
       subscription={subscription}
@@ -74,7 +65,11 @@ export default function Capabilities({
           description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         />
         <Page.Vertical align="stretch" gap="md">
-          <CapabilitiesList capabilities={capabilities} owner={owner} />
+          {!mcpServers ? (
+            <Spinner />
+          ) : (
+            <CapabilitiesList capabilities={mcpServers} owner={owner} />
+          )}
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />

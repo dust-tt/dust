@@ -62,8 +62,7 @@ export async function fetchMCPServerActionConfigurations(
   >();
 
   for (const config of mcpServerConfigurations) {
-    const { agentConfigurationId, id, sId, serverType, internalMCPServerId } =
-      config;
+    const { agentConfigurationId, sId, id, serverType } = config;
 
     const dataSourceConfiguration =
       dataSourceConfigurations.filter(
@@ -85,18 +84,17 @@ export async function fetchMCPServerActionConfigurations(
       );
       if (!remoteMCPServer) {
         throw new Error(
-          `Remote MCP server with remoteMCPServerId ${sId} not found.`
+          `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
         );
       }
       remoteMCPServerId = RemoteMCPServerResource.modelIdToSId({
-        id: remoteMCPServer.id,
-        workspaceId: remoteMCPServer.workspaceId,
+        id: config.remoteMCPServerId,
+        workspaceId: auth.getNonNullableWorkspace().id,
       });
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      metadata = await getMCPServerMetadataLocally({
-        serverType: "remote",
-        remoteMCPServer,
+      metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId: remoteMCPServerId,
       });
     } else if (serverType === "internal") {
       if (!config.internalMCPServerId) {
@@ -105,9 +103,8 @@ export async function fetchMCPServerActionConfigurations(
         );
       }
 
-      metadata = await getMCPServerMetadataLocally({
-        serverType: "internal",
-        internalMCPServerId: config.internalMCPServerId,
+      metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId: config.internalMCPServerId,
       });
     } else {
       assertNever(serverType);
@@ -125,9 +122,7 @@ export async function fetchMCPServerActionConfigurations(
         type: "mcp_server_configuration",
         name: metadata.name,
         description: metadata.description,
-        serverType,
-        internalMCPServerId,
-        remoteMCPServerId,
+        mcpServerId: metadata.id,
         dataSources: dataSourceConfiguration.map(getDataSource),
       });
     }

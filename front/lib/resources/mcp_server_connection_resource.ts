@@ -8,7 +8,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
@@ -142,14 +141,14 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       }
     | {
         auth: Authenticator;
-        internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
+        internalMCPServerId: string;
         remoteMCPServerId: undefined;
       }): Promise<Result<MCPServerConnectionResource, DustError>> {
     const connections = await this.baseFetch(auth, {
       where: {
         ...(remoteMCPServerId
-          ? { remoteMCPServerId, serverType: "remote" }
-          : { internalMCPServerId, serverType: "internal" }),
+          ? { remoteMCPServerId }
+          : { internalMCPServerId }),
       },
     });
 

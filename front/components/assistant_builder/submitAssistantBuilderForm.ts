@@ -187,9 +187,7 @@ export async function submitAssistantBuilderForm({
             type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
-            serverType: a.configuration.serverType,
-            internalMCPServerId: a.configuration.internalMCPServerId,
-            remoteMCPServerId: a.configuration.remoteMCPServerId,
+            mcpServerId: a.configuration.mcpServerId,
             dataSources: a.configuration.dataSourceConfigurations
               ? processDataSourceViewSelectionConfigurations({
                   owner,

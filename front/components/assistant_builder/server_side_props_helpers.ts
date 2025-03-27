@@ -233,9 +233,7 @@ async function getMCPServerActionConfiguration(
     throw new Error("MCP action configuration is not valid");
   }
 
-  builderAction.configuration.serverType = action.serverType;
-  builderAction.configuration.internalMCPServerId = action.internalMCPServerId;
-  builderAction.configuration.remoteMCPServerId = action.remoteMCPServerId;
+  builderAction.configuration.mcpServerId = action.mcpServerId;
 
   builderAction.name = action.name + "_" + generateRandomModelSId();
   builderAction.description =
