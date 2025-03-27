@@ -1,6 +1,7 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 
-import type { DustAppRunInputType, InputSchemaType } from "./agent";
+import type { DustAppRunInputType } from "./agent";
 import {
   dustAppRunInputsToInputSchema,
   inputSchemaToDustAppRunInputs,
@@ -22,7 +23,7 @@ describe("Agent Type Utilities", () => {
         },
       ];
 
-      const expected: InputSchemaType = {
+      const expected: JSONSchema = {
         type: "object",
         properties: {
           query: {
@@ -52,7 +53,7 @@ describe("Agent Type Utilities", () => {
         },
       ];
 
-      const expected: InputSchemaType = {
+      const expected: JSONSchema = {
         type: "object",
         properties: {
           tags: {
@@ -72,7 +73,7 @@ describe("Agent Type Utilities", () => {
 
   describe("inputSchemaToDustAppRunInputs", () => {
     it("should convert schema to basic inputs", () => {
-      const schema: InputSchemaType = {
+      const schema: JSONSchema = {
         type: "object",
         properties: {
           query: {
@@ -104,7 +105,7 @@ describe("Agent Type Utilities", () => {
     });
 
     it("should handle array type properties", () => {
-      const schema: InputSchemaType = {
+      const schema: JSONSchema = {
         type: "object",
         properties: {
           tags: {
@@ -129,15 +130,14 @@ describe("Agent Type Utilities", () => {
       expect(inputSchemaToDustAppRunInputs(schema)).toEqual(expected);
     });
 
-    it("should handle missing or invalid properties", () => {
-      const schema: InputSchemaType = {
+    it("should handle missing properties", () => {
+      const schema: JSONSchema = {
         type: "object",
         properties: {
           valid: {
             type: "string",
             description: "Valid property",
           },
-          invalid: null,
           missingType: {
             description: "Missing type",
           },
@@ -167,7 +167,7 @@ describe("Agent Type Utilities", () => {
     });
 
     it("should handle empty properties object", () => {
-      const schema: InputSchemaType = {
+      const schema: JSONSchema = {
         type: "object",
         properties: {},
         required: [],

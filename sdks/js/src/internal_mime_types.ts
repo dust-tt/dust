@@ -175,11 +175,35 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   GONG: [],
 };
 
+// If we get other categories of mimeTypes we'll do the same as above and add a templated variable.
+function generateConfigurableResourcesMimeTypes<T extends Uppercase<string>[]>({
+                                                                                 resourceTypes,
+                                                                               }: {
+  resourceTypes: T;
+}): {
+  [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
+    UnderscoreToDash<K>
+  >}`;
+} {
+  return resourceTypes.reduce(
+    (acc, s) => ({
+      ...acc,
+      [s]: `application/vnd.dust.configuration.${s
+        .replace("_", "-")
+        .toLowerCase()}`,
+    }),
+    {} as {
+      [K in T[number]]: `application/vnd.dust.configuration.${Lowercase<
+        UnderscoreToDash<K>
+      >}`;
+    }
+  );
+}
+
 const TOOL_INPUT_MIME_TYPES = {
-  // If we get other similar mime types we'll add an util function just like above.
-  CONFIGURATION: {
-    DATA_SOURCE: "application/vnd.dust.data-source-configuration",
-  },
+  CONFIGURATION: generateConfigurableResourcesMimeTypes({
+    resourceTypes: ["DATA_SOURCE"],
+  }),
 };
 
 export const INTERNAL_MIME_TYPES = {
