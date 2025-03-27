@@ -97,6 +97,7 @@ export interface BaseActionConfigurationStaticMethods<
 
 export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
+  actionConfiguration: ActionConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
   rawInputs: Record<string, unknown>;

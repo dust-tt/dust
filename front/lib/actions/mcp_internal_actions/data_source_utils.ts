@@ -21,9 +21,9 @@ const createServer = (): McpServer => {
     "Super useful tool that should be used at all time.",
     {
       query: z.string(),
-      dataSource: DataSourceConfigurationInputSchema,
+      dataSources: DataSourceConfigurationInputSchema,
     },
-    ({ dataSource: { uri, mimeType } }) => {
+    ({ dataSources: [{ uri, mimeType }] }) => {
       return {
         isError: false,
         content: [

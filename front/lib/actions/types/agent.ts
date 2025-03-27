@@ -1,3 +1,5 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+
 import type {
   BrowseActionRunningEvents,
   BrowseConfigurationType,
@@ -124,25 +126,17 @@ export type DustAppRunInputType = {
     type: "string" | "number" | "boolean";
   };
 };
-export type InputSchemaType = {
-  type: "object";
-  [x: string]: unknown;
-  properties?:
-    | {
-        [x: string]: unknown;
-      }
-    | undefined;
-};
+
 export type AgentActionSpecification = {
   name: string;
   description: string;
-  inputSchema: InputSchemaType;
+  inputSchema: JSONSchema;
 };
 
 export function dustAppRunInputsToInputSchema(
   inputs: DustAppRunInputType[]
-): InputSchemaType {
-  const properties: Record<string, unknown> = {};
+): JSONSchema {
+  const properties: JSONSchema["properties"] = {};
   for (const i of inputs) {
     properties[i.name] = {
       type: i.type,
@@ -158,7 +152,7 @@ export function dustAppRunInputsToInputSchema(
 }
 
 export function inputSchemaToDustAppRunInputs(
-  inputSchema: InputSchemaType
+  inputSchema: JSONSchema
 ): DustAppRunInputType[] {
   return Object.entries(inputSchema.properties || {}).map(
     ([name, property]) => {
