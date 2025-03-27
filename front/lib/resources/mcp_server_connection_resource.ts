@@ -13,6 +13,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -61,6 +63,12 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
         ...where,
         workspaceId: auth.getNonNullableWorkspace().id,
       } as WhereOptions<MCPServerConnection>,
+      include: [
+        {
+          model: UserModel,
+          as: "userId",
+        },
+      ],
     });
     return connections.map((b) => new this(this.model, b.get()));
   }
@@ -142,12 +150,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
   }: {
     auth: Authenticator;
   }): Promise<MCPServerConnectionResource[]> {
-    const connections = await this.baseFetch(auth);
-
-    return connections.map(
-      (connection) =>
-        new MCPServerConnectionResource(MCPServerConnection, connection.get())
-    );
+    return this.baseFetch(auth);
   }
 
   // Deletion.
@@ -203,6 +206,12 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       connectionType: this.connectionType,
       serverType: this.serverType,
       internalMCPServerId: this.internalMCPServerId,
+      remoteMCPServerId:
+        this.remoteMCPServerId &&
+        RemoteMCPServerResource.modelIdToSId({
+          id: this.remoteMCPServerId,
+          workspaceId: this.workspaceId,
+        }),
     };
   }
 }
@@ -214,5 +223,6 @@ export interface MCPServerConnectionType {
   connectionId: string;
   connectionType: string;
   serverType: string;
+  remoteMCPServerId: string | null;
   internalMCPServerId: string | null;
 }

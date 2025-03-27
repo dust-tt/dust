@@ -120,16 +120,16 @@ async function batchRenderAgentMessages(
   );
   const [
     agentConfigurations,
-    //   agentRetrievalActions,
-    //   agentDustAppRunActions,
-    //   agentTablesQueryActions,
-    //   agentProcessActions,
-    //   agentWebsearchActions,
-    //   agentBrowseActions,
-    //   agentConversationIncludeFileActions,
-    //   agentReasoningActions,
-    //   agentSearchLabelsActions,
-    //   agentMCPActions,
+    agentRetrievalActions,
+    agentDustAppRunActions,
+    agentTablesQueryActions,
+    agentProcessActions,
+    agentWebsearchActions,
+    agentBrowseActions,
+    agentConversationIncludeFileActions,
+    agentReasoningActions,
+    agentSearchLabelsActions,
+    agentMCPActions,
   ] = await Promise.all([
     (async () => {
       const agentConfigurationIds: string[] = agentMessages.reduce(
@@ -152,18 +152,18 @@ async function batchRenderAgentMessages(
       }
       return agents as LightAgentConfigurationType[];
     })(),
-    // (async () =>
-    //     retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    //   (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    //   (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
-    //   (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () =>
-    //     conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
-    //   (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      retrievalActionTypesFromAgentMessageIds(auth, agentMessageIds))(),
+    (async () => dustAppRunTypesFromAgentMessageIds(auth, agentMessageIds))(),
+    (async () => tableQueryTypesFromAgentMessageIds(auth, agentMessageIds))(),
+    (async () => processActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => websearchActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => browseActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () =>
+      conversationIncludeFileTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => reasoningActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => searchLabelsActionTypesFromAgentMessageIds(agentMessageIds))(),
+    (async () => mcpActionTypesFromAgentMessageIds(agentMessageIds))(),
   ]);
 
   if (!agentConfigurations) {
@@ -185,20 +185,20 @@ async function batchRenderAgentMessages(
         const agentMessage = message.agentMessage;
 
         const actions: AgentActionType[] = [
-          // agentBrowseActions,
-          // agentConversationIncludeFileActions,
-          // agentDustAppRunActions,
-          // agentProcessActions,
-          // agentReasoningActions,
-          // agentRetrievalActions,
-          // agentSearchLabelsActions,
-          // agentTablesQueryActions,
-          // agentWebsearchActions,
-          // agentMCPActions,
-        ];
-        // .flat()
-        // .filter((a) => a.agentMessageId === agentMessage.id)
-        // .sort((a, b) => a.step - b.step);
+          agentBrowseActions,
+          agentConversationIncludeFileActions,
+          agentDustAppRunActions,
+          agentProcessActions,
+          agentReasoningActions,
+          agentRetrievalActions,
+          agentSearchLabelsActions,
+          agentTablesQueryActions,
+          agentWebsearchActions,
+          agentMCPActions,
+        ]
+          .flat()
+          .filter((a) => a.agentMessageId === agentMessage.id)
+          .sort((a, b) => a.step - b.step);
 
         const agentConfiguration = agentConfigurations.find(
           (a) => a.sId === agentMessage.agentConfigurationId

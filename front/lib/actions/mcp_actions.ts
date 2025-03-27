@@ -22,7 +22,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import {
+  generateRandomModelSId,
+  getResourceIdFromSId,
+} from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { assertNever, Err, Ok } from "@app/types";
@@ -132,10 +135,16 @@ const connectToMCPServer = async ({
                 `Remote MCP server ID or URL is required for remote server type.`
               );
             }
+            const id = getResourceIdFromSId(remoteMCPServerId);
+            if (!id) {
+              throw new Error(
+                `Remote MCP server ID is invalid for remote server type.`
+              );
+            }
 
             const remoteMCPServer = await RemoteMCPServer.findOne({
               where: {
-                sId: remoteMCPServerId,
+                id,
               },
             });
 
@@ -203,9 +212,14 @@ async function updateRemoteMCPServerMetadata(config: {
   serverType: "remote";
   remoteMCPServerId: string;
 }) {
+  const id = getResourceIdFromSId(config.remoteMCPServerId);
+  if (!id) {
+    throw new Error(`Remote MCP server ID is invalid for remote server type.`);
+  }
+
   const remoteMCPServer = await RemoteMCPServer.findOne({
     where: {
-      sId: config.remoteMCPServerId,
+      id,
     },
   });
 

@@ -4,6 +4,7 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import type { ModelId } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations({
@@ -44,7 +45,10 @@ export async function fetchMCPServerActionConfigurations({
           `Remote MCP server with remoteMCPServerId ${sId} not found.`
         );
       }
-      remoteMCPServerId = remoteMCPServer.sId;
+      remoteMCPServerId = RemoteMCPServerResource.modelIdToSId({
+        id: remoteMCPServer.id,
+        workspaceId: remoteMCPServer.workspaceId,
+      });
     }
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {

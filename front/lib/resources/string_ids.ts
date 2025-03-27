@@ -30,6 +30,7 @@ const RESOURCES_PREFIX = {
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "con",
+  remote_mcp_server: "rmc",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
