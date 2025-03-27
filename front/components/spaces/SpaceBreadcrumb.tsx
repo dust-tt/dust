@@ -1,8 +1,4 @@
-import {
-  Breadcrumbs,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
-} from "@dust-tt/sparkle";
+import { Breadcrumbs, CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import React from "react";
 
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
@@ -75,19 +71,11 @@ export function SpaceBreadCrumbs({
 
     if (space.kind === "system") {
       // Root managed connection in system space.
-      if (!dataSourceView && category === "managed") {
+      if (!dataSourceView) {
         return [
           {
             icon: CloudArrowLeftRightIcon,
             label: "Connection Admin",
-          },
-        ];
-      }
-      if (!dataSourceView && category === "apps") {
-        return [
-          {
-            icon: CommandLineIcon,
-            label: "Capabilities",
           },
         ];
       }
