@@ -3,16 +3,51 @@ import {
   type MicroPythonInstance,
 } from "@micropython/micropython-webassembly-pyscript/micropython.mjs";
 import * as z from "zod";
-import type { Tool } from "./tools/types";
+import { logger } from "./utils/logger";
+import { SandboxError, wrapError } from "./utils/errors";
 
 export interface CodeExecutionResult {
   result: unknown;
   stdout: string;
 }
 
+/**
+ * Represents a parsed JSON value (string, number, boolean, null, array, or object)
+ */
+export type JsonValue = 
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
+/**
+ * Represents a function that can be exposed to the sandbox
+ */
+export interface ExposedFunction<
+  TInput = unknown,
+  TOutput = unknown
+> {
+  /** Function to execute when called from Python */
+  fn: (input: TInput) => Promise<TOutput>;
+  /** Schema to validate and parse the input */
+  input: z.ZodType<TInput>;
+  /** Schema to validate and parse the output */
+  output: z.ZodType<TOutput>;
+  /** Description of the function */
+  description: string;
+}
+
+/**
+ * Untyped version of ExposedFunction for internal use
+ */
+type AnyExposedFunction = ExposedFunction<unknown, unknown>;
+
 export class PythonSandbox {
   private mp!: MicroPythonInstance;
-  private exposedFunctions: { [key: string]: Tool } = {};
+  private exposedFunctions: { [key: string]: AnyExposedFunction } = {};
+  private module: Record<string, Function> = {};
   private moduleId: string;
   private stdoutBuffer: string[] = [];
   private stderrBuffer: string[] = [];
@@ -54,69 +89,135 @@ export class PythonSandbox {
     return { stdout, stderr };
   }
 
-  expose(name: string, func: Tool) {
-    this.exposedFunctions[name] = func;
+  /**
+   * Expose a function to the Python environment
+   * @param name The name of the function in Python
+   * @param func The function to expose
+   */
+  expose<TInput, TOutput>(name: string, func: ExposedFunction<TInput, TOutput>): void {
+    this.exposedFunctions[name] = func as AnyExposedFunction;
 
-    const wrapper = (...args: unknown[]) => {
-      // Parse input according to schema
-      const inputObject = func.input as z.ZodObject<z.ZodRawShape>;
-      const params = func.input.parse(
-        args.length === 1 && typeof args[0] === "object"
-          ? args[0]
-          : {
-              [Object.keys(inputObject.shape)[0]]: args[0],
-              [Object.keys(inputObject.shape)[1]]: args[1],
-            }
-      );
-      return func.fn(params);
+    // Create a wrapper function that handles JSON serialization/deserialization
+    const wrapper = (_args: string, _kwargs: string): Promise<string | number | boolean> => {
+      // Parse input JSON strings
+      const args: JsonValue[] = JSON.parse(_args);
+      const kwargs: Record<string, JsonValue> = JSON.parse(_kwargs);
+
+      // Convert positional and keyword arguments to an object that can be validated
+      // against the input schema
+      const paramsObj: Record<string, JsonValue> = {};
+      
+      // Handle object schemas differently than other schemas
+      if (func.input instanceof z.ZodObject) {
+        // Map parameters from positional args and keyword args
+        for (const [i, key] of Object.keys(func.input.shape).entries()) {
+          if (key in kwargs) {
+            paramsObj[key] = kwargs[key];
+          } else if (i < args.length) {
+            paramsObj[key] = args[i];
+          }
+        }
+      } else {
+        // For non-object schemas, just use the first argument
+        if (args.length > 0) {
+          return Promise.resolve(JSON.stringify(args[0]));
+        }
+      }
+
+      // Parse with the input schema to validate and transform
+      const params = func.input.parse(paramsObj);
+
+      // Call the function
+      const result = func.fn(params);
+
+      // Function to convert result to a JSON-compatible value
+      const serializeValue = (value: unknown): string | number | boolean => {
+        if (
+          typeof value === "string" ||
+          typeof value === "number" ||
+          typeof value === "boolean"
+        ) {
+          return value;
+        }
+        return JSON.stringify(value);
+      };
+
+      // Handle async results
+      if (result instanceof Promise) {
+        return result.then(serializeValue);
+      }
+
+      return Promise.resolve(serializeValue(result));
     };
 
     // Create an object to hold our exposed functions
-    const module = { [name]: wrapper };
-    this.mp.registerJsModule(this.moduleId, module);
+    this.module[name] = wrapper;
+    this.mp.registerJsModule(this.moduleId, this.module);
+  }
+
+  private generateWrapperFunction(name: string): string {
+    return `
+async def ${name}(*args, **kwargs):
+    args = json.dumps(args)
+    kwargs = json.dumps(kwargs)
+
+    r = await _${name}(args, kwargs)
+    try:
+      return json.loads(r)
+    except:
+      return r`;
+  }
+
+  private generateImports(): string {
+    const imports = ["import json"];
+
+    for (const name of Object.keys(this.exposedFunctions)) {
+      imports.push(`from ${this.moduleId} import ${name} as _${name}`);
+      imports.push(this.generateWrapperFunction(name));
+    }
+
+    return imports.join("\n");
   }
 
   async runCode(code: string): Promise<{ stdout: string; stderr: string }> {
-    // Clear stdout and stderr buffers before running new code
     this.clearBuffers();
-
-    // Import exposed functions if any
-    const importCode = Object.keys(this.exposedFunctions)
-      .map((name) => `from ${this.moduleId} import ${name}`)
-      .join("\n");
+    
+    const codeLength = code.length;
+    const codeSummary = code.length > 50 
+      ? `${code.substring(0, 47)}...` 
+      : code;
+    
+    logger.debug(`Running code (${codeLength} chars): ${codeSummary}`);
+    const importCode = this.generateImports();
 
     try {
-      // Run the actual code
-      await this.mp.runPythonAsync(`${importCode}\n${code.trim()}`);
-
-      return this.getOutput();
+      const fullCode = `${importCode}\n\n${code.trim()}`;
+      await this.mp.runPythonAsync(fullCode);
+      const output = this.getOutput();
+      logger.debug(`Code execution successful with ${output.stdout.length} bytes of stdout`);
+      return output;
     } catch (error) {
-      // Get stdout before throwing
+      // Get stdout and stderr before creating error object
       const { stdout, stderr } = this.getOutput();
-
-      // Create a proper error object
-      let errorObj: Error;
-      if (error instanceof Error) {
-        errorObj = error;
-      } else if (typeof error === "string") {
-        errorObj = new Error(error);
-      } else {
-        errorObj = new Error(String(error));
-      }
-
-      // Add stdout and stderr to the error
-      Object.defineProperty(errorObj, "stdout", {
-        value: stdout,
-        enumerable: true,
-        writable: false,
+      
+      logger.debug(`Code execution failed with ${stderr.length} bytes of stderr`);
+      
+      // Create a SandboxError with context
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const sandboxError = new SandboxError(
+        `Python code execution failed: ${errorMessage}`,
+        stdout,
+        stderr,
+        { cause: error instanceof Error ? error : undefined }
+      ).addContext({
+        codeLength,
+        codeSummary,
+        moduleId: this.moduleId,
+        hasStdout: stdout.length > 0,
+        hasStderr: stderr.length > 0
       });
-      Object.defineProperty(errorObj, "stderr", {
-        value: stderr,
-        enumerable: true,
-        writable: false,
-      });
-
-      throw errorObj;
+      
+      throw sandboxError;
     }
   }
 }
