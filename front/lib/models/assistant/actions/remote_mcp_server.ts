@@ -10,8 +10,6 @@ export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPS
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
-
   declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare space: NonAttribute<SpaceModel>;
 
@@ -38,10 +36,6 @@ RemoteMCPServer.init(
     },
     deletedAt: {
       type: DataTypes.DATE,
-    },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
     },
     name: {
       type: DataTypes.STRING,

@@ -25,6 +25,19 @@ export const OAUTH_PROVIDERS = [
   "salesforce",
 ] as const;
 
+export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
+  confluence: "Confluence",
+  github: "GitHub",
+  google_drive: "Google Drive",
+  intercom: "Intercom",
+  notion: "Notion",
+  slack: "Slack",
+  gong: "Gong",
+  microsoft: "Microsoft",
+  zendesk: "Zendesk",
+  salesforce: "Salesforce",
+};
+
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 
 export function isOAuthProvider(obj: unknown): obj is OAuthProvider {

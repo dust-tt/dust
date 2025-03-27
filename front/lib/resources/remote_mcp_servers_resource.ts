@@ -12,10 +12,10 @@ import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_se
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { ModelId, Result } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -46,7 +46,6 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     const server = await RemoteMCPServer.create({
       ...blob,
       vaultId: space.id,
-      sId: generateRandomModelSId(),
     });
 
     return new this(RemoteMCPServer, server.get(), space);
@@ -70,7 +69,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   ): Promise<RemoteMCPServerResource[]> {
     return this.baseFetch(auth, {
       where: {
-        sId: ids,
+        id: removeNulls(ids.map(getResourceIdFromSId)),
       },
     });
   }
@@ -119,6 +118,27 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
         vaultId: space.id,
       },
       includeDeleted,
+    });
+  }
+
+  // sId
+  get sId(): string {
+    return RemoteMCPServerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("remote_mcp_server", {
+      id,
+      workspaceId,
     });
   }
 

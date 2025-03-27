@@ -88,7 +88,10 @@ export async function fetchMCPServerActionConfigurations(
           `Remote MCP server with remoteMCPServerId ${sId} not found.`
         );
       }
-      remoteMCPServerId = remoteMCPServer.sId;
+      remoteMCPServerId = RemoteMCPServerResource.modelIdToSId({
+        id: remoteMCPServer.id,
+        workspaceId: remoteMCPServer.workspaceId,
+      });
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
       metadata = await getMCPServerMetadataLocally({

@@ -1,26 +1,17 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { assertNever } from "@app/types";
+import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import { createServer as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
 
-import { createServer as createHelloWorldServer } from "./helloworld";
+export type InternalMCPServerId =
+  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
 
 export const connectToInternalMCPServer = async (
-  internalMCPServerId: Exclude<
-    MCPServerConfigurationType["internalMCPServerId"],
-    null
-  >,
+  internalMCPServerId: InternalMCPServerId,
   transport: InMemoryTransport
 ): Promise<McpServer> => {
-  let server: McpServer | null = null;
-  switch (internalMCPServerId) {
-    case "helloworld":
-      server = createHelloWorldServer();
-      break;
-    default:
-      assertNever(internalMCPServerId);
-  }
+  const server: McpServer = internalMCPServers[internalMCPServerId]();
 
   if (!server) {
     throw new Error(
@@ -32,3 +23,8 @@ export const connectToInternalMCPServer = async (
 
   return server;
 };
+
+export const internalMCPServers: Record<InternalMCPServerId, () => McpServer> =
+  {
+    helloworld: helloWorldServer,
+  };
