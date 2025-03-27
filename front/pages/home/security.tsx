@@ -98,9 +98,7 @@ export default function Security() {
             <P size="lg" className="text-muted-foreground">
               Designed for enterprises
             </P>
-            <H1 from="from-golden-200" to="to-golden-200">
-              Enterprise-grade Security
-            </H1>
+            <H1>Enterprise-grade Security</H1>
             <P size="lg" className="text-muted-foreground">
               We've made security our core focus from day&nbsp;one to safeguard
               your&nbsp;company&nbsp;data and workspace&nbsp;privacy. <br></br>
@@ -126,9 +124,7 @@ export default function Security() {
         </Grid>
         <Grid className="md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-white" to="to-white">
-              Ingest data on your terms
-            </H2>
+            <H2>Ingest data on your terms</H2>
             <P size="lg" className="pb-6 text-muted-foreground">
               Control data selection and hosting location within rigorous
               security parameters.
@@ -158,9 +154,7 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-slate-200" to="to-slate-400">
-              Select trusted models, keep data protected
-            </H2>
+            <H2>Select trusted models, keep data protected</H2>
             <P size="lg" className="pb-6 text-muted-foreground">
               Control risk: only trusted providers, with no data fed into
               training.
@@ -190,9 +184,7 @@ export default function Security() {
 
         <Grid className="mt-12 md:gap-y-4">
           <div className="col-span-12 flex flex-col justify-center py-4 sm:max-w-[100%] md:max-w-[90%]">
-            <H2 from="from-slate-200" to="to-slate-400">
-              Maintain rigorous access control at all levels
-            </H2>
+            <H2>Maintain rigorous access control at all levels</H2>
             <P size="lg" className="pb-6 text-muted-foreground">
               Tailor Dust's features to each user according to specified access
               rights.
