@@ -8,7 +8,7 @@ import { H3, P } from "@app/components/home/ContentComponents";
 interface FunctionCardProps {
   title: string;
   features: string[];
-  color: "green" | "blue" | "purple" | "golden" | "rose";
+  color: "green" | "blue" | "golden" | "rose";
   visualSrc: string;
   href: string;
 }
@@ -30,10 +30,6 @@ const colorVariants = {
     card: "bg-brand-red-rose",
     visual: "bg-brand-pink-rose",
   },
-  purple: {
-    card: "bg-brand-red-rose",
-    visual: "bg-brand-pink-rose",
-  },
 };
 
 const cardVariants = cva("", {
@@ -43,7 +39,6 @@ const cardVariants = cva("", {
       blue: "bg-brand-electric-blue",
       golden: "bg-brand-orange-golden",
       rose: "bg-brand-red-rose",
-      purple: "bg-brand-red-rose",
     },
   },
 });
