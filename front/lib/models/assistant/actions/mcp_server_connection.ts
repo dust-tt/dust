@@ -1,4 +1,4 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
@@ -24,6 +24,8 @@ export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection
     | null;
 
   declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
+
+  declare user: NonAttribute<UserModel>;
 }
 
 MCPServerConnection.init(
@@ -98,5 +100,6 @@ UserModel.hasMany(MCPServerConnection, {
   onDelete: "RESTRICT",
 });
 MCPServerConnection.belongsTo(UserModel, {
+  as: "user",
   foreignKey: { name: "userId", allowNull: false },
 });

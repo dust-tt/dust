@@ -19,7 +19,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { ModelId, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -29,11 +29,16 @@ export interface MCPServerConnectionResource
 export class MCPServerConnectionResource extends BaseResource<MCPServerConnection> {
   static model: ModelStatic<MCPServerConnection> = MCPServerConnection;
 
+  readonly user: Attributes<UserModel>;
+
   constructor(
     model: ModelStatic<MCPServerConnection>,
-    blob: Attributes<MCPServerConnection>
+    blob: Attributes<MCPServerConnection>,
+    { user }: { user: Attributes<UserModel> }
   ) {
     super(MCPServerConnection, blob);
+
+    this.user = user;
   }
 
   static async makeNew(
@@ -44,12 +49,15 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       auth.isAdmin(),
       "Only the admin can create an MCP server connection"
     );
-
+    const user = auth.getNonNullableUser();
     const server = await MCPServerConnection.create({
       ...blob,
-      userId: auth.getNonNullableUser().id,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: user.id,
     });
-    return new this(MCPServerConnection, server.get());
+    return new this(MCPServerConnection, server.get(), {
+      user,
+    });
   }
 
   // Fetching.
@@ -66,11 +74,16 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       include: [
         {
           model: UserModel,
-          as: "userId",
+          as: "user",
         },
       ],
     });
-    return connections.map((b) => new this(this.model, b.get()));
+    return connections.map(
+      (b) =>
+        new this(this.model, b.get(), {
+          user: b.user?.get(),
+        })
+    );
   }
 
   static async fetchById(
@@ -206,6 +219,12 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
       connectionType: this.connectionType,
       serverType: this.serverType,
       internalMCPServerId: this.internalMCPServerId,
+      user: {
+        fullName: formatUserFullName(this.user),
+        imageUrl: this.user.imageUrl,
+        email: this.user.email,
+        userId: this.user.sId,
+      },
       remoteMCPServerId:
         this.remoteMCPServerId &&
         RemoteMCPServerResource.modelIdToSId({
@@ -220,6 +239,12 @@ export interface MCPServerConnectionType {
   sId: string;
   createdAt: Date;
   updatedAt: Date;
+  user: {
+    fullName: string | null;
+    imageUrl: string | null;
+    email: string | null;
+    userId: string | null;
+  };
   connectionId: string;
   connectionType: string;
   serverType: string;
