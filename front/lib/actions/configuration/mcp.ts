@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -9,6 +10,7 @@ import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_se
 import { Workspace } from "@app/lib/models/workspace";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+import { assertNever } from "@app/types";
 
 export async function fetchMCPServerActionConfigurations({
   configurationIds,
@@ -64,8 +66,15 @@ export async function fetchMCPServerActionConfigurations({
         (ds) => ds.mcpServerConfigurationId === config.id
       ) ?? [];
 
+    let metadata: MCPServerMetadata | null = null;
     let remoteMCPServerId: string | null = null;
-    if (serverType === "remote" && config.remoteMCPServerId) {
+    if (serverType === "remote") {
+      if (!config.remoteMCPServerId) {
+        throw new Error(
+          `Remote MCP server ID is required for remote server type.`
+        );
+      }
+
       const remoteMCPServer = await RemoteMCPServer.findByPk(
         config.remoteMCPServerId
       );
@@ -75,14 +84,30 @@ export async function fetchMCPServerActionConfigurations({
         );
       }
       remoteMCPServerId = remoteMCPServer.sId;
+
+      // Note: this won't attempt to connect to remote servers and will use the cached metadata.
+      metadata = await getMCPServerMetadata({
+        serverType: "remote",
+        remoteMCPServerId: remoteMCPServer.sId,
+      });
+    } else if (serverType === "internal") {
+      if (!config.internalMCPServerId) {
+        throw new Error(
+          `Internal MCP server ID is required for internal server type.`
+        );
+      }
+
+      metadata = await getMCPServerMetadata({
+        serverType: "internal",
+        internalMCPServerId: config.internalMCPServerId,
+      });
+    } else {
+      assertNever(serverType);
     }
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
     }
-
-    // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-    const metadata = await getMCPServerMetadata(config);
 
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {

@@ -49,3 +49,4 @@ export const DEFAULT_REASONING_ACTION_DESCRIPTION =
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
+export const DEFAULT_MCP_ACTION_ICON = "command";

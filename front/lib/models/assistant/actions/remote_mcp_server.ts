@@ -1,6 +1,7 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -17,7 +18,7 @@ export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPS
   declare url: string;
   declare name: string;
   declare description: string | null;
-  declare cachedTools: { name: string; description: string }[];
+  declare cachedTools: MCPToolMetadata[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;
