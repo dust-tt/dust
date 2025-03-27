@@ -18,7 +18,6 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CarousselContentBlock,
   MetricSection,
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
@@ -106,18 +105,3 @@ export default function Legal() {
 Legal.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function LegalCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/legal"
-      bulletPoints={pageSettings.bulletPoints}
-      image={pageSettings.image}
-      quote={Quote}
-    />
-  );
-}

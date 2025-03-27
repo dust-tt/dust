@@ -18,7 +18,6 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CarousselContentBlock,
   MetricSection,
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
@@ -106,18 +105,3 @@ export default function Sales() {
 Sales.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function SalesCaroussel() {
-  return (
-    <CarousselContentBlock
-      image={pageSettings.image}
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      bulletPoints={pageSettings.bulletPoints}
-      quote={Quote}
-      border="border-pink-100/60"
-      href="/home/solutions/sales"
-    />
-  );
-}

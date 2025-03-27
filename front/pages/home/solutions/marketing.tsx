@@ -9,9 +9,7 @@ import {
   Hero,
   Metrics,
   pageSettings,
-  pageSettings as pageSettingsNew,
   Quote,
-  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/marketingConfig";
@@ -20,7 +18,6 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CarousselContentBlock,
   MetricSection,
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
@@ -108,18 +105,3 @@ export default function Marketing() {
 Marketing.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function MarketingCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/marketing"
-      bulletPoints={pageSettingsNew.bulletPoints}
-      image={pageSettings.image}
-      roi={ROI}
-    />
-  );
-}

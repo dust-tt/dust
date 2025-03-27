@@ -8,32 +8,42 @@ import { H3, P } from "@app/components/home/ContentComponents";
 interface FunctionCardProps {
   title: string;
   features: string[];
-  color: "green" | "blue" | "purple";
+  color: "green" | "blue" | "purple" | "golden" | "rose";
   visualSrc: string;
   href: string;
 }
 
 const colorVariants = {
   green: {
-    card: "bg-green-600",
-    visual: "bg-green-100",
+    card: "bg-brand-hunter-green",
+    visual: "bg-brand-tea-green",
   },
   blue: {
-    card: "bg-blue-600",
-    visual: "bg-blue-100",
+    card: "bg-brand-electric-blue",
+    visual: "bg-brand-sky-blue",
+  },
+  golden: {
+    card: "bg-brand-orange-golden",
+    visual: "bg-brand-sunshine-golden",
+  },
+  rose: {
+    card: "bg-brand-red-rose",
+    visual: "bg-brand-pink-rose",
   },
   purple: {
-    card: "bg-purple-600",
-    visual: "bg-purple-100",
+    card: "bg-brand-red-rose",
+    visual: "bg-brand-pink-rose",
   },
 };
 
 const cardVariants = cva("", {
   variants: {
     color: {
-      green: "bg-green-600",
-      blue: "bg-blue-600",
-      purple: "bg-purple-600",
+      green: "bg-brand-hunter-green",
+      blue: "bg-brand-electric-blue",
+      golden: "bg-brand-orange-golden",
+      rose: "bg-brand-red-rose",
+      purple: "bg-brand-red-rose",
     },
   },
 });

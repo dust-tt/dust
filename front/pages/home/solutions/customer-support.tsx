@@ -10,7 +10,6 @@ import {
   Metrics,
   pageSettings,
   Quote,
-  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/supportConfig";
@@ -19,7 +18,6 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CarousselContentBlock,
   MetricSection,
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
@@ -110,18 +108,3 @@ CustomerSupport.getLayout = (
 ) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function CustomerCaroussel() {
-  return (
-    <CarousselContentBlock
-      image={pageSettings.image}
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      roi={ROI}
-      bulletPoints={pageSettings.bulletPoints}
-      border="border-pink-100/60"
-      href="/home/solutions/customer-support"
-    />
-  );
-}

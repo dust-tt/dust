@@ -14,10 +14,7 @@ import {
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CarousselContentBlock,
-  QuoteSection,
-} from "@app/components/home/ContentBlocks";
+import { QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -102,18 +99,3 @@ export default function Data() {
 Data.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function DataCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/data-analytics"
-      bulletPoints={pageSettings.bulletPoints}
-      image={pageSettings.image}
-      quote={Quote}
-    />
-  );
-}
