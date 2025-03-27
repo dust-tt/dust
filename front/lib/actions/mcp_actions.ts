@@ -1,4 +1,3 @@
-import { CommandLineIcon, RocketIcon, SparklesIcon } from "@dust-tt/sparkle";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
