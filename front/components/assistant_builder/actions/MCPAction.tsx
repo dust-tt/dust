@@ -16,12 +16,13 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
-import { useInternalMcpServerTools } from "@app/lib/swr/mcp";
+import { useInternalMcpServerMetadata } from "@app/lib/swr/mcp";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
+import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
 interface ActionMCPProps {
   owner: LightWorkspaceType;
@@ -44,7 +45,7 @@ export function ActionMCP({
 }: ActionMCPProps) {
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
-  const { tools } = useInternalMcpServerTools({
+  const { metadata } = useInternalMcpServerMetadata({
     owner,
     serverId: actionConfiguration.internalMCPServerId,
   });
@@ -52,15 +53,16 @@ export function ActionMCP({
   useEffect(() => {
     updateAction((previousAction) => ({
       ...previousAction,
-      dataSourceConfigurations: tools?.some(
-        (r) =>
-          r.inputSchema.dataSource?.mimeType ===
-          INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE
-      )
-        ? previousAction.dataSourceConfigurations || {}
-        : null,
+      dataSourceConfigurations:
+        metadata &&
+        serverRequiresInternalConfiguration({
+          serverMetadata: metadata,
+          mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
+        })
+          ? previousAction.dataSourceConfigurations || {}
+          : null,
     }));
-  }, [tools, setEdited, updateAction]);
+  }, [metadata, setEdited, updateAction]);
 
   const handleServerSelection = useCallback(
     (serverId: InternalMCPServerIdType) => {

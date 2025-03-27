@@ -196,6 +196,9 @@ export type SalesforceMimeType =
 export type GongMimeType =
   (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
 
+export type InternalConfigurationMimeType =
+  (typeof INTERNAL_MIME_TYPES.CONFIGURATION)[keyof typeof INTERNAL_MIME_TYPES.CONFIGURATION];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
