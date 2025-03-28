@@ -192,7 +192,8 @@ const KNOWN_OPENAI_PATTERNS_WITHOUT_STRUCTURED_OUTPUTS_SUPPORT = [
   /^gpt-3\.5-turbo/,
   /^gpt-4(?!o|-\d\.\d)/,
   /^gpt-4o-2024-05-13/,
-  /^gpt-4o$/,
+  /^gpt-4o-mini$/,
+  /^o1-/,
   /^transcribe-/,
   /^tts-/,
 ];

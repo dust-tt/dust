@@ -540,6 +540,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       temperature: agent.temperature,
     };
 
+    if (agent.responseFormat) {
+      model.responseFormat = agent.responseFormat;
+    }
+
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
     }
@@ -847,6 +851,7 @@ export async function createAgentConfiguration(
             authorId: user.id,
             templateId: template?.id,
             requestedGroupIds,
+            responseFormat: model.responseFormat,
           },
           {
             transaction: t,
@@ -873,6 +878,7 @@ export async function createAgentConfiguration(
         providerId: agent.providerId,
         modelId: agent.modelId,
         temperature: agent.temperature,
+        responseFormat: agent.responseFormat,
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
