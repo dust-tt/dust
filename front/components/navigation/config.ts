@@ -48,7 +48,7 @@ export type SubNavigationAdminId =
   | "providers"
   | "api_keys"
   | "dev_secrets"
-  | "capabilities";
+  | "actions";
 
 export type SubNavigationAppId =
   | "specification"
@@ -142,7 +142,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
-          "/w/[wId]/developers/capabilities",
+          "/w/[wId]/actions",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -204,6 +204,16 @@ export const subNavigationAdmin = ({
           subMenuLabel: current === "subscription" ? subMenuLabel : undefined,
           subMenu: current === "subscription" ? subMenu : undefined,
         },
+        {
+          id: "actions",
+          label: "Actions",
+          icon: CommandLineIcon,
+          href: `/w/${owner.sId}/actions`,
+          current: current === "actions",
+          subMenuLabel: current === "actions" ? subMenuLabel : undefined,
+          subMenu: current === "actions" ? subMenu : undefined,
+          featureFlag: "mcp_actions",
+        },
       ],
     });
 
@@ -212,16 +222,6 @@ export const subNavigationAdmin = ({
       label: "Developers",
       variant: "primary",
       menus: [
-        {
-          id: "capabilities",
-          label: "Capabilities",
-          icon: CommandLineIcon,
-          href: `/w/${owner.sId}/developers/capabilities`,
-          current: current === "capabilities",
-          subMenuLabel: current === "capabilities" ? subMenuLabel : undefined,
-          subMenu: current === "capabilities" ? subMenu : undefined,
-          featureFlag: "mcp_actions",
-        },
         {
           id: "providers",
           label: "Providers",

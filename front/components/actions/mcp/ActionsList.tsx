@@ -6,6 +6,7 @@ import {
   CommandLineIcon,
   DataTable,
   RocketIcon,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React from "react";
@@ -15,7 +16,11 @@ import type {
   AllowedIconType,
   MCPServerMetadata,
 } from "@app/lib/actions/mcp_actions";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
+import {
+  useMCPServerConnections,
+  useMcpServers,
+} from "@app/lib/swr/mcp_servers";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types";
 
 const MCP_SERVER_ICONS: Record<AllowedIconType, React.ElementType> = {
@@ -23,32 +28,33 @@ const MCP_SERVER_ICONS: Record<AllowedIconType, React.ElementType> = {
   rocket: RocketIcon,
 } as const;
 
-type Capability = MCPServerMetadata;
-
 type RowData = {
-  capability: Capability;
+  mcpServer: MCPServerMetadata;
   onClick: () => void;
 };
 
-export const CapabilitiesList = ({
-  capabilities,
-  owner,
-}: {
-  capabilities: Capability[];
-  owner: LightWorkspaceType;
-}) => {
+export const ActionsList = ({ owner }: { owner: LightWorkspaceType }) => {
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: false,
+  });
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
+  });
+  const { mcpServers, isMCPServersLoading } = useMcpServers({
+    owner,
+    space: (spaces ?? []).find((space) => space.kind === "system"),
+    filter: "all",
   });
 
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
     useMCPConnectionManagement({ owner });
 
-  const getTableColumns = (): ColumnDef<RowData, Capability>[] => {
+  const getTableColumns = (): ColumnDef<RowData, MCPServerMetadata>[] => {
     return [
       {
         id: "name",
-        cell: (info: CellContext<RowData, Capability>) => (
+        cell: (info: CellContext<RowData, MCPServerMetadata>) => (
           <DataTable.CellContent>
             <div
               className={classNames("flex flex-row items-center gap-2 py-3")}
@@ -71,11 +77,11 @@ export const CapabilitiesList = ({
             </div>
           </DataTable.CellContent>
         ),
-        accessorKey: "capability",
+        accessorKey: "mcpServer",
       },
       {
         id: "action",
-        cell: (info: CellContext<RowData, Capability>) => {
+        cell: (info: CellContext<RowData, MCPServerMetadata>) => {
           const { id, authorization } = info.getValue();
           const connection = connections.find(
             (c) => c.internalMCPServerId === id
@@ -118,18 +124,24 @@ export const CapabilitiesList = ({
             </DataTable.CellContent>
           );
         },
-        accessorKey: "capability",
+        accessorKey: "mcpServer",
         meta: {
           className: "w-36",
         },
       },
     ];
   };
-  const rows: RowData[] = capabilities.map((capability) => ({
-    capability,
+  const rows: RowData[] = mcpServers.map((mcpServer) => ({
+    mcpServer,
     onClick: () => {},
   }));
   const columns = getTableColumns();
 
-  return <DataTable data={rows} columns={columns} className="pb-4" />;
+  return isConnectionsLoading || isMCPServersLoading ? (
+    <div className="mt-16 flex justify-center">
+      <Spinner />
+    </div>
+  ) : (
+    <DataTable data={rows} columns={columns} className="pb-4" />
+  );
 };
