@@ -10,7 +10,6 @@ import {
   Metrics,
   pageSettings,
   Quote,
-  ROI,
   Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/engineeringConfig";
@@ -19,7 +18,6 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
 import {
-  CarousselContentBlock,
   MetricSection,
   QuoteSection,
 } from "@app/components/home/ContentBlocks";
@@ -54,41 +52,23 @@ export default function Engineering() {
   return (
     <>
       <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
-        <HeroSection
-          {...Hero}
-          fromColor={pageSettings.from}
-          toColor={pageSettings.to}
-        />
+        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
-            <BenefitsSection
-              benefits={Benefits}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <BenefitsSection benefits={Benefits} />
             <MetricSection {...Metrics} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <UseCasesSection
-              useCase={UseCases}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <UseCasesSection useCase={UseCases} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
-            <DemoVideoSection
-              demoVideo={DemoVideo}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
-            />
+            <DemoVideoSection demoVideo={DemoVideo} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
-              fromColor={pageSettings.from}
-              toColor={pageSettings.to}
             />
           </div>
           <TrustedBy />
@@ -125,18 +105,3 @@ export default function Engineering() {
 Engineering.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
   return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
 };
-
-export function EngineeringCaroussel() {
-  return (
-    <CarousselContentBlock
-      title={pageSettings.uptitle}
-      from={pageSettings.from}
-      to={pageSettings.to}
-      border="border-pink-100/60"
-      href="/home/solutions/engineering"
-      bulletPoints={pageSettings.bulletPoints}
-      image={pageSettings.image}
-      roi={ROI}
-    />
-  );
-}

@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Knowledge",
   title: <>Make Company Knowledge Instantly Accessible.</>,
-  from: "from-green-200",
-  to: "to-green-200",
+  accentColor: "text-brand-hunter-green",
   description: (
     <>
       Transform organizational knowledge into structured insights and empower
@@ -115,8 +114,6 @@ export const Metrics: MetricProps = {
       description: <>of Kyriba employees save more than 3 hours weekly</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
@@ -156,7 +153,7 @@ export const Quote: QuoteProps = {
     "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
   name: "Boris Lipiainen ",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

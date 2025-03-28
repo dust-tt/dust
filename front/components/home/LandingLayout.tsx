@@ -17,7 +17,7 @@ import { A } from "@app/components/home/ContentComponents";
 import { FooterNavigation } from "@app/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
-import Particles, { shapeNamesArray } from "@app/components/home/Particles";
+// import Particles, { shapeNamesArray } from "@app/components/home/Particles";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import { classNames } from "@app/lib/utils";
 
@@ -34,16 +34,11 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    shape,
-    gtmTrackingId,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
   const [acceptedCookie, setAcceptedCookie, removeAcceptedCookie] = useCookies([
     "dust-cookies-accepted",
   ]);
-  const [currentShape, setCurrentShape] = useState(shape);
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(false);
 
@@ -52,31 +47,6 @@ export default function LandingLayout({
     setHasAcceptedCookies(hasAccepted);
     setShowCookieBanner(!hasAccepted);
   }, [acceptedCookie]);
-
-  useEffect(() => {
-    setCurrentShape(shape);
-  }, [shape]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft") {
-        setCurrentShape(
-          (prevShape) =>
-            (prevShape - 1 + shapeNamesArray.length) % shapeNamesArray.length
-        );
-      } else if (event.key === "ArrowRight") {
-        setCurrentShape(
-          (prevShape) => (prevShape + 1) % shapeNamesArray.length
-        );
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
 
   return (
     <>
@@ -122,11 +92,11 @@ export default function LandingLayout({
           </div>
         </div>
       </ScrollingHeader>
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50 bg-primary-950" />
-      <div className="fixed inset-0 -z-30 bg-primary-950/50" />
-      <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
+      <div className="fixed bottom-0 left-0 right-0 top-0 -z-50" />
+      <div className="fixed inset-0 -z-30" />
+      {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
-      </div>
+      </div> */}
       <main className="z-10 flex flex-col items-center">
         <div
           className={classNames(

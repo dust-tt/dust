@@ -14,10 +14,8 @@ export function PlatformIntroSection() {
       <P size="lg" className="text-muted-foreground">
         Dust Platform
       </P>
-      <H1 from="from-golden-200" to="to-golden-200">
-        For Developers
-      </H1>
-      <P size="lg" className="text-slate-50">
+      <H1>For Developers</H1>
+      <P size="lg" className="text-muted-foreground">
         Push the boundaries by building custom actions and integrations
         to&nbsp;fit your team's exact&nbsp;needs.
       </P>

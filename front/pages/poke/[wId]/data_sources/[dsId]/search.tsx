@@ -227,7 +227,7 @@ export default function DataSourceView({
               {(() => {
                 if (error) {
                   return (
-                    <p className="text-sm font-bold text-red-400">
+                    <p className="text-sm font-bold text-warning">
                       Something went wrong...
                     </p>
                   );

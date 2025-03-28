@@ -24,8 +24,6 @@ export default function Contact() {
     <div className="flex w-full flex-col justify-center gap-12">
       <HeaderContentBlock
         title="Contact Dust"
-        from="from-emerald-200"
-        to="to-emerald-500"
         hasCTA={false}
         subtitle={
           <>

@@ -9,10 +9,8 @@ export function ValuePropSection() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <H2 className="text-brand-sunshine-golden">
-          Amplify your team’s performance
-        </H2>
-        {/* <P size="lg">
+        <H2>Amplify your team’s performance</H2>
+        {/* <P size="lg" className="text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}
       </div>

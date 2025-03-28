@@ -17,8 +17,8 @@ export function BlogSection() {
         <Carousel className="w-full">
           <div className="mb-6 flex items-end justify-between">
             <div>
-              <H2 className="text-green-200">Customer Stories</H2>
-              <P size="lg">
+              <H2>Customer Stories</H2>
+              <P size="lg" className="text-muted-foreground">
                 Leading enterprises are already transforming their operations
                 with Dust.
               </P>

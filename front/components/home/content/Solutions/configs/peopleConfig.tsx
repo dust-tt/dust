@@ -24,8 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Recruiting & People",
   title: <>Streamline Operations, Focus on People</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>Expedite HR operations and focus on what matters most - people.</>
   ),
@@ -111,8 +110,6 @@ export const Metrics: MetricProps = {
       description: <>time savings on employee questions</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
@@ -152,7 +149,7 @@ export const Quote: QuoteProps = {
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
   name: "Matthieu Birach ",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/doctolib.png",
+  logo: "/static/landing/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

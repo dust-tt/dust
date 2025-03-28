@@ -25,8 +25,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Engineering",
   title: <>Ship Better Code, Reduce Interruptions</>,
-  from: "from-blue-200",
-  to: "to-blue-200",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Streamline incident response, automate documentation, and keep your team
@@ -116,8 +115,6 @@ export const Metrics: MetricProps = {
       description: <> saved per incident</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
@@ -155,7 +152,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "20%",
   subtitle: "faster project completion",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const Quote: QuoteProps = {
@@ -163,7 +160,7 @@ export const Quote: QuoteProps = {
     "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/color/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

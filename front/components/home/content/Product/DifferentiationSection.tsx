@@ -11,10 +11,12 @@ export function DifferentiationSection() {
       <Grid>
         <div className="col-span-12 mb-6">
           <div>
-            <H2 className="text-blue-200">
-              Your own AI agents, powered by the best models
+            <H2>
+              Your own AI agents,
+              <br />
+              powered by the best models
             </H2>
-            <P size="lg">
+            <P size="lg" className="text-muted-foreground">
               Dust connects your entire enterprise knowledge in one secure,
               SOC2-certified platform.
             </P>

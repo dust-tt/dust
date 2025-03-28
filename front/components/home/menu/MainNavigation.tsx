@@ -38,7 +38,9 @@ export function MainNavigation() {
                   <NavigationMenuTrigger>{item.title}</NavigationMenuTrigger>
                   <NavigationMenuContent>
                     <div className="flex flex-col gap-4 p-6 pb-8">
-                      <H4 className="text-white">{item.label}</H4>
+                      <H4 className="text-muted-foreground" mono>
+                        {item.label}
+                      </H4>
                       <ul
                         className={classNames(
                           "grid-rows-" + item.rows,
@@ -85,7 +87,7 @@ const ListItem = React.forwardRef<
         <Link
           ref={ref}
           className={classNames(
-            "hover:bg-accent focus:bg-accent block cursor-pointer select-none space-y-1 rounded-md font-semibold leading-none text-slate-400 no-underline outline-none transition-colors hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-slate-300",
+            "label-base block cursor-pointer select-none space-y-1 text-foreground no-underline outline-none transition-colors hover:text-highlight hover:underline hover:underline-offset-4 active:text-highlight-600",
             className
           )}
           href={href}
@@ -95,13 +97,11 @@ const ListItem = React.forwardRef<
         >
           <div className="flex h-6 items-center gap-0.5">
             <Icon
-              className="text-muted-foreground"
+              className="text-primary-300"
               visual={ChevronRightIcon}
               size="md"
             />
-            <div className="text-md whitespace-nowrap font-medium leading-none">
-              {title}
-            </div>
+            <div className="whitespace-nowrap">{title}</div>
           </div>
         </Link>
       </NavigationMenuLink>

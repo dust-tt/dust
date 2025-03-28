@@ -28,8 +28,7 @@ export const pageSettings: pageSettingsProps = {
       Smart automations, <br></br>more deals
     </>
   ),
-  from: "from-green-200",
-  to: "to-green-200",
+  accentColor: "text-brand-red-rose",
   description: (
     <>
       Optimize every touchpoint, automate administrative overhead, and close
@@ -120,8 +119,6 @@ export const Metrics: MetricProps = {
       description: <> saved weekly per rep for selling</>,
     },
   ],
-  from: "from-golden-200",
-  to: "to-golden-200",
 };
 
 export const UseCases: UseCaseProps = {
@@ -161,7 +158,7 @@ export const Quote: QuoteProps = {
     "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
   name: "Everett Berry ",
   title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+  logo: "/static/landing/logos/color/clay.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

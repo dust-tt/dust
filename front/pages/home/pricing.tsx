@@ -26,8 +26,6 @@ export default function Pricing() {
     <>
       <HeaderContentBlock
         title="Meet our pricing plans."
-        from="from-green-200"
-        to="to-green-200"
         hasCTA={false}
         subtitle={
           <>
