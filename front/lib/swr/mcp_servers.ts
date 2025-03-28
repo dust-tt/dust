@@ -7,7 +7,10 @@ import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
-import type { GetMCPServersResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp";
+import type {
+  AllowedFilter,
+  GetMCPServersResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 import type { MCPApiResponse, MCPResponse } from "@app/types/mcp";
 
@@ -363,7 +366,7 @@ export function useMcpServers({
 }: {
   owner: LightWorkspaceType;
   space?: SpaceType;
-  filter: "internal" | "remote" | "all";
+  filter: AllowedFilter;
 }) {
   const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 

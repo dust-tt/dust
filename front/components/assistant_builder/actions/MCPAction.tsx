@@ -127,7 +127,9 @@ export function ActionMCP({
           <Button
             isSelect
             label={
-              selectedMCPServer ? selectedMCPServer.name : "Select a MCP server"
+              selectedMCPServer
+                ? selectedMCPServer.name
+                : "Select an MCP server"
             }
             className="w-48"
           />

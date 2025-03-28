@@ -33,9 +33,7 @@ export const getInternalMCPServerSId = (
     workspaceId: auth.getNonNullableWorkspace().id,
   });
 
-export const getInternalMCPServerId = (
-  sId: string
-): InternalMCPServerNameType => {
+const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
   const sIdParts = getResourceNameAndIdFromSId(sId);
 
   if (!sIdParts) {
@@ -64,7 +62,7 @@ export const connectToInternalMCPServer = async (
 ): Promise<McpServer> => {
   let server: McpServer | undefined;
 
-  const internalMCPServerName = getInternalMCPServerId(mcpServerId);
+  const internalMCPServerName = getInternalMCPServerName(mcpServerId);
 
   switch (internalMCPServerName) {
     case "helloworld":

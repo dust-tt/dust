@@ -11,13 +11,19 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
+const allowedFiltersSchema = t.union([
+  t.literal("internal"),
+  t.literal("remote"),
+  t.literal("all"),
+]);
+
+export type AllowedFilter = t.TypeOf<typeof allowedFiltersSchema>;
+
 const QueryParamsSchema = t.type({
-  filter: t.union([
-    t.literal("internal"),
-    t.literal("remote"),
-    t.literal("all"),
-  ]),
+  filter: allowedFiltersSchema,
 });
+
+export type GetMCPServersQueryParams = t.TypeOf<typeof QueryParamsSchema>;
 
 export type GetMCPServersResponseBody = {
   success: boolean;

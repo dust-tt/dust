@@ -174,12 +174,6 @@ const connectToMCPServer = async ({
 
     switch (serverType) {
       case "internal":
-        if (!id) {
-          throw new Error(
-            "Internal MCP server ID is required for internal server type."
-          );
-        }
-
         // Create a pair of linked in-memory transports
         // And connect the client to the server.
         const [client, server] = InMemoryTransport.createLinkedPair();
@@ -188,12 +182,6 @@ const connectToMCPServer = async ({
         break;
 
       case "remote":
-        if (!id) {
-          throw new Error(
-            `Remote MCP server ID or URL is required for remote server type.`
-          );
-        }
-
         const remoteMCPServer = await RemoteMCPServer.findOne({
           where: {
             id,
@@ -270,7 +258,7 @@ function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
 
 export async function fetchRemoteServerMetaDataByURL(
   url: string
-): Promise<MCPServerMetadata> {
+): Promise<Omit<MCPServerMetadata, "id">> {
   const mcpClient = await connectToMCPServer({
     remoteMCPServerUrl: url,
   });
@@ -283,7 +271,6 @@ export async function fetchRemoteServerMetaDataByURL(
     const serverTools = extractMetadataFromTools(toolsResult);
 
     return {
-      id: generateRandomModelSId(),
       ...metadata,
       tools: serverTools,
     };
