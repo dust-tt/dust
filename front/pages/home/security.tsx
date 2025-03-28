@@ -134,17 +134,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualData />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>Granular Data Selection</Strong>
               <br />
               Fully control which data Dust ingests from each source.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>End-to-End Encryption</Strong>
               <br />
               Data is encrypted with AES-256 at rest, TLS in transit.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Regional Hosting</Strong>
               <br />
               Host in the EU or US to meet your regulatory needs.
@@ -164,17 +164,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualModels />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>No Model Training</Strong>
               <br />
               Your data is never used to train models.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>Zero Data Retention</Strong>
               <br />
               No data is stored by third-party model providers.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Flexible Providers</Strong>
               <br />
               Pick the providers and embedding models you want.
@@ -194,17 +194,17 @@ export default function Security() {
             <div className="hidden sm:block">
               <MainVisualUsers />
             </div>
-            <P size="md" dotCSS="text-amber-300" shape="triangle">
+            <P size="md" dotCSS="text-brand-orange-golden" shape="triangle">
               <Strong>Single Sign-On (SSO)</Strong>
               <br />
               Use SSO to manage user access across the workspace.
             </P>
-            <P size="md" dotCSS="text-red-400" shape="rectangle">
+            <P size="md" dotCSS="text-brand-red-rose" shape="rectangle">
               <Strong>Role-Based Access</Strong>
               <br />
               Assign user, builder, or admin roles to control permissions.
             </P>
-            <P size="md" dotCSS="text-sky-400" shape="circle">
+            <P size="md" dotCSS="text-brand-hunter-green" shape="circle">
               <Strong>Private Spaces</Strong>
               <br />
               Use private spaces for sensitive data, restricting access by role.

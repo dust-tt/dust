@@ -239,21 +239,27 @@ const Person = ({ handle }: { handle: string }) => {
         className="mt-1 h-8 w-8 rounded-xl"
       />
       <div className="flex flex-col gap-0">
-        <div className="font-bold text-white">{person.name}</div>
-        <div className="text-sm text-muted-foreground">{person.title}</div>
+        <div className="copy-base text-foreground">
+          <strong>{person.name}</strong>
+        </div>
+        <div className="copy-sm text-muted-foreground">{person.title}</div>
         <div className="flex flex-row items-start gap-1 pt-1">
           {person.linkedIn && (
             <a href={person.linkedIn} target="_blank">
               <Icon
                 size="xs"
                 visual={LinkedinIcon}
-                className="text-slate-400"
+                className="text-muted-foreground"
               />
             </a>
           )}
           {person.github && (
             <a href={person.github} target="_blank">
-              <Icon size="xs" visual={GithubIcon} className="text-slate-400" />
+              <Icon
+                size="xs"
+                visual={GithubIcon}
+                className="text-muted-foreground"
+              />
             </a>
           )}
         </div>
@@ -280,8 +286,10 @@ const INVESTORS: { name: string; title: string }[] = [
 const Investor = ({ name, title }: { name: string; title: string }) => {
   return (
     <div className="flex flex-col gap-0">
-      <div className="font-bold text-white">{name}</div>
-      <div className="text-sm text-muted-foreground">{title}</div>
+      <div className="copy-base text-foreground">
+        <strong>{name}</strong>
+      </div>
+      <div className="copy-sm text-muted-foreground">{title}</div>
     </div>
   );
 };
@@ -315,7 +323,7 @@ export default function About() {
             About us
           </P>
           <div className="flex flex-row justify-center">
-            <H1 className="max-w-2xl text-center text-red-400">
+            <H1 className="max-w-2xl text-center" mono>
               Our mission is to transform how work gets done
             </H1>
           </div>
@@ -344,9 +352,7 @@ export default function About() {
             )}
           >
             <div className="flex max-w-lg flex-row">
-              <H2 className="text-white">
-                We're crafting the AI operating system for enterprises
-              </H2>
+              <H2>We're crafting the AI operating system for enterprises</H2>
             </div>
             <div className="flex max-w-xl flex-col gap-2">
               <P>
@@ -369,7 +375,7 @@ export default function About() {
         </Grid>
 
         <Grid>
-          <Separator className="col-span-10 col-start-2 bg-slate-700" />
+          <Separator className="col-span-10 col-start-2" />
         </Grid>
 
         <Grid>
@@ -379,7 +385,7 @@ export default function About() {
               "col-span-10 col-start-2"
             )}
           >
-            <H2 className="text-white">Our operating principles</H2>
+            <H2>Our operating principles</H2>
             <div className="flex flex-col gap-2">
               <P>
                 Our{" "}
@@ -457,7 +463,7 @@ export default function About() {
         </Grid>
 
         <Grid>
-          <Separator className="col-span-10 col-start-2 bg-slate-700" />
+          <Separator className="col-span-10 col-start-2" />
         </Grid>
 
         <div className="flex flex-col gap-8">
@@ -468,9 +474,7 @@ export default function About() {
                 "col-span-10 col-start-2"
               )}
             >
-              <H2 className="text-white">
-                Built for enterprise, backed by experts
-              </H2>
+              <H2>Built for enterprise, backed by experts</H2>
               <div className="flex flex-col gap-2">
                 <P>
                   We're backed by investors who've built and scaled enterprise

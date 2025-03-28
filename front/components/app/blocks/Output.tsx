@@ -225,7 +225,7 @@ function Error({ error }: { error: string }) {
         </div>
       </div>
       {expanded ? (
-        <div className="ml-4 flex text-sm text-red-400">
+        <div className="ml-4 flex text-sm text-warning">
           <div className="flex-auto">{error.split(" (sandboxed.js")[0]}</div>
         </div>
       ) : null}
@@ -247,13 +247,13 @@ export function Execution({
           <div key={i} className="flex-auto flex-col">
             {t.error != null ? (
               <div className="flex flex-auto flex-row">
-                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-red-400" />
+                <ExclamationCircleIcon className="mt-0.5 flex h-4 w-4 text-warning" />
                 <Error error={t.error} />
               </div>
             ) : (
               <div className="flex flex-row">
                 <div className="flex flex-initial">
-                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-emerald-300" />
+                  <CheckCircleIcon className="mt-0.5 h-4 w-4 text-success" />
                 </div>
                 <div className="flex flex-1">
                   <ValueViewer

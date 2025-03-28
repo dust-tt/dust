@@ -382,7 +382,7 @@ export default function AppView({
               icon={PlayIcon}
             />
             {runError ? (
-              <div className="flex-initial px-2 text-sm font-bold text-red-400">
+              <div className="flex-initial px-2 text-sm font-semibold text-warning">
                 {(() => {
                   switch (runError.code) {
                     case "invalid_specification_error":
@@ -493,7 +493,7 @@ export default function AppView({
                 />
               </div>
               {runError ? (
-                <div className="flex px-2 text-sm font-bold text-red-400">
+                <div className="flex px-2 text-sm font-semibold text-warning">
                   {(() => {
                     switch (runError.code) {
                       case "invalid_specification_error":
