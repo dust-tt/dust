@@ -35,6 +35,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare modelId: ModelIdType;
   declare temperature: number;
   declare reasoningEffort: AgentReasoningEffort | null;
+  declare responseFormat?: string;
 
   declare pictureUrl: string;
 
@@ -111,6 +112,10 @@ AgentConfiguration.init(
     },
     reasoningEffort: {
       type: DataTypes.STRING,
+      allowNull: true,
+    },
+    responseFormat: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     maxStepsPerRun: {

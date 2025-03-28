@@ -8,6 +8,7 @@ import {
   Popover,
   ScrollArea,
   ScrollBar,
+  TextArea,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -27,6 +28,7 @@ import {
   ASSISTANT_CREATIVITY_LEVEL_TEMPERATURES,
   CLAUDE_3_7_SONNET_20250219_MODEL_ID,
   GPT_4O_MODEL_ID,
+  isSupportingResponseFormat,
   MISTRAL_LARGE_MODEL_ID,
 } from "@app/types";
 
@@ -57,6 +59,18 @@ const getCreativityLevelFromTemperature = (temperature: number) => {
   return closest;
 };
 
+const getJsonError = (value: string | null | undefined): string | null => {
+  if (!value) {
+    return null;
+  }
+  try {
+    JSON.parse(value);
+    return null;
+  } catch {
+    return "Invalid JSON format";
+  }
+};
+
 export function AdvancedSettings({
   generationSettings,
   setGenerationSettings,
@@ -80,6 +94,9 @@ export function AdvancedSettings({
     alert("Unsupported model");
   }
 
+  const supportsResponseFormat = isSupportingResponseFormat(
+    generationSettings.modelSettings.modelId
+  );
   const bestPerformingModelConfigs: ModelConfigurationType[] = [];
   const otherModelConfigs: ModelConfigurationType[] = [];
   for (const modelConfig of models) {
@@ -189,6 +206,33 @@ export function AdvancedSettings({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+          {supportsResponseFormat && (
+            <div className="flex w-full flex-col items-stretch">
+              <div
+                className={classNames(
+                  "w-full grow text-sm font-bold",
+                  "text-element-800 dark:text-element-800-night"
+                )}
+              >
+                Structured Response Format
+              </div>
+              <div className="w-full">
+                <TextArea
+                  value={generationSettings?.responseFormat ?? ""}
+                  placeholder="Paste your expected model output format here"
+                  name="responseFormat"
+                  error={getJsonError(generationSettings?.responseFormat)}
+                  showErrorLabel
+                  onChange={(e) => {
+                    setGenerationSettings({
+                      ...generationSettings,
+                      responseFormat: e.target.value,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       }
     />

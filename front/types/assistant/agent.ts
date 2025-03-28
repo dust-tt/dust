@@ -90,6 +90,7 @@ export type AgentModelConfigurationType = {
   modelId: ModelIdType;
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
+  responseFormat?: string;
 };
 
 export type LightAgentConfigurationType = {

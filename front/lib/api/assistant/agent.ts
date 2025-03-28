@@ -518,6 +518,26 @@ async function* runMultiActionsAgent(
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
   }
+  if (agentConfiguration.model.responseFormat) {
+    try {
+      runConfig.MODEL.response_format = JSON.parse(
+        agentConfiguration.model.responseFormat
+      );
+    } catch {
+      yield {
+        type: "agent_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "invalid_response_format",
+          message: `Configured response format is invalid. The response format configuration for your agent must be valid JSON.`,
+        },
+      } satisfies AgentErrorEvent;
+
+      return;
+    }
+  }
   const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
