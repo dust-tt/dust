@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import AssistantBuilderDataSourceModal from "@app/components/assistant_builder/AssistantBuilderDataSourceModal";
 import DataSourceSelectionSection from "@app/components/assistant_builder/DataSourceSelectionSection";
@@ -14,10 +14,10 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { InternalMCPServerIdType } from "@app/lib/actions/mcp";
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { useInternalMcpServerMetadata } from "@app/lib/swr/mcp";
+import { useMcpServers } from "@app/lib/swr/mcp_servers";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,
   LightWorkspaceType,
@@ -43,34 +43,50 @@ export function ActionMCP({
   updateAction,
   setEdited,
 }: ActionMCPProps) {
-  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
-
-  const { metadata } = useInternalMcpServerMetadata({
-    owner,
-    serverId: actionConfiguration.internalMCPServerId,
+  // Hack for now, we'll use the space based on the allowedSpaces once we have the object representing the join
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: false,
   });
+  const { mcpServers } = useMcpServers({
+    owner,
+    space: (spaces ?? []).find((space) => space.kind === "system"),
+    filter: "all",
+  });
+
+  const defaultMCPServer = useMemo(
+    () =>
+      mcpServers.find(
+        (mcpServer) => mcpServer.id === actionConfiguration.mcpServerId
+      ),
+    [mcpServers, actionConfiguration.mcpServerId]
+  );
+
+  const [selectedMCPServer, setSelectedMCPServer] =
+    useState<MCPServerMetadata | null>(defaultMCPServer ?? null);
+  const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
   useEffect(() => {
     updateAction((previousAction) => ({
       ...previousAction,
       dataSourceConfigurations:
-        metadata &&
+        selectedMCPServer &&
         serverRequiresInternalConfiguration({
-          serverMetadata: metadata,
+          serverMetadata: selectedMCPServer,
           mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
         })
           ? previousAction.dataSourceConfigurations || {}
           : null,
     }));
-  }, [metadata, setEdited, updateAction]);
+  }, [selectedMCPServer, updateAction]);
 
   const handleServerSelection = useCallback(
-    (serverId: InternalMCPServerIdType) => {
+    (mcpServer: MCPServerMetadata) => {
       setEdited(true);
+      setSelectedMCPServer(mcpServer);
       updateAction((previousAction) => ({
         ...previousAction,
-        serverType: "internal",
-        internalMCPServerId: serverId,
+        mcpServerId: mcpServer.id,
       }));
     },
     [setEdited, updateAction]
@@ -111,18 +127,19 @@ export function ActionMCP({
           <Button
             isSelect
             label={
-              actionConfiguration.internalMCPServerId ??
-              "Select a internal server"
+              selectedMCPServer
+                ? selectedMCPServer.name
+                : "Select an MCP server"
             }
             className="w-48"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="mt-1" align="start">
-          {AVAILABLE_INTERNAL_MCPSERVER_IDS.map((id) => (
+          {mcpServers.map((mcpServer) => (
             <DropdownMenuItem
-              key={id}
-              label={id}
-              onClick={() => handleServerSelection(id)}
+              key={mcpServer.id}
+              label={mcpServer.name}
+              onClick={() => handleServerSelection(mcpServer)}
             />
           ))}
         </DropdownMenuContent>

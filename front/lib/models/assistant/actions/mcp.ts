@@ -1,8 +1,6 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
@@ -22,10 +20,10 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare serverType: "internal" | "remote";
 
-  declare internalMCPServerId:
-    | MCPServerConfigurationType["internalMCPServerId"]
-    | null;
+  // SId of the internal MCP server.
+  declare internalMCPServerId: string | null;
 
+  // ModelId of the remote MCP server.
   declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
 }
 
@@ -55,9 +53,6 @@ AgentMCPServerConfiguration.init(
     internalMCPServerId: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isIn: [AVAILABLE_INTERNAL_MCPSERVER_IDS],
-      },
     },
     remoteMCPServerId: {
       type: DataTypes.BIGINT,
@@ -136,10 +131,7 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare serverType: MCPServerConfigurationType["serverType"];
-  declare internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
-  declare remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
-  // TODO(mcp): With client actions, we will likely add a way to reference an object representing the client-side server.
+  declare mcpServerId: string;
   declare mcpServerConfigurationId: string;
 
   declare params: Record<string, unknown>;
@@ -171,6 +163,10 @@ AgentMCPAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    mcpServerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
