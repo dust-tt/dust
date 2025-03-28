@@ -31,6 +31,7 @@ const RESOURCES_PREFIX = {
   extension: "ext",
   mcp_server_connection: "msc",
   remote_mcp_server: "rms",
+  internal_mcp_server: "ims",
 };
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
@@ -109,9 +110,12 @@ export function isResourceSId(
   return sId.startsWith(`${RESOURCES_PREFIX[resourceName]}_`);
 }
 
-export function getResourceNameAndIdFromSId(
-  sId: string
-): { resourceName: ResourceNameType; sId: string } | null {
+export function getResourceNameAndIdFromSId(sId: string): {
+  resourceName: ResourceNameType;
+  sId: string;
+  workspaceId: ModelId;
+  resourceId: ModelId;
+} | null {
   const resourceName = (
     Object.keys(RESOURCES_PREFIX) as ResourceNameType[]
   ).find((name) => isResourceSId(name, sId));
@@ -126,7 +130,7 @@ export function getResourceNameAndIdFromSId(
     return null;
   }
 
-  return { resourceName, sId };
+  return { resourceName, sId, ...sIdRes.value };
 }
 
 // Legacy behavior.

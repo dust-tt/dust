@@ -21,6 +21,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_actions";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   AgentActionConfigurationType,
@@ -1167,13 +1168,18 @@ export async function createAgentActionConfiguration(
     }
     case "mcp_server_configuration": {
       return frontSequelize.transaction(async (t) => {
+        const { serverType, id } = getServerTypeAndIdFromSId(
+          action.mcpServerId
+        );
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
             sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
-            serverType: action.serverType,
-            internalMCPServerId: action.internalMCPServerId,
+            serverType,
+            internalMCPServerId:
+              serverType === "internal" ? action.mcpServerId : null,
+            remoteMCPServerId: serverType === "remote" ? id : null,
           },
           { transaction: t }
         );
@@ -1193,9 +1199,8 @@ export async function createAgentActionConfiguration(
           type: "mcp_server_configuration",
           name: action.name,
           description: action.description,
-          serverType: action.serverType,
-          internalMCPServerId: action.internalMCPServerId,
-          remoteMCPServerId: action.remoteMCPServerId,
+          serverType,
+          mcpServerId: action.mcpServerId,
           dataSources: action.dataSources,
         });
       });
