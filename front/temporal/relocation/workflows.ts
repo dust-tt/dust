@@ -24,8 +24,6 @@ import type { ModelId } from "@app/types";
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
-const TEMPORAL_FRONT_TABLE_RELOCATION_CONCURRENCY = 10;
-const TEMPORAL_CONNECTORS_TABLE_RELOCATION_CONCURRENCY = 10;
 
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
@@ -40,21 +38,30 @@ export async function workspaceRelocationWorkflow({
 }: RelocationWorkflowBase) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Relocate front data to the destination region.
-  await executeChild(workspaceRelocateFrontWorkflow, {
-    workflowId: `workspaceRelocateFrontWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [{ sourceRegion, destRegion, workspaceId }],
-    memo,
-  });
+  // Both front and connectors workflows can run in parallel.
+  const workflowDetails = [
+    {
+      workflow: workspaceRelocateFrontWorkflow,
+      name: "workspaceRelocateFrontWorkflow",
+    },
+    {
+      workflow: workspaceRelocateConnectorsWorkflow,
+      name: "workspaceRelocateConnectorsWorkflow",
+    },
+  ];
 
-  // 2) Relocate connectors data to the destination region.
-  await executeChild(workspaceRelocateConnectorsWorkflow, {
-    workflowId: `workspaceRelocateConnectorsWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [{ sourceRegion, destRegion, workspaceId }],
-    memo,
-  });
+  await concurrentExecutor(
+    workflowDetails,
+    async (w) => {
+      await executeChild(w.workflow, {
+        workflowId: `${w.name}-${workspaceId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [{ sourceRegion, destRegion, workspaceId }],
+        memo,
+      });
+    },
+    { concurrency: 2 }
+  );
 
   // 3) Relocate the core data source documents to the destination region.
   await executeChild(workspaceRelocateCoreWorkflow, {
@@ -126,24 +133,21 @@ export async function workspaceRelocateFrontWorkflow({
     await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
 
   // 2) Relocate front tables to the destination region.
-  await concurrentExecutor(
-    tablesOrder,
-    async (tableName) =>
-      executeChild(workspaceRelocateFrontTableWorkflow, {
-        workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            sourceRegion,
-            tableName,
-            destRegion,
-            workspaceId,
-          },
-        ],
-        memo,
-      }),
-    { concurrency: TEMPORAL_FRONT_TABLE_RELOCATION_CONCURRENCY }
-  );
+  for (const tableName of tablesOrder) {
+    await executeChild(workspaceRelocateFrontTableWorkflow, {
+      workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          sourceRegion,
+          tableName,
+          destRegion,
+          workspaceId,
+        },
+      ],
+      memo,
+    });
+  }
 
   // 3) Relocate the associated files from the file storage to the destination region.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
@@ -319,24 +323,21 @@ export async function workspaceRelocateConnectorsWorkflow({
   });
 
   // 3) Relocate connectors tables to the destination region for each connector.
-  await concurrentExecutor(
-    connectors,
-    async (c) =>
-      executeChild(workspaceRelocateConnectorWorkflow, {
-        workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            connectorId: c.id,
-            destRegion,
-            sourceRegion,
-            workspaceId,
-          },
-        ],
-        memo,
-      }),
-    { concurrency: TEMPORAL_CONNECTORS_TABLE_RELOCATION_CONCURRENCY }
-  );
+  for (const c of connectors) {
+    await executeChild(workspaceRelocateConnectorWorkflow, {
+      workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
+      searchAttributes: parentSearchAttributes,
+      args: [
+        {
+          connectorId: c.id,
+          destRegion,
+          sourceRegion,
+          workspaceId,
+        },
+      ],
+      memo,
+    });
+  }
 }
 
 export async function workspaceRelocateConnectorWorkflow({
