@@ -250,7 +250,7 @@ function extractMetadataFromServerVersion(
 
 function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
   return tools.tools.map((tool) => {
-    let inputSchema: JSONSchema | undefined = undefined;
+    let inputSchema: JSONSchema | undefined;
     if (ajv.validateSchema(tool.inputSchema)) {
       inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
     } else {
