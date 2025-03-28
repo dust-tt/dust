@@ -22,6 +22,7 @@ export type DataSourceContentNode = ContentNodeWithParent & {
 export type PostWorkspaceSearchResponseBody = {
   nodes: DataSourceContentNode[];
   warningCode: SearchWarningCode | null;
+  nextPageCursor: string | null;
 };
 
 async function handler(

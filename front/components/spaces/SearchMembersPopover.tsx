@@ -120,15 +120,13 @@ export function SearchMembersPopover({
           <InfiniteScroll
             nextPage={loadNextPage}
             hasMore={hasMore}
-            isValidating={isLoading}
-            isLoading={isLoading}
-          >
-            {isLoading && (
+            showLoader={isLoading}
+            loader={
               <div className="py-2 text-center text-sm text-element-700">
                 Loading more members...
               </div>
-            )}
-          </InfiniteScroll>
+            }
+          />
         </ScrollArea>
       </PopoverContent>
     </PopoverRoot>
