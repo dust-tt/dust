@@ -18,15 +18,13 @@ import type {
 } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/file";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   DataSourceViewType,
   LightWorkspaceType,
   PlanType,
 } from "@app/types";
-import {
-  concurrentExecutor,
-  getSupportedNonImageFileExtensions,
-} from "@app/types";
+import { getSupportedNonImageFileExtensions } from "@app/types";
 
 type MultipleDocumentsUploadProps = {
   dataSourceView: DataSourceViewType;

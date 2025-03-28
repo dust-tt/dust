@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { CoreAPI } from "@app/types";
-import { concurrentExecutor } from "@app/types";
 
 export async function processApp({
   dustAPIProjectId,
