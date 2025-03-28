@@ -137,7 +137,7 @@ async function handler(
         });
       }
 
-      const metadata = await fetchRemoteServerMetaDataByURL(url);
+      const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
       const sharedSecret = randomBytes(32).toString("hex");
 
       const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(

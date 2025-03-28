@@ -70,7 +70,7 @@ async function handler(
     });
   }
 
-  const metadata = await fetchRemoteServerMetaDataByURL(server.url);
+  const metadata = await fetchRemoteServerMetaDataByURL(auth, server.url);
 
   await server.updateMetadata(auth, {
     name: metadata.name,

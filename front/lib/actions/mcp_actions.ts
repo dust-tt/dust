@@ -26,12 +26,9 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import {
-  generateRandomModelSId,
-  getResourceNameAndIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   LightWorkspaceType,
@@ -155,13 +152,16 @@ export const getServerTypeAndIdFromSId = (
   }
 };
 
-const connectToMCPServer = async ({
-  mcpServerId,
-  remoteMCPServerUrl,
-}: {
-  mcpServerId?: string;
-  remoteMCPServerUrl?: string | null;
-}) => {
+const connectToMCPServer = async (
+  auth: Authenticator,
+  {
+    mcpServerId,
+    remoteMCPServerUrl,
+  }: {
+    mcpServerId?: string;
+    remoteMCPServerUrl?: string | null;
+  }
+) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -182,11 +182,10 @@ const connectToMCPServer = async ({
         break;
 
       case "remote":
-        const remoteMCPServer = await RemoteMCPServer.findOne({
-          where: {
-            id,
-          },
-        });
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          mcpServerId
+        );
 
         if (!remoteMCPServer) {
           throw new Error(
@@ -257,9 +256,10 @@ function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
 }
 
 export async function fetchRemoteServerMetaDataByURL(
+  auth: Authenticator,
   url: string
 ): Promise<Omit<MCPServerMetadata, "id">> {
-  const mcpClient = await connectToMCPServer({
+  const mcpClient = await connectToMCPServer(auth, {
     remoteMCPServerUrl: url,
   });
 
@@ -298,7 +298,7 @@ export async function getMCPServerMetadataLocally(
   switch (serverType) {
     case "internal":
       // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
-      const mcpClient = await connectToMCPServer({ mcpServerId });
+      const mcpClient = await connectToMCPServer(auth, { mcpServerId });
 
       const r = mcpClient.getServerVersion();
       const tools = await mcpClient.listTools();
@@ -370,17 +370,20 @@ export async function getAllMCPServersMetadataLocally(
  *
  * This function will potentially fail if the server is remote as it will try to connect to it.
  */
-export async function tryCallMCPTool({
-  owner,
-  actionConfiguration,
-  rawInputs,
-}: {
-  owner: LightWorkspaceType;
-  actionConfiguration: MCPToolConfigurationType;
-  rawInputs: Record<string, unknown> | undefined;
-}): Promise<Result<MCPToolResultContent[], Error>> {
+export async function tryCallMCPTool(
+  auth: Authenticator,
+  {
+    owner,
+    actionConfiguration,
+    rawInputs,
+  }: {
+    owner: LightWorkspaceType;
+    actionConfiguration: MCPToolConfigurationType;
+    rawInputs: Record<string, unknown> | undefined;
+  }
+): Promise<Result<MCPToolResultContent[], Error>> {
   try {
-    const mcpClient = await connectToMCPServer(actionConfiguration);
+    const mcpClient = await connectToMCPServer(auth, actionConfiguration);
 
     const r = await mcpClient.callTool({
       name: actionConfiguration.name,
@@ -433,7 +436,10 @@ export async function tryGetMCPTools(
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
       try {
-        const r: ToolType[] = await listMCPServerTools(action.mcpServerId);
+        const r: ToolType[] = await listMCPServerTools(
+          auth,
+          action.mcpServerId
+        );
 
         return makeMCPConfigurations({
           config: action,
@@ -457,9 +463,10 @@ export async function tryGetMCPTools(
 }
 
 export async function listMCPServerTools(
+  auth: Authenticator,
   mcpServerId: string
 ): Promise<ToolType[]> {
-  const mcpClient = await connectToMCPServer({ mcpServerId });
+  const mcpClient = await connectToMCPServer(auth, { mcpServerId });
 
   let allTools: ToolType[] = [];
   let nextPageCursor;
