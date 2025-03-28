@@ -6,7 +6,7 @@ import type {
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
-import type { JSONSchema7 } from "json-schema";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 import {
