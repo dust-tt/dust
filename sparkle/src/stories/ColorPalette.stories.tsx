@@ -51,7 +51,7 @@ const ColorSwatch = ({
         position: "relative",
       }}
     >
-      <div className="s-font-mono s-absolute s-bottom-1 s-left-1 s-text-[10px] s-opacity-50">
+      <div className="s-absolute s-bottom-1 s-left-1 s-font-mono s-text-[10px] s-opacity-50">
         {getComputedStyle(document.documentElement)
           .getPropertyValue(
             `--${colorClass.replace("s-bg-", "").replace(":", "-")}`

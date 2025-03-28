@@ -9,10 +9,11 @@ import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 /**
  * @ignoreswagger

@@ -11,6 +11,7 @@ import type {
 
 export function spaceToPokeJSON(space: SpaceResource): PokeSpaceType {
   return {
+    id: space.id,
     ...space.toJSON(),
     groups: space.groups.map((group) => group.toJSON()),
   };

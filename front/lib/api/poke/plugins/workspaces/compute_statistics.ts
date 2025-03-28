@@ -3,13 +3,8 @@ import assert from "assert";
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import {
-  concurrentExecutor,
-  Err,
-  maxFileSizeToHumanReadable,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { Err, maxFileSizeToHumanReadable, Ok, removeNulls } from "@app/types";
 
 type WorkspaceStats = {
   dataSources: {

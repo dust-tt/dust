@@ -56,6 +56,7 @@ import {
 } from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
+const REPOSITORIES_API_PAGE_SIZE = 25;
 
 type GithubOrg = {
   id: number;
@@ -132,7 +133,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: API_PAGE_SIZE,
+          per_page: REPOSITORIES_API_PAGE_SIZE,
           page: page,
         })
       ).data.repositories.map((r) => ({
@@ -556,11 +557,13 @@ export async function getDiscussion(
   repoName: string,
   login: string,
   discussionNumber: number
-): Promise<DiscussionNode> {
+): Promise<Result<DiscussionNode, Error>> {
   const octokit = await getOctokit(connector);
 
-  const d = await octokit.graphql(
-    `
+  let d;
+  try {
+    d = await octokit.graphql(
+      `
     query getDiscussion(
       $owner: String!
       $repo: String!
@@ -582,16 +585,22 @@ export async function getDiscussion(
       }
     }
     `,
-    {
-      owner: login,
-      repo: repoName,
-      discussionNumber,
+      {
+        owner: login,
+        repo: repoName,
+        discussionNumber,
+      }
+    );
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
     }
-  );
+    return new Err(new Error(String(err)));
+  }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
   if (!isLeft(errorPayloadValidation)) {
-    throw new Error(JSON.stringify(errorPayloadValidation.right));
+    return new Err(new Error(JSON.stringify(errorPayloadValidation.right)));
   }
 
   const getDiscussionPayloadValidation = GetDiscussionPayloadSchema.decode(d);
@@ -600,12 +609,12 @@ export async function getDiscussion(
     const pathError = reporter.formatValidationErrors(
       getDiscussionPayloadValidation.left
     );
-    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
+    return new Err(new Error(`Unexpected payload: ${pathError.join(", ")}`));
   }
 
   const payload = getDiscussionPayloadValidation.right;
 
-  return payload.repository.discussion;
+  return new Ok(payload.repository.discussion);
 }
 
 export async function getOctokit(
@@ -661,6 +670,11 @@ const EXTENSION_WHITELIST = [
   ".cpp",
   ".hpp",
   ".php",
+  ".neon", // PHP configuration
+  ".phtml", // PHP template
+  ".twig", // PHP template
+  ".xhtml", // XML/HTML
+  ".xsd", // XML Schema Definition
 
   // .NET Ecosystem
   ".cs",
@@ -714,6 +728,7 @@ const EXTENSION_WHITELIST = [
   ".adoc", // AsciiDoc
   ".tex", // LaTeX
   ".txt",
+  ".patch",
 
   // Shell & Scripts
   ".sh",
@@ -811,11 +826,25 @@ export async function processRepository({
   // `data.size` is the whole repo size in KB, we use it to filter repos > 10GB download size. There
   // is further filtering by file type + for "extracted size" per file to 1MB.
   if (data.size > 10 * 1024 * 1024) {
-    // For now we throw an error, we'll figure out as we go how we want to handle (likely a typed
-    // error to return a syncFailed to the user, or increase this limit if we want some largers
+    // For now we throw a panic log, so we are able to report the issue to the
+    // user, and continue with the rest of the sync. See runbook for future
+    // improvements
+    // https://www.notion.so/dust-tt/Panic-Log-Github-repository-too-large-to-sync-1bf28599d9418061a396d2378bdd77de?pvs=4
+
+    // Later on, we might want to build capabilities to handle this (likely a
+    // typed error to return a syncFailed to the user, when we are able to
+    // display granular failure, or increase this limit if we want some largers
     // repositories).
-    throw new Error(
-      `Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
+
+    logger.error(
+      {
+        repoLogin,
+        repoName,
+        size: data.size,
+        connectorId: connector.id,
+        panic: true,
+      },
+      `Github Repository is too large to sync (size: ${data.size}KB, max: 10GB)`
     );
   }
 

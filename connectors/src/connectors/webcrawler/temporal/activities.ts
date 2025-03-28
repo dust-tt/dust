@@ -46,7 +46,7 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ModelId } from "@connectors/types";
 import {
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
   stripNullBytes,
   WEBCRAWLER_MAX_DEPTH,
   WEBCRAWLER_MAX_PAGES,
@@ -79,6 +79,12 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     logger.error({ connectorId }, "Connector not found");
+    return;
+  }
+
+  // The crawler scheduler may have scheduled a crawl before the connector was paused.
+  if (connector.isPaused()) {
+    logger.info({ connectorId }, "Connector is paused. Skipping crawl.");
     return;
   }
 
@@ -296,7 +302,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
             parents,
             parentId: parents[1] || null,
             title: getDisplayNameForFolder(webCrawlerFolder),
-            mimeType: MIME_TYPES.WEBCRAWLER.FOLDER,
+            mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
             sourceUrl: webCrawlerFolder.url,
           });
 

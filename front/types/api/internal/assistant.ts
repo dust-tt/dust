@@ -1,10 +1,14 @@
-import { MIME_TYPES_VALUES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
 
 export const InternalPostMessagesRequestBodySchema = t.type({
-  content: t.string,
+  content: t.refinement(
+    t.string,
+    (s): s is string => s.length > 0,
+    "NonEmptyString"
+  ),
   mentions: t.array(t.type({ configurationId: t.string })),
   context: t.type({
     timezone: t.string,
@@ -32,7 +36,7 @@ export const getSupportedInlinedContentType = () => {
 };
 
 const [first, second, ...rest] = [
-  ...MIME_TYPES_VALUES,
+  ...INTERNAL_MIME_TYPES_VALUES,
   ...getSupportedNonImageMimeTypes(),
 ];
 export const getSupportedContentNodeContentTypeSchema = () => {
@@ -55,7 +59,10 @@ export const isSupportedInlinedFragmentContentType = (
   contentType: string
 ): contentType is SupportedInlinedContentFragmentTypeSchema => {
   return (
-    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+    [
+      ...INTERNAL_MIME_TYPES_VALUES,
+      ...getSupportedNonImageMimeTypes(),
+    ] as string[]
   ).includes(contentType);
 };
 
@@ -63,7 +70,10 @@ export const isSupportedContentNodeFragmentContentType = (
   contentType: string
 ): contentType is SupportedContentNodeContentType => {
   return (
-    [...MIME_TYPES_VALUES, ...getSupportedNonImageMimeTypes()] as string[]
+    [
+      ...INTERNAL_MIME_TYPES_VALUES,
+      ...getSupportedNonImageMimeTypes(),
+    ] as string[]
   ).includes(contentType);
 };
 
@@ -84,8 +94,6 @@ const ContentFragmentInputWithContentNodeSchema = t.intersection([
   t.type({
     nodeId: t.string,
     nodeDataSourceViewId: t.string,
-    contentType: getSupportedContentNodeContentTypeSchema(),
-    sourceUrl: t.union([t.string, t.null]),
   }),
 ]);
 
@@ -140,15 +148,9 @@ export function isContentFragmentInputWithFileId(
 }
 
 export function isContentFragmentInputWithContentNode(
-  fragment: Omit<ContentFragmentInputType, "contentType"> & {
-    contentType?: string | undefined | null;
-  }
+  fragment: Omit<ContentFragmentInputType, "contentType">
 ): fragment is ContentFragmentInputWithContentNode {
-  return (
-    "nodeId" in fragment &&
-    !!fragment.contentType &&
-    isSupportedContentNodeFragmentContentType(fragment.contentType)
-  );
+  return "nodeId" in fragment && "nodeDataSourceViewId" in fragment;
 }
 
 export const InternalPostContentFragmentRequestBodySchema = t.intersection([

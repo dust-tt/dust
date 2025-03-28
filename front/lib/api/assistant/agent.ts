@@ -1,14 +1,18 @@
+import { tryGetMCPTools } from "@app/lib/actions/mcp_actions";
 import { getRunnerForActionConfiguration } from "@app/lib/actions/runners";
 import { runActionStreamed } from "@app/lib/actions/server";
 import type {
   ActionConfigurationType,
+  AgentActionConfigurationType,
   AgentActionSpecification,
   AgentActionSpecificEvent,
 } from "@app/lib/actions/types/agent";
+import { isActionConfigurationType } from "@app/lib/actions/types/agent";
 import {
   isBrowseConfiguration,
   isConversationIncludeFileConfiguration,
   isDustAppRunConfiguration,
+  isMCPActionConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -53,12 +57,7 @@ import type {
   UserMessageType,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  isTextContent,
-  isUserMessageTypeModel,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { assertNever, SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 const CANCELLATION_CHECK_INTERVAL = 500;
 const MAX_ACTIONS_PER_STEP = 16;
@@ -156,7 +155,7 @@ async function* runMultiActionsAgentLoop(
       conversation,
       userMessage,
       agentMessage,
-      availableActions: actions,
+      agentActions: actions,
       isLastGenerationIteration,
       isLegacyAgent,
     });
@@ -313,7 +312,7 @@ async function* runMultiActionsAgent(
     conversation,
     userMessage,
     agentMessage,
-    availableActions,
+    agentActions,
     isLastGenerationIteration,
     isLegacyAgent,
   }: {
@@ -321,7 +320,7 @@ async function* runMultiActionsAgent(
     conversation: ConversationType;
     userMessage: UserMessageType;
     agentMessage: AgentMessageType;
-    availableActions: ActionConfigurationType[];
+    agentActions: AgentActionConfigurationType[];
     isLastGenerationIteration: boolean;
     isLegacyAgent: boolean;
   }
@@ -355,15 +354,27 @@ async function* runMultiActionsAgent(
     };
     return;
   }
+  const availableActions: ActionConfigurationType[] = [];
+
+  for (const agentAction of agentActions) {
+    if (isActionConfigurationType(agentAction)) {
+      availableActions.push(agentAction);
+    }
+  }
 
   const { emulatedActions, jitActions } = await getEmulatedAndJITActions(auth, {
-    availableActions,
+    agentActions,
     agentMessage,
     conversation,
   });
 
+  const mcpActions = await tryGetMCPTools(auth, {
+    agentActions,
+  });
+
   if (!isLastGenerationIteration) {
-    availableActions = availableActions.concat(jitActions);
+    availableActions.push(...jitActions);
+    availableActions.push(...mcpActions);
   }
 
   let fallbackPrompt = "You are a conversational agent";
@@ -512,27 +523,13 @@ async function* runMultiActionsAgent(
     runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
   }
 
-  const renderedConversation = modelConversationRes.value.modelConversation;
-  // Anthropic does not accept empty user message.
-  if (model.providerId === "anthropic") {
-    renderedConversation.messages.forEach((m) => {
-      if (isUserMessageTypeModel(m)) {
-        m.content.forEach((c) => {
-          if (isTextContent(c) && c.text.length === 0) {
-            c.text = "Answer according to provided context and instructions.";
-          }
-        });
-      }
-    });
-  }
-
   const res = await runActionStreamed(
     auth,
     "assistant-v2-multi-actions-agent",
     runConfig,
     [
       {
-        conversation: renderedConversation,
+        conversation: modelConversationRes.value.modelConversation,
         specifications,
         prompt,
       },
@@ -1308,6 +1305,55 @@ async function* runAction(
           break;
 
         case "search_labels_success":
+          yield {
+            type: "agent_action_success",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            action: event.action,
+          };
+
+          // We stitch the action into the agent message. The conversation is expected to include
+          // the agentMessage object, updating this object will update the conversation as well.
+          agentMessage.actions.push(event.action);
+          break;
+
+        default:
+          assertNever(event);
+      }
+    }
+  } else if (isMCPActionConfiguration(actionConfiguration)) {
+    const eventStream = getRunnerForActionConfiguration(
+      actionConfiguration
+    ).run(auth, {
+      agentConfiguration: configuration,
+      conversation,
+      agentMessage,
+      rawInputs: inputs,
+      functionCallId,
+      step,
+    });
+
+    for await (const event of eventStream) {
+      switch (event.type) {
+        case "tool_error":
+          yield {
+            type: "agent_error",
+            created: event.created,
+            configurationId: configuration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: event.error.code,
+              message: event.error.message,
+            },
+          };
+          return;
+
+        case "tool_params":
+          yield event;
+          break;
+
+        case "tool_success":
           yield {
             type: "agent_action_success",
             created: event.created,

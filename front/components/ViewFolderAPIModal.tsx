@@ -80,6 +80,8 @@ export function ViewFolderAPIModal({
     }
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent>
@@ -93,7 +95,7 @@ export function ViewFolderAPIModal({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-element-700">Space ID:</span>
-                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
                       {space.sId}
                     </code>
                   </div>
@@ -101,7 +103,7 @@ export function ViewFolderAPIModal({
                     <span className="text-sm text-element-700">
                       Data Source ID:
                     </span>
-                    <code className="font-mono rounded bg-white px-2 py-1 text-sm font-bold text-element-900 shadow-sm">
+                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
                       {dataSource.sId}
                     </code>
                   </div>
@@ -118,12 +120,12 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("upsert")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -152,12 +154,12 @@ export function ViewFolderAPIModal({
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("search")}`}
                 language="shell"
                 padding={15}
-                className="font-mono mt-5 rounded-md bg-gray-700 px-4 py-4 text-[13px] text-white"
+                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
                 style={{
                   fontSize: 13,
                   fontFamily:

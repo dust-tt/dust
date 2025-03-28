@@ -16,7 +16,7 @@ import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { SlackAutoReadPattern } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function findMatchingChannelPatterns(
   remoteChannelName: string,
@@ -79,7 +79,7 @@ export async function autoReadChannel(
       title: `#${remoteChannelName}`,
       parentId: null,
       parents: [slackChannelInternalIdFromSlackChannelId(slackChannelId)],
-      mimeType: MIME_TYPES.SLACK.CHANNEL,
+      mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
       sourceUrl: getSlackChannelSourceUrl(slackChannelId, slackConfiguration),
       providerVisibility: remoteChannel.channel?.is_private
         ? "private"

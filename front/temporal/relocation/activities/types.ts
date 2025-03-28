@@ -79,3 +79,14 @@ export function isArrayOfPlainObjects(value: unknown) {
     value.every((element) => isPlainObject(element))
   );
 }
+
+export function isStringTooLongError(
+  err: unknown
+): err is { code: "ERR_STRING_TOO_LONG" } {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    err.code === "ERR_STRING_TOO_LONG"
+  );
+}

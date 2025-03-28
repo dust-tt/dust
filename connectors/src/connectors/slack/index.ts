@@ -42,8 +42,8 @@ import type {
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import {
+  INTERNAL_MIME_TYPES,
   isSlackAutoReadPatterns,
-  MIME_TYPES,
   safeParseJSON,
 } from "@connectors/types";
 
@@ -403,7 +403,7 @@ export class SlackConnectorManager extends BaseConnectorManager<SlackConfigurati
         permission: ch.permission,
         lastUpdatedAt: null,
         providerVisibility: ch.private ? "private" : "public",
-        mimeType: MIME_TYPES.SLACK.CHANNEL,
+        mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
       }));
 
       resources.sort((a, b) => {

@@ -155,7 +155,7 @@ export default function NewBlock({
               >
                 <div className="grid max-w-md grid-cols-12 items-center">
                   <div className="col-span-4 sm:col-span-3">
-                    <div className="flex text-base font-medium text-foreground dark:text-foreground-night">
+                    <div className="heading-base flex text-foreground dark:text-foreground-night">
                       <div
                         className={cn(
                           "mr-1 rounded-xl px-1 py-0.5 text-sm font-bold",

@@ -53,6 +53,7 @@ import {
   sanitizeVisualizationContent,
   visualizationDirective,
 } from "@app/components/markdown/VisualizationBlock";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
@@ -143,6 +144,7 @@ export function AgentMessage({
   owner,
   user,
 }: AgentMessageProps) {
+  const { isDark } = useTheme();
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessageType>(message);
 
@@ -256,6 +258,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "tool_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -487,7 +490,7 @@ export function AgentMessage({
     const allDocsReferences = allDocs.reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d);
+      acc[d.reference] = makeDocumentCitation(d, isDark);
       return acc;
     }, {});
 
@@ -511,6 +514,7 @@ export function AgentMessage({
     agentMessageToRender.actions,
     agentMessageToRender.status,
     agentMessageToRender.sId,
+    isDark,
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
@@ -545,18 +549,10 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => {
-        return (
-          <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
-              {AssitantName(agentConfiguration, canMention)}
-            </div>
-          </div>
-        );
-      }}
+      renderName={() => AssistantName(agentConfiguration, canMention)}
       type="agent"
       citations={citations}
     >
@@ -674,7 +670,7 @@ export function AgentMessage({
   }
 }
 
-function AssitantName(
+function AssistantName(
   assistant: LightAgentConfigurationType,
   canMention: boolean = true
 ) {

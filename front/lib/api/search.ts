@@ -1,6 +1,7 @@
 import * as t from "io-ts";
 import type { NextApiRequest } from "next";
 
+import config from "@app/lib/api/config";
 import {
   getContentNodeFromCoreNode,
   NON_SEARCHABLE_NODES_MIME_TYPES,
@@ -20,8 +21,6 @@ import type {
   SearchWarningCode,
 } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
-
-import config from "./config";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -67,7 +66,7 @@ const NodeIdSearchBody = t.intersection([
   }),
   t.partial({
     query: t.undefined,
-    searchSourceUrls: t.undefined,
+    searchSourceUrls: t.boolean,
   }),
 ]);
 
@@ -130,11 +129,13 @@ export async function handleSearch(
     });
   }
 
-  const searchFilterResult = getSearchFilterFromDataSourceViews(
+  const excludedNodeMimeTypes = nodeIds ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
+
+  const searchFilter = getSearchFilterFromDataSourceViews(
     auth.getNonNullableWorkspace(),
     allDatasourceViews,
     {
-      excludedNodeMimeTypes: NON_SEARCHABLE_NODES_MIME_TYPES,
+      excludedNodeMimeTypes,
       includeDataSources,
       viewType,
       nodeIds,
@@ -155,7 +156,7 @@ export async function handleSearch(
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchRes = await coreAPI.searchNodes({
     query,
-    filter: searchFilterResult,
+    filter: searchFilter,
     options: {
       cursor: paginationRes.value?.cursor ?? undefined,
       limit: paginationRes.value?.limit,

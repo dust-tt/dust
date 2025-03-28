@@ -26,7 +26,7 @@ import type {
   ContentNodesViewType,
 } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * Retrieve all nodes selected by the admin when setting permissions.
@@ -102,7 +102,7 @@ async function getRootLevelContentNodes(
           expandable: true,
           permission: "none",
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.ZENDESK.BRAND,
+          mimeType: INTERNAL_MIME_TYPES.ZENDESK.BRAND,
         }
     );
   }
@@ -159,7 +159,7 @@ async function getBrandChildren(
       expandable: false,
       permission: "none",
       lastUpdatedAt: null,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
     };
     nodes.push(ticketsNode);
 
@@ -179,7 +179,7 @@ async function getBrandChildren(
         expandable: true,
         permission: "none",
         lastUpdatedAt: null,
-        mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
       };
       nodes.push(helpCenterNode);
     }
@@ -237,7 +237,7 @@ async function getHelpCenterChildren(
           expandable: false,
           permission: "none",
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+          mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         }
     );
   }

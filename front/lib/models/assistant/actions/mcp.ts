@@ -1,8 +1,7 @@
-import type { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
-import type { z } from "zod";
 
+import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
@@ -10,10 +9,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types";
-
-type MCPToolResultContent = z.infer<
-  typeof CallToolResultSchema
->["content"][number];
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -24,7 +19,11 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
   declare sId: string;
 
   declare serverType: "internal" | "remote";
+
+  // SId of the internal MCP server.
   declare internalMCPServerId: string | null;
+
+  // ModelId of the remote MCP server.
   declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
 }
 
@@ -54,6 +53,14 @@ AgentMCPServerConfiguration.init(
     internalMCPServerId: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    remoteMCPServerId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      references: {
+        model: RemoteMCPServer,
+        key: "id",
+      },
     },
   },
   {
@@ -124,8 +131,9 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  // TODO(mcp): With client actions, we will likely add a way to reference an object representing the client-side server.
+  declare mcpServerId: string;
   declare mcpServerConfigurationId: string;
+
   declare params: Record<string, unknown>;
 
   declare functionCallId: string | null;
@@ -140,6 +148,8 @@ export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied";
+
+  declare outputItems: NonAttribute<AgentMCPActionOutputItem[]>;
 }
 
 AgentMCPAction.init(
@@ -153,6 +163,10 @@ AgentMCPAction.init(
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
+    },
+    mcpServerId: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
     mcpServerConfigurationId: {
       type: DataTypes.STRING,
@@ -264,6 +278,7 @@ AgentMCPActionOutputItem.init(
 
 AgentMCPAction.hasMany(AgentMCPActionOutputItem, {
   foreignKey: { name: "agentMCPActionId", allowNull: false },
+  as: "outputItems",
   onDelete: "CASCADE",
 });
 

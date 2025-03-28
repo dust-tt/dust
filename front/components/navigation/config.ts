@@ -12,7 +12,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 
-import type { AppType, WorkspaceType } from "@app/types";
+import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
 /**
@@ -47,7 +47,8 @@ export type SubNavigationAdminId =
   | "members"
   | "providers"
   | "api_keys"
-  | "dev_secrets";
+  | "dev_secrets"
+  | "capabilities";
 
 export type SubNavigationAppId =
   | "specification"
@@ -73,6 +74,7 @@ export type AppLayoutNavigation = {
   current: boolean;
   subMenuLabel?: string;
   subMenu?: AppLayoutNavigation[];
+  featureFlag?: WhitelistableFeature;
 };
 
 export type TabAppLayoutNavigation = {
@@ -140,6 +142,7 @@ export const getTopNavigationTabs = (owner: WorkspaceType) => {
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
+          "/w/[wId]/developers/capabilities",
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
@@ -209,6 +212,16 @@ export const subNavigationAdmin = ({
       label: "Developers",
       variant: "primary",
       menus: [
+        {
+          id: "capabilities",
+          label: "Capabilities",
+          icon: CommandLineIcon,
+          href: `/w/${owner.sId}/developers/capabilities`,
+          current: current === "capabilities",
+          subMenuLabel: current === "capabilities" ? subMenuLabel : undefined,
+          subMenu: current === "capabilities" ? subMenu : undefined,
+          featureFlag: "mcp_actions",
+        },
         {
           id: "providers",
           label: "Providers",

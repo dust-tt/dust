@@ -1,5 +1,5 @@
 import type { MarkdownCitation } from "@app/components/markdown/MarkdownCitation";
-import { citationIconMap } from "@app/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/components/markdown/MarkdownCitation";
 import type { RetrievalDocumentType } from "@app/lib/actions/retrieval";
 import type { ConnectorProvider } from "@app/types";
 
@@ -42,10 +42,13 @@ export function getTitleFromRetrievedDocument(
 }
 
 export function makeDocumentCitation(
-  document: RetrievalDocumentType
+  document: RetrievalDocumentType,
+  isDark?: boolean
 ): MarkdownCitation {
-  const IconComponent =
-    citationIconMap[getProviderFromRetrievedDocument(document)];
+  const IconComponent = getCitationIcon(
+    getProviderFromRetrievedDocument(document),
+    isDark
+  );
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
@@ -54,7 +57,8 @@ export function makeDocumentCitation(
 }
 
 export function makeDocumentCitations(
-  documents: RetrievalDocumentType[]
+  documents: RetrievalDocumentType[],
+  isDark?: boolean
 ): MarkdownCitation[] {
-  return documents.map(makeDocumentCitation);
+  return documents.map((document) => makeDocumentCitation(document, isDark));
 }

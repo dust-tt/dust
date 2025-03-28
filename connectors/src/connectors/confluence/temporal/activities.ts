@@ -48,8 +48,8 @@ import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import {
   ConfluenceClientError,
+  INTERNAL_MIME_TYPES,
   isConfluenceNotFoundError,
-  MIME_TYPES,
 } from "@connectors/types";
 
 /**
@@ -241,7 +241,7 @@ export async function confluenceUpsertSpaceFolderActivity({
     parents: [makeSpaceInternalId(spaceId)],
     parentId: null,
     title: spaceName,
-    mimeType: MIME_TYPES.CONFLUENCE.SPACE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.SPACE,
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 
@@ -359,7 +359,7 @@ async function upsertConfluencePageToDataSource({
     timestampMs: lastPageVersionCreatedAt.getTime(),
     upsertContext: { sync_type: syncType },
     title: page.title,
-    mimeType: MIME_TYPES.CONFLUENCE.PAGE,
+    mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.PAGE,
     async: true,
   });
 }

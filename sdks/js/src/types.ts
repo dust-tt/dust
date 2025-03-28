@@ -1,7 +1,7 @@
 import moment from "moment-timezone";
 import { z } from "zod";
 
-import { MIME_TYPES_VALUES } from "./internal_mime_types";
+import { INTERNAL_MIME_TYPES_VALUES } from "./internal_mime_types";
 
 type StringLiteral<T> = T extends string
   ? string extends T
@@ -204,7 +204,7 @@ const supportedUploadableContentType = [
 const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
-  | (typeof MIME_TYPES_VALUES)[number]
+  | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
 >();
@@ -810,6 +810,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "attach_from_datasources"
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
+  | "mcp_actions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -892,6 +893,12 @@ const WebsearchActionTypeSchema = BaseActionSchema.extend({
 export type WebsearchActionPublicType = z.infer<
   typeof WebsearchActionTypeSchema
 >;
+
+const MCPActionTypeSchema = BaseActionSchema.extend({
+  agentMessageId: ModelIdSchema,
+  params: z.unknown(),
+  type: z.literal("tool_action"),
+});
 
 const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "active"
@@ -1042,6 +1049,7 @@ const AgentActionTypeSchema = z.union([
   ConversationIncludeFileActionTypeSchema,
   ReasoningActionTypeSchema,
   SearchLabelsActionTypeSchema,
+  MCPActionTypeSchema,
 ]);
 export type AgentActionPublicType = z.infer<typeof AgentActionTypeSchema>;
 
@@ -1263,6 +1271,14 @@ const SearchLabelsParamsEventSchema = z.object({
   action: SearchLabelsActionTypeSchema,
 });
 
+const MCPParamsEventSchema = z.object({
+  type: z.literal("tool_params"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1290,6 +1306,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryOutputEventSchema,
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
+  MCPParamsEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema
@@ -1819,7 +1836,7 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
 
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
-    content: z.string(),
+    content: z.string().min(1),
     mentions: z.array(
       z.object({
         configurationId: z.string(),
@@ -1875,10 +1892,10 @@ export type PublicContentFragmentWithContent = z.infer<
 
 export const PublicContentFragmentWithFileIdSchema = z.object({
   title: z.string(),
+  fileId: z.string(),
   url: z.string().optional().nullable(),
   content: z.undefined().nullable(),
   contentType: z.undefined().nullable(),
-  fileId: z.string(),
   nodeId: z.undefined().nullable(),
   nodeDataSourceViewId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
@@ -1892,12 +1909,12 @@ export type PublicContentFragmentWithFileId = z.infer<
 
 const PublicContentFragmentWithContentNodeSchema = z.object({
   title: z.string(),
-  url: z.string().optional().nullable(),
-  content: z.undefined().nullable(),
-  contentType: z.string(),
-  fileId: z.undefined().nullable(),
   nodeId: z.string(),
   nodeDataSourceViewId: z.string(),
+  url: z.undefined().nullable(),
+  content: z.undefined().nullable(),
+  contentType: z.undefined().nullable(),
+  fileId: z.undefined().nullable(),
   context: ContentFragmentContextSchema.optional().nullable(),
   supersededContentFragmentId: z.string().optional().nullable(),
 });
@@ -1922,7 +1939,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
     message: z.union([
       z.intersection(
         z.object({
-          content: z.string(),
+          content: z.string().min(1),
           mentions: z.array(
             z.object({
               configurationId: z.string(),
@@ -2395,12 +2412,14 @@ export const GetWorkspaceUsageRequestSchema = z.union([
     end: z.undefined(),
     mode: z.literal("month"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
   z.object({
     start: DateSchema,
     end: DateSchema,
     mode: z.literal("range"),
     table: SupportedUsageTablesSchema,
+    format: z.enum(["csv", "json"]).optional().default("csv"),
   }),
 ]);
 
@@ -2727,7 +2746,7 @@ export type PostWorkspaceSearchResponseBodyType = z.infer<
   typeof PostWorkspaceSearchResponseBodySchema
 >;
 
-// TODO(mcp) move directly in the action type ?
+// TODO(mcp) move somewhere else as we'll need dynamic labels for MCP.
 export const ACTION_RUNNING_LABELS: Record<
   AgentActionPublicType["type"],
   string
@@ -2742,4 +2761,5 @@ export const ACTION_RUNNING_LABELS: Record<
   search_labels_action: "Searching labels",
   tables_query_action: "Querying tables",
   websearch_action: "Searching the web",
+  tool_action: "Calling MCP Server",
 };

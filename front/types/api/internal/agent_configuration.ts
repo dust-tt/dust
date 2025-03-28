@@ -130,6 +130,22 @@ const ReasoningActionConfigurationSchema = t.type({
   reasoningEffort: t.union([ReasoningEffortCodec, t.null]),
 });
 
+const MCPServerActionConfigurationSchema = t.type({
+  type: t.literal("mcp_server_configuration"),
+  mcpServerId: t.string,
+
+  dataSources: t.union([
+    t.null,
+    t.array(
+      t.type({
+        dataSourceViewId: t.string,
+        workspaceId: t.string,
+        filter: DataSourceFilterCodec,
+      })
+    ),
+  ]),
+});
+
 const ProcessActionConfigurationSchema = t.type({
   type: t.literal("process_configuration"),
   dataSources: t.array(
@@ -179,6 +195,7 @@ const ActionConfigurationSchema = t.intersection([
     WebsearchActionConfigurationSchema,
     BrowseActionConfigurationSchema,
     ReasoningActionConfigurationSchema,
+    MCPServerActionConfigurationSchema,
   ]),
   requiredMultiActionsCommonFields,
 ]);

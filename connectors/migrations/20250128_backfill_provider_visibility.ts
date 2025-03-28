@@ -11,7 +11,7 @@ import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const FOLDER_CONCURRENCY = 16;
 
@@ -51,7 +51,7 @@ makeScript({}, async ({ execute }, logger) => {
             title: `#${channel.slackChannelName}`,
             parentId: null,
             parents: [internalId],
-            mimeType: MIME_TYPES.SLACK.CHANNEL,
+            mimeType: INTERNAL_MIME_TYPES.SLACK.CHANNEL,
             providerVisibility: channel.private ? "private" : "public",
             sourceUrl: getSlackChannelSourceUrl(
               channel.slackChannelId,

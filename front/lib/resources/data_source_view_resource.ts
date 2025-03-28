@@ -357,7 +357,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       FetchDataSourceViewOptions,
       "limit" | "order"
     >
-  ) {
+  ): Promise<DataSourceViewResource | null> {
     const [dataSourceView] = await DataSourceViewResource.fetchByIds(
       auth,
       [id],
@@ -389,7 +389,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
@@ -405,7 +405,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       }
     );
 
-    return dataSourceViews ?? null;
+    return dataSourceViews ?? [];
   }
 
   static async fetchByConversation(

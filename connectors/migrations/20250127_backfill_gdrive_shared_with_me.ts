@@ -9,7 +9,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("google_drive", {});
@@ -25,7 +25,7 @@ makeScript({}, async ({ execute }, logger) => {
           parents: [folderId],
           parentId: null,
           title: "Shared with me",
-          mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+          mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
         });
         logger.info(

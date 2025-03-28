@@ -63,7 +63,7 @@ import type { GoogleDriveObjectType } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import {
   getGoogleSheetContentNodeInternalId,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
 } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
@@ -331,7 +331,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 permission: "read",
                 mimeType:
                   type === "folder"
-                    ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
+                    ? INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER
                     : f.mimeType,
               };
             },
@@ -407,7 +407,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
-                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -423,7 +423,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             lastUpdatedAt: null,
             expandable: true,
             permission: "none",
-            mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+            mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
           });
 
           nodes.sort((a, b) => {
@@ -502,7 +502,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                 }))
                   ? "read"
                   : "none",
-                mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+                mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
               };
             })
           );
@@ -877,7 +877,7 @@ async function getFoldersAsContentNodes({
           viewType,
         }),
         permission: "read",
-        mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+        mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
       };
     },
     { concurrency: 4 }

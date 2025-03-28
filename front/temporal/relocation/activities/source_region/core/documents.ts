@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreDocumentAPIRelocationBlob,
@@ -16,7 +17,7 @@ import type {
   CoreAPISearchCursorRequest,
   Ok,
 } from "@app/types";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,

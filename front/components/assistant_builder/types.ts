@@ -4,6 +4,8 @@ import type { SVGProps } from "react";
 import type React from "react";
 
 import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_NAME,
   DEFAULT_PROCESS_ACTION_NAME,
   DEFAULT_REASONING_ACTION_DESCRIPTION,
   DEFAULT_REASONING_ACTION_NAME,
@@ -27,10 +29,10 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@app/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 
 export const ACTION_MODES = [
@@ -45,7 +47,9 @@ export const ACTION_MODES = [
 export function isDefaultActionName(
   action: AssistantBuilderActionConfiguration
 ) {
-  switch (action.type) {
+  const actionType = action.type;
+
+  switch (actionType) {
     case "RETRIEVAL_SEARCH":
       return action.name.includes(DEFAULT_RETRIEVAL_ACTION_NAME);
     case "RETRIEVAL_EXHAUSTIVE":
@@ -62,8 +66,10 @@ export function isDefaultActionName(
       return action.name.includes(DEFAULT_WEBSEARCH_ACTION_NAME);
     case "REASONING":
       return action.name.includes(DEFAULT_REASONING_ACTION_NAME);
+    case "MCP":
+      return action.name.includes(DEFAULT_MCP_ACTION_NAME);
     default:
-      return false;
+      assertNever(actionType);
   }
 }
 
@@ -107,7 +113,7 @@ export type AssistantBuilderProcessConfiguration = {
   schema: ProcessSchemaPropertyType[];
 };
 
-// Websearch configuration (no configuraiton)
+// Websearch configuration (no configuration)
 export type AssistantBuilderWebNavigationConfiguration = Record<string, never>;
 
 // Reasoning configuration
@@ -116,6 +122,13 @@ export type AssistantBuilderReasoningConfiguration = {
   providerId: ModelProviderIdType | null;
   temperature: number | null;
   reasoningEffort: AgentReasoningEffort | null;
+};
+
+// MCP configuration
+export type AssistantBuilderMCPServerConfiguration = {
+  mcpServerId: string;
+
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
 // Builder State
@@ -148,6 +161,10 @@ export type AssistantBuilderActionConfiguration = (
   | {
       type: "REASONING";
       configuration: AssistantBuilderReasoningConfiguration;
+    }
+  | {
+      type: "MCP";
+      configuration: AssistantBuilderMCPServerConfiguration;
     }
 ) & {
   name: string;
@@ -341,6 +358,18 @@ export function getDefaultReasoningActionConfiguration(): AssistantBuilderAction
   } satisfies AssistantBuilderActionConfiguration;
 }
 
+export function getDefaultMCPServerActionConfiguration(): AssistantBuilderActionConfiguration {
+  return {
+    type: "MCP",
+    configuration: {
+      mcpServerId: "not-a-valid-mcp-server-id",
+      dataSourceConfigurations: null,
+    },
+    name: DEFAULT_MCP_ACTION_NAME,
+    description: DEFAULT_MCP_ACTION_DESCRIPTION,
+    noConfigurationRequired: false,
+  };
+}
 export function getDefaultActionConfiguration(
   actionType: AssistantBuilderActionType | null
 ): AssistantBuilderActionConfigurationWithId | null {
@@ -362,6 +391,8 @@ export function getDefaultActionConfiguration(
         return getDefaultWebsearchActionConfiguration();
       case "REASONING":
         return getDefaultReasoningActionConfiguration();
+      case "MCP":
+        return getDefaultMCPServerActionConfiguration();
       default:
         assertNever(actionType);
     }

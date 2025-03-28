@@ -750,7 +750,7 @@ export function useSpacesSearch({
 
   // Only perform a query if we have a valid search
   const url =
-    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds
+    (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
 

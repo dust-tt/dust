@@ -8,6 +8,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   ContentFragmentVersion,
+  ContentNodeType,
   SupportedContentFragmentType,
 } from "@app/types";
 
@@ -35,6 +36,7 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
 
   declare nodeId: string | null;
   declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
+  declare nodeType: ContentNodeType | null;
 
   declare version: ContentFragmentVersion;
 }
@@ -94,6 +96,10 @@ ContentFragmentModel.init(
     },
     nodeId: {
       type: DataTypes.STRING(512),
+      allowNull: true,
+    },
+    nodeType: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },

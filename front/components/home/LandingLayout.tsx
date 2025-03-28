@@ -297,8 +297,6 @@ const Header = () => {
         content="Dust - Accelerate your entire organization with custom AI agents"
       />
       <meta id="og-image" property="og:image" content="/static/og_image.png" />
-
-      <link rel="stylesheet" href="https://use.typekit.net/lzv1deb.css"></link>
     </Head>
   );
 };

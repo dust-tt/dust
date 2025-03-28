@@ -26,7 +26,7 @@ export function ActionDetailsWrapper({
           )}
         >
           <Icon size="sm" visual={visual} />
-          <span className="text-base font-semibold">{actionName}</span>
+          <span className="heading-base">{actionName}</span>
         </div>
       }
       contentChildren={children}

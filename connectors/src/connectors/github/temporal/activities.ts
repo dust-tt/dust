@@ -1,10 +1,12 @@
-import { assertNever } from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
+import { assertNever, Err, Ok } from "@dust-tt/client";
 import { Context } from "@temporalio/activity";
 import { hash as blake3 } from "blake3";
 import { promises as fs } from "fs";
 import PQueue from "p-queue";
 import { Op } from "sequelize";
 
+import { isGraphQLNotFound } from "@connectors/connectors/github/lib/errors";
 import type {
   GithubIssue as GithubIssueType,
   GithubUser,
@@ -21,6 +23,7 @@ import {
   getReposPage,
   processRepository,
 } from "@connectors/connectors/github/lib/github_api";
+import type { DiscussionNode } from "@connectors/connectors/github/lib/github_graphql";
 import {
   getCodeRootInternalId,
   getDiscussionInternalId,
@@ -63,7 +66,7 @@ import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 // Only allow documents up to 5mb to be processed.
 const MAX_DOCUMENT_TXT_LEN = 5000000;
@@ -326,7 +329,7 @@ export async function githubUpsertIssueActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: issue.title,
-    mimeType: MIME_TYPES.GITHUB.ISSUE,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUE,
     async: true,
   });
 
@@ -345,13 +348,26 @@ async function renderDiscussion(
   login: string,
   discussionNumber: number,
   logger: Logger
-) {
-  const discussion = await getDiscussion(
+): Promise<
+  Result<
+    {
+      discussion: DiscussionNode;
+      content: CoreAPIDataSourceDocumentSection;
+    },
+    Error
+  >
+> {
+  const discussionRes = await getDiscussion(
     connector,
     repoName,
     login,
     discussionNumber
   );
+  if (discussionRes.isErr()) {
+    return new Err(discussionRes.error);
+  }
+
+  const discussion = discussionRes.value;
 
   const content = await renderDocumentTitleAndContent({
     dataSourceConfig,
@@ -446,10 +462,10 @@ async function renderDiscussion(
     nextCursor = cursor;
   }
 
-  return {
+  return new Ok({
     discussion,
     content,
-  };
+  });
 }
 
 export async function githubUpsertDiscussionActivity(
@@ -474,7 +490,7 @@ export async function githubUpsertDiscussionActivity(
     ...loggerArgs,
   });
   logger.info("Upserting GitHub discussion.");
-  const { discussion, content: renderedDiscussion } = await renderDiscussion(
+  const renderedDiscussionRes = await renderDiscussion(
     dataSourceConfig,
     connector,
     repoName,
@@ -482,6 +498,17 @@ export async function githubUpsertDiscussionActivity(
     discussionNumber,
     logger
   );
+
+  if (renderedDiscussionRes.isErr()) {
+    if (isGraphQLNotFound(renderedDiscussionRes.error)) {
+      logger.warn("Discussion not found. Skipping.");
+      return;
+    }
+    throw renderedDiscussionRes.error;
+  }
+
+  const { discussion, content: renderedDiscussion } =
+    renderedDiscussionRes.value;
 
   if (sectionLength(renderedDiscussion) > MAX_DOCUMENT_TXT_LEN) {
     logger.info("Discussion is too large to upsert.");
@@ -517,7 +544,7 @@ export async function githubUpsertDiscussionActivity(
       sync_type: isBatchSync ? "batch" : "incremental",
     },
     title: discussion.title,
-    mimeType: MIME_TYPES.GITHUB.DISCUSSION,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSION,
     async: true,
   });
 
@@ -985,7 +1012,7 @@ export async function githubCodeSyncActivity({
     title: "Code",
     parents: [getCodeRootInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.CODE_ROOT,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_ROOT,
     sourceUrl: getRepoUrl(repoLogin, repoName),
   });
 
@@ -1205,7 +1232,7 @@ export async function githubCodeSyncActivity({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: f.fileName,
-            mimeType: MIME_TYPES.GITHUB.CODE_FILE,
+            mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_FILE,
             async: true,
           });
 
@@ -1249,7 +1276,7 @@ export async function githubCodeSyncActivity({
           parents,
           parentId: parents[1],
           title: d.dirName,
-          mimeType: MIME_TYPES.GITHUB.CODE_DIRECTORY,
+          mimeType: INTERNAL_MIME_TYPES.GITHUB.CODE_DIRECTORY,
           sourceUrl: d.sourceUrl,
         });
 
@@ -1393,7 +1420,7 @@ export async function githubUpsertRepositoryFolderActivity({
     parents: [getRepositoryInternalId(repoId)],
     parentId: null,
     sourceUrl: getRepoUrl(repoLogin, repoName),
-    mimeType: MIME_TYPES.GITHUB.REPOSITORY,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.REPOSITORY,
   });
 }
 
@@ -1418,7 +1445,7 @@ export async function githubUpsertIssuesFolderActivity({
     title: "Issues",
     parents: [getIssuesInternalId(repoId), getRepositoryInternalId(repoId)],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.ISSUES,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.ISSUES,
     sourceUrl: getIssuesUrl(getRepoUrl(repoLogin, repoName)),
   });
 }
@@ -1447,7 +1474,7 @@ export async function githubUpsertDiscussionsFolderActivity({
       getRepositoryInternalId(repoId),
     ],
     parentId: getRepositoryInternalId(repoId),
-    mimeType: MIME_TYPES.GITHUB.DISCUSSIONS,
+    mimeType: INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,
     sourceUrl: getDiscussionsUrl(getRepoUrl(repoLogin, repoName)),
   });
 }

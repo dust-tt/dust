@@ -3,6 +3,7 @@ import * as reporter from "io-ts-reporters";
 import _ from "lodash";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import {
@@ -372,7 +373,6 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         {
           type: "dust_app_run_configuration",
-          app: app.toJSON(),
           appWorkspaceId: action.appWorkspaceId,
           appId: action.appId,
           name: action.name ?? null,
@@ -480,6 +480,24 @@ export async function createOrUpgradeAgentConfiguration({
         return res;
       }
       actionConfigs.push(res.value);
+    } else if (action.type === "mcp_server_configuration") {
+      const res = await createAgentActionConfiguration(
+        auth,
+        {
+          type: "mcp_server_configuration",
+          mcpServerId: action.mcpServerId,
+          name: action.name,
+          description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+          dataSources: action.dataSources,
+        },
+        agentConfigurationRes.value
+      );
+      if (res.isErr()) {
+        // If we fail to create an action, we should delete the agent configuration
+        // we just created and re-throw the error.
+        await unsafeHardDeleteAgentConfiguration(agentConfigurationRes.value);
+        return res;
+      }
     } else {
       assertNever(action);
     }

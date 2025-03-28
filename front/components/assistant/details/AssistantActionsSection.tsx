@@ -3,6 +3,7 @@ import {
   Button,
   ChatBubbleThoughtIcon,
   Chip,
+  CommandIcon,
   CommandLineIcon,
   ExternalLinkIcon,
   FolderIcon,
@@ -33,6 +34,7 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import {
   isBrowseConfiguration,
   isDustAppRunConfiguration,
+  isMCPServerConfiguration,
   isProcessConfiguration,
   isReasoningConfiguration,
   isRetrievalConfiguration,
@@ -303,6 +305,13 @@ function renderOtherAction(
         </div>
       </ActionSection>
     );
+  } else if (isMCPServerConfiguration(action)) {
+    return (
+      <ActionSection title={action.name} key={`other-${index}`}>
+        <Icon visual={CommandIcon} size="sm" />
+        <div>{action.description}</div>
+      </ActionSection>
+    );
   } else if (isBrowseConfiguration(action)) {
     return null;
   } else if (
@@ -321,7 +330,7 @@ interface ActionSectionProps {
 function ActionSection({ title, children }: ActionSectionProps) {
   return (
     <div>
-      <div className="text-text-foreground dark:text-text-foreground-night pb-2 text-lg font-medium">
+      <div className="text-text-foreground dark:text-text-foreground-night heading-lg pb-2">
         {title}
       </div>
       {children}

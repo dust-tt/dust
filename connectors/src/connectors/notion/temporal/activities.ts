@@ -78,7 +78,7 @@ import type { ModelId } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 import {
   getNotionDatabaseTableId,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
   slugify,
 } from "@connectors/types";
 
@@ -1886,7 +1886,7 @@ export async function renderAndUpsertPageFromCache({
             parents: parents,
             parentId: parents[1] || null,
             title: parentDb.title ?? "Untitled Notion Database",
-            mimeType: MIME_TYPES.NOTION.DATABASE,
+            mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
             sourceUrl:
               parentDb.notionUrl ??
               `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
@@ -2116,7 +2116,7 @@ export async function renderAndUpsertPageFromCache({
       sync_type: isFullSync ? "batch" : "incremental",
     },
     title: title ?? "",
-    mimeType: MIME_TYPES.NOTION.PAGE,
+    mimeType: INTERNAL_MIME_TYPES.NOTION.PAGE,
     async: true,
   });
 
@@ -2611,7 +2611,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       parents: parentIds,
       parentId: parentIds[1] || null,
       title: dbModel.title ?? "Untitled Notion Database",
-      mimeType: MIME_TYPES.NOTION.DATABASE,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       sourceUrl:
         dbModel.notionUrl ??
         `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
@@ -2674,7 +2674,7 @@ export async function upsertDatabaseStructuredDataFromCache({
           sync_type: "batch",
         },
         title: databaseName,
-        mimeType: MIME_TYPES.NOTION.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
         async: true,
       });
     } else {

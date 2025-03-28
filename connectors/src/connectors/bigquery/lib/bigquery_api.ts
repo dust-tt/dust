@@ -8,8 +8,10 @@ import type {
   RemoteDBTable,
   RemoteDBTree,
 } from "@connectors/lib/remote_databases/utils";
+import logger from "@connectors/logger/logger";
 import type { BigQueryCredentialsWithLocation } from "@connectors/types";
 
+const MAX_TABLES_PER_SCHEMA = 1000;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
 export class TestConnectionError extends Error {
@@ -190,6 +192,20 @@ export const fetchTree = async ({
                   throw tablesRes.error;
                 }
                 const tables = tablesRes.value;
+
+                // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
+                if (tables.length > MAX_TABLES_PER_SCHEMA) {
+                  logger.warn(
+                    `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+                  );
+                  return {
+                    name:
+                      schema.name +
+                      ` (sync skipped: exceeded ${MAX_TABLES_PER_SCHEMA} tables limit)`,
+                    database_name: credentials.project_id,
+                    tables: [],
+                  };
+                }
 
                 return {
                   ...schema,

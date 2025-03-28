@@ -1,11 +1,12 @@
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 async function backfillCoreDataSourceName(
   workspace: LightWorkspaceType,

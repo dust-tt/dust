@@ -31,8 +31,8 @@ import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
 import {
   getGoogleSheetTableId,
+  INTERNAL_MIME_TYPES,
   InvalidStructuredDataHeaderError,
-  MIME_TYPES,
   slugify,
 } from "@connectors/types";
 
@@ -528,7 +528,7 @@ export async function syncSpreadSheet(
         parents,
         parentId: parents[1] || null,
         title: spreadsheet.data.properties?.title ?? "Untitled Spreadsheet",
-        mimeType: MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+        mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
         sourceUrl: getSourceUrlForGoogleDriveFiles(file),
       });
 

@@ -1,59 +1,21 @@
-import {
-  BigQueryLogo,
-  ConfluenceLogo,
-  DocumentTextIcon,
-  DriveLogo,
-  GithubLogo,
-  GongLogo,
-  ImageIcon,
-  IntercomLogo,
-  MicrosoftLogo,
-  NotionLogo,
-  SalesforceLogo,
-  SlackLogo,
-  SnowflakeLogo,
-  ZendeskLogo,
-} from "@dust-tt/sparkle";
-import type { SVGProps } from "react";
+import { DocumentTextIcon, ImageIcon } from "@dust-tt/sparkle";
 
-const CITATION_ICONS = [
-  "confluence",
-  "document",
-  "github",
-  "google_drive",
-  "intercom",
-  "microsoft",
-  "zendesk",
-  "notion",
-  "slack",
-  "image",
-  "snowflake",
-  "bigquery",
-  "salesforce",
-  "gong",
-] as const;
+import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import type { ConnectorProvider } from "@app/types";
 
-export type CitationIconType = (typeof CITATION_ICONS)[number];
-
-export const citationIconMap: Record<
-  CitationIconType,
-  (props: SVGProps<SVGSVGElement>) => React.JSX.Element
-> = {
-  confluence: ConfluenceLogo,
-  document: DocumentTextIcon,
-  github: GithubLogo,
-  google_drive: DriveLogo,
-  intercom: IntercomLogo,
-  microsoft: MicrosoftLogo,
-  zendesk: ZendeskLogo,
-  notion: NotionLogo,
-  slack: SlackLogo,
-  image: ImageIcon,
-  snowflake: SnowflakeLogo,
-  bigquery: BigQueryLogo,
-  salesforce: SalesforceLogo,
-  gong: GongLogo,
-};
+export function getCitationIcon(
+  type: ConnectorProvider | "document" | "image",
+  isDark?: boolean
+) {
+  switch (type) {
+    case "document":
+      return DocumentTextIcon;
+    case "image":
+      return ImageIcon;
+    default:
+      return CONNECTOR_CONFIGURATIONS[type].getLogoComponent(isDark);
+  }
+}
 
 export interface MarkdownCitation {
   description?: string;

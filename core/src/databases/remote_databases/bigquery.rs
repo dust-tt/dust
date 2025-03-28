@@ -355,11 +355,14 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
                 if parts.len() != 3 {
                     Err(anyhow!("Invalid opaque ID: {}", opaque_id))?
                 }
-                let (dataset_id, table_id) = (parts[1], parts[2]);
+                let (dataset_id, table_id) = (
+                    parts[1].replace("__DUST_DOT__", "."),
+                    parts[2].replace("__DUST_DOT__", "."),
+                );
 
                 self.client
                     .table()
-                    .get(&self.project_id, dataset_id, table_id, None)
+                    .get(&self.project_id, &dataset_id, &table_id, None)
                     .await
                     .map_err(|e| anyhow!("Error getting table metadata: {}", e))
             }))

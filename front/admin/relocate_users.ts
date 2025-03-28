@@ -93,12 +93,12 @@ export async function updateAllWorkspaceUsersRegionMetadata(
     execute,
     newRegion,
     rateLimitThreshold,
-    skipUsersWithMultipleMemberships,
+    forceUsersWithMultipleMemberships,
   }: {
     execute: boolean;
     newRegion: RegionType;
     rateLimitThreshold: number;
-    skipUsersWithMultipleMemberships: boolean;
+    forceUsersWithMultipleMemberships: boolean;
   }
 ): Promise<Result<void, Error>> {
   const workspace = auth.getNonNullableWorkspace();
@@ -106,7 +106,7 @@ export async function updateAllWorkspaceUsersRegionMetadata(
   const members = await MembershipResource.getMembershipsForWorkspace({
     workspace,
   });
-  let userIds = [
+  const userIds = [
     ...new Set(removeNulls(members.memberships.map((m) => m.userId))),
   ];
   const allMemberships = await MembershipResource.fetchByUserIds(userIds);
@@ -123,15 +123,10 @@ export async function updateAllWorkspaceUsersRegionMetadata(
         })),
       },
       "Some users have multiple memberships. Can be ignored by setting the " +
-        "skipUsersWithMultipleMemberships flag."
+        "forceUsersWithMultipleMemberships flag."
     );
 
-    // Filter out the users with multiple memberships if option is set.
-    if (skipUsersWithMultipleMemberships) {
-      userIds = userIds.filter(
-        (id) => !externalMemberships.some((m) => m.userId === id)
-      );
-    } else {
+    if (!forceUsersWithMultipleMemberships) {
       return new Err(new Error("Some users have mutiple memberships"));
     }
   }
@@ -183,7 +178,7 @@ if (require.main === module) {
         required: false,
         default: 3,
       },
-      skipUsersWithMultipleMemberships: {
+      forceUsersWithMultipleMemberships: {
         type: "boolean",
         required: false,
         default: false,
@@ -194,7 +189,7 @@ if (require.main === module) {
         destinationRegion,
         workspaceId,
         rateLimitThreshold,
-        skipUsersWithMultipleMemberships,
+        forceUsersWithMultipleMemberships,
         execute,
       },
       logger
@@ -205,7 +200,7 @@ if (require.main === module) {
         execute,
         newRegion: destinationRegion as RegionType,
         rateLimitThreshold,
-        skipUsersWithMultipleMemberships,
+        forceUsersWithMultipleMemberships,
       });
 
       if (res.isErr()) {

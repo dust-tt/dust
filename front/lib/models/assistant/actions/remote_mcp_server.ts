@@ -1,24 +1,22 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
+import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
+export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPServer> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare sId: string;
-
-  declare spaceId: ForeignKey<SpaceModel["id"]>;
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
   declare space: NonAttribute<SpaceModel>;
 
-  declare name: string;
   declare url: string;
-
+  declare name: string;
   declare description: string | null;
-  declare cachedTools: string[];
+  declare cachedTools: MCPToolMetadata[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;
@@ -36,9 +34,8 @@ RemoteMCPServer.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    sId: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    deletedAt: {
+      type: DataTypes.DATE,
     },
     name: {
       type: DataTypes.STRING,
@@ -53,7 +50,7 @@ RemoteMCPServer.init(
       allowNull: true,
     },
     cachedTools: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
+      type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: [],
     },
@@ -73,9 +70,9 @@ RemoteMCPServer.init(
 );
 
 SpaceModel.hasMany(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "spaceId" },
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
 RemoteMCPServer.belongsTo(SpaceModel, {
-  foreignKey: { allowNull: false, name: "spaceId" },
+  foreignKey: { allowNull: false, name: "vaultId" },
 });
