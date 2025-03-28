@@ -147,7 +147,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "50%",
   subtitle: "reduction in ticket resolution time",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/gray/malt.png",
 };
 
 export const Quote: QuoteProps = {
@@ -155,7 +155,7 @@ export const Quote: QuoteProps = {
     "We're managing a higher volume of tickets and have cut processing time—from an average of 6 minutes per ticket to just a few seconds.",
   name: "Anaïs Ghelfi",
   title: "Head of Data Platform at Malt",
-  logo: "/static/landing/logos/malt.png",
+  logo: "/static/landing/logos/color/malt.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

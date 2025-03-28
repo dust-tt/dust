@@ -21,61 +21,61 @@ export default function TrustedBy() {
           {" "}
           <Image
             alt="alan"
-            src="/static/landing/logos/alan.png"
+            src="/static/landing/logos/gray/alan.png"
             width={200}
             height={80}
           />
           <Image
             alt="watershed"
-            src="/static/landing/logos/watershed.png"
+            src="/static/landing/logos/gray/watershed.png"
             width={200}
             height={80}
           />
           <Image
             alt="qonto"
-            src="/static/landing/logos/qonto.png"
+            src="/static/landing/logos/gray/qonto.png"
             width={200}
             height={80}
           />
           <Image
             alt="pennylane"
-            src="/static/landing/logos/pennylane.png"
+            src="/static/landing/logos/gray/pennylane.png"
             width={200}
             height={80}
           />
           <Image
             alt="payfit"
-            src="/static/landing/logos/payfit.png"
+            src="/static/landing/logos/gray/payfit.png"
             width={200}
             height={80}
           />
           <Image
             alt="malt"
-            src="/static/landing/logos/malt.png"
+            src="/static/landing/logos/gray/malt.png"
             width={200}
             height={80}
           />
           <Image
             alt="doctolib"
-            src="/static/landing/logos/doctolib.png"
+            src="/static/landing/logos/gray/doctolib.png"
             width={200}
             height={80}
           />
           <Image
             alt="blueground"
-            src="/static/landing/logos/blueground.png"
+            src="/static/landing/logos/gray/blueground.png"
             width={200}
             height={80}
           />
           <Image
             alt="clay"
-            src="/static/landing/logos/clay.png"
+            src="/static/landing/logos/gray/clay.png"
             width={200}
             height={80}
           />
           <Image
             alt="photoroom"
-            src="/static/landing/logos/photoroom.png"
+            src="/static/landing/logos/gray/photoroom.png"
             width={200}
             height={80}
           />

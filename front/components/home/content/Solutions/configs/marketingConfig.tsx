@@ -152,7 +152,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "70%",
   subtitle: "time reduction in localization",
-  logo: "/static/landing/logos/qonto.png",
+  logo: "/static/landing/logos/gray/qonto.png",
 };
 
 export const Quote: QuoteProps = {
@@ -160,7 +160,7 @@ export const Quote: QuoteProps = {
     "Dust is not just a tool - it's like having an extra team member who knows your brand voice, can handle recurring tasks, and helps you tackle new challenges. I couldn't do half of my job without it, especially with tight deadlines and a small team.",
   name: "Valentine Chelius",
   title: "Head of Marketing at Fleet",
-  logo: "/static/landing/logos/fleet.png",
+  logo: "/static/landing/logos/color/fleet.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

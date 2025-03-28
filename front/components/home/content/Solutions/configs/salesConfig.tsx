@@ -158,7 +158,7 @@ export const Quote: QuoteProps = {
     "Dust is the most impactful software we've adopted since building Clay. It continuously gets smarter, turning hours of documentation search into instant, cited answers—letting our team spend less time searching and more time closing deals.",
   name: "Everett Berry ",
   title: "Head of GTM Engineering at Clay",
-  logo: "/static/landing/logos/clay.png",
+  logo: "/static/landing/logos/color/clay.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

@@ -24,7 +24,7 @@ import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCas
 export const pageSettings: pageSettingsProps = {
   uptitle: "Legal",
   title: <>Accelerate Legal Operations and Compliance</>,
-  accentColor: "bg-brand-electric-blue",
+  accentColor: "text-brand-electric-blue",
   description: (
     <>
       Assist your teams on legal or compliance reviews, and make legal support
@@ -154,7 +154,7 @@ export const Quote: QuoteProps = {
     "Dust transformed our privacy reviews. It handles compliance checks, suggests improvements, and drafts communications. It both cuts our review time and helps pressure-test our legal interpretations.",
   name: "Thomas Adhumeau",
   title: "Chief Privacy Officer at Didomi",
-  logo: "/static/landing/logos/didomi.png",
+  logo: "/static/landing/logos/color/didomi.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

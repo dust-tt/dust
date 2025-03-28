@@ -165,7 +165,7 @@ export const Quote: QuoteProps = {
     "One of the things that impressed me about Dust is that all the use cases around internal and external support for teams who need to maintain processes are impressive. Being able to call an agent that parses all the knowledge is a huge pain reliever.",
   name: "Raphael Brousse ",
   title: "VP Operations at Lifen",
-  logo: "/static/landing/logos/lifen.png",
+  logo: "/static/landing/logos/color/lifen.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

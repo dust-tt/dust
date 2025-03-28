@@ -152,7 +152,7 @@ export const UseCases: UseCaseProps = {
 export const ROI: ROIProps = {
   number: "20%",
   subtitle: "faster project completion",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const Quote: QuoteProps = {
@@ -160,7 +160,7 @@ export const Quote: QuoteProps = {
     "It's really become a reflex now to ask a Dust agent. With just two keystrokes, it instantly surfaces exactly the context I need - whether from code, documentation, or overlooked team discussions.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/color/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

@@ -153,7 +153,7 @@ export const Quote: QuoteProps = {
     "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
   name: "Boris Lipiainen ",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

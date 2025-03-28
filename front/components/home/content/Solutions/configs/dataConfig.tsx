@@ -153,7 +153,7 @@ export const Quote: QuoteProps = {
     "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

@@ -149,7 +149,7 @@ export const Quote: QuoteProps = {
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
   name: "Matthieu Birach ",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/doctolib.png",
+  logo: "/static/landing/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {

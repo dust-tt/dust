@@ -153,7 +153,7 @@ export const Quote: QuoteProps = {
     "The Dust platform is more than just a tool for post-ideation; it's a catalyst for innovation, stimulating idea generation as employees engage with it.",
   name: "Boris Lipiainen",
   title: "Chief Product and Technology Officer at Kyriba",
-  logo: "/static/landing/logos/kyriba.png",
+  logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
