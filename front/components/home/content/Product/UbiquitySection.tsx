@@ -13,7 +13,9 @@ export function UbiquitySection() {
             <H2>Have AI wherever you work</H2>
             <P size="lg" className="text-muted-foreground">
               Leverage the power of AI and your knoweldge right where you need
-              it. No back and forth across tools.
+              it.
+              <br />
+              No back and forth across tools.
             </P>
           </div>
         </div>

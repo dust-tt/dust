@@ -12,10 +12,11 @@ export function ExtensibilitySection({ page = "default" }) {
         <div className="col-span-12 mb-6">
           <div>
             <H2>Push further with custom code</H2>
-            <P size="lg" className="text-muted-foreground">
+            <P size="lg" className="max-w-[700px] text-muted-foreground">
               Developer friendly&nbsp;platform designed to&nbsp;build custom
               actions and&nbsp;application orchestration to&nbsp;fit your
-              team's&nbsp;exact&nbsp;needs.{" "}
+              team's&nbsp;exact&nbsp;needs.
+              <br />{" "}
               {page == "default" && (
                 <Link href="/home/solutions/dust-platform" shallow={true}>
                   <A variant="primary">
