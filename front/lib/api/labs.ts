@@ -1,8 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { stopRetrieveTranscriptsWorkflow } from "@app/temporal/labs/client";
-import { concurrentExecutor } from "@app/types";
 import { Ok } from "@app/types";
 import { labsTranscriptsProviders } from "@app/types/labs";
 
