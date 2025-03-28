@@ -513,13 +513,13 @@ export default function Output({
                   )}
                   <span className="text-sm text-gray-400">
                     [{" "}
-                    <span className="font-bold text-emerald-400">
+                    <span className="font-semibold text-success">
                       {successes} {successes === 1 ? "success" : "successes"}
                     </span>
                     {errors > 0 ? (
                       <>
                         {", "}
-                        <span className="font-bold text-red-400">
+                        <span className="font-semibold text-warning">
                           {errors} {errors === 1 ? "error" : "errors"}
                         </span>
                       </>
@@ -537,7 +537,7 @@ export default function Output({
               {traces.map((trace, i) => {
                 return (
                   <div key={i} className="ml-1 flex flex-auto flex-row">
-                    <div className="mr-2 flex font-mono text-sm text-gray-300">
+                    <div className="mr-2 flex font-mono text-sm text-primary-500">
                       {i}:
                     </div>
                     <Execution trace={trace} block={block} />
