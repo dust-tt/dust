@@ -88,7 +88,7 @@ export type MCPToolResultContent = z.infer<typeof Schema>;
 export type MCPToolMetadata = {
   name: string;
   description: string;
-  inputSchema: JSONSchema7 | undefined;
+  inputSchema: JSONSchema | undefined;
 };
 
 const ALLOWED_ICONS = ["command", "rocket"] as const;
@@ -249,13 +249,19 @@ function extractMetadataFromServerVersion(
 }
 
 function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
-  return tools.tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description || "",
-    inputSchema: ajv.validateSchema(tool.inputSchema)
-      ? (tool.inputSchema as JSONSchema7) // unfortunately, ajv does not assert the type when returning.
-      : undefined,
-  }));
+  return tools.tools.map((tool) => {
+    let inputSchema: JSONSchema | undefined = undefined;
+    if (ajv.validateSchema(tool.inputSchema)) {
+      inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
+    } else {
+      logger.error(`[MCP] Invalid input schema for tool: ${tool.name}.`);
+    }
+    return {
+      name: tool.name,
+      description: tool.description || "",
+      inputSchema,
+    };
+  });
 }
 
 export async function fetchRemoteServerMetaDataByURL(
