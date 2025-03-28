@@ -58,7 +58,8 @@ const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
 
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
-  transport: InMemoryTransport
+  transport: InMemoryTransport,
+  apiToken?: string
 ): Promise<McpServer> => {
   let server: McpServer | undefined;
 
@@ -66,7 +67,7 @@ export const connectToInternalMCPServer = async (
 
   switch (internalMCPServerName) {
     case "helloworld":
-      server = helloWorldServer();
+      server = helloWorldServer(apiToken);
       break;
     case "data-source-utils":
       server = dataSourceUtilsServer();

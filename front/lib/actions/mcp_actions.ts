@@ -17,6 +17,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   connectToInternalMCPServer,
   getInternalMCPServerSId,
@@ -24,10 +25,11 @@ import {
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
@@ -36,7 +38,13 @@ import type {
   OAuthUseCase,
   Result,
 } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import {
+  assertNever,
+  Err,
+  getOAuthConnectionAccessToken,
+  normalizeError,
+  Ok,
+} from "@app/types";
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -127,31 +135,6 @@ function makeMCPConfigurations({
   });
 }
 
-export const getServerTypeAndIdFromSId = (
-  mcpServerId: string
-): {
-  serverType: "internal" | "remote";
-  id: number;
-} => {
-  const sIdParts = getResourceNameAndIdFromSId(mcpServerId);
-  if (!sIdParts) {
-    throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
-  }
-
-  const { resourceName, resourceId } = sIdParts;
-
-  switch (resourceName) {
-    case "internal_mcp_server":
-      return { serverType: "internal" as const, id: resourceId };
-    case "remote_mcp_server":
-      return { serverType: "remote" as const, id: resourceId };
-    default:
-      throw new Error(
-        `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
-      );
-  }
-};
-
 const connectToMCPServer = async (
   auth: Authenticator,
   {
@@ -168,8 +151,12 @@ const connectToMCPServer = async (
     name: "dust-mcp-client",
     version: "1.0.0",
   });
-
   if (mcpServerId) {
+    const apiTokenRes = await getAccessTokenForMCPServer(auth, mcpServerId);
+    const accessToken =
+      apiTokenRes && apiTokenRes.isOk()
+        ? apiTokenRes.value.access_token
+        : undefined;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
     switch (serverType) {
@@ -177,7 +164,7 @@ const connectToMCPServer = async (
         // Create a pair of linked in-memory transports
         // And connect the client to the server.
         const [client, server] = InMemoryTransport.createLinkedPair();
-        await connectToInternalMCPServer(mcpServerId, server);
+        await connectToInternalMCPServer(mcpServerId, server, accessToken);
         await mcpClient.connect(client);
         break;
 
@@ -194,7 +181,13 @@ const connectToMCPServer = async (
         }
 
         const url = new URL(remoteMCPServer.url);
-        const sseTransport = new SSEClientTransport(url);
+        const sseTransport = new SSEClientTransport(url, {
+          requestInit: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        });
         await mcpClient.connect(sseTransport);
         break;
 
@@ -365,6 +358,29 @@ export async function getAllMCPServersMetadataLocally(
   return mcpServers;
 }
 
+async function getAccessTokenForMCPServer(
+  auth: Authenticator,
+  mcpServerId: string
+) {
+  const metadata = await getMCPServerMetadataLocally(auth, {
+    mcpServerId: mcpServerId,
+  });
+  if (metadata.authorization) {
+    const connection = await MCPServerConnectionResource.findByMCPServer({
+      auth,
+      mcpServerId: mcpServerId,
+    });
+    if (connection.isOk()) {
+      const token = await getOAuthConnectionAccessToken({
+        config: apiConfig.getOAuthAPIConfig(),
+        logger,
+        provider: metadata.authorization.provider,
+        connectionId: connection.value.connectionId,
+      });
+      return token;
+    }
+  }
+}
 /**
  * Try to call an MCP tool.
  *
@@ -384,7 +400,6 @@ export async function tryCallMCPTool(
 ): Promise<Result<MCPToolResultContent[], Error>> {
   try {
     const mcpClient = await connectToMCPServer(auth, actionConfiguration);
-
     const r = await mcpClient.callTool({
       name: actionConfiguration.name,
       arguments: rawInputs,

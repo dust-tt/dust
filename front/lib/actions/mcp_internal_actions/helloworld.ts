@@ -13,7 +13,7 @@ const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
   icon: "rocket",
 };
 
-export const createServer = (): McpServer => {
+export const createServer = (apiToken?: string): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool("helloworld", "A simple hello world tool", () => {
@@ -22,7 +22,7 @@ export const createServer = (): McpServer => {
       content: [
         {
           type: "text",
-          text: "Hello world !",
+          text: apiToken ? "Hello connected world !" : "Hello world !",
         },
       ],
     };
