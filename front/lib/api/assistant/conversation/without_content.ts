@@ -16,6 +16,7 @@ export async function getConversationWithoutContent(
   options?: {
     includeDeleted?: boolean;
     dangerouslySkipPermissionFiltering?: boolean;
+    threadVersion?: number;
   }
 ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
@@ -54,5 +55,7 @@ export async function getConversationWithoutContent(
     ),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
+    lastThreadVersion: conversation.lastThreadVersion,
+    threadVersion: options?.threadVersion ?? conversation.lastThreadVersion,
   });
 }

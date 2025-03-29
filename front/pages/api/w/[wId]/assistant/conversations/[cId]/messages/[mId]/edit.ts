@@ -33,7 +33,16 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
+  const threadVersion = req.query.threadVersion
+    ? Number(req.query.threadVersion)
+    : undefined;
+
+  const conversationRes = await getConversation(
+    auth,
+    conversationId,
+    false,
+    threadVersion
+  );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);

@@ -48,9 +48,14 @@ async function handler(
     });
   }
 
+  const threadVersion = req.query.threadVersion
+    ? Number(req.query.threadVersion)
+    : undefined;
+
   const conversationRes = await getConversationWithoutContent(
     auth,
-    req.query.cId
+    req.query.cId,
+    { threadVersion }
   );
 
   if (conversationRes.isErr()) {

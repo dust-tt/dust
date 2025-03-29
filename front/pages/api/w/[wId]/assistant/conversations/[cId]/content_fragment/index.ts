@@ -2,6 +2,7 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { parseThreadVersionParam } from "@app/components/assistant/conversation/lib";
 import {
   getConversation,
   postNewContentFragment,
@@ -33,7 +34,15 @@ async function handler(
   }
 
   const conversationId = req.query.cId;
-  const conversationRes = await getConversation(auth, conversationId);
+
+  const threadVersion = parseThreadVersionParam(req.query.threadVersion);
+
+  const conversationRes = await getConversation(
+    auth,
+    conversationId,
+    undefined,
+    threadVersion
+  );
 
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);

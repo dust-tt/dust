@@ -71,12 +71,14 @@ import type {
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,
   AgentMessageType,
+  ConversationType,
   GenerationTokensEvent,
   LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, GLOBAL_AGENTS_SID, removeNulls } from "@app/types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
+import { assertNever, removeNulls } from "@app/types";
 
 function cleanUpCitations(message: string): string {
   const regex = / ?:cite\[[a-zA-Z0-9, ]+\]/g;
@@ -120,7 +122,7 @@ export const FeedbackSelectorPopoverContent = ({
 };
 
 interface AgentMessageProps {
-  conversationId: string;
+  conversation: ConversationType;
   isLastMessage: boolean;
   message: AgentMessageType;
   messageFeedback: FeedbackSelectorProps;
@@ -137,7 +139,7 @@ export type AgentStateClassification = "thinking" | "acting" | "done";
  * @returns
  */
 export function AgentMessage({
-  conversationId,
+  conversation,
   isLastMessage,
   message,
   messageFeedback,
@@ -159,6 +161,8 @@ export function AgentMessage({
     { index: number; document: MarkdownCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+
+  const conversationId = conversation.sId;
 
   const isGlobalAgent = useMemo(() => {
     return Object.values(GLOBAL_AGENTS_SID).includes(

@@ -22,6 +22,7 @@ export class Conversation extends WorkspaceAwareModel<Conversation> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare lastThreadVersion: number;
 
   declare requestedGroupIds: number[][];
 
@@ -53,6 +54,11 @@ Conversation.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    lastThreadVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     requestedGroupIds: {
       type: DataTypes.ARRAY(DataTypes.ARRAY(DataTypes.BIGINT)),
@@ -378,6 +384,9 @@ export class Message extends WorkspaceAwareModel<Message> {
 
   declare version: CreationOptional<number>;
   declare rank: number;
+  declare threadVersions: CreationOptional<number[]>;
+  declare previousThreadVersion: CreationOptional<number>;
+  declare nextThreadVersion: CreationOptional<number>;
   declare visibility: CreationOptional<MessageVisibility>;
 
   declare conversationId: ForeignKey<Conversation["id"]>;
@@ -425,6 +434,19 @@ Message.init(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    nextThreadVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    previousThreadVersion: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    threadVersions: {
+      type: DataTypes.ARRAY(DataTypes.INTEGER),
+      allowNull: true,
+      defaultValue: [0],
+    },
   },
   {
     modelName: "message",
@@ -436,7 +458,15 @@ Message.init(
       },
       {
         unique: true,
-        fields: ["conversationId", "rank", "version"],
+        fields: ["conversationId", "rank", "version", "parentId"],
+      },
+      {
+        fields: ["conversationId", "rank", "parentId"],
+      },
+      {
+        fields: ["conversationId", "threadVersions"],
+        using: "GIN",
+        concurrently: true,
       },
       {
         fields: ["agentMessageId"],

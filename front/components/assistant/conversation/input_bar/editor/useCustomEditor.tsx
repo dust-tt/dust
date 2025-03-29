@@ -16,6 +16,7 @@ import type { EditorSuggestions } from "@app/components/assistant/conversation/i
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isMobile } from "@app/lib/utils";
+import type { LightAgentConfigurationType } from "@app/types";
 
 import { URLStorageExtension } from "./extensions/URLStorageExtension";
 
@@ -62,6 +63,54 @@ function getTextAndMentionsFromNode(node?: JSONContent) {
   }
 
   return { text: textContent, mentions: mentions };
+}
+
+// TODO: Replace with MarkdownParser
+export function getJSONFromText(
+  text: string,
+  agentConfigurations: LightAgentConfigurationType[]
+): JSONContent {
+  const mentionRegex =
+    /(:mention\[[a-zA-Z0-9_.=-]+]\{sId=([a-zA-Z0-9_.=-]+)})+/g;
+  const trimmedText = text.trim();
+  const content = [];
+  let matches;
+  let lastIndex = 0;
+  while ((matches = mentionRegex.exec(trimmedText)) !== null) {
+    if (mentionRegex.lastIndex - matches[0].length > 0) {
+      content.push({
+        type: "text",
+        text: trimmedText.substring(
+          lastIndex,
+          mentionRegex.lastIndex - matches[0].length
+        ),
+      });
+    }
+    lastIndex = mentionRegex.lastIndex;
+    const id = matches[2];
+    const label =
+      agentConfigurations.find((a) => a.sId === id)?.name || "Unknown";
+    content.push({
+      type: "mention",
+      attrs: { id, label },
+    });
+  }
+  if (lastIndex < trimmedText.length) {
+    content.push({
+      type: "text",
+      text: trimmedText.substring(lastIndex),
+    });
+  }
+
+  return {
+    type: "doc",
+    content: [
+      {
+        type: "paragraph",
+        content,
+      },
+    ],
+  };
 }
 
 const useEditorService = (editor: Editor | null) => {
@@ -130,6 +179,10 @@ const useEditorService = (editor: Editor | null) => {
         return editor?.getJSON();
       },
 
+      setJSONContent(content: JSONContent) {
+        editor?.commands.setContent(content);
+      },
+
       getTextAndMentions() {
         const { mentions, text } = getTextAndMentionsFromNode(
           editor?.getJSON()
@@ -196,6 +249,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
+  content?: JSONContent;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
 }
 
@@ -204,6 +258,7 @@ const useCustomEditor = ({
   resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
+  content,
   onUrlDetected,
 }: CustomEditorProps) => {
   const extensions = [
@@ -240,6 +295,7 @@ const useCustomEditor = ({
 
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
+    content,
     extensions,
   });
 

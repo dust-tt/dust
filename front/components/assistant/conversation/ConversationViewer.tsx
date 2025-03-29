@@ -43,14 +43,13 @@ import {
   isUserMessageType,
 } from "@app/types";
 
-const DEFAULT_PAGE_LIMIT = 50;
-
 interface ConversationViewerProps {
   conversationId: string;
   isFading?: boolean;
   isInModal?: boolean;
   onStickyMentionsChange?: (mentions: AgentMention[]) => void;
   owner: WorkspaceType;
+  threadVersion?: number;
   user: UserType;
 }
 
@@ -67,6 +66,7 @@ const ConversationViewer = React.forwardRef<
     owner,
     user,
     conversationId,
+    threadVersion,
     onStickyMentionsChange,
     isInModal = false,
     isFading = false,
@@ -80,6 +80,7 @@ const ConversationViewer = React.forwardRef<
     mutateConversation,
   } = useConversation({
     conversationId,
+    threadVersion,
     workspaceId: owner.sId,
   });
 
@@ -100,8 +101,8 @@ const ConversationViewer = React.forwardRef<
     size,
   } = useConversationMessages({
     conversationId,
+    threadVersion,
     workspaceId: owner.sId,
-    limit: DEFAULT_PAGE_LIMIT,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -356,7 +357,7 @@ const ConversationViewer = React.forwardRef<
               key={`typed-group-${index}`}
               messages={typedGroup}
               isLastMessageGroup={isLastGroup}
-              conversationId={conversationId}
+              conversation={conversation}
               feedbacks={feedbacks}
               isInModal={isInModal}
               owner={owner}
