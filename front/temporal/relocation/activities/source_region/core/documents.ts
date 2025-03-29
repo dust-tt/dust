@@ -90,7 +90,7 @@ export async function getDataSourceDocuments({
   const documentBlobs = res
     .filter((r): r is Ok<CoreAPIDocumentBlob> => r.isOk())
     .map((r) => r.value);
-  let failed = res.filter((r) => r.isErr());
+  const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
       { count: failed.length, failed },
@@ -104,12 +104,12 @@ export async function getDataSourceDocuments({
     // relying on a procedure to upload fake blob in storage (see relocation runbook)
 
     // Filter out the errors related to documents that are not found in SQL.
-    failed = failed.filter(
+    const unknownFailures = failed.filter(
       (r) => r.error.code !== "data_source_document_not_found"
     );
 
     // Explicitly fail if there are any other errors.
-    if (failed.length > 0) {
+    if (unknownFailures.length > 0) {
       throw new Error("Failed to get data source document blobs");
     }
   }
