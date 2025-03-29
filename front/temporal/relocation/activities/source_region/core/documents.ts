@@ -93,11 +93,25 @@ export async function getDataSourceDocuments({
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
-      { failed },
+      { count: failed.length, failed },
       "[Core] Failed to get data source document blobs"
     );
 
-    throw new Error("Failed to get data source document blobs");
+    // We have two cases of failures here:
+    // - The document is not found in SQL. That means we have a discrepancy between ES and SQL. It
+    // means the document was removed and we should just skip it.
+    // - The document is found in SQL but the blob is not found. In this case we fail explicitly
+    // relying on a procedure to upload fake blob in storage (see relocation runbook)
+
+    // Filter out the errors related to documents that are not found in SQL.
+    const unknownFailures = failed.filter(
+      (r) => r.isErr() && r.error.code !== "data_source_document_not_found"
+    );
+
+    // Explicitly fail if there are any other errors.
+    if (unknownFailures.length > 0) {
+      throw new Error("Failed to get data source document blobs");
+    }
   }
 
   const blobs: CoreDocumentAPIRelocationBlob = {
