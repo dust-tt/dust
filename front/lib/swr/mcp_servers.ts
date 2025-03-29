@@ -380,7 +380,7 @@ export function useMcpServers({
 
   return {
     mcpServers,
-    isLoading: !error && !data,
+    isMCPServersLoading: !error && !data,
     isError: error,
     mutate,
   };
