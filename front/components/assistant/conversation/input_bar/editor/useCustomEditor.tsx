@@ -196,7 +196,7 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }
 
 const useCustomEditor = ({
