@@ -5,6 +5,8 @@ import type {
   Implementation,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { Ajv } from "ajv";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 import {
@@ -45,6 +47,8 @@ import {
   normalizeError,
   Ok,
 } from "@app/types";
+
+const ajv = new Ajv();
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -90,7 +94,7 @@ export type MCPToolResultContent = z.infer<typeof Schema>;
 export type MCPToolMetadata = {
   name: string;
   description: string;
-  inputSchema: Record<string, unknown> | undefined;
+  inputSchema: JSONSchema | undefined;
 };
 
 const ALLOWED_ICONS = ["command", "rocket"] as const;
@@ -236,16 +240,19 @@ function extractMetadataFromServerVersion(
 }
 
 function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
-  return tools.tools.map((tool) => ({
-    name: tool.name,
-    description: tool.description || "",
-    inputSchema: tool.inputSchema.properties
-      ? (JSON.parse(JSON.stringify(tool.inputSchema.properties)) as Record<
-          string,
-          unknown
-        >)
-      : undefined,
-  }));
+  return tools.tools.map((tool) => {
+    let inputSchema: JSONSchema | undefined;
+    if (ajv.validateSchema(tool.inputSchema)) {
+      inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
+    } else {
+      logger.error(`[MCP] Invalid input schema for tool: ${tool.name}.`);
+    }
+    return {
+      name: tool.name,
+      description: tool.description || "",
+      inputSchema,
+    };
+  });
 }
 
 export async function fetchRemoteServerMetaDataByURL(
