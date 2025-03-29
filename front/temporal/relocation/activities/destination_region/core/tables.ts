@@ -71,6 +71,8 @@ export async function processDataSourceTables({
         parents = [d.table_id];
       }
 
+      const title = d.title.trim() || d.name;
+
       // 1) Upsert the table.
       const upsertRes = await coreAPI.upsertTable({
         projectId: destIds.dustAPIProjectId,
@@ -84,7 +86,7 @@ export async function processDataSourceTables({
         parents,
         remoteDatabaseTableId: d.remote_database_table_id,
         remoteDatabaseSecretId: d.remote_database_secret_id,
-        title: d.title,
+        title,
         mimeType: d.mime_type,
         sourceUrl: sourceUrl ?? null,
       });
