@@ -105,7 +105,7 @@ export async function getDataSourceDocuments({
 
     // Filter out the errors related to documents that are not found in SQL.
     const unknownFailures = failed.filter(
-      (r) => r.error.code !== "data_source_document_not_found"
+      (r) => r.isErr() && r.error.code !== "data_source_document_not_found"
     );
 
     // Explicitly fail if there are any other errors.
