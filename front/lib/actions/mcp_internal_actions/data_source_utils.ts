@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { DataSourceConfigurationInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 
-const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
+export const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
   name: "data-source-utils",
   version: "1.0.0",
   description:

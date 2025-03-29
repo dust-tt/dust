@@ -1,15 +1,28 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import type { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
-import { createServer as dataSourceUtilsServer } from "@app/lib/actions/mcp_internal_actions/data_source_utils";
-import { createServer as helloWorldServer } from "@app/lib/actions/mcp_internal_actions/helloworld";
+import * as dataSourceUtilsServer from "@app/lib/actions/mcp_internal_actions/data_source_utils";
+import * as helloWorldServer from "@app/lib/actions/mcp_internal_actions/helloworld";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getResourceNameAndIdFromSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
-import { assertNever } from "@app/types";
+
+type InternalMCPServerDeclaration = {
+  createServer: (apiToken?: string) => McpServer;
+  serverInfo: Omit<MCPServerMetadata, "tools" | "id">;
+};
+
+const INTERNAL_MCP_SERVERS: Record<
+  InternalMCPServerNameType,
+  InternalMCPServerDeclaration
+> = {
+  helloworld: helloWorldServer,
+  "data-source-utils": dataSourceUtilsServer,
+};
 
 const INTERNAL_MCPSERVER_NAMES_TO_ID: Record<
   InternalMCPServerNameType,
@@ -61,20 +74,10 @@ export const connectToInternalMCPServer = async (
   transport: InMemoryTransport,
   apiToken?: string
 ): Promise<McpServer> => {
-  let server: McpServer | undefined;
-
   const internalMCPServerName = getInternalMCPServerName(mcpServerId);
 
-  switch (internalMCPServerName) {
-    case "helloworld":
-      server = helloWorldServer(apiToken);
-      break;
-    case "data-source-utils":
-      server = dataSourceUtilsServer();
-      break;
-    default:
-      assertNever(internalMCPServerName);
-  }
+  const { createServer } = INTERNAL_MCP_SERVERS[internalMCPServerName];
+  const server = createServer(apiToken);
 
   if (!server) {
     throw new Error(
@@ -85,4 +88,13 @@ export const connectToInternalMCPServer = async (
   await server.connect(transport);
 
   return server;
+};
+
+export const getInternalMCPServerInfo = (
+  mcpServerId: string
+): Omit<MCPServerMetadata, "tools" | "id"> => {
+  const internalMCPServerName = getInternalMCPServerName(mcpServerId);
+  const { serverInfo } = INTERNAL_MCP_SERVERS[internalMCPServerName];
+
+  return serverInfo;
 };

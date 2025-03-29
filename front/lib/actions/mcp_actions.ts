@@ -22,6 +22,7 @@ import type {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   connectToInternalMCPServer,
+  getInternalMCPServerInfo,
   getInternalMCPServerSId,
 } from "@app/lib/actions/mcp_internal_actions";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -369,9 +370,15 @@ async function getAccessTokenForMCPServer(
   auth: Authenticator,
   mcpServerId: string
 ) {
-  const metadata = await getMCPServerMetadataLocally(auth, {
-    mcpServerId: mcpServerId,
-  });
+  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
+
+  const metadata =
+    serverType === "internal"
+      ? getInternalMCPServerInfo(mcpServerId)
+      : await getMCPServerMetadataLocally(auth, {
+          mcpServerId: mcpServerId,
+        });
+
   if (metadata.authorization) {
     const connection = await MCPServerConnectionResource.findByMCPServer({
       auth,

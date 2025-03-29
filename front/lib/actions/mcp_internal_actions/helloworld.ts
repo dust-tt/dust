@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 
-const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
+export const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
   name: "hello-world-server",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",
