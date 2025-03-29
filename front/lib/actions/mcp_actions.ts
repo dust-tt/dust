@@ -416,6 +416,7 @@ export async function tryCallMCPTool(
 ): Promise<Result<MCPToolResultContent[], Error>> {
   try {
     const mcpClient = await connectToMCPServer(auth, actionConfiguration);
+
     const r = await mcpClient.callTool({
       name: actionConfiguration.name,
       arguments: rawInputs,
