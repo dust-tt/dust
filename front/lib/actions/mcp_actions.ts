@@ -372,6 +372,8 @@ async function getAccessTokenForMCPServer(
 ) {
   const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
 
+  // For internal servers, do not call getMCPServerMetadataLocally,
+  // as it will try to create and connect the server, and will go in an infinite loop
   const metadata =
     serverType === "internal"
       ? getInternalMCPServerInfo(mcpServerId)
