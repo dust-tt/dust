@@ -1,5 +1,3 @@
-import assert from "assert";
-
 import { computeDataSourceStatistics } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
