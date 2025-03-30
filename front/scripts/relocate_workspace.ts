@@ -262,9 +262,8 @@ makeScript(
           logger.info("Workspace marked for deletion in source region.");
           break;
 
+        // Can be run from any region.
         case "compute-statistics":
-          assertCorrectRegion(sourceRegion);
-
           const statsRes = await computeWorkspaceStatistics(auth);
           if (statsRes.isErr()) {
             logger.error(
@@ -274,7 +273,8 @@ makeScript(
           }
 
           logger.info(
-            `Workspace statistics: ${JSON.stringify(statsRes.value, null, 2)}`
+            `Workspace statistics in region ${config.getCurrentRegion()}:\n` +
+              JSON.stringify(statsRes.value, null, 2)
           );
           break;
 
