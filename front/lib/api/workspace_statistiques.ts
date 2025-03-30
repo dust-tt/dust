@@ -9,12 +9,20 @@ import { Err, maxFileSizeToHumanReadable, Ok, removeNulls } from "@app/types";
 
 const DATA_SOURCE_STATISTICS_CONCURRENCY = 10;
 
+interface DataSourceStatistics {
+  name: string;
+  text_size: string;
+  document_count: number;
+}
+
+interface DataSourceError {
+  name: string;
+  error: string;
+}
+
 interface WorkspaceStats {
-  dataSources: {
-    name: string;
-    text_size: string;
-    document_count: number;
-  }[];
+  dataSources: DataSourceStatistics[];
+  notFoundDataSources?: DataSourceError[];
   document_count: number;
   text_size: number;
 }
@@ -24,7 +32,8 @@ type HumanReadableWorkspaceStats = Omit<WorkspaceStats, "text_size"> & {
 };
 
 export async function computeWorkspaceStatistics(
-  auth: Authenticator
+  auth: Authenticator,
+  { ignoreErrors = false }: { ignoreErrors?: boolean } = {}
 ): Promise<Result<HumanReadableWorkspaceStats, Error>> {
   const dataSources = await DataSourceResource.listByWorkspace(auth, {
     includeDeleted: true,
@@ -37,7 +46,7 @@ export async function computeWorkspaceStatistics(
   );
 
   const hasError = results.some((r) => r.isErr());
-  if (hasError) {
+  if (hasError && !ignoreErrors) {
     return new Err(
       new Error("Error computing statistics.", {
         cause: removeNulls(
@@ -49,8 +58,18 @@ export async function computeWorkspaceStatistics(
 
   const stats = results.reduce<WorkspaceStats>(
     (acc, r) => {
-      // Errors are filtered out above.
-      assert(r.isOk());
+      if (r.isErr()) {
+        return {
+          ...acc,
+          notFoundDataSources: [
+            ...(acc.notFoundDataSources ?? []),
+            {
+              name: r.error.code,
+              error: r.error.message,
+            },
+          ],
+        };
+      }
 
       const { name, text_size, document_count } = r.value.data_source;
 

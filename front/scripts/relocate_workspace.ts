@@ -264,7 +264,10 @@ makeScript(
 
         // Can be run from any region.
         case "compute-statistics":
-          const statsRes = await computeWorkspaceStatistics(auth);
+          const statsRes = await computeWorkspaceStatistics(auth, {
+            // Ignore errors in case some data sources are not found.
+            ignoreErrors: true,
+          });
           if (statsRes.isErr()) {
             logger.error(
               `Failed to compute workspace statistics: ${statsRes.error.message}`
