@@ -53,13 +53,13 @@ export function ActionMCP({
     space: (spaces ?? []).find((space) => space.kind === "system"),
     filter: "all",
   });
-
+  // TODO(mcp) must work with MCPServerViews
   const defaultMCPServer = useMemo(
     () =>
       mcpServers.find(
-        (mcpServer) => mcpServer.id === actionConfiguration.mcpServerId
+        (mcpServer) => mcpServer.id === actionConfiguration.mcpServerViewId
       ),
-    [mcpServers, actionConfiguration.mcpServerId]
+    [mcpServers, actionConfiguration.mcpServerViewId]
   );
 
   const [selectedMCPServer, setSelectedMCPServer] =

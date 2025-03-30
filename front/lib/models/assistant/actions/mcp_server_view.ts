@@ -3,46 +3,41 @@ import { DataTypes } from "sequelize";
 
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types";
 
-export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection> {
+export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerView> {
+  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectionId: string;
-  declare connectionType: "workspace" | "personal";
-
-  declare userId: ForeignKey<UserModel["id"]>;
+  // Corresponds to the ID of the last user to add the server to the space.
+  declare editedByUserId: ForeignKey<UserModel["id"]> | null;
+  declare editedAt: Date;
 
   declare serverType: "internal" | "remote";
-
   declare internalMCPServerId: string | null;
-
   declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
 
-  declare user: NonAttribute<UserModel>;
-}
+  declare vaultId: ForeignKey<SpaceModel["id"]>;
 
-MCPServerConnection.init(
+  declare editedByUser: NonAttribute<UserModel>;
+  declare space: NonAttribute<SpaceModel>;
+}
+MCPServerView.init(
   {
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    updatedAt: {
+    deletedAt: {
       type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
     },
-    connectionId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    connectionType: {
-      type: DataTypes.STRING,
+    editedAt: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
     serverType: {
@@ -64,22 +59,31 @@ MCPServerConnection.init(
         key: "id",
       },
     },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
+    modelName: "mcp_server_view",
     sequelize: frontSequelize,
-    modelName: "mcp_server_connection",
     indexes: [
+      { fields: ["workspaceId", "id"] },
+      { fields: ["workspaceId", "vaultId"] },
       {
-        fields: ["workspaceId", "internalMCPServerId"],
-        concurrently: true,
+        fields: ["workspaceId", "remoteMCPServerId", "vaultId", "deletedAt"],
+        unique: true,
+        name: "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_unique",
       },
       {
-        fields: ["workspaceId", "remoteMCPServerId"],
-        concurrently: true,
+        fields: ["workspaceId", "internalMCPServerId", "vaultId", "deletedAt"],
+        unique: true,
+        name: "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_unique",
       },
     ],
     hooks: {
-      beforeValidate: (config: MCPServerConnection) => {
+      beforeValidate: (config: MCPServerView) => {
         switch (config.serverType) {
           case "internal":
             if (!config.internalMCPServerId) {
@@ -113,19 +117,25 @@ MCPServerConnection.init(
   }
 );
 
-RemoteMCPServer.hasMany(MCPServerConnection, {
-  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+SpaceModel.hasMany(MCPServerView, {
+  foreignKey: { allowNull: false, name: "vaultId" },
   onDelete: "RESTRICT",
 });
-MCPServerConnection.belongsTo(RemoteMCPServer, {
-  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+MCPServerView.belongsTo(SpaceModel, {
+  foreignKey: { allowNull: false, name: "vaultId" },
 });
 
-UserModel.hasMany(MCPServerConnection, {
-  foreignKey: { name: "userId", allowNull: false },
+RemoteMCPServer.hasMany(MCPServerView, {
+  as: "remoteMCPServerForView",
+  foreignKey: { name: "remoteMCPServerId", allowNull: false },
   onDelete: "RESTRICT",
 });
-MCPServerConnection.belongsTo(UserModel, {
-  as: "user",
-  foreignKey: { name: "userId", allowNull: false },
+MCPServerView.belongsTo(RemoteMCPServer, {
+  as: "remoteMCPServerForView",
+  foreignKey: { name: "remoteMCPServerId", allowNull: false },
+});
+
+MCPServerView.belongsTo(UserModel, {
+  as: "editedByUser",
+  foreignKey: { name: "editedByUserId", allowNull: true },
 });
