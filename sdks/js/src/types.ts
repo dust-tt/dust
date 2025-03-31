@@ -1279,6 +1279,16 @@ const MCPParamsEventSchema = z.object({
   action: MCPActionTypeSchema,
 });
 
+const MCPApproveEventSchema = z.object({
+  type: z.literal("tool_approve_execution"),
+  created: z.number(),
+  configurationId: z.string(),
+  messageId: z.string(),
+  action: MCPActionTypeSchema,
+  inputs: z.record(z.any()),
+  hashedInputs: z.string(),
+});
+
 const AgentErrorEventSchema = z.object({
   type: z.literal("agent_error"),
   created: z.number(),
@@ -1307,6 +1317,7 @@ const AgentActionSpecificEventSchema = z.union([
   TablesQueryStartedEventSchema,
   WebsearchParamsEventSchema,
   MCPParamsEventSchema,
+  MCPApproveEventSchema,
 ]);
 export type AgentActionSpecificEvent = z.infer<
   typeof AgentActionSpecificEventSchema

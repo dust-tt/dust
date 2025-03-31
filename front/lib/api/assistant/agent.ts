@@ -40,7 +40,6 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
-  AgentActionApproveExecutionEvent,
   AgentActionsEvent,
   AgentActionSuccessEvent,
   AgentChainOfThoughtEvent,
@@ -73,7 +72,6 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1369,7 +1367,7 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
-        case "action_approve_execution":
+        case "tool_approve_execution":
           yield event;
           break;
 

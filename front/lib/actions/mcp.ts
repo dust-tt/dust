@@ -22,7 +22,6 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import logger from "@app/logger/logger";
 import type {
-  AgentActionApproveExecutionEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -53,6 +52,16 @@ export type MCPToolConfigurationType = Omit<
   inputSchema: InputSchemaType;
 };
 
+type MCPApproveEvent = {
+  type: "tool_approve_execution";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: MCPActionType;
+  inputs: Record<string, unknown>;
+  hashedInputs: string;
+};
+
 type MCPParamsEvent = {
   type: "tool_params";
   created: number;
@@ -80,9 +89,7 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPActionRunningEvents =
-  | MCPParamsEvent
-  | AgentActionApproveExecutionEvent;
+export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -193,10 +200,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       step,
     }: BaseActionRunParams
   ): AsyncGenerator<
-    | MCPParamsEvent
-    | MCPSuccessEvent
-    | MCPErrorEvent
-    | AgentActionApproveExecutionEvent,
+    MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveEvent,
     void
   > {
     const owner = auth.workspace();
@@ -224,52 +228,56 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       remoteMCPServerId: actionConfiguration.remoteMCPServerId,
     });
 
+    const mcpAction = new MCPActionType({
+      id: action.id,
+      params: rawInputs,
+      output: null,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+      serverType: actionConfiguration.serverType,
+      internalMCPServerId: actionConfiguration.internalMCPServerId,
+      remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+      mcpServerConfigurationId: `${actionConfiguration.id}`,
+      executionState: "pending",
+      isError: false,
+      type: "tool_action",
+      generatedFiles: [],
+    });
+
     yield {
       type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new MCPActionType({
-        id: action.id,
-        params: rawInputs,
-        output: null,
-        functionCallId,
-        functionCallName: actionConfiguration.name,
-        agentMessageId: agentMessage.agentMessageId,
-        step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
-        mcpServerConfigurationId: `${actionConfiguration.id}`,
-        executionState: "pending",
-        isError: false,
-        type: "tool_action",
-        generatedFiles: [],
-      }),
+      action: mcpAction,
     };
 
     const hashedInputs = hashMCPInputParams(rawInputs);
 
     yield {
-      type: "action_approve_execution",
+      type: "tool_approve_execution",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: actionConfiguration,
+      action: mcpAction,
       inputs: rawInputs,
       hashedInputs,
     };
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
+    console.log("event sent to approve execution");
     try {
       const redis = await getRedisClient({ origin: "assistant_generation" });
       const validationKey = getMCPApprovalKey({
         conversationId: conversation.sId,
         messageId: agentMessage.sId,
-        actionId: actionConfiguration.id,
+        actionId: mcpAction.id,
         paramsHash: hashedInputs,
       });
       const validationStatus = await redis.get(validationKey);
+      console.log("polling key", validationKey, validationStatus);
 
       if (!validationStatus || validationStatus !== "approved") {
         let attempts = 0;
@@ -280,13 +288,15 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
-            actionId: actionConfiguration.id,
+            actionId: mcpAction.id,
           },
           "Waiting for action validation"
         );
 
         while (attempts < maxAttempts) {
           await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
+
+          console.log("polling key", validationKey, validationStatus);
 
           const checkStatus = await redis.get(validationKey);
           if (checkStatus && checkStatus === "approved") {

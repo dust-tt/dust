@@ -113,6 +113,7 @@ async function handler(
       `Action ${status} by user`
     );
 
+    console.log("Action validation result stored, key:", validationKey);
     res.status(200).json({ success: true });
   } catch (error) {
     logger.error(

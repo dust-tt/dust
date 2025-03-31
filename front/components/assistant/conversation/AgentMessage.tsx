@@ -66,7 +66,6 @@ import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
-  AgentActionApproveExecutionEvent,
   AgentActionSuccessEvent,
   AgentActionType,
   AgentErrorEvent,
@@ -221,7 +220,6 @@ export function AgentMessage({
       eventId: string;
       data:
         | AgentErrorEvent
-        | AgentActionApproveExecutionEvent
         | AgentActionSpecificEvent
         | AgentActionSuccessEvent
         | GenerationTokensEvent
@@ -250,7 +248,7 @@ export function AgentMessage({
         setLastAgentStateClassification("thinking");
         break;
 
-      case "action_approve_execution":
+      case "tool_approve_execution":
         // Show the validation dialog when this event is received
         showValidationDialog({
           workspaceId: owner.sId,

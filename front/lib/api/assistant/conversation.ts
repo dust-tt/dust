@@ -53,7 +53,6 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
-  AgentActionApproveExecutionEvent,
   AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
@@ -668,7 +667,6 @@ export async function* postUserMessage(
 ): AsyncGenerator<
   | UserMessageErrorEvent
   | UserMessageNewEvent
-  | AgentActionApproveExecutionEvent
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
@@ -1103,7 +1101,6 @@ export async function* editUserMessage(
 ): AsyncGenerator<
   | UserMessageNewEvent
   | UserMessageErrorEvent
-  | AgentActionApproveExecutionEvent
   | AgentMessageNewEvent
   | AgentDisabledErrorEvent
   | AgentErrorEvent
@@ -1533,7 +1530,6 @@ export async function* retryAgentMessage(
   | AgentMessageNewEvent
   | AgentErrorEvent
   | AgentMessageErrorEvent
-  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1854,7 +1850,6 @@ async function* streamRunAgentEvents(
   auth: Authenticator,
   eventStream: AsyncGenerator<
     | AgentErrorEvent
-    | AgentActionApproveExecutionEvent
     | AgentActionSpecificEvent
     | AgentActionSuccessEvent
     | GenerationTokensEvent
@@ -1866,7 +1861,6 @@ async function* streamRunAgentEvents(
   agentMessageRow: AgentMessage
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -1936,7 +1930,7 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
-      case "action_approve_execution":
+      case "tool_approve_execution":
       case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":

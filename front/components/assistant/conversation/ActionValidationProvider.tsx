@@ -9,14 +9,14 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useEffect, useState } from "react";
 
-import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import { MCPActionType } from "@app/lib/actions/mcp";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
-    action: ActionConfigurationType;
+    action: MCPActionType;
     inputs: Record<string, unknown>;
     hashedInputs: string;
   }) => void;
@@ -27,7 +27,7 @@ export type PendingValidationRequestType = {
   workspaceId: string;
   messageId: string;
   conversationId: string;
-  action: ActionConfigurationType;
+  action: MCPActionType;
   inputs: Record<string, unknown>;
   hashedInputs: string;
 };
@@ -113,7 +113,7 @@ export function ActionValidationProvider({
     workspaceId: string;
     messageId: string;
     conversationId: string;
-    action: ActionConfigurationType;
+    action: MCPActionType;
     inputs: Record<string, unknown>;
     hashedInputs: string;
   }) => {
@@ -134,7 +134,7 @@ export function ActionValidationProvider({
             <div className="flex flex-col gap-4">
               <div>
                 <span className="font-medium">Action:</span>{" "}
-                {currentValidation?.action.name}
+                {currentValidation?.action.functionCallName}
               </div>
               <div>
                 <span className="font-medium">Inputs:</span>
