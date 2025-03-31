@@ -1,4 +1,4 @@
-import { Plan, Subscription } from "@app/lib/resources/storage/models/plans";
+import { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
