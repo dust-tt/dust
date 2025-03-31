@@ -539,9 +539,8 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
     workspaceId,
   });
 
-  // 3) Relocate the data source documents to the destination region.
-  await executeChild(workspaceRelocateDataSourceDocumentsWorkflow, {
-    workflowId: `workspaceRelocateDataSourceDocumentsWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
+  await executeChild(workspaceRelocateCoreDataSourceResourcesWorkflow, {
+    workflowId: `workspaceRelocateCoreDataSourceResourcesWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
     searchAttributes: parentSearchAttributes,
     args: [
       {
@@ -555,40 +554,58 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
     ],
     memo,
   });
+}
 
-  // 4) Relocate the data source folders to the destination region.
-  await executeChild(workspaceRelocateDataSourceFoldersWorkflow, {
-    workflowId: `workspaceRelocateDataSourceFoldersWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        dataSourceCoreIds,
-        destIds,
-        destRegion,
-        pageCursor: null,
-        sourceRegion,
-        workspaceId,
-      },
-    ],
-    memo,
-  });
+export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  pageCursor,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  destIds: CreateDataSourceProjectResult;
+  dataSourceCoreIds: DataSourceCoreIds;
+  pageCursor: string | null;
+}) {
+  const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 5) Relocate the data source tables to the destination region.
-  await executeChild(workspaceRelocateDataSourceTablesWorkflow, {
-    workflowId: `workspaceRelocateDataSourceTablesWorkflow-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [
-      {
-        dataSourceCoreIds,
-        destIds,
-        destRegion,
-        pageCursor: null,
-        sourceRegion,
-        workspaceId,
-      },
-    ],
-    memo,
-  });
+  const resourcesRelocationWorkflows = [
+    {
+      fn: workspaceRelocateDataSourceDocumentsWorkflow,
+      workflowId: `workspaceRelocateDataSourceDocumentsWorkflow`,
+    },
+    {
+      fn: workspaceRelocateDataSourceFoldersWorkflow,
+      workflowId: `workspaceRelocateDataSourceFoldersWorkflow`,
+    },
+    {
+      fn: workspaceRelocateDataSourceTablesWorkflow,
+      workflowId: `workspaceRelocateDataSourceTablesWorkflow`,
+    },
+  ];
+
+  await concurrentExecutor(
+    resourcesRelocationWorkflows,
+    async (w) => {
+      await executeChild(w.fn, {
+        workflowId: `${w.workflowId}-${workspaceId}-${dataSourceCoreIds.dustAPIDataSourceId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [
+          {
+            dataSourceCoreIds,
+            destIds,
+            destRegion,
+            pageCursor,
+            sourceRegion,
+            workspaceId,
+          },
+        ],
+        memo,
+      });
+    },
+    { concurrency: resourcesRelocationWorkflows.length }
+  );
 }
 
 export async function workspaceRelocateDataSourceDocumentsWorkflow({
