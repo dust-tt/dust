@@ -10,14 +10,13 @@ import { MarkdownStyleExtension } from "@app/components/assistant/conversation/i
 import { MentionStorageExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionStorageExtension";
 import { MentionWithPasteExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/MentionWithPasteExtension";
 import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
-import { URLDetectionExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/URLDetectionExtension";
 import { createMarkdownSerializer } from "@app/components/assistant/conversation/input_bar/editor/markdownSerializer";
 import type { EditorSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
 import { makeGetAssistantSuggestions } from "@app/components/assistant/conversation/input_bar/editor/suggestion";
-import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isMobile } from "@app/lib/utils";
-
-import { URLStorageExtension } from "./extensions/URLStorageExtension";
+import { NodeResolverExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/NodeResolverExtension";
+import { searchForNodes } from "@app/lib/utils/search_for_nodes";
+import { DataSourceViewContentNode, WorkspaceType } from "@app/types";
 
 export interface EditorMention {
   id: string;
@@ -196,7 +195,8 @@ export interface CustomEditorProps {
   suggestions: EditorSuggestions;
   resetEditorContainerSize: () => void;
   disableAutoFocus: boolean;
-  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
+  owner: WorkspaceType;
+  onNodeSelect?: (node: DataSourceViewContentNode) => void;
 }
 
 const useCustomEditor = ({
@@ -204,7 +204,8 @@ const useCustomEditor = ({
   resetEditorContainerSize,
   suggestions,
   disableAutoFocus,
-  onUrlDetected,
+  owner,
+  onNodeSelect,
 }: CustomEditorProps) => {
   const extensions = [
     StarterKit.configure({
@@ -228,15 +229,19 @@ const useCustomEditor = ({
     }),
     MarkdownStyleExtension,
     ParagraphExtension,
-    URLStorageExtension,
+    // Add NodeResolverExtension instead of URLStorageExtension + URLDetectionExtension
+    NodeResolverExtension.configure({
+      searchNodes: async (candidate) => {
+        return searchForNodes(candidate, owner.sId);
+      },
+      onNodeResolved: (node) => {
+        // Call onNodeSelect if provided
+        if (onNodeSelect) {
+          onNodeSelect(node);
+        }
+      },
+    }),
   ];
-  if (onUrlDetected) {
-    extensions.push(
-      URLDetectionExtension.configure({
-        onUrlDetected,
-      })
-    );
-  }
 
   const editor = useEditor({
     autofocus: disableAutoFocus ? false : "end",
