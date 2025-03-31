@@ -30,6 +30,7 @@ import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent"
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -123,7 +124,7 @@ function makeMCPConfigurations({
       id: config.id,
       sId: generateRandomModelSId(),
       type: "mcp_configuration",
-      mcpServerId: config.mcpServerId,
+      mcpServerViewId: config.mcpServerViewId,
       name: tool.name,
       description: tool.description ?? null,
       inputSchema: tool.inputSchema,
@@ -381,8 +382,20 @@ export async function tryCallMCPTool(
   }
 ): Promise<Result<MCPToolResultContent[], Error>> {
   try {
-    const mcpClient = await connectToMCPServer(auth, actionConfiguration);
+    const res = await MCPServerViewResource.fetchById(
+      auth,
+      actionConfiguration.mcpServerViewId
+    );
+    if (res.isErr()) {
+      throw new Error(
+        `MCP server view with id ${actionConfiguration.mcpServerViewId} not found.`
+      );
+    }
+    const mcpServerView = res.value;
 
+    const mcpClient = await connectToMCPServer(auth, {
+      mcpServerId: mcpServerView.mcpServerId,
+    });
     const r = await mcpClient.callTool({
       name: actionConfiguration.name,
       arguments: rawInputs,
@@ -434,9 +447,19 @@ export async function tryGetMCPTools(
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
       try {
+        const res = await MCPServerViewResource.fetchById(
+          auth,
+          action.mcpServerViewId
+        );
+        if (res.isErr()) {
+          throw new Error(
+            `MCP server view with id ${action.mcpServerViewId} not found.`
+          );
+        }
+        const mcpServerView = res.value;
         const r: ToolType[] = await listMCPServerTools(
           auth,
-          action.mcpServerId
+          mcpServerView.mcpServerId
         );
 
         return makeMCPConfigurations({

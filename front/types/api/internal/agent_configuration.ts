@@ -132,7 +132,7 @@ const ReasoningActionConfigurationSchema = t.type({
 
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
-  mcpServerId: t.string,
+  mcpServerViewId: t.string,
 
   dataSources: t.union([
     t.null,

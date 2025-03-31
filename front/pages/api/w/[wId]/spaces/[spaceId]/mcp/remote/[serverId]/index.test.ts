@@ -11,7 +11,7 @@ import handler from "./index";
 
 async function setupTest(
   t: any,
-  role: "builder" | "user" | "admin" = "builder",
+  role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
   const { req, res, workspace } = await createPrivateApiMockRequest({
@@ -19,7 +19,7 @@ async function setupTest(
     method,
   });
 
-  const space = await SpaceFactory.global(workspace, t);
+  const space = await SpaceFactory.system(workspace, t);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -68,7 +68,7 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
     async (t) => {
       const { req, res, workspace, space } = await setupTest(
         t,
-        "builder",
+        "admin",
         "PATCH"
       );
 
@@ -93,7 +93,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   itInTransaction("should delete a server", async (t) => {
     const { req, res, workspace, space } = await setupTest(
       t,
-      "builder",
+      "admin",
       "DELETE"
     );
 
@@ -120,7 +120,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
 
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   itInTransaction("supports GET, PATCH, and DELETE methods", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t, "builder", "PUT");
+    const { req, res, workspace, space } = await setupTest(t, "admin", "PUT");
 
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;

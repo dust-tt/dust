@@ -21,7 +21,6 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   AgentActionConfigurationType,
@@ -50,6 +49,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -1168,18 +1168,20 @@ export async function createAgentActionConfiguration(
     }
     case "mcp_server_configuration": {
       return frontSequelize.transaction(async (t) => {
-        const { serverType, id } = getServerTypeAndIdFromSId(
-          action.mcpServerId
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          action.mcpServerViewId
         );
+        if (mcpServerView.isErr()) {
+          return new Err(mcpServerView.error);
+        }
+
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
             sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
-            serverType,
-            internalMCPServerId:
-              serverType === "internal" ? action.mcpServerId : null,
-            remoteMCPServerId: serverType === "remote" ? id : null,
+            mcpServerViewId: mcpServerView.value.id,
           },
           { transaction: t }
         );
@@ -1199,8 +1201,7 @@ export async function createAgentActionConfiguration(
           type: "mcp_server_configuration",
           name: action.name,
           description: action.description,
-          serverType,
-          mcpServerId: action.mcpServerId,
+          mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
         });
       });

@@ -14,6 +14,7 @@ import {
   AgentMCPServerConfiguration,
 } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
+import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import {
   AgentProcessAction,
   AgentProcessConfiguration,
@@ -150,6 +151,7 @@ async function main() {
   await GlobalAgentSettings.sync({ alter: true });
 
   await RemoteMCPServer.sync({ alter: true });
+  await MCPServerView.sync({ alter: true });
   await MCPServerConnection.sync({ alter: true });
 
   await AgentRetrievalConfiguration.sync({ alter: true });
