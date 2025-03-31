@@ -1,24 +1,18 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import type { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
-import * as dataSourceUtilsServer from "@app/lib/actions/mcp_internal_actions/data_source_utils";
-import * as helloWorldServer from "@app/lib/actions/mcp_internal_actions/helloworld";
+import dataSourceUtilsServer from "@app/lib/actions/mcp_internal_actions/data_source_utils";
+import helloWorldServer from "@app/lib/actions/mcp_internal_actions/helloworld";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getResourceNameAndIdFromSId,
   makeSId,
 } from "@app/lib/resources/string_ids";
 
-type InternalMCPServerDeclaration = {
-  createServer: (apiToken?: string) => McpServer;
-  serverInfo: Omit<MCPServerMetadata, "tools" | "id">;
-};
-
 const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
-  InternalMCPServerDeclaration
+  (auth: Authenticator, mcpServerId: string) => McpServer
 > = {
   helloworld: helloWorldServer,
   "data-source-utils": dataSourceUtilsServer,
@@ -72,12 +66,12 @@ const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
 export const connectToInternalMCPServer = async (
   mcpServerId: string,
   transport: InMemoryTransport,
-  apiToken?: string
+  auth: Authenticator
 ): Promise<McpServer> => {
   const internalMCPServerName = getInternalMCPServerName(mcpServerId);
 
-  const { createServer } = INTERNAL_MCP_SERVERS[internalMCPServerName];
-  const server = createServer(apiToken);
+  const createServer = INTERNAL_MCP_SERVERS[internalMCPServerName];
+  const server = createServer(auth, mcpServerId);
 
   if (!server) {
     throw new Error(
@@ -88,13 +82,4 @@ export const connectToInternalMCPServer = async (
   await server.connect(transport);
 
   return server;
-};
-
-export const getInternalMCPServerInfo = (
-  mcpServerId: string
-): Omit<MCPServerMetadata, "tools" | "id"> => {
-  const internalMCPServerName = getInternalMCPServerName(mcpServerId);
-  const { serverInfo } = INTERNAL_MCP_SERVERS[internalMCPServerName];
-
-  return serverInfo;
 };

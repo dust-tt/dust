@@ -12,7 +12,7 @@ export const serverInfo: Omit<MCPServerMetadata, "tools" | "id"> = {
   icon: "command",
 };
 
-export const createServer = (): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -37,3 +37,5 @@ export const createServer = (): McpServer => {
 
   return server;
 };
+
+export default createServer;

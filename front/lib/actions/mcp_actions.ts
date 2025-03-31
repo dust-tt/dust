@@ -22,16 +22,14 @@ import type {
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   connectToInternalMCPServer,
-  getInternalMCPServerInfo,
   getInternalMCPServerSId,
 } from "@app/lib/actions/mcp_internal_actions";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getAccessTokenForMCPServer } from "@app/lib/actions/mcp_oauth_helper";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
@@ -41,13 +39,7 @@ import type {
   OAuthUseCase,
   Result,
 } from "@app/types";
-import {
-  assertNever,
-  Err,
-  getOAuthConnectionAccessToken,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 const ajv = new Ajv();
 
@@ -157,11 +149,6 @@ const connectToMCPServer = async (
     version: "1.0.0",
   });
   if (mcpServerId) {
-    const apiTokenRes = await getAccessTokenForMCPServer(auth, mcpServerId);
-    const accessToken =
-      apiTokenRes && apiTokenRes.isOk()
-        ? apiTokenRes.value.access_token
-        : undefined;
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
     switch (serverType) {
@@ -169,11 +156,21 @@ const connectToMCPServer = async (
         // Create a pair of linked in-memory transports
         // And connect the client to the server.
         const [client, server] = InMemoryTransport.createLinkedPair();
-        await connectToInternalMCPServer(mcpServerId, server, accessToken);
+        await connectToInternalMCPServer(mcpServerId, server, auth);
         await mcpClient.connect(client);
         break;
 
       case "remote":
+        const metadata = await getMCPServerMetadataLocally(auth, {
+          mcpServerId: mcpServerId,
+        });
+
+        const accessToken = await getAccessTokenForMCPServer(
+          auth,
+          mcpServerId,
+          metadata.authorization
+        );
+
         const remoteMCPServer = await RemoteMCPServerResource.fetchById(
           auth,
           mcpServerId
@@ -366,37 +363,6 @@ export async function getAllMCPServersMetadataLocally(
   return mcpServers;
 }
 
-async function getAccessTokenForMCPServer(
-  auth: Authenticator,
-  mcpServerId: string
-) {
-  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
-
-  // For internal servers, do not call getMCPServerMetadataLocally,
-  // as it will try to create and connect the server, and will go in an infinite loop
-  const metadata =
-    serverType === "internal"
-      ? getInternalMCPServerInfo(mcpServerId)
-      : await getMCPServerMetadataLocally(auth, {
-          mcpServerId: mcpServerId,
-        });
-
-  if (metadata.authorization) {
-    const connection = await MCPServerConnectionResource.findByMCPServer({
-      auth,
-      mcpServerId: mcpServerId,
-    });
-    if (connection.isOk()) {
-      const token = await getOAuthConnectionAccessToken({
-        config: apiConfig.getOAuthAPIConfig(),
-        logger,
-        provider: metadata.authorization.provider,
-        connectionId: connection.value.connectionId,
-      });
-      return token;
-    }
-  }
-}
 /**
  * Try to call an MCP tool.
  *
