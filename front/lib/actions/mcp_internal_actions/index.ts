@@ -12,19 +12,20 @@ import {
 
 const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
-  (auth: Authenticator, mcpServerId: string) => McpServer
+  {
+    id: number;
+    createServer: (auth: Authenticator, mcpServerId: string) => McpServer;
+  }
 > = {
-  helloworld: helloWorldServer,
-  "data-source-utils": dataSourceUtilsServer,
+  helloworld: {
+    id: 1,
+    createServer: helloWorldServer,
+  },
+  "data-source-utils": {
+    id: 2,
+    createServer: dataSourceUtilsServer,
+  },
 };
-
-const INTERNAL_MCPSERVER_NAMES_TO_ID: Record<
-  InternalMCPServerNameType,
-  number
-> = {
-  helloworld: 1,
-  "data-source-utils": 2,
-} as const;
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
@@ -36,7 +37,7 @@ export const getInternalMCPServerSId = (
   }: { internalMCPServerName: InternalMCPServerNameType }
 ): string =>
   makeSId("internal_mcp_server", {
-    id: INTERNAL_MCPSERVER_NAMES_TO_ID[internalMCPServerName],
+    id: INTERNAL_MCP_SERVERS[internalMCPServerName].id,
     workspaceId: auth.getNonNullableWorkspace().id,
   });
 
@@ -52,8 +53,8 @@ const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
   }
 
   // Swap keys and values.
-  const details = Object.entries(INTERNAL_MCPSERVER_NAMES_TO_ID).find(
-    ([, id]) => id === sIdParts.resourceId
+  const details = Object.entries(INTERNAL_MCP_SERVERS).find(
+    ([, internalMCPServer]) => internalMCPServer.id === sIdParts.resourceId
   );
 
   if (!details) {
@@ -70,7 +71,7 @@ export const connectToInternalMCPServer = async (
 ): Promise<McpServer> => {
   const internalMCPServerName = getInternalMCPServerName(mcpServerId);
 
-  const createServer = INTERNAL_MCP_SERVERS[internalMCPServerName];
+  const { createServer } = INTERNAL_MCP_SERVERS[internalMCPServerName];
   const server = createServer(auth, mcpServerId);
 
   if (!server) {
