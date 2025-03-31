@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 
 import {
   pauseAllLabsWorkflows,
-  startAllLabsWorkflows,
+  startActiveLabsWorkflows,
 } from "@app/lib/api/labs";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
@@ -12,7 +12,7 @@ async function actionWorkflowsForWorkspace(
   workspaceId: string,
   logger: Logger,
   execute: boolean,
-  start: boolean
+  action: "start" | "stop"
 ) {
   logger.info(`Processing workspace ${workspaceId}`);
 
@@ -24,39 +24,44 @@ async function actionWorkflowsForWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
 
   let labsRes: Result<number, Error>;
-  if (start) {
-    labsRes = await startAllLabsWorkflows(auth);
+  if (action === "start") {
+    labsRes = await startActiveLabsWorkflows(auth);
   } else {
     labsRes = await pauseAllLabsWorkflows(auth);
   }
 
   if (labsRes.isErr()) {
     logger.error(
-      `Failed to ${start ? "start" : "pause"} labs workflows for workspace ${workspaceId}: ${labsRes.error}`
+      `Failed to ${action} labs workflows for workspace ${workspaceId}: ${labsRes.error}`
     );
-    throw new Error(`Failed to pause labs workflows: ${labsRes.error}`);
+    throw new Error(`Failed to ${action} labs workflows: ${labsRes.error}`);
   }
 
   logger.info(
-    `Successfully ${start ? "started" : "paused"} labs workflows for workspace ${workspaceId}`
+    `Successfully ${action === "start" ? "started" : "paused"} labs workflows for workspace ${workspaceId}`
   );
 }
 
 makeScript(
   {
     workspaceIds: { type: "string", required: false },
-    start: { type: "boolean", required: false },
+    action: { type: "string", required: false },
   },
-  async ({ workspaceIds, start, execute }, logger) => {
+  async ({ workspaceIds, action, execute }, logger) => {
     if (!workspaceIds) {
       logger.error("Usage: Workspace IDs are required (comma-separated)");
       throw new Error("Workspace IDs are required");
     }
 
+    if (!action || (action !== "start" && action !== "stop")) {
+      logger.error('Usage: Action must be either "start" or "stop"');
+      throw new Error('Action must be either "start" or "stop"');
+    }
+
     const ids = workspaceIds.split(",").map((id) => id.trim());
 
     for (const workspaceId of ids) {
-      await actionWorkflowsForWorkspace(workspaceId, logger, execute, start);
+      await actionWorkflowsForWorkspace(workspaceId, logger, execute, action);
     }
   }
 );

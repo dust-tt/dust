@@ -7,32 +7,24 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/client";
 import { Ok } from "@app/types";
-import { labsTranscriptsProviders } from "@app/types/labs";
 
 /**
  * Pauses all Labs transcripts temporal workflows and their schedules for a workspace
  */
 export async function pauseAllLabsWorkflows(auth: Authenticator) {
-  const allLabsConfigs = await concurrentExecutor(
-    [...labsTranscriptsProviders],
-    async (provider) => {
-      const config =
-        await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
-          auth,
-          provider,
-        });
-      return config;
-    },
-    { concurrency: 3 }
+  const allLabsConfigs =
+    await LabsTranscriptsConfigurationResource.listByWorkspace({
+      auth,
+    });
+
+  const nonNullConfigs = allLabsConfigs.filter(
+    (config): config is LabsTranscriptsConfigurationResource => config !== null
   );
 
   let stoppedWorkflows = 0;
 
   await concurrentExecutor(
-    allLabsConfigs.filter(
-      (config): config is LabsTranscriptsConfigurationResource =>
-        config !== null
-    ),
+    nonNullConfigs,
     async (config) => {
       logger.info(
         `Stopping Labs workflow for workspace ${config.workspaceId} and provider ${config.provider}`
@@ -44,33 +36,28 @@ export async function pauseAllLabsWorkflows(auth: Authenticator) {
     { concurrency: 3 }
   );
 
-  console.log("Stopped workflows: ", stoppedWorkflows);
+  logger.info(`Stopped ${stoppedWorkflows} Labs workflows`);
 
   return new Ok(stoppedWorkflows);
 }
 
-export async function startAllLabsWorkflows(auth: Authenticator) {
-  const allLabsConfigs = await concurrentExecutor(
-    [...labsTranscriptsProviders],
-    async (provider) => {
-      const config =
-        await LabsTranscriptsConfigurationResource.findByWorkspaceAndProvider({
-          auth,
-          provider,
-        });
-      return config;
-    },
-    { concurrency: 3 }
+export async function startActiveLabsWorkflows(auth: Authenticator) {
+  const allLabsConfigs =
+    await LabsTranscriptsConfigurationResource.listByWorkspace({
+      auth,
+    });
+
+  const activeConfigs = allLabsConfigs.filter(
+    (config): config is LabsTranscriptsConfigurationResource =>
+      config !== null && (config.isActive === true || !!config.dataSourceViewId)
   );
+
+  logger.info(`Found ${activeConfigs.length} active Labs configs`);
 
   let startedWorkflows = 0;
 
   await concurrentExecutor(
-    allLabsConfigs.filter(
-      (config): config is LabsTranscriptsConfigurationResource =>
-        config !== null &&
-        (config.isActive === true || !!config.dataSourceViewId)
-    ),
+    activeConfigs,
     async (config) => {
       logger.info(
         `Starting Labs workflow for workspace ${config.workspaceId} and provider ${config.provider}`
@@ -81,7 +68,7 @@ export async function startAllLabsWorkflows(auth: Authenticator) {
     { concurrency: 3 }
   );
 
-  console.log("Started workflows: ", startedWorkflows);
+  logger.info(`Started ${startedWorkflows} Labs workflows`);
 
   return new Ok(startedWorkflows);
 }
