@@ -29,7 +29,7 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   static async makeNew(blob: CreationAttributes<PlanModel>) {
-    const plan = await PlanModel.create(blob);
+    const plan = await this.model.create(blob);
     return new this(this.model, plan.get());
   }
 
@@ -40,7 +40,7 @@ export class PlanResource extends BaseResource<PlanModel> {
 
     if (existing) {
       await existing.update(blob);
-      return new Ok(new PlanResource(PlanModel, existing.get()));
+      return new Ok(new PlanResource(this.model, existing.get()));
     }
     const plan = await PlanResource.makeNew(blob);
     return new Ok(plan);
@@ -52,7 +52,7 @@ export class PlanResource extends BaseResource<PlanModel> {
         code: planCode,
       },
     });
-    return plan ? new this(PlanModel, plan.get()) : null;
+    return plan ? new this(this.model, plan.get()) : null;
   }
 
   // fetch all plans associated to a given set of subscriptions
