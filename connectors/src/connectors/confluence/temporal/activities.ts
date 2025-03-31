@@ -44,8 +44,7 @@ import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   ConfluenceClientError,
   INTERNAL_MIME_TYPES,
@@ -121,7 +120,10 @@ export async function getConfluenceClient(
     effectiveConnector.connectionId
   );
 
-  return new ConfluenceClient(accessToken, { cloudId });
+  return new ConfluenceClient(accessToken, {
+    cloudId,
+    useProxy: effectiveConnector.useProxy ?? false,
+  });
 }
 
 export async function getSpaceIdsToSyncActivity(connectorId: ModelId) {

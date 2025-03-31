@@ -78,6 +78,7 @@ export async function listConfluenceSpaces(
 
   const client = new ConfluenceClient(confluenceAccessTokenRes.value, {
     cloudId: config?.cloudId,
+    useProxy: connector.useProxy ?? false,
   });
 
   const allSpaces = new Map<string, ConfluenceSpaceType>();
