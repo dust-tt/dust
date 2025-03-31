@@ -18,7 +18,7 @@ makeScript(
 
     if (execute) {
       for (const connector of connectors) {
-        await connector.update({ useProxy: value });
+        await connector.setUseProxy(value);
       }
       logger.info(
         `Set useProxy to ${value} for ${connectors.length} ${provider} connectors`
