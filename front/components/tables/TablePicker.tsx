@@ -186,10 +186,7 @@ export default function TablePicker({
                 value={searchFilter}
                 onChange={setSearchFilter}
               />
-              <ScrollArea
-                hideScrollBar
-                className="mt-2 flex max-h-[300px] flex-col"
-              >
+              <ScrollArea hideScrollBar className="mt-2 flex max-h-72 flex-col">
                 <div className="w-full space-y-1">
                   {Array.from(allTablesMap.values())
                     .filter(

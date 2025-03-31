@@ -827,7 +827,7 @@ export function useSpacesSearchWithInfiniteScroll({
 
         params.append("limit", pageSize.toString());
 
-        if (previousPageData && previousPageData?.nextPageCursor) {
+        if (previousPageData?.nextPageCursor) {
           params.append("cursor", previousPageData.nextPageCursor);
         }
 
