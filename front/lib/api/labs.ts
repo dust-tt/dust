@@ -27,7 +27,7 @@ export async function pauseAllLabsWorkflows(auth: Authenticator) {
     nonNullConfigs,
     async (config) => {
       logger.info(
-        `Stopping Labs workflow for workspace ${config.workspaceId} and provider ${config.provider}`
+        `Stopping Labs workflow for labs_transcripts_configuration_id ${config.id} on workspace_id ${config.workspaceId}`
       );
       await stopRetrieveTranscriptsWorkflow(config);
       await config.setIsActive(false);
@@ -60,7 +60,7 @@ export async function startActiveLabsWorkflows(auth: Authenticator) {
     activeConfigs,
     async (config) => {
       logger.info(
-        `Starting Labs workflow for workspace ${config.workspaceId} and provider ${config.provider}`
+        `Starting Labs workflow for labs_transcripts_configuration_id ${config.id} on workspace_id ${config.workspaceId}`
       );
       await launchRetrieveTranscriptsWorkflow(config);
       startedWorkflows++;
