@@ -22,6 +22,7 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
+  // TODO(attach-ds): Filter out content Types that are folders
   return true;
 }
 
@@ -69,24 +70,23 @@ export function listFiles(
       m.contentFragmentVersion === "latest"
     ) {
       if (isFileAttachment(m) || isContentNodeAttachment(m)) {
-        // Here, snippet not null is actually to detect file attachments that
-        // are prior to the JIT actions, and differentiate them from the newer
-        // file attachments that do have a snippet. Former ones cannot be used
-        // in JIT. But for content node fragments, with a node id rather than a
-        // file id, we don't care about the snippet.
+        // Here, snippet not null is actually to detect file attachments that are prior to the JIT
+        // actions, and differentiate them from the newer file attachments that do have a snippet.
+        // Former ones cannot be used in JIT. But for content node fragments, with a node id rather
+        // than a file id, we don't care about the snippet.
         const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
         const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
         const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
         const isIncludable =
           isConversationIncludableFileContentType(m.contentType) &&
-          // Tables from knowledge are not materialized as raw content. As such, they
-          // cannot be included.
+          // Tables from knowledge are not materialized as raw content. As such, they cannot be
+          // included.
           !isContentNodeTable;
         const isSearchable =
           canDoJIT &&
           isSearchableContentType(m.contentType) &&
-          // Tables from knowledge are not materialized as raw content. As such, they
-          // cannot be searched.
+          // Tables from knowledge are not materialized as raw content. As such, they cannot be
+          // searched.
           !isContentNodeTable;
 
         const baseAttachment: BaseConversationAttachmentType = {
@@ -94,7 +94,8 @@ export function listFiles(
           contentType: m.contentType,
           snippet: m.snippet,
           contentFragmentVersion: m.contentFragmentVersion,
-          // Backward compatibility: we fallback to the fileId if no generated tables are mentionned but the file is queryable.
+          // Backward compatibility: we fallback to the fileId if no generated tables are mentionned
+          // but the file is queryable.
           generatedTables:
             m.generatedTables.length > 0
               ? m.generatedTables

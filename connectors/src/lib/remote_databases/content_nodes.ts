@@ -1,9 +1,12 @@
+import {
+  buildInternalId,
+  parseInternalId,
+} from "@connectors/lib/remote_databases/utils";
 import type {
   ConnectorPermission,
   ContentNode,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
 } from "@connectors/types";
-
 /**
  * 3 types of nodes in a remote database content tree:
  * - database: internalId = "database_name"
@@ -15,17 +18,16 @@ type REMOTE_DB_CONTENT_NODE_TYPES = "database" | "schema" | "table";
 export const getContentNodeTypeFromInternalId = (
   internalId: string
 ): REMOTE_DB_CONTENT_NODE_TYPES => {
-  const parts = internalId.split(".");
+  const { databaseName, schemaName, tableName } = parseInternalId(internalId);
 
-  if (parts.length === 1) {
+  if (tableName) {
+    return "table";
+  } else if (schemaName) {
+    return "schema";
+  } else if (databaseName) {
     return "database";
   }
-  if (parts.length === 2) {
-    return "schema";
-  }
-  if (parts.length === 3) {
-    return "table";
-  }
+
   throw new Error(`Invalid internalId: ${internalId}`);
 };
 
@@ -33,16 +35,18 @@ export const getContentNodeFromInternalId = (
   internalId: string,
   permission: ConnectorPermission = "none",
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE
 ): ContentNode => {
   const type = getContentNodeTypeFromInternalId(internalId);
-  const [databaseName, schemaName, tableName] = internalId.split(".");
+  const { databaseName, schemaName, tableName } = parseInternalId(internalId);
 
   if (type === "database") {
     return {
-      internalId: databaseName as string,
+      internalId: buildInternalId({
+        databaseName: databaseName as string,
+      }),
       parentInternalId: null,
       type: "folder",
       title: databaseName as string,
@@ -56,8 +60,13 @@ export const getContentNodeFromInternalId = (
   }
   if (type === "schema") {
     return {
-      internalId: `${databaseName}.${schemaName}`,
-      parentInternalId: databaseName as string,
+      internalId: buildInternalId({
+        databaseName: databaseName as string,
+        schemaName: schemaName as string,
+      }),
+      parentInternalId: buildInternalId({
+        databaseName: databaseName as string,
+      }),
       type: "folder",
       title: schemaName as string,
       sourceUrl: null,
@@ -70,8 +79,15 @@ export const getContentNodeFromInternalId = (
   }
   if (type === "table") {
     return {
-      internalId: `${databaseName}.${schemaName}.${tableName}`,
-      parentInternalId: `${databaseName}.${schemaName}`,
+      internalId: buildInternalId({
+        databaseName: databaseName as string,
+        schemaName: schemaName as string,
+        tableName: tableName as string,
+      }),
+      parentInternalId: buildInternalId({
+        databaseName: databaseName as string,
+        schemaName: schemaName as string,
+      }),
       type: "table",
       title: tableName as string,
       sourceUrl: null,

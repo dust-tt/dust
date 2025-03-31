@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreDocumentAPIRelocationBlob,
@@ -11,11 +12,7 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import {
-  concurrentExecutor,
-  CoreAPI,
-  dustManagedCredentials,
-} from "@app/types";
+import { CoreAPI, dustManagedCredentials } from "@app/types";
 
 export async function processDataSourceDocuments({
   destIds,

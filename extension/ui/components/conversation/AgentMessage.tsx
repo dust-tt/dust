@@ -13,13 +13,14 @@ import {
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
-import { citationIconMap } from "@app/ui/components/markdown/MarkdownCitation";
+import { getCitationIcon } from "@app/ui/components/markdown/MarkdownCitation";
 import {
   MentionBlock,
   mentionDirective,
 } from "@app/ui/components/markdown/MentionBlock";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
+import { useTheme } from "@app/ui/hooks/useTheme";
 import type {
   AgentActionPublicType,
   AgentActionSpecificEvent,
@@ -112,10 +113,13 @@ export function visualizationDirective() {
 }
 
 export function makeDocumentCitation(
-  document: RetrievalDocumentPublicType
+  document: RetrievalDocumentPublicType,
+  isDark?: boolean
 ): MarkdownCitation {
-  const IconComponent =
-    citationIconMap[getProviderFromRetrievedDocument(document)];
+  const IconComponent = getCitationIcon(
+    getProviderFromRetrievedDocument(document),
+    isDark
+  );
   return {
     href: document.sourceUrl ?? undefined,
     title: getTitleFromRetrievedDocument(document),
@@ -161,6 +165,7 @@ export function AgentMessage({
 }: AgentMessageProps) {
   const platform = usePlatform();
   const sendNotification = useSendNotification();
+  const { theme } = useTheme();
 
   const [streamedAgentMessage, setStreamedAgentMessage] =
     useState<AgentMessagePublicType>(message);
@@ -265,6 +270,7 @@ export function AgentMessage({
       case "tables_query_output":
       case "tables_query_started":
       case "websearch_params":
+      case "tool_params":
         setStreamedAgentMessage((m) => {
           return updateMessageWithAction(m, event.action);
         });
@@ -436,7 +442,7 @@ export function AgentMessage({
     const allDocsReferences = allDocs.reduce<{
       [key: string]: MarkdownCitation;
     }>((acc, d) => {
-      acc[d.reference] = makeDocumentCitation(d);
+      acc[d.reference] = makeDocumentCitation(d, theme === "dark");
       return acc;
     }, {});
 
@@ -551,13 +557,13 @@ export function AgentMessage({
   return (
     <ConversationMessage
       pictureUrl={agentConfiguration.pictureUrl}
-      name={`@${agentConfiguration.name}`}
+      name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
-            <div className="text-base font-medium">
+            <div className="heading-base">
               {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>

@@ -10,9 +10,10 @@ import { BaseDustProdActionRegistry } from "@app/lib/registry";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { Dataset } from "@app/lib/resources/storage/models/apps";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAPIError, Result } from "@app/types";
-import { concurrentExecutor, CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
 
 async function updateOrCreateApp(
   auth: Authenticator,

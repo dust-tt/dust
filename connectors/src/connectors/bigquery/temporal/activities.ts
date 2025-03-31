@@ -8,8 +8,8 @@ import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import {
+  INTERNAL_MIME_TYPES,
   isBigQueryWithLocationCredentials,
-  MIME_TYPES,
 } from "@connectors/types";
 
 export async function syncBigQueryConnection(connectorId: ModelId) {
@@ -36,7 +36,11 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   }
   const tree = treeRes.value;
 
-  await sync({ remoteDBTree: tree, mimeTypes: MIME_TYPES.BIGQUERY, connector });
+  await sync({
+    remoteDBTree: tree,
+    mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+    connector,
+  });
 
   await syncSucceeded(connectorId);
 }

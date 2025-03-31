@@ -17,6 +17,7 @@ import {
 import type { RetrievalTimeframe } from "@app/lib/actions/retrieval";
 import type {
   AgentConfigurationType,
+  DataSourceViewSelectionConfigurations,
   LightAgentConfigurationType,
   ModelConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
@@ -28,6 +29,30 @@ import { assertNever, Err, Ok } from "@app/types";
 type SlackChannelLinkedWithAgent = SlackChannel & {
   agentConfigurationId: string;
 };
+
+function processDataSourceViewSelectionConfigurations({
+  owner,
+  dataSourceConfigurations,
+}: {
+  owner: WorkspaceType;
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations;
+}) {
+  return Object.values(dataSourceConfigurations).map(
+    ({ dataSourceView, selectedResources, isSelectAll, tagsFilter }) => ({
+      dataSourceViewId: dataSourceView.sId,
+      workspaceId: owner.sId,
+      filter: {
+        parents: !isSelectAll
+          ? {
+              in: selectedResources.map((resource) => resource.internalId),
+              not: [],
+            }
+          : null,
+        tags: tagsFilter,
+      },
+    })
+  );
+}
 
 export async function submitAssistantBuilderForm({
   owner,
@@ -97,30 +122,11 @@ export async function submitAssistantBuilderForm({
             query: a.type === "RETRIEVAL_SEARCH" ? "auto" : "none",
             relativeTimeFrame: timeFrame,
             topK: "auto",
-            dataSources: Object.values(
-              a.configuration.dataSourceConfigurations
-            ).map(
-              ({
-                dataSourceView,
-                selectedResources,
-                isSelectAll,
-                tagsFilter,
-              }) => ({
-                dataSourceViewId: dataSourceView.sId,
-                workspaceId: owner.sId,
-                filter: {
-                  parents: !isSelectAll
-                    ? {
-                        in: selectedResources.map(
-                          (resource) => resource.internalId
-                        ),
-                        not: [],
-                      }
-                    : null,
-                  tags: tagsFilter,
-                },
-              })
-            ),
+            dataSources: processDataSourceViewSelectionConfigurations({
+              owner,
+              dataSourceConfigurations:
+                a.configuration.dataSourceConfigurations,
+            }),
           },
         ];
 
@@ -176,15 +182,19 @@ export async function submitAssistantBuilderForm({
         ];
 
       case "MCP":
-        //TODO(mcp): handle configuration of datasources
         return [
           {
             type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
-            serverType: a.configuration.serverType,
-            internalMCPServerId: a.configuration.internalMCPServerId,
-            remoteMCPServerId: a.configuration.remoteMCPServerId,
+            mcpServerId: a.configuration.mcpServerId,
+            dataSources: a.configuration.dataSourceConfigurations
+              ? processDataSourceViewSelectionConfigurations({
+                  owner,
+                  dataSourceConfigurations:
+                    a.configuration.dataSourceConfigurations,
+                })
+              : null,
           },
         ];
 

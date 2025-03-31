@@ -325,11 +325,39 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   async pause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method pause not implemented.");
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
+    }
+    const { connector } = getConnectorAndCredentialsRes.value;
+
+    await connector.markAsPaused();
+    const stopRes = await this.stop();
+    if (stopRes.isErr()) {
+      return stopRes;
+    }
+
+    return new Ok(undefined);
   }
 
   async unpause(): Promise<Result<undefined, Error>> {
-    throw new Error("Method unpause not implemented.");
+    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+      this.connectorId
+    );
+    if (getConnectorAndCredentialsRes.isErr()) {
+      return new Err(getConnectorAndCredentialsRes.error);
+    }
+    const { connector } = getConnectorAndCredentialsRes.value;
+
+    await connector.markAsUnpaused();
+    const r = await this.resume();
+    if (r.isErr()) {
+      return r;
+    }
+
+    return new Ok(undefined);
   }
 
   async setConfigurationKey(): Promise<Result<void, Error>> {

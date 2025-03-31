@@ -99,10 +99,7 @@ export interface BaseActionRunParams {
   agentConfiguration: AgentConfigurationType;
   conversation: ConversationType;
   agentMessage: AgentMessageType;
-  rawInputs: Record<
-    string,
-    string | boolean | number | string[] | boolean[] | number[]
-  >;
+  rawInputs: Record<string, unknown>;
   functionCallId: string | null;
   step: number;
 }

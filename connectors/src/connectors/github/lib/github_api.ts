@@ -56,6 +56,7 @@ import {
 } from "@connectors/types";
 
 const API_PAGE_SIZE = 100;
+const REPOSITORIES_API_PAGE_SIZE = 25;
 
 type GithubOrg = {
   id: number;
@@ -132,7 +133,7 @@ export async function getReposPage(
     return new Ok(
       (
         await octokit.request("GET /installation/repositories", {
-          per_page: API_PAGE_SIZE,
+          per_page: REPOSITORIES_API_PAGE_SIZE,
           page: page,
         })
       ).data.repositories.map((r) => ({
@@ -556,11 +557,13 @@ export async function getDiscussion(
   repoName: string,
   login: string,
   discussionNumber: number
-): Promise<DiscussionNode> {
+): Promise<Result<DiscussionNode, Error>> {
   const octokit = await getOctokit(connector);
 
-  const d = await octokit.graphql(
-    `
+  let d;
+  try {
+    d = await octokit.graphql(
+      `
     query getDiscussion(
       $owner: String!
       $repo: String!
@@ -582,16 +585,22 @@ export async function getDiscussion(
       }
     }
     `,
-    {
-      owner: login,
-      repo: repoName,
-      discussionNumber,
+      {
+        owner: login,
+        repo: repoName,
+        discussionNumber,
+      }
+    );
+  } catch (err) {
+    if (err instanceof Error) {
+      return new Err(err);
     }
-  );
+    return new Err(new Error(String(err)));
+  }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
   if (!isLeft(errorPayloadValidation)) {
-    throw new Error(JSON.stringify(errorPayloadValidation.right));
+    return new Err(new Error(JSON.stringify(errorPayloadValidation.right)));
   }
 
   const getDiscussionPayloadValidation = GetDiscussionPayloadSchema.decode(d);
@@ -600,12 +609,12 @@ export async function getDiscussion(
     const pathError = reporter.formatValidationErrors(
       getDiscussionPayloadValidation.left
     );
-    throw new Error(`Unexpected payload: ${pathError.join(", ")}`);
+    return new Err(new Error(`Unexpected payload: ${pathError.join(", ")}`));
   }
 
   const payload = getDiscussionPayloadValidation.right;
 
-  return payload.repository.discussion;
+  return new Ok(payload.repository.discussion);
 }
 
 export async function getOctokit(
@@ -661,6 +670,11 @@ const EXTENSION_WHITELIST = [
   ".cpp",
   ".hpp",
   ".php",
+  ".neon", // PHP configuration
+  ".phtml", // PHP template
+  ".twig", // PHP template
+  ".xhtml", // XML/HTML
+  ".xsd", // XML Schema Definition
 
   // .NET Ecosystem
   ".cs",
@@ -714,6 +728,7 @@ const EXTENSION_WHITELIST = [
   ".adoc", // AsciiDoc
   ".tex", // LaTeX
   ".txt",
+  ".patch",
 
   // Shell & Scripts
   ".sh",

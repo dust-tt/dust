@@ -10,13 +10,18 @@ import {
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { makeDocumentCitations } from "@app/components/actions/retrieval/utils";
 import type { ActionDetailsComponentBaseProps } from "@app/components/actions/types";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { RetrievalActionType } from "@app/lib/actions/retrieval";
 
 export function RetrievalActionDetails({
   action,
   defaultOpen,
 }: ActionDetailsComponentBaseProps<RetrievalActionType>) {
-  const documentCitations = makeDocumentCitations(action.documents ?? []);
+  const { isDark } = useTheme();
+  const documentCitations = makeDocumentCitations(
+    action.documents ?? [],
+    isDark
+  );
 
   const isIncludeAction = !action.params.query;
 

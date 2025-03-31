@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreTableAPIRelocationBlob,
@@ -10,7 +11,7 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function processDataSourceTables({
   destIds,
@@ -70,6 +71,8 @@ export async function processDataSourceTables({
         parents = [d.table_id];
       }
 
+      const title = d.title.trim() || d.name;
+
       // 1) Upsert the table.
       const upsertRes = await coreAPI.upsertTable({
         projectId: destIds.dustAPIProjectId,
@@ -83,7 +86,7 @@ export async function processDataSourceTables({
         parents,
         remoteDatabaseTableId: d.remote_database_table_id,
         remoteDatabaseSecretId: d.remote_database_secret_id,
-        title: d.title,
+        title,
         mimeType: d.mime_type,
         sourceUrl: sourceUrl ?? null,
       });

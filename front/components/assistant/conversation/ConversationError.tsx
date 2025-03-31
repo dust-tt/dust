@@ -80,10 +80,10 @@ function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
           size="lg"
         />
       )}
-      <p className="text-center text-xl font-bold leading-7 text-foreground dark:text-foreground-night">
+      <p className="heading-xl text-center text-foreground dark:text-foreground-night">
         {title}
       </p>
-      <p className="text-center text-sm font-normal leading-tight text-slate-700 dark:text-slate-700-night">
+      <p className="copy-sm text-center text-muted-foreground dark:text-muted-foreground-night">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (

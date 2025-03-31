@@ -175,9 +175,8 @@ export async function postConversation(
       ...contentFragments.contentNodes.map((contentNode) => ({
         title: contentNode.title,
         nodeId: contentNode.internalId,
-        fileId: undefined,
         nodeDataSourceViewId: contentNode.dataSourceView.sId,
-        contentType: contentNode.mimeType,
+        fileId: undefined,
         context: {
           username: user.username,
           email: user.email,
@@ -200,7 +199,7 @@ export async function postConversation(
     });
   }
 
-  const conversationData = await cRes.value;
+  const conversationData = cRes.value;
 
   return new Ok(conversationData.conversation);
 }
@@ -275,7 +274,6 @@ export async function postMessage(
             title: file.title,
             nodeId: file.internalId,
             nodeDataSourceViewId: file.dataSourceView.sId,
-            contentType: file.mimeType,
             context: {
               username: user.username,
               email: user.email,

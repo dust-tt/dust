@@ -15,6 +15,10 @@ import type { BaseActionRunParams } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
 import { BaseActionConfigurationServerRunner } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import {
+  dustAppRunInputsToInputSchema,
+  inputSchemaToDustAppRunInputs,
+} from "@app/lib/actions/types/agent";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
@@ -320,8 +324,9 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
 
     // Check that all inputs are accounted for.
     const params: DustAppParameters = {};
+    const inputs = inputSchemaToDustAppRunInputs(spec.inputSchema);
 
-    for (const k of spec.inputs) {
+    for (const k of inputs) {
       if (k.name in rawInputs && typeof rawInputs[k.name] === k.type) {
         // As defined in dustAppRunActionSpecification, type is either "string", "number" or "boolean"
         params[k.name] = rawInputs[k.name] as string | number | boolean;
@@ -568,6 +573,22 @@ export class DustAppRunConfigurationServerRunner extends BaseActionConfiguration
         }
 
         lastBlockOutput = e.value;
+
+        // Check if it's a message with JSON content
+        if (containsValidJsonOutput(e.value)) {
+          try {
+            // Try to parse the content as JSON
+            const parsed = JSON.parse(e.value.message.content);
+            lastBlockOutput = {
+              __dust_file: {
+                type: "document",
+                content: JSON.stringify(parsed, null, 2),
+              },
+            };
+          } catch {
+            // Do not store as file if not valid JSON
+          }
+        }
       }
     }
 
@@ -764,6 +785,7 @@ async function dustAppRunActionSpecification({
       name,
       description,
       inputs: [],
+      inputSchema: dustAppRunInputsToInputSchema([]),
     });
   }
 
@@ -793,6 +815,7 @@ async function dustAppRunActionSpecification({
     name,
     description,
     inputs,
+    inputSchema: dustAppRunInputsToInputSchema(inputs),
   });
 }
 
@@ -886,4 +909,20 @@ export function getDustAppRunResultsFileAttachment({
   }
 
   return `${attachment}>\n${resultsFileSnippet}\n</file>`;
+}
+
+function containsValidJsonOutput(output: unknown): output is {
+  message: {
+    content: string;
+  };
+} {
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    "message" in output &&
+    typeof output.message === "object" &&
+    output.message !== null &&
+    "content" in output.message &&
+    typeof output.message.content === "string"
+  );
 }

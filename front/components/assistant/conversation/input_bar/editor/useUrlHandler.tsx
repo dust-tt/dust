@@ -1,13 +1,16 @@
 import type { Editor } from "@tiptap/core";
 import { useCallback, useEffect } from "react";
 
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import { isUrlCandidate } from "@app/lib/connectors";
 import type { DataSourceViewContentNode } from "@app/types";
 
 import type { URLState } from "./extensions/URLStorageExtension";
 
 const useUrlHandler = (
   editor: Editor | null,
-  selectedNode: DataSourceViewContentNode | null
+  selectedNode: DataSourceViewContentNode | null,
+  candidate: UrlCandidate | NodeCandidate | null
 ) => {
   const replaceUrl = useCallback(
     async (pendingUrl: URLState, node: DataSourceViewContentNode) => {
@@ -78,7 +81,9 @@ const useUrlHandler = (
     }
 
     const { pendingUrls } = editor.storage.URLStorage;
-    const nodeId = selectedNode.internalId;
+    const nodeId = isUrlCandidate(candidate)
+      ? selectedNode.sourceUrl
+      : selectedNode.internalId;
     const pendingUrl = pendingUrls.get(nodeId);
 
     if (!pendingUrl) {
@@ -90,7 +95,7 @@ const useUrlHandler = (
     pendingUrls.delete(nodeId);
 
     void replaceUrl(urlState, selectedNode);
-  }, [editor, selectedNode, replaceUrl]);
+  }, [editor, selectedNode, replaceUrl, candidate]);
 };
 
 export default useUrlHandler;

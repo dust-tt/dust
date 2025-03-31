@@ -17,6 +17,7 @@ import {
   batchRenderMessages,
   canReadMessage,
 } from "@app/lib/api/assistant/messages";
+import { getContentFragmentGroupIds } from "@app/lib/api/assistant/permissions";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspace,
@@ -37,6 +38,7 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -89,6 +91,7 @@ import {
   getSmallWhitelistedModel,
   isAgentMention,
   isAgentMessageType,
+  isContentFragmentInputWithContentNode,
   isContentFragmentType,
   isProviderWhitelisted,
   isUserMessageType,
@@ -917,11 +920,11 @@ export async function* postUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds(
-        nonNullResults.map(({ m }) => m.configuration),
+      await updateConversationRequestedGroupIds(auth, {
+        agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
-        t
-      );
+        t,
+      });
 
       return {
         userMessage,
@@ -1402,11 +1405,11 @@ export async function* editUserMessage(
         m: AgentMessageWithRankType;
       }[];
 
-      await updateConversationRequestedGroupIds(
-        nonNullResults.map(({ m }) => m.configuration),
+      await updateConversationRequestedGroupIds(auth, {
+        agents: nonNullResults.map(({ m }) => m.configuration),
         conversation,
-        t
-      );
+        t,
+      });
 
       return {
         userMessage,
@@ -1614,11 +1617,11 @@ export async function* retryAgentMessage(
         }
       );
 
-      await updateConversationRequestedGroupIds(
-        [message.configuration],
+      await updateConversationRequestedGroupIds(auth, {
+        agents: [message.configuration],
         conversation,
-        t
-      );
+        t,
+      });
 
       const agentMessage: AgentMessageWithRankType = {
         id: m.id,
@@ -1761,8 +1764,8 @@ export async function postNewContentFragment(
   }
 
   const supersededContentFragmentId = cf.supersededContentFragmentId;
-  // If the request is superseding an existing content fragment, we need to validate
-  // that it exists and is part of the conversation.
+  // If the request is superseding an existing content fragment, we need to validate that it exists
+  // and is part of the conversation.
   if (supersededContentFragmentId) {
     const found = conversation.content.some((versions) => {
       const latest = versions[versions.length - 1];
@@ -1822,6 +1825,15 @@ export async function postNewContentFragment(
           transaction: t,
         }
       );
+
+      if (isContentFragmentInputWithContentNode(cf)) {
+        await updateConversationRequestedGroupIds(auth, {
+          contentFragment: cf,
+          conversation,
+          t,
+        });
+      }
+
       return { contentFragment, messageRow };
     }
   );
@@ -2017,26 +2029,52 @@ async function isMessagesLimitReached({
 }
 
 /**
- * Update the conversation requestedGroupIds based on the mentioned agents.
- * This function is purely additive - requirements are never removed.
+ * Update the conversation requestedGroupIds based on the mentioned agents. This function is purely
+ * additive - requirements are never removed.
  *
- * Each agent's requestedGroupIds represents a set of requirements that must be
- * satisfied. When an agent is mentioned in a conversation, its requirements are
- * added to the conversation's requirements.
+ * Each agent's requestedGroupIds represents a set of requirements that must be satisfied. When an
+ * agent is mentioned in a conversation, its requirements are added to the conversation's
+ * requirements.
  *
- * Within each requirement (sub-array), groups are combined with OR logic.
- * Different requirements (different sub-arrays) are combined with AND logic.
+ * - Within each requirement (sub-array), groups are combined with OR logic.
+ * - Different requirements (different sub-arrays) are combined with AND logic.
  */
 export async function updateConversationRequestedGroupIds(
-  mentionedAgents: LightAgentConfigurationType[],
-  conversation: ConversationType,
-  t: Transaction
+  auth: Authenticator,
+  {
+    agents,
+    contentFragment,
+    conversation,
+    t,
+  }: {
+    agents?: LightAgentConfigurationType[];
+    contentFragment?: ContentFragmentInputWithContentNode;
+    conversation: ConversationType;
+    t: Transaction;
+  }
 ): Promise<void> {
-  // Sort and deduplicate new requirements.
-  const newRequirements = _.uniqWith(
-    mentionedAgents.flatMap((agent) =>
-      agent.requestedGroupIds.map((req) => sortBy(req))
-    ),
+  let newRequirements: string[][] = [];
+  if (agents) {
+    newRequirements = agents.flatMap((agent) => agent.requestedGroupIds);
+  }
+  if (contentFragment) {
+    const rawRequestedGroupIds = await getContentFragmentGroupIds(
+      auth,
+      contentFragment
+    );
+    const requestedGroupIds = rawRequestedGroupIds.map((gs) =>
+      gs.map((gId) =>
+        GroupResource.modelIdToSId({
+          id: gId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      )
+    );
+    newRequirements.push(...requestedGroupIds);
+  }
+  // Remove duplicates and sort each requirement.
+  newRequirements = _.uniqWith(
+    newRequirements.map((r) => sortBy(r)),
     isEqual
   );
   const currentRequirements = conversation.requestedGroupIds;
@@ -2083,9 +2121,8 @@ export async function updateConversationRequestedGroupIds(
 
   // Hotfix: Postgres requires all subarrays to be of the same length
   //
-  // since a requirement (subarray) is a set of groups that are linked with OR
-  // logic we can just repeat the last element of each requirement until all
-  // requirements have the maximal length.
+  // since a requirement (subarray) is a set of groups that are linked with OR logic we can just
+  // repeat the last element of each requirement until all requirements have the maximal length.
   const longestRequirement = allRequirements.reduce(
     (max, req) => Math.max(max, req.length),
     0

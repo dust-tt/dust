@@ -3,6 +3,7 @@ import {
   pauseAllManagedDataSources,
   resumeAllManagedDataSources,
 } from "@app/lib/api/data_sources";
+import { pauseAllLabsWorkflows } from "@app/lib/api/labs";
 import type { RegionType } from "@app/lib/api/regions/config";
 import {
   config,
@@ -62,7 +63,7 @@ makeScript(
       choices: RELOCATION_STEPS,
       demandOption: true,
     },
-    skipUsersWithMultipleMemberships: {
+    forceUsersWithMultipleMemberships: {
       type: "boolean",
       required: false,
       default: false,
@@ -75,7 +76,7 @@ makeScript(
       step,
       workspaceId,
       execute,
-      skipUsersWithMultipleMemberships,
+      forceUsersWithMultipleMemberships,
     },
     logger
   ) => {
@@ -121,7 +122,15 @@ makeScript(
             return;
           }
 
-          // 3) Launch the relocation workflow.
+          // 3) Pause all labs workflows.
+          const pauseLabsRes = await pauseAllLabsWorkflows(auth);
+          if (pauseLabsRes.isErr()) {
+            logger.error(
+              `Failed to pause labs workflows: ${pauseLabsRes.error}`
+            );
+          }
+
+          // 4) Launch the relocation workflow.
           await launchWorkspaceRelocationWorkflow({
             workspaceId: owner.sId,
             sourceRegion,
@@ -147,7 +156,7 @@ makeScript(
               execute,
               newRegion: destinationRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              skipUsersWithMultipleMemberships,
+              forceUsersWithMultipleMemberships,
             });
           if (updateUsersRegionToDestRes.isErr()) {
             logger.error(
@@ -217,7 +226,7 @@ makeScript(
               execute,
               newRegion: sourceRegion,
               rateLimitThreshold: AUTH0_DEFAULT_RATE_LIMIT_THRESHOLD,
-              skipUsersWithMultipleMemberships: false,
+              forceUsersWithMultipleMemberships: false,
             });
           if (updateUsersRegionToSrcRes.isErr()) {
             logger.error(

@@ -2,6 +2,7 @@ import { useSendNotification } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { getMimeTypeFromFile } from "@app/lib/file";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
 import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import type {
@@ -13,7 +14,6 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
-  concurrentExecutor,
   Err,
   getFileFormatCategory,
   isAPIErrorResponse,

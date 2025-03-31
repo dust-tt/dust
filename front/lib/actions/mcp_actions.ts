@@ -5,27 +5,44 @@ import type {
   Implementation,
   ListToolsResult,
 } from "@modelcontextprotocol/sdk/types.js";
+import { Ajv } from "ajv";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 import {
   DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_ICON,
   DEFAULT_MCP_ACTION_NAME,
+  DEFAULT_MCP_ACTION_VERSION,
 } from "@app/lib/actions/constants";
 import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
+import {
+  connectToInternalMCPServer,
+  getInternalMCPServerSId,
+} from "@app/lib/actions/mcp_internal_actions";
+import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import type { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import {
+  generateRandomModelSId,
+  getResourceNameAndIdFromSId,
+} from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import type { LightWorkspaceType, Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import type {
+  LightWorkspaceType,
+  OAuthProvider,
+  OAuthUseCase,
+  Result,
+} from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
+
+const ajv = new Ajv();
 
 // Redeclared here to avoid an issue with the zod types in the @modelcontextprotocol/sdk
 // See https://github.com/colinhacks/zod/issues/2938
@@ -64,117 +81,93 @@ const Schema = z.union([
   EmbeddedResourceSchema,
 ]);
 
+export type ToolType = ListToolsResult["tools"][number];
+
 export type MCPToolResultContent = z.infer<typeof Schema>;
 
-function isPropertyCompatibleType(value: unknown): value is {
-  title?: string;
-  description?: string;
-  type: "string" | "number" | "boolean" | "array" | "object";
-} {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "type" in value &&
-    (value.type === "string" ||
-      value.type === "number" ||
-      value.type === "boolean" ||
-      value.type === "array" ||
-      value.type === "object")
-  );
-}
+export type MCPToolMetadata = {
+  name: string;
+  description: string;
+  inputSchema: JSONSchema | undefined;
+};
 
-function isPropertyWithItemAndCompatibleItemType(value: unknown): value is {
-  items: { type: "string" | "number" | "boolean" };
-} {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "items" in value &&
-    typeof value.items === "object" &&
-    value.items !== null &&
-    "type" in value.items &&
-    (value.items.type === "string" ||
-      value.items.type === "number" ||
-      value.items.type === "boolean")
-  );
-}
+const ALLOWED_ICONS = ["command", "rocket"] as const;
+export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
+
+const isAllowedIconType = (icon: string): icon is AllowedIconType =>
+  ALLOWED_ICONS.includes(icon as AllowedIconType);
+
+export type AuthorizationInfo = {
+  provider: OAuthProvider;
+  use_case: OAuthUseCase;
+};
+
+export type MCPServerMetadata = {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  icon: AllowedIconType;
+  authorization?: AuthorizationInfo;
+  tools: MCPToolMetadata[];
+};
 
 function makeMCPConfigurations({
   config,
   listToolsResult,
 }: {
   config: MCPServerConfigurationType;
-  listToolsResult: ListToolsResult;
+  listToolsResult: ToolType[];
 }): MCPToolConfigurationType[] {
-  return listToolsResult.tools.map((tool) => {
+  return listToolsResult.map((tool) => {
     return {
       id: config.id,
       sId: generateRandomModelSId(),
       type: "mcp_configuration",
-      serverType: config.serverType,
-      internalMCPServerId: config.internalMCPServerId,
-      remoteMCPServerId: config.remoteMCPServerId,
+      mcpServerId: config.mcpServerId,
       name: tool.name,
       description: tool.description ?? null,
-
-      inputs: Object.entries(tool.inputSchema.properties ?? {}).map(
-        ([propertyName, propertyValues]) => {
-          // Check if propertyValues is an object with a title and type property.
-          if (isPropertyCompatibleType(propertyValues)) {
-            if (propertyValues.type === "array") {
-              if (isPropertyWithItemAndCompatibleItemType(propertyValues)) {
-                return {
-                  name: propertyName,
-                  description:
-                    propertyValues.title ?? propertyValues.description ?? "",
-                  type: propertyValues.type,
-                  items: {
-                    type: propertyValues.items.type,
-                  },
-                };
-              } else {
-                return {
-                  name: propertyName,
-                  description:
-                    propertyValues.title ?? propertyValues.description ?? "",
-                  type: propertyValues.type,
-                  items: {
-                    type: "string", // fallback type
-                  },
-                };
-              }
-            } else {
-              return {
-                name: propertyName,
-                description:
-                  propertyValues.title ?? propertyValues.description ?? "",
-                type: propertyValues.type,
-              };
-            }
-          } else {
-            throw new Error(
-              `MCPConfigurationServerRunner: property ${propertyName} is not a valid property: ${JSON.stringify(
-                propertyValues
-              )}`
-            );
-          }
-        }
-      ),
+      inputSchema: tool.inputSchema,
+      dataSources: config.dataSources,
     };
   });
 }
 
-const connectToMCPServer = async ({
-  serverType,
-  internalMCPServerId,
-  remoteMCPServerId,
-}: {
-  serverType: MCPServerConfigurationType["serverType"];
-  internalMCPServerId?:
-    | MCPServerConfigurationType["internalMCPServerId"]
-    | null;
-  remoteMCPServerId?: MCPServerConfigurationType["remoteMCPServerId"] | null;
-}) => {
+export const getServerTypeAndIdFromSId = (
+  mcpServerId: string
+): {
+  serverType: "internal" | "remote";
+  id: number;
+} => {
+  const sIdParts = getResourceNameAndIdFromSId(mcpServerId);
+  if (!sIdParts) {
+    throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
+  }
+
+  const { resourceName, resourceId } = sIdParts;
+
+  switch (resourceName) {
+    case "internal_mcp_server":
+      return { serverType: "internal" as const, id: resourceId };
+    case "remote_mcp_server":
+      return { serverType: "remote" as const, id: resourceId };
+    default:
+      throw new Error(
+        `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
+      );
+  }
+};
+
+const connectToMCPServer = async (
+  auth: Authenticator,
+  {
+    mcpServerId,
+    remoteMCPServerUrl,
+  }: {
+    mcpServerId?: string;
+    remoteMCPServerUrl?: string | null;
+  }
+) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
@@ -182,88 +175,117 @@ const connectToMCPServer = async ({
     version: "1.0.0",
   });
 
-  switch (serverType) {
-    case "internal":
-      if (!internalMCPServerId) {
-        throw new Error(
-          "Internal MCP server ID is required for internal server type."
+  if (mcpServerId) {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    switch (serverType) {
+      case "internal":
+        // Create a pair of linked in-memory transports
+        // And connect the client to the server.
+        const [client, server] = InMemoryTransport.createLinkedPair();
+        await connectToInternalMCPServer(mcpServerId, server);
+        await mcpClient.connect(client);
+        break;
+
+      case "remote":
+        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+          auth,
+          mcpServerId
         );
-      }
 
-      // Create a pair of linked in-memory transports
-      // And connect the client to the server.
-      const [client, server] = InMemoryTransport.createLinkedPair();
-      await connectToInternalMCPServer(internalMCPServerId, server);
-      await mcpClient.connect(client);
-      break;
+        if (!remoteMCPServer) {
+          throw new Error(
+            `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
+          );
+        }
 
-    case "remote":
-      if (!remoteMCPServerId) {
-        throw new Error(
-          "Remote MCP server ID is required for remote server type."
-        );
-      }
+        const url = new URL(remoteMCPServer.url);
+        const sseTransport = new SSEClientTransport(url);
+        await mcpClient.connect(sseTransport);
+        break;
 
-      const remoteMCPServer = await RemoteMCPServer.findOne({
-        where: {
-          sId: remoteMCPServerId,
-        },
-      });
-
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${remoteMCPServerId} not found for remote server type.`
-        );
-      }
-
-      const sseTransport = new SSEClientTransport(new URL(remoteMCPServer.url));
-      await mcpClient.connect(sseTransport);
-      break;
-
-    default:
-      assertNever(serverType);
+      default:
+        assertNever(serverType);
+    }
+  } else if (remoteMCPServerUrl) {
+    const url = new URL(remoteMCPServerUrl);
+    const sseTransport = new SSEClientTransport(url);
+    await mcpClient.connect(sseTransport);
+  } else {
+    throw new Error("MCP server ID or URL is required.");
   }
 
   return mcpClient;
 };
 
-function extractMetadataFromServerVersion(r: Implementation | undefined): {
-  name: string;
-  description: string;
-} {
+function extractMetadataFromServerVersion(
+  r: Implementation | undefined
+): Omit<MCPServerMetadata, "tools" | "id"> {
+  if (r) {
+    return {
+      name: r.name ?? DEFAULT_MCP_ACTION_NAME,
+      version: r.version ?? DEFAULT_MCP_ACTION_VERSION,
+      authorization:
+        "authorization" in r && typeof r.authorization === "object"
+          ? (r.authorization as AuthorizationInfo)
+          : undefined,
+      description:
+        "description" in r && typeof r.description === "string" && r.description
+          ? r.description
+          : DEFAULT_MCP_ACTION_DESCRIPTION,
+      icon:
+        "icon" in r && typeof r.icon === "string" && isAllowedIconType(r.icon)
+          ? r.icon
+          : DEFAULT_MCP_ACTION_ICON,
+    };
+  }
+
   return {
-    name: r?.name ?? DEFAULT_MCP_ACTION_NAME,
-    description:
-      (r && "description" in r && typeof r.description === "string"
-        ? r.description
-        : DEFAULT_MCP_ACTION_DESCRIPTION) ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+    name: DEFAULT_MCP_ACTION_NAME,
+    version: DEFAULT_MCP_ACTION_VERSION,
+    description: DEFAULT_MCP_ACTION_DESCRIPTION,
+    icon: DEFAULT_MCP_ACTION_ICON,
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function updateRemoteMCPServerMetadata(config: {
-  serverType: "remote";
-  remoteMCPServerId: string;
-}) {
-  const remoteMCPServer = await RemoteMCPServer.findOne({
-    where: {
-      sId: config.remoteMCPServerId,
-    },
+function extractMetadataFromTools(tools: ListToolsResult): MCPToolMetadata[] {
+  return tools.tools.map((tool) => {
+    let inputSchema: JSONSchema | undefined;
+    if (ajv.validateSchema(tool.inputSchema)) {
+      inputSchema = tool.inputSchema as JSONSchema; // unfortunately, ajv does not assert the type when returning.
+    } else {
+      logger.error(`[MCP] Invalid input schema for tool: ${tool.name}.`);
+    }
+    return {
+      name: tool.name,
+      description: tool.description || "",
+      inputSchema,
+    };
+  });
+}
+
+export async function fetchRemoteServerMetaDataByURL(
+  auth: Authenticator,
+  url: string
+): Promise<Omit<MCPServerMetadata, "id">> {
+  const mcpClient = await connectToMCPServer(auth, {
+    remoteMCPServerUrl: url,
   });
 
-  if (!remoteMCPServer) {
-    throw new Error(
-      `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
-    );
+  try {
+    const serverVersion = mcpClient.getServerVersion();
+    const metadata = extractMetadataFromServerVersion(serverVersion);
+
+    const toolsResult = await mcpClient.listTools();
+    const serverTools = extractMetadataFromTools(toolsResult);
+
+    return {
+      ...metadata,
+      tools: serverTools,
+    };
+  } finally {
+    await mcpClient.close();
   }
-
-  const mcpClient = await connectToMCPServer(config);
-  const r = await mcpClient.getServerVersion();
-  await mcpClient.close();
-
-  const metadata = extractMetadataFromServerVersion(r);
-
-  await remoteMCPServer.update(metadata);
 }
 
 /**
@@ -271,70 +293,106 @@ async function updateRemoteMCPServerMetadata(config: {
  *
  * This function is safe to call even if the server is remote as it will not connect to the server and use the cached metadata.
  */
-export async function getMCPServerMetadata(
-  config: AgentMCPServerConfiguration
-): Promise<{
-  name: string;
-  description: string;
-}> {
-  switch (config.serverType) {
+export async function getMCPServerMetadataLocally(
+  auth: Authenticator,
+  {
+    mcpServerId,
+    remoteMCPServer,
+  }: {
+    mcpServerId: string;
+    remoteMCPServer?: RemoteMCPServerResource;
+  }
+): Promise<MCPServerMetadata> {
+  const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+  switch (serverType) {
     case "internal":
       // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
-      const mcpClient = await connectToMCPServer({
-        serverType: config.serverType,
-        internalMCPServerId: config.internalMCPServerId,
-      });
+      const mcpClient = await connectToMCPServer(auth, { mcpServerId });
 
-      const r = await mcpClient.getServerVersion();
+      const r = mcpClient.getServerVersion();
+      const tools = await mcpClient.listTools();
       await mcpClient.close();
 
-      return extractMetadataFromServerVersion(r);
+      return {
+        id: mcpServerId,
+        ...extractMetadataFromServerVersion(r),
+        tools: extractMetadataFromTools(tools),
+      };
+
     case "remote":
-      if (!config.remoteMCPServerId) {
-        throw new Error(
-          `Remote MCP server ID is required for remote server type.`
-        );
-      }
-
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
-        config.remoteMCPServerId
-      );
-
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${config.sId} not found.`
-        );
-      }
-
       // TODO(mcp): add a background job to update the metadata by calling updateRemoteMCPServerMetadata.
 
+      let server: RemoteMCPServerResource | null = null;
+      if (!remoteMCPServer) {
+        server = await RemoteMCPServerResource.fetchById(auth, mcpServerId);
+      } else {
+        server = remoteMCPServer;
+      }
+
+      if (!server) {
+        throw new Error(
+          `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
+        );
+      }
+      if (server.id !== id) {
+        throw new Error(
+          `Remote MCP server id do not match ${id} !== ${server.id}`
+        );
+      }
+
       return {
-        name: remoteMCPServer.name,
-        description:
-          remoteMCPServer.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        id: server.sId,
+        name: server.name,
+        // TODO(mcp): add version on remoteMCPServer
+        version: DEFAULT_MCP_ACTION_VERSION,
+        description: server.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
+        // TODO(mcp): add icon on remoteMCPServer
+        icon: DEFAULT_MCP_ACTION_ICON,
+        tools: server.cachedTools,
       };
 
     default:
-      assertNever(config.serverType);
+      assertNever(serverType);
   }
 }
 
+export async function getAllMCPServersMetadataLocally(
+  auth: Authenticator
+): Promise<MCPServerMetadata[]> {
+  const mcpServers = await Promise.all(
+    AVAILABLE_INTERNAL_MCPSERVER_NAMES.map(async (internalMCPServerName) => {
+      const mcpServerId = getInternalMCPServerSId(auth, {
+        internalMCPServerName,
+      });
+      const metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId,
+      });
+      return metadata;
+    })
+  );
+
+  return mcpServers;
+}
+
 /**
- * Try to call a MCP tool.
+ * Try to call an MCP tool.
  *
  * This function will potentially fail if the server is remote as it will try to connect to it.
  */
-export async function tryCallMCPTool({
-  owner,
-  actionConfiguration,
-  rawInputs,
-}: {
-  owner: LightWorkspaceType;
-  actionConfiguration: MCPToolConfigurationType;
-  rawInputs: Record<string, unknown> | undefined;
-}): Promise<Result<MCPToolResultContent[], Error>> {
+export async function tryCallMCPTool(
+  auth: Authenticator,
+  {
+    owner,
+    actionConfiguration,
+    rawInputs,
+  }: {
+    owner: LightWorkspaceType;
+    actionConfiguration: MCPToolConfigurationType;
+    rawInputs: Record<string, unknown> | undefined;
+  }
+): Promise<Result<MCPToolResultContent[], Error>> {
   try {
-    const mcpClient = await connectToMCPServer(actionConfiguration);
+    const mcpClient = await connectToMCPServer(auth, actionConfiguration);
 
     const r = await mcpClient.callTool({
       name: actionConfiguration.name,
@@ -361,7 +419,7 @@ export async function tryCallMCPTool({
       },
       `Error calling MCP tool, returning error.`
     );
-    return new Err(error as Error);
+    return new Err(normalizeError(error));
   }
 }
 
@@ -387,13 +445,10 @@ export async function tryGetMCPTools(
   const configurations = await Promise.all(
     agentActions.filter(isMCPServerConfiguration).map(async (action) => {
       try {
-        // Connect to the MCP server.
-        const mcpClient = await connectToMCPServer(action);
-
-        const r: ListToolsResult = await mcpClient.listTools();
-
-        // Close immediately after listing tools.
-        await mcpClient.close();
+        const r: ToolType[] = await listMCPServerTools(
+          auth,
+          action.mcpServerId
+        );
 
         return makeMCPConfigurations({
           config: action,
@@ -414,4 +469,23 @@ export async function tryGetMCPTools(
   );
 
   return configurations.flat();
+}
+
+export async function listMCPServerTools(
+  auth: Authenticator,
+  mcpServerId: string
+): Promise<ToolType[]> {
+  const mcpClient = await connectToMCPServer(auth, { mcpServerId });
+
+  let allTools: ToolType[] = [];
+  let nextPageCursor;
+  do {
+    const { tools, nextCursor } = await mcpClient.listTools();
+    nextPageCursor = nextCursor;
+    allTools = [...allTools, ...tools];
+  } while (nextPageCursor);
+
+  await mcpClient.close();
+
+  return allTools;
 }

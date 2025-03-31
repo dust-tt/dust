@@ -1,4 +1,4 @@
-import { MIME_TYPES } from "@dust-tt/client";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
@@ -56,7 +56,7 @@ async function backfillDataSource(
         `UPDATE data_sources_nodes SET mime_type = :mimeType WHERE id IN (:ids)`,
         {
           replacements: {
-            mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+            mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
             ids: rows.map((row) => row.id),
           },
         }

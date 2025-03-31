@@ -103,6 +103,49 @@ const getNodesFromConfig = (
     {}
   );
 
+const updateSelection = (
+  item: DataSourceViewContentNode,
+  prevState: DataSourceViewSelectionConfigurations
+): DataSourceViewSelectionConfigurations => {
+  const { dataSourceView: dsv } = item;
+  const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
+
+  const exists = prevConfig.selectedResources.some(
+    (r) => r.internalId === item.internalId
+  );
+
+  if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
+    return {
+      ...prevState,
+      [dsv.sId]: {
+        ...prevConfig,
+        selectedResources: [],
+        isSelectAll: true,
+      },
+    };
+  }
+
+  const newResources = exists
+    ? prevConfig.selectedResources
+    : [
+        ...prevConfig.selectedResources,
+        {
+          ...item,
+          dataSourceView: dsv,
+          parentInternalIds: item.parentInternalIds || [],
+        },
+      ];
+
+  return {
+    ...prevState,
+    [dsv.sId]: {
+      ...prevConfig,
+      selectedResources: newResources,
+      isSelectAll: false,
+    },
+  };
+};
+
 export type useCaseDataSourceViewsSelector =
   | "spaceDatasourceManagement"
   | "assistantBuilder"
@@ -168,14 +211,15 @@ export function DataSourceViewsSelector({
     }
 
     return orderDatasourceViewByImportance(dataSourceViews).filter((dsv) => {
+      const connectorId = dsv.dataSource.connectorId;
       if (!includesConnectorIDs.length && !excludesConnectorIDs.length) {
         return true;
       }
-      if (includesConnectorIDs.length && dsv.dataSource.connectorId) {
-        return includesConnectorIDs.includes(dsv.dataSource.connectorId);
+      if (includesConnectorIDs.length) {
+        return connectorId ? includesConnectorIDs.includes(connectorId) : false;
       }
-      if (excludesConnectorIDs.length && dsv.dataSource.connectorId) {
-        return !excludesConnectorIDs.includes(dsv.dataSource.connectorId);
+      if (excludesConnectorIDs.length && connectorId) {
+        return !excludesConnectorIDs.includes(connectorId);
       }
       return true;
     });
@@ -218,52 +262,53 @@ export function DataSourceViewsSelector({
     filteredGroups.managedDsv.length > 0 &&
     (useCase === "assistantBuilder" || useCase === "trackerBuilder");
 
-  function updateSelection(
-    item: DataSourceViewContentNode,
-    prevState: DataSourceViewSelectionConfigurations
-  ): DataSourceViewSelectionConfigurations {
-    const { dataSourceView: dsv } = item;
-    const prevConfig = prevState[dsv.sId] ?? defaultSelectionConfiguration(dsv);
-
-    const exists = prevConfig.selectedResources.some(
-      (r) => r.internalId === item.internalId
-    );
-
-    if (item.mimeType === DATA_SOURCE_MIME_TYPE) {
-      return {
-        ...prevState,
-        [dsv.sId]: {
-          ...prevConfig,
-          selectedResources: [],
-          isSelectAll: true,
-        },
-      };
-    }
-
-    const newResources = exists
-      ? prevConfig.selectedResources
-      : [
-          ...prevConfig.selectedResources,
-          {
-            ...item,
-            dataSourceView: dsv,
-            parentInternalIds: item.parentInternalIds || [],
-          },
-        ];
-
-    return {
-      ...prevState,
-      [dsv.sId]: {
-        ...prevConfig,
-        selectedResources: newResources,
-        isSelectAll: false,
-      },
-    };
-  }
-
   const contentMessage = warningCode
     ? LimitedSearchContentMessage({ warningCode })
     : undefined;
+
+  // We want to allow a "Select all" results from the search results in the Assistant Builder.
+  // We think to make it a good XP we need to add some additional filters per data source.
+  // Since this is something that we really need for Salesforce, we will start with this.
+  const displaySelectAllButton = useMemo(() => {
+    if (useCase !== "assistantBuilder" || searchResultNodes.length === 0) {
+      return false;
+    }
+
+    const isAllSalesforce = searchResultNodes.every(
+      (r) => r.dataSourceView.dataSource.connectorProvider === "salesforce"
+    );
+    return isAllSalesforce;
+
+    // TODO: Replace with this once we are ready to select all from the search results for all data sources.
+    // if (viewType !== "table") {
+    //   return true;
+    // }
+    // const hasRemote = searchResultNodes.some((r) =>
+    //   isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // const hasNonRemote = searchResultNodes.some(
+    //   (r) => !isRemoteDatabase(r.dataSourceView.dataSource)
+    // );
+    // return hasRemote !== hasNonRemote;
+  }, [searchResultNodes, useCase]);
+
+  const handleSelectAll = useCallback(() => {
+    setSearchSpaceText("");
+
+    // Update all selections in a single state update.
+    setSelectionConfigurations((prevState) => {
+      const newState = searchResultNodes.reduce(
+        (acc, item) => updateSelection(item, acc),
+        prevState
+      );
+      return newState;
+    });
+
+    // Scroll to last item if there are results. Not perfect but no perfect solution here.
+    if (searchResultNodes.length > 0) {
+      setSearchResult(searchResultNodes[searchResultNodes.length - 1]);
+    }
+  }, [setSearchSpaceText, setSelectionConfigurations, searchResultNodes]);
 
   return (
     <div>
@@ -286,6 +331,8 @@ export function DataSourceViewsSelector({
             updateSelection(item, prevState)
           );
         }}
+        displayItemCount={useCase === "assistantBuilder"}
+        onSelectAll={displaySelectAllButton ? handleSelectAll : undefined}
         contentMessage={contentMessage}
         renderItem={(item, selected) => {
           return (
@@ -616,10 +663,21 @@ export function DataSourceViewSelector({
   const isExpanded = searchResult
     ? searchResult.dataSourceView.sId === dataSourceView.sId
     : false;
-  const defaultExpandedIds =
-    isExpanded && searchResult
-      ? removeNulls([...new Set(searchResult.parentInternalIds)])
-      : undefined;
+
+  const defaultExpandedIds = useMemo(
+    () =>
+      searchResult && isExpanded
+        ? removeNulls([
+            ...new Set(
+              searchResult.parentInternalIds?.filter(
+                (id) =>
+                  searchResult.expandable || id !== searchResult.internalId
+              )
+            ),
+          ])
+        : undefined,
+    [searchResult, isExpanded]
+  );
 
   return (
     <div id={`dataSourceViewsSelector-${dataSourceView.dataSource.sId}`}>

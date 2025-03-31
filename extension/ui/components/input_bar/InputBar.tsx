@@ -333,16 +333,17 @@ export function AssistantInputBar({
         <div className="flex w-full flex-1 flex-col items-end self-stretch">
           <div
             className={classNames(
-              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch p-3",
-              "border-struture-200 dark:border-struture-200-night",
-              "border-t  backdrop-blur",
-              "transition-all",
-              "rounded-2xl border-b border-l border-r",
+              "p-2",
+              "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch pl-3 sm:flex-row",
+              "rounded-3xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
               "border-border-dark dark:border-border-dark-night",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
+              "focus-within:ring-1 dark:focus-within:ring-1",
+              "dark:focus-within:ring-highlight/30-night focus-within:ring-highlight/30",
+              "sm:focus-within:ring-2 dark:sm:focus-within:ring-2",
               isAnimating ? "duration-600 animate-shake" : "duration-300"
             )}
           >

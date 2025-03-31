@@ -23,7 +23,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import {
   concurrentExecutor,
   getGoogleSheetTableId,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
 } from "@connectors/types";
 
 async function migrateConnector(
@@ -156,8 +156,8 @@ async function processFilesBatch({
             title: file.name,
             mimeType:
               file.mimeType === "application/vnd.google-apps.folder"
-                ? MIME_TYPES.GOOGLE_DRIVE.FOLDER
-                : MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
+                ? INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER
+                : INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET,
             sourceUrl: getSourceUrlForGoogleDriveFiles(file),
           });
         } else {

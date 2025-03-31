@@ -58,7 +58,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
       <div
         className={classNames(
           "flex h-screen flex-col gap-2 p-4",
-          "dark:bg-slate-950 dark:text-slate-50"
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
         )}
       >
         <div className="flex h-full w-full items-center justify-center">
@@ -72,7 +73,8 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     <div
       className={classNames(
         "flex h-screen flex-col gap-2 px-4 overflow-y-auto",
-        "dark:bg-slate-950 dark:text-slate-50"
+        "bg-background text-foreground",
+        "dark:bg-background-night dark:text-foreground-night"
       )}
     >
       {typeof children === "function"

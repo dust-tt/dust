@@ -1,6 +1,6 @@
-import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -9,7 +9,10 @@ import {
   BaseAction,
   BaseActionConfigurationServerRunner,
 } from "@app/lib/actions/types";
-import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type {
+  AgentActionSpecification,
+  InputSchemaType,
+} from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -27,15 +30,15 @@ export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
 
-  //TODO(mcp): handle hosted and client
-  serverType: "internal" | "remote";
-  internalMCPServerId: (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null;
-  remoteMCPServerId: string | null; // Hold the sId of the remote MCP server.
+  mcpServerId: string; // Hold the sId of the MCP server.
 
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
+
+  dataSources: DataSourceConfiguration[] | null;
+  // TODO(mcp): add other kind of configurations here such as table query.
 };
 
 export type MCPToolConfigurationType = Omit<
@@ -43,14 +46,7 @@ export type MCPToolConfigurationType = Omit<
   "type"
 > & {
   type: "mcp_configuration";
-  inputs: {
-    name: string;
-    description: string;
-    type: "string" | "number" | "boolean" | "array" | "object";
-    items?: {
-      type: "string" | "number" | "boolean";
-    };
-  }[];
+  inputSchema: InputSchemaType;
 };
 
 type MCPParamsEvent = {
@@ -92,11 +88,7 @@ export class MCPActionType extends BaseAction {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied" = "pending";
-  readonly serverType: MCPServerConfigurationType["serverType"] = "internal";
-  readonly internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"] =
-    null;
-  readonly remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"] =
-    null;
+  readonly mcpServerId: string = "not-valid";
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: MCPToolResultContent[] | null;
@@ -175,7 +167,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     return new Ok({
       name: this.actionConfiguration.name,
       description: this.actionConfiguration.description ?? "",
-      inputs: this.actionConfiguration.inputs,
+      inputs: [],
+      inputSchema: this.actionConfiguration.inputSchema,
     });
   }
 
@@ -196,36 +189,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const { actionConfiguration } = this;
 
-    // TODO(mcp): Check that the rawInputs are matching the action configuration
-    for (const input of actionConfiguration.inputs) {
-      if (!(input.name in rawInputs)) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: `Error: property ${input.name} is required`,
-          },
-        };
-        return;
-      }
-      if (typeof rawInputs[input.name] !== input.type) {
-        yield {
-          type: "tool_error",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          error: {
-            code: "tool_error",
-            message: `Error: property ${input.name} is of type ${input.type} but got ${typeof rawInputs[input.name]}`,
-          },
-        };
-        return;
-      }
-    }
-
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if
     // an error occurs later on, the error will be stored on the parent agent message.
@@ -239,9 +202,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
-      serverType: actionConfiguration.serverType,
-      internalMCPServerId: actionConfiguration.internalMCPServerId,
-      remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+      mcpServerId: actionConfiguration.mcpServerId,
     });
 
     yield {
@@ -257,9 +218,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "pending",
         isError: false,
@@ -270,7 +229,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await tryCallMCPTool({
+    const r = await tryCallMCPTool(auth, {
       owner,
       actionConfiguration,
       rawInputs,
@@ -297,6 +256,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     await Promise.all(
       content.map(async (i) => {
+        // Check if content is of a supported type.
+
         await AgentMCPActionOutputItem.create({
           workspaceId: owner.id,
           agentMCPActionId: action.id,
@@ -318,9 +279,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "allowed_explicitely",
         isError: false,
@@ -364,9 +323,7 @@ export async function mcpActionTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      serverType: action.serverType,
-      internalMCPServerId: action.internalMCPServerId,
-      remoteMCPServerId: action.remoteMCPServerId,
+      mcpServerId: action.mcpServerId,
       mcpServerConfigurationId: action.mcpServerConfigurationId,
       executionState: action.executionState,
       isError: action.isError,

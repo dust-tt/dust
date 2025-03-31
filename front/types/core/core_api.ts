@@ -328,6 +328,25 @@ function formatDataSourceDisplayName(name: string) {
     .join(" ");
 }
 
+// Counter-part of `DatabasesTablesUpsertPayload` in `core/bin/core_api.rs`.
+type UpsertTableParams = {
+  projectId: string;
+  dataSourceId: string;
+  tableId: string;
+  name: string;
+  description: string;
+  timestamp: number | null;
+  tags: string[];
+  parentId: string | null;
+  parents: string[];
+  remoteDatabaseTableId?: string | null;
+  remoteDatabaseSecretId?: string | null;
+  title: string;
+  mimeType: string;
+  sourceUrl: string | null;
+  checkNameUniqueness?: boolean;
+};
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
@@ -1388,22 +1407,8 @@ export class CoreAPI {
     title,
     mimeType,
     sourceUrl,
-  }: {
-    projectId: string;
-    dataSourceId: string;
-    tableId: string;
-    name: string;
-    description: string;
-    timestamp: number | null;
-    tags: string[];
-    parentId: string | null;
-    parents: string[];
-    remoteDatabaseTableId?: string | null;
-    remoteDatabaseSecretId?: string | null;
-    title: string;
-    mimeType: string;
-    sourceUrl: string | null;
-  }): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
+    checkNameUniqueness,
+  }: UpsertTableParams): Promise<CoreAPIResponse<{ table: CoreAPITable }>> {
     const response = await this._fetchWithError(
       `${this._url}/projects/${encodeURIComponent(
         projectId
@@ -1426,6 +1431,7 @@ export class CoreAPI {
           title,
           mime_type: mimeType,
           source_url: sourceUrl,
+          check_name_uniqueness: checkNameUniqueness ?? false,
         }),
       }
     );
