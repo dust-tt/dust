@@ -290,7 +290,7 @@ export async function getUserConversations(
       ({
         id: c.id,
         created: c.createdAt.getTime(),
-        updated: conversationUpdated(c),
+        updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
         sId: c.sId,
         owner,
         title: c.title,
