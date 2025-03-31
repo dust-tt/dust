@@ -1,11 +1,13 @@
 html {
-  font-size: 16px;
   container-type: inline-size;
-}
-
-body {
-  font-family: darkmode-off-cc, sans-serif;
-  font-size: 100%;
+  touch-action: manipulation;
+  font-feature-settings:
+    "rlig" 1,
+    "calt" 0;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none;
 }
 
 .animate-\[bgblink_200ms_3\] {
