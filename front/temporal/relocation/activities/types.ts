@@ -26,8 +26,8 @@ export interface ReadTableChunkParams {
   workspaceId: string;
 }
 
-export const CORE_API_CONCURRENCY_LIMIT = 64;
-export const CORE_API_LIST_NODES_BATCH_SIZE = 256;
+export const CORE_API_CONCURRENCY_LIMIT = 48;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 128;
 
 // Core.
 
