@@ -625,99 +625,12 @@ export async function* getMessagesEvents(
   }
 }
 
-export async function* getActionEvents({
-  actionId,
-  lastEventId,
-  signal,
-}: {
-  actionId: string;
-  lastEventId: string | null;
-  signal: AbortSignal;
-}): AsyncGenerator<
-  {
-    eventId: string;
-    data: {
-      type: "action_approved" | "action_rejected";
-      created: number;
-      actionId: string;
-      messageId?: string;
-      paramsHash?: string;
-    };
-  },
-  void
-> {
-  const pubsubChannel = getActionChannelId(actionId);
-
-  const callbackPromise = createCallbackPromise<EventPayload | "close">();
-  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-    pubsubChannel,
-    callbackPromise.callback,
-    lastEventId,
-    "action_events"
-  );
-
-  signal.addEventListener("abort", unsubscribe, { once: true });
-
-  for (const event of history) {
-    yield {
-      eventId: event.id,
-      data: JSON.parse(event.message.payload),
-    };
-  }
-
-  try {
-    const TIMEOUT = 60000; // 1 minute
-
-    while (true) {
-      if (signal.aborted) {
-        break;
-      }
-      const timeoutPromise = new Promise<"timeout">((resolve) => {
-        setTimeout(() => {
-          resolve("timeout");
-        }, TIMEOUT);
-      });
-      const rawEvent = await Promise.race([
-        callbackPromise.promise,
-        timeoutPromise,
-      ]);
-
-      if (rawEvent === "timeout") {
-        break;
-      }
-
-      callbackPromise.reset();
-
-      if (rawEvent === "close") {
-        break;
-      }
-
-      const event = {
-        eventId: rawEvent.id,
-        data: JSON.parse(rawEvent.message.payload),
-      };
-
-      yield event;
-    }
-  } catch (e) {
-    logger.error({ error: e }, "Error getting action events");
-  } finally {
-    unsubscribe();
-  }
-}
-
-
-
 function getConversationChannelId(channelId: string) {
   return `conversation-${channelId}`;
 }
 
 function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
-}
-
-function getActionChannelId(actionId: string) {
-  return `action-${actionId}`;
 }
 
 export async function publishEvent({

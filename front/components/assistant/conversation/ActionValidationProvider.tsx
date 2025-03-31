@@ -130,8 +130,8 @@ export function ActionValidationProvider({
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
       {children}
 
-      <Dialog 
-        open={isDialogOpen} 
+      <Dialog
+        open={isDialogOpen}
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
             setIsDialogOpen(false);

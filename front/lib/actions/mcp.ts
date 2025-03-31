@@ -1,6 +1,7 @@
 import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -14,7 +15,6 @@ import type {
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
 import { hashMCPInputParams } from "@app/lib/actions/utils";
-import { getActionEvents } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -265,15 +265,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       inputs: rawInputs,
       hashedInputs,
     };
+
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     try {
-      // Create an AbortController for the action events subscription
-      const abortController = new AbortController();
-      const actionEventGenerator = getActionEvents({
-        actionId: mcpAction.id.toString(),
+      const actionEventGenerator = getMCPEvents({
+        actionId: mcpAction.id,
         lastEventId: null,
-        signal: abortController.signal,
       });
 
       let status = "";
@@ -291,10 +289,18 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       try {
         for await (const event of actionEventGenerator) {
           const { data } = event;
-          if (data.type === "action_approved" && data.actionId === mcpAction.id.toString() && data.paramsHash === hashedInputs) {
+          if (
+            data.type === "action_approved" &&
+            data.actionId === mcpAction.id &&
+            data.paramsHash === hashedInputs
+          ) {
             status = "approved";
             break;
-          } else if (data.type === "action_rejected" && data.actionId === mcpAction.id.toString() && data.paramsHash === hashedInputs) {
+          } else if (
+            data.type === "action_rejected" &&
+            data.actionId === mcpAction.id &&
+            data.paramsHash === hashedInputs
+          ) {
             status = "rejected";
             break;
           }

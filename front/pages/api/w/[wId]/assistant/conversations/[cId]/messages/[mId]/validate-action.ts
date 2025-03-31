@@ -28,7 +28,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
   auth: Authenticator
 ): Promise<void> {
-  // Validate URL parameters
   const { cId, mId, wId } = req.query;
   if (
     typeof cId !== "string" ||
@@ -44,7 +43,6 @@ async function handler(
     });
   }
 
-  // Get the conversation to validate that the user has access to it
   const conversationRes = await getConversation(auth, cId);
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
@@ -77,7 +75,7 @@ async function handler(
   try {
     const actionChannel = `action-${actionId}`;
     const eventType = approved ? "action_approved" : "action_rejected";
-    
+
     logger.info(
       {
         workspaceId: wId,
