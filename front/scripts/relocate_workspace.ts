@@ -17,7 +17,7 @@ import {
   setWorkspaceRelocating,
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
-import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistiques";
+import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";

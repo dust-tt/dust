@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistiques";
+import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { Err, Ok } from "@app/types";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
