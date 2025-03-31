@@ -78,11 +78,10 @@ async function handler(
     const redis = await getRedisClient({ origin: "assistant_generation" });
 
     // Store the validation result in Redis with a key that the backend will check
-    // Use a more specific key format that includes the conversation ID to avoid collisions
-    // between different conversations
+    // We store it under conversationId, messageId, and actionId to ensure that the
+    // validation is only applied to the intended action. We also include the hash of
+    // the input parameters to double-check that the validation is for the correct action.
     const validationKey = `assistant:action:validation:${cId}:${mId}:${actionId}:${paramsHash}`;
-
-    console.log("Validation key in validate-action side:", validationKey);
 
     logger.info(
       {
@@ -95,35 +94,19 @@ async function handler(
       "Action validation request"
     );
 
-    if (approved) {
-      // For approved actions, just store "approved"
-      await redis.set(validationKey, "approved", {
-        EX: 3600, // 1 hour expiration
-      });
-      logger.info(
-        {
-          workspaceId: wId,
-          conversationId: cId,
-          messageId: mId,
-          actionId,
-        },
-        "Action approved by user"
-      );
-    } else {
-      // For rejected actions, store the rejection message if provided
-      await redis.set(validationKey, `rejected`, {
-        EX: 3600, // 1 hour expiration
-      });
-      logger.info(
-        {
-          workspaceId: wId,
-          conversationId: cId,
-          messageId: mId,
-          actionId,
-        },
-        "Action rejected by user"
-      );
-    }
+    const status = approved ? "approved" : "rejected";
+    await redis.set(validationKey, status, {
+      EX: 60, // 1 minute expiration
+    });
+    logger.info(
+      {
+        workspaceId: wId,
+        conversationId: cId,
+        messageId: mId,
+        actionId,
+      },
+      `Action ${status} by user`
+    );
 
     res.status(200).json({ success: true });
   } catch (error) {

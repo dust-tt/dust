@@ -195,7 +195,6 @@ export function ActionValidationProvider({
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
       {children}
 
-      {/* Validation Dialog - Using isDialogOpen instead of currentValidation !== null */}
       <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
         <DialogContent>
           <DialogHeader>

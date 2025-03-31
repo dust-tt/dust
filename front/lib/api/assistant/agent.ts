@@ -193,7 +193,6 @@ async function* runMultiActionsAgentLoop(
 
           // Emit validation events for each action before execution
           for (const actionEvent of event.actions) {
-            console.log("getting an action, trying to validate");
             yield {
               type: "action_validate_execution",
               created: Date.now(),
