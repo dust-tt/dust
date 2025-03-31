@@ -1,7 +1,7 @@
 import { isLeft } from "fp-ts/Either";
+import { HttpsProxyAgent } from "https-proxy-agent";
 import * as t from "io-ts";
 
-import { ProxyAgent } from "undici";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
@@ -229,7 +229,7 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly useProxy: boolean;
+  private readonly proxyAgent: HttpsProxyAgent | null;
 
   constructor(
     private readonly authToken: string,
@@ -243,7 +243,17 @@ export class ConfluenceClient {
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
-    this.useProxy = useProxy;
+    this.proxyAgent = useProxy
+      ? new HttpsProxyAgent(
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+        )
+      : null;
   }
 
   private async request<T>(
@@ -260,6 +270,7 @@ export class ConfluenceClient {
           },
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
+          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
