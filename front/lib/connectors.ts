@@ -90,17 +90,20 @@ type BaseProvider = {
   matcher: (url: URL) => boolean;
 };
 
-export type UrlCandidate = { url: string } | null;
-export type NodeCandidate = { node: string } | null;
+export type UrlCandidate = { url: string | null; provider: ConnectorProvider };
+export type NodeCandidate = {
+  node: string | null;
+  provider: ConnectorProvider;
+};
 
 export function isUrlCandidate(
-  candidate: UrlCandidate | NodeCandidate
+  candidate: UrlCandidate | NodeCandidate | null
 ): candidate is UrlCandidate {
   return candidate !== null && "url" in candidate;
 }
 
 export function isNodeCandidate(
-  candidate: UrlCandidate | NodeCandidate
+  candidate: UrlCandidate | NodeCandidate | null
 ): candidate is NodeCandidate {
   return candidate !== null && "node" in candidate;
 }
@@ -126,7 +129,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       );
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      return { url: url.toString(), provider: "confluence" };
     },
   },
   google_drive: {
@@ -140,16 +143,16 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       // Extract from /d/ID format (common in all Google Drive URLs)
       const driveMatch = url.pathname.match(/\/d\/([^/]+)/);
       if (driveMatch && driveMatch[1]) {
-        return { node: `gdrive-${driveMatch[1]}` };
+        return { node: `gdrive-${driveMatch[1]}`, provider: "google_drive" };
       }
 
       // Extract from URL parameters (some older Drive formats)
       const idParam = url.searchParams.get("id");
       if (idParam) {
-        return { node: `gdrive-${idParam}` };
+        return { node: `gdrive-${idParam}`, provider: "google_drive" };
       }
 
-      return null;
+      return { node: null, provider: "google_drive" };
     },
   },
   github: {
@@ -157,7 +160,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       return url.hostname.endsWith("github.com");
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      return { url: url.toString(), provider: "github" };
     },
   },
   notion: {
@@ -187,11 +190,11 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
             candidate.slice(16, 20) +
             "-" +
             candidate.slice(20);
-          return { node: id };
+          return { node: id, provider: "notion" };
         }
       }
 
-      return null;
+      return { node: null, provider: "notion" };
     },
   },
   slack: {
@@ -210,7 +213,9 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
         extractMessageNodeId(url) ||
         extractThreadNodeId(url) ||
         extractChannelNodeId(url);
-      return node ? { node } : null;
+      return node
+        ? { node, provider: "slack" }
+        : { node: null, provider: "slack" };
     },
   },
   gong: {
@@ -222,7 +227,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       );
     },
     urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString() };
+      return { url: url.toString(), provider: "gong" };
     },
   },
   zendesk: {
@@ -321,7 +326,9 @@ function extractMessageNodeId(url: URL): string | null {
 }
 
 // Extracts a nodeId from a given url
-export function nodeIdFromUrl(url: string): UrlCandidate | NodeCandidate {
+export function nodeCandidateFromUrl(
+  url: string
+): UrlCandidate | NodeCandidate | null {
   try {
     const urlObj = new URL(url);
 
