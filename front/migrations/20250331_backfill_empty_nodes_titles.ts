@@ -19,7 +19,7 @@ async function migrateNodes({
   let nodes: { id: number }[];
 
   do {
-    nodes = (await coreSequelize.query(
+    nodes = await coreSequelize.query<{ id: number }>(
       `SELECT id, title
        FROM data_sources_nodes
        WHERE id > :nextId
@@ -30,7 +30,7 @@ async function migrateNodes({
         replacements: { nextId, batchSize: BATCH_SIZE },
         type: QueryTypes.SELECT,
       }
-    )) as { id: number }[];
+    );
 
     if (nodes.length === 0) {
       break;
