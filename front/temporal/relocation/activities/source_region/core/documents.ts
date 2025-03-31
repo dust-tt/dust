@@ -99,7 +99,11 @@ export async function getDataSourceDocuments({
     throw new Error("Failed to search nodes with cursor");
   }
 
-  const { nodes, next_page_cursor: nextPageCursor } = searchResults.value;
+  const {
+    nodes,
+    next_page_cursor: nextPageCursor,
+    hit_count: totalNodeCount,
+  } = searchResults.value;
 
   // 2) Get the document blobs.
   const res = await concurrentExecutor(
@@ -160,6 +164,7 @@ export async function getDataSourceDocuments({
       dataPath,
       nextPageCursor,
       nodeCount: nodes.length,
+      totalNodeCount,
     },
     "[Core] Retrieved data source documents"
   );
