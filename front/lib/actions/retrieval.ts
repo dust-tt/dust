@@ -19,7 +19,6 @@ import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { AgentRetrievalAction } from "@app/lib/models/assistant/actions/retrieval";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { RetrievalDocumentBlob } from "@app/lib/resources/retrieval_document_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import logger from "@app/logger/logger";
@@ -369,20 +368,6 @@ export class RetrievalConfigurationServerRunner extends BaseActionConfigurationS
     RetrievalParamsEvent | RetrievalSuccessEvent | RetrievalErrorEvent,
     void
   > {
-    const killSwitches = await KillSwitchResource.listEnabledKillSwitches();
-    if (killSwitches?.includes("retrieval_action")) {
-      yield {
-        type: "retrieval_error",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        error: {
-          code: "retrieval_action_disabled",
-          message: "Retrieval action is temporarily disabled",
-        },
-      };
-      return;
-    }
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `runRetrieval`");
