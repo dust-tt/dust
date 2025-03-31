@@ -17,6 +17,7 @@ import {
   setWorkspaceRelocating,
   updateWorkspaceMetadata,
 } from "@app/lib/api/workspace";
+import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
@@ -28,6 +29,7 @@ const RELOCATION_STEPS = [
   "resume-in-destination",
   "rollback",
   "purge-in-source",
+  "compute-statistics",
 ] as const;
 type RelocationStep = (typeof RELOCATION_STEPS)[number];
 
@@ -258,6 +260,25 @@ makeScript(
           }
 
           logger.info("Workspace marked for deletion in source region.");
+          break;
+
+        // Can be run from any region.
+        case "compute-statistics":
+          const statsRes = await computeWorkspaceStatistics(auth, {
+            // Ignore errors in case some data sources are not found.
+            ignoreErrors: true,
+          });
+          if (statsRes.isErr()) {
+            logger.error(
+              `Failed to compute workspace statistics: ${statsRes.error.message}`
+            );
+            return;
+          }
+
+          logger.info(
+            `Workspace statistics in region ${config.getCurrentRegion()}:\n` +
+              JSON.stringify(statsRes.value, null, 2)
+          );
           break;
 
         default:

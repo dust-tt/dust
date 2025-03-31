@@ -40,8 +40,8 @@ import type {
   ConnectorPermission,
   ContentNode,
   ContentNodesViewType,
+  DataSourceConfig,
 } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const logger = mainLogger.child({ provider: "github" });
@@ -527,9 +527,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       }
 
       case "useProxy": {
-        await connector.update({
-          useProxy: configValue === "true",
-        });
+        await connector.setUseProxy(configValue === "true");
         return new Ok(void 0);
       }
 
