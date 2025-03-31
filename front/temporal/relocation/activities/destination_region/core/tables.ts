@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -58,7 +59,7 @@ export async function processDataSourceTables({
       // There are some issues with the parents field.
       // parents[0] should be the table_id, but it's not always the case.
       // If we change the parents[0] to the table_id, then parents[1] should be the parent_id.
-      let parents: string[] = [];
+      let parents: string[];
       let parentId: string | null = d.parent_id ?? null;
       if (d.parents.length > 0) {
         if (d.parents[0] !== d.table_id) {
@@ -71,7 +72,7 @@ export async function processDataSourceTables({
         parents = [d.table_id];
       }
 
-      const title = d.title.trim() || d.name;
+      const title = d.title.trim() || d.name.trim() || UNTITLED_TITLE;
 
       // 1) Upsert the table.
       const upsertRes = await coreAPI.upsertTable({
