@@ -126,12 +126,14 @@ export async function getDataSourceDocuments({
     // We have two cases of failures here:
     // - The document is not found in SQL. That means we have a discrepancy between ES and SQL. It
     // means the document was removed and we should just skip it.
-    // - The document is found in SQL but the blob is not found. In this case we fail explicitly
-    // relying on a procedure to upload fake blob in storage (see relocation runbook)
+    // - The document is found in SQL but the blob is not found. We temporarily ignore this error.
 
-    // Filter out the errors related to documents that are not found in SQL.
+    // Filter out the errors.
     const unknownFailures = failed.filter(
-      (r) => r.isErr() && r.error.code !== "data_source_document_not_found"
+      (r) =>
+        r.isErr() &&
+        (r.error.code !== "data_source_document_not_found" ||
+          r.error.message.includes("Failed to retrieve document blob"))
     );
 
     // Explicitly fail if there are any other errors.
