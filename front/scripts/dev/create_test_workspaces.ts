@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -18,7 +18,7 @@ async function createTestWorkspaces(
     throw new Error("This script can only be run in development.");
   }
 
-  const plans = await PlanModel.findAll();
+  const plans = await PlanResource.fetchAll();
 
   if (plans.length === 0) {
     throw new Error(
