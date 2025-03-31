@@ -289,6 +289,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       workspaceId,
     });
   }
+
   // Serialization.
   toJSON(): MCPServerViewType {
     return {

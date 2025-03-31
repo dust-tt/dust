@@ -66,7 +66,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
         remoteMCPServerId: server.id,
         vaultId: space.id,
         editedAt: new Date(),
-        editedByUserId: auth.getNonNullableUser().id,
+        editedByUserId: auth.user()?.id,
       },
       {
         transaction,
@@ -177,6 +177,19 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       this.canWrite(auth),
       "The user is not authorized to delete this MCP server"
     );
+
+    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
+    await MCPServerView.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
+      },
+      transaction,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
+    });
+
     const deletedCount = await RemoteMCPServer.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,

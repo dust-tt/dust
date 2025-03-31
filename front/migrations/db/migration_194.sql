@@ -27,21 +27,21 @@ CREATE INDEX "mcp_server_views_workspace_id_id" ON "mcp_server_views" ("workspac
 
 CREATE INDEX "mcp_server_views_workspace_id_vault_id" ON "mcp_server_views" ("workspaceId", "vaultId");
 
-CREATE UNIQUE INDEX "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_unique" ON "mcp_server_views" (
+CREATE UNIQUE INDEX "mcp_server_view_workspace_remote_mcp_server_vault_deleted_at_un" ON "mcp_server_views" (
     "workspaceId",
     "remoteMCPServerId",
     "vaultId",
     "deletedAt"
 );
 
-CREATE UNIQUE INDEX "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_unique" ON "mcp_server_views" (
+CREATE UNIQUE INDEX "mcp_server_view_workspace_internal_mcp_server_vault_deleted_at_" ON "mcp_server_views" (
     "workspaceId",
     "internalMCPServerId",
     "vaultId",
     "deletedAt"
 );
 
-TRUNCATE TABLE "agent_mcp_server_configurations" CASCADE;
+DELETE FROM "agent_mcp_server_configurations";
 
 ALTER TABLE "public"."agent_mcp_server_configurations"
 ADD COLUMN "mcpServerViewId" BIGINT NOT NULL REFERENCES "mcp_server_views" ("id") ON DELETE RESTRICT ON UPDATE CASCADE;

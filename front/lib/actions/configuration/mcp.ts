@@ -80,19 +80,15 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    const serverType = mcpServerView.serverType;
-
     let metadata: MCPServerMetadata | null = null;
-    let remoteMCPServerId: string | null = null;
-    if (serverType === "remote") {
+    if (mcpServerView.serverType === "remote") {
       const remoteMCPServer = await mcpServerView.getRemoteMCPServer(auth);
-      remoteMCPServerId = remoteMCPServer.sId;
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
       metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId: remoteMCPServerId,
+        mcpServerId: remoteMCPServer.sId,
       });
-    } else if (serverType === "internal") {
+    } else if (mcpServerView.serverType === "internal") {
       if (!mcpServerView.internalMCPServerId) {
         throw new Error(
           `Internal MCP server ID is required for internal server type.`
@@ -103,7 +99,7 @@ export async function fetchMCPServerActionConfigurations(
         mcpServerId: mcpServerView.internalMCPServerId,
       });
     } else {
-      assertNever(serverType);
+      assertNever(mcpServerView.serverType);
     }
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
