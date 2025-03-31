@@ -38,8 +38,8 @@ export async function getDataSourceDocuments({
   // Temporary to skip the following data source.
   if (
     dataSourceCoreIds.dustAPIDataSourceId ===
-      "8ec2e220829eb5da745ca69712ff5832f81ed873a5903b77df793552cf8e2fdb" &&
-    dataSourceCoreIds.dustAPIProjectId === "274877933324"
+      "66457fc9515affe9425114239a4e53a4b8046c23787334304f74a6d0d16c9223" &&
+    dataSourceCoreIds.dustAPIProjectId === "34579"
   ) {
     const blobs: CoreDocumentAPIRelocationBlob = {
       blobs: {
