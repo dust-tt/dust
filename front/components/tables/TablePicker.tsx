@@ -6,6 +6,7 @@ import {
   ScrollArea,
   ScrollBar,
   SearchInput,
+  Spinner,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
 import React, { useEffect, useState } from "react";
@@ -130,6 +131,8 @@ export default function TablePicker({
     }
   }, [isTableError, isTableLoading, table]);
 
+  const showTableLoaders = isTablesLoading || isDebouncing;
+
   return (
     <div className="flex items-center">
       <div className="flex items-center">
@@ -183,7 +186,7 @@ export default function TablePicker({
                 value={searchFilter}
                 onChange={setSearchFilter}
               />
-              <ScrollArea hideScrollBar className="flex max-h-[300px] flex-col">
+              <ScrollArea hideScrollBar className="mt-2 flex max-h-72 flex-col">
                 <div className="w-full space-y-1">
                   {Array.from(allTablesMap.values())
                     .filter(
@@ -197,7 +200,7 @@ export default function TablePicker({
                     .map((t) => (
                       <div
                         key={t.internalId}
-                        className="flex cursor-pointer flex-col items-start px-1 hover:opacity-80"
+                        className="flex cursor-pointer flex-col items-start px-2 hover:opacity-80"
                         onClick={() => {
                           onTableUpdate(t);
                           setSearchFilter("");
@@ -209,28 +212,27 @@ export default function TablePicker({
                         </div>
                       </div>
                     ))}
-                  {allTablesMap.size === 0 && (
-                    <span className="block px-4 pt-2 text-sm text-gray-700">
-                      No tables found
-                    </span>
-                  )}
+                  {debouncedSearch &&
+                    allTablesMap.size === 0 &&
+                    !showTableLoaders && (
+                      <span className="mt-2 block px-2 text-sm text-gray-700">
+                        No tables found
+                      </span>
+                    )}
                 </div>
                 <InfiniteScroll
                   nextPage={() => {
                     handleLoadNext(nextPageCursor);
                   }}
                   hasMore={!!nextPageCursor}
-                  isValidating={isTablesLoading || isDebouncing}
-                  isLoading={isTablesLoading || isDebouncing}
-                >
-                  {(isTablesLoading || isDebouncing) && !allTablesMap.size && (
-                    <div className="py-2 text-center text-sm text-element-700">
-                      Loading tables...
+                  showLoader={showTableLoaders}
+                  loader={
+                    <div className="mt-2 flex items-center gap-2 px-2 text-center text-sm text-element-700">
+                      <Spinner size="xs" />
+                      <span>Loading more data...</span>
                     </div>
-                  )}
-                </InfiniteScroll>
-                {/*sentinel div to trigger the infinite scroll*/}
-                <div className="min-h-0.5 text-xs text-gray-400"></div>
+                  }
+                />
                 <ScrollBar className="py-0" />
               </ScrollArea>
             </PopoverContent>
