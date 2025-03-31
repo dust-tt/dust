@@ -24,7 +24,7 @@ import type { ModelId } from "@connectors/types";
 import {
   EXCLUDE_DATABASES,
   EXCLUDE_SCHEMAS,
-  MIME_TYPES,
+  INTERNAL_MIME_TYPES,
 } from "@connectors/types";
 /**
  * Retrieves the existing content nodes for a parent in the Snowflake account.
@@ -68,7 +68,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
@@ -107,7 +107,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
@@ -140,7 +140,7 @@ export const fetchAvailableChildrenInSnowflake = async ({
         return getContentNodeFromInternalId(
           internalId,
           permission,
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         );
       })
     );
@@ -173,20 +173,24 @@ export const fetchSelectedNodes = async ({
 
   return new Ok([
     ...availableDatabases.map((db) =>
-      getContentNodeFromInternalId(db.internalId, "read", MIME_TYPES.SNOWFLAKE)
+      getContentNodeFromInternalId(
+        db.internalId,
+        "read",
+        INTERNAL_MIME_TYPES.SNOWFLAKE
+      )
     ),
     ...availableSchemas.map((schema) =>
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     ),
     ...availableTables.map((table) =>
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     ),
   ]);
@@ -229,7 +233,7 @@ export const fetchSyncedChildren = async ({
         getContentNodeFromInternalId(
           schema.internalId,
           "read",
-          MIME_TYPES.SNOWFLAKE
+          INTERNAL_MIME_TYPES.SNOWFLAKE
         )
       );
       return new Ok(schemaContentNodes);
@@ -258,7 +262,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         schema.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     );
     availableTables.forEach((table) => {
@@ -271,7 +275,7 @@ export const fetchSyncedChildren = async ({
           getContentNodeFromInternalId(
             schemaToAddInternalId,
             "none",
-            MIME_TYPES.SNOWFLAKE
+            INTERNAL_MIME_TYPES.SNOWFLAKE
           )
         );
       }
@@ -294,7 +298,7 @@ export const fetchSyncedChildren = async ({
       getContentNodeFromInternalId(
         table.internalId,
         "read",
-        MIME_TYPES.SNOWFLAKE
+        INTERNAL_MIME_TYPES.SNOWFLAKE
       )
     );
     return new Ok(tables);

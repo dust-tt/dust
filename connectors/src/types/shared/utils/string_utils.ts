@@ -14,10 +14,14 @@ import { Err, Ok } from "@dust-tt/client";
  * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String#utf-16_characters_unicode_code_points_and_grapheme_clusters
  */
 export function safeSubstring(
-  str: string,
+  str: string | undefined,
   start: number,
   end?: number
 ): string {
+  if (!str) {
+    return "";
+  }
+
   while (isTrailingLoneSurrogate(str.charCodeAt(start))) {
     start++;
   }

@@ -7,6 +7,7 @@ import {
 } from "@temporalio/workflow";
 
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import type * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
 import type * as frontDestinationActivities from "@app/temporal/relocation/activities/destination_region/front";
@@ -22,6 +23,7 @@ import type { ModelId } from "@app/types";
 
 const CHUNK_SIZE = 5000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
+const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
 
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
@@ -36,21 +38,30 @@ export async function workspaceRelocationWorkflow({
 }: RelocationWorkflowBase) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Relocate front data to the destination region.
-  await executeChild(workspaceRelocateFrontWorkflow, {
-    workflowId: `workspaceRelocateFrontWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [{ sourceRegion, destRegion, workspaceId }],
-    memo,
-  });
+  // Both front and connectors workflows can run in parallel.
+  const workflowDetails = [
+    {
+      workflow: workspaceRelocateFrontWorkflow,
+      name: "workspaceRelocateFrontWorkflow",
+    },
+    {
+      workflow: workspaceRelocateConnectorsWorkflow,
+      name: "workspaceRelocateConnectorsWorkflow",
+    },
+  ];
 
-  // 2) Relocate connectors data to the destination region.
-  await executeChild(workspaceRelocateConnectorsWorkflow, {
-    workflowId: `workspaceRelocateConnectorsWorkflow-${workspaceId}`,
-    searchAttributes: parentSearchAttributes,
-    args: [{ sourceRegion, destRegion, workspaceId }],
-    memo,
-  });
+  await concurrentExecutor(
+    workflowDetails,
+    async (w) => {
+      await executeChild(w.workflow, {
+        workflowId: `${w.name}-${workspaceId}`,
+        searchAttributes: parentSearchAttributes,
+        args: [{ sourceRegion, destRegion, workspaceId }],
+        memo,
+      });
+    },
+    { concurrency: 2 }
+  );
 
   // 3) Relocate the core data source documents to the destination region.
   await executeChild(workspaceRelocateCoreWorkflow, {
@@ -473,21 +484,24 @@ export async function workspaceRelocateCoreWorkflow({
     hasMoreRows = hasMore;
     currentId = lastId;
 
-    for (const dsc of dataSourceCoreIds) {
-      await executeChild(workspaceRelocateDataSourceCoreWorkflow, {
-        workflowId: `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${dsc.id}`,
-        searchAttributes: parentSearchAttributes,
-        args: [
-          {
-            dataSourceCoreIds: dsc,
-            destRegion,
-            sourceRegion,
-            workspaceId,
-          },
-        ],
-        memo,
-      });
-    }
+    await concurrentExecutor(
+      dataSourceCoreIds,
+      async (dsc) =>
+        executeChild(workspaceRelocateDataSourceCoreWorkflow, {
+          workflowId: `workspaceRelocateDataSourceCoreWorkflow-${workspaceId}-${dsc.id}`,
+          searchAttributes: parentSearchAttributes,
+          args: [
+            {
+              dataSourceCoreIds: dsc,
+              destRegion,
+              sourceRegion,
+              workspaceId,
+            },
+          ],
+          memo,
+        }),
+      { concurrency: TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY }
+    );
   } while (hasMoreRows);
 }
 

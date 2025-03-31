@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreDocumentAPIRelocationBlob,
@@ -16,7 +17,7 @@ import type {
   CoreAPISearchCursorRequest,
   Ok,
 } from "@app/types";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,
@@ -33,6 +34,32 @@ export async function getDataSourceDocuments({
     dataSourceCoreIds,
     sourceRegion,
   });
+
+  // Temporary to skip the following data source.
+  if (
+    dataSourceCoreIds.dustAPIDataSourceId ===
+      "66457fc9515affe9425114239a4e53a4b8046c23787334304f74a6d0d16c9223" &&
+    dataSourceCoreIds.dustAPIProjectId === "34579"
+  ) {
+    const blobs: CoreDocumentAPIRelocationBlob = {
+      blobs: {
+        documents: [],
+      },
+    };
+
+    // 3) Save the document blobs to file storage.
+    const dataPath = await writeToRelocationStorage(blobs, {
+      workspaceId,
+      type: "core",
+      operation: "data_source_documents_blobs",
+    });
+
+    return {
+      dataPath,
+      // Returning null to indicate that we have processed this data source.
+      nextPageCursor: null,
+    };
+  }
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
@@ -92,11 +119,25 @@ export async function getDataSourceDocuments({
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
-      { failed },
+      { count: failed.length, failed },
       "[Core] Failed to get data source document blobs"
     );
 
-    throw new Error("Failed to get data source document blobs");
+    // We have two cases of failures here:
+    // - The document is not found in SQL. That means we have a discrepancy between ES and SQL. It
+    // means the document was removed and we should just skip it.
+    // - The document is found in SQL but the blob is not found. In this case we fail explicitly
+    // relying on a procedure to upload fake blob in storage (see relocation runbook)
+
+    // Filter out the errors related to documents that are not found in SQL.
+    const unknownFailures = failed.filter(
+      (r) => r.isErr() && r.error.code !== "data_source_document_not_found"
+    );
+
+    // Explicitly fail if there are any other errors.
+    if (unknownFailures.length > 0) {
+      throw new Error("Failed to get data source document blobs");
+    }
   }
 
   const blobs: CoreDocumentAPIRelocationBlob = {

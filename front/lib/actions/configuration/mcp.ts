@@ -1,18 +1,28 @@
 import { Op } from "sequelize";
 
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getMCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { Workspace } from "@app/lib/models/workspace";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
+import { assertNever } from "@app/types";
 
-export async function fetchMCPServerActionConfigurations({
-  configurationIds,
-  variant,
-}: {
-  configurationIds: ModelId[];
-  variant: "light" | "full";
-}): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
+export async function fetchMCPServerActionConfigurations(
+  auth: Authenticator,
+  {
+    configurationIds,
+    variant,
+  }: {
+    configurationIds: ModelId[];
+    variant: "light" | "full";
+  }
+): Promise<Map<ModelId, MCPServerConfigurationType[]>> {
   if (variant !== "full") {
     return new Map();
   }
@@ -25,34 +35,84 @@ export async function fetchMCPServerActionConfigurations({
     return new Map();
   }
 
+  // Find the associated data sources configurations.
+  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
+    where: {
+      mcpServerConfigurationId: {
+        [Op.in]: mcpServerConfigurations.map((r) => r.id),
+      },
+    },
+    include: [
+      {
+        model: DataSourceViewModel,
+        as: "dataSourceView",
+        include: [
+          {
+            model: Workspace,
+            as: "workspace",
+          },
+        ],
+      },
+    ],
+  });
+
   const actionsByConfigurationId = new Map<
     ModelId,
     MCPServerConfigurationType[]
   >();
 
   for (const config of mcpServerConfigurations) {
-    const { agentConfigurationId, id, sId, serverType, internalMCPServerId } =
-      config;
+    const { agentConfigurationId, sId, id, serverType } = config;
 
+    const dataSourceConfiguration =
+      dataSourceConfigurations.filter(
+        (ds) => ds.mcpServerConfigurationId === config.id
+      ) ?? [];
+
+    let metadata: MCPServerMetadata | null = null;
     let remoteMCPServerId: string | null = null;
-    if (serverType === "remote" && config.remoteMCPServerId) {
-      const remoteMCPServer = await RemoteMCPServer.findByPk(
+    if (serverType === "remote") {
+      if (!config.remoteMCPServerId) {
+        throw new Error(
+          `Remote MCP server ID is required for remote server type.`
+        );
+      }
+
+      const remoteMCPServer = await RemoteMCPServerResource.findByPk(
+        auth,
         config.remoteMCPServerId
       );
       if (!remoteMCPServer) {
         throw new Error(
-          `Remote MCP server with remoteMCPServerId ${sId} not found.`
+          `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
         );
       }
-      remoteMCPServerId = remoteMCPServer.sId;
+      remoteMCPServerId = RemoteMCPServerResource.modelIdToSId({
+        id: config.remoteMCPServerId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      });
+
+      // Note: this won't attempt to connect to remote servers and will use the cached metadata.
+      metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId: remoteMCPServerId,
+      });
+    } else if (serverType === "internal") {
+      if (!config.internalMCPServerId) {
+        throw new Error(
+          `Internal MCP server ID is required for internal server type.`
+        );
+      }
+
+      metadata = await getMCPServerMetadataLocally(auth, {
+        mcpServerId: config.internalMCPServerId,
+      });
+    } else {
+      assertNever(serverType);
     }
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
       actionsByConfigurationId.set(agentConfigurationId, []);
     }
-
-    // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-    const metadata = await getMCPServerMetadata(config);
 
     const actions = actionsByConfigurationId.get(agentConfigurationId);
     if (actions) {
@@ -62,9 +122,8 @@ export async function fetchMCPServerActionConfigurations({
         type: "mcp_server_configuration",
         name: metadata.name,
         description: metadata.description,
-        serverType,
-        internalMCPServerId,
-        remoteMCPServerId,
+        mcpServerId: metadata.id,
+        dataSources: dataSourceConfiguration.map(getDataSource),
       });
     }
   }

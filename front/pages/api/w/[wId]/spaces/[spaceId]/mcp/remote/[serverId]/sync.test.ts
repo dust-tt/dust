@@ -31,7 +31,7 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
-    fetchServerData: vi.fn().mockResolvedValue({
+    fetchRemoteServerMetaDataByURL: vi.fn().mockResolvedValue({
       name: "Updated Server Name",
       description: "Updated server description",
       tools: [

@@ -29,7 +29,10 @@ import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ContentNode, ContentNodesViewType } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
-import { getOAuthConnectionAccessToken, MIME_TYPES } from "@connectors/types";
+import {
+  getOAuthConnectionAccessToken,
+  INTERNAL_MIME_TYPES,
+} from "@connectors/types";
 
 import { getOrphanedCount, hasChildren } from "./lib/parents";
 
@@ -127,7 +130,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [nodeIdFromNotionId("unknown")],
       parentId: null,
       title: "Orphaned Resources",
-      mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.UNKNOWN_FOLDER,
     });
     // Upsert to data_sources_folders (core) a top-level folder for the syncing resources.
     await upsertDataSourceFolder({
@@ -136,7 +139,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       parents: [nodeIdFromNotionId("syncing")],
       parentId: null,
       title: "Syncing",
-      mimeType: MIME_TYPES.NOTION.SYNCING_FOLDER,
+      mimeType: INTERNAL_MIME_TYPES.NOTION.SYNCING_FOLDER,
     });
 
     try {
@@ -489,7 +492,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable,
         permission: "read",
         lastUpdatedAt: page.lastUpsertedTs?.getTime() || null,
-        mimeType: MIME_TYPES.NOTION.PAGE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.PAGE,
       };
     };
 
@@ -512,7 +515,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
         expandable: true,
         permission: "read",
         lastUpdatedAt: db.structuredDataUpsertedTs?.getTime() ?? null,
-        mimeType: MIME_TYPES.NOTION.DATABASE,
+        mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       };
     };
 
@@ -534,7 +537,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
           expandable: true,
           permission: "read",
           lastUpdatedAt: null,
-          mimeType: MIME_TYPES.NOTION.UNKNOWN_FOLDER,
+          mimeType: INTERNAL_MIME_TYPES.NOTION.UNKNOWN_FOLDER,
         });
       }
     }

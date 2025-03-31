@@ -23,7 +23,7 @@ type UnderscoreToDash<T extends string> = T extends `${infer A}_${infer B}`
  * - The underscores in the provider name are stripped in the generated mime type.
  * - The underscores in the resource type are replaced with dashes in the generated mime type.
  */
-function generateMimeTypes<
+function generateConnectorRelativeMimeTypes<
   P extends ConnectorProvider,
   T extends Uppercase<string>[]
 >({
@@ -52,12 +52,12 @@ function generateMimeTypes<
   );
 }
 
-export const MIME_TYPES = {
-  CONFLUENCE: generateMimeTypes({
+export const CONTENT_NODE_MIME_TYPES = {
+  CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
   }),
-  GITHUB: generateMimeTypes({
+  GITHUB: generateConnectorRelativeMimeTypes({
     provider: "github",
     resourceTypes: [
       "REPOSITORY",
@@ -74,13 +74,13 @@ export const MIME_TYPES = {
       "DISCUSSION",
     ],
   }),
-  GOOGLE_DRIVE: generateMimeTypes({
+  GOOGLE_DRIVE: generateConnectorRelativeMimeTypes({
     provider: "google_drive",
     // Spreadsheets may contain many sheets, thus resemble folders and are stored as such, but with
     // the special mimeType below.  For files and sheets, we keep Google's mime types.
     resourceTypes: ["SHARED_WITH_ME", "FOLDER", "SPREADSHEET"],
   }),
-  INTERCOM: generateMimeTypes({
+  INTERCOM: generateConnectorRelativeMimeTypes({
     provider: "intercom",
     resourceTypes: [
       "COLLECTION",
@@ -91,30 +91,30 @@ export const MIME_TYPES = {
       "HELP_CENTER",
     ],
   }),
-  MICROSOFT: generateMimeTypes({
+  MICROSOFT: generateConnectorRelativeMimeTypes({
     provider: "microsoft",
     // Spreadsheets may contain many sheets, thus resemble folders and are
     // stored as such, but with the special mimeType below.
     // For files and sheets, we keep Microsoft's mime types.
     resourceTypes: ["FOLDER", "SPREADSHEET"],
   }),
-  NOTION: generateMimeTypes({
+  NOTION: generateConnectorRelativeMimeTypes({
     provider: "notion",
     resourceTypes: ["UNKNOWN_FOLDER", "SYNCING_FOLDER", "DATABASE", "PAGE"],
   }),
-  SLACK: generateMimeTypes({
+  SLACK: generateConnectorRelativeMimeTypes({
     provider: "slack",
     resourceTypes: ["CHANNEL", "THREAD", "MESSAGES"],
   }),
-  SNOWFLAKE: generateMimeTypes({
+  SNOWFLAKE: generateConnectorRelativeMimeTypes({
     provider: "snowflake",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  WEBCRAWLER: generateMimeTypes({
+  WEBCRAWLER: generateConnectorRelativeMimeTypes({
     provider: "webcrawler",
     resourceTypes: ["FOLDER"], // pages are upserted as text/html, not an internal mime type
   }),
-  ZENDESK: generateMimeTypes({
+  ZENDESK: generateConnectorRelativeMimeTypes({
     provider: "zendesk",
     resourceTypes: [
       "BRAND",
@@ -127,62 +127,77 @@ export const MIME_TYPES = {
       "TICKET",
     ],
   }),
-  BIGQUERY: generateMimeTypes({
+  BIGQUERY: generateConnectorRelativeMimeTypes({
     provider: "bigquery",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  SALESFORCE: generateMimeTypes({
+  SALESFORCE: generateConnectorRelativeMimeTypes({
     provider: "salesforce",
     resourceTypes: ["DATABASE", "SCHEMA", "TABLE"],
   }),
-  GONG: generateMimeTypes({
+  GONG: generateConnectorRelativeMimeTypes({
     provider: "gong",
     resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
 };
 
-export const MIME_TYPES_VALUES = Object.values(MIME_TYPES).flatMap((value) =>
-  Object.values(value).map((v) => v)
+const TOOL_INPUT_MIME_TYPES = {
+  // If we get other similar mime types we'll add an util function just like above.
+  CONFIGURATION: {
+    DATA_SOURCE: "application/vnd.dust.data-source-configuration",
+  },
+};
+
+export const INTERNAL_MIME_TYPES = {
+  ...CONTENT_NODE_MIME_TYPES,
+  ...TOOL_INPUT_MIME_TYPES,
+};
+
+export const INTERNAL_MIME_TYPES_VALUES = Object.values(CONTENT_NODE_MIME_TYPES).flatMap(
+  (value) => Object.values(value).map((v) => v)
 );
 
 export type BigQueryMimeType =
-  (typeof MIME_TYPES.BIGQUERY)[keyof typeof MIME_TYPES.BIGQUERY];
+  (typeof INTERNAL_MIME_TYPES.BIGQUERY)[keyof typeof INTERNAL_MIME_TYPES.BIGQUERY];
 
 export type ConfluenceMimeType =
-  (typeof MIME_TYPES.CONFLUENCE)[keyof typeof MIME_TYPES.CONFLUENCE];
+  (typeof INTERNAL_MIME_TYPES.CONFLUENCE)[keyof typeof INTERNAL_MIME_TYPES.CONFLUENCE];
 
 export type GithubMimeType =
-  (typeof MIME_TYPES.GITHUB)[keyof typeof MIME_TYPES.GITHUB];
+  (typeof INTERNAL_MIME_TYPES.GITHUB)[keyof typeof INTERNAL_MIME_TYPES.GITHUB];
 
 export type GoogleDriveMimeType =
-  (typeof MIME_TYPES.GOOGLE_DRIVE)[keyof typeof MIME_TYPES.GOOGLE_DRIVE];
+  (typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE)[keyof typeof INTERNAL_MIME_TYPES.GOOGLE_DRIVE];
 
 export type IntercomMimeType =
-  (typeof MIME_TYPES.INTERCOM)[keyof typeof MIME_TYPES.INTERCOM];
+  (typeof INTERNAL_MIME_TYPES.INTERCOM)[keyof typeof INTERNAL_MIME_TYPES.INTERCOM];
 
 export type MicrosoftMimeType =
-  (typeof MIME_TYPES.MICROSOFT)[keyof typeof MIME_TYPES.MICROSOFT];
+  (typeof INTERNAL_MIME_TYPES.MICROSOFT)[keyof typeof INTERNAL_MIME_TYPES.MICROSOFT];
 
 export type NotionMimeType =
-  (typeof MIME_TYPES.NOTION)[keyof typeof MIME_TYPES.NOTION];
+  (typeof INTERNAL_MIME_TYPES.NOTION)[keyof typeof INTERNAL_MIME_TYPES.NOTION];
 
 export type SlackMimeType =
-  (typeof MIME_TYPES.SLACK)[keyof typeof MIME_TYPES.SLACK];
+  (typeof INTERNAL_MIME_TYPES.SLACK)[keyof typeof INTERNAL_MIME_TYPES.SLACK];
 
 export type SnowflakeMimeType =
-  (typeof MIME_TYPES.SNOWFLAKE)[keyof typeof MIME_TYPES.SNOWFLAKE];
+  (typeof INTERNAL_MIME_TYPES.SNOWFLAKE)[keyof typeof INTERNAL_MIME_TYPES.SNOWFLAKE];
 
 export type WebcrawlerMimeType =
-  (typeof MIME_TYPES.WEBCRAWLER)[keyof typeof MIME_TYPES.WEBCRAWLER];
+  (typeof INTERNAL_MIME_TYPES.WEBCRAWLER)[keyof typeof INTERNAL_MIME_TYPES.WEBCRAWLER];
 
 export type ZendeskMimeType =
-  (typeof MIME_TYPES.ZENDESK)[keyof typeof MIME_TYPES.ZENDESK];
+  (typeof INTERNAL_MIME_TYPES.ZENDESK)[keyof typeof INTERNAL_MIME_TYPES.ZENDESK];
 
 export type SalesforceMimeType =
-  (typeof MIME_TYPES.SALESFORCE)[keyof typeof MIME_TYPES.SALESFORCE];
+  (typeof INTERNAL_MIME_TYPES.SALESFORCE)[keyof typeof INTERNAL_MIME_TYPES.SALESFORCE];
 
 export type GongMimeType =
-  (typeof MIME_TYPES.GONG)[keyof typeof MIME_TYPES.GONG];
+  (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
+
+export type InternalConfigurationMimeType =
+  (typeof INTERNAL_MIME_TYPES.CONFIGURATION)[keyof typeof INTERNAL_MIME_TYPES.CONFIGURATION];
 
 export type DustMimeType =
   | BigQueryMimeType
@@ -200,5 +215,5 @@ export type DustMimeType =
   | GongMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
-  return (MIME_TYPES_VALUES as string[]).includes(mimeType);
+  return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
 }

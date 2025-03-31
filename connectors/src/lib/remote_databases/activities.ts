@@ -20,7 +20,7 @@ import type {
 import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { MIME_TYPES } from "@connectors/types";
+import type { INTERNAL_MIME_TYPES } from "@connectors/types";
 import type { DataSourceConfig } from "@connectors/types";
 
 const isDatabaseReadGranted = ({
@@ -46,9 +46,9 @@ const createDatabase = async ({
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   usedInternalIds: Set<string>;
@@ -132,9 +132,9 @@ const createSchemaAndHierarchy = async ({
   allSchemas: RemoteSchemaModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
   newSchema: RemoteSchemaModel | null;
@@ -248,9 +248,9 @@ const createTableAndHierarchy = async ({
   allDatabases: RemoteDatabaseModel[];
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId: (internalTableId: string) => string;
 }): Promise<{
   newDatabase: RemoteDatabaseModel | null;
@@ -351,9 +351,9 @@ export async function sync({
   remoteDBTree?: RemoteDBTree;
   connector: ConnectorResource;
   mimeTypes:
-    | typeof MIME_TYPES.BIGQUERY
-    | typeof MIME_TYPES.SNOWFLAKE
-    | typeof MIME_TYPES.SALESFORCE;
+    | typeof INTERNAL_MIME_TYPES.BIGQUERY
+    | typeof INTERNAL_MIME_TYPES.SNOWFLAKE
+    | typeof INTERNAL_MIME_TYPES.SALESFORCE;
   internalTableIdToRemoteTableId?: (internalTableId: string) => string;
 }) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);

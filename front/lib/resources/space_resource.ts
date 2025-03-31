@@ -21,6 +21,7 @@ import type { ModelStaticSoftDeletable } from "@app/lib/resources/storage/wrappe
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchUpdateSpacePermissionsWorkflow } from "@app/temporal/permissions_queue/client";
 import type {
   CombinedResourcePermissions,
@@ -29,7 +30,7 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { concurrentExecutor, Err } from "@app/types";
+import { Err } from "@app/types";
 import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

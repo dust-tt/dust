@@ -45,7 +45,7 @@ import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -75,7 +75,7 @@ export async function upsertSharedWithMeFolder(connectorId: ModelId) {
     parents: [folderId],
     parentId: null,
     title: "Shared with me",
-    mimeType: MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
+    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.SHARED_WITH_ME,
     sourceUrl: GOOGLE_DRIVE_SHARED_WITH_ME_WEB_URL,
   });
 }
@@ -947,7 +947,7 @@ export async function markFolderAsVisited(
     parents,
     parentId: parents[1] || null,
     title: file.name ?? "",
-    mimeType: MIME_TYPES.GOOGLE_DRIVE.FOLDER,
+    mimeType: INTERNAL_MIME_TYPES.GOOGLE_DRIVE.FOLDER,
     sourceUrl: getSourceUrlForGoogleDriveFiles(file),
   });
 

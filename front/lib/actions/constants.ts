@@ -4,8 +4,6 @@
 // future based on user feedback.
 export const PROCESS_ACTION_TOP_K = 768;
 
-export const AVAILABLE_INTERNAL_MCPSERVER_IDS = ["helloworld"] as const;
-
 export const DEFAULT_BROWSE_ACTION_NAME = "browse";
 export const DEFAULT_BROWSE_ACTION_DESCRIPTION =
   "Browse the content of a web page";
@@ -47,5 +45,7 @@ export const DEFAULT_REASONING_ACTION_DESCRIPTION =
   "Offload a reasoning-heavy task to to a powerful reasoning model. The reasoning model does not have access to any tools.";
 
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
+export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
+export const DEFAULT_MCP_ACTION_ICON = "command";

@@ -1,6 +1,6 @@
-import type { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -30,15 +30,15 @@ export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
 
-  //TODO(mcp): handle hosted and client
-  serverType: "internal" | "remote";
-  internalMCPServerId: (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number] | null;
-  remoteMCPServerId: string | null; // Hold the sId of the remote MCP server.
+  mcpServerId: string; // Hold the sId of the MCP server.
 
   type: "mcp_server_configuration";
 
   name: string;
   description: string | null;
+
+  dataSources: DataSourceConfiguration[] | null;
+  // TODO(mcp): add other kind of configurations here such as table query.
 };
 
 export type MCPToolConfigurationType = Omit<
@@ -88,11 +88,7 @@ export class MCPActionType extends BaseAction {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied" = "pending";
-  readonly serverType: MCPServerConfigurationType["serverType"] = "internal";
-  readonly internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"] =
-    null;
-  readonly remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"] =
-    null;
+  readonly mcpServerId: string = "not-valid";
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: MCPToolResultContent[] | null;
@@ -206,9 +202,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
-      serverType: actionConfiguration.serverType,
-      internalMCPServerId: actionConfiguration.internalMCPServerId,
-      remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+      mcpServerId: actionConfiguration.mcpServerId,
     });
 
     yield {
@@ -224,9 +218,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "pending",
         isError: false,
@@ -237,7 +229,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await tryCallMCPTool({
+    const r = await tryCallMCPTool(auth, {
       owner,
       actionConfiguration,
       rawInputs,
@@ -287,9 +279,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "allowed_explicitely",
         isError: false,
@@ -333,9 +323,7 @@ export async function mcpActionTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      serverType: action.serverType,
-      internalMCPServerId: action.internalMCPServerId,
-      remoteMCPServerId: action.remoteMCPServerId,
+      mcpServerId: action.mcpServerId,
       mcpServerConfigurationId: action.mcpServerConfigurationId,
       executionState: action.executionState,
       isError: action.isError,

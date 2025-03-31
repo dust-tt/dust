@@ -14,7 +14,6 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -30,10 +29,10 @@ import type {
   TimeframeUnit,
   WorkspaceType,
 } from "@app/types";
-import { DEFAULT_MAX_STEPS_USE_PER_RUN } from "@app/types";
 import {
   assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  DEFAULT_MAX_STEPS_USE_PER_RUN,
 } from "@app/types";
 
 export const ACTION_MODES = [
@@ -127,9 +126,9 @@ export type AssistantBuilderReasoningConfiguration = {
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
-  serverType: MCPServerConfigurationType["serverType"];
-  internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
-  remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
+  mcpServerId: string;
+
+  dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
 // Builder State
@@ -363,9 +362,8 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
   return {
     type: "MCP",
     configuration: {
-      serverType: "internal",
-      internalMCPServerId: null,
-      remoteMCPServerId: null,
+      mcpServerId: "not-a-valid-mcp-server-id",
+      dataSourceConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,

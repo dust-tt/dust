@@ -41,7 +41,7 @@ import {
   ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
-import { MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 /**
  * This activity is responsible for updating the lastSyncStartTime of the connector to now.
@@ -153,7 +153,7 @@ export async function syncZendeskBrandActivity({
       parents: [helpCenterNode.internalId],
       parentId: null,
       title: helpCenterNode.title,
-      mimeType: MIME_TYPES.ZENDESK.HELP_CENTER,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.HELP_CENTER,
       timestampMs: currentSyncDateMs,
     });
 
@@ -172,7 +172,7 @@ export async function syncZendeskBrandActivity({
         parents,
         parentId: parents[1],
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -218,7 +218,7 @@ export async function syncZendeskBrandActivity({
         parents: [folderId],
         parentId: null,
         title: category.name,
-        mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+        mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
         sourceUrl: category.url,
         timestampMs: currentSyncDateMs,
       });
@@ -235,7 +235,7 @@ export async function syncZendeskBrandActivity({
       parents: [ticketsNode.internalId],
       parentId: null,
       title: ticketsNode.title,
-      mimeType: MIME_TYPES.ZENDESK.TICKETS,
+      mimeType: INTERNAL_MIME_TYPES.ZENDESK.TICKETS,
       timestampMs: currentSyncDateMs,
     });
   } else {
@@ -485,7 +485,7 @@ export async function syncZendeskCategoryActivity({
     parents,
     parentId,
     title: fetchedCategory.name,
-    mimeType: MIME_TYPES.ZENDESK.CATEGORY,
+    mimeType: INTERNAL_MIME_TYPES.ZENDESK.CATEGORY,
     sourceUrl: fetchedCategory.html_url,
     timestampMs: currentSyncDateMs,
   });
