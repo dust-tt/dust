@@ -66,9 +66,9 @@ import type { WebsearchActionType } from "@app/lib/actions/websearch";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
 import type {
+  AgentActionApproveExecutionEvent,
   AgentActionSuccessEvent,
   AgentActionType,
-  AgentActionApproveExecutionEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageSuccessEvent,

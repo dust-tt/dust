@@ -40,9 +40,9 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
 import type {
+  AgentActionApproveExecutionEvent,
   AgentActionsEvent,
   AgentActionSuccessEvent,
-  AgentActionApproveExecutionEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,

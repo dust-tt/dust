@@ -7,7 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { hashMCPInputParams } from "@app/lib/actions/utils";

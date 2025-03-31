@@ -53,8 +53,8 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
 import type {
-  AgentActionSuccessEvent,
   AgentActionApproveExecutionEvent,
+  AgentActionSuccessEvent,
   AgentDisabledErrorEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,

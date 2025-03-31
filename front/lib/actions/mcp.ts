@@ -22,7 +22,6 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import logger from "@app/logger/logger";
 import type {
-  AgentActionApproveExecutionEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -320,8 +319,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
           attempts++;
         }
-
-        const now = Date.now();
 
         // If we timed out waiting for validation
         if (attempts >= maxAttempts) {
