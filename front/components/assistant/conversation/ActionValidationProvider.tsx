@@ -121,33 +121,11 @@ export function ActionValidationProvider({
     setErrorMessage(null);
   };
 
-  // Handle manual dialog close
-  const handleDialogClose = (open: boolean) => {
-    // If the dialog is being opened, just update the state
-    if (open) {
-      setIsDialogOpen(open);
-      return;
-    }
-
-    // If we're processing an action, prevent dialog from closing
-    if (isProcessing) {
-      return;
-    }
-
-    // If dialog is being closed and we have a current validation,
-    // treat it as a rejection only if it's closed via escape key or clicking outside
-    if (!open && currentValidation) {
-      void handle(false);
-    }
-
-    setIsDialogOpen(false);
-  };
-
   return (
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
       {children}
 
-      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Action Validation Required</DialogTitle>

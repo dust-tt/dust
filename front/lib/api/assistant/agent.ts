@@ -198,7 +198,7 @@ async function* runMultiActionsAgentLoop(
             }
 
             yield {
-              type: "action_validate_execution",
+              type: "action_approve_execution",
               created: Date.now(),
               configurationId: configuration.sId,
               messageId: agentMessage.sId,

@@ -86,7 +86,7 @@ async function handler(
       conversationId: cId,
       messageId: mId,
       actionId: actionId,
-      paramsHash: paramsHash.toString,
+      paramsHash: paramsHash,
     });
     logger.info(
       {

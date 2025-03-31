@@ -245,7 +245,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       const inputsHash = hashMCPInputParams(rawInputs);
 
       const redis = await getRedisClient({ origin: "assistant_generation" });
-      const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}:${inputsHash}`;
+      const validationKey = getMCPApprovalKey({
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+        actionId: actionConfiguration.id,
+        paramsHash: inputsHash,
+      });
       const validationStatus = await redis.get(validationKey);
 
       if (!validationStatus || validationStatus !== "approved") {

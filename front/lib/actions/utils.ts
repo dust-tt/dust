@@ -264,7 +264,7 @@ export function actionRefsOffset({
 
 export function hashMCPInputParams(params: Record<string, any>): string {
   if (!params || Object.keys(params).length === 0) {
-    return "no_params";
+    params = { query: "" };
   }
 
   // Sort keys to ensure consistent hashing
