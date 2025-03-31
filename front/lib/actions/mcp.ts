@@ -13,7 +13,7 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
-import { hashMCPInputParams } from "@app/lib/actions/utils";
+import { getMCPApprovalKey, hashMCPInputParams } from "@app/lib/actions/utils";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -22,6 +22,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import logger from "@app/logger/logger";
 import type {
+  AgentActionApproveExecutionEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -265,19 +266,8 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
 
           const checkStatus = await redis.get(validationKey);
-          if (checkStatus === "approved") {
-            logger.info(
-              {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                messageId: agentMessage.sId,
-                actionId: actionConfiguration.id,
-              },
-              "Action approved by user, continuing execution"
-            );
-
-            console.log("breaking out of loop");
-            break; // Approved, continue with execution
+          if (checkStatus && checkStatus === "approved") {
+            break;
           }
 
           if (checkStatus && checkStatus === "rejected") {
@@ -340,17 +330,34 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             "Action validation timed out"
           );
 
-          // we yield a tool error, with a message that the action validation timed out
+          // We yield a tool success, with a message that the action timed out
           yield {
-            type: "tool_error",
-            created: now,
+            type: "tool_success",
+            created: Date.now(),
             configurationId: agentConfiguration.sId,
             messageId: agentMessage.sId,
-            error: {
-              code: "action_validation_timeout",
-              message:
-                "The action validation request timed out. Please try again.",
-            },
+            action: new MCPActionType({
+              id: action.id,
+              params: rawInputs,
+              output: [
+                {
+                  type: "text",
+                  text: `The action validation request timed out. Using this action is hence forbidden for this message.`,
+                },
+              ],
+              functionCallId,
+              functionCallName: actionConfiguration.name,
+              agentMessageId: agentMessage.agentMessageId,
+              step,
+              serverType: actionConfiguration.serverType,
+              internalMCPServerId: actionConfiguration.internalMCPServerId,
+              remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+              mcpServerConfigurationId: `${actionConfiguration.id}`,
+              executionState: "denied",
+              isError: false,
+              type: "tool_action",
+              generatedFiles: [],
+            }),
           };
           return;
         }
@@ -374,6 +381,18 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         },
         "Error checking action validation status"
       );
+
+      yield {
+        type: "tool_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tool_error",
+          message: `Error checking action validation status: ${JSON.stringify(error)}`,
+        },
+      };
+      return;
     }
 
     // TODO(mcp): listen to sse events to provide live feedback to the user

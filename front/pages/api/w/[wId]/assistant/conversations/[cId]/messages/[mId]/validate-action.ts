@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { getMCPApprovalKey } from "@app/lib/actions/utils";
 
 const ValidateActionSchema = z.object({
   actionId: z.number(),
@@ -81,8 +82,12 @@ async function handler(
     // We store it under conversationId, messageId, and actionId to ensure that the
     // validation is only applied to the intended action. We also include the hash of
     // the input parameters to double-check that the validation is for the correct action.
-    const validationKey = `assistant:action:validation:${cId}:${mId}:${actionId}:${paramsHash}`;
-
+    const validationKey = getMCPApprovalKey({
+      conversationId: cId,
+      messageId: mId,
+      actionId: actionId,
+      paramsHash: paramsHash.toString,
+    });
     logger.info(
       {
         workspaceId: wId,

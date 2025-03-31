@@ -42,7 +42,7 @@ import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
   AgentActionSuccessEvent,
-  AgentActionValidateExecutionEvent,
+  AgentActionApproveExecutionEvent,
   AgentChainOfThoughtEvent,
   AgentConfigurationType,
   AgentContentEvent,
@@ -73,7 +73,7 @@ export async function* runAgent(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionValidateExecutionEvent
+  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -118,7 +118,7 @@ async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionValidateExecutionEvent
+  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent

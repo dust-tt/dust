@@ -283,3 +283,17 @@ export function hashMCPInputParams(params: Record<string, any>): string {
     .digest("hex")
     .substring(0, 16);
 }
+
+export function getMCPApprovalKey({
+  conversationId,
+  messageId,
+  actionId,
+  paramsHash,
+}: {
+  conversationId: string;
+  messageId: string;
+  actionId: number;
+  paramsHash: string;
+}): string {
+  return `assistant:action:validation:${conversationId}:${messageId}:${actionId}:${paramsHash}`;
+}

@@ -18,7 +18,7 @@ type ActionValidationContextType = {
     messageId: string;
     conversationId: string;
     action: ActionConfigurationType;
-    inputs: Record<string, string | boolean | number>;
+    inputs: Record<string, unknown>;
   }) => void;
 };
 
@@ -28,22 +28,11 @@ export type PendingValidationRequestType = {
   messageId: string;
   conversationId: string;
   action: ActionConfigurationType;
-  inputs: Record<string, string | boolean | number>;
+  inputs: Record<string, unknown>;
 };
 
-export const ActionValidationContext = createContext<
-  ActionValidationContextType | undefined
->(undefined);
-
-export function useActionValidation() {
-  const context = useContext(ActionValidationContext);
-  if (!context) {
-    throw new Error(
-      "useActionValidation must be used within an ActionValidationProvider"
-    );
-  }
-  return context;
-}
+export const ActionValidationContext =
+  createContext<ActionValidationContextType>({} as ActionValidationContextType);
 
 export function ActionValidationProvider({
   children,
@@ -126,7 +115,7 @@ export function ActionValidationProvider({
     messageId: string;
     conversationId: string;
     action: ActionConfigurationType;
-    inputs: Record<string, string | boolean | number>;
+    inputs: Record<string, unknown>;
   }) => {
     setValidationQueue((prevQueue) => [...prevQueue, props]);
     setErrorMessage(null);
@@ -134,16 +123,24 @@ export function ActionValidationProvider({
 
   // Handle manual dialog close
   const handleDialogClose = (open: boolean) => {
-    // Only handle rejection if the dialog is being closed (open is false)
-    // and we're not currently processing an action
-    if (!open && !isProcessing && currentValidation) {
+    // If the dialog is being opened, just update the state
+    if (open) {
+      setIsDialogOpen(open);
+      return;
+    }
+
+    // If we're processing an action, prevent dialog from closing
+    if (isProcessing) {
+      return;
+    }
+
+    // If dialog is being closed and we have a current validation,
+    // treat it as a rejection only if it's closed via escape key or clicking outside
+    if (!open && currentValidation) {
       void handle(false);
     }
 
-    // Only update dialog state if not processing
-    if (!isProcessing) {
-      setIsDialogOpen(open);
-    }
+    setIsDialogOpen(false);
   };
 
   return (
