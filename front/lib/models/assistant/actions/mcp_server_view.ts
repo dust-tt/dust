@@ -9,7 +9,6 @@ import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wra
 import { assertNever } from "@app/types";
 
 export class MCPServerView extends SoftDeletableWorkspaceAwareModel<MCPServerView> {
-  declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

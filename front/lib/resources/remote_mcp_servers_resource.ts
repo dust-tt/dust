@@ -8,6 +8,7 @@ import type {
 
 import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -36,17 +37,41 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
-    space: SpaceResource
+    space: SpaceResource,
+    transaction?: Transaction
   ) {
     assert(
       space.canWrite(auth),
       "The user is not authorized to create an MCP server"
     );
 
-    const server = await RemoteMCPServer.create({
-      ...blob,
-      vaultId: space.id,
-    });
+    assert(
+      space.kind === "system",
+      "Only system spaces can have remote MCP servers"
+    );
+
+    const server = await RemoteMCPServer.create(
+      {
+        ...blob,
+        vaultId: space.id,
+      },
+      { transaction }
+    );
+
+    // Immediately create a view for the server in the system space.
+    await MCPServerView.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        serverType: "remote",
+        remoteMCPServerId: server.id,
+        vaultId: space.id,
+        editedAt: new Date(),
+        editedByUserId: auth.getNonNullableUser().id,
+      },
+      {
+        transaction,
+      }
+    );
 
     return new this(RemoteMCPServer, server.get(), space);
   }
