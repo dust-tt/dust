@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 import { toast, Toaster } from "sonner";
 
@@ -9,7 +10,6 @@ import {
 import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
-import { cva } from "class-variance-authority";
 
 const NOTIFICATION_DELAY = 5000;
 
