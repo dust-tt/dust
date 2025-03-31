@@ -208,6 +208,7 @@ export type AgentActionApproveExecutionEvent = {
   messageId: string;
   action: ActionConfigurationType;
   inputs: Record<string, unknown>;
+  hashedInputs: string;
 };
 
 // Event sent once the action is completed, we're moving to generating a message if applicable.

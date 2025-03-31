@@ -22,6 +22,7 @@ import {
 } from "@app/lib/models/assistant/actions/mcp";
 import logger from "@app/logger/logger";
 import type {
+  AgentActionApproveExecutionEvent,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -79,7 +80,9 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPActionRunningEvents = MCPParamsEvent;
+export type MCPActionRunningEvents =
+  | MCPParamsEvent
+  | AgentActionApproveExecutionEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -189,7 +192,13 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       functionCallId,
       step,
     }: BaseActionRunParams
-  ): AsyncGenerator<MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent, void> {
+  ): AsyncGenerator<
+    | MCPParamsEvent
+    | MCPSuccessEvent
+    | MCPErrorEvent
+    | AgentActionApproveExecutionEvent,
+    void
+  > {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `run`");
@@ -238,17 +247,27 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         generatedFiles: [],
       }),
     };
+
+    const hashedInputs = hashMCPInputParams(rawInputs);
+
+    yield {
+      type: "action_approve_execution",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: actionConfiguration,
+      inputs: rawInputs,
+      hashedInputs,
+    };
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
     try {
-      const inputsHash = hashMCPInputParams(rawInputs);
-
       const redis = await getRedisClient({ origin: "assistant_generation" });
       const validationKey = getMCPApprovalKey({
         conversationId: conversation.sId,
         messageId: agentMessage.sId,
         actionId: actionConfiguration.id,
-        paramsHash: inputsHash,
+        paramsHash: hashedInputs,
       });
       const validationStatus = await redis.get(validationKey);
 

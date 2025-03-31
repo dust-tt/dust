@@ -10,7 +10,6 @@ import {
 import { createContext, useEffect, useState } from "react";
 
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
-import { hashMCPInputParams } from "@app/lib/actions/utils";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
@@ -19,6 +18,7 @@ type ActionValidationContextType = {
     conversationId: string;
     action: ActionConfigurationType;
     inputs: Record<string, unknown>;
+    hashedInputs: string;
   }) => void;
 };
 
@@ -29,6 +29,7 @@ export type PendingValidationRequestType = {
   conversationId: string;
   action: ActionConfigurationType;
   inputs: Record<string, unknown>;
+  hashedInputs: string;
 };
 
 export const ActionValidationContext =
@@ -78,8 +79,6 @@ export function ActionValidationProvider({
       return;
     }
 
-    const inputsHash = hashMCPInputParams(currentValidation.inputs);
-
     setErrorMessage(null);
     setIsProcessing(true);
 
@@ -93,7 +92,7 @@ export function ActionValidationProvider({
         body: JSON.stringify({
           actionId: currentValidation.action.id,
           approved,
-          paramsHash: inputsHash,
+          paramsHash: currentValidation.hashedInputs,
         }),
       }
     );
@@ -116,6 +115,7 @@ export function ActionValidationProvider({
     conversationId: string;
     action: ActionConfigurationType;
     inputs: Record<string, unknown>;
+    hashedInputs: string;
   }) => {
     setValidationQueue((prevQueue) => [...prevQueue, props]);
     setErrorMessage(null);

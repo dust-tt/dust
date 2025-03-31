@@ -118,7 +118,6 @@ async function* runMultiActionsAgentLoop(
   agentMessage: AgentMessageType
 ): AsyncGenerator<
   | AgentErrorEvent
-  | AgentActionApproveExecutionEvent
   | AgentActionSpecificEvent
   | AgentActionSuccessEvent
   | GenerationTokensEvent
@@ -190,22 +189,6 @@ async function* runMultiActionsAgentLoop(
           // which is very high. Over that the latency will just be too high. This is a guardrail
           // against the model outputing something unreasonable.
           event.actions = event.actions.slice(0, MAX_ACTIONS_PER_STEP);
-
-          // Emit validation events for each action before execution
-          for (const actionEvent of event.actions) {
-            if (actionEvent.action.type !== "mcp_configuration") {
-              continue;
-            }
-
-            yield {
-              type: "action_approve_execution",
-              created: Date.now(),
-              configurationId: configuration.sId,
-              messageId: agentMessage.sId,
-              action: actionEvent.action,
-              inputs: actionEvent.inputs,
-            };
-          }
 
           const eventStreamGenerators = event.actions.map(
             ({ action, inputs, functionCallId, specification }, index) => {
@@ -1384,6 +1367,10 @@ async function* runAction(
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
+          break;
+
+        case "action_approve_execution":
+          yield event;
           break;
 
         default:
