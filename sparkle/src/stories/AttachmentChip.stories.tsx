@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
+import { AttachmentChip } from "@sparkle/components";
 import { DocumentIcon, DocumentTextIcon } from "@sparkle/icons";
 import { NotionLogo } from "@sparkle/logo";
-
-import { AttachmentChip } from "./AttachmentChip";
 
 const meta = {
   title: "Components/AttachmentChip",

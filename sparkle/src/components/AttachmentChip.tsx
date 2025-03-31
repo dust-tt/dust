@@ -6,7 +6,7 @@ import { Icon } from "./Icon";
 
 interface AttachmentChipProps {
   label: string;
-  icon: React.ComponentType;
+  icon?: React.ComponentType;
   className?: string;
 }
 
@@ -22,7 +22,7 @@ export function AttachmentChip({
         "s-border-border s-bg-background",
         "dark:s-border-border-night dark:s-bg-background-night",
         "s-text-foreground dark:s-text-foreground-night",
-        "s-max-w-[180px]",
+        "s-max-w-44",
         className
       )}
     >
