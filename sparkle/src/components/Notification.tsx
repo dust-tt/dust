@@ -9,6 +9,7 @@ import {
 import { assertNever, cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
+import { cva } from "class-variance-authority";
 
 const NOTIFICATION_DELAY = 5000;
 
@@ -43,18 +44,15 @@ function NotificationContent({ type, title, description }: NotificationType) {
     }
   })();
 
-  const className = (() => {
-    switch (type) {
-      case "success":
-        return "s-text-success-600 dark:s-text-success-400-night";
-      case "error":
-        return "s-text-warning-500 dark:s-text-warning-500-night";
-      case "info":
-        return "s-text-info-600 dark:s-text-info-400-night";
-      default:
-        assertNever(type);
-    }
-  })();
+  const variantClassName = cva("s-pt-0.5", {
+    variants: {
+      type: {
+        success: "s-text-success-600 dark:s-text-success-400-night",
+        error: "s-text-warning-500 dark:s-text-warning-500-night",
+        info: "s-text-info-600 dark:s-text-info-400-night",
+      },
+    },
+  });
 
   return (
     <div
@@ -68,7 +66,7 @@ function NotificationContent({ type, title, description }: NotificationType) {
       <Icon
         size="lg"
         visual={icon}
-        className={cn(className, "s-pt-0.5")}
+        className={variantClassName({ type })}
         aria-hidden="true"
       />
       <div className="s-flex s-flex-col">
