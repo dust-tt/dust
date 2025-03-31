@@ -238,7 +238,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       const path = url.pathname.endsWith("/")
         ? url.pathname.slice(0, -1)
         : url.pathname;
-      return { url: `${url.origin}${path}` };
+      return { url: `${url.origin}${path}`, provider: "zendesk" };
     },
   },
   intercom: {
@@ -254,7 +254,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       const path = url.pathname.endsWith("/")
         ? url.pathname.slice(0, -1)
         : url.pathname;
-      return { url: `${url.origin}${path}` };
+      return { url: `${url.origin}${path}`, provider: "intercom" };
     },
   },
 };
