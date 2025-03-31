@@ -10,11 +10,11 @@ import type {
     WhereOptions,
     Transaction
 } from "sequelize";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type { Authenticator } from "@app/lib/auth";
 import { Result, Ok, Err, PlanType } from "@app/types";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { DustError } from "@app/lib/error";
-
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -32,10 +32,25 @@ export class PlanResource extends BaseResource<PlanModel> {
 
     static async makeNew(blob: CreationAttributes<PlanModel>) {
         const plan = await PlanModel.create(blob);
-        return new this(PlanModel, plan.get());
+        return new this(this.model, plan.get());
     }
 
-    static async fetchByPlanCode(planCode: string){
+    static async upsertByPlanCode(
+        blob: CreationAttributes<PlanModel>
+    ){
+        const existing = await this.model.findOne({
+            where: { code: blob.code },
+        });
+    
+        if (existing) {
+            await existing.update(blob);
+            return new Ok(new PlanResource(PlanModel, existing.get()));
+        }
+        const plan = await PlanResource.makeNew(blob);
+        return new Ok(plan);
+    }
+
+    static async fetchByPlanCode(planCode: string): Promise<PlanResource | null>{
         const plan = await this.model.findOne({
             where: {
                 code: planCode,
@@ -44,9 +59,19 @@ export class PlanResource extends BaseResource<PlanModel> {
         return plan ? new this(PlanModel, plan.get()) : null;
     }
 
-    static async fetchAll(options: FindOptions<PlanModel> = {}){
+    // fetch all plans associated to a given set of subscriptions
+    static async fetchBySubscriptions(subscriptions: SubscriptionResource[]): Promise<PlanResource[] | null>{
+        const plans = await this.model.findAll({
+            where: {
+              id: subscriptions.map((s) => s.planId),
+            },
+        })
+        return plans.map((plan) => new this(this.model, plan.get()));
+    }
+
+    static async fetchAll(options: FindOptions<PlanModel> = {}): Promise<PlanResource[]>{
         const plans = await this.model.findAll(options);
-        return plans.map((plan) => new this(PlanModel, plan.get()));
+        return plans.map((plan) => new this(this.model, plan.get()));
     }
 
 
@@ -71,7 +96,8 @@ export class PlanResource extends BaseResource<PlanModel> {
         }
     }
 
-    static async setMessageLimits(
+    // This function is used to set the message limits for a given plan.
+    static async internalSetMessageLimits(
       data: Pick<Attributes<PlanModel>, 'maxMessages' | 'maxMessagesTimeframe'>,
       planCode: PlanModel["code"]
     ): Promise<Result<undefined, Error>> {
@@ -85,7 +111,8 @@ export class PlanResource extends BaseResource<PlanModel> {
       }
     }
 
-    async resetWithData(
+    // This function is used to reset the plan with new data.
+    async internalResetWithData(
         planData: Omit<
             Attributes<PlanModel>,
             "id" | "createdAt" | "updatedAt"

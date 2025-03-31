@@ -13,7 +13,6 @@ import {
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { Subscription } from "@app/lib/resources/storage/models/plans";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import { Workspace } from "@app/lib/models/workspace";
 import {
@@ -165,9 +164,7 @@ async function handler(
               // the warnings and create an alert if this log appears in all regions
               return res.status(200).json({ success: true });
             }
-            const plan = await PlanModel.findOne({
-              where: { code: planCode },
-            });
+            const plan = await PlanResource.fetchByPlanCode(planCode);
             if (!plan) {
               throw new Error(
                 `Cannot subscribe to plan ${planCode}: not found.`

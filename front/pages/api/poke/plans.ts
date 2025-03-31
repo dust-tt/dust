@@ -6,7 +6,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
@@ -101,8 +100,7 @@ async function handler(
         });
       }
       const body = bodyValidation.right;
-      //TODO : implement and use PlanResource.upsert
-      await PlanModel.upsert({
+      await PlanResource.upsertByPlanCode({
         code: body.code,
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,

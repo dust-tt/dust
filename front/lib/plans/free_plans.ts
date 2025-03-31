@@ -111,7 +111,7 @@ export const upsertFreePlans = async () => {
       await PlanResource.makeNew(planData);
       console.log(`Free plan ${planData.code} created.`);
     } else {
-      await plan.resetWithData(planData);
+      await plan.internalResetWithData(planData);
       console.log(`Free plan ${planData.code} updated.`);
     }
   }

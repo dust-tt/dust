@@ -36,8 +36,10 @@ import {
 } from "@app/lib/api/workspace";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { Plan, Subscription } from "@app/lib/resources/storage/models/plans";
-import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { PlanResource } from "@app/lib/resources/plan_resource";
+import { renderPlanFromModel, renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import type { ActionRegistry } from "@app/lib/registry";
 import { getDustProdActionRegistry } from "@app/lib/registry";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
@@ -76,11 +78,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   });
 
   const plans = keyBy(
-    await Plan.findAll({
-      where: {
-        id: subscriptionModels.map((s) => s.planId),
-      },
-    }),
+    await PlanResource.fetchBySubscriptions(subscriptionModels.map(s => new SubscriptionResource(Subscription, s.get(), renderPlanFromModel({ plan: s.plan })))),
     "id"
   );
 

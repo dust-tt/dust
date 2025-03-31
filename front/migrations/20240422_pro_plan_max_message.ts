@@ -6,7 +6,7 @@ import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 
 const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
-    const res = await PlanResource.setMessageLimits(
+    const res = await PlanResource.internalSetMessageLimits(
       {
         maxMessages: 100,
         maxMessagesTimeframe: "day",
