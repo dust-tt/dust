@@ -5,6 +5,7 @@ export {
   AssistantCardMore,
   LargeAssistantCard,
 } from "./AssistantCard";
+export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";
@@ -78,7 +79,6 @@ export {
   DropdownMenuTrigger,
 } from "./Dropdown";
 export { default as DropzoneOverlay } from "./DropzoneOverlay";
-export { AttachmentChip } from "./AttachmentChip";
 export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
