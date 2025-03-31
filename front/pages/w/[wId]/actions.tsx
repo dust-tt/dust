@@ -8,6 +8,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
+export const ACTION_BUTTONS_CONTAINER_ID = "actions-buttons-container";
+
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
@@ -36,7 +38,7 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   };
 });
 
-export default function Capabilities({
+export default function Actions({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
@@ -52,6 +54,7 @@ export default function Capabilities({
           icon={CommandLineIcon}
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
+        <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
         <Page.Vertical align="stretch" gap="md">
           <ActionsList owner={owner} />
         </Page.Vertical>
