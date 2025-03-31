@@ -132,8 +132,8 @@ export async function getDataSourceDocuments({
     const unknownFailures = failed.filter(
       (r) =>
         r.isErr() &&
-        (r.error.code !== "data_source_document_not_found" ||
-          r.error.message.includes("Failed to retrieve document blob"))
+        r.error.code !== "data_source_document_not_found" &&
+        !r.error.message.includes("Failed to retrieve document blob")
     );
 
     // Explicitly fail if there are any other errors.
