@@ -84,7 +84,7 @@ export function ActionValidationProvider({
     }
   }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
 
-  const handleApprove = async () => {
+  const handle = async (approved: boolean) => {
     if (!currentValidation) {
       return;
     }
@@ -94,74 +94,29 @@ export function ActionValidationProvider({
     setErrorMessage(null);
     setIsProcessing(true);
 
-    try {
-      const response = await fetch(
-        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            actionId: currentValidation.action.id,
-            approved: true,
-            paramsHash: inputsHash,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to approve action: ${response.statusText}`);
+    const response = await fetch(
+      `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actionId: currentValidation.action.id,
+          approved,
+          paramsHash: inputsHash,
+        }),
       }
-    } catch (error) {
-      console.error("Error approving action:", error);
-      setErrorMessage("Failed to approve action. Please try again.");
-      return;
-    } finally {
-      setIsProcessing(false);
-    }
+    );
 
-    setIsDialogOpen(false);
-    setCurrentValidation(null);
-  };
-
-  const handleReject = async () => {
-    if (!currentValidation) {
-      return;
-    }
-
-    const inputsHash = hashMCPInputParams(currentValidation.inputs);
-
-    setErrorMessage(null);
-    setIsProcessing(true);
-
-    try {
-      const response = await fetch(
-        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            actionId: currentValidation.action.id,
-            approved: false,
-            paramsHash: inputsHash,
-          }),
-        }
+    if (!response.ok) {
+      setErrorMessage(
+        `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
       );
-
-      if (!response.ok) {
-        throw new Error(`Failed to reject action: ${response.statusText}`);
-      }
-    } catch (error) {
-      console.error("Error rejecting action:", error);
-      setErrorMessage("Failed to reject action. Please try again.");
       return;
-    } finally {
-      setIsProcessing(false);
     }
 
+    setIsProcessing(false);
     setIsDialogOpen(false);
     setCurrentValidation(null);
   };
@@ -182,7 +137,7 @@ export function ActionValidationProvider({
     // Only handle rejection if the dialog is being closed (open is false)
     // and we're not currently processing an action
     if (!open && !isProcessing && currentValidation) {
-      void handleReject();
+      void handle(false);
     }
 
     // Only update dialog state if not processing
@@ -232,7 +187,7 @@ export function ActionValidationProvider({
             leftButtonProps={{
               label: "Reject",
               variant: "outline",
-              onClick: handleReject,
+              onClick: () => handle(false),
               disabled: isProcessing,
               children: isProcessing ? (
                 <div className="flex items-center">
@@ -244,7 +199,7 @@ export function ActionValidationProvider({
             rightButtonProps={{
               label: "Approve",
               variant: "primary",
-              onClick: handleApprove,
+              onClick: () => handle(true),
               disabled: isProcessing,
               children: isProcessing ? (
                 <div className="flex items-center">
