@@ -409,6 +409,7 @@ export class ConfluenceClient {
           body: JSON.stringify(data),
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
+          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
