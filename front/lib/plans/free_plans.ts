@@ -1,11 +1,12 @@
 import type { Attributes } from "sequelize";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
+
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   FREE_UPGRADED_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { PlanResource } from "@app/lib/resources/plan_resource";
+import type { PlanModel } from "@app/lib/resources/storage/models/plans";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,

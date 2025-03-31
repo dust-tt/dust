@@ -1,5 +1,5 @@
-import type { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import type { SubscriptionType } from "@app/types";
 // These limits are applied to all plans during the trial period.
 const TRIAL_LIMITS: Partial<PlanAttributes> = {

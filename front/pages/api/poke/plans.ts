@@ -7,9 +7,9 @@ import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
-import { PlanResource } from "@app/lib/resources/plan_resource";
 
 export const PlanTypeSchema = t.type({
   code: t.string,

@@ -1,27 +1,25 @@
-import { BaseResource } from "@app/lib/resources/base_resource";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import type {
     Attributes,
     CreationAttributes,
     FindOptions,
-    Includeable,
     ModelStatic,
-    WhereOptions,
-    Transaction
-} from "sequelize";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+    Transaction} from "sequelize";
+
 import type { Authenticator } from "@app/lib/auth";
-import { Result, Ok, Err, PlanType } from "@app/types";
+import { BaseResource } from "@app/lib/resources/base_resource";
+import type { Subscription } from "@app/lib/resources/storage/models/plans"
+import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { DustError } from "@app/lib/error";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface PlanResource extends ReadonlyAttributesType<PlanModel> {}
+export interface PlanResource 
+    extends ReadonlyAttributesType<PlanModel> {}
 
-
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PlanResource extends BaseResource<PlanModel> {
     static model: ModelStatic<PlanModel> = PlanModel;
     //TODO : understand when to use this.model vs PlanModel
@@ -60,7 +58,7 @@ export class PlanResource extends BaseResource<PlanModel> {
     }
 
     // fetch all plans associated to a given set of subscriptions
-    static async fetchBySubscriptions(subscriptions: SubscriptionResource[]): Promise<PlanResource[] | null>{
+    static async fetchBySubscriptions(subscriptions: Subscription[]): Promise<PlanResource[] | null>{
         const plans = await this.model.findAll({
             where: {
               id: subscriptions.map((s) => s.planId),

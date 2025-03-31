@@ -1,8 +1,8 @@
 import type { CreationOptional, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type {
   EmbeddingProviderIdType,

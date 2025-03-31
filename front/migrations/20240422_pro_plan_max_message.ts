@@ -1,7 +1,7 @@
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 
 
 const updateProMaxMessagesLimit = async (execute: boolean) => {

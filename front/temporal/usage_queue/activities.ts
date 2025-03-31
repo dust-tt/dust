@@ -1,8 +1,8 @@
-import { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { reportUsageForSubscriptionItems } from "@app/lib/plans/usage";
+import { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 
@@ -21,7 +21,7 @@ export async function recordUsageActivity(workspaceId: string) {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
 
   const logger = mainLogger.child({ workspaceId });

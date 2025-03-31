@@ -1,8 +1,6 @@
 import { Stripe } from "stripe";
 
 import config from "@app/lib/api/config";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
-import { PlanResource } from "@app/lib/resources/plan_resource";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
@@ -11,6 +9,8 @@ import {
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { PlanResource } from "@app/lib/resources/plan_resource";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import type {
   BillingPeriod,
   LightWorkspaceType,

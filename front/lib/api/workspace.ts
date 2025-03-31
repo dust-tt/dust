@@ -2,8 +2,6 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { PlanResource } from "@app/lib/resources/plan_resource";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
@@ -13,6 +11,7 @@ import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -548,7 +547,7 @@ export async function checkSeatCountForWorkspace(
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [PlanResource.model],
+    include: [PlanModel],
   });
   if (!subscription) {
     return new Err(new Error("Workspace has no active subscription."));

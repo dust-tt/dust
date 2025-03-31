@@ -1,5 +1,5 @@
-import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
+import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { PlanType, SubscriptionType } from "@app/types";
 
 // Helper function to render PlanType from PlanAttributes

@@ -1,6 +1,7 @@
 import type { Attributes } from "sequelize";
-import { PlanModel } from "@app/lib/resources/storage/models/plans";
+
 import { ENT_PLAN_FAKE_CODE } from "@app/lib/plans/plan_codes";
+import type { PlanModel } from "@app/lib/resources/storage/models/plans";
 
 export type PlanAttributes = Omit<
   Attributes<PlanModel>,
