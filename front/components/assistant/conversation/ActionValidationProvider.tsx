@@ -9,7 +9,7 @@ import {
 } from "@dust-tt/sparkle";
 import { createContext, useEffect, useState } from "react";
 
-import { MCPActionType } from "@app/lib/actions/mcp";
+import type { MCPActionType } from "@app/lib/actions/mcp";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
@@ -57,7 +57,12 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  // Process the next item in the queue when current validation is completed
+  useEffect(() => {
+    if (!isDialogOpen && currentValidation && !isProcessing) {
+      void handle(false);
+    }
+  }, [isDialogOpen]);
+
   useEffect(() => {
     if (
       !isProcessing &&
@@ -125,7 +130,14 @@ export function ActionValidationProvider({
     <ActionValidationContext.Provider value={{ showValidationDialog }}>
       {children}
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog 
+        open={isDialogOpen} 
+        onOpenChange={(open) => {
+          if (open === false && !isProcessing) {
+            setIsDialogOpen(false);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Action Validation Required</DialogTitle>

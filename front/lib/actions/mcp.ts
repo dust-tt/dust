@@ -13,8 +13,8 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
-import { getMCPApprovalKey, hashMCPInputParams } from "@app/lib/actions/utils";
-import { getRedisClient } from "@app/lib/api/redis";
+import { hashMCPInputParams } from "@app/lib/actions/utils";
+import { getActionEvents } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -267,131 +267,92 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     };
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
-    console.log("event sent to approve execution");
     try {
-      const redis = await getRedisClient({ origin: "assistant_generation" });
-      const validationKey = getMCPApprovalKey({
-        conversationId: conversation.sId,
-        messageId: agentMessage.sId,
-        actionId: mcpAction.id,
-        paramsHash: hashedInputs,
+      // Create an AbortController for the action events subscription
+      const abortController = new AbortController();
+      const actionEventGenerator = getActionEvents({
+        actionId: mcpAction.id.toString(),
+        lastEventId: null,
+        signal: abortController.signal,
       });
-      const validationStatus = await redis.get(validationKey);
-      console.log("polling key", validationKey, validationStatus);
 
-      if (!validationStatus || validationStatus !== "approved") {
-        let attempts = 0;
-        const maxAttempts = 60; // Wait up to 30 seconds (60 * 500ms)
+      let status = "";
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: mcpAction.id,
+        },
+        "Waiting for action validation"
+      );
 
-        logger.info(
+      // Start listening for action events
+      try {
+        for await (const event of actionEventGenerator) {
+          const { data } = event;
+          if (data.type === "action_approved" && data.actionId === mcpAction.id.toString() && data.paramsHash === hashedInputs) {
+            status = "approved";
+            break;
+          } else if (data.type === "action_rejected" && data.actionId === mcpAction.id.toString() && data.paramsHash === hashedInputs) {
+            status = "rejected";
+            break;
+          }
+        }
+      } catch (error) {
+        logger.error(
           {
             workspaceId: conversation.owner.sId,
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
             actionId: mcpAction.id,
+            error,
           },
-          "Waiting for action validation"
+          "Error listening for action validation events"
+        );
+      }
+
+      if (status === "rejected") {
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: actionConfiguration.id,
+          },
+          "Action execution rejected by user"
         );
 
-        while (attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
-
-          console.log("polling key", validationKey, validationStatus);
-
-          const checkStatus = await redis.get(validationKey);
-          if (checkStatus && checkStatus === "approved") {
-            break;
-          }
-
-          if (checkStatus && checkStatus === "rejected") {
-            logger.info(
+        // We yield a tool success, with a message that the action was rejected
+        yield {
+          type: "tool_success",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: new MCPActionType({
+            id: action.id,
+            params: rawInputs,
+            output: [
               {
-                workspaceId: conversation.owner.sId,
-                conversationId: conversation.sId,
-                messageId: agentMessage.sId,
-                actionId: actionConfiguration.id,
+                type: "text",
+                text: `The user rejected this specific action execution. Using this action is hence forbidden for this message.`,
               },
-              "Action execution rejected by user"
-            );
-
-            // we yield a tool success, with a message that the action was rejected
-            yield {
-              type: "tool_success",
-              created: Date.now(),
-              configurationId: agentConfiguration.sId,
-              messageId: agentMessage.sId,
-              action: new MCPActionType({
-                id: action.id,
-                params: rawInputs,
-                output: [
-                  {
-                    type: "text",
-                    text: `The user rejected this specific action execution. Using this action is hence forbidden for this message.`,
-                  },
-                ],
-                functionCallId,
-                functionCallName: actionConfiguration.name,
-                agentMessageId: agentMessage.agentMessageId,
-                step,
-                serverType: actionConfiguration.serverType,
-                internalMCPServerId: actionConfiguration.internalMCPServerId,
-                remoteMCPServerId: actionConfiguration.remoteMCPServerId,
-                mcpServerConfigurationId: `${actionConfiguration.id}`,
-                executionState: "denied",
-                isError: false,
-                type: "tool_action",
-                generatedFiles: [],
-              }),
-            };
-            return;
-          }
-
-          attempts++;
-        }
-
-        // If we timed out waiting for validation
-        if (attempts >= maxAttempts) {
-          logger.warn(
-            {
-              workspaceId: conversation.owner.sId,
-              conversationId: conversation.sId,
-              messageId: agentMessage.sId,
-              actionId: actionConfiguration.id,
-            },
-            "Action validation timed out"
-          );
-
-          // We yield a tool success, with a message that the action timed out
-          yield {
-            type: "tool_success",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            action: new MCPActionType({
-              id: action.id,
-              params: rawInputs,
-              output: [
-                {
-                  type: "text",
-                  text: `The action validation request timed out. Using this action is hence forbidden for this message.`,
-                },
-              ],
-              functionCallId,
-              functionCallName: actionConfiguration.name,
-              agentMessageId: agentMessage.agentMessageId,
-              step,
-              serverType: actionConfiguration.serverType,
-              internalMCPServerId: actionConfiguration.internalMCPServerId,
-              remoteMCPServerId: actionConfiguration.remoteMCPServerId,
-              mcpServerConfigurationId: `${actionConfiguration.id}`,
-              executionState: "denied",
-              isError: false,
-              type: "tool_action",
-              generatedFiles: [],
-            }),
-          };
-          return;
-        }
+            ],
+            functionCallId,
+            functionCallName: actionConfiguration.name,
+            agentMessageId: agentMessage.agentMessageId,
+            step,
+            serverType: actionConfiguration.serverType,
+            internalMCPServerId: actionConfiguration.internalMCPServerId,
+            remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+            mcpServerConfigurationId: `${actionConfiguration.id}`,
+            executionState: "denied",
+            isError: false,
+            type: "tool_action",
+            generatedFiles: [],
+          }),
+        };
+        return;
       }
 
       logger.info(

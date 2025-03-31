@@ -1,11 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-import { getMCPApprovalKey } from "@app/lib/actions/utils";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
+import { publishEvent } from "@app/lib/api/assistant/pubsub";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -76,18 +75,9 @@ async function handler(
   const { actionId, approved, paramsHash } = parseResult.data;
 
   try {
-    const redis = await getRedisClient({ origin: "assistant_generation" });
-
-    // Store the validation result in Redis with a key that the backend will check
-    // We store it under conversationId, messageId, and actionId to ensure that the
-    // validation is only applied to the intended action. We also include the hash of
-    // the input parameters to double-check that the validation is for the correct action.
-    const validationKey = getMCPApprovalKey({
-      conversationId: cId,
-      messageId: mId,
-      actionId: actionId,
-      paramsHash: paramsHash,
-    });
+    const actionChannel = `action-${actionId}`;
+    const eventType = approved ? "action_approved" : "action_rejected";
+    
     logger.info(
       {
         workspaceId: wId,
@@ -99,10 +89,19 @@ async function handler(
       "Action validation request"
     );
 
-    const status = approved ? "approved" : "rejected";
-    await redis.set(validationKey, status, {
-      EX: 60, // 1 minute expiration
+    // Publish validation event to the action channel
+    await publishEvent({
+      origin: "action_validation",
+      channel: actionChannel,
+      event: JSON.stringify({
+        type: eventType,
+        created: Date.now(),
+        actionId: actionId,
+        messageId: mId,
+        paramsHash: paramsHash,
+      }),
     });
+
     logger.info(
       {
         workspaceId: wId,
@@ -110,10 +109,10 @@ async function handler(
         messageId: mId,
         actionId,
       },
-      `Action ${status} by user`
+      `Action ${approved ? "approved" : "rejected"} by user`
     );
 
-    console.log("Action validation result stored, key:", validationKey);
+    console.log("Action validation event published to channel:", actionChannel);
     res.status(200).json({ success: true });
   } catch (error) {
     logger.error(
@@ -124,14 +123,14 @@ async function handler(
         actionId,
         error,
       },
-      "Error storing action validation result"
+      "Error publishing action validation event"
     );
 
     return apiError(req, res, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
-        message: "Failed to store action validation result",
+        message: "Failed to publish action validation event",
       },
     });
   }
