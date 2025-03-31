@@ -64,9 +64,7 @@ async function handler(
       switch (r.right.filter) {
         case "internal":
           {
-            const mcpServers = [
-              (await getAllMCPServersMetadataLocally(auth))[0],
-            ];
+            const mcpServers = await getAllMCPServersMetadataLocally(auth);
             return res.status(200).json({
               success: true,
               mcpServers,
@@ -77,7 +75,7 @@ async function handler(
           throw new Error("Not implemented");
           break;
         case "all":
-          const mcpServers = [(await getAllMCPServersMetadataLocally(auth))[0]];
+          const mcpServers = await getAllMCPServersMetadataLocally(auth);
           return res.status(200).json({
             success: true,
             mcpServers,

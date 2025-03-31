@@ -4,9 +4,7 @@ import {
   Button,
   classNames,
   Cog6ToothIcon,
-  CommandLineIcon,
   DataTable,
-  Icon,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -30,7 +28,13 @@ type RowData = {
   actions: MenuItem[];
 };
 
-export const ActionsList = ({ owner }: { owner: LightWorkspaceType }) => {
+export const ActionsList = ({
+  owner,
+  setShowDetails,
+}: {
+  owner: LightWorkspaceType;
+  setShowDetails: (mcpServer: MCPServerMetadata) => void;
+}) => {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
@@ -191,7 +195,9 @@ export const ActionsList = ({ owner }: { owner: LightWorkspaceType }) => {
   const rows: RowData[] = mcpServers.map((mcpServer) => ({
     mcpServer,
     spaces: [],
-    onClick: () => {},
+    onClick: () => {
+      setShowDetails(mcpServer);
+    },
     moreActions: [
       {
         label: "Delete",
