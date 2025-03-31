@@ -35,32 +35,6 @@ export async function getDataSourceDocuments({
     sourceRegion,
   });
 
-  // Temporary to skip the following data source.
-  if (
-    dataSourceCoreIds.dustAPIDataSourceId ===
-      "66457fc9515affe9425114239a4e53a4b8046c23787334304f74a6d0d16c9223" &&
-    dataSourceCoreIds.dustAPIProjectId === "34579"
-  ) {
-    const blobs: CoreDocumentAPIRelocationBlob = {
-      blobs: {
-        documents: [],
-      },
-    };
-
-    // 3) Save the document blobs to file storage.
-    const dataPath = await writeToRelocationStorage(blobs, {
-      workspaceId,
-      type: "core",
-      operation: "data_source_documents_blobs",
-    });
-
-    return {
-      dataPath,
-      // Returning null to indicate that we have processed this data source.
-      nextPageCursor: null,
-    };
-  }
-
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);
 
   const filter: CoreAPINodesSearchFilter = {

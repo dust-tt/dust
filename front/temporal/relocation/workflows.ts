@@ -604,7 +604,7 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
         memo,
       });
     },
-    { concurrency: 3 }
+    { concurrency: resourcesRelocationWorkflows.length }
   );
 }
 
