@@ -38,6 +38,10 @@ const KillPage = () => {
       title: "Data Source Views",
       description: "Disable saving of data source views",
     },
+    retrieval_action: {
+      title: "Retrieval Action",
+      description: "Disable retrieval action",
+    },
   };
 
   async function toggleKillSwitch(killSwitch: KillSwitchType) {
