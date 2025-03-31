@@ -7,9 +7,10 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useContext, useEffect,useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
+import { hashMCPInputParams } from "@app/lib/actions/utils";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
@@ -49,22 +50,17 @@ export function ActionValidationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  // Queue of validation requests
   const [validationQueue, setValidationQueue] = useState<
     PendingValidationRequestType[]
   >([]);
 
-  // Current validation being processed
   const [currentValidation, setCurrentValidation] =
     useState<PendingValidationRequestType | null>(null);
 
-  // Dialog open state - controlled separately from currentValidation
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // When currentValidation changes, update dialog open state
   useEffect(() => {
     if (currentValidation) {
       setIsDialogOpen(true);
@@ -79,7 +75,6 @@ export function ActionValidationProvider({
       !currentValidation &&
       !isDialogOpen
     ) {
-      // Take the next item from the queue
       const nextValidation = validationQueue[0];
       const newQueue = validationQueue.slice(1);
 
@@ -89,42 +84,17 @@ export function ActionValidationProvider({
     }
   }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
 
-  const hashInputParams = (params: Record<string, any>): string => {
-    if (!params || Object.keys(params).length === 0) {
-      return "no_params";
-    }
-
-    // Sort keys to ensure consistent hashing
-    const sortedParams = Object.keys(params)
-      .sort()
-      .reduce(
-        (acc, key) => {
-          acc[key] = params[key];
-          return acc;
-        },
-        {} as Record<string, any>
-      );
-
-    return require("crypto")
-      .createHash("sha256")
-      .update(JSON.stringify(sortedParams.query))
-      .digest("hex")
-      .substring(0, 16);
-  };
-
-  // Function to handle approval of the action
   const handleApprove = async () => {
     if (!currentValidation) {
       return;
     }
 
-    const inputsHash = hashInputParams(currentValidation.inputs);
+    const inputsHash = hashMCPInputParams(currentValidation.inputs);
 
     setErrorMessage(null);
     setIsProcessing(true);
 
     try {
-      // Call API to approve the action
       const response = await fetch(
         `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
         {
@@ -151,24 +121,21 @@ export function ActionValidationProvider({
       setIsProcessing(false);
     }
 
-    // Successfully processed - close dialog and clear current validation
     setIsDialogOpen(false);
     setCurrentValidation(null);
   };
 
-  // Function to handle rejection of the action
   const handleReject = async () => {
     if (!currentValidation) {
       return;
     }
 
-    const inputsHash = hashInputParams(currentValidation.inputs);
+    const inputsHash = hashMCPInputParams(currentValidation.inputs);
 
     setErrorMessage(null);
     setIsProcessing(true);
 
     try {
-      // Call API to reject the action
       const response = await fetch(
         `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
         {
@@ -195,12 +162,10 @@ export function ActionValidationProvider({
       setIsProcessing(false);
     }
 
-    // Successfully processed - close dialog and clear current validation
     setIsDialogOpen(false);
     setCurrentValidation(null);
   };
 
-  // Function to add a validation request to the queue
   const showValidationDialog = (props: {
     workspaceId: string;
     messageId: string;
@@ -214,14 +179,11 @@ export function ActionValidationProvider({
 
   // Handle manual dialog close
   const handleDialogClose = (open: boolean) => {
-    // TODO: need to handle dialog close
-
-    //if (!open && !isProcessing) {
-    // If dialog was manually closed without an action, reject the current validation
-    //if (currentValidation) {
-    //void handleReject();
-    //}
-    //}
+    // Only handle rejection if the dialog is being closed (open is false)
+    // and we're not currently processing an action
+    if (!open && !isProcessing && currentValidation) {
+      void handleReject();
+    }
 
     // Only update dialog state if not processing
     if (!isProcessing) {

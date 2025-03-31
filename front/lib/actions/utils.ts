@@ -10,6 +10,7 @@ import {
   TimeIcon,
 } from "@dust-tt/sparkle";
 import assert from "assert";
+import { createHash } from "crypto";
 
 import type { AssistantBuilderActionConfiguration } from "@app/components/assistant_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
@@ -259,4 +260,26 @@ export function actionRefsOffset({
   }
 
   return refsOffset;
+}
+
+export function hashMCPInputParams(params: Record<string, any>): string {
+  if (!params || Object.keys(params).length === 0) {
+    return "no_params";
+  }
+
+  // Sort keys to ensure consistent hashing
+  const sortedParams = Object.keys(params)
+    .sort()
+    .reduce(
+      (acc, key) => {
+        acc[key] = params[key];
+        return acc;
+      },
+      {} as Record<string, any>
+    );
+
+  return createHash("sha256")
+    .update(JSON.stringify(sortedParams.query))
+    .digest("hex")
+    .substring(0, 16);
 }

@@ -13,11 +13,14 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
+import { hashMCPInputParams } from "@app/lib/actions/utils";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
+import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -180,6 +183,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     auth: Authenticator,
     {
       agentConfiguration,
+      conversation,
       agentMessage,
       rawInputs,
       functionCallId,
@@ -235,6 +239,142 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       }),
     };
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
+
+    try {
+      const inputsHash = hashMCPInputParams(rawInputs);
+
+      const redis = await getRedisClient({ origin: "assistant_generation" });
+      const validationKey = `assistant:action:validation:${conversation.sId}:${agentMessage.sId}:${actionConfiguration.id}:${inputsHash}`;
+      const validationStatus = await redis.get(validationKey);
+
+      if (!validationStatus || validationStatus !== "approved") {
+        let attempts = 0;
+        const maxAttempts = 60; // Wait up to 30 seconds (60 * 500ms)
+
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: actionConfiguration.id,
+          },
+          "Waiting for action validation"
+        );
+
+        while (attempts < maxAttempts) {
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait 500ms between checks
+
+          const checkStatus = await redis.get(validationKey);
+          if (checkStatus === "approved") {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                messageId: agentMessage.sId,
+                actionId: actionConfiguration.id,
+              },
+              "Action approved by user, continuing execution"
+            );
+
+            console.log("breaking out of loop");
+            break; // Approved, continue with execution
+          }
+
+          if (checkStatus && checkStatus === "rejected") {
+            logger.info(
+              {
+                workspaceId: conversation.owner.sId,
+                conversationId: conversation.sId,
+                messageId: agentMessage.sId,
+                actionId: actionConfiguration.id,
+              },
+              "Action execution rejected by user"
+            );
+
+            // we yield a tool success, with a message that the action was rejected
+            yield {
+              type: "tool_success",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              action: new MCPActionType({
+                id: action.id,
+                params: rawInputs,
+                output: [
+                  {
+                    type: "text",
+                    text: `The user rejected this specific action execution. Using this action is hence forbidden for this message.`,
+                  },
+                ],
+                functionCallId,
+                functionCallName: actionConfiguration.name,
+                agentMessageId: agentMessage.agentMessageId,
+                step,
+                serverType: actionConfiguration.serverType,
+                internalMCPServerId: actionConfiguration.internalMCPServerId,
+                remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+                mcpServerConfigurationId: `${actionConfiguration.id}`,
+                executionState: "denied",
+                isError: false,
+                type: "tool_action",
+                generatedFiles: [],
+              }),
+            };
+            return;
+          }
+
+          attempts++;
+        }
+
+        const now = Date.now();
+
+        // If we timed out waiting for validation
+        if (attempts >= maxAttempts) {
+          logger.warn(
+            {
+              workspaceId: conversation.owner.sId,
+              conversationId: conversation.sId,
+              messageId: agentMessage.sId,
+              actionId: actionConfiguration.id,
+            },
+            "Action validation timed out"
+          );
+
+          // we yield a tool error, with a message that the action validation timed out
+          yield {
+            type: "tool_error",
+            created: now,
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            error: {
+              code: "action_validation_timeout",
+              message:
+                "The action validation request timed out. Please try again.",
+            },
+          };
+          return;
+        }
+      }
+
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: actionConfiguration.id,
+        },
+        "Proceeding with action execution after validation"
+      );
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error,
+        },
+        "Error checking action validation status"
+      );
+    }
 
     // TODO(mcp): listen to sse events to provide live feedback to the user
     const r = await tryCallMCPTool({
