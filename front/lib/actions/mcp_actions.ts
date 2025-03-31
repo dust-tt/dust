@@ -19,20 +19,19 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   connectToInternalMCPServer,
   getInternalMCPServerSId,
 } from "@app/lib/actions/mcp_internal_actions";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getAccessTokenForMCPServer } from "@app/lib/actions/mcp_oauth_helper";
 import type { AgentActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import {
-  generateRandomModelSId,
-  getResourceNameAndIdFromSId,
-} from "@app/lib/resources/string_ids";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
   LightWorkspaceType,
@@ -133,31 +132,6 @@ function makeMCPConfigurations({
   });
 }
 
-export const getServerTypeAndIdFromSId = (
-  mcpServerId: string
-): {
-  serverType: "internal" | "remote";
-  id: number;
-} => {
-  const sIdParts = getResourceNameAndIdFromSId(mcpServerId);
-  if (!sIdParts) {
-    throw new Error(`Invalid MCP server ID: ${mcpServerId}`);
-  }
-
-  const { resourceName, resourceId } = sIdParts;
-
-  switch (resourceName) {
-    case "internal_mcp_server":
-      return { serverType: "internal" as const, id: resourceId };
-    case "remote_mcp_server":
-      return { serverType: "remote" as const, id: resourceId };
-    default:
-      throw new Error(
-        `Invalid MCP server ID: ${mcpServerId} resourceName: ${resourceName}`
-      );
-  }
-};
-
 const connectToMCPServer = async (
   auth: Authenticator,
   {
@@ -174,7 +148,6 @@ const connectToMCPServer = async (
     name: "dust-mcp-client",
     version: "1.0.0",
   });
-
   if (mcpServerId) {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
@@ -183,11 +156,21 @@ const connectToMCPServer = async (
         // Create a pair of linked in-memory transports
         // And connect the client to the server.
         const [client, server] = InMemoryTransport.createLinkedPair();
-        await connectToInternalMCPServer(mcpServerId, server);
+        await connectToInternalMCPServer(mcpServerId, server, auth);
         await mcpClient.connect(client);
         break;
 
       case "remote":
+        const metadata = await getMCPServerMetadataLocally(auth, {
+          mcpServerId: mcpServerId,
+        });
+
+        const accessToken = await getAccessTokenForMCPServer(
+          auth,
+          mcpServerId,
+          metadata.authorization
+        );
+
         const remoteMCPServer = await RemoteMCPServerResource.fetchById(
           auth,
           mcpServerId
@@ -200,7 +183,13 @@ const connectToMCPServer = async (
         }
 
         const url = new URL(remoteMCPServer.url);
-        const sseTransport = new SSEClientTransport(url);
+        const sseTransport = new SSEClientTransport(url, {
+          requestInit: {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
+        });
         await mcpClient.connect(sseTransport);
         break;
 
