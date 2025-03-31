@@ -193,6 +193,10 @@ async function* runMultiActionsAgentLoop(
 
           // Emit validation events for each action before execution
           for (const actionEvent of event.actions) {
+            if (actionEvent.action.type !== "mcp_configuration") {
+              continue;
+            }
+
             yield {
               type: "action_validate_execution",
               created: Date.now(),
