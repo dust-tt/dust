@@ -14,6 +14,8 @@ import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
+import { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
+
 const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
     return {
@@ -198,7 +200,7 @@ export interface CustomEditorProps {
   ) => void;
   suggestions: EditorSuggestions;
   disableAutoFocus: boolean;
-  onUrlDetected?: (nodeId: string | null) => void;
+  onUrlDetected?: (candidate: UrlCandidate | NodeCandidate) => void;
 }
 
 const useCustomEditor = ({

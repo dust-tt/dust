@@ -26,13 +26,16 @@ type BaseSearchParams = {
 type TextSearchParams = BaseSearchParams & {
   search: string;
   nodeIds?: undefined;
+  searchSourceUrls?: boolean;
 };
 
 // Node ID search variant
 type NodeIdSearchParams = BaseSearchParams & {
   search?: undefined;
   nodeIds: string[];
+  searchSourceUrls?: undefined;
 };
+
 type SpacesSearchParams = TextSearchParams | NodeIdSearchParams;
 
 export function useSpacesSearch({
@@ -42,6 +45,7 @@ export function useSpacesSearch({
   search,
   spaceIds,
   viewType,
+  searchSourceUrls = false,
 }: SpacesSearchParams) {
   const dustAPI = useDustAPI();
 
@@ -52,6 +56,7 @@ export function useSpacesSearch({
       ...(nodeIds ? { nodeIds } : { query: search }),
       spaceIds: spaceIds || [],
       limit: 100,
+      searchSourceUrls,
     }),
     [viewType, includeDataSources, nodeIds, search, spaceIds]
   );

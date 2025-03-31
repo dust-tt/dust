@@ -115,7 +115,7 @@ export const InputBarAttachmentsPicker = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        className="w-100"
+        className="min-w-64 max-w-96"
         side="bottom"
         onInteractOutside={() => setIsOpen(false)}
       >
