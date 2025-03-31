@@ -64,10 +64,9 @@ import { DustAppSecret } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
-import { PlanResource } from "@app/lib/resources/plan_resource";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
+import { PlanResource } from "@app/lib/resources/plan_resource";
 import {
   AppModel,
   Clone,
@@ -89,6 +88,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { Subscription } from "@app/lib/resources/storage/models/plans";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,

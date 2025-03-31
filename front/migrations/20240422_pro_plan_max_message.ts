@@ -3,14 +3,14 @@ import { PlanResource } from "@app/lib/resources/plan_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
-
 const updateProMaxMessagesLimit = async (execute: boolean) => {
   if (execute) {
     const res = await PlanResource.internalSetMessageLimits(
       {
         maxMessages: 100,
         maxMessagesTimeframe: "day",
-      }, PRO_PLAN_SEAT_29_CODE,
+      },
+      PRO_PLAN_SEAT_29_CODE
     );
 
     logger.info(

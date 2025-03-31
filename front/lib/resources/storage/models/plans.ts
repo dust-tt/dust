@@ -16,7 +16,6 @@ import type {
 import { SUBSCRIPTION_STATUSES } from "@app/types";
 
 export class PlanModel extends BaseModel<PlanModel> {
-
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 

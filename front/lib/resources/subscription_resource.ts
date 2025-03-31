@@ -631,7 +631,9 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<PlanResource> {
+  private static async findPlanOrThrow(
+    planCode: string
+  ): Promise<PlanResource> {
     const newPlan = await PlanResource.fetchByPlanCode(planCode);
     if (!newPlan) {
       throw new Error(`Cannot subscribe to plan ${planCode}: not found.`);

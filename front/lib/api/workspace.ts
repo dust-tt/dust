@@ -11,7 +11,10 @@ import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { PlanModel, Subscription } from "@app/lib/resources/storage/models/plans";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";

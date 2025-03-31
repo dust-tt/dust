@@ -90,7 +90,7 @@ export const createProPlanCheckoutSession = async ({
 }): Promise<string | null> => {
   const stripe = getStripeClient();
 
-  const plan = await PlanResource.fetchByPlanCode(planCode)
+  const plan = await PlanResource.fetchByPlanCode(planCode);
   if (!plan) {
     throw new Error(
       `Cannot create checkout session for plan ${planCode}: plan not found.`
