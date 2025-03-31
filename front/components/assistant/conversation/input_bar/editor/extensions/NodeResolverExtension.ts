@@ -11,6 +11,7 @@ type NodeResolverOptions = {
     candidate: UrlCandidate | NodeCandidate
   ) => Promise<DataSourceViewContentNode[]>;
   onNodeResolved: (node: DataSourceViewContentNode) => void;
+  workspaceId: string;
 };
 
 // Define proper types for resolution entries
@@ -39,6 +40,7 @@ export const NodeResolverExtension = Extension.create<
     return {
       searchNodes: async () => [],
       onNodeResolved: () => {},
+      workspaceId: ""
     };
   },
 
@@ -126,30 +128,40 @@ export const NodeResolverExtension = Extension.create<
           init() {
             return DecorationSet.empty;
           },
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          apply(tr, oldSet) {
-            // create decorations for pending URLs
+          apply(tr, oldState) {
             const decorations: Decoration[] = [];
+            const doc = tr.doc;
 
-            // add decoration for each pending URL
-            storage.pendingResolutions.forEach((data: ResolutionEntry) => {
-              // Map positions through the transaction to handle doc changes
-              const from = tr.mapping.map(data.from);
-              const to = tr.mapping.map(data.to);
+            // Check for URLs in the entire document
+            doc.descendants((node, pos) => {
+              if (node.isText) {
+                const text = node.text || "";
+                let match;
 
-              decorations.push(
-                Decoration.inline(from, to, {
-                  class: "resolving-url",
-                })
-              );
+                while ((match = URL_REGEX.exec(text)) !== null) {
+                  const from = pos + match.index;
+                  const to = from + match[0].length;
+                  const url = match[0];
+
+                  // Add URL decoration for pending resolutions
+                  if (storage.pendingResolutions.has(url)) {
+                    decorations.push(
+                      Decoration.inline(from, to, {
+                        class: "resolving-url",
+                      })
+                    );
+                  }
+                }
+              }
             });
 
-            return DecorationSet.create(tr.doc, decorations);
+            return DecorationSet.create(doc, decorations);
           },
         },
         props: {
+          // Add decorations to the view
           decorations(state) {
-            return pluginKey.getState(state);
+            return this.getState(state);
           },
           handlePaste: (view, event) => {
             const text = event.clipboardData?.getData("text/plain");
@@ -163,6 +175,24 @@ export const NodeResolverExtension = Extension.create<
                 const { from } = view.state.selection;
                 void resolveUrl(url, from);
               });
+            }
+
+            return false;
+          },
+          // Handle input to detect URLs as they are typed
+          handleTextInput: (view, from, to, text) => {
+            const doc = view.state.doc;
+            const $from = doc.resolve(from);
+            const textBefore = $from.parent.textBetween(
+              Math.max(0, $from.parentOffset - 100),
+              $from.parentOffset,
+              ""
+            );
+            const combinedText = textBefore + text;
+            const match = URL_REGEX.exec(combinedText);
+
+            if (match && match[0].endsWith(text)) {
+              void resolveUrl(match[0], from - (match[0].length - text.length));
             }
 
             return false;
