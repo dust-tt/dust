@@ -2,8 +2,10 @@ import {
   ArrowUpIcon,
   AttachmentIcon,
   Button,
+  ExclamationCircleIcon,
   FullscreenExitIcon,
   FullscreenIcon,
+  Icon,
 } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -82,6 +84,11 @@ const InputBarContainer = ({
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+
+  const [softUrlNotification, setSoftUrlNotification] = useState<{
+    title: string;
+  } | null>(null);
+
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
@@ -174,6 +181,12 @@ const InputBarContainer = ({
       // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
     } else {
+      setSoftUrlNotification({
+        title: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+      });
+      setTimeout(() => {
+        setSoftUrlNotification(null);
+      }, 5000);
       setNodeOrUrlCandidate(null);
     }
   }, [
@@ -324,6 +337,18 @@ const InputBarContainer = ({
           }}
         />
       </div>
+      {softUrlNotification && (
+        <div className="absolute bottom-0 left-0 text-xs italic text-element-800">
+          <div className="flex flex-row items-center gap-1 p-2 hover:font-bold">
+            <Icon
+              visual={ExclamationCircleIcon}
+              size="xs"
+              className="text-element-500"
+            />
+            <span>{softUrlNotification.title}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
