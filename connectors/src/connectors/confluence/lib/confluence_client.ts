@@ -1,11 +1,12 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 
+import { ProxyAgent } from "undici";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { ConfluenceClientError } from "@connectors/types";
+import { ConfluenceClientError, EnvironmentConfig } from "@connectors/types";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -228,13 +229,21 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
+  private readonly useProxy: boolean;
 
   constructor(
     private readonly authToken: string,
-    { cloudId }: { cloudId?: string } = {}
+    {
+      cloudId,
+      useProxy = false,
+    }: {
+      cloudId?: string;
+      useProxy?: boolean;
+    } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
+    this.useProxy = useProxy;
   }
 
   private async request<T>(
