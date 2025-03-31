@@ -74,20 +74,19 @@ export default function LandingLayout({
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
             <Button
+              variant="highlight"
+              size="sm"
+              label="Sign in"
+              onClick={() => {
+                window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
+              }}
+            />
+            <Button
               href="/home/contact"
               className="hidden xs:block"
               variant="outline"
               size="sm"
               label="Request a demo"
-            />
-            <Button
-              variant="highlight"
-              size="sm"
-              label="Sign in"
-              icon={LoginIcon}
-              onClick={() => {
-                window.location.href = `/api/auth/login?prompt=login&returnTo=${postLoginReturnToUrl}`;
-              }}
             />
           </div>
         </div>

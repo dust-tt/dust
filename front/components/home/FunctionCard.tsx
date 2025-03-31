@@ -8,32 +8,37 @@ import { H3, P } from "@app/components/home/ContentComponents";
 interface FunctionCardProps {
   title: string;
   features: string[];
-  color: "green" | "blue" | "purple";
+  color: "green" | "blue" | "rose" | "yellow";
   visualSrc: string;
   href: string;
 }
 
 const colorVariants = {
   green: {
-    card: "bg-green-600",
+    card: "bg-green-100",
     visual: "bg-green-100",
   },
   blue: {
     card: "bg-blue-600",
     visual: "bg-blue-100",
   },
-  purple: {
+  rose: {
     card: "bg-purple-600",
-    visual: "bg-purple-100",
+    visual: "bg-rose-100",
+  },
+  yellow: {
+    card: "bg-yellow-600",
+    visual: "bg-yellow-100",
   },
 };
 
 const cardVariants = cva("", {
   variants: {
     color: {
-      green: "bg-green-600",
-      blue: "bg-blue-600",
-      purple: "bg-purple-600",
+      green: "bg-brand-support-green",
+      blue: "bg-brand-support-blue",
+      rose: "bg-brand-support-rose",
+      yellow: "bg-brand-support-yellow",
     },
   },
 });
@@ -60,16 +65,13 @@ export function FunctionCard({
       <div
         className={`flex flex-grow flex-col gap-2 p-8 ${cardVariants({ color })}`}
       >
-        <H3 className="text-white" mono>
+        <H3 className="text-grey-900" mono>
           {title}
         </H3>
-        <P size="sm" className="flex-grow font-medium text-white/80">
+        <P size="sm" className="flex-grow font-medium text-gray-700">
           <ul>
             {features.map((feature, i) => (
-              <li
-                key={i}
-                className="flex min-h-6 items-start gap-1 py-1.5 text-white/80"
-              >
+              <li key={i} className="flex min-h-6 items-start gap-1 py-1.5">
                 <div className="pt-0.5">
                   <Icon visual={ChevronRightIcon} size="sm" />
                 </div>

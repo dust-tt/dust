@@ -18,7 +18,7 @@ export function BlogSection() {
           <div className="mb-6 flex items-end justify-between">
             <div>
               <H2>Customer Stories</H2>
-              <P size="lg" className="text-muted-foreground">
+              <P size="lg" className="text-gray-600">
                 Leading enterprises are already transforming their operations
                 with Dust.
               </P>

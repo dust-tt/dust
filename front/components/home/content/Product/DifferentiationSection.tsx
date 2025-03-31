@@ -16,7 +16,7 @@ export function DifferentiationSection() {
               <br />
               powered by the best models
             </H2>
-            <P size="lg" className="text-muted-foreground">
+            <P size="lg">
               Dust connects your entire enterprise knowledge in one secure,
               SOC2-certified platform.
             </P>

@@ -157,7 +157,7 @@ const DevelopersMenuConfig: MenuConfig = {
       isExternal: true,
     },
     {
-      title: "Github Repo",
+      title: "GitHub Repo",
       href: "https://github.com/dust-tt/dust",
       isExternal: true,
     },

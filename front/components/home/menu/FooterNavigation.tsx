@@ -1,4 +1,4 @@
-import { DustLogoGray } from "@dust-tt/sparkle";
+import { DustLogo } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";
@@ -8,16 +8,16 @@ import { menuConfig } from "@app/components/home/menu/config";
 
 export function FooterNavigation() {
   return (
-    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-16 pt-12">
+    <div className="z-11 mt-12 flex w-full flex-col items-center gap-6 border-b border-t border-border bg-muted-background pb-14 pt-10">
       <div className="w-full px-6 sm:px-12">
         <Grid gap="gap-6">
           <div className="col-span-12">
-            <DustLogoGray className="h-6 w-24" />
+            <DustLogo className="h-6 w-24" />
           </div>
           {menuConfig.footerNav.map((item, index) => (
             <div
               key={index}
-              className="col-span-6 flex flex-col space-y-2 sm:col-span-4 md:col-span-2"
+              className="col-span-6 flex flex-col space-y-4 sm:col-span-4 md:col-span-2"
             >
               {item.href ? (
                 <FooterLink
@@ -68,7 +68,7 @@ function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
       target={isExternal ? "_blank" : undefined}
       {...props}
     >
-      <A variant="secondary" className="label-sm">
+      <A variant="secondary" className="text-base font-medium text-gray-950">
         {children}
       </A>
     </Link>

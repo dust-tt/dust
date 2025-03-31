@@ -15,7 +15,7 @@ export function FutureSection() {
               <br />
               powered by the best models
             </H2>
-            <P size="lg" className="text-muted-foreground">
+            <P size="lg" className="text-gray-600">
               Integrates with your internal&nbsp;data.
               <br />
               Uses the latest models across all major AI providers.
@@ -38,21 +38,9 @@ export function FutureSection() {
               </>
             }
           >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={20}>
-                <img src="/static/landing/connect/cloud1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/connect/cloud2.png" />
-              </Div3D>
-              <Div3D depth={-20} className="absolute top-0">
-                <img src="/static/landing/connect/cloud3.png" />
-              </Div3D>
-            </Hover3D>
+            <img src="/static/landing/connect/cloud1.png" />
+            <img src="/static/landing/connect/cloud2.png" />
+            <img src="/static/landing/connect/cloud3.png" />
           </ImgBlock>
           <ImgBlock
             title={<>Switch to the&nbsp;new best model in&nbsp;seconds</>}
@@ -64,24 +52,10 @@ export function FutureSection() {
               </>
             }
           >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={40}>
-                <img src="/static/landing/model/model1.png" />
-              </Div3D>
-              <Div3D depth={20} className="absolute top-0">
-                <img src="/static/landing/model/model2.png" />
-              </Div3D>
-              <Div3D depth={10} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/model/model3.png" />
-              </Div3D>
-              <Div3D depth={30} className="absolute top-0 drop-shadow-lg">
-                <img src="/static/landing/model/model4.png" />
-              </Div3D>
-            </Hover3D>
+            <img src="/static/landing/model/model1.png" />
+            <img src="/static/landing/model/model2.png" />
+            <img src="/static/landing/model/model3.png" />
+            <img src="/static/landing/model/model4.png" />
           </ImgBlock>
           <ImgBlock
             title={<>Access your AI agents wherever you work</>}
@@ -92,21 +66,9 @@ export function FutureSection() {
               </>
             }
           >
-            <Hover3D
-              depth={-20}
-              perspective={1000}
-              className={classNames("relative")}
-            >
-              <Div3D depth={-20}>
-                <img src="/static/landing/extension/extension1.png" />
-              </Div3D>
-              <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/extension/extension2.png" />
-              </Div3D>
-              <Div3D depth={40} className="absolute top-0">
-                <img src="/static/landing/extension/extension3.png" />
-              </Div3D>
-            </Hover3D>
+            <img src="/static/landing/extension/extension1.png" />
+            <img src="/static/landing/extension/extension2.png" />
+            <img src="/static/landing/extension/extension3.png" />
           </ImgBlock>
         </div>
       </Grid>

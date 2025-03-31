@@ -36,7 +36,7 @@ export const Grid = ({
 );
 
 const hClasses = {
-  h1: "heading-5xl md:heading-6xl lg:heading-8xl py-2 text-left",
+  h1: "text-8xl md:text-6xl lg:text-8xl font-semibold py-2 text-left",
   h2: "heading-3xl lg:heading-4xl xl:heading-5xl py-2 text-left",
   h3: "heading-xl lg:heading-2xl xl:heading-3xl py-1 text-left",
   h4: "heading-lg lg:heading-xl xl:heading-2xl text-left",
@@ -89,12 +89,13 @@ const pClasses = {
   sm: "copy-base",
   md: "copy-lg",
   lg: "copy-xl",
+  xl: "copy-2xl",
 };
 
 interface PProps {
   children: ReactNode;
   className?: string;
-  size?: "xxs" | "xs" | "sm" | "md" | "lg";
+  size?: "xxs" | "xs" | "sm" | "md" | "lg" | "xl";
   dotCSS?: string;
   shape?: "square" | "circle" | "triangle" | "hexagon" | "rectangle";
 }
@@ -157,7 +158,7 @@ export const A = ({
         {...props}
         className={classNames(
           className,
-          "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
+          "cursor-pointer transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
           aClasses[variant]
         )}
         href={href}
@@ -170,7 +171,7 @@ export const A = ({
       <span
         className={classNames(
           className,
-          "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
+          "cursor-pointer transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
           aClasses[variant]
         )}
       >

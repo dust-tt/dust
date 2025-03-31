@@ -2,7 +2,6 @@ import { Div3D, Hover3D } from "@dust-tt/sparkle";
 
 import { ImgBlock } from "@app/components/home/ContentBlocks";
 import { classNames } from "@app/lib/utils";
-
 import { H2 } from "../../ContentComponents";
 
 export function ValuePropSection() {
@@ -10,6 +9,7 @@ export function ValuePropSection() {
     <div className="w-full">
       <div className="mb-6">
         <H2>Amplify your team’s performance</H2>
+        {/* <h2 className="text-4xl font-semibold"> */}
         {/* <P size="lg" className="text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P> */}

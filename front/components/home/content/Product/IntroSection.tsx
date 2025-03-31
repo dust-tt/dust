@@ -29,22 +29,19 @@ export function IntroSection() {
       <div className="flex flex-col gap-16">
         <div className="flex flex-col items-center gap-16 md:flex-row">
           <div className="flex flex-col gap-8">
-            <H1>Transform how work gets done</H1>
+            <H1 className="font-mono font-semibold">
+              Transform how work gets done
+            </H1>
             <div className="w-full md:hidden">
               <MainVisual />
             </div>
-            <P size="lg" className="text-muted-foreground">
-              Build custom AI agents: secure, connected to your company
-              knowledge, and powered by the best AI models.
+            <P size="xl" className="text-muted-foreground">
+              The platform to build AI agents, connected to your company
+              knowledge, powered by the best AI models.
             </P>
             <div className="flex justify-center gap-4 sm:justify-start">
               <Link href="/home/pricing" shallow={true}>
-                <Button
-                  variant="highlight"
-                  size="md"
-                  label="Try Dust Now"
-                  icon={RocketIcon}
-                />
+                <Button variant="highlight" size="md" label="Get Started" />
               </Link>
               <Link href="/home/contact" shallow={true}>
                 <Button variant="outline" size="md" label="Contact Sales" />
