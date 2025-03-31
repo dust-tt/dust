@@ -34,27 +34,6 @@ async function handler(
     });
   }
 
-  if (!space.canRead(auth)) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_view_not_found",
-        message: "The data source view you requested was not found.",
-      },
-    });
-  }
-
-  if (!auth.isBuilder()) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only users that are `builders` for the current workspace can manage MCP servers.",
-      },
-    });
-  }
-
   if (auth.workspace()?.sId !== wId) {
     return apiError(req, res, {
       status_code: 403,
@@ -182,6 +161,6 @@ async function handler(
 
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
-    space: { requireCanRead: true },
+    space: { requireCanReadOrAdministrate: true },
   })
 );

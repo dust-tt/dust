@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { Workspace } from "@app/lib/models/workspace";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
 import { assertNever } from "@app/types";
@@ -62,52 +62,44 @@ export async function fetchMCPServerActionConfigurations(
   >();
 
   for (const config of mcpServerConfigurations) {
-    const { agentConfigurationId, sId, id, serverType } = config;
+    const { agentConfigurationId, sId, id, mcpServerViewId } = config;
 
     const dataSourceConfiguration =
       dataSourceConfigurations.filter(
         (ds) => ds.mcpServerConfigurationId === config.id
       ) ?? [];
 
-    let metadata: MCPServerMetadata | null = null;
-    let remoteMCPServerId: string | null = null;
-    if (serverType === "remote") {
-      if (!config.remoteMCPServerId) {
-        throw new Error(
-          `Remote MCP server ID is required for remote server type.`
-        );
-      }
+    const mcpServerView = await MCPServerViewResource.fetchByModelPk(
+      auth,
+      mcpServerViewId
+    );
 
-      const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-        auth,
-        config.remoteMCPServerId
+    if (!mcpServerView) {
+      throw new Error(
+        `MCPServerView with mcpServerViewId ${mcpServerViewId} not found.`
       );
-      if (!remoteMCPServer) {
-        throw new Error(
-          `Remote MCP server with remoteMCPServerId ${config.remoteMCPServerId} not found.`
-        );
-      }
-      remoteMCPServerId = RemoteMCPServerResource.modelIdToSId({
-        id: config.remoteMCPServerId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      });
+    }
+
+    let metadata: MCPServerMetadata | null = null;
+    if (mcpServerView.serverType === "remote") {
+      const remoteMCPServer = await mcpServerView.getRemoteMCPServer(auth);
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
       metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId: remoteMCPServerId,
+        mcpServerId: remoteMCPServer.sId,
       });
-    } else if (serverType === "internal") {
-      if (!config.internalMCPServerId) {
+    } else if (mcpServerView.serverType === "internal") {
+      if (!mcpServerView.internalMCPServerId) {
         throw new Error(
           `Internal MCP server ID is required for internal server type.`
         );
       }
 
       metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId: config.internalMCPServerId,
+        mcpServerId: mcpServerView.internalMCPServerId,
       });
     } else {
-      assertNever(serverType);
+      assertNever(mcpServerView.serverType);
     }
 
     if (!actionsByConfigurationId.has(agentConfigurationId)) {
@@ -122,7 +114,7 @@ export async function fetchMCPServerActionConfigurations(
         type: "mcp_server_configuration",
         name: metadata.name,
         description: metadata.description,
-        mcpServerId: metadata.id,
+        mcpServerViewId: mcpServerView.sId,
         dataSources: dataSourceConfiguration.map(getDataSource),
       });
     }

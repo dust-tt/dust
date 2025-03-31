@@ -30,7 +30,7 @@ export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
 
-  mcpServerId: string; // Hold the sId of the MCP server.
+  mcpServerViewId: string; // Hold the sId of the MCP server view.
 
   type: "mcp_server_configuration";
 
@@ -88,7 +88,7 @@ export class MCPActionType extends BaseAction {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied" = "pending";
-  readonly mcpServerId: string = "not-valid";
+
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: MCPToolResultContent[] | null;
@@ -202,7 +202,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
-      mcpServerId: actionConfiguration.mcpServerId,
     });
 
     yield {
@@ -218,7 +217,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "pending",
         isError: false,
@@ -279,7 +277,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        mcpServerId: actionConfiguration.mcpServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "allowed_explicitely",
         isError: false,
@@ -323,7 +320,6 @@ export async function mcpActionTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      mcpServerId: action.mcpServerId,
       mcpServerConfigurationId: action.mcpServerConfigurationId,
       executionState: action.executionState,
       isError: action.isError,
