@@ -3,8 +3,7 @@ import React from "react";
 
 import { DocumentIcon, DocumentTextIcon } from "@sparkle/icons";
 import { NotionLogo } from "@sparkle/logo";
-
-import { AttachmentChip } from "./AttachmentChip";
+import { AttachmentChip } from "@sparkle/components";
 
 const meta = {
   title: "Components/AttachmentChip",
