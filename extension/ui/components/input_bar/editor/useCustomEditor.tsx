@@ -1,3 +1,4 @@
+import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
 import { DataSourceLinkExtension } from "@app/ui/components/input_bar/editor/extensions/DataSourceLinkExtension";
 import { MarkdownStyleExtension } from "@app/ui/components/input_bar/editor/extensions/MarkdownStyleExtension";
 import { MentionStorageExtension } from "@app/ui/components/input_bar/editor/extensions/MentionStorageExtension";
@@ -14,7 +15,6 @@ import type { Editor, JSONContent } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
-import { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
 
 const ParagraphExtension = Paragraph.extend({
   addKeyboardShortcuts() {
