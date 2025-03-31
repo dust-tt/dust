@@ -2,10 +2,8 @@ import {
   ArrowUpIcon,
   AttachmentIcon,
   Button,
-  ExclamationCircleIcon,
   FullscreenExitIcon,
   FullscreenIcon,
-  Icon,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
