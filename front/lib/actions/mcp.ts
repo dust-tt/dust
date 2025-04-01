@@ -27,7 +27,7 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -275,25 +275,25 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       );
 
       // Start listening for action events
-        for await (const event of actionEventGenerator) {
-          const { data } = event;
+      for await (const event of actionEventGenerator) {
+        const { data } = event;
 
-          if (
-            data.type === "action_approved" &&
-            data.actionId === mcpAction.id &&
-            data.paramsHash === hash
-          ) {
-            status = "approved";
-            break;
-          } else if (
-            data.type === "action_rejected" &&
-            data.actionId === mcpAction.id &&
-            data.paramsHash === hash
-          ) {
-            status = "rejected";
-            break;
-          }
+        if (
+          data.type === "action_approved" &&
+          data.actionId === mcpAction.id &&
+          data.paramsHash === hash
+        ) {
+          status = "approved";
+          break;
+        } else if (
+          data.type === "action_rejected" &&
+          data.actionId === mcpAction.id &&
+          data.paramsHash === hash
+        ) {
+          status = "rejected";
+          break;
         }
+      }
 
       // The action timed-out, status was not updated
       if (status === "none") {

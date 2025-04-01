@@ -8,9 +8,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { createContext, useEffect, useState } from "react";
+import sanitizeHtml from "sanitize-html";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
-import sanitizeHtml from "sanitize-html";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
@@ -37,8 +37,11 @@ export const ActionValidationContext =
   createContext<ActionValidationContextType>({} as ActionValidationContextType);
 
 function useValidationQueue() {
-  const [validationQueue, setValidationQueue] = useState<PendingValidationRequestType[]>([]);
-  const [currentValidation, setCurrentValidation] = useState<PendingValidationRequestType | null>(null);
+  const [validationQueue, setValidationQueue] = useState<
+    PendingValidationRequestType[]
+  >([]);
+  const [currentValidation, setCurrentValidation] =
+    useState<PendingValidationRequestType | null>(null);
 
   const addToQueue = (props: PendingValidationRequestType) => {
     setValidationQueue((prevQueue) => [...prevQueue, props]);
@@ -136,10 +139,10 @@ export function ActionValidationProvider({
       );
       return;
     }
-  }
+  };
 
   const handleSubmit = async (approved: boolean) => {
-    sendCurrentValidation(approved);
+    void sendCurrentValidation(approved);
     setIsProcessing(false);
     setIsDialogOpen(false);
     clearCurrentValidation();
@@ -181,8 +184,10 @@ export function ActionValidationProvider({
               </div>
               <div>
                 <span className="font-medium">Inputs:</span>
-                <pre className="mt-2 whitespace-pre-wrap rounded p-2 text-sm bg-primary-50 dark:bg-primary-50-night">
-                  {sanitizeHtml(JSON.stringify(currentValidation?.inputs, null, 2))}
+                <pre className="mt-2 whitespace-pre-wrap rounded bg-primary-50 p-2 text-sm dark:bg-primary-50-night">
+                  {sanitizeHtml(
+                    JSON.stringify(currentValidation?.inputs, null, 2)
+                  )}
                 </pre>
               </div>
               <div>Do you want to allow this action to proceed?</div>
