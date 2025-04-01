@@ -26,7 +26,7 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-\import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
+import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   AgentActionConfigurationType,
   UnsavedAgentActionConfigurationType,

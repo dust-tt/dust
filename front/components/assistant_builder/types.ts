@@ -126,7 +126,7 @@ export type AssistantBuilderReasoningConfiguration = {
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
-  mcpServerId: string;
+  mcpServerViewId: string;
 
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
@@ -364,7 +364,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
   return {
     type: "MCP",
     configuration: {
-      mcpServerId: "not-a-valid-mcp-server-id",
+      mcpServerViewId: "not-a-valid-sId",
       dataSourceConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,
