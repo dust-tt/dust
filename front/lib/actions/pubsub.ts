@@ -5,10 +5,8 @@ import logger from "@app/logger/logger";
 
 export async function* getMCPEvents({
   actionId,
-  lastEventId,
 }: {
   actionId: number;
-  lastEventId: string | null;
 }): AsyncGenerator<
   {
     eventId: string;
@@ -29,7 +27,7 @@ export async function* getMCPEvents({
   const { history, unsubscribe } = await getRedisHybridManager().subscribe(
     pubsubChannel,
     callbackPromise.callback,
-    lastEventId,
+    null,
     "action_events"
   );
 
@@ -41,7 +39,7 @@ export async function* getMCPEvents({
   }
 
   try {
-    const TIMEOUT = 60000; // 1 minute
+    const TIMEOUT = 180000; // 3 minutes
 
     while (true) {
       const timeoutPromise = new Promise<"timeout">((resolve) => {

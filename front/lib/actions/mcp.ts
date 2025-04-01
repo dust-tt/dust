@@ -271,10 +271,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     try {
       const actionEventGenerator = getMCPEvents({
         actionId: mcpAction.id,
-        lastEventId: null,
       });
 
-      let status = "";
+      let status = "none";
       logger.info(
         {
           workspaceId: conversation.owner.sId,
@@ -316,6 +315,50 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           },
           "Error listening for action validation events"
         );
+      }
+
+      // The action timed-out, status was not updated
+      if (status === "none") {
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: mcpAction.id,
+          },
+          "Action validation timed out"
+        );
+
+        // We yield a tool success, with a message that the action timed out
+        yield {
+          type: "tool_success",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: new MCPActionType({
+            id: action.id,
+            params: rawInputs,
+            output: [
+              {
+                type: "text",
+                text: `The action validation timed out. Using this action is hence forbidden for this message.`,
+              },
+            ],
+            functionCallId,
+            functionCallName: actionConfiguration.name,
+            agentMessageId: agentMessage.agentMessageId,
+            step,
+            serverType: actionConfiguration.serverType,
+            internalMCPServerId: actionConfiguration.internalMCPServerId,
+            remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+            mcpServerConfigurationId: `${actionConfiguration.id}`,
+            executionState: "denied",
+            isError: false,
+            type: "tool_action",
+            generatedFiles: [],
+          }),
+        };
+        return;
       }
 
       if (status === "rejected") {
