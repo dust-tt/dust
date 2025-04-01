@@ -16,10 +16,9 @@ type ActionDetailsProps = {
   mcpServer: MCPServerMetadata | null;
 };
 
-export function ActionDetails({
+export function InternalMCPServerDetails({
   mcpServer,
   onClose,
-  owner,
 }: ActionDetailsProps) {
   return (
     <Sheet open={!!mcpServer} onOpenChange={onClose}>

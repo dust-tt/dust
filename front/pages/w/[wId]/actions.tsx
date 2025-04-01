@@ -2,8 +2,8 @@ import { CommandLineIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { ActionDetails } from "@app/components/actions/mcp/ActionDetails";
-import { ActionsList } from "@app/components/actions/mcp/ActionsList";
+import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
+import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
@@ -39,13 +39,15 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   };
 });
 
-export default function Actions({
+export default function AdminActions({
   owner,
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showDetails, setShowDetails] = useState<MCPServerMetadata | null>(
     null
   );
+  const serverType =
+    showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
 
   return (
     <AppLayout
@@ -53,9 +55,9 @@ export default function Actions({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
     >
-      <ActionDetails
+      <InternalMCPServerDetails
         owner={owner}
-        mcpServer={showDetails}
+        mcpServer={serverType === "internal" ? showDetails : null}
         onClose={() => setShowDetails(null)}
       />
 
@@ -66,7 +68,7 @@ export default function Actions({
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
         <Page.Vertical align="stretch" gap="md">
-          <ActionsList owner={owner} setShowDetails={setShowDetails} />
+          <AdminActionsList owner={owner} setShowDetails={setShowDetails} />
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />

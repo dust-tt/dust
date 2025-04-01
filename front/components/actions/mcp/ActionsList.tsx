@@ -28,13 +28,15 @@ type RowData = {
   actions: MenuItem[];
 };
 
-export const ActionsList = ({
-  owner,
-  setShowDetails,
-}: {
+type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setShowDetails: (mcpServer: MCPServerMetadata) => void;
-}) => {
+};
+
+export const AdminActionsList = ({
+  owner,
+  setShowDetails,
+}: AdminActionsListProps) => {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
