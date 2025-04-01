@@ -353,10 +353,8 @@ function DropdownMenuSearchbarDemo() {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="s-w-[300px]">
-        <DropdownMenuLabel label="From computer" />
         <DropdownMenuItem icon={CloudArrowUpIcon} label="Upload File" />
         <DropdownMenuSeparator />
-        <DropdownMenuLabel label="From dust" />
         <DropdownMenuSearchbar
           placeholder="Search systems..."
           name="search"
