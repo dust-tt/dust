@@ -69,6 +69,7 @@ export function isContentNodeAttachment(
 ): arg is ContentFragmentType & {
   nodeId: string;
   nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
 } {
   return !!arg.nodeId && !!arg.nodeDataSourceViewId;
 }
