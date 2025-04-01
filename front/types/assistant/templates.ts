@@ -15,13 +15,17 @@ export const TEMPLATES_TAG_CODES = [
   "ENGINEERING",
   "FINANCE",
   "HIRING",
+  "IT",
   "KNOWLEDGE",
+  "LEGAL",
   "MARKETING",
   "OPERATIONS",
   "PRODUCT",
   "PRODUCT_MANAGEMENT",
   "PRODUCTIVITY",
+  "RECRUITING",
   "SALES",
+  "SUPPORT",
   "UX_DESIGN",
   "UX_RESEARCH",
   "WRITING",
@@ -54,6 +58,12 @@ export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
   HIRING: {
     label: "Hiring",
   },
+  IT: {
+    label: "IT",
+  },
+  LEGAL: {
+    label: "Legal",
+  },
   KNOWLEDGE: {
     label: "Knowledge",
   },
@@ -72,8 +82,14 @@ export const TEMPLATES_TAGS_CONFIG: TemplateTagsType = {
   PRODUCTIVITY: {
     label: "Productivity",
   },
+  RECRUITING: {
+    label: "Recruiting & People",
+  },
   SALES: {
     label: "Sales",
+  },
+  SUPPORT: {
+    label: "Support",
   },
   UX_DESIGN: {
     label: "UX Design",
