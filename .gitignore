@@ -10,3 +10,4 @@ qdrant_storage
 .rgignore
 core-api-keys.json
 oauth-api-keys.json
+/extension/build/
