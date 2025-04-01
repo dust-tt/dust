@@ -341,7 +341,10 @@ export class ConfluenceClient {
         });
 
         logger.info(
-          { rateLimitHeaders },
+          {
+            rateLimitHeaders,
+            endpoint,
+          },
           "[Confluence] Headers relative to the rate limit"
         );
 
