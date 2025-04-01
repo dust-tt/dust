@@ -4,7 +4,7 @@ use crate::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
             PROVIDER_TIMEOUT_SECONDS,
         },
-        credential::Credential,
+        credential::{Credential, CredentialProvider},
         providers::utils::execute_request,
     },
     utils,
@@ -45,14 +45,45 @@ impl Provider for MicrosoftConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let body = json!({
-            "grant_type": "authorization_code",
-            "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
-            "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
-            "code": code,
-            "redirect_uri": redirect_uri,
-            "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
-        });
+        let body = match _related_credentials {
+            Some(credential) => {
+                // Credentials is a Microsoft service principal, use client_credentials grant type
+                let content = credential.unseal_encrypted_content()?;
+                let provider = credential.provider();
+
+                if provider != CredentialProvider::Microsoft {
+                    return Err(anyhow!(
+                        "Invalid credential provider: {:?}, expected Microsoft",
+                        provider
+                    ))?;
+                }
+                // Extract client ID and secret
+                let client_id = content
+                    .get("client_id")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow!("Missing client_id in Microsoft credential"))?;
+
+                let client_secret = content
+                    .get("client_secret")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow!("Missing client_secret in Microsoft credential"))?;
+
+                json!({
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scope": "https://graph.microsoft.com/.default",
+                })
+            }
+            None => json!({
+                "grant_type": "authorization_code",
+                "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
+                "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
+                "code": code,
+                "redirect_uri": redirect_uri,
+                "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+            }),
+        };
 
         let req = self
             .reqwest_client()

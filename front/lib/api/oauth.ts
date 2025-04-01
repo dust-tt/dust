@@ -44,11 +44,18 @@ const PROVIDER_STRATEGIES: Record<
       useCase,
       clientId,
       forceLabelsScope,
+      relatedCredential,
+      extraConfig,
     }: {
       connection: OAuthConnectionType;
       useCase: OAuthUseCase;
       clientId?: string;
       forceLabelsScope?: boolean;
+      relatedCredential?: {
+        content: Record<string, unknown>;
+        metadata: { workspace_id: string; user_id: string };
+      };
+      extraConfig?: Record<string, string>;
     }) => string;
     codeFromQuery: (query: ParsedUrlQuery) => string | null;
     connectionIdFromQuery: (query: ParsedUrlQuery) => string | null;
@@ -276,7 +283,7 @@ const PROVIDER_STRATEGIES: Record<
     },
   },
   microsoft: {
-    setupUri: ({ connection }) => {
+    setupUri: ({ connection, relatedCredential }) => {
       const scopes = [
         "User.Read",
         "Sites.Read.All",
@@ -287,14 +294,18 @@ const PROVIDER_STRATEGIES: Record<
         "ChannelMessage.Read.All",
         "offline_access",
       ];
-      const qs = querystring.stringify({
-        response_type: "code",
-        client_id: config.getOAuthMicrosoftClientId(),
-        state: connection.connection_id,
-        redirect_uri: finalizeUriForProvider("microsoft"),
-        scope: scopes.join(" "),
-      });
-      return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
+      if (relatedCredential) {
+        return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
+      } else {
+        const qs = querystring.stringify({
+          response_type: "code",
+          client_id: config.getOAuthMicrosoftClientId(),
+          state: connection.connection_id,
+          redirect_uri: finalizeUriForProvider("microsoft"),
+          scope: scopes.join(" "),
+        });
+        return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;
+      }
     },
     codeFromQuery: (query) => {
       return getStringFromQuery(query, "code");
@@ -303,7 +314,26 @@ const PROVIDER_STRATEGIES: Record<
       return getStringFromQuery(query, "state");
     },
     isExtraConfigValid: (extraConfig) => {
-      return Object.keys(extraConfig).length === 0;
+      return (
+        Object.keys(extraConfig).length === 0 ||
+        !!(extraConfig.client_id && extraConfig.client_secret)
+      );
+    },
+    getRelatedCredential: (extraConfig, workspaceId, userId) => {
+      const { client_id, client_secret, ...restConfig } = extraConfig;
+      if (!client_id || !client_secret) {
+        return null;
+      }
+      return {
+        credential: {
+          content: {
+            client_id,
+            client_secret,
+          },
+          metadata: { workspace_id: workspaceId, user_id: userId },
+        },
+        cleanedConfig: restConfig,
+      };
     },
   },
   zendesk: {
@@ -466,6 +496,8 @@ export async function createConnectionAndGetSetupUrl(
   return new Ok(
     PROVIDER_STRATEGIES[provider].setupUri({
       connection,
+      extraConfig,
+      relatedCredential,
       useCase,
       clientId,
       forceLabelsScope,
