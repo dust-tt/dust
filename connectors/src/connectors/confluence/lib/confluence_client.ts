@@ -602,7 +602,7 @@ export class ConfluenceClient {
     const params = new URLSearchParams({
       depth,
       sort,
-      limit: "100",
+      limit: "25",
       status: "current",
     });
 
