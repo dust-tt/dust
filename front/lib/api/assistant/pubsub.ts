@@ -191,6 +191,7 @@ async function handleUserMessageEvents({
               }
               break;
             }
+            case "tool_approve_execution":
             case "agent_action_success":
             case "agent_error":
             case "agent_generation_cancelled":
@@ -356,6 +357,7 @@ export async function retryAgentMessageWithPubSub(
                 );
                 break;
               }
+              case "tool_approve_execution":
               case "agent_action_success":
               case "agent_error":
               case "agent_generation_cancelled":
@@ -631,7 +633,7 @@ function getMessageChannelId(messageId: string) {
   return `message-${messageId}`;
 }
 
-async function publishEvent({
+export async function publishEvent({
   origin,
   channel,
   event,
