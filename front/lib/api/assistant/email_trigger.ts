@@ -281,7 +281,7 @@ export async function triggerFromEmail({
     return new Err({
       type: "unexpected_error",
       message:
-        "An unexpected error occurred. Please try again or contact us at team@dust.tt.",
+        "An unexpected error occurred. Please try again or contact us at support@dust.tt.",
     });
   }
 
