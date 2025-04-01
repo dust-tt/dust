@@ -190,11 +190,7 @@ export const InputBarAttachmentsPicker = ({
                       provider:
                         item.dataSourceView.dataSource.connectorProvider,
                     })}
-                    disabled={
-                      attachedNodeIds.includes(item.internalId) ||
-                      // TODO(attach-ds): remove this condition
-                      item.type === "folder"
-                    }
+                    disabled={attachedNodeIds.includes(item.internalId)}
                     description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {
                       setSearch("");
