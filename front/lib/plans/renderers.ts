@@ -3,7 +3,7 @@ import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import type { PlanType, SubscriptionType } from "@app/types";
 
 // Helper function to render PlanType from PlanAttributes
-export function renderPlanFromModel({
+export function renderPlanFromAttributes({
   plan,
 }: {
   plan: PlanAttributes;
@@ -64,7 +64,7 @@ export function renderSubscriptionFromModels({
     endDate: activeSubscription?.endDate?.getTime() || null,
     paymentFailingSince:
       activeSubscription?.paymentFailingSince?.getTime() || null,
-    plan: renderPlanFromModel({ plan }),
+    plan: renderPlanFromAttributes({ plan }),
     requestCancelAt: activeSubscription?.requestCancelAt?.getTime() ?? null,
   };
 }

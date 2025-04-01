@@ -16,7 +16,7 @@ import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import { isEntreprisePlan, isProPlan } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { PRO_PLAN_SEAT_39_CODE } from "@app/lib/plans/plan_codes";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { renderPlanFromAttributes } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
@@ -148,7 +148,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         Subscription,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
-        renderPlanFromModel({ plan })
+        renderPlanFromAttributes({ plan })
       );
     }
 
@@ -170,7 +170,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         new SubscriptionResource(
           Subscription,
           s.get(),
-          renderPlanFromModel({ plan: s.plan })
+          renderPlanFromAttributes({ plan: s.plan })
         )
     );
   }
@@ -190,7 +190,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       res.get(),
-      renderPlanFromModel({ plan: res.plan })
+      renderPlanFromAttributes({ plan: res.plan })
     );
   }
 
@@ -213,7 +213,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       this.createFreeNoPlanSubscription(workspace),
-      renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
+      renderPlanFromAttributes({ plan: FREE_NO_PLAN_DATA })
     );
   }
 
@@ -306,7 +306,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return new SubscriptionResource(
       Subscription,
       newSubscription.get(),
-      renderPlanFromModel({ plan: newPlan })
+      renderPlanFromAttributes({ plan: newPlan })
     );
   }
 
@@ -498,7 +498,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     return {
       checkoutUrl,
-      plan: renderPlanFromModel({ plan: proPlan }),
+      plan: renderPlanFromAttributes({ plan: proPlan }),
     };
   }
 

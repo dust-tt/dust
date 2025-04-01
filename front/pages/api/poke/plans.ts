@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import { renderPlanFromAttributes } from "@app/lib/plans/renderers";
 import { PlanResource } from "@app/lib/resources/plan_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { PlanType, WithAPIErrorResponse } from "@app/types";
@@ -81,7 +81,7 @@ async function handler(
         order: [["createdAt", "ASC"]],
       });
       const plans: PlanType[] = planResources.map((plan) =>
-        renderPlanFromModel({ plan })
+        renderPlanFromAttributes({ plan })
       );
 
       res.status(200).json({

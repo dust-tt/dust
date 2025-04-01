@@ -93,8 +93,6 @@ export class PlanResource extends BaseResource<PlanModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      //TODO : delete relevant cascading entities
-
       await this.model.destroy({
         where: {
           id: this.id,
@@ -108,7 +106,7 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   // This function is used to set the message limits for a given plan.
-  static async internalSetMessageLimits(
+  static async setMessageLimitsForPlanCode(
     data: Pick<Attributes<PlanModel>, "maxMessages" | "maxMessagesTimeframe">,
     planCode: PlanModel["code"]
   ): Promise<Result<undefined, Error>> {
