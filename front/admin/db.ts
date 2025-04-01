@@ -66,7 +66,6 @@ import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { MembershipInvitation } from "@app/lib/models/membership_invitation";
 import { Workspace } from "@app/lib/models/workspace";
 import { WorkspaceHasDomain } from "@app/lib/models/workspace_has_domain";
-import { PlanResource } from "@app/lib/resources/plan_resource";
 import {
   AppModel,
   Clone,
@@ -88,7 +87,10 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { Subscription } from "@app/lib/resources/storage/models/plans";
+import {
+  PlanModel,
+  Subscription,
+} from "@app/lib/resources/storage/models/plans";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import {
   RunModel,
@@ -142,7 +144,7 @@ async function main() {
 
   await ExtensionConfigurationModel.sync({ alter: true });
 
-  await PlanResource.model.sync({ alter: true });
+  await PlanModel.sync({ alter: true });
   await Subscription.sync({ alter: true });
   await TemplateModel.sync({ alter: true });
 

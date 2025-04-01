@@ -77,7 +77,7 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planResources = await PlanResource.fetchAll({
+      const planResources = await PlanResource.fetchAll(auth, {
         order: [["createdAt", "ASC"]],
       });
       const plans: PlanType[] = planResources.map((plan) =>

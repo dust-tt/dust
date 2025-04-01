@@ -1,9 +1,9 @@
 import type {
   Attributes,
   CreationAttributes,
-  FindOptions,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +11,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { Subscription } from "@app/lib/resources/storage/models/plans";
 import { PlanModel } from "@app/lib/resources/storage/models/plans";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -56,7 +57,7 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   // fetch all plans associated to a given set of subscriptions
-  static async fetchBySubscriptions(
+  static async fetchBySubscriptionModels(
     subscriptions: Subscription[]
   ): Promise<PlanResource[] | null> {
     const plans = await this.model.findAll({
@@ -68,10 +69,23 @@ export class PlanResource extends BaseResource<PlanModel> {
   }
 
   static async fetchAll(
-    options: FindOptions<PlanModel> = {}
+    auth: Authenticator,
+    { limit, order, where }: ResourceFindOptions<PlanModel> = {}
   ): Promise<PlanResource[]> {
-    const plans = await this.model.findAll(options);
+    const plans = await this.model.findAll({
+      where: {
+        ...where,
+        code: auth.getNonNullablePlan().code,
+      } as WhereOptions<PlanModel>,
+      limit,
+      order,
+    });
     return plans.map((plan) => new this(this.model, plan.get()));
+  }
+
+  static async fetchFirst(): Promise<PlanResource | null> {
+    const plan = await this.model.findOne({});
+    return plan ? new this(this.model, plan.get()) : null;
   }
 
   async delete(

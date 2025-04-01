@@ -18,9 +18,9 @@ async function createTestWorkspaces(
     throw new Error("This script can only be run in development.");
   }
 
-  const plans = await PlanResource.fetchAll();
+  const firstPlan = await PlanResource.fetchFirst();
 
-  if (plans.length === 0) {
+  if (firstPlan === null) {
     throw new Error(
       "No plans found in the database. Please create some plans first."
     );

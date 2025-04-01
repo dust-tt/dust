@@ -77,7 +77,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
   });
 
   const plans = keyBy(
-    await PlanResource.fetchBySubscriptions(subscriptionModels),
+    await PlanResource.fetchBySubscriptionModels(subscriptionModels),
     "id"
   );
 
