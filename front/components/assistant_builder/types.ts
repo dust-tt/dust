@@ -126,7 +126,8 @@ export type AssistantBuilderReasoningConfiguration = {
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
-  mcpServerViewId: string;
+  mcpServerId: string;
+
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
@@ -217,6 +218,7 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   };
   actions: Array<AssistantBuilderActionConfigurationWithId>;
   maxStepsPerRun: number | null;
@@ -233,6 +235,7 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
@@ -361,7 +364,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
   return {
     type: "MCP",
     configuration: {
-      mcpServerViewId: "not-a-valid-sId",
+      mcpServerId: "not-a-valid-mcp-server-id",
       dataSourceConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,

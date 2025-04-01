@@ -41,7 +41,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { Err, md5, Ok } from "@app/types";
+import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -290,7 +290,14 @@ export function InstructionScreen({
               setEdited(true);
               setBuilderState((state) => ({
                 ...state,
-                generationSettings,
+                generationSettings: {
+                  ...generationSettings,
+                  responseFormat: isSupportingResponseFormat(
+                    generationSettings.modelSettings.modelId
+                  )
+                    ? generationSettings.responseFormat
+                    : undefined,
+                },
               }));
             }}
             models={models}

@@ -211,6 +211,7 @@ const ModelConfigurationSchema = t.intersection([
   t.partial({
     reasoningEffort: ReasoningEffortCodec,
   }),
+  t.partial({ responseFormat: t.string }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",
