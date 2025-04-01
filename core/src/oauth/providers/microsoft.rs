@@ -141,9 +141,9 @@ impl Provider for MicrosoftConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        _related_credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        let (url, body) = match _related_credentials {
+        let (url, body) = match related_credentials {
             Some(credential) => {
                 self.handle_service_principal_credentials(&credential, connection)?
             }
