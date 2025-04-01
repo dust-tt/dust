@@ -12,8 +12,16 @@ export async function recordUsageActivity(workspaceId: string) {
       sId: workspaceId,
     },
   });
+
+  const logger = mainLogger.child({ workspaceId });
+  logger.info({}, "[UsageQueue] Recording usage for worskpace.");
+
   if (!workspace) {
-    throw new Error("Workspace not found.");
+    // The workspace likely deleted during the debouncing period of usage reporting.
+    logger.info(
+      "[UsageQueue] Cannot record usage of subscription: workspace not found."
+    );
+    return;
   }
 
   const subscription = await Subscription.findOne({
@@ -23,9 +31,6 @@ export async function recordUsageActivity(workspaceId: string) {
     },
     include: [Plan],
   });
-
-  const logger = mainLogger.child({ workspaceId });
-  logger.info({}, "[UsageQueue] Recording usage for worskpace.");
 
   if (!subscription) {
     // The workspace likely downgraded during the debouncing period of usage reporting.
