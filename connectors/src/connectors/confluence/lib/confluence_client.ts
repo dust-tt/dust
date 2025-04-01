@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
-import { ProxyAgent } from "undici";
+import type { Response } from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -263,7 +264,7 @@ export class ConfluenceClient {
   ): Promise<T> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${this.authToken}`,
             "Content-Type": "application/json",
@@ -400,7 +401,7 @@ export class ConfluenceClient {
   ): Promise<T | undefined> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.authToken}`,
