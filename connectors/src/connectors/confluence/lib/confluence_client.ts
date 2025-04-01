@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/Either";
-import { HttpsProxyAgent } from "https-proxy-agent";
 import * as t from "io-ts";
+import type { Response } from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -229,7 +230,7 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly proxyAgent: HttpsProxyAgent | null;
+  private readonly proxyAgent: ProxyAgent | undefined;
 
   constructor(
     private readonly authToken: string,
@@ -244,7 +245,7 @@ export class ConfluenceClient {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
     this.proxyAgent = useProxy
-      ? new HttpsProxyAgent(
+      ? new ProxyAgent(
           `http://${EnvironmentConfig.getEnvVariable(
             "PROXY_USER_NAME"
           )}:${EnvironmentConfig.getEnvVariable(
@@ -253,7 +254,7 @@ export class ConfluenceClient {
             "PROXY_HOST"
           )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
         )
-      : null;
+      : undefined;
   }
 
   private async request<T>(
@@ -263,14 +264,14 @@ export class ConfluenceClient {
   ): Promise<T> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${this.authToken}`,
             "Content-Type": "application/json",
           },
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
@@ -400,7 +401,7 @@ export class ConfluenceClient {
   ): Promise<T | undefined> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.authToken}`,
@@ -409,7 +410,7 @@ export class ConfluenceClient {
           body: JSON.stringify(data),
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
