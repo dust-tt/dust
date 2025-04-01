@@ -191,14 +191,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <div
-        className={classNames(
-          "flex grow flex-col",
-          isOnlyUser(owner)
-            ? "border-t border-structure-200 dark:border-structure-200-night"
-            : ""
-        )}
-      >
+      <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
