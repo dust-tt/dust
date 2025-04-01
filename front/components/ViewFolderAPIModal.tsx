@@ -3,6 +3,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import {
   Button,
   ClipboardIcon,
+  Hoverable,
   Page,
   Sheet,
   SheetContainer,
@@ -11,7 +12,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 
 import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
@@ -186,12 +186,12 @@ export function ViewFolderAPIModal({
               <Page.P>
                 <div className="pb-2">
                   {owner.role === "admin" ? (
-                    <Link
+                    <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
-                      className="py-1 font-bold text-action-600"
+                      variant="highlight"
                     >
                       Manage workspace API keys
-                    </Link>
+                    </Hoverable>
                   ) : (
                     <span>API keys are managed by workspace admins.</span>
                   )}
@@ -210,12 +210,12 @@ export function ViewFolderAPIModal({
               <Page.P>
                 For a detailed documentation of the Data source API, please
                 refer to the{" "}
-                <Link
+                <Hoverable
                   href={"https://docs.dust.tt/reference/"}
-                  className="py-1 font-bold text-action-600"
+                  variant="highlight"
                 >
                   API Reference
-                </Link>
+                </Hoverable>
               </Page.P>
             </div>
           </div>

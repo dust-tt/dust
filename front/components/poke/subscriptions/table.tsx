@@ -141,7 +141,7 @@ export function ActiveSubscriptionTable({
                             : `https://dashboard.stripe.com/subscriptions/${subscription.stripeSubscriptionId}`
                         }
                         target="_blank"
-                        className="text-xs text-action-400"
+                        className="text-xs text-highlight-400"
                       >
                         {subscription.stripeSubscriptionId}
                       </Link>

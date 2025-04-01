@@ -397,7 +397,7 @@ const DataSourcePage = ({
     <>
       <h3 className="text-xl font-bold">
         Data Source: {dataSource.name} of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
@@ -1284,7 +1284,7 @@ function SlackWhitelistBot({
         <Link
           href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
           target="_blank"
-          className="text-sm text-action-400"
+          className="text-sm text-highlight-400"
         >
           list of whitelisted bots for this workspace
         </Link>

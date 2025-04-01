@@ -95,7 +95,7 @@ const AgentMessageView = ({
         <a
           href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           {message.configuration.sId}
         </a>
@@ -112,7 +112,7 @@ const AgentMessageView = ({
                 key={`runId-${i}`}
                 href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
                 target="_blank"
-                className="text-action-500"
+                className="text-highlight-500"
               >
                 {runId.substring(0, 8)}{" "}
               </a>
@@ -131,7 +131,7 @@ const AgentMessageView = ({
                   key={`runId-${i}`}
                   href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
                   target="_blank"
-                  className="text-action-500"
+                  className="text-highlight-500"
                 >
                   {a.runId.substring(0, 8)}{" "}
                 </a>
@@ -158,7 +158,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
         <a
           href={message.sourceUrl ?? ""}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           [sourceUrl]
         </a>
@@ -166,7 +166,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
       <a
         href={message.textUrl ?? ""}
         target="_blank"
-        className="text-action-500"
+        className="text-highlight-500"
       >
         [textUrl]
       </a>
@@ -189,7 +189,7 @@ const ConversationPage = ({
         <div className="max-w-4xl">
           <h3 className="text-xl font-bold">
             Conversation of workspace:{" "}
-            <a href={`/poke/${workspaceId}`} className="text-action-500">
+            <a href={`/poke/${workspaceId}`} className="text-highlight-500">
               {workspace.name}
             </a>
           </h3>

@@ -25,7 +25,6 @@ import type {
 } from "@app/components/assistant_builder/types";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
-import { classNames } from "@app/lib/utils";
 import type { Result, SpaceType, WorkspaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -388,10 +387,10 @@ export function ActionProcess({
         equivalent to a 1,000-page book (500k tokens). Learn more about this
         feature in the{" "}
         <Hoverable
+          variant="highlight"
           onClick={() => {
             window.open("https://docs.dust.tt/docs/extract-data", "_blank");
           }}
-          className="cursor-pointer font-bold text-action-500"
         >
           documentation
         </Hoverable>
@@ -436,16 +435,10 @@ export function ActionProcess({
         <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
           Process data from the last
         </div>
-        <input
+        <Input
           type="text"
-          className={classNames(
-            "h-8 w-16 rounded-md border-gray-300 text-center text-sm",
-            !timeFrameError
-              ? "focus:border-action-500 focus:ring-action-500"
-              : "border-red-500 focus:border-red-500 focus:ring-red-500",
-            "bg-structure-50 stroke-structure-50 dark:bg-structure-50-night dark:stroke-structure-50-night"
-          )}
-          value={actionConfiguration.timeFrame.value || ""}
+          messageStatus={timeFrameError ? "error" : "default"}
+          value={actionConfiguration.timeFrame.value?.toString() || ""}
           onChange={(e) => {
             const value = parseInt(e.target.value, 10);
             if (!isNaN(value) || !e.target.value) {

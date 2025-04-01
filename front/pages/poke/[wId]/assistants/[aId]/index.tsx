@@ -44,7 +44,7 @@ const AssistantDetailsPage = ({
     <div className="max-w-4xl">
       <h3 className="text-xl font-bold">
         Assistant of workspace:{" "}
-        <a href={`/poke/${workspace.sId}`} className="text-action-500">
+        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
           {workspace.name}
         </a>
       </h3>

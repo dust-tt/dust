@@ -136,7 +136,7 @@ function getLimitPromptForCode(
               messages per user for the past 24 hours. This total limit is
               collectively shared by all users in the workspace. Check our{" "}
               <Hoverable
-                className="cursor-pointer font-bold text-action-500"
+                variant="highlight"
                 onClick={() => displayFairUseModal()}
               >
                 Fair Use policy

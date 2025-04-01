@@ -203,19 +203,19 @@ export function InstructionScreen({
           class: classNames(
             "overflow-auto min-h-60 h-full border rounded-xl p-2",
             "transition-all duration-200 ",
-            "bg-structure-50 dark:bg-structure-50-night",
+            "bg-muted-background dark:bg-muted-background-night",
             displayError
               ? "border-warning-500 dark:border-warning-500-night"
-              : "border-structure-200 dark:border-structure-200-night",
+              : "border-border dark:border-border-night",
             displayError
               ? "focus:ring-warning-500 dark:focus:ring-warning-500-night"
-              : "focus:ring-action-300 dark:focus:ring-action-300-night",
+              : "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
             displayError
               ? "focus:outline-warning-500 dark:focus:outline-warning-500-night"
-              : "focus:outline-action-200 dark:focus:outline-action-200-night",
+              : "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
             displayError
               ? "focus:border-warning-500 dark:focus:border-warning-500-night"
-              : "focus:border-action-300 dark:focus:border-action-300-night"
+              : "focus:border-highlight-300 dark:focus:border-highlight-300-night"
           ),
         },
       },

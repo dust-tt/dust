@@ -117,8 +117,8 @@ export const MentionList = forwardRef(function MentionList(
               className={classNames(
                 "flex-initial text-sm font-semibold",
                 index === selectedIndex
-                  ? "text-action-500 dark:text-action-500-night"
-                  : "text-element-900 dark:text-element-900-night"
+                  ? "text-highlight-500 dark:text-highlight-500-night"
+                  : "text-foreground dark:text-foreground-night"
               )}
               key={index}
               onClick={() => selectItem(index)}

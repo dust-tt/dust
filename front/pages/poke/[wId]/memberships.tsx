@@ -51,7 +51,7 @@ const MembershipsPage = ({
     <>
       <h3 className="text-xl font-bold">
         Members of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
