@@ -101,7 +101,7 @@ export const MentionList = forwardRef(function MentionList(
     <div
       className={classNames(
         "flex flex-col gap-y-1 overflow-y-auto rounded-xl border px-3 py-2 shadow-xl",
-        "border-structure-100 dark:border-structure-100-night",
+        "border-border dark:border-border-night",
         "bg-background text-foreground",
         "dark:bg-background-night dark:text-foreground-night"
       )}

@@ -79,7 +79,7 @@ export function PokeDataTableFacetedFilter<TData, TValue>({
           )}
         </PokeButton>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] bg-structure-100 p-0" align="start">
+      <PopoverContent className="w-[200px] bg-primary-100 p-0" align="start">
         <PokeCommand>
           <PokeCommandList>
             <PokeCommandGroup>

@@ -338,8 +338,8 @@ export function DataSourceViewsSelector({
           return (
             <div
               className={cn(
-                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-structure-50 dark:hover:bg-structure-50-night",
-                selected && "bg-structure-50 dark:bg-structure-50-night"
+                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-background dark:hover:bg-background-night",
+                selected && "bg-background dark:bg-background-night"
               )}
               onClick={() => {
                 setSearchResult(item);
@@ -352,9 +352,9 @@ export function DataSourceViewsSelector({
               {getVisualForDataSourceViewContentNode(item)({
                 className: "min-w-4",
               })}
-              <span className="flex-shrink truncate text-sm">{item.title}</span>
+              <span className="copy-sm flex-shrink truncate">{item.title}</span>
               {item.parentTitle && (
-                <div className="ml-auto flex-none text-sm text-slate-500">
+                <div className="copy-sm ml-auto flex-none text-primary-500">
                   {getLocationForDataSourceViewContentNode(item)}
                 </div>
               )}

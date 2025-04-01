@@ -80,7 +80,7 @@ export function PokeSearchCommand() {
       <PokeCommandDialog
         open={open}
         onOpenChange={setOpen}
-        className="bg-structure-50 sm:max-w-[600px]"
+        className="bg-muted-background sm:max-w-[600px]"
         shouldFilter={false}
       >
         <PokeCommandInput
