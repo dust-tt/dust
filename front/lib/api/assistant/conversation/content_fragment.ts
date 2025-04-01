@@ -1,4 +1,5 @@
-import type { DustMimeType } from "@dust-tt/client";
+import type { DustMimeType} from "@dust-tt/client";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
@@ -29,7 +30,6 @@ import {
   isSupportedContentNodeFragmentContentType,
   Ok,
 } from "@app/types";
-import { DATA_SOURCE_MIME_TYPE } from "@app/lib/content_nodes";
 
 interface ContentFragmentBlob {
   contentType: DustMimeType | SupportedFileContentType;
