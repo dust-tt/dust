@@ -2,6 +2,7 @@ import type { RequestMethod } from "node-mocks-http";
 import { describe, expect } from "vitest";
 
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -28,11 +29,11 @@ async function setupTest(
   return { req, res, workspace, space };
 }
 
-describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
+describe("GET /api/w/[wId]/mcp/[serverId]", () => {
   itInTransaction("should return server details", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t);
+    const { req, res, workspace } = await setupTest(t);
 
-    const server = await RemoteMCPServerFactory.create(workspace, space, {
+    const server = await RemoteMCPServerFactory.create(workspace, {
       sharedSecret: "secret123",
     });
     req.query.serverId = server.sId;
@@ -42,13 +43,15 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData).toHaveProperty("success", true);
-    expect(responseData).toHaveProperty("data");
+    expect(responseData).toHaveProperty("server");
   });
 
   itInTransaction("should return 404 when server doesn't exist", async (t) => {
-    const { req, res } = await setupTest(t);
-    req.query.serverId = "non-existent-server-id";
+    const { req, res, workspace } = await setupTest(t);
+    req.query.serverId = makeSId("remote_mcp_server", {
+      id: 1000,
+      workspaceId: workspace.id,
+    });
 
     await handler(req, res);
 
@@ -62,17 +65,13 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   });
 });
 
-describe("PATCH /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
+describe("PATCH /api/w/[wId]/mcp/[serverId]", () => {
   itInTransaction(
     "should return 400 when no update fields are provided",
     async (t) => {
-      const { req, res, workspace, space } = await setupTest(
-        t,
-        "admin",
-        "PATCH"
-      );
+      const { req, res, workspace } = await setupTest(t, "admin", "PATCH");
 
-      const server = await RemoteMCPServerFactory.create(workspace, space);
+      const server = await RemoteMCPServerFactory.create(workspace);
       req.query.serverId = server.sId;
       req.body = {};
 
@@ -89,15 +88,11 @@ describe("PATCH /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   );
 });
 
-describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
+describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
   itInTransaction("should delete a server", async (t) => {
-    const { req, res, workspace, space } = await setupTest(
-      t,
-      "admin",
-      "DELETE"
-    );
+    const { req, res, workspace } = await setupTest(t, "admin", "DELETE");
 
-    const server = await RemoteMCPServerFactory.create(workspace, space);
+    const server = await RemoteMCPServerFactory.create(workspace);
     req.query.serverId = server.sId;
 
     await handler(req, res);
@@ -105,9 +100,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData).toHaveProperty("success", true);
-    expect(responseData).toHaveProperty("data");
-    expect(responseData.data).toHaveProperty("id", server.sId);
+    expect(responseData).toHaveProperty("deleted", true);
 
     const deletedServer = await RemoteMCPServerResource.fetchById(
       { workspace: () => workspace } as any,
@@ -118,7 +111,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
   });
 });
 
-describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", () => {
+describe("Method Support /api/w/[wId]/mcp/[serverId]", () => {
   itInTransaction("supports GET, PATCH, and DELETE methods", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "admin", "PUT");
 
@@ -132,7 +125,7 @@ describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]", (
       error: {
         type: "method_not_supported_error",
         message:
-          "The method passed is not supported, GET, PATCH, or DELETE is expected.",
+          "The method passed is not supported, GET, PATCH, DELETE are expected.",
       },
     });
   });

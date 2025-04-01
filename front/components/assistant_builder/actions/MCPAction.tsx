@@ -14,9 +14,9 @@ import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderMCPServerConfiguration,
 } from "@app/components/assistant_builder/types";
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -48,45 +48,43 @@ export function ActionMCP({
     workspaceId: owner.sId,
     disabled: false,
   });
-  const { mcpServers } = useMCPServerViews({
+  const { serverViews } = useMCPServerViews({
     owner,
     space: (spaces ?? []).find((space) => space.kind === "system"),
-    filter: "all",
   });
-  // TODO(mcp) must work with MCPServerViews
-  const defaultMCPServer = useMemo(
+  const defaultMCPServerView = useMemo(
     () =>
-      mcpServers.find(
-        (mcpServer) => mcpServer.id === actionConfiguration.mcpServerViewId
+      serverViews.find(
+        (serverView) => serverView.id === actionConfiguration.mcpServerViewId
       ),
-    [mcpServers, actionConfiguration.mcpServerViewId]
+    [serverViews, actionConfiguration.mcpServerViewId]
   );
 
-  const [selectedMCPServer, setSelectedMCPServer] =
-    useState<MCPServerMetadata | null>(defaultMCPServer ?? null);
+  const [selectedMCPServerView, setSelectedMCPServerView] =
+    useState<MCPServerViewType | null>(defaultMCPServerView ?? null);
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
 
   useEffect(() => {
     updateAction((previousAction) => ({
       ...previousAction,
       dataSourceConfigurations:
-        selectedMCPServer &&
+        selectedMCPServerView &&
         serverRequiresInternalConfiguration({
-          serverMetadata: selectedMCPServer,
+          serverMetadata: selectedMCPServerView.server,
           mimeType: INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE,
         })
           ? previousAction.dataSourceConfigurations || {}
           : null,
     }));
-  }, [selectedMCPServer, updateAction]);
+  }, [selectedMCPServerView, updateAction]);
 
   const handleServerSelection = useCallback(
-    (mcpServer: MCPServerMetadata) => {
+    (serverView: MCPServerViewType) => {
       setEdited(true);
-      setSelectedMCPServer(mcpServer);
+      setSelectedMCPServerView(serverView);
       updateAction((previousAction) => ({
         ...previousAction,
-        mcpServerId: mcpServer.id,
+        mcpServerViewId: serverView.id,
       }));
     },
     [setEdited, updateAction]
@@ -127,19 +125,19 @@ export function ActionMCP({
           <Button
             isSelect
             label={
-              selectedMCPServer
-                ? selectedMCPServer.name
+              selectedMCPServerView
+                ? selectedMCPServerView.server.name
                 : "Select an MCP server"
             }
             className="w-48"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="mt-1" align="start">
-          {mcpServers.map((mcpServer) => (
+          {serverViews.map((serverView) => (
             <DropdownMenuItem
-              key={mcpServer.id}
-              label={mcpServer.name}
-              onClick={() => handleServerSelection(mcpServer)}
+              key={serverView.id}
+              label={serverView.server.name}
+              onClick={() => handleServerSelection(serverView)}
             />
           ))}
         </DropdownMenuContent>

@@ -1,22 +1,27 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_actions";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type { MCPApiResponse } from "@app/types/mcp";
+
+export type SyncMCPServerResponseBody = {
+  success: boolean;
+  server: MCPServerType;
+};
 
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<MCPApiResponse>>,
+  res: NextApiResponse<WithAPIErrorResponse<SyncMCPServerResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
   const { method } = req;
-  const { wId, serverId } = req.query;
+  const { serverId } = req.query;
 
-  if (typeof wId !== "string" || typeof serverId !== "string") {
+  if (typeof serverId !== "string") {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
@@ -26,23 +31,13 @@ async function handler(
     });
   }
 
-  if (!auth.isBuilder()) {
+  if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can manage MCP servers.",
-      },
-    });
-  }
-
-  if (auth.workspace()?.sId !== wId) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message: "You don't have access to this workspace.",
+          "Only users that are `admins` for the current workspace can manage MCP servers.",
       },
     });
   }
@@ -81,15 +76,7 @@ async function handler(
 
   return res.status(200).json({
     success: true,
-    data: {
-      id: server.sId,
-      workspaceId: wId,
-      name: server.name,
-      description: server.description || "",
-      tools: server.cachedTools,
-      url: server.url,
-      sharedSecret: server.sharedSecret,
-    },
+    server: server.toJSON(),
   });
 }
 

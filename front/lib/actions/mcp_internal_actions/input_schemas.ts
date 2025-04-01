@@ -2,7 +2,7 @@ import type { InternalConfigurationMimeType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
 
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 
 /**
  * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
@@ -40,7 +40,7 @@ export function serverRequiresInternalConfiguration({
   serverMetadata,
   mimeType,
 }: {
-  serverMetadata: MCPServerMetadata;
+  serverMetadata: MCPServerType;
   mimeType: InternalConfigurationMimeType;
 }): boolean {
   if (!serverMetadata?.tools) {

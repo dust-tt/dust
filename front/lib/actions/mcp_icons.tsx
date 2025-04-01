@@ -1,8 +1,12 @@
 import { CommandLineIcon, RocketIcon } from "@dust-tt/sparkle";
 
-import type { AllowedIconType } from "@app/lib/actions/mcp_actions";
-
 export const MCP_SERVER_ICONS: Record<AllowedIconType, React.ComponentType> = {
   command: CommandLineIcon,
   rocket: RocketIcon,
 } as const;
+
+const ALLOWED_ICONS = ["command", "rocket"] as const;
+export type AllowedIconType = (typeof ALLOWED_ICONS)[number];
+
+export const isAllowedIconType = (icon: string): icon is AllowedIconType =>
+  ALLOWED_ICONS.includes(icon as AllowedIconType);

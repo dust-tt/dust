@@ -9,9 +9,12 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import { useAddMCPServerToSpace } from "@app/lib/swr/mcp_server_views";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { ConnectorProvider, WorkspaceType } from "@app/types";
 
 export type DataSourceIntegration = {
@@ -32,6 +35,13 @@ export const AddActionMenu = ({
     owner,
     filter: "internal",
   });
+  const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
+  const { addToSpace } = useAddMCPServerToSpace(owner);
+
+  const systemSpace = useMemo(() => {
+    return spaces.find((space) => space.kind === "system");
+  }, [spaces]);
+
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -46,13 +56,18 @@ export const AddActionMenu = ({
         <DropdownMenuLabel label="Default actions" />
 
         {mcpServers
-          .filter((i) => !enabledMCPServers.includes(i.id))
-          .map((i) => (
+          .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
+          .map((mcpServer) => (
             <DropdownMenuItem
-              key={i.id}
-              label={i.name}
-              icon={MCP_SERVER_ICONS[i.icon || "Rocket"]}
-              onClick={() => {}}
+              key={mcpServer.id}
+              label={mcpServer.name}
+              icon={MCP_SERVER_ICONS[mcpServer.icon || "Rocket"]}
+              onClick={async () => {
+                if (!systemSpace) {
+                  throw new Error("System space not found");
+                }
+                await addToSpace(mcpServer, systemSpace);
+              }}
             />
           ))}
         <DropdownMenuSeparator />

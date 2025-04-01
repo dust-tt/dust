@@ -12,17 +12,19 @@ import React from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import {
-  useMCPServerConnections,
+  useAddMCPServerToSpace,
   useMCPServerViews,
-} from "@app/lib/swr/mcp_servers";
+} from "@app/lib/swr/mcp_server_views";
+import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type RowData = {
-  mcpServer: MCPServerMetadata;
+  serverView: MCPServerViewType;
   spaces: SpaceType[];
   onClick: () => void;
   actions: MenuItem[];
@@ -30,7 +32,7 @@ type RowData = {
 
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
-  setShowDetails: (mcpServer: MCPServerMetadata) => void;
+  setShowDetails: (mcpServer: MCPServerType) => void;
 };
 
 export const AdminActionsList = ({
@@ -41,15 +43,16 @@ export const AdminActionsList = ({
     workspaceId: owner.sId,
     disabled: false,
   });
+  const { addToSpace } = useAddMCPServerToSpace(owner);
+
   const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
   const availableSpaces = (spaces ?? []).filter((s) => s.kind !== "system");
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
   });
-  const { mcpServers, isMCPServersLoading } = useMCPServerViews({
+  const { serverViews, isMCPServerViewsLoading } = useMCPServerViews({
     owner,
     space: systemSpace,
-    filter: "all",
   });
 
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
@@ -61,30 +64,32 @@ export const AdminActionsList = ({
     columns.push({
       id: "name",
       header: "Name",
+      accessorKey: "serverView",
       sortingFn: (a, b) =>
-        a.original.mcpServer.name.localeCompare(b.original.mcpServer.name),
-      cell: (info: CellContext<RowData, MCPServerMetadata>) => (
+        a.original.serverView.server.name.localeCompare(
+          b.original.serverView.server.name
+        ),
+      cell: (info: CellContext<RowData, MCPServerViewType>) => (
         <DataTable.CellContent>
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar
                 visual={React.createElement(
-                  MCP_SERVER_ICONS[info.getValue().icon || "Rocket"]
+                  MCP_SERVER_ICONS[info.getValue().server.icon || "Rocket"]
                 )}
               />
             </div>
             <div className="flex min-w-0 grow flex-col">
               <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
-                {info.getValue().name}
+                {info.getValue().server.name}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {info.getValue().description}
+                {info.getValue().server.description}
               </div>
             </div>
           </div>
         </DataTable.CellContent>
       ),
-      accessorKey: "mcpServer",
     });
 
     columns.push({
@@ -125,9 +130,10 @@ export const AdminActionsList = ({
 
     columns.push({
       id: "connection",
+      accessorKey: "serverView.server",
       header: "",
       enableSorting: false,
-      cell: (info: CellContext<RowData, MCPServerMetadata>) => {
+      cell: (info: CellContext<RowData, MCPServerType>) => {
         const { id, authorization } = info.getValue();
         const connection = connections.find(
           (c) => c.internalMCPServerId === id
@@ -170,7 +176,6 @@ export const AdminActionsList = ({
           </DataTable.CellContent>
         );
       },
-      accessorKey: "mcpServer",
       meta: {
         className: "w-36",
       },
@@ -194,11 +199,11 @@ export const AdminActionsList = ({
 
     return columns;
   };
-  const rows: RowData[] = mcpServers.map((mcpServer) => ({
-    mcpServer,
+  const rows: RowData[] = serverViews.map((serverView) => ({
+    serverView,
     spaces: [],
     onClick: () => {
-      setShowDetails(mcpServer);
+      setShowDetails(serverView.server);
     },
     moreActions: [
       {
@@ -216,7 +221,11 @@ export const AdminActionsList = ({
           name: s.name,
         })),
         onSelect: (spaceId) => {
-          console.log(spaceId);
+          const space = availableSpaces.find((s) => s.sId === spaceId);
+          if (!space) {
+            throw new Error("Space not found");
+          }
+          void addToSpace(serverView.server, space);
         },
       },
       {
@@ -237,12 +246,14 @@ export const AdminActionsList = ({
         <div />
         <AddActionMenu
           owner={owner}
-          enabledMCPServers={mcpServers.map((mcpServer) => mcpServer.id)}
+          enabledMCPServers={serverViews.map(
+            //TODO(mcp) serverView.server.id or serverView.id?
+            (serverView) => serverView.server.id
+          )}
         />
       </div>
 
-      <div className="flex justify-end"></div>
-      {isConnectionsLoading || isMCPServersLoading ? (
+      {isConnectionsLoading || isMCPServerViewsLoading ? (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>

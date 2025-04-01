@@ -41,7 +41,7 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
   };
 });
 
-describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => {
+describe("POST /api/w/[wId]/mcp/[serverId]/sync", () => {
   itInTransaction("should return 404 when server doesn't exist", async (t) => {
     const { req, res } = await setupTest(t, "admin", "POST");
     req.query.serverId = "non-existent-server-id";
@@ -68,7 +68,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => 
     expect(res._getJSONData()).toEqual({
       error: {
         type: "data_source_auth_error",
-        message: expect.stringContaining("Only users that are `builders`"),
+        message: expect.stringContaining("Only users that are `admins`"),
       },
     });
   });

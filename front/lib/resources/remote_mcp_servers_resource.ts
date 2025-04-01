@@ -6,12 +6,12 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
+import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -37,23 +37,19 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
-    space: SpaceResource,
     transaction?: Transaction
   ) {
-    assert(
-      space.canWrite(auth),
-      "The user is not authorized to create an MCP server"
-    );
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     assert(
-      space.kind === "system",
-      "Only system spaces can have remote MCP servers"
+      systemSpace.canWrite(auth),
+      "The user is not authorized to create an MCP server"
     );
 
     const server = await RemoteMCPServer.create(
       {
         ...blob,
-        vaultId: space.id,
+        vaultId: systemSpace.id,
       },
       { transaction }
     );
@@ -64,7 +60,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "remote",
         remoteMCPServerId: server.id,
-        vaultId: space.id,
+        vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
       },
@@ -73,7 +69,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       }
     );
 
-    return new this(RemoteMCPServer, server.get(), space);
+    return new this(RemoteMCPServer, server.get(), systemSpace);
   }
 
   // Fetching.
@@ -133,17 +129,19 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     });
   }
 
-  static async listBySpace(
+  static async findByUrl(
     auth: Authenticator,
-    space: SpaceResource,
+    url: string,
     { includeDeleted }: { includeDeleted?: boolean } = {}
   ) {
-    return this.baseFetch(auth, {
+    const servers = await this.baseFetch(auth, {
       where: {
-        vaultId: space.id,
+        url,
       },
       includeDeleted,
     });
+
+    return servers.length > 0 ? servers[0] : null;
   }
 
   // sId
@@ -238,7 +236,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       description?: string | null;
       url?: string;
       sharedSecret?: string;
-      cachedTools: MCPToolMetadata[];
+      cachedTools: MCPToolType[];
       lastSyncAt: Date;
     }
   ) {
@@ -257,16 +255,25 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   }
 
   // Serialization.
-  toJSON() {
+  toJSON(): MCPServerType & {
+    // Remote MCP Server specifics
+    url: string;
+    lastSyncAt: Date | null;
+    sharedSecret: string;
+  } {
     return {
-      id: this.id,
-      sId: this.sId,
+      id: this.sId,
       name: this.name,
-      description: this.description,
+      description: this.description || "",
+      tools: this.cachedTools,
+      // TODO(mcp) remove this once we have a real version & icon
+      version: "0.0.1",
+      icon: "rocket",
+
+      // Remote MCP Server specifics
       url: this.url,
-      cachedTools: this.cachedTools,
       lastSyncAt: this.lastSyncAt,
-      space: this.space.toJSON(),
+      sharedSecret: this.sharedSecret,
     };
   }
 }
