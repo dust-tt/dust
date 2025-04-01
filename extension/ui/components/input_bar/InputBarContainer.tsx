@@ -21,7 +21,7 @@ import type {
   ExtensionWorkspaceType,
   LightAgentConfigurationType,
 } from "@dust-tt/client";
-import { SplitButton } from "@dust-tt/sparkle";
+import { SplitButton, useSendNotification } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
@@ -73,7 +73,7 @@ export const InputBarContainer = ({
     []
   );
 
-  const isAttachedFromDataSourceActivated: boolean = false;
+  const isAttachedFromDataSourceActivated: boolean = true;
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -85,6 +85,8 @@ export const InputBarContainer = ({
         }
       : {}),
   });
+
+  const sendNotification = useSendNotification();
 
   useUrlHandler(editor, selectedNode);
 
@@ -146,6 +148,11 @@ export const InputBarContainer = ({
       // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
     } else {
+      sendNotification({
+        title: "No match for URL",
+        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+        type: "info",
+      });
       setNodeOrUrlCandidate(null);
     }
   }, [
