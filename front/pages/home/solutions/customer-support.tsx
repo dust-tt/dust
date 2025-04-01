@@ -41,7 +41,7 @@ export async function getServerSideProps() {
 }
 
 const GRID_SECTION_CLASSES = classNames(
-  "flex flex-col gap-8",
+  "flex flex-col gap-4",
   "col-span-12",
   "lg:col-span-12 lg:col-start-1",
   "xl:col-span-12 xl:col-start-1",

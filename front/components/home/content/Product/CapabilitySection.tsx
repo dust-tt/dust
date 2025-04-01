@@ -7,7 +7,7 @@ import { classNames } from "@app/lib/utils";
 export function CapabilitySection() {
   return (
     <div className="w-full">
-      <div className="mb-6">
+      <div className="mb-8">
         <H2>
           Tailor AI agents
           <br />
@@ -18,7 +18,7 @@ export function CapabilitySection() {
         </P>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-16 sm:grid-cols-2">
         <ImgBlock
           title={<>Build agents with custom instructions and tools</>}
           content={

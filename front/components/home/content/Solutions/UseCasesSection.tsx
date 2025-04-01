@@ -18,7 +18,7 @@ const LAYER_DEPTHS = [-20, 20, 40, 70];
 export function UseCasesSection({ useCase }: { useCase: UseCaseProps }) {
   return (
     <section className="w-full py-12">
-      <div className="mb-12">
+      <div>
         <H2>{useCase.sectionTitle}</H2>
         <P size="lg" className="pb-6 text-muted-foreground">
           {useCase.sectionDescription}

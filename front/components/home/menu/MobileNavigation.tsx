@@ -30,16 +30,17 @@ export function MobileNavigation() {
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="rounded-br-xl rounded-tr-xl border border-slate-300/20 bg-slate-800 py-0"
+          className="rounded-br-xl rounded-tr-xl border border-slate-300 bg-white py-0"
         >
           <SheetHeader
-            className="border-b border-b-slate-400 bg-slate-800"
+            className="border-b border-b-slate-200 bg-white"
             hideButton
           >
             <SheetTitle className="flex w-full items-center justify-between">
               <DustLogo className="h-6 w-24" />
               <Button
                 size="md"
+                variant="outline"
                 icon={XMarkIcon}
                 onClick={() => {
                   setOpen(!open);
@@ -61,7 +62,7 @@ export function MobileNavigation() {
                       {item.title}
                     </MobileLink>
                   ) : (
-                    <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
+                    <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-600 no-underline outline-none">
                       {item.title}
                     </div>
                   )}
@@ -74,11 +75,11 @@ export function MobileNavigation() {
                             onOpenChange={setOpen}
                             isExternal={item.isExternal}
                           >
-                            <ChevronRightIcon className="h-5 w-5 text-muted-foreground" />{" "}
+                            <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
                             {item.title}
                           </MobileLink>
                         ) : (
-                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-400 no-underline outline-none">
+                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-600 no-underline outline-none">
                             {item.title}
                           </div>
                         )}
@@ -117,8 +118,8 @@ function MobileLink({
       shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       className={classNames(
-        "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-muted-foreground no-underline outline-none transition-colors",
-        "hover:bg-accent focus:bg-accent hover:text-slate-100 hover:underline hover:underline-offset-4 focus:text-slate-100 active:text-muted-foreground"
+        "flex select-none items-center gap-1 rounded-md py-3 font-semibold leading-none text-slate-700 no-underline outline-none transition-colors",
+        "hover:bg-slate-50 hover:text-slate-900 hover:underline hover:underline-offset-4 focus:bg-slate-50 focus:text-slate-900 active:text-slate-600"
       )}
       {...props}
     >

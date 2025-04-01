@@ -296,7 +296,7 @@ const Investor = ({ name, title }: { name: string; title: string }) => {
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]">
+    <div className="relative w-full rounded-2xl pt-[56.20%]">
       {" "}
       {/* 16:9 aspect ratio */}
       <iframe
@@ -304,7 +304,7 @@ const VideoPlayer = () => {
         title="Dust product tour"
         allow="autoplay; fullscreen"
         frameBorder="0"
-        className="absolute inset-0 h-full w-full rounded-lg"
+        className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
       ></iframe>
     </div>
   );

@@ -50,10 +50,10 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
         className
       )}
     >
-      <div className="flex aspect-video items-center justify-center bg-primary-800 p-8">
+      <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
         <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
-      <div className="flex flex-col gap-4 p-6">
+      <div className="flex flex-col gap-3 px-4 pb-6 pt-4">
         <H3 className="text-foreground" mono>
           {title}
         </H3>
@@ -195,23 +195,23 @@ const getColorClasses = (color: MetricComponentProps["color"] = "green") => {
   switch (color) {
     case "blue":
       return {
-        bg: "bg-brand-sky-blue",
-        text: "text-brand-electric-blue",
+        bg: "bg-green-100",
+        text: "text-green-700",
       };
     case "green":
       return {
-        bg: "bg-brand-tea-green",
-        text: "text-brand-hunter-green",
+        bg: "bg-green-100",
+        text: "text-green-700",
       };
     case "rose":
       return {
-        bg: "bg-brand-pink-rose",
-        text: "text-brand-red-rose",
+        bg: "bg-green-100",
+        text: "text-green-700",
       };
     case "golden":
       return {
-        bg: "bg-brand-sunshine-golden",
-        text: "text-brand-orange-golden",
+        bg: "bg-green-100",
+        text: "text-green-700",
       };
   }
 };
@@ -223,21 +223,12 @@ export const MetricSection = ({
   const colors = getColorClasses(color);
 
   return (
-    <div
-      className={classNames(
-        "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
-        metrics.length === 2
-          ? "lg:grid-cols-2"
-          : metrics.length === 3
-            ? "lg:grid-cols-3"
-            : "lg:grid-cols-4"
-      )}
-    >
+    <div className="grid grid-cols-2 gap-6">
       {metrics.map((metric, index) => (
-        <div key={index} className="flex flex-col items-center justify-center">
+        <div key={index} className="w-full">
           <div
             className={classNames(
-              "flex aspect-square h-56 w-56 flex-col items-center justify-center rounded-full p-6 text-center",
+              "flex min-h-[180px] w-full flex-col items-start justify-between p-8",
               colors.bg
             )}
           >
@@ -245,9 +236,9 @@ export const MetricSection = ({
               <Image alt="alan" src={metric.logo} width={200} height={100} />
             )}
             <H2 className={colors.text}>
-              <span className="font-bold">{metric.value}</span>
+              <span>{metric.value}</span>
             </H2>
-            <P size="md" className="capitalize text-foreground">
+            <P size="md" className="text-foreground">
               {metric.description}
             </P>
           </div>

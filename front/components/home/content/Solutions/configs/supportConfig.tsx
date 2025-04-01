@@ -110,6 +110,7 @@ export const Metrics: MetricProps = {
       description: <>saved weekly per agent</>,
     },
   ],
+  color: "green",
 };
 
 export const UseCases: UseCaseProps = {

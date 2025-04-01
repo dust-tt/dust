@@ -7,15 +7,14 @@ import TrustedBy from "@app/components/home/TrustedBy";
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full pt-[56.25%]">
+    <div className="relative w-full rounded-2xl pt-[56.20%]">
       {" "}
       {/* 16:9 aspect ratio */}
       <iframe
         src="https://fast.wistia.net/embed/iframe/7ynip6mgfx?seo=true&videoFoam=true&autoPlay=true"
         title="Dust product tour"
         allow="autoplay; fullscreen"
-        frameBorder="0"
-        className="absolute inset-0 h-full w-full rounded-lg"
+        className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
       ></iframe>
     </div>
   );

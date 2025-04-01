@@ -106,7 +106,7 @@ export default function DustPlatform() {
         quote="Dust functions as a 'meta-platform.' Its aggregation approach offers flexibility, allowing us to leverage multiple data sources across tools and avoid being locked into specific tools or vertical ecosystems."
         name="Charles Gorintin"
         title="CTO at Alan"
-        logo="/static/landing/color/alan.png"
+        logo="/static/landing/logos/color/alan.png"
       />
       <div
         className={classNames(

@@ -8,7 +8,7 @@ export function FutureSection() {
   return (
     <>
       <Grid>
-        <div className="col-span-12 mb-6">
+        <div className="col-span-12">
           <div>
             <H2>
               Your own AI agents,
@@ -24,9 +24,9 @@ export function FutureSection() {
         </div>
         <div
           className={classNames(
-            "col-span-12 pt-8",
-            "grid grid-cols-1 gap-x-8 gap-y-20",
-            "md:grid-cols-3 md:gap-y-16"
+            "col-span-12",
+            "grid grid-cols-1 gap-x-16 gap-y-28",
+            "md:grid-cols-3 md:gap-y-20"
           )}
         >
           <ImgBlock

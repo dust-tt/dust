@@ -76,7 +76,7 @@ const ListItem = React.forwardRef<
   if (!href) {
     return (
       <li>
-        <Strong className="text-white">{title}</Strong>
+        <Strong className="text-slate-700">{title}</Strong>
       </li>
     );
   }

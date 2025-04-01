@@ -15,7 +15,7 @@ export function BlogSection() {
     <Grid gap="gap-8">
       <div className="col-span-12">
         <Carousel className="w-full">
-          <div className="mb-6 flex items-end justify-between">
+          <div className="mb-2 flex items-end justify-between">
             <div>
               <H2>Customer Stories</H2>
               <P size="lg" className="text-muted-foreground">

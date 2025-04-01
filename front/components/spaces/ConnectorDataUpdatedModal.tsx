@@ -56,13 +56,13 @@ export const ConnectorDataUpdatedModal = ({
             </div>
           </ContentMessage>
           <div className="w-full pt-4">
-            <div className="relative w-full overflow-hidden rounded-lg pb-[56.20%]">
+            <div className="relative w-full overflow-hidden rounded-2xl pb-[56.20%]">
               <iframe
                 src="https://fast.wistia.net/embed/iframe/9vf0b2rv5f?seo=true&videoFoam=false"
                 title="Data Management"
                 allow="autoplay; fullscreen"
                 frameBorder="0"
-                className="absolute left-0 top-0 h-full w-full rounded-lg"
+                className="absolute left-0 top-0 h-full w-full overflow-hidden rounded-2xl"
               ></iframe>
             </div>
           </div>

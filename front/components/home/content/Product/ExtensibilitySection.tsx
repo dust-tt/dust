@@ -9,7 +9,7 @@ export function ExtensibilitySection({ page = "default" }) {
   return (
     <>
       <Grid>
-        <div className="col-span-12 mb-6">
+        <div className="col-span-12">
           <div>
             <H2>Push further with custom code</H2>
             <P size="lg" className="max-w-[700px] text-muted-foreground">
@@ -38,9 +38,9 @@ export function ExtensibilitySection({ page = "default" }) {
         </div>
         <div
           className={classNames(
-            "col-span-12 pt-8",
-            "grid grid-cols-1 gap-x-8 gap-y-20",
-            "sm:grid-cols-3 md:gap-y-16"
+            "col-span-12",
+            "grid grid-cols-1 gap-x-16 gap-y-28",
+            "sm:grid-cols-3 md:gap-y-20"
           )}
         >
           <ImgBlock

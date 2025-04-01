@@ -8,28 +8,24 @@ export interface DemoVideoProps {
   videoUrl: string;
 }
 
-interface DemoVideoSectionProps {
+export interface DemoVideoSectionProps {
   demoVideo: DemoVideoProps;
-  fullWidth?: boolean;
 }
 
-export const DemoVideoSection: FC<DemoVideoSectionProps> = ({
-  demoVideo,
-  fullWidth = false,
-}) => (
+export const DemoVideoSection: FC<DemoVideoSectionProps> = ({ demoVideo }) => (
   <div className="flex flex-col justify-center gap-8 pb-4">
     <div>
       <H2>{demoVideo.sectionTitle}</H2>
     </div>
-    <div className={classNames("mx-auto", fullWidth ? "w-full" : "w-[90%]")}>
-      <div className="relative w-full pt-[56.25%]">
+    <div className={classNames("mx-auto w-full")}>
+      <div className="relative w-full rounded-2xl pt-[56.25%]">
         {/* 16:9 aspect ratio */}
         <iframe
           src={demoVideo.videoUrl}
           title="Dust product tour"
           allow="autoplay; fullscreen"
           frameBorder="0"
-          className="absolute inset-0 h-full w-full"
+          className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
         />
       </div>
     </div>
