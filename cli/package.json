@@ -1,0 +1,54 @@
+{
+  "name": "@dust-tt/dust-cli",
+  "version": "0.1.0",
+  "description": "A command-line interface for interacting with Dust.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "dust": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build:prod": "NODE_ENV=production tsup",
+    "build:dev": "NODE_ENV=development tsup",
+    "build": "NODE_ENV=development tsup",
+    "dev": "NODE_ENV=development tsup --watch",
+    "lint": "eslint . --ext .ts,.tsx",
+    "start": "node dist/index.js"
+  },
+  "keywords": [
+    "dust",
+    "cli",
+    "terminal",
+    "command-line"
+  ],
+  "author": "Dust",
+  "license": "MIT",
+  "dependencies": {
+    "@dust-tt/client": "^1.0.34",
+    "ink": "^5.2.0",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "jwt-decode": "^4.0.0",
+    "keytar": "^7.9.0",
+    "meow": "^13.2.0",
+    "node-fetch": "^3.3.2",
+    "open": "^10.1.0",
+    "react": "^18.3.1"
+  },
+  "engines": {
+    "node": ">=21.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.16",
+    "@types/react": "^19.0.12",
+    "dotenv-flow": "^4.1.0",
+    "eslint": "^9.23.0",
+    "eslint-plugin-react": "^7.37.4",
+    "ts-node": "^10.9.2",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2"
+  }
+}
