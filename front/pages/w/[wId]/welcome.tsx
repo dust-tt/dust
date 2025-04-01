@@ -135,17 +135,19 @@ export default function Welcome({
           title={`Hello ${firstName}!`}
           icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
         />
-        <p className="text-element-800">Let's check a few things.</p>
+        <p className="text-muted-foreground dark:text-muted-foreground-night">
+          Let's check a few things.
+        </p>
         {!isAdmin && (
           <div>
-            <p className="text-element-700">
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
               You will be joining the workspace:{" "}
               <span className="">{owner.name}</span>.
             </p>
           </div>
         )}
         <div>
-          <p className="pb-2 text-element-700">Your name is:</p>
+          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">Your name is:</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               name="firstName"
@@ -183,7 +185,7 @@ export default function Welcome({
           </div>
         )}
         <div>
-          <p className="pb-2 text-element-700">
+          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
             How much do you know about AI agent?
           </p>
           <RadioGroup

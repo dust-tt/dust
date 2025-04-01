@@ -366,12 +366,12 @@ export default function ActionsScreen({
         setEdited={setEdited}
       />
 
-      <div className="flex flex-col gap-8 text-sm text-element-700">
+      <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Tools & Data sources" />
             <Page.P>
-              <span className="text-sm text-element-700">
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure the tools that your agent is able to use, such as{" "}
                 <span className="font-bold">searching</span> in your Data
                 Sources or <span className="font-bold">navigating</span> the
@@ -1003,7 +1003,7 @@ function ActionEditor({
               content={
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col items-end gap-2">
-                    <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+                    <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                       Name of the tool
                     </div>
                   </div>
@@ -1061,17 +1061,17 @@ function ActionEditor({
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
-              <div className="font-semibold text-element-800 dark:text-element-800-night">
+              <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                 What's the data?
               </div>
-              <div className="text-sm text-element-600">
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Provide a brief description (maximum 800 characters) of the data
                 content and context to help the agent determine when to utilize
                 it effectively.
               </div>
             </div>
           ) : (
-            <div className="font-semibold text-element-800 dark:text-element-800-night">
+            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
               What is this tool about?
             </div>
           )}
@@ -1140,10 +1140,10 @@ function AdvancedSettings({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
-              <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+              <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                 Max steps per run
               </div>
-              <div className="w-full grow text-sm text-element-600 dark:text-element-600-night">
+              <div className="w-full grow text-sm text-muted-foreground dark:text-muted-foreground-night">
                 up to {MAX_STEPS_USE_PER_RUN_LIMIT}
               </div>
             </div>
@@ -1168,7 +1168,7 @@ function AdvancedSettings({
             />
             {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
               <div className="flex flex-col gap-2">
-                <div className="font-semibold text-element-800 dark:text-element-800-night">
+                <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                   Reasoning model
                 </div>
                 <DropdownMenu>
@@ -1308,7 +1308,7 @@ function Capabilities({
           <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
             {name}
           </div>
-          <div className="text-sm text-element-700">{description}</div>
+          <div className="text-sm text-muted-foreground">{description}</div>
         </div>
       </div>
     );

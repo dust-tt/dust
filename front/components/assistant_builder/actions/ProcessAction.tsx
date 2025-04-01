@@ -134,17 +134,17 @@ function PropertiesFields({
         <div className="mt-4 grid grid-cols-12 gap-x-2 gap-y-2">
           <React.Fragment>
             <div className="col-span-2">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Property
               </label>
             </div>
             <div className="col-span-7">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Description
               </label>
             </div>
             <div className="col-span-2">
-              <label className="block text-sm uppercase text-element-700">
+              <label className="block text-sm uppercase text-muted-foreground dark:text-muted-foreground-night">
                 Type
               </label>
             </div>
@@ -381,7 +381,7 @@ export function ActionProcess({
         allowedSpaces={allowedSpaces}
         viewType="document"
       />
-      <div className="text-sm text-element-700">
+      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         This tool scans selected data sources within the specified time frame,
         extracting information based on a predefined schema. It can process the
         equivalent to a 1,000-page book (500k tokens). Learn more about this
@@ -414,11 +414,13 @@ export function ActionProcess({
 
       {onDescriptionChange && (
         <div className="flex flex-col gap-4 pt-8">
-          <div className="font-semibold text-element-800">Tool description</div>
-          <div className="text-sm text-element-600">
+          <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Tool description
+          </div>
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Clarify what the tool should do and what data it should extract. For
             example:
-            <span className="block text-element-600">
+            <span className="block text-muted-foreground dark:text-muted-foreground-night">
               "Extract from the #reading slack channel a list of books,
               including their title, author, and the reason why they were
               recommended".

@@ -83,7 +83,7 @@ export default function DataSourceViewDocumentModal({
               )}
               {!isDocumentLoading && isDocumentError && (
                 <div className="flex flex-col gap-2 py-8">
-                  <span className="text-sm text-element-700">
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     This document has no raw content available
                     <ul className="list-disc pl-4">
                       <li>

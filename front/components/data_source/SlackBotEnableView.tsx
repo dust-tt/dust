@@ -82,7 +82,7 @@ export function SlackBotEnableView({
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             You can ask questions to your agents directly from Slack by
             mentioning @Dust.
           </div>

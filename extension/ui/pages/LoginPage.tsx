@@ -107,7 +107,7 @@ export const LoginPage = () => {
             />
           </div>
         </div>
-        <p className="text-center text-element-700 dark:text-element-700-night max-w-[300px] mx-auto">
+        <p className="text-center text-muted-foreground dark:text-muted-foreground-night max-w-[300px] mx-auto">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use

@@ -77,7 +77,7 @@ export function ChangeMemberModal({
               <SheetTitle>{member.fullName || "Unreachable"}</SheetTitle>
             </SheetHeader>
             <SheetContainer>
-              <div className="flex flex-col gap-9 text-sm text-element-700">
+              <div className="flex flex-col gap-9 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 <div className="flex items-center gap-4">
                   <Avatar
                     size="lg"

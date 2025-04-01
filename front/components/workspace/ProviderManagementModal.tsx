@@ -196,7 +196,7 @@ export function ProviderManagementModal({
                     }
                   >
                     <ContextItem.Description>
-                      <span className="text-sm text-element-700">
+                      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                         {modelProviders[provider].join(", ")}
                       </span>
                     </ContextItem.Description>

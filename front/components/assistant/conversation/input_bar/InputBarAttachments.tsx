@@ -183,7 +183,7 @@ export function InputBarAttachments({
                     <Icon visual={attachment.spaceIcon} />
                     <p>{attachment.spaceName}</p>
                   </div>
-                  <div className="text-sm text-element-600">
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {attachment.path}
                   </div>
                 </div>

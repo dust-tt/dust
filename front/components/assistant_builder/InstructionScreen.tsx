@@ -237,7 +237,7 @@ export function InstructionScreen({
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
           <Page.P>
-            <span className="text-sm text-element-700 dark:text-element-700-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Command or guideline you provide to your agent to direct its
               responses.
             </span>
