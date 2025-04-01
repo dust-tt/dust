@@ -73,7 +73,7 @@ export const InputBarContainer = ({
     []
   );
 
-  const isAttachedFromDataSourceActivated: boolean = true;
+  const isAttachedFromDataSourceActivated: boolean = false;
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
@@ -227,6 +227,9 @@ export const InputBarContainer = ({
               onNodeSelect || ((node) => console.log(`Selected ${node.title}`))
             }
             attachedNodes={attachedNodes}
+            isAttachedFromDataSourceActivated={
+              isAttachedFromDataSourceActivated
+            }
           />
           <AssistantPicker
             owner={owner}
