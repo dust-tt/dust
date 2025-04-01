@@ -591,7 +591,7 @@ export class ConfluenceClient {
     const params = new URLSearchParams({
       depth,
       sort,
-      limit: "25",
+      limit: "100",
       status: "current",
     });
 
