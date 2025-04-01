@@ -4,6 +4,7 @@ import {
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -82,6 +83,7 @@ const InputBarContainer = ({
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
@@ -116,6 +118,8 @@ const InputBarContainer = ({
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
   );
+
+  const sendNotification = useSendNotification();
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
@@ -174,6 +178,11 @@ const InputBarContainer = ({
       // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
     } else {
+      sendNotification({
+        title: "No match for URL",
+        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+        type: "info",
+      });
       setNodeOrUrlCandidate(null);
     }
   }, [

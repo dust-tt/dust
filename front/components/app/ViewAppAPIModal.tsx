@@ -90,6 +90,8 @@ export function ViewAppAPIModal({
     }
   };
 
+  const theme = localStorage.getItem("theme");
+
   return (
     <Sheet>
       <SheetTrigger>
@@ -131,7 +133,7 @@ export function ViewAppAPIModal({
                 <span className="italic">{app.name}</span>:
               </Page.P>
               <CodeEditor
-                data-color-mode="light"
+                data-color-mode={theme === "dark" ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}
                 language="shell"

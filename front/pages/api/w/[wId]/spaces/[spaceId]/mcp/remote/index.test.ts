@@ -10,7 +10,7 @@ import handler from "./index";
 
 async function setupTest(
   t: any,
-  role: "builder" | "user" | "admin" = "builder",
+  role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
   const { req, res, workspace } = await createPrivateApiMockRequest({
@@ -18,7 +18,7 @@ async function setupTest(
     method,
   });
 
-  const space = await SpaceFactory.global(workspace, t);
+  const space = await SpaceFactory.system(workspace, t);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -47,13 +47,25 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
     await RemoteMCPServerFactory.create(workspace, space, {
       name: "Test Server 1",
       url: "https://test-server-1.example.com",
-      tools: [{ name: "tool-1", description: "Tool 1 description" }],
+      tools: [
+        {
+          name: "tool-1",
+          description: "Tool 1 description",
+          inputSchema: undefined,
+        },
+      ],
     });
 
     await RemoteMCPServerFactory.create(workspace, space, {
       name: "Test Server 2",
       url: "https://test-server-2.example.com",
-      tools: [{ name: "tool-2", description: "Tool 2 description" }],
+      tools: [
+        {
+          name: "tool-2",
+          description: "Tool 2 description",
+          inputSchema: undefined,
+        },
+      ],
     });
 
     await handler(req, res);
@@ -84,7 +96,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction("should return 400 when URL is missing", async (t) => {
-    const { req, res } = await setupTest(t, "builder", "POST");
+    const { req, res } = await setupTest(t, "admin", "POST");
 
     req.body = {};
 
@@ -104,7 +116,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
     async (t) => {
       const { req, res, workspace, space } = await setupTest(
         t,
-        "builder",
+        "admin",
         "POST"
       );
 
@@ -132,7 +144,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
 describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction("only supports GET and POST methods", async (t) => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
-      const { req, res } = await setupTest(t, "builder", method);
+      const { req, res } = await setupTest(t, "admin", method);
 
       await handler(req, res);
 

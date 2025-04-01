@@ -49,6 +49,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -482,7 +483,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     fetchWebsearchActionConfigurations({ configurationIds, variant }),
     fetchBrowseActionConfigurations({ configurationIds, variant }),
     fetchReasoningActionConfigurations({ configurationIds, variant }),
-    fetchMCPServerActionConfigurations({ configurationIds, variant }),
+    fetchMCPServerActionConfigurations(auth, { configurationIds, variant }),
     user
       ? getFavoriteStates(auth, { configurationIds: configurationSIds })
       : Promise.resolve(new Map<string, boolean>()),
@@ -1000,6 +1001,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: retrievalConfig.id,
           processConfigurationId: null,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1090,6 +1092,7 @@ export async function createAgentActionConfiguration(
           dataSourceConfigurations: action.dataSources,
           retrievalConfigurationId: null,
           processConfigurationId: processConfig.id,
+          mcpConfigurationId: null,
         });
 
         return new Ok({
@@ -1164,23 +1167,43 @@ export async function createAgentActionConfiguration(
       });
     }
     case "mcp_server_configuration": {
-      const mcpConfig = await AgentMCPServerConfiguration.create({
-        sId: generateRandomModelSId(),
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-        serverType: action.serverType,
-        internalMCPServerId: action.internalMCPServerId,
-      });
+      return frontSequelize.transaction(async (t) => {
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          action.mcpServerViewId
+        );
+        if (mcpServerView.isErr()) {
+          return new Err(mcpServerView.error);
+        }
 
-      return new Ok({
-        id: mcpConfig.id,
-        sId: mcpConfig.sId,
-        type: "mcp_server_configuration",
-        name: action.name,
-        description: action.description,
-        serverType: action.serverType,
-        internalMCPServerId: action.internalMCPServerId,
-        remoteMCPServerId: action.remoteMCPServerId,
+        const mcpConfig = await AgentMCPServerConfiguration.create(
+          {
+            sId: generateRandomModelSId(),
+            agentConfigurationId: agentConfiguration.id,
+            workspaceId: owner.id,
+            mcpServerViewId: mcpServerView.value.id,
+          },
+          { transaction: t }
+        );
+
+        if (action.dataSources) {
+          await _createAgentDataSourcesConfigData(auth, t, {
+            dataSourceConfigurations: action.dataSources,
+            retrievalConfigurationId: null,
+            processConfigurationId: null,
+            mcpConfigurationId: mcpConfig.id,
+          });
+        }
+
+        return new Ok({
+          id: mcpConfig.id,
+          sId: mcpConfig.sId,
+          type: "mcp_server_configuration",
+          name: action.name,
+          description: action.description,
+          mcpServerViewId: action.mcpServerViewId,
+          dataSources: action.dataSources,
+        });
       });
     }
     default:
@@ -1202,10 +1225,12 @@ async function _createAgentDataSourcesConfigData(
     dataSourceConfigurations,
     retrievalConfigurationId,
     processConfigurationId,
+    mcpConfigurationId,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
     retrievalConfigurationId: ModelId | null;
     processConfigurationId: ModelId | null;
+    mcpConfigurationId: ModelId | null;
   }
 ): Promise<AgentDataSourceConfiguration[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -1259,6 +1284,7 @@ async function _createAgentDataSourcesConfigData(
             retrievalConfigurationId: retrievalConfigurationId,
             processConfigurationId: processConfigurationId,
             dataSourceViewId: dataSourceView.id,
+            mcpServerConfigurationId: mcpConfigurationId,
             tagsMode,
             tagsIn,
             tagsNotIn,

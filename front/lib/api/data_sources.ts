@@ -24,6 +24,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { enqueueUpsertTable } from "@app/lib/upsert_queue";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type {
@@ -44,10 +45,8 @@ import type {
   WithConnector,
   WorkspaceType,
 } from "@app/types";
-import { validateUrl } from "@app/types";
 import {
   assertNever,
-  concurrentExecutor,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -58,6 +57,7 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
+  validateUrl,
 } from "@app/types";
 
 export async function getDataSources(
@@ -634,7 +634,6 @@ export async function upsertTable({
     });
   }
 
-  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
   if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
@@ -683,7 +682,7 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  const title = titleEmpty ? UNTITLED_TITLE : params.title;
+  const title = params.title.trim() || name.trim() || UNTITLED_TITLE;
 
   if (async) {
     if (fileId) {

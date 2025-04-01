@@ -24,7 +24,7 @@ export async function retrieveAppsCoreIdsBatch({
 }): Promise<{
   dustAPIProjectIds: string[];
   hasMore: boolean;
-  lastId: ModelId;
+  lastId: ModelId | undefined;
 }> {
   const localLogger = logger.child({
     lastId,
@@ -57,7 +57,7 @@ export async function retrieveAppsCoreIdsBatch({
   return {
     dustAPIProjectIds: apps.map((a) => a.dustAPIProjectId),
     hasMore: apps.length === BATCH_SIZE,
-    lastId: apps[apps.length - 1].id,
+    lastId: apps.length > 0 ? apps[apps.length - 1].id : undefined,
   };
 }
 

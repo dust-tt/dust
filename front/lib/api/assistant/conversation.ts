@@ -265,6 +265,18 @@ export async function getUserConversations(
     includedConversationVisibilities.push("test");
   }
 
+  const participationsByConversationId = _.groupBy(
+    participations,
+    "conversationId"
+  );
+  const conversationUpdated = (c: Conversation) => {
+    const participations = participationsByConversationId[c.id];
+    if (!participations) {
+      return undefined;
+    }
+    return _.sortBy(participations, "updatedAt", "desc")[0].updatedAt.getTime();
+  };
+
   const conversations = (
     await Conversation.findAll({
       where: {
@@ -278,7 +290,7 @@ export async function getUserConversations(
       ({
         id: c.id,
         created: c.createdAt.getTime(),
-        updated: c.updatedAt.getTime(),
+        updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
         sId: c.sId,
         owner,
         title: c.title,

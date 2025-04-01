@@ -5,6 +5,7 @@ export {
   AssistantCardMore,
   LargeAssistantCard,
 } from "./AssistantCard";
+export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { BarHeader } from "./BarHeader";
 export { Breadcrumbs } from "./Breadcrumbs";

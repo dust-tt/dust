@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreDocumentAPIRelocationBlob,
@@ -16,7 +17,7 @@ import type {
   CoreAPISearchCursorRequest,
   Ok,
 } from "@app/types";
-import { concurrentExecutor, CoreAPI } from "@app/types";
+import { CoreAPI } from "@app/types";
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,
@@ -72,7 +73,11 @@ export async function getDataSourceDocuments({
     throw new Error("Failed to search nodes with cursor");
   }
 
-  const { nodes, next_page_cursor: nextPageCursor } = searchResults.value;
+  const {
+    nodes,
+    next_page_cursor: nextPageCursor,
+    hit_count: totalNodeCount,
+  } = searchResults.value;
 
   // 2) Get the document blobs.
   const res = await concurrentExecutor(
@@ -92,11 +97,27 @@ export async function getDataSourceDocuments({
   const failed = res.filter((r) => r.isErr());
   if (failed.length > 0) {
     localLogger.error(
-      { failed },
+      { count: failed.length, failed },
       "[Core] Failed to get data source document blobs"
     );
 
-    throw new Error("Failed to get data source document blobs");
+    // We have two cases of failures here:
+    // - The document is not found in SQL. That means we have a discrepancy between ES and SQL. It
+    // means the document was removed and we should just skip it.
+    // - The document is found in SQL but the blob is not found. We temporarily ignore this error.
+
+    // Filter out the errors.
+    const unknownFailures = failed.filter(
+      (r) =>
+        r.isErr() &&
+        r.error.code !== "data_source_document_not_found" &&
+        !r.error.message.includes("Failed to retrieve document blob")
+    );
+
+    // Explicitly fail if there are any other errors.
+    if (unknownFailures.length > 0) {
+      throw new Error("Failed to get data source document blobs");
+    }
   }
 
   const blobs: CoreDocumentAPIRelocationBlob = {
@@ -117,6 +138,7 @@ export async function getDataSourceDocuments({
       dataPath,
       nextPageCursor,
       nodeCount: nodes.length,
+      totalNodeCount,
     },
     "[Core] Retrieved data source documents"
   );

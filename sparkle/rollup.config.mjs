@@ -10,7 +10,7 @@ import external from "rollup-plugin-peer-deps-external";
 import postcss from "rollup-plugin-postcss";
 import tailwindcss from "tailwindcss";
 import { fileURLToPath } from "url";
-import terser from '@rollup/plugin-terser';
+import terser from "@rollup/plugin-terser";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -60,17 +60,17 @@ const config = {
       compress: {
         passes: 2,
         drop_console: true,
-        keep_fnames: false
+        keep_fnames: false,
       },
       format: {
         comments: false,
-        preserve_annotations: false
+        preserve_annotations: false,
       },
       mangle: {
-        properties: false
+        properties: false,
       },
-      sourceMap: false
-    })
+      sourceMap: false,
+    }),
   ],
 };
 

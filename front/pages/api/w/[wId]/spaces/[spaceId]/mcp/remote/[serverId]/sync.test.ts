@@ -10,7 +10,7 @@ import handler from "./sync";
 
 async function setupTest(
   t: any,
-  role: "builder" | "user" | "admin" = "builder",
+  role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
   const { req, res, workspace } = await createPrivateApiMockRequest({
@@ -18,7 +18,7 @@ async function setupTest(
     method,
   });
 
-  const space = await SpaceFactory.global(workspace, t);
+  const space = await SpaceFactory.system(workspace, t);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
@@ -31,7 +31,7 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
-    fetchServerData: vi.fn().mockResolvedValue({
+    fetchRemoteServerMetaDataByURL: vi.fn().mockResolvedValue({
       name: "Updated Server Name",
       description: "Updated server description",
       tools: [
@@ -43,7 +43,7 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
 
 describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => {
   itInTransaction("should return 404 when server doesn't exist", async (t) => {
-    const { req, res } = await setupTest(t, "builder", "POST");
+    const { req, res } = await setupTest(t, "admin", "POST");
     req.query.serverId = "non-existent-server-id";
 
     await handler(req, res);
@@ -57,7 +57,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => 
     });
   });
 
-  itInTransaction("should return 403 when user is not a builder", async (t) => {
+  itInTransaction("should return 403 when user is not an admin", async (t) => {
     const { req, res, workspace, space } = await setupTest(t, "user", "POST");
     const server = await RemoteMCPServerFactory.create(workspace, space);
     req.query.serverId = server.sId;
@@ -77,7 +77,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote/[serverId]/sync", () => 
     for (const method of ["GET", "DELETE", "PUT", "PATCH"] as const) {
       const { req, res, workspace, space } = await setupTest(
         t,
-        "builder",
+        "admin",
         method
       );
       const server = await RemoteMCPServerFactory.create(workspace, space);

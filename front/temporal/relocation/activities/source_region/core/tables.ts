@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import type { RegionType } from "@app/lib/api/regions/config";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
   CoreTableAPIRelocationBlob,
@@ -17,7 +18,7 @@ import type {
   CoreAPITableBlob,
   Ok,
 } from "@app/types";
-import { concurrentExecutor, CoreAPI, removeNulls } from "@app/types";
+import { CoreAPI, removeNulls } from "@app/types";
 
 export async function getDataSourceTables({
   dataSourceCoreIds,

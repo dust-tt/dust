@@ -40,7 +40,13 @@ export const LoginPage = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div
+        className={cn(
+          "flex h-screen items-center justify-center",
+          "bg-background text-foreground",
+          "dark:bg-background-night dark:text-foreground-night"
+        )}
+      >
         <Spinner />
       </div>
     );

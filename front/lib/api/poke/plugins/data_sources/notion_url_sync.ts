@@ -2,9 +2,9 @@ import { isLeft } from "fp-ts/lib/Either";
 
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import {
-  concurrentExecutor,
   ConnectorsAPI,
   Err,
   NotionFindUrlResponseSchema,

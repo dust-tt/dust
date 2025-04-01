@@ -6,15 +6,17 @@ import type {
   Transaction,
 } from "sequelize";
 
+import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { Result } from "@app/types";
-import { Ok } from "@app/types";
+import type { ModelId, Result } from "@app/types";
+import { Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
@@ -35,18 +37,41 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
-    space: SpaceResource
+    space: SpaceResource,
+    transaction?: Transaction
   ) {
     assert(
       space.canWrite(auth),
       "The user is not authorized to create an MCP server"
     );
 
-    const server = await RemoteMCPServer.create({
-      ...blob,
-      vaultId: space.id,
-      sId: generateRandomModelSId(),
-    });
+    assert(
+      space.kind === "system",
+      "Only system spaces can have remote MCP servers"
+    );
+
+    const server = await RemoteMCPServer.create(
+      {
+        ...blob,
+        vaultId: space.id,
+      },
+      { transaction }
+    );
+
+    // Immediately create a view for the server in the system space.
+    await MCPServerView.create(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        serverType: "remote",
+        remoteMCPServerId: server.id,
+        vaultId: space.id,
+        editedAt: new Date(),
+        editedByUserId: auth.user()?.id,
+      },
+      {
+        transaction,
+      }
+    );
 
     return new this(RemoteMCPServer, server.get(), space);
   }
@@ -69,7 +94,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
   ): Promise<RemoteMCPServerResource[]> {
     return this.baseFetch(auth, {
       where: {
-        sId: ids,
+        id: removeNulls(ids.map(getResourceIdFromSId)),
       },
     });
   }
@@ -121,6 +146,27 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     });
   }
 
+  // sId
+  get sId(): string {
+    return RemoteMCPServerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
+  }
+
+  static modelIdToSId({
+    id,
+    workspaceId,
+  }: {
+    id: ModelId;
+    workspaceId: ModelId;
+  }): string {
+    return makeSId("remote_mcp_server", {
+      id,
+      workspaceId,
+    });
+  }
+
   // Deletion.
 
   async hardDelete(
@@ -131,6 +177,19 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       this.canWrite(auth),
       "The user is not authorized to delete this MCP server"
     );
+
+    // Directly delete the DataSourceViewModel here to avoid a circular dependency.
+    await MCPServerView.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        remoteMCPServerId: this.id,
+      },
+      transaction,
+      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+      // bypassing the soft deletion in place.
+      hardDelete: true,
+    });
+
     const deletedCount = await RemoteMCPServer.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -179,7 +238,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       description?: string | null;
       url?: string;
       sharedSecret?: string;
-      cachedTools: { name: string; description: string }[];
+      cachedTools: MCPToolMetadata[];
       lastSyncAt: Date;
     }
   ) {
