@@ -33,7 +33,7 @@ export function MicrosoftOAuthExtraConfig({
         )}
       >
         <Input
-          label="Service Principal ID"
+          label="Client ID"
           disabled={!useServicePrincipal}
           name="client_id"
           value={extraConfig.client_id ?? ""}
