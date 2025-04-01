@@ -16,7 +16,7 @@ import type {
 } from "@app/components/assistant_builder/types";
 import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { serverRequiresInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { useMcpServers } from "@app/lib/swr/mcp_servers";
+import { useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewSelectionConfigurations,
@@ -48,7 +48,7 @@ export function ActionMCP({
     workspaceId: owner.sId,
     disabled: false,
   });
-  const { mcpServers } = useMcpServers({
+  const { mcpServers } = useMCPServerViews({
     owner,
     space: (spaces ?? []).find((space) => space.kind === "system"),
     filter: "all",
