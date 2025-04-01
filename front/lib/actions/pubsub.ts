@@ -38,13 +38,11 @@ export async function* getMCPEvents({
   }
 
   try {
-    const TIMEOUT = 180000; // 3 minutes
-
     while (true) {
       const timeoutPromise = new Promise<"timeout">((resolve) => {
         setTimeout(() => {
           resolve("timeout");
-        }, TIMEOUT);
+        }, 180000); // 3 minutes
       });
       const rawEvent = await Promise.race([
         callbackPromise.promise,
