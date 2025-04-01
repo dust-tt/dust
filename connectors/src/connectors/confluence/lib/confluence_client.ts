@@ -229,7 +229,7 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly proxyAgent: ProxyAgent | null;
+  private readonly proxyAgent: ProxyAgent | undefined;
 
   constructor(
     private readonly authToken: string,
@@ -253,7 +253,7 @@ export class ConfluenceClient {
             "PROXY_HOST"
           )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
         )
-      : null;
+      : undefined;
   }
 
   private async request<T>(
@@ -270,7 +270,7 @@ export class ConfluenceClient {
           },
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { dispatcher: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
@@ -409,7 +409,7 @@ export class ConfluenceClient {
           body: JSON.stringify(data),
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { dispatcher: this.proxyAgent } : {}),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
