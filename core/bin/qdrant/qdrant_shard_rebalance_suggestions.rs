@@ -118,7 +118,6 @@ async fn main() -> Result<()> {
 
     // Step 3: Calculate standard deviation.
     let initial_sd = calculate_standard_deviation(&peers, ideal_points_per_peer);
-    println!("Initial standard deviation: {:.4}", initial_sd);
 
     // Step 4: Calculate suggested moves.
     let (suggested_moves, updated_peers) =
