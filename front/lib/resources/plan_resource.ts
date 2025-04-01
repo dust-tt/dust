@@ -3,7 +3,6 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
@@ -70,13 +69,13 @@ export class PlanResource extends BaseResource<PlanModel> {
 
   static async fetchAll(
     auth: Authenticator,
-    { limit, order, where }: ResourceFindOptions<PlanModel> = {}
+    { limit, order }: ResourceFindOptions<PlanModel> = {}
   ): Promise<PlanResource[]> {
+    if (!auth.isDustSuperUser()) {
+      throw new Error("Cannot fetch all plans : not allowed.");
+    }
+
     const plans = await this.model.findAll({
-      where: {
-        ...where,
-        code: auth.getNonNullablePlan().code,
-      } as WhereOptions<PlanModel>,
       limit,
       order,
     });
