@@ -127,7 +127,6 @@ export type AssistantBuilderReasoningConfiguration = {
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
-
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
