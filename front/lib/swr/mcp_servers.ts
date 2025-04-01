@@ -359,7 +359,30 @@ export function useDeleteMCPServerConnection({
   return { deleteMCPServerConnection };
 }
 
-export function useMcpServers({
+export function useMCPServers({
+  owner,
+  filter,
+}: {
+  owner: LightWorkspaceType;
+  filter: AllowedFilter;
+}) {
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+
+  const url = `/api/w/${owner.sId}/mcp?filter=${filter}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
+
+  const mcpServers = useMemo(() => (data ? data.mcpServers : []), [data]);
+
+  return {
+    mcpServers,
+    isMCPServersLoading: !error && !data,
+    isError: error,
+    mutate,
+  };
+}
+
+export function useMCPServerViews({
   owner,
   space,
   filter,
