@@ -36,17 +36,48 @@ export type PendingValidationRequestType = {
 export const ActionValidationContext =
   createContext<ActionValidationContextType>({} as ActionValidationContextType);
 
+function useValidationQueue() {
+  const [validationQueue, setValidationQueue] = useState<PendingValidationRequestType[]>([]);
+  const [currentValidation, setCurrentValidation] = useState<PendingValidationRequestType | null>(null);
+
+  const addToQueue = (props: PendingValidationRequestType) => {
+    setValidationQueue((prevQueue) => [...prevQueue, props]);
+  };
+
+  const removeFromQueue = () => {
+    if (validationQueue.length > 0) {
+      const nextValidation = validationQueue[0];
+      const newQueue = validationQueue.slice(1);
+      setValidationQueue(newQueue);
+      setCurrentValidation(nextValidation);
+    }
+  };
+
+  const clearCurrentValidation = () => {
+    setCurrentValidation(null);
+  };
+
+  return {
+    validationQueue,
+    currentValidation,
+    addToQueue,
+    removeFromQueue,
+    clearCurrentValidation,
+  };
+}
+
 export function ActionValidationProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [validationQueue, setValidationQueue] = useState<
-    PendingValidationRequestType[]
-  >([]);
-
-  const [currentValidation, setCurrentValidation] =
-    useState<PendingValidationRequestType | null>(null);
+  const {
+    validationQueue,
+    currentValidation,
+    addToQueue,
+    removeFromQueue,
+    clearCurrentValidation,
+  } = useValidationQueue();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -71,11 +102,7 @@ export function ActionValidationProvider({
       !currentValidation &&
       !isDialogOpen
     ) {
-      const nextValidation = validationQueue[0];
-      const newQueue = validationQueue.slice(1);
-
-      setValidationQueue(newQueue);
-      setCurrentValidation(nextValidation);
+      removeFromQueue();
       setErrorMessage(null);
     }
   }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
@@ -115,7 +142,7 @@ export function ActionValidationProvider({
     sendCurrentValidation(approved);
     setIsProcessing(false);
     setIsDialogOpen(false);
-    setCurrentValidation(null);
+    clearCurrentValidation();
   };
 
   const showValidationDialog = (props: {
@@ -126,7 +153,7 @@ export function ActionValidationProvider({
     inputs: Record<string, unknown>;
     hash: string;
   }) => {
-    setValidationQueue((prevQueue) => [...prevQueue, props]);
+    addToQueue(props);
     setErrorMessage(null);
   };
 
