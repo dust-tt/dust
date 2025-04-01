@@ -301,10 +301,14 @@ export function AgentMessage({
       }
       case "tool_approve_execution":
         setStreamedAgentMessage((m) => {
-          return { ...m, status: "failed", error: { 
-            message: "Tools are not available in the extension", 
-            code: "tool_not_available" 
-          }};
+          return {
+            ...m,
+            status: "failed",
+            error: {
+              message: "Tools are not available in the extension",
+              code: "tool_not_available",
+            },
+          };
         });
         setLastAgentStateClassification("done");
         break;
