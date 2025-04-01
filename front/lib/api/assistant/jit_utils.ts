@@ -75,7 +75,9 @@ export function listFiles(
         // Former ones cannot be used in JIT. But for content node fragments, with a node id rather
         // than a file id, we don't care about the snippet.
         const canDoJIT = m.snippet !== null || isContentNodeAttachment(m);
-        const isQueryable = canDoJIT && isQueryableContentType(m.contentType);
+        const isQueryable =
+          canDoJIT &&
+          (isQueryableContentType(m.contentType) || m.nodeType === "table");
         const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
         const isIncludable =
           isConversationIncludableFileContentType(m.contentType) &&
