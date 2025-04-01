@@ -116,17 +116,14 @@ async fn main() -> Result<()> {
     // Step 2: Analyze current distribution.
     let (_, _, ideal_points_per_peer) = analyze_cluster_distribution(&peers);
 
-    // Step 3: Calculate standard deviation.
-    let initial_sd = calculate_standard_deviation(&peers, ideal_points_per_peer);
-
-    // Step 4: Calculate suggested moves.
+    // Step 3: Calculate suggested moves.
     let (suggested_moves, updated_peers) =
         calculate_suggested_moves(peers, &shards, ideal_points_per_peer);
 
-    // Step 5: Display move suggestions.
+    // Step 4: Display move suggestions.
     display_move_suggestions(&suggested_moves);
 
-    // Step 6: Display expected distribution after moves.
+    // Step 5: Display expected distribution after moves.
     display_expected_distribution(&updated_peers, ideal_points_per_peer);
 
     Ok(())
