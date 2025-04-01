@@ -27,7 +27,7 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Ok } from "@app/types";
+import { assertNever, Ok } from "@app/types";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -52,14 +52,14 @@ export type MCPToolConfigurationType = Omit<
   inputSchema: InputSchemaType;
 };
 
-type MCPApproveEvent = {
+type MCPApproveExecutionEvent = {
   type: "tool_approve_execution";
   created: number;
   configurationId: string;
   messageId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
-  hashedInputs: string;
+  hash: string;
 };
 
 type MCPParamsEvent = {
@@ -89,7 +89,7 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveEvent;
+export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -200,7 +200,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       step,
     }: BaseActionRunParams
   ): AsyncGenerator<
-    MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveEvent,
+    MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveExecutionEvent,
     void
   > {
     const owner = auth.workspace();
@@ -254,7 +254,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    const hashedInputs = hashMCPInputParams(rawInputs);
+    const hash = hashMCPInputParams(rawInputs);
 
     yield {
       type: "tool_approve_execution",
@@ -263,7 +263,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       action: mcpAction,
       inputs: rawInputs,
-      hashedInputs,
+      hash,
     };
 
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
@@ -285,37 +285,25 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       );
 
       // Start listening for action events
-      try {
         for await (const event of actionEventGenerator) {
           const { data } = event;
+
           if (
             data.type === "action_approved" &&
             data.actionId === mcpAction.id &&
-            data.paramsHash === hashedInputs
+            data.paramsHash === hash
           ) {
             status = "approved";
             break;
           } else if (
             data.type === "action_rejected" &&
             data.actionId === mcpAction.id &&
-            data.paramsHash === hashedInputs
+            data.paramsHash === hash
           ) {
             status = "rejected";
             break;
           }
         }
-      } catch (error) {
-        logger.error(
-          {
-            workspaceId: conversation.owner.sId,
-            conversationId: conversation.sId,
-            messageId: agentMessage.sId,
-            actionId: mcpAction.id,
-            error,
-          },
-          "Error listening for action validation events"
-        );
-      }
 
       // The action timed-out, status was not updated
       if (status === "none") {

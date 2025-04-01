@@ -10,6 +10,7 @@ import {
 import { createContext, useEffect, useState } from "react";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
+import sanitizeHtml from "sanitize-html";
 
 type ActionValidationContextType = {
   showValidationDialog: (props: {
@@ -18,7 +19,7 @@ type ActionValidationContextType = {
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hashedInputs: string;
+    hash: string;
   }) => void;
 };
 
@@ -29,7 +30,7 @@ export type PendingValidationRequestType = {
   conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
-  hashedInputs: string;
+  hash: string;
 };
 
 export const ActionValidationContext =
@@ -59,7 +60,7 @@ export function ActionValidationProvider({
 
   useEffect(() => {
     if (!isDialogOpen && currentValidation && !isProcessing) {
-      void handle(false);
+      void handleSubmit(false);
     }
   }, [isDialogOpen]);
 
@@ -79,7 +80,7 @@ export function ActionValidationProvider({
     }
   }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
 
-  const handle = async (approved: boolean) => {
+  const sendCurrentValidation = async (approved: boolean) => {
     if (!currentValidation) {
       return;
     }
@@ -97,7 +98,7 @@ export function ActionValidationProvider({
         body: JSON.stringify({
           actionId: currentValidation.action.id,
           approved,
-          paramsHash: currentValidation.hashedInputs,
+          paramsHash: currentValidation.hash,
         }),
       }
     );
@@ -108,7 +109,10 @@ export function ActionValidationProvider({
       );
       return;
     }
+  }
 
+  const handleSubmit = async (approved: boolean) => {
+    sendCurrentValidation(approved);
     setIsProcessing(false);
     setIsDialogOpen(false);
     setCurrentValidation(null);
@@ -120,7 +124,7 @@ export function ActionValidationProvider({
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hashedInputs: string;
+    hash: string;
   }) => {
     setValidationQueue((prevQueue) => [...prevQueue, props]);
     setErrorMessage(null);
@@ -150,21 +154,21 @@ export function ActionValidationProvider({
               </div>
               <div>
                 <span className="font-medium">Inputs:</span>
-                <pre className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-sm dark:bg-slate-950">
-                  {JSON.stringify(currentValidation?.inputs, null, 2)}
+                <pre className="mt-2 whitespace-pre-wrap rounded p-2 text-sm bg-primary-50 dark:bg-primary-50-night">
+                  {sanitizeHtml(JSON.stringify(currentValidation?.inputs, null, 2))}
                 </pre>
               </div>
               <div>Do you want to allow this action to proceed?</div>
 
               {validationQueue.length > 0 && (
-                <div className="mt-2 text-sm font-medium text-blue-500">
+                <div className="mt-2 text-sm font-medium text-info-900">
                   {validationQueue.length} more action
                   {validationQueue.length > 1 ? "s" : ""} in queue
                 </div>
               )}
 
               {errorMessage && (
-                <div className="mt-2 text-sm font-medium text-red-500">
+                <div className="mt-2 text-sm font-medium text-warning-800">
                   {errorMessage}
                 </div>
               )}
@@ -172,28 +176,28 @@ export function ActionValidationProvider({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Reject",
+              label: "Decline",
               variant: "outline",
-              onClick: () => handle(false),
+              onClick: () => handleSubmit(false),
               disabled: isProcessing,
-              children: isProcessing ? (
+              children: isProcessing && (
                 <div className="flex items-center">
-                  <span className="mr-2">Rejecting</span>
+                  <span className="mr-2">Declining</span>
                   <Spinner size="xs" variant="dark" />
                 </div>
-              ) : undefined,
+              ),
             }}
             rightButtonProps={{
               label: "Approve",
               variant: "primary",
-              onClick: () => handle(true),
+              onClick: () => handleSubmit(true),
               disabled: isProcessing,
-              children: isProcessing ? (
+              children: isProcessing && (
                 <div className="flex items-center">
                   <span className="mr-2">Approving</span>
                   <Spinner size="xs" variant="light" />
                 </div>
-              ) : undefined,
+              ),
             }}
           />
         </DialogContent>

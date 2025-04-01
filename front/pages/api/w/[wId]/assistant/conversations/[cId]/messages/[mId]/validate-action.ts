@@ -110,7 +110,6 @@ async function handler(
       `Action ${approved ? "approved" : "rejected"} by user`
     );
 
-    console.log("Action validation event published to channel:", actionChannel);
     res.status(200).json({ success: true });
   } catch (error) {
     logger.error(

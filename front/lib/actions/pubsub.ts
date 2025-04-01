@@ -20,7 +20,6 @@ export async function* getMCPEvents({
   },
   void
 > {
-  console.log("Getting events for action", actionId);
   const pubsubChannel = getMCPChannelid(actionId);
 
   const callbackPromise = createCallbackPromise<EventPayload | "close">();

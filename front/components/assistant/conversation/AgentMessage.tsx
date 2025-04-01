@@ -256,7 +256,7 @@ export function AgentMessage({
           conversationId: conversationId,
           action: event.action,
           inputs: event.inputs,
-          hashedInputs: event.hashedInputs,
+          hash: event.hash,
         });
         break;
 

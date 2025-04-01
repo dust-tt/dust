@@ -275,7 +275,7 @@ export function hashMCPInputParams(params: Record<string, any>): string {
         acc[key] = params[key];
         return acc;
       },
-      {} as Record<string, any>
+      {} as typeof params
     );
 
   return createHash("sha256")
