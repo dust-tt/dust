@@ -33,6 +33,18 @@ export function MicrosoftOAuthExtraConfig({
         )}
       >
         <Input
+          label="Tenant ID"
+          disabled={!useServicePrincipal}
+          name="tenant_id"
+          value={extraConfig.tenant_id ?? ""}
+          onChange={(e) => {
+            setExtraConfig((prev: Record<string, string>) => ({
+              ...prev,
+              tenant_id: e.target.value,
+            }));
+          }}
+        />
+        <Input
           label="Client ID"
           disabled={!useServicePrincipal}
           name="client_id"

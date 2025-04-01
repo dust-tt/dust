@@ -45,7 +45,7 @@ impl Provider for MicrosoftConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let body = match _related_credentials {
+        let (url, body) = match _related_credentials {
             Some(credential) => {
                 // Credentials is a Microsoft service principal, use client_credentials grant type
                 let content = credential.unseal_encrypted_content()?;
@@ -68,26 +68,41 @@ impl Provider for MicrosoftConnectionProvider {
                     .and_then(|v| v.as_str())
                     .ok_or_else(|| anyhow!("Missing client_secret in Microsoft credential"))?;
 
-                json!({
-                    "grant_type": "client_credentials",
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "scope": "https://graph.microsoft.com/.default",
-                })
+                (
+                    format!(
+                        "https://login.microsoftonline.com/{}/oauth2/v2.0/token",
+                        _connection
+                            .metadata()
+                            .get("tenant_id")
+                            .and_then(|v| v.as_str())
+                            .ok_or_else(|| anyhow!(
+                                "Missing tenant_id in Microsoft connection metadata"
+                            ))?
+                    ),
+                    json!({
+                        "grant_type": "client_credentials",
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "scope": "https://graph.microsoft.com/.default",
+                    }),
+                )
             }
-            None => json!({
-                "grant_type": "authorization_code",
-                "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
-                "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
-                "code": code,
-                "redirect_uri": redirect_uri,
-                "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
-            }),
+            None => (
+                "https://login.microsoftonline.com/common/oauth2/v2.0/token".to_string(),
+                json!({
+                    "grant_type": "authorization_code",
+                    "client_id": *OAUTH_MICROSOFT_CLIENT_ID,
+                    "client_secret": *OAUTH_MICROSOFT_CLIENT_SECRET,
+                    "code": code,
+                    "redirect_uri": redirect_uri,
+                    "scope": "User.Read Sites.Read.All Directory.Read.All Files.Read.All Team.ReadBasic.All ChannelSettings.Read.All ChannelMessage.Read.All",
+                }),
+            ),
         };
 
         let req = self
             .reqwest_client()
-            .post("https://login.microsoftonline.com/common/oauth2/v2.0/token")
+            .post(url)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&body);
 
@@ -103,9 +118,7 @@ impl Provider for MicrosoftConnectionProvider {
             .as_u64()
             .ok_or_else(|| anyhow!("Missing `expires_in` in response from Microsoft"))?;
 
-        let refresh_token = raw_json["refresh_token"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing `refresh_token` in response from Microsoft"))?;
+        let refresh_token = raw_json["refresh_token"].as_str();
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
@@ -114,7 +127,7 @@ impl Provider for MicrosoftConnectionProvider {
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: Some(refresh_token.to_string()),
+            refresh_token: refresh_token.map(|s| s.to_string()),
             raw_json,
         })
     }

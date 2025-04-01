@@ -316,7 +316,11 @@ const PROVIDER_STRATEGIES: Record<
     isExtraConfigValid: (extraConfig) => {
       return (
         Object.keys(extraConfig).length === 0 ||
-        !!(extraConfig.client_id && extraConfig.client_secret)
+        !!(
+          extraConfig.client_id &&
+          extraConfig.client_secret &&
+          extraConfig.tenant_id
+        )
       );
     },
     getRelatedCredential: (extraConfig, workspaceId, userId) => {
