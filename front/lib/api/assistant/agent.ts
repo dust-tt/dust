@@ -1388,6 +1388,10 @@ async function* runAction(
           agentMessage.actions.push(event.action);
           break;
 
+        case "tool_approve_execution":
+          yield event;
+          break;
+
         default:
           assertNever(event);
       }

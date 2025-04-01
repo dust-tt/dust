@@ -1942,6 +1942,7 @@ async function* streamRunAgentEvents(
 
       // All other events that won't impact the database and are related to actions or tokens
       // generation.
+      case "tool_approve_execution":
       case "browse_params":
       case "conversation_include_file_params":
       case "dust_app_run_block":
