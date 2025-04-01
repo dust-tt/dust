@@ -33,9 +33,9 @@ import {
   useConversations,
   useDeleteConversation,
 } from "@app/lib/swr/conversations";
-import { classNames, removeDiacritics, subFilter } from "@app/lib/utils";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isBuilder, isOnlyUser } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type AssistantSidebarMenuProps = {
   owner: WorkspaceType;
@@ -191,14 +191,7 @@ export function AssistantSidebarMenu({ owner }: AssistantSidebarMenuProps) {
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <div
-        className={classNames(
-          "flex grow flex-col",
-          isOnlyUser(owner)
-            ? "border-t border-structure-200 dark:border-structure-200-night"
-            : ""
-        )}
-      >
+      <div className="flex grow flex-col">
         <div className="flex h-0 min-h-full w-full overflow-y-auto">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
