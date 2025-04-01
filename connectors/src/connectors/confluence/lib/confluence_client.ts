@@ -1,6 +1,7 @@
 import { isLeft } from "fp-ts/Either";
-import { HttpsProxyAgent } from "https-proxy-agent";
 import * as t from "io-ts";
+import type { Response as undiciResponse } from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -214,7 +215,7 @@ function extractCursorFromLinks(links: { next?: string }): string | null {
   return url.searchParams.get("cursor");
 }
 
-function getRetryAfterDuration(response: Response): number {
+function getRetryAfterDuration(response: Response | undiciResponse): number {
   const retryAfter = response.headers.get("retry-after"); // https://developer.atlassian.com/cloud/confluence/rate-limiting/
   if (retryAfter) {
     const delay = parseInt(retryAfter, 10);
@@ -229,7 +230,7 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
-  private readonly proxyAgent: HttpsProxyAgent | null;
+  private readonly proxyAgent: ProxyAgent | null;
 
   constructor(
     private readonly authToken: string,
@@ -244,7 +245,7 @@ export class ConfluenceClient {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
     this.proxyAgent = useProxy
-      ? new HttpsProxyAgent(
+      ? new ProxyAgent(
           `http://${EnvironmentConfig.getEnvVariable(
             "PROXY_USER_NAME"
           )}:${EnvironmentConfig.getEnvVariable(
@@ -262,16 +263,24 @@ export class ConfluenceClient {
     retryCount: number = 0
   ): Promise<T> {
     const response = await (async () => {
+      const url = `${this.apiUrl}${endpoint}`;
+      const options = {
+        headers: {
+          Authorization: `Bearer ${this.authToken}`,
+          "Content-Type": "application/json",
+        },
+        // Timeout after 30 seconds.
+        signal: AbortSignal.timeout(30000),
+      };
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-            "Content-Type": "application/json",
-          },
-          // Timeout after 30 seconds.
-          signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
-        });
+        if (this.proxyAgent) {
+          return await undiciFetch(url, {
+            ...options,
+            dispatcher: this.proxyAgent,
+          });
+        } else {
+          return await fetch(url, options);
+        }
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
@@ -399,18 +408,26 @@ export class ConfluenceClient {
     codec: t.Type<T>
   ): Promise<T | undefined> {
     const response = await (async () => {
+      const url = `${this.apiUrl}${endpoint}`;
+      const options = {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.authToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        // Timeout after 30 seconds.
+        signal: AbortSignal.timeout(30000),
+      };
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.authToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-          // Timeout after 30 seconds.
-          signal: AbortSignal.timeout(30000),
-          ...(this.proxyAgent ? { agent: this.proxyAgent } : {}),
-        });
+        if (this.proxyAgent) {
+          return await undiciFetch(url, {
+            ...options,
+            dispatcher: this.proxyAgent,
+          });
+        } else {
+          return await fetch(url, options);
+        }
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
           "provider:confluence",
