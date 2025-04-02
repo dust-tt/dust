@@ -70,16 +70,17 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
           </div>
         </div>
 
-        <CarouselContent>
+        <CarouselContent className="-ml-8">
           {stories.map((story, index) => (
             <CarouselItem
               key={index}
-              className="basis-full md:basis-1/2 lg:basis-1/3"
+              className="basis-full pl-8 md:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={story.title}
                 content={story.content}
                 href={story.href}
+                className="h-full"
               >
                 <img src={story.src} alt={story.title} />
               </BlogBlock>

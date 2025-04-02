@@ -259,7 +259,7 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
   <div className="col-span-12 mt-16 flex flex-col items-center justify-center lg:col-span-10 lg:col-start-2">
     <div
       className={cn(
-        "flex max-w-[500px] flex-col items-center p-4 text-center italic text-foreground",
+        "flex max-w-[500px] flex-col items-center p-4 text-center font-sans italic text-foreground",
         "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-2xl"
       )}
     >

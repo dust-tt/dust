@@ -16,7 +16,7 @@ interface CardCarouselProps {
 function CardCarousel({ title, children }: CardCarouselProps) {
   return (
     <div className="w-full">
-      <Carousel className="w-full">
+      <Carousel className="w-full" opts={{ align: "start" }}>
         <div className="mb-6 flex items-end justify-between">
           <div className="w-full max-w-5xl">{title}</div>
           <div className="flex gap-4">
@@ -25,9 +25,12 @@ function CardCarousel({ title, children }: CardCarouselProps) {
           </div>
         </div>
 
-        <CarouselContent className="-ml-2 -mr-2">
+        <CarouselContent>
           {React.Children.map(children, (child, index) => (
-            <CarouselItem key={index} className="sm:basis-1/2 lg:basis-1/3">
+            <CarouselItem
+              key={index}
+              className="pr-6 sm:basis-1/2 lg:basis-1/3"
+            >
               {child}
             </CarouselItem>
           ))}

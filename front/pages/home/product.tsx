@@ -44,6 +44,7 @@ export function Landing() {
         title="Head of GTM Engineering at Clay"
         logo="/static/landing/logos/color/clay.png"
       />
+      <FunctionsSection />
       <div
         className={classNames(
           "col-span-12 flex flex-col items-center",
@@ -66,7 +67,6 @@ export function Landing() {
           </Link>
         </div>
       </div>
-      <FunctionsSection />
     </>
   );
 }
