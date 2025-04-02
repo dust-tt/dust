@@ -7,6 +7,7 @@ import App from "./ui/App.js";
 
 const cli = meow({
   importMeta: import.meta,
+  autoHelp: false,
   flags: {
     version: {
       type: "boolean",
