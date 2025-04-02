@@ -116,7 +116,7 @@ export function CommandPalette() {
                   }
 
                   const tooltipContent = command?.disabled
-                    ? command?.disabledTooltip
+                    ? command?.disabledTooltip ?? command?.tooltip
                     : command?.tooltip;
 
                   return (
