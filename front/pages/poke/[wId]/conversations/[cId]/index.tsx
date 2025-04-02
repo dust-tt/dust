@@ -3,10 +3,10 @@ import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
 import type { Action } from "@app/lib/registry";
 import { getDustProdAction } from "@app/lib/registry";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { usePokeConversation } from "@app/poke/swr";
 import type {
@@ -38,7 +38,10 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
     };
   }
 
-  const cRes = await getConversationWithoutContent(auth, cId);
+  const cRes = await ConversationResource.fetchConversationWithoutContent(
+    auth,
+    cId
+  );
   if (cRes.isErr()) {
     return {
       notFound: true,

@@ -7,10 +7,6 @@ import type { AgentActionSpecificEvent } from "@app/lib/actions/types/agent";
 import { runAgent } from "@app/lib/api/assistant/agent";
 import { signalAgentUsage } from "@app/lib/api/assistant/agent_usage";
 import { getLightAgentConfiguration } from "@app/lib/api/assistant/configuration";
-import {
-  canAccessConversation,
-  getConversationRequestedGroupIdsFromModel,
-} from "@app/lib/api/assistant/conversation/auth";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { renderConversationForModel } from "@app/lib/api/assistant/generation";
 import {
@@ -148,10 +144,11 @@ export async function createConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content: [],
-    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
-      owner,
-      conversation
-    ),
+    requestedGroupIds:
+      ConversationResource.getConversationRequestedGroupIdsFromModel(
+        owner,
+        conversation
+      ),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
   };
@@ -212,7 +209,7 @@ export async function deleteConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -288,7 +285,11 @@ export async function getUserConversations(
         owner,
         title: c.title,
         visibility: c.visibility,
-        requestedGroupIds: getConversationRequestedGroupIdsFromModel(owner, c),
+        requestedGroupIds:
+          ConversationResource.getConversationRequestedGroupIdsFromModel(
+            owner,
+            c
+          ),
         // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
         groupIds: [],
       }) satisfies ConversationWithoutContentType
@@ -368,7 +369,7 @@ export async function getConversation(
     return new Err(new ConversationError("conversation_not_found"));
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 
@@ -438,10 +439,11 @@ export async function getConversation(
     title: conversation.title,
     visibility: conversation.visibility,
     content,
-    requestedGroupIds: getConversationRequestedGroupIdsFromModel(
-      owner,
-      conversation
-    ),
+    requestedGroupIds:
+      ConversationResource.getConversationRequestedGroupIdsFromModel(
+        owner,
+        conversation
+      ),
     // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
     groupIds: [],
   });
@@ -701,7 +703,7 @@ export async function* postUserMessage(
 
   const featureFlags = await getFeatureFlags(owner);
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -1130,7 +1132,7 @@ export async function* editUserMessage(
     return;
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     yield {
       type: "user_message_error",
       created: Date.now(),
@@ -1751,7 +1753,7 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
-  if (!canAccessConversation(auth, conversation)) {
+  if (!ConversationResource.canAccessConversation(auth, conversation)) {
     return new Err(new ConversationError("conversation_access_restricted"));
   }
 

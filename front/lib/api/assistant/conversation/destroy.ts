@@ -1,6 +1,5 @@
 import { chunk } from "lodash";
 
-import { getConversationWithoutContent } from "@app/lib/api/assistant/conversation/without_content";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentBrowseAction } from "@app/lib/models/assistant/actions/browse";
@@ -164,13 +163,14 @@ export async function destroyConversation(
   }
 ) {
   const workspace = auth.getNonNullableWorkspace();
-  const conversationRes = await getConversationWithoutContent(
-    auth,
-    conversationId,
-    // We skip access checks as some conversations associated with deleted spaces may have become
-    // inaccessible, yet we want to be able to delete them here.
-    { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
-  );
+  const conversationRes =
+    await ConversationResource.fetchConversationWithoutContent(
+      auth,
+      conversationId,
+      // We skip access checks as some conversations associated with deleted spaces may have become
+      // inaccessible, yet we want to be able to delete them here.
+      { includeDeleted: true, dangerouslySkipPermissionFiltering: true }
+    );
   if (conversationRes.isErr()) {
     throw conversationRes.error;
   }

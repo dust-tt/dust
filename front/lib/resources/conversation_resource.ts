@@ -7,7 +7,7 @@ import type {
 } from "sequelize";
 import { literal, Op, Sequelize } from "sequelize";
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   Conversation,
   Mention,
@@ -16,8 +16,17 @@ import {
 } from "@app/lib/models/assistant/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type { LightAgentConfigurationType, Result } from "@app/types";
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
+  LightAgentConfigurationType,
+  Result,
+  WorkspaceType,
+} from "@app/types";
+import { ConversationError } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+import { GroupResource } from "./group_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -166,6 +175,89 @@ export class ConversationResource extends BaseResource<Conversation> {
       (mention) =>
         new ConversationResource(ConversationResource.model, mention.get())
     );
+  }
+
+  static getConversationRequestedGroupIdsFromModel(
+    owner: WorkspaceType,
+    conversation: ConversationResource
+  ): string[][] {
+    return conversation.requestedGroupIds.map((groups) =>
+      groups.map((g) =>
+        GroupResource.modelIdToSId({
+          id: g,
+          workspaceId: owner.id,
+        })
+      )
+    );
+  }
+
+  static canAccessConversation(
+    auth: Authenticator,
+    conversation:
+      | ConversationWithoutContentType
+      | ConversationType
+      | ConversationResource
+  ): boolean {
+    const owner = auth.getNonNullableWorkspace();
+
+    const requestedGroupIds =
+      conversation instanceof ConversationResource
+        ? ConversationResource.getConversationRequestedGroupIdsFromModel(
+            owner,
+            conversation
+          )
+        : conversation.requestedGroupIds;
+
+    return auth.canRead(
+      Authenticator.createResourcePermissionsFromGroupIds(requestedGroupIds)
+    );
+  }
+
+  static async fetchConversationWithoutContent(
+    auth: Authenticator,
+    sId: string,
+    options?: {
+      includeDeleted?: boolean;
+      dangerouslySkipPermissionFiltering?: boolean;
+    }
+  ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const conversation = await ConversationResource.fetchOne(auth, {
+      where: {
+        sId,
+        ...(options?.includeDeleted
+          ? {}
+          : { visibility: { [Op.ne]: "deleted" } }),
+      },
+    });
+
+    if (!conversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    if (
+      !options?.dangerouslySkipPermissionFiltering &&
+      !ConversationResource.canAccessConversation(auth, conversation)
+    ) {
+      return new Err(new ConversationError("conversation_access_restricted"));
+    }
+
+    return new Ok({
+      id: conversation.id,
+      created: conversation.createdAt.getTime(),
+      sId: conversation.sId,
+      owner,
+      title: conversation.title,
+      visibility: conversation.visibility,
+      requestedGroupIds:
+        ConversationResource.getConversationRequestedGroupIdsFromModel(
+          owner,
+          conversation
+        ),
+      // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+      groupIds: [],
+    });
   }
 
   async updateAttributes(
