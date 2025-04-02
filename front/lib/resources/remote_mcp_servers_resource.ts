@@ -10,7 +10,7 @@ import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
+import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -23,15 +23,14 @@ import { Ok, removeNulls } from "@app/types";
 export interface RemoteMCPServerResource
   extends ReadonlyAttributesType<RemoteMCPServer> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> {
+export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   static model: ModelStatic<RemoteMCPServer> = RemoteMCPServer;
 
   constructor(
     model: ModelStatic<RemoteMCPServer>,
-    blob: Attributes<RemoteMCPServer>,
-    public readonly space: SpaceResource
+    blob: Attributes<RemoteMCPServer>
   ) {
-    super(RemoteMCPServer, blob, space);
+    super(RemoteMCPServer, blob);
   }
 
   static async makeNew(
@@ -46,13 +45,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       "The user is not authorized to create an MCP server"
     );
 
-    const server = await RemoteMCPServer.create(
-      {
-        ...blob,
-        vaultId: systemSpace.id,
-      },
-      { transaction }
-    );
+    const server = await RemoteMCPServer.create(blob, { transaction });
 
     // Immediately create a view for the server in the system space.
     await MCPServerView.create(
@@ -60,7 +53,6 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "remote",
         remoteMCPServerId: server.id,
-        vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
       },
@@ -69,7 +61,7 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       }
     );
 
-    return new this(RemoteMCPServer, server.get(), systemSpace);
+    return new this(RemoteMCPServer, server.get());
   }
 
   // Fetching.
@@ -78,10 +70,14 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
     auth: Authenticator,
     options?: ResourceFindOptions<RemoteMCPServer>
   ) {
-    const servers = await this.baseFetchWithAuthorization(auth, {
+    const servers = await RemoteMCPServer.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       ...options,
     });
-    return servers.filter((server) => auth.isAdmin() || server.canRead(auth));
+
+    return servers.map((server) => new this(RemoteMCPServer, server.get()));
   }
 
   static async fetchByIds(
@@ -119,26 +115,22 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
 
   static async listByWorkspace(
     auth: Authenticator,
-    options?: { includeDeleted?: boolean }
   ) {
     return this.baseFetch(auth, {
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
-      ...options,
     });
   }
 
   static async findByUrl(
     auth: Authenticator,
     url: string,
-    { includeDeleted }: { includeDeleted?: boolean } = {}
   ) {
     const servers = await this.baseFetch(auth, {
       where: {
         url,
       },
-      includeDeleted,
     });
 
     return servers.length > 0 ? servers[0] : null;
@@ -167,22 +159,15 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
 
   // Deletion.
 
-  async hardDelete(
-    auth: Authenticator,
-    transaction?: Transaction
-  ): Promise<Result<number, Error>> {
-    assert(
-      this.canWrite(auth),
-      "The user is not authorized to delete this MCP server"
-    );
-
+  async delete(
+    auth: Authenticator
+  ): Promise<Result<undefined | number, Error>> {
     // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await MCPServerView.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,
       },
-      transaction,
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
       // bypassing the soft deletion in place.
       hardDelete: true,
@@ -193,28 +178,6 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
         workspaceId: auth.getNonNullableWorkspace().id,
         id: this.id,
       },
-      transaction,
-      hardDelete: true,
-    });
-
-    return new Ok(deletedCount);
-  }
-
-  async softDelete(
-    auth: Authenticator,
-    transaction?: Transaction
-  ): Promise<Result<number, Error>> {
-    assert(
-      this.canWrite(auth),
-      "The user is not authorized to delete this MCP server"
-    );
-    const deletedCount = await RemoteMCPServer.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
-      },
-      transaction,
-      hardDelete: false,
     });
 
     return new Ok(deletedCount);
@@ -240,10 +203,6 @@ export class RemoteMCPServerResource extends ResourceWithSpace<RemoteMCPServer> 
       lastSyncAt: Date;
     }
   ) {
-    assert(
-      this.canWrite(auth),
-      "The user is not authorized to update this MCP server"
-    );
     await this.update({
       name,
       description,
