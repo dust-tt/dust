@@ -67,7 +67,7 @@ const Status: FC = () => {
         <Text color="red">⚠️ Error: {error}</Text>
         <Box marginTop={1}>
           <Text>Try running </Text>
-          <Text color="green">dust auth --force</Text>
+          <Text color="green">dust login --force</Text>
           <Text> to force a new authentication.</Text>
         </Box>
       </Box>
@@ -80,7 +80,7 @@ const Status: FC = () => {
         <Text color="yellow">Not authenticated</Text>
         <Box marginTop={1}>
           <Text>Run </Text>
-          <Text color="green">dust auth</Text>
+          <Text color="green">dust login</Text>
           <Text> to authenticate.</Text>
         </Box>
       </Box>
@@ -93,7 +93,7 @@ const Status: FC = () => {
         <Text color="yellow">No workspace selected</Text>
         <Box marginTop={1}>
           <Text>Run </Text>
-          <Text color="green">dust auth</Text>
+          <Text color="green">dust login</Text>
           <Text> to select a workspace.</Text>
         </Box>
       </Box>

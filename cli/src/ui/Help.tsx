@@ -11,7 +11,7 @@ const Help = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>auth</Text> Authenticate with Dust
+          <Text bold>login</Text> Authenticate with Dust
         </Text>
       </Box>
       <Box marginLeft={2}>
@@ -34,7 +34,7 @@ const Help = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
-          <Text bold>--force, -f</Text> Force new authentication (with auth
+          <Text bold>--force, -f</Text> Force new authentication (with login
           command)
         </Text>
       </Box>

@@ -37,7 +37,7 @@ const App: FC<AppProps> = ({ cli }) => {
   const command = input[0] || "help";
 
   switch (command) {
-    case "auth":
+    case "login":
       return <Auth force={flags.force} />;
     case "status":
       return <Status />;
