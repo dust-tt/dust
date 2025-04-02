@@ -96,10 +96,7 @@ async function handler(
       break;
     }
     case "POST": {
-      console.log("here")
       const { url } = req.body;
-
-      console.log("url", url);
 
       if (!url) {
         return apiError(req, res, {

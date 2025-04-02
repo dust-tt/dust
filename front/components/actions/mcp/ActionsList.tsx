@@ -267,9 +267,7 @@ export const AdminActionsList = ({
           enabledMCPServers={serverViews.map(
             (serverView) => serverView.server.id
           )}
-          createRemoteMCP={() => {
-            openModal();
-          }}
+          createRemoteMCP={openModal}
         />
       </div>
 

@@ -111,8 +111,6 @@ export function useMCPServers({
 
   const mcpServers = useMemo(() => (data ? data.servers : []), [data]);
 
-  console.log(mcpServers);
-
   return {
     mcpServers,
     isMCPServersLoading: !error && !data && !disabled,
