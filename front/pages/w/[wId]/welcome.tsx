@@ -147,7 +147,9 @@ export default function Welcome({
           </div>
         )}
         <div>
-          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">Your name is:</p>
+          <p className="pb-2 text-muted-foreground dark:text-muted-foreground-night">
+            Your name is:
+          </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input
               name="firstName"
