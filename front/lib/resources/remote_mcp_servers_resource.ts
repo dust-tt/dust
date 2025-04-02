@@ -53,6 +53,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
         workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "remote",
         remoteMCPServerId: server.id,
+        vaultId: systemSpace.id,
         editedAt: new Date(),
         editedByUserId: auth.user()?.id,
       },
