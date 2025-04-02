@@ -18,6 +18,7 @@ interface AppProps {
     };
     help: {
       type: "boolean";
+      shortFlag: "h";
     };
   }>;
 }

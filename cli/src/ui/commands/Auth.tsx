@@ -248,9 +248,6 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   if (showWorkspaceSelector) {
     return (
       <Box flexDirection="column">
-        <Box marginBottom={1}>
-          <Text color="green">✓ Successfully authenticated!</Text>
-        </Box>
         <WorkspaceSelector onComplete={handleWorkspaceSelectionComplete} />
       </Box>
     );
