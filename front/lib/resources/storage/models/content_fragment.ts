@@ -1,4 +1,4 @@
-import type { CreationOptional, ForeignKey } from "sequelize";
+import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -37,6 +37,8 @@ export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentMod
   declare nodeId: string | null;
   declare nodeDataSourceViewId: ForeignKey<DataSourceViewModel["id"]> | null;
   declare nodeType: ContentNodeType | null;
+
+  declare nodeDataSourceView: NonAttribute<DataSourceViewModel> | null;
 
   declare version: ContentFragmentVersion;
 }

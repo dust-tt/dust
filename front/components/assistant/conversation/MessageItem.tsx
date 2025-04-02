@@ -1,12 +1,16 @@
 import {
-  Avatar,
   Citation,
+  CitationDescription,
   CitationIcons,
   CitationImage,
   CitationTitle,
-  DocumentTextIcon,
+  DocumentIcon,
+  FolderIcon,
   Icon,
+  ImageIcon,
   SlackLogo,
+  TableIcon,
+  Tooltip,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import React from "react";
@@ -17,7 +21,9 @@ import type { FeedbackSelectorProps } from "@app/components/assistant/conversati
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type {
+  ConnectorProvider,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
@@ -112,46 +118,101 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              const citationType = [
-                "dust-application/slack",
-                "text/vnd.dust.attachment.slack.thread",
-              ].includes(contentFragment.contentType)
-                ? "slack"
-                : "document";
+              let visual;
+              if (contentFragment.contentNodeData) {
+                const { provider, nodeType } = contentFragment.contentNodeData;
+                const logo = getConnectorProviderLogoWithFallback({
+                  provider: provider as ConnectorProvider,
+                });
 
-              const icon =
-                citationType === "slack" ? SlackLogo : DocumentTextIcon;
+                // For websites or folders, show just the provider logo
+                const isWebsiteOrFolder = ["webcrawler", "folder"].includes(
+                  provider
+                );
+                if (isWebsiteOrFolder) {
+                  visual = <Icon visual={logo} size="sm" />;
+                } else {
+                  // For other types, show both node type icon and provider logo
+                  const nodeIcon =
+                    nodeType === "table"
+                      ? TableIcon
+                      : nodeType === "folder"
+                        ? FolderIcon
+                        : DocumentIcon;
+
+                  visual = (
+                    <>
+                      <Icon visual={nodeIcon} className="h-5 w-5" />
+                      <Icon visual={logo} size="sm" />
+                    </>
+                  );
+                }
+              } else {
+                // For file attachments
+                const isImageType =
+                  contentFragment.contentType.startsWith("image/");
+                visual = (
+                  <Icon visual={isImageType ? ImageIcon : DocumentIcon} />
+                );
+
+                if (
+                  [
+                    "dust-application/slack",
+                    "text/vnd.dust.attachment.slack.thread",
+                  ].includes(contentFragment.contentType)
+                ) {
+                  visual = <Icon visual={SlackLogo} />;
+                }
+              }
+
+              const tooltipContent = contentFragment.contentNodeData ? (
+                <div className="flex flex-col gap-1">
+                  <div className="font-bold">{contentFragment.title}</div>
+                  <div className="flex gap-1 pt-1 text-sm">
+                    <Icon visual={FolderIcon} />
+                    <p>{contentFragment.contentNodeData.spaceName}</p>
+                  </div>
+                  <div className="text-sm text-element-600">
+                    {contentFragment.sourceUrl || ""}
+                  </div>
+                </div>
+              ) : (
+                contentFragment.title
+              );
 
               return (
-                <Citation
+                <Tooltip
                   key={contentFragment.sId}
-                  href={contentFragment.sourceUrl ?? undefined}
-                  tooltip={contentFragment.title}
-                >
-                  <div className="flex gap-2">
-                    {contentFragment.context.profilePictureUrl && (
-                      <CitationIcons>
-                        <Avatar
-                          visual={contentFragment.context.profilePictureUrl}
-                          size="xs"
-                        />
-                      </CitationIcons>
-                    )}
-                    {contentFragment.sourceUrl ? (
-                      <>
-                        <CitationImage imgSrc={contentFragment.sourceUrl} />
-                        <CitationIcons>
-                          <Icon visual={icon} />
-                        </CitationIcons>
-                      </>
-                    ) : (
-                      <CitationIcons>
-                        <Icon visual={icon} />
-                      </CitationIcons>
-                    )}
-                  </div>
-                  <CitationTitle>{contentFragment.title}</CitationTitle>
-                </Citation>
+                  tooltipTriggerAsChild
+                  trigger={
+                    <Citation
+                      className="w-40"
+                      href={contentFragment.sourceUrl ?? undefined}
+                    >
+                      {contentFragment.sourceUrl &&
+                        !contentFragment.contentNodeData && (
+                          <CitationImage imgSrc={contentFragment.sourceUrl} />
+                        )}
+
+                      <CitationIcons>{visual}</CitationIcons>
+
+                      <CitationTitle className="truncate text-ellipsis">
+                        {contentFragment.title}
+                      </CitationTitle>
+
+                      {contentFragment.contentNodeData && (
+                        <CitationDescription className="truncate text-ellipsis">
+                          <div className="flex items-center gap-1">
+                            <span>
+                              {contentFragment.contentNodeData.spaceName}
+                            </span>
+                          </div>
+                        </CitationDescription>
+                      )}
+                    </Citation>
+                  }
+                  label={tooltipContent}
+                />
               );
             })
           : undefined;
