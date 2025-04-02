@@ -50,14 +50,13 @@ export const AdminActionsList = ({
   setShowDetails,
   openRemoteMCPCreationModal,
 }: AdminActionsListProps) => {
-  const { addToSpace } = useAddMCPServerToSpace(owner);
-  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
-  const { deleteServer } = useDeleteMCPServer(owner);
-
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
     disabled: false,
   });
+  const { addToSpace } = useAddMCPServerToSpace(owner);
+  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
+  const { deleteServer } = useDeleteMCPServer(owner);
 
   const systemSpace = useMemo(() => {
     return spaces.find((space) => space.kind === "system");
