@@ -14,6 +14,7 @@ import type {
 } from "@app/lib/actions/conversation/list_files";
 import {
   isConversationContentNodeType,
+  isConversationDataSourceNode,
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
@@ -199,19 +200,23 @@ async function getJITActions(
       actions.push(action);
     }
 
-    for (const [i, folder] of files
+    for (const [i, f] of files
       .filter((f) => isConversationContentNodeType(f) && isSearchableFolder(f))
       .entries()) {
+      // This is valid because of the filter above.
+      const folder = f as ConversationContentNodeType;
       const dataSources: DataSourceConfiguration[] = [
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
-          dataSourceViewId: (folder as ConversationContentNodeType)
-            .nodeDataSourceViewId,
+          dataSourceViewId: folder.nodeDataSourceViewId,
           filter: {
-            parents: {
-              in: [(folder as ConversationContentNodeType).contentNodeId],
-              not: [],
-            },
+            // Do not filter on parent if the folder is a data source node.
+            parents: isConversationDataSourceNode(folder)
+              ? null
+              : {
+                  in: [folder.contentNodeId],
+                  not: [],
+                },
             tags: null,
           },
         },
