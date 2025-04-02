@@ -28,9 +28,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types";
+import type { OAuthProvider, OAuthUseCase, SpaceType } from "@app/types";
+import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -43,10 +42,13 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
+  spaces?: SpaceType[];
   icon: AllowedIconType;
   authorization?: AuthorizationInfo;
   tools: MCPToolType[];
 };
+
+export type MCPServerDefinitionType = Omit<MCPServerType, "tools" | "id">;
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -161,7 +163,7 @@ export const connectToMCPServer = async (
 
 function extractMetadataFromServerVersion(
   r: Implementation | undefined
-): Omit<MCPServerType, "tools" | "id"> {
+): MCPServerDefinitionType {
   if (r) {
     return {
       name: r.name ?? DEFAULT_MCP_ACTION_NAME,
@@ -263,6 +265,12 @@ export async function getMCPServerMetadataLocally(
       return {
         id: mcpServerId,
         ...extractMetadataFromServerVersion(r),
+        // TODO(mcp): add spaces
+        // spaces: withSpaces
+        //   ? (
+        //       await MCPServerViewResource.listByMCPServer(auth, mcpServerId)
+        //     ).map((v) => v.space.toJSON())
+        //   : undefined,
         tools: extractMetadataFromTools(tools),
       };
 
@@ -286,16 +294,14 @@ export async function getMCPServerMetadataLocally(
           `Remote MCP server id do not match ${id} !== ${server.id}`
         );
       }
-
       return {
-        id: server.sId,
-        name: server.name,
-        // TODO(mcp): add version on remoteMCPServer
-        version: DEFAULT_MCP_ACTION_VERSION,
-        description: server.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
-        // TODO(mcp): add icon on remoteMCPServer
-        icon: DEFAULT_MCP_ACTION_ICON,
-        tools: server.cachedTools,
+        ...server.toJSON(),
+        // TODO(mcp): add spaces
+        // spaces: withSpaces
+        //   ? (
+        //       await MCPServerViewResource.listByMCPServer(auth, mcpServerId)
+        //     ).map((v) => v.space.toJSON())
+        //   : undefined,
       };
 
     default:

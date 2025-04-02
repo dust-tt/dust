@@ -6,6 +6,7 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -121,7 +122,14 @@ async function handler(
       const { serverType } = getServerTypeAndIdFromSId(serverId);
 
       if (serverType == "internal") {
-        // TODO(mcp) delete the internal MCP server
+        // TODO(mcp) move to "fake resource"
+        const views = await MCPServerViewResource.listByMCPServer(
+          auth,
+          serverId
+        );
+        for (const view of views) {
+          await view.hardDelete(auth);
+        }
       } else {
         const server = await RemoteMCPServerResource.fetchById(auth, serverId);
 

@@ -7,10 +7,13 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   fetchRemoteServerMetaDataByURL,
   getAllMCPServersMetadataLocally,
+  getMCPServerMetadataLocally,
 } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -37,6 +40,17 @@ export type CreateMCPServerResponseBody = {
   success: boolean;
   server: MCPServerType;
 };
+
+const PostQueryParamsSchema = t.union([
+  t.type({
+    serverType: t.literal("remote"),
+    url: t.string,
+  }),
+  t.type({
+    serverType: t.literal("internal"),
+    internalMCPServerId: t.string,
+  }),
+]);
 
 async function handler(
   req: NextApiRequest,
@@ -94,50 +108,81 @@ async function handler(
       break;
     }
     case "POST": {
-      const { url } = req.body;
+      const r = PostQueryParamsSchema.decode(req.body);
 
-      if (!url) {
+      if (isLeft(r)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "URL is required",
+            message: "Invalid request body",
           },
         });
       }
 
-      const existingServer = await RemoteMCPServerResource.findByUrl(auth, url);
+      const body = r.right;
+      if (body.serverType === "remote") {
+        const { url } = body;
 
-      if (existingServer) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "A server with this URL already exists",
+        if (!url) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "URL is required",
+            },
+          });
+        }
+
+        const existingServer = await RemoteMCPServerResource.findByUrl(
+          auth,
+          url
+        );
+
+        if (existingServer) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "A server with this URL already exists",
+            },
+          });
+        }
+
+        const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
+        const sharedSecret = randomBytes(32).toString("hex");
+
+        const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          name: metadata.name,
+          url: url,
+          description: metadata.description,
+          cachedTools: metadata.tools,
+          lastSyncAt: new Date(),
+          sharedSecret,
+        });
+
+        return res.status(201).json({
+          success: true,
+          server: {
+            ...metadata,
+            id: newRemoteMCPServer.sId,
           },
         });
+      } else {
+        const { internalMCPServerId } = body;
+        await MCPServerViewResource.create(auth, {
+          mcpServerId: internalMCPServerId,
+          space: await SpaceResource.fetchWorkspaceSystemSpace(auth),
+        });
+        const server = await getMCPServerMetadataLocally(auth, {
+          mcpServerId: internalMCPServerId,
+        });
+        return res.status(201).json({
+          success: true,
+          server,
+        });
       }
-
-      const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
-      const sharedSecret = randomBytes(32).toString("hex");
-
-      const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        name: metadata.name,
-        url: url,
-        description: metadata.description,
-        cachedTools: metadata.tools,
-        lastSyncAt: new Date(),
-        sharedSecret,
-      });
-
-      return res.status(201).json({
-        success: true,
-        server: {
-          ...metadata,
-          id: newRemoteMCPServer.sId,
-        },
-      });
     }
 
     default: {

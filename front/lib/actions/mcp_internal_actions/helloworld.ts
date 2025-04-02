@@ -1,12 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { getAccessTokenForInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/authentication";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { OAuthProvider } from "@app/types";
 
 const provider: OAuthProvider = "google_drive" as const;
-const serverInfo: Omit<MCPServerType, "tools" | "id"> = {
+const serverInfo: MCPServerDefinitionType = {
   name: "hello-world-server",
   version: "1.0.0",
   description: "You are a helpful server that can say hello to the user.",

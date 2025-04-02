@@ -12,6 +12,7 @@ import React from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
@@ -21,14 +22,17 @@ import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resou
 import {
   useAddMCPServerToSpace,
   useMCPServerViews,
+  useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_server_views";
-import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
+import {
+  useDeleteMCPServer,
+  useMCPServerConnections,
+} from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type RowData = {
   serverView: MCPServerViewType;
-  spaces: SpaceType[];
   onClick: () => void;
   actions: MenuItem[];
 };
@@ -47,7 +51,8 @@ export const AdminActionsList = ({
     disabled: false,
   });
   const { addToSpace } = useAddMCPServerToSpace(owner);
-
+  const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
+  const { deleteServer } = useDeleteMCPServer(owner);
   const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
   const availableSpaces = (spaces ?? []).filter((s) => s.kind !== "system");
   const { connections, isConnectionsLoading } = useMCPServerConnections({
@@ -99,7 +104,7 @@ export const AdminActionsList = ({
 
     columns.push({
       id: "spaces",
-      accessorKey: "spaces",
+      accessorKey: "serverView.server.spaces",
       meta: {
         className: "w-48",
       },
@@ -204,45 +209,62 @@ export const AdminActionsList = ({
 
     return columns;
   };
-  const rows: RowData[] = serverViews.map((serverView) => ({
-    serverView,
-    spaces: [],
-    onClick: () => {
-      setShowDetails(serverView.server);
-    },
-    moreActions: [
-      {
-        label: "Delete",
-        onClick: () => {},
+
+  const rows: RowData[] = serverViews.map((serverView) => {
+    const { serverType } = getServerTypeAndIdFromSId(serverView.server.id);
+    const viewSpaces = serverView.server.spaces ?? [];
+    const spaces = Object.groupBy(availableSpaces, ({ sId }) =>
+      viewSpaces.find((s) => s.sId === sId) ? "included" : "available"
+    );
+    return {
+      serverView,
+      onClick: () => {
+        setShowDetails(serverView.server);
       },
-    ],
-    actions: [
-      {
-        disabled: availableSpaces.length === 0,
-        kind: "submenu",
-        label: "Add to space",
-        items: availableSpaces.map((s) => ({
-          id: s.sId,
-          name: s.name,
-        })),
-        onSelect: (spaceId) => {
-          const space = availableSpaces.find((s) => s.sId === spaceId);
-          if (!space) {
-            throw new Error("Space not found");
-          }
-          void addToSpace(serverView.server, space);
+      actions: [
+        {
+          disabled: !spaces.available || spaces.available.length === 0,
+          kind: "submenu",
+          label: "Add to space",
+          items: (spaces.available || []).map((s) => ({
+            id: s.sId,
+            name: s.name,
+          })),
+          onSelect: (spaceId) => {
+            const space = availableSpaces.find((s) => s.sId === spaceId);
+            if (!space) {
+              throw new Error("Space not found");
+            }
+            void addToSpace(serverView.server, space);
+          },
         },
-      },
-      {
-        disabled: availableSpaces.length === 0,
-        kind: "item",
-        label: "Disable",
-        onSelect: () => {
-          console.log("disable");
+        {
+          disabled: !spaces.included || spaces.included.length === 0,
+          kind: "submenu",
+          label: "Remove from space",
+          items: (spaces.included || []).map((s) => ({
+            id: s.sId,
+            name: s.name,
+          })),
+          onSelect: (spaceId) => {
+            const space = availableSpaces.find((s) => s.sId === spaceId);
+            if (!space) {
+              throw new Error("Space not found");
+            }
+            void removeFromSpace(serverView, space);
+          },
         },
-      },
-    ],
-  }));
+        {
+          disabled: availableSpaces.length === 0,
+          kind: "item",
+          label: serverType === "internal" ? "Disable" : "Delete",
+          onSelect: () => {
+            void deleteServer(serverView.server.id);
+          },
+        },
+      ],
+    };
+  });
   const columns = getTableColumns();
 
   return (

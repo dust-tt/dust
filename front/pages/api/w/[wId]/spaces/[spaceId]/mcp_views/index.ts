@@ -9,7 +9,7 @@ import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resou
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { SpaceKind, WithAPIErrorResponse } from "@app/types";
 
 export type GetMCPServerViewsResponseBody = {
   success: boolean;
@@ -66,6 +66,18 @@ async function handler(
       }
 
       const { mcpServerId } = r.right;
+
+      const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
+      if (!allowedSpaceKinds.includes(space.kind)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Can only create MCP Server Views from regular or global spaces.",
+          },
+        });
+      }
 
       const mcpServerView = await MCPServerViewResource.create(auth, {
         mcpServerId,

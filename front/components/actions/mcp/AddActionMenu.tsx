@@ -15,15 +15,12 @@ import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import { useAddMCPServerToSpace } from "@app/lib/swr/mcp_server_views";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
+import {
+  useCreateInternalMCPServer,
+  useMCPServers,
+} from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { ConnectorProvider, WorkspaceType } from "@app/types";
-
-export type DataSourceIntegration = {
-  connectorProvider: ConnectorProvider;
-  setupWithSuffix: string | null;
-};
+import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
@@ -39,7 +36,7 @@ export const AddActionMenu = ({
     filter: "internal",
   });
   const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
-  const { addToSpace } = useAddMCPServerToSpace(owner);
+  const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   const systemSpace = useMemo(() => {
     return spaces.find((space) => space.kind === "system");
@@ -69,7 +66,7 @@ export const AddActionMenu = ({
                 if (!systemSpace) {
                   throw new Error("System space not found");
                 }
-                await addToSpace(mcpServer, systemSpace);
+                await createInternalMCPServer(mcpServer.id);
               }}
             />
           ))}

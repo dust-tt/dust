@@ -1,8 +1,10 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DeleteMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type {
@@ -10,6 +12,10 @@ import type {
   PostMCPServerViewResponseBody,
 } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+
+function getMCPServerViewsKey(owner: LightWorkspaceType, space?: SpaceType) {
+  return space ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views` : null;
+}
 
 export function useMCPServerViews({
   owner,
@@ -21,9 +27,7 @@ export function useMCPServerViews({
   disabled?: boolean;
 }) {
   const configFetcher: Fetcher<GetMCPServerViewsResponseBody> = fetcher;
-  const url = space
-    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views`
-    : null;
+  const url = getMCPServerViewsKey(owner, space);
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
     disabled,
   });
@@ -37,8 +41,8 @@ export function useMCPServerViews({
 }
 
 export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
-  // TODO(mcp) mutate the mcp server views
   const sendNotification = useSendNotification();
+  const { mutate: globalMutate } = useSWRConfig();
 
   const createView = useCallback(
     async (
@@ -66,6 +70,8 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been added to the space successfully.",
         });
+
+        await globalMutate(getMCPServerViewsKey(owner, space));
       } else {
         sendNotification({
           type: "error",
@@ -76,22 +82,22 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, globalMutate, owner]
   );
 
   return { addToSpace: createView };
 }
 
-export function useRemoveMCPServerFromSpace(owner: LightWorkspaceType) {
-  // TODO(mcp) mutate the mcp server views
+export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
+  const { mutate: globalMutate } = useSWRConfig();
 
   const deleteView = async (
-    server: MCPServerType,
+    serverView: MCPServerViewType,
     space: SpaceType
   ): Promise<DeleteMCPServerResponseBody> => {
     const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${server.id}`,
+      `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.id}`,
       {
         method: "DELETE",
       }
@@ -100,16 +106,20 @@ export function useRemoveMCPServerFromSpace(owner: LightWorkspaceType) {
     if (response.ok) {
       sendNotification({
         type: "success",
-        title: `Actions removed from space ${space.name}`,
+        title:
+          space.kind === "system"
+            ? "Action removed from workspace"
+            : "Action removed from space",
         description:
           "Your actions have been removed from the space successfully.",
       });
+
+      await globalMutate(getMCPServerViewsKey(owner, space));
     } else {
       sendNotification({
         type: "error",
-        title: `Failed to remove actions from space ${space.name}`,
-        description:
-          "Could not remove actions from the space. Please try again.",
+        title: "Failed to remove action",
+        description: `Could not remove actions from the space ${space.name}. Please try again.`,
       });
     }
 

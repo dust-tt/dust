@@ -55,14 +55,14 @@ async function handler(
         });
       }
 
-      const allowedSpaceKinds: SpaceKind[] = ["system", "global"];
-      if (allowedSpaceKinds.includes(space.kind)) {
+      const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
+      if (!allowedSpaceKinds.includes(space.kind)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
             message:
-              "Can only delete MCP Server Views from system or global spaces.",
+              "Can only delete MCP Server Views from regular or global spaces.",
           },
         });
       }

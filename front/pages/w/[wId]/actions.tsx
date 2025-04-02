@@ -44,8 +44,7 @@ export default function AdminActions({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
-  const serverType =
-    showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
+  const serverType = showDetails?.serverType;
 
   return (
     <AppLayout
