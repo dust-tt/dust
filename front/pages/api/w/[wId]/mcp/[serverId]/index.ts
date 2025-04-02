@@ -135,7 +135,7 @@ async function handler(
           });
         }
 
-        await server.hardDelete(auth);
+        await server.delete(auth);
       }
 
       return res.status(200).json({
