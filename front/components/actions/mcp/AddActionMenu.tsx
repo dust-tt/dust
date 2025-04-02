@@ -9,18 +9,15 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import {
   useAvailableMCPServers,
   useCreateInternalMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
@@ -32,22 +29,11 @@ export const AddActionMenu = ({
   owner,
   enabledMCPServers,
 }: AddActionMenuProps) => {
-  const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
-
-  const systemSpace = useMemo(() => {
-    return spaces.find((space) => space.kind === "system");
-  }, [spaces]);
-
   const { availableMCPServers } = useAvailableMCPServers({
     owner,
   });
 
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: systemSpace,
-    disabled: true,
-  });
 
   return (
     <DropdownMenu modal={false}>
@@ -71,7 +57,6 @@ export const AddActionMenu = ({
               icon={MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]}
               onClick={async () => {
                 await createInternalMCPServer(mcpServer.name);
-                await mutateMCPServerViews();
               }}
             />
           ))}
