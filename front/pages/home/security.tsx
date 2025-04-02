@@ -119,7 +119,7 @@ export default function Security() {
                 target="_blank"
               />
             </div>
-            <div className="flex gap-8"></div>
+            <div className="flex gap-4"></div>
           </div>
         </Grid>
         <Grid className="md:gap-y-4">

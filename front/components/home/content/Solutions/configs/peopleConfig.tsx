@@ -147,15 +147,15 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "We asked ourselves for years: what if your team had 20% more time? Dust has made it possible, empowering our employees to work smarter, innovate, and push boundaries.",
-  name: "Matthieu Birach",
+  name: "Matthieu Birach ",
   title: "Chief People Officer at Doctolib",
-  logo: "/static/landing/logos/color/doctolib.png",
+  logo: "/static/landing/color/doctolib.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl: "https://fast.wistia.net/embed/iframe/eu73efeak9",
-  showCaptions: true,
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/eu73efeak9?seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [

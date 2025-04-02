@@ -11,7 +11,6 @@ import {
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 
-import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 
 export function QuickStartGuide() {
@@ -25,13 +24,12 @@ export function QuickStartGuide() {
         </SheetHeader>
         <SheetContainer>
           <div className="grid grid-cols-6 gap-x-6 gap-y-8 text-sm text-foreground dark:text-foreground-night">
-            <div className="col-span-6">
-              <DemoVideoSection
-                demoVideo={{
-                  videoUrl: "https://fast.wistia.net/embed/iframe/v90n8beuh9",
-                  autoPlay: false,
-                  showCaptions: false,
-                }}
+            <div className="relative col-span-6 aspect-video">
+              <iframe
+                src="https://fast.wistia.net/embed/iframe/v90n8beuh9?seo=true&videoFoam=false"
+                title="Dust product tour"
+                allow="autoplay; fullscreen"
+                className="absolute left-0 top-0 h-full w-full"
               />
             </div>
             <div className="col-span-3 flex flex-col gap-2">

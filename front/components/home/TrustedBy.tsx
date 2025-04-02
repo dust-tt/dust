@@ -3,19 +3,6 @@ import Image from "next/image";
 import { H3 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
 
-const LOGOS = [
-  { name: "alan", src: "/static/landing/logos/gray/alan.png" },
-  { name: "watershed", src: "/static/landing/logos/gray/watershed.png" },
-  { name: "qonto", src: "/static/landing/logos/gray/qonto.png" },
-  { name: "pennylane", src: "/static/landing/logos/gray/pennylane.png" },
-  { name: "payfit", src: "/static/landing/logos/gray/payfit.png" },
-  { name: "malt", src: "/static/landing/logos/gray/malt.png" },
-  { name: "doctolib", src: "/static/landing/logos/gray/doctolib.png" },
-  { name: "blueground", src: "/static/landing/logos/gray/blueground.png" },
-  { name: "clay", src: "/static/landing/logos/gray/clay.png" },
-  { name: "photoroom", src: "/static/landing/logos/gray/photoroom.png" },
-];
-
 export default function TrustedBy() {
   return (
     <div
@@ -25,24 +12,73 @@ export default function TrustedBy() {
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H3 className="w-full text-center">Trusted by 1,000+ organizations</H3>
+      <H3 className="w-full text-center text-white">
+        Trusted by 1,000+ organizations
+      </H3>
 
-      <div className="mx-auto mt-8 w-full max-w-[1300px] px-2 sm:px-4">
-        <div className="grid grid-cols-2 place-items-center gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {LOGOS.map((logo) => (
-            <div
-              key={logo.name}
-              className="flex h-16 w-full max-w-[180px] items-center justify-center px-2 sm:h-20 sm:max-w-[200px] sm:px-3 md:h-24 md:max-w-[240px] md:px-4"
-            >
-              <Image
-                alt={logo.name}
-                src={logo.src}
-                width={160}
-                height={80}
-                className="w-full"
-              />
-            </div>
-          ))}
+      <div className="mx-auto mt-8 w-full max-w-screen-2xl px-8">
+        <div className="grid grid-cols-2 place-items-center gap-8 sm:grid-cols-5 sm:gap-2">
+          {" "}
+          <Image
+            alt="alan"
+            src="/static/landing/logos/gray/alan.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="watershed"
+            src="/static/landing/logos/gray/watershed.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="qonto"
+            src="/static/landing/logos/gray/qonto.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="pennylane"
+            src="/static/landing/logos/gray/pennylane.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="payfit"
+            src="/static/landing/logos/gray/payfit.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="malt"
+            src="/static/landing/logos/gray/malt.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="doctolib"
+            src="/static/landing/logos/gray/doctolib.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="blueground"
+            src="/static/landing/logos/gray/blueground.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="clay"
+            src="/static/landing/logos/gray/clay.png"
+            width={200}
+            height={80}
+          />
+          <Image
+            alt="photoroom"
+            src="/static/landing/logos/gray/photoroom.png"
+            width={200}
+            height={80}
+          />
         </div>
       </div>
     </div>

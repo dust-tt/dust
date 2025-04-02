@@ -232,24 +232,24 @@ const PEOPLE: Record<
 const Person = ({ handle }: { handle: string }) => {
   const person = PEOPLE[handle];
   return (
-    <div className="flex flex-col gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50 sm:flex-row">
+    <div className="flex flex-row items-start gap-2">
       <img
         src={person.image}
         alt={person.name}
-        className="h-12 w-12 rounded-xl sm:mt-1 sm:h-10 sm:w-10"
+        className="mt-1 h-8 w-8 rounded-xl"
       />
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-0">
         <div className="copy-base text-foreground">
           <strong>{person.name}</strong>
         </div>
         <div className="copy-sm text-muted-foreground">{person.title}</div>
-        <div className="flex flex-row gap-2 pt-1">
+        <div className="flex flex-row items-start gap-1 pt-1">
           {person.linkedIn && (
             <a href={person.linkedIn} target="_blank">
               <Icon
                 size="xs"
                 visual={LinkedinIcon}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground"
               />
             </a>
           )}
@@ -258,7 +258,7 @@ const Person = ({ handle }: { handle: string }) => {
               <Icon
                 size="xs"
                 visual={GithubIcon}
-                className="text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground"
               />
             </a>
           )}
@@ -347,14 +347,14 @@ export default function About() {
         <Grid>
           <div
             className={classNames(
-              "flex flex-col gap-8 xl:flex-row xl:items-start",
-              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+              "flex flex-col gap-16 xl:flex-row xl:items-start",
+              "col-span-10 col-start-2"
             )}
           >
-            <div className="flex w-full flex-row xl:max-w-lg">
+            <div className="flex max-w-lg flex-row">
               <H2>We're crafting the AI operating system for enterprises</H2>
             </div>
-            <div className="flex w-full flex-col gap-2 xl:max-w-xl">
+            <div className="flex max-w-xl flex-col gap-2">
               <P>
                 We're building Dust to serve as the operating system for
                 AI-driven companies.
@@ -382,11 +382,11 @@ export default function About() {
           <div
             className={classNames(
               "flex flex-col items-start gap-6",
-              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+              "col-span-10 col-start-2"
             )}
           >
             <H2>Our operating principles</H2>
-            <div className="flex w-full flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <P>
                 Our{" "}
                 <Link
@@ -442,7 +442,7 @@ export default function About() {
           <div
             className={classNames(
               "flex flex-col items-start gap-6",
-              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+              "col-span-10 col-start-2"
             )}
           >
             <VideoPlayer />
@@ -450,19 +450,20 @@ export default function About() {
         </Grid>
 
         <Grid>
-          <div className="col-span-12 col-start-1 md:col-span-10 md:col-start-2">
-            <div className="grid grid-cols-2 justify-items-center gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {Object.keys(PEOPLE).map((handle) => (
-                <div key={handle} className="w-full">
-                  <Person handle={handle} />
-                </div>
-              ))}
-            </div>
+          <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
+            {Object.keys(PEOPLE).map((handle) => (
+              <div
+                key={handle}
+                className={classNames("col-span-5 md:col-span-3 xl:col-span-2")}
+              >
+                <Person handle={handle} />
+              </div>
+            ))}
           </div>
         </Grid>
 
         <Grid>
-          <Separator className="col-span-12 col-start-1 md:col-span-10 md:col-start-2" />
+          <Separator className="col-span-10 col-start-2" />
         </Grid>
 
         <div className="flex flex-col gap-8">
@@ -470,11 +471,11 @@ export default function About() {
             <div
               className={classNames(
                 "flex flex-col items-start gap-6",
-                "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+                "col-span-10 col-start-2"
               )}
             >
               <H2>Built for enterprise, backed by experts</H2>
-              <div className="flex w-full flex-col gap-2">
+              <div className="flex flex-col gap-2">
                 <P>
                   We're backed by investors who've built and scaled enterprise
                   infrastructure. Our investors include leading venture firms
@@ -486,7 +487,7 @@ export default function About() {
           </Grid>
 
           <Grid>
-            <div className="col-span-12 col-start-1 grid grid-cols-10 gap-x-2 gap-y-8 md:col-span-10 md:col-start-2">
+            <div className="col-span-10 col-start-2 grid grid-cols-10 gap-x-2 gap-y-8">
               {INVESTORS.map((investor) => (
                 <div
                   key={investor.name}

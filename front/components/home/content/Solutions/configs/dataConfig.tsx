@@ -153,13 +153,13 @@ export const Quote: QuoteProps = {
     "Thanks to what we've implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
   name: "Vincent Delagabbe",
   title: "Software Engineer at Alan",
-  logo: "/static/landing/logos/color/alan.png",
+  logo: "/static/landing/logos/gray/alan.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl: "https://fast.wistia.net/embed/iframe/9u1uft5pg7",
-  showCaptions: true,
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/9u1uft5pg7?web_component=true&seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [

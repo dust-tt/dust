@@ -58,7 +58,7 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
   stories = defaultCustomerStories,
 }) => (
   <Grid gap="gap-8">
-    <div className="col-span-11 mt-16 sm:col-span-12">
+    <div className="col-span-11 sm:col-span-12">
       <Carousel className="w-full">
         <div className="mb-2 flex items-center justify-between">
           <div>

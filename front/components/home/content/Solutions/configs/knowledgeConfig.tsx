@@ -151,15 +151,15 @@ export const UseCases: UseCaseProps = {
 export const Quote: QuoteProps = {
   quote:
     "It became evident that Dust could serve as a knowledgeable buddy for all staff, enhancing productivity whether you're newly onboarded or a veteran team member.",
-  name: "Boris Lipiainen",
+  name: "Boris Lipiainen ",
   title: "Chief Product and Technology Officer at Kyriba",
   logo: "/static/landing/logos/color/kyriba.png",
 };
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl: "https://fast.wistia.net/embed/iframe/qtnvwgyt0o",
-  showCaptions: true,
+  videoUrl:
+    "https://fast.wistia.net/embed/iframe/qtnvwgyt0o?web_component=true&seo=true&videoFoam=true&captions=on",
 };
 
 export const Stories: CustomerStory[] = [
