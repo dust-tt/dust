@@ -3,7 +3,6 @@ import React, { useState } from "react";
 
 import {
   CodeBlock,
-  Icon,
   Label,
   RadioGroup,
   RadioGroupItem,
@@ -72,6 +71,7 @@ const entity2Commands: Command[] = [
     label: "Action C",
     category: "Entity 2",
     entityType: "entity2",
+    tooltip: "This is a tooltip for Action C",
     action: () => {
       window.alert("Executing Action C for Entity 2");
     },
@@ -80,13 +80,26 @@ const entity2Commands: Command[] = [
   {
     id: "entity2.actionD",
     label: "Action D",
-    icon: <Icon visual={FolderIcon} />,
+    icon: FolderIcon,
     category: "Entity 2",
     entityType: "entity2",
     action: () => {
       window.alert("Executing Action D for Entity 2");
     },
     priority: 1,
+  },
+  {
+    id: "entity2.actionE",
+    label: "Action E",
+    icon: FolderIcon,
+    category: "Entity 2",
+    entityType: "entity2",
+    disabled: true,
+    disabledTooltip: "This is a disabled tooltip for Action E",
+    action: () => {
+      window.alert("Executing Action E for Entity 2");
+    },
+    priority: 2,
   },
 ];
 // Component to demonstrate entity selection and entity-specific commands

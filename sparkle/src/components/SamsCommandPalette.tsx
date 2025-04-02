@@ -40,7 +40,7 @@ const CommandInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
 >(({ className, ...props }, ref) => (
   <div
-    className="s-flex s-w-full s-items-center s-border-b s-p-3"
+    className="s-flex s-w-full s-items-center s-border-b s-p-3 dark:s-border-border-night"
     cmdk-input-wrapper=""
   >
     <CommandPrimitive.Input
@@ -127,8 +127,7 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "data-[selected=true]:s-bg-accent data-[selected=true]:s-text-accent-foreground [&_svg]:s-size-4 s-relative s-flex s-cursor-default s-select-none s-items-center s-gap-2 s-rounded-sm s-px-2 s-py-1.5 s-text-sm s-outline-none data-[disabled=true]:s-pointer-events-none data-[disabled=true]:s-opacity-50 [&_svg]:s-pointer-events-none [&_svg]:s-shrink-0",
-      // menuStyleClasses.item({ variant: "default" }),
+      "[&_svg]:s-size-4 s-relative s-flex s-cursor-default s-select-none s-items-center s-gap-2 s-rounded-sm s-px-2 s-py-1.5 s-text-sm s-outline-none data-[disabled=true]:s-pointer-events-none data-[selected=true]:s-bg-muted-background data-[selected=true]:s-text-foreground data-[disabled=true]:s-opacity-50 dark:data-[selected=true]:s-bg-primary-900 dark:data-[selected=true]:s-text-foreground-night [&_svg]:s-pointer-events-none [&_svg]:s-shrink-0",
       className
     )}
     {...props}

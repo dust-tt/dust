@@ -13,12 +13,21 @@ export interface Command {
   id: string;
   label: string;
   shortcut?: string;
-  icon?: React.ReactNode;
+  icon?: React.ComponentType<{ className?: string | undefined }>;
   action: () => void;
+  closeCommandPaletteOnAction?: boolean;
   category?: string;
   priority?: number;
   entityType?: string;
   entityId?: string;
+  tooltip?: string | React.ReactNode;
+
+  disabled?: boolean;
+  /**
+   * Tooltip to display when the command is disabled.
+   * Overrides the default tooltip if it exists.
+   */
+  disabledTooltip?: string | React.ReactNode;
 }
 
 interface CommandPaletteContextType {

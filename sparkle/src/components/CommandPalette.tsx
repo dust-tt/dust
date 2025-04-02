@@ -2,20 +2,20 @@
 
 import React, { useEffect, useRef } from "react";
 
-import { cn } from "@sparkle/lib/utils";
-
-import { useCommandPalette } from "../hooks/useCommandPalette";
+import { Icon, Tooltip } from "@sparkle/components";
 import {
   SamsCommand,
   SamsCommandDialog,
-  SamsCommandEmpty,
   SamsCommandGroup,
   SamsCommandInput,
   SamsCommandItem,
   SamsCommandList,
-} from "./SamsCommandPalette";
+} from "@sparkle/components/SamsCommandPalette";
+import { cn } from "@sparkle/lib/utils";
 
-export const CommandPalette: React.FC = () => {
+import { useCommandPalette } from "../hooks/useCommandPalette";
+
+export function CommandPalette() {
   const { commands, isOpen, setOpen, closeCommandPalette } =
     useCommandPalette();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,47 +66,67 @@ export const CommandPalette: React.FC = () => {
           autoFocus
         />
         <SamsCommandList>
-          <SamsCommandEmpty>No results found.</SamsCommandEmpty>
           {sortedCategories.map((category, categoryIndex) => (
             <SamsCommandGroup key={category} heading={category}>
-              {groupedCommands[category].map((command, commandIndex) => (
-                <SamsCommandItem
-                  key={command.id}
-                  onSelect={() => {
-                    command.action();
-                    // Optionally close the palette after executing a command
-                    closeCommandPalette();
-                  }}
-                  className={cn(
-                    "s-relative s-flex s-items-center s-gap-2 s-rounded-md s-px-2 s-py-1.5 s-text-sm s-font-medium",
-                    command.id.includes("warning")
-                      ? "s-text-warning-500 data-[selected=true]:s-bg-warning-50 data-[selected=true]:s-text-warning-500"
-                      : "s-text-foreground data-[selected=true]:s-bg-muted-background data-[selected=true]:s-text-foreground",
+              {groupedCommands[category].map(
+                ({ icon: CommandIcon, ...command }, commandIndex) => {
+                  const commandContent = (
+                    <SamsCommandItem
+                      key={command.id}
+                      disabled={command.disabled}
+                      onSelect={() => {
+                        command.action();
+                        if (command.closeCommandPaletteOnAction) {
+                          closeCommandPalette();
+                        }
+                      }}
+                      className={cn(
+                        "s-relative s-flex s-items-center s-gap-2 s-rounded-md s-px-2 s-py-1.5 s-text-sm s-font-medium",
+                        "s-relative s-flex s-cursor-pointer s-select-none s-items-center s-gap-2 s-rounded-md s-px-2 s-py-2 s-text-sm s-font-semibold s-outline-none s-transition-colors s-duration-300",
+                        "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night",
+                        "focus:s-text-foreground dark:focus:s-text-foreground-night",
+                        "hover:s-bg-muted-background dark:hover:s-bg-primary-900",
 
-                    // if it's the last one, rounded-b-md"
-                    categoryIndex === sortedCategories.length - 1 &&
-                      commandIndex === groupedCommands[category].length - 1
-                      ? "s-rounded-b-xl"
-                      : ""
-                  )}
-                >
-                  {command.icon && (
-                    <span className="s-mr-2 s-flex s-h-5 s-w-5 s-items-center s-justify-center">
-                      {command.icon}
-                    </span>
-                  )}
-                  <span>{command.label}</span>
-                  {command.shortcut && (
-                    <span className="s-ml-auto s-text-xs s-tracking-widest s-text-muted-foreground">
-                      {command.shortcut}
-                    </span>
-                  )}
-                </SamsCommandItem>
-              ))}
+                        command.id.includes("warning") &&
+                          "s-text-warning-500 data-[selected=true]:s-bg-warning-50 data-[selected=true]:s-text-warning-500 dark:s-text-warning-500-night dark:data-[selected=true]:s-bg-warning-100-night dark:data-[selected=true]:s-text-warning-500-night",
+
+                        // if it's the last one, rounded-b-xl"
+                        categoryIndex === sortedCategories.length - 1 &&
+                          commandIndex === groupedCommands[category].length - 1
+                          ? "s-rounded-b-xl"
+                          : ""
+                      )}
+                    >
+                      {CommandIcon ? <Icon visual={CommandIcon} /> : null}
+                      <span>{command.label}</span>
+                      {command.shortcut ? (
+                        <span className="s-ml-auto s-text-xs s-tracking-widest s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          {command.shortcut}
+                        </span>
+                      ) : null}
+                    </SamsCommandItem>
+                  );
+
+                  return command?.tooltip ||
+                    (command?.disabled && command?.disabledTooltip) ? (
+                    <Tooltip
+                      trigger={<div className="s-w-full">{commandContent}</div>}
+                      label={
+                        command?.disabled
+                          ? command?.disabledTooltip
+                          : command?.tooltip
+                      }
+                      tooltipTriggerAsChild
+                    />
+                  ) : (
+                    commandContent
+                  );
+                }
+              )}
             </SamsCommandGroup>
           ))}
         </SamsCommandList>
       </SamsCommand>
     </SamsCommandDialog>
   );
-};
+}
