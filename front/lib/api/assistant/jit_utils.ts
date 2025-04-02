@@ -1,4 +1,8 @@
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
+import {
+  CONTENT_NODE_MIME_TYPES,
+  isDustMimeType,
+  isIncludableInternalMimeType,
+} from "@dust-tt/client";
 
 import type {
   BaseConversationAttachmentType,
@@ -25,7 +29,9 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // TODO(attach-ds): Filter out content Types that are folders
+  if (isDustMimeType(contentType)) {
+    return isIncludableInternalMimeType(contentType);
+  }
   return true;
 }
 
@@ -83,6 +89,7 @@ export function listFiles(
           (isQueryableContentType(m.contentType) || m.nodeType === "table");
         const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
         const isIncludable =
+          m.nodeType !== "folder" &&
           isConversationIncludableFileContentType(m.contentType) &&
           // Tables from knowledge are not materialized as raw content. As such, they cannot be
           // included.
