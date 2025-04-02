@@ -108,6 +108,7 @@ export async function tryCallMCPTool(
     const mcpServerView = res.value;
 
     const mcpClient = await connectToMCPServer(auth, {
+      type: "mcpServerId",
       mcpServerId: mcpServerView.mcpServerId,
     });
     const r = await mcpClient.callTool({
@@ -201,7 +202,10 @@ export async function listMCPServerTools(
   auth: Authenticator,
   mcpServerId: string
 ): Promise<ToolType[]> {
-  const mcpClient = await connectToMCPServer(auth, { mcpServerId });
+  const mcpClient = await connectToMCPServer(auth, {
+    type: "mcpServerId",
+    mcpServerId,
+  });
 
   let allTools: ToolType[] = [];
   let nextPageCursor;

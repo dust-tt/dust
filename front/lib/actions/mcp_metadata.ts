@@ -78,15 +78,19 @@ async function getAccessTokenForMCPServer(
   }
 }
 
+type ConnectViaMCPServerId = {
+  type: "mcpServerId";
+  mcpServerId: string;
+};
+
+type ConnectViaRemoteMCPServerUrl = {
+  type: "remoteMCPServerUrl";
+  remoteMCPServerUrl: string;
+};
+
 export const connectToMCPServer = async (
   auth: Authenticator,
-  {
-    mcpServerId,
-    remoteMCPServerUrl,
-  }: {
-    mcpServerId?: string;
-    remoteMCPServerUrl?: string | null;
-  }
+  params: ConnectViaMCPServerId | ConnectViaRemoteMCPServerUrl
 ) => {
   //TODO(mcp): handle failure, timeout...
   // This is where we route the MCP client to the right server.
@@ -94,52 +98,62 @@ export const connectToMCPServer = async (
     name: "dust-mcp-client",
     version: "1.0.0",
   });
-  if (mcpServerId) {
-    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+  const connectionType = params.type;
+  switch (connectionType) {
+    case "mcpServerId": {
+      const { serverType, id } = getServerTypeAndIdFromSId(params.mcpServerId);
 
-    switch (serverType) {
-      case "internal":
-        // Create a pair of linked in-memory transports
-        // And connect the client to the server.
-        const [client, server] = InMemoryTransport.createLinkedPair();
-        await connectToInternalMCPServer(mcpServerId, server, auth);
-        await mcpClient.connect(client);
-        break;
+      switch (serverType) {
+        case "internal":
+          // Create a pair of linked in-memory transports
+          // And connect the client to the server.
+          const [client, server] = InMemoryTransport.createLinkedPair();
+          await connectToInternalMCPServer(params.mcpServerId, server, auth);
+          await mcpClient.connect(client);
+          break;
 
-      case "remote":
-        const accessToken = await getAccessTokenForMCPServer(auth, mcpServerId);
-
-        const remoteMCPServer = await RemoteMCPServerResource.fetchById(
-          auth,
-          mcpServerId
-        );
-
-        if (!remoteMCPServer) {
-          throw new MCPServerNotFoundError(
-            `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
+        case "remote":
+          const accessToken = await getAccessTokenForMCPServer(
+            auth,
+            params.mcpServerId
           );
-        }
 
-        const url = new URL(remoteMCPServer.url);
-        const sseTransport = new SSEClientTransport(url, {
-          requestInit: {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
+          const remoteMCPServer = await RemoteMCPServerResource.fetchById(
+            auth,
+            params.mcpServerId
+          );
+
+          if (!remoteMCPServer) {
+            throw new MCPServerNotFoundError(
+              `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
+            );
+          }
+
+          const url = new URL(remoteMCPServer.url);
+          const sseTransport = new SSEClientTransport(url, {
+            requestInit: {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
             },
-          },
-        });
-        await mcpClient.connect(sseTransport);
-        break;
+          });
+          await mcpClient.connect(sseTransport);
+          break;
 
-      default:
-        assertNever(serverType);
+        default:
+          assertNever(serverType);
+      }
+      break;
     }
-  } else if (remoteMCPServerUrl) {
-    const url = new URL(remoteMCPServerUrl);
-    const sseTransport = new SSEClientTransport(url);
-    await mcpClient.connect(sseTransport);
-  } else {
-    throw new Error("MCP server ID or URL is required.");
+    case "remoteMCPServerUrl": {
+      const url = new URL(params.remoteMCPServerUrl);
+      const sseTransport = new SSEClientTransport(url);
+      await mcpClient.connect(sseTransport);
+      break;
+    }
+    default: {
+      assertNever(connectionType);
+    }
   }
 
   return mcpClient;
@@ -198,6 +212,7 @@ export async function fetchRemoteServerMetaDataByURL(
   url: string
 ): Promise<Omit<MCPServerType, "id">> {
   const mcpClient = await connectToMCPServer(auth, {
+    type: "remoteMCPServerUrl",
     remoteMCPServerUrl: url,
   });
 
@@ -236,7 +251,10 @@ export async function getMCPServerMetadataLocally(
   switch (serverType) {
     case "internal":
       // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
-      const mcpClient = await connectToMCPServer(auth, { mcpServerId });
+      const mcpClient = await connectToMCPServer(auth, {
+        type: "mcpServerId",
+        mcpServerId,
+      });
 
       const r = mcpClient.getServerVersion();
       const tools = await mcpClient.listTools();

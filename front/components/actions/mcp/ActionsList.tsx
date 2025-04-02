@@ -12,7 +12,10 @@ import React from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
-import { MCP_SERVER_ICONS } from "@app/lib/actions/mcp_icons";
+import {
+  DEFAULT_MCP_SERVER_ICON,
+  MCP_SERVER_ICONS,
+} from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import {
@@ -75,7 +78,9 @@ export const AdminActionsList = ({
             <div>
               <Avatar
                 visual={React.createElement(
-                  MCP_SERVER_ICONS[info.getValue().server.icon || "Rocket"]
+                  MCP_SERVER_ICONS[
+                    info.getValue().server.icon || DEFAULT_MCP_SERVER_ICON
+                  ]
                 )}
               />
             </div>
@@ -247,7 +252,6 @@ export const AdminActionsList = ({
         <AddActionMenu
           owner={owner}
           enabledMCPServers={serverViews.map(
-            //TODO(mcp) serverView.server.id or serverView.id?
             (serverView) => serverView.server.id
           )}
         />

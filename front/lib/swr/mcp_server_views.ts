@@ -30,7 +30,7 @@ export function useMCPServerViews({
   const serverViews = useMemo(() => (data ? data.serverViews : []), [data]);
   return {
     serverViews,
-    isMCPServerViewsLoading: !error && !data,
+    isMCPServerViewsLoading: !error && !data && !disabled,
     isMCPServerViewsError: error,
     mutateMCPServerViews: mutate,
   };

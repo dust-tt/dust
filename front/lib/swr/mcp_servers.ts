@@ -77,7 +77,7 @@ export function useMCPServers({
 
   return {
     mcpServers,
-    isMCPServersLoading: !error && !data,
+    isMCPServersLoading: !error && !data && !disabled,
     isError: error,
     mutate,
   };
