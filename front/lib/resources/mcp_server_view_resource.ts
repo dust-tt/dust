@@ -204,6 +204,22 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return this.baseFetch(auth, { where: { vaultId: space.id } });
   }
 
+  static async listByMCPServer(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<MCPServerViewResource[]> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    if (serverType === "internal") {
+      return this.baseFetch(auth, {
+        where: { serverType: "internal", internalMCPServerId: mcpServerId },
+      });
+    } else {
+      return this.baseFetch(auth, {
+        where: { serverType: "remote", remoteMCPServerId: id },
+      });
+    }
+  }
+
   // Deletion.
 
   protected async softDelete(

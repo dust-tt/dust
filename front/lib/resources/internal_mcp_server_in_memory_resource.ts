@@ -4,6 +4,7 @@ import { Op } from "sequelize";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions";
+import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
@@ -46,6 +47,7 @@ export class InternalMCPServerInMemoryResource {
 
     await MCPServerView.create(
       {
+        workspaceId: auth.getNonNullableWorkspace().id,
         serverType: "internal",
         internalMCPServerId: server.id,
         vaultId: systemSpace.id,
@@ -99,6 +101,17 @@ export class InternalMCPServerInMemoryResource {
     }
 
     return new InternalMCPServerInMemoryResource(server.internalMCPServerId);
+  }
+
+  static listAvailableInternalMCPServers(auth: Authenticator) {
+    const ids = AVAILABLE_INTERNAL_MCPSERVER_NAMES.map((name) =>
+      InternalMCPServerInMemoryResource.nameToSId({
+        name,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    return ids.map((id) => new InternalMCPServerInMemoryResource(id));
   }
 
   static async listByWorkspace(auth: Authenticator) {
