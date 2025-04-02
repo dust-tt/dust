@@ -16,6 +16,9 @@ const cli = meow({
       type: "boolean",
       shortFlag: "f",
     },
+    help: {
+      type: "boolean",
+    },
   },
 });
 
