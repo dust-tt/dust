@@ -9,7 +9,7 @@ import { literal, Op, Sequelize } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import {
-  Conversation,
+  ConversationModel,
   Mention,
   Message,
   UserMessage,
@@ -32,14 +32,14 @@ import { GroupResource } from "./group_resource";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationResource
-  extends ReadonlyAttributesType<Conversation> {}
+  extends ReadonlyAttributesType<ConversationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class ConversationResource extends BaseResource<Conversation> {
-  static model: ModelStatic<Conversation> = Conversation;
+export class ConversationResource extends BaseResource<ConversationModel> {
+  static model: ModelStatic<ConversationModel> = ConversationModel;
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<Conversation>, "workspaceId">
+    blob: Omit<CreationAttributes<ConversationModel>, "workspaceId">
   ): Promise<ConversationResource> {
     const workspace = auth.getNonNullableWorkspace();
     const conversation = await ConversationResource.model.create({
@@ -67,7 +67,7 @@ export class ConversationResource extends BaseResource<Conversation> {
     });
 
     return conversation
-      ? new ConversationResource(Conversation, conversation.get())
+      ? new ConversationResource(ConversationModel, conversation.get())
       : null;
   }
 
@@ -76,7 +76,9 @@ export class ConversationResource extends BaseResource<Conversation> {
     {
       where,
     }: {
-      where?: WhereOptions<Omit<Conversation, "workspaceId" | "workspace">>;
+      where?: WhereOptions<
+        Omit<ConversationModel, "workspaceId" | "workspace">
+      >;
     } = {}
   ): Promise<ConversationResource | null> {
     const workspace = auth.getNonNullableWorkspace();
@@ -97,7 +99,9 @@ export class ConversationResource extends BaseResource<Conversation> {
     {
       where,
     }: {
-      where?: WhereOptions<Omit<Conversation, "workspaceId" | "workspace">>;
+      where?: WhereOptions<
+        Omit<ConversationModel, "workspaceId" | "workspace">
+      >;
     } = {}
   ): Promise<ConversationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
@@ -108,7 +112,7 @@ export class ConversationResource extends BaseResource<Conversation> {
       },
     });
     return conversations.map(
-      (c) => new ConversationResource(Conversation, c.get())
+      (c) => new ConversationResource(ConversationModel, c.get())
     );
   }
 
@@ -261,7 +265,9 @@ export class ConversationResource extends BaseResource<Conversation> {
   }
 
   async updateAttributes(
-    blob: Partial<Pick<InferAttributes<Conversation>, "title" | "visibility">>
+    blob: Partial<
+      Pick<InferAttributes<ConversationModel>, "title" | "visibility">
+    >
   ): Promise<[affectedCount: number]> {
     return this.update(blob);
   }

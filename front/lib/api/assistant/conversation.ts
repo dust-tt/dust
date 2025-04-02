@@ -25,7 +25,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
-  Conversation,
+  ConversationModel,
   ConversationParticipant,
   Mention,
   Message,
@@ -1037,7 +1037,7 @@ export async function* postUserMessage(
       );
     } else {
       const title = titleRes.value;
-      await Conversation.update(
+      await ConversationModel.update(
         {
           title,
         },
@@ -2142,7 +2142,7 @@ export async function updateConversationRequestedGroupIds(
     return req;
   });
 
-  await Conversation.update(
+  await ConversationModel.update(
     {
       requestedGroupIds: updatedRequirements,
     },
