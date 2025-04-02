@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  Breadcrumbs,
   Page,
   Spinner,
   useSendNotification,
@@ -150,6 +151,16 @@ export default function LabsTranscriptsIndex({
   }
 
   const agents = agentConfigurations.filter((a) => a.status === "active");
+  const items = [
+    {
+      label: "Beta features",
+      href: `/w/${owner.sId}/labs`,
+    },
+    {
+      label: "Meeting transcripts processing",
+      href: `/w/${owner.sId}/labs/transcripts`,
+    },
+  ];
 
   return (
     <ConversationsNavigationProvider>
@@ -159,6 +170,7 @@ export default function LabsTranscriptsIndex({
         pageTitle="Dust - Transcripts processing"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
+        <Breadcrumbs items={items} />
         <DeleteProviderDialog
           isOpen={isDeleteProviderDialogOpened}
           onClose={() => setIsDeleteProviderDialogOpened(false)}

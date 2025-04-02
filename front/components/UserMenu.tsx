@@ -99,28 +99,28 @@ export function UserMenu({
               <DropdownMenuItem
                 label="Beta features"
                 icon={TestTubeIcon}
-                href={`/w/${owner.sId}/assistant/labs`}
+                href={`/w/${owner.sId}/labs`}
               />
             )}
             {featureFlags.includes("labs_transcripts") && (
               <DropdownMenuItem
                 label="Meeting transcripts"
                 icon={BookOpenIcon}
-                href={`/w/${owner.sId}/assistant/labs/transcripts`}
+                href={`/w/${owner.sId}/labs/transcripts`}
               />
             )}
             {featureFlags.includes("labs_trackers") && (
               <DropdownMenuItem
                 label="Trackers"
                 icon={EyeIcon}
-                href={`/w/${owner.sId}/assistant/labs/trackers`}
+                href={`/w/${owner.sId}/labs/trackers`}
               />
             )}
             {featureFlags.includes("labs_github_actions") && (
               <DropdownMenuItem
                 label="Platform Actions"
                 icon={CloudArrowLeftRightIcon}
-                href={`/w/${owner.sId}/assistant/labs/platform_actions`}
+                href={`/w/${owner.sId}/labs/platform_actions`}
               />
             )}
           </>

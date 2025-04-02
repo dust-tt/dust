@@ -3,6 +3,7 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  EyeIcon,
   HubspotLogo,
   Icon,
   Page,
@@ -13,13 +14,11 @@ import { useRouter } from "next/router";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import type {
-  DataSourceViewType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
@@ -28,23 +27,11 @@ import type {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  dataSourcesViews: DataSourceViewType[];
-  hasDefaultStorageConfiguration: boolean;
   featureFlags: WhitelistableFeature[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
   const user = auth.user();
-
-  const dataSourcesViews = (
-    await DataSourceViewResource.listByWorkspace(auth)
-  ).map((dsv) => dsv.toJSON());
-
-  const defaultStorageConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
-      auth.getNonNullableWorkspace()
-    );
-  const hasDefaultStorageConfiguration = !!defaultStorageConfiguration?.id;
 
   if (!owner || !subscription || !user) {
     return {
@@ -53,18 +40,11 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   }
 
   const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("labs_transcripts")) {
-    return {
-      notFound: true,
-    };
-  }
 
   return {
     props: {
       owner,
       subscription,
-      dataSourcesViews,
-      hasDefaultStorageConfiguration,
       featureFlags,
     },
   };
@@ -73,6 +53,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function LabsTranscriptsIndex({
   owner,
   subscription,
+  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
 
@@ -99,22 +80,34 @@ export default function LabsTranscriptsIndex({
               <ContextItem
                 title="Meeting Transcripts Processing"
                 action={
-                  <Button
-                    variant="outline"
-                    label="Manage"
-                    size="sm"
-                    icon={Cog6ToothIcon}
-                    onClick={() =>
-                      router.push(`/w/${owner.sId}/assistant/labs/transcripts`)
-                    }
+                  <FeatureAccessButton
+                    featureFlag={featureFlags.includes("labs_transcripts")}
+                    workspaceId={owner.sId}
+                    featureName="Transcripts"
+                    managePath={`/w/${owner.sId}/labs/transcripts`}
                   />
                 }
-                visual={<Icon visual={BookOpenIcon} />}
+                visual={<Icon visual={EyeIcon} />}
               >
                 <ContextItem.Description
                   description="Receive meeting minutes processed by email automatically and
                   store them in a Dust Folder."
                 />
+              </ContextItem>
+
+              <ContextItem
+                title="Document Tracker"
+                action={
+                  <FeatureAccessButton
+                    featureFlag={featureFlags.includes("labs_trackers")}
+                    workspaceId={owner.sId}
+                    featureName="Tracker"
+                    managePath={`/w/${owner.sId}/labs/trackers`}
+                  />
+                }
+                visual={<Icon visual={BookOpenIcon} />}
+              >
+                <ContextItem.Description description="Document monitoring made simple - receive alerts when documents are out of date." />
               </ContextItem>
 
               <ContextItem.SectionHeader

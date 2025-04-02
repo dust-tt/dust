@@ -1,4 +1,5 @@
 import {
+  Breadcrumbs,
   Button,
   Chip,
   DataTable,
@@ -94,7 +95,7 @@ export default function TrackerConfigurations({
         ...trackerConfiguration,
         onClick: () =>
           void router.push(
-            `/w/${owner.sId}/assistant/labs/trackers/${trackerConfiguration.sId}`
+            `/w/${owner.sId}/labs/trackers/${trackerConfiguration.sId}`
           ),
       })),
     [trackers, owner, router]
@@ -163,6 +164,17 @@ export default function TrackerConfigurations({
     },
   ];
 
+  const items = [
+    {
+      label: "Beta features",
+      href: `/w/${owner.sId}/labs`,
+    },
+    {
+      label: "Document Tracker",
+      href: `/w/${owner.sId}/labs/trackers`,
+    },
+  ];
+
   return (
     <ConversationsNavigationProvider>
       <AppLayout
@@ -171,6 +183,9 @@ export default function TrackerConfigurations({
         pageTitle="Dust - Trackers"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
+        <div className="mb-4">
+          <Breadcrumbs items={items} />
+        </div>
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
             title="Trackers"
@@ -197,9 +212,7 @@ export default function TrackerConfigurations({
                       label="New tracker"
                       icon={PlusIcon}
                       onClick={() =>
-                        router.push(
-                          `/w/${owner.sId}/assistant/labs/trackers/new`
-                        )
+                        router.push(`/w/${owner.sId}/labs/trackers/new`)
                       }
                     />
                   </div>
@@ -216,9 +229,7 @@ export default function TrackerConfigurations({
                         label="New tracker"
                         icon={PlusIcon}
                         onClick={() =>
-                          router.push(
-                            `/w/${owner.sId}/assistant/labs/trackers/new`
-                          )
+                          router.push(`/w/${owner.sId}/labs/trackers/new`)
                         }
                       />
                     </div>

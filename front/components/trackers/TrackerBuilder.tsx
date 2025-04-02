@@ -206,7 +206,7 @@ export const TrackerBuilder = ({
       return;
     }
     setIsSubmitting(false);
-    await router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+    await router.push(`/w/${owner.sId}/labs/trackers`);
     sendNotification({
       title: initialTrackerId ? "Tracker updated" : "Tracker Created",
       description: initialTrackerId
@@ -243,7 +243,7 @@ export const TrackerBuilder = ({
       );
       if (res.ok) {
         setIsDeleting(false);
-        void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+        void router.push(`/w/${owner.sId}/labs/trackers`);
         sendNotification({
           title: "Tracker deleted",
           description: "Tracker successfully deleted.",
@@ -288,14 +288,14 @@ export const TrackerBuilder = ({
           <AppLayoutSimpleCloseTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onClose={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
           />
         ) : (
           <AppLayoutSimpleSaveCancelTitle
             title={initialTrackerId ? "Edit Tracker" : "New Tracker"}
             onCancel={() => {
-              void router.push(`/w/${owner.sId}/assistant/labs/trackers`);
+              void router.push(`/w/${owner.sId}/labs/trackers`);
             }}
             onSave={onSubmit}
             isSaving={isSubmitting}
