@@ -69,17 +69,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
   private static async baseFetch(
     auth: Authenticator,
-    {
-      where,
-      ...options
-    }: ResourceFindOptions<RemoteMCPServer>
+    options?: ResourceFindOptions<RemoteMCPServer>
   ) {
+    const { where, ...otherOptions } = options ?? {};
+
     const servers = await RemoteMCPServer.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         ...where,
       },
-      ...options,
+      ...otherOptions,
     });
 
     return servers.map((server) => new this(RemoteMCPServer, server.get()));
