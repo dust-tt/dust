@@ -1,6 +1,5 @@
 import {
   ArrowUpIcon,
-  AttachmentIcon,
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
@@ -29,7 +28,6 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -78,7 +76,6 @@ const InputBarContainer = ({
   attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
@@ -96,19 +93,12 @@ const InputBarContainer = ({
     []
   );
 
-  // TODO: remove once attach from datasources is released
-  const isAttachedFromDataSourceActivated = featureFlags.includes(
-    "attach_from_datasources"
-  );
-
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
-    ...(isAttachedFromDataSourceActivated && {
-      onUrlDetected: handleUrlDetected,
-    }),
+    onUrlDetected: handleUrlDetected,
   });
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
@@ -129,10 +119,7 @@ const InputBarContainer = ({
           includeDataSources: true,
           owner,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
       : {
@@ -142,10 +129,7 @@ const InputBarContainer = ({
           includeDataSources: true,
           owner,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
   );
@@ -266,28 +250,16 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              {featureFlags.includes("attach_from_datasources") ? (
-                <InputBarAttachmentsPicker
-                  fileUploaderService={fileUploaderService}
-                  owner={owner}
-                  isLoading={false}
-                  onNodeSelect={
-                    onNodeSelect ||
-                    ((node) => console.log(`Selected ${node.title}`))
-                  }
-                  attachedNodes={attachedNodes}
-                />
-              ) : (
-                <Button
-                  variant="ghost-secondary"
-                  icon={AttachmentIcon}
-                  size="xs"
-                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                  }}
-                />
-              )}
+              <InputBarAttachmentsPicker
+                fileUploaderService={fileUploaderService}
+                owner={owner}
+                isLoading={false}
+                onNodeSelect={
+                  onNodeSelect ||
+                  ((node) => console.log(`Selected ${node.title}`))
+                }
+                attachedNodes={attachedNodes}
+              />
             </>
           )}
           {(actions.includes("assistants-list") ||
