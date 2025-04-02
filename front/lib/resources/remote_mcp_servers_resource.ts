@@ -116,11 +116,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   static async listByWorkspace(
     auth: Authenticator,
   ) {
-    return this.baseFetch(auth, {
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
+    return this.baseFetch(auth);
   }
 
   static async findByUrl(
