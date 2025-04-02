@@ -11,6 +11,7 @@ import { BaseAction } from "@app/lib/actions/types";
 import type {
   AgentMessageType,
   ContentFragmentVersion,
+  ContentNodeType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelId,
@@ -36,6 +37,7 @@ export type ConversationContentNodeType = BaseConversationAttachmentType & {
   contentFragmentId: string;
   contentNodeId: string;
   nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
 };
 
 export type ConversationAttachmentType =

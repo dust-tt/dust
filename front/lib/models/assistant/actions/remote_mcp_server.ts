@@ -1,22 +1,18 @@
-import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
+import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { MCPToolMetadata } from "@app/lib/actions/mcp_actions";
+import type { MCPToolType } from "@app/lib/actions/mcp_metadata";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
-import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class RemoteMCPServer extends SoftDeletableWorkspaceAwareModel<RemoteMCPServer> {
+export class RemoteMCPServer extends WorkspaceAwareModel<RemoteMCPServer> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
-
-  declare vaultId: ForeignKey<SpaceModel["id"]>;
-  declare space: NonAttribute<SpaceModel>;
 
   declare url: string;
   declare name: string;
   declare description: string | null;
-  declare cachedTools: MCPToolMetadata[];
+  declare cachedTools: MCPToolType[];
 
   declare lastSyncAt: Date | null;
   declare sharedSecret: string;
@@ -68,11 +64,3 @@ RemoteMCPServer.init(
     modelName: "remote_mcp_server",
   }
 );
-
-SpaceModel.hasMany(RemoteMCPServer, {
-  foreignKey: { allowNull: false, name: "vaultId" },
-  onDelete: "RESTRICT",
-});
-RemoteMCPServer.belongsTo(SpaceModel, {
-  foreignKey: { allowNull: false, name: "vaultId" },
-});

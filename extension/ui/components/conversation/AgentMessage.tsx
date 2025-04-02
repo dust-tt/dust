@@ -299,6 +299,19 @@ export function AgentMessage({
         setLastAgentStateClassification("done");
         break;
       }
+      case "tool_approve_execution":
+        setStreamedAgentMessage((m) => {
+          return {
+            ...m,
+            status: "failed",
+            error: {
+              message: "Tools are not available in the extension",
+              code: "tool_not_available",
+            },
+          };
+        });
+        setLastAgentStateClassification("done");
+        break;
 
       case "generation_tokens": {
         switch (event.classification) {
@@ -331,7 +344,6 @@ export function AgentMessage({
         setLastAgentStateClassification("thinking");
         break;
       }
-
       default:
         // Log message and do nothing. Don't crash if a new event type is not handled here.
         assertNeverAndIgnore(event);
@@ -563,7 +575,7 @@ export function AgentMessage({
       renderName={() => {
         return (
           <div className="flex flex-row items-center gap-2">
-            <div className="heading-base">
+            <div className="font-semibold">
               {/* TODO(Ext) Any CTA here ? */}@{agentConfiguration.name}
             </div>
           </div>

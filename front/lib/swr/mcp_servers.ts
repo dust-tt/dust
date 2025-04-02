@@ -4,69 +4,36 @@ import type { Fetcher } from "swr";
 
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
+  AllowedFilter,
+  CreateMCPServerResponseBody,
+  GetMCPServersResponseBody,
+} from "@app/pages/api/w/[wId]/mcp";
+import type {
+  DeleteMCPServerResponseBody,
+  PatchMCPServerResponseBody,
+} from "@app/pages/api/w/[wId]/mcp/[serverId]";
+import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
+import type {
   GetConnectionsResponseBody,
   PostConnectionResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/connections";
-import type {
-  AllowedFilter,
-  GetMCPServersResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp";
-import type { LightWorkspaceType, SpaceType } from "@app/types";
-import type { MCPApiResponse, MCPResponse } from "@app/types/mcp";
-
-export type GetRemoteMCPServersResponseBody = {
-  servers: MCPResponse[];
-};
-
-/**
- * Hook to fetch the list of remote MCP servers for a space
- */
-export function useRemoteMCPServers({
-  disabled,
-  owner,
-  space,
-}: {
-  disabled?: boolean;
-  owner: LightWorkspaceType;
-  space: SpaceType;
-}) {
-  const serversFetcher: Fetcher<GetRemoteMCPServersResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
-    serversFetcher,
-    {
-      disabled,
-    }
-  );
-
-  return {
-    servers: useMemo(() => (data ? data.servers : []), [data]),
-    isServersLoading: !error && !data,
-    isServersError: !!error,
-    mutateServers: mutate,
-  };
-}
+import type { LightWorkspaceType } from "@app/types";
 
 /**
  * Hook to fetch a specific remote MCP server by ID
  */
-export function useRemoteMCPServer({
+export function useMCPServer({
   disabled,
   owner,
-  space,
   serverId,
 }: {
   disabled?: boolean;
   owner: LightWorkspaceType;
-  space: SpaceType;
   serverId: string;
 }) {
-  const serverFetcher: Fetcher<MCPApiResponse> = fetcher;
+  const serverFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
-  const url = serverId
-    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`
-    : null;
+  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
 
   const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
     disabled,
@@ -82,33 +49,57 @@ export function useRemoteMCPServer({
   }
 
   return {
-    server: data?.data || null,
+    server: data?.servers || null,
     isServerLoading: !error && !data,
     isServerError: !!error,
     mutateServer: mutate,
   };
 }
 
-/**
- * Hook to delete a remote MCP server
- */
-export function useDeleteRemoteMCPServer(
-  owner: LightWorkspaceType,
-  space: SpaceType
-) {
-  const { mutateServers } = useRemoteMCPServers({
-    disabled: true,
-    owner,
-    space,
+export function useMCPServers({
+  owner,
+  filter,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  filter: AllowedFilter;
+  disabled?: boolean;
+}) {
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+
+  const url = `/api/w/${owner.sId}/mcp?filter=${filter}`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
+    disabled,
   });
 
-  const deleteServer = async (serverId: string): Promise<MCPApiResponse> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`,
-      {
-        method: "DELETE",
-      }
-    );
+  const mcpServers = useMemo(() => (data ? data.servers : []), [data]);
+
+  return {
+    mcpServers,
+    isMCPServersLoading: !error && !data && !disabled,
+    isError: error,
+    mutate,
+  };
+}
+
+/**
+ * Hook to delete an MCP server
+ */
+export function useDeleteMCPServer(owner: LightWorkspaceType) {
+  //TODO(mcp) mutate also "all"
+  const { mutate: mutateServers } = useMCPServers({
+    disabled: true,
+    owner,
+    filter: "remote",
+  });
+
+  const deleteServer = async (
+    serverId: string
+  ): Promise<DeleteMCPServerResponseBody> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
+      method: "DELETE",
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -125,25 +116,22 @@ export function useDeleteRemoteMCPServer(
 /**
  * Hook to create a new MCP server from a URL
  */
-export function useCreateRemoteMCPServer(
-  owner: LightWorkspaceType,
-  space: SpaceType
-) {
-  const { mutateServers } = useRemoteMCPServers({
+export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
+  //TODO(mcp) mutate also "all"
+  const { mutate: mutateServers } = useMCPServers({
     disabled: true,
     owner,
-    space,
+    filter: "remote",
   });
 
-  const createWithUrlSync = async (url: string): Promise<MCPApiResponse> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-      }
-    );
+  const createWithUrlSync = async (
+    url: string
+  ): Promise<CreateMCPServerResponseBody> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url }),
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -164,21 +152,18 @@ export function useCreateRemoteMCPServer(
  */
 export function useSyncRemoteMCPServer(
   owner: LightWorkspaceType,
-  space: SpaceType,
   serverId: string
 ) {
-  const { mutateServer } = useRemoteMCPServer({
+  const { mutateServer } = useMCPServer({
     disabled: true,
     owner,
-    space,
     serverId: serverId || "",
   });
 
-  const syncServer = async (): Promise<MCPApiResponse> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}/sync`,
-      { method: "POST" }
-    );
+  const syncServer = async (): Promise<SyncMCPServerResponseBody> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}/sync`, {
+      method: "POST",
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -199,13 +184,11 @@ export function useSyncRemoteMCPServer(
  */
 export function useUpdateRemoteMCPServer(
   owner: LightWorkspaceType,
-  space: SpaceType,
   serverId: string
 ) {
-  const { mutateServer } = useRemoteMCPServer({
+  const { mutateServer } = useMCPServer({
     disabled: true,
     owner,
-    space,
     serverId,
   });
 
@@ -214,15 +197,12 @@ export function useUpdateRemoteMCPServer(
     url: string;
     description: string;
     tools: { name: string; description: string }[];
-  }): Promise<MCPApiResponse> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp/remote/${serverId}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
+  }): Promise<PatchMCPServerResponseBody> => {
+    const response = await fetch(`/api/w/${owner.sId}/mcp/${serverId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
 
     if (!response.ok) {
       const error = await response.json();
@@ -357,54 +337,4 @@ export function useDeleteMCPServerConnection({
   };
 
   return { deleteMCPServerConnection };
-}
-
-export function useMCPServers({
-  owner,
-  filter,
-}: {
-  owner: LightWorkspaceType;
-  filter: AllowedFilter;
-}) {
-  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
-
-  const url = `/api/w/${owner.sId}/mcp?filter=${filter}`;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
-
-  const mcpServers = useMemo(() => (data ? data.mcpServers : []), [data]);
-
-  return {
-    mcpServers,
-    isMCPServersLoading: !error && !data,
-    isError: error,
-    mutate,
-  };
-}
-
-export function useMCPServerViews({
-  owner,
-  space,
-  filter,
-}: {
-  owner: LightWorkspaceType;
-  space?: SpaceType;
-  filter: AllowedFilter;
-}) {
-  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
-
-  const url = space
-    ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp?filter=${filter}`
-    : null;
-
-  const { data, error, mutate } = useSWRWithDefaults(url, configFetcher);
-
-  const mcpServers = useMemo(() => (data ? data.mcpServers : []), [data]);
-
-  return {
-    mcpServers,
-    isMCPServersLoading: !error && !data,
-    isError: error,
-    mutate,
-  };
 }

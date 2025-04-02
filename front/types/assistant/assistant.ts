@@ -121,17 +121,25 @@ export const MISTRAL_LARGE_MODEL_ID = "mistral-large-latest" as const;
 export const MISTRAL_MEDIUM_MODEL_ID = "mistral-medium" as const;
 export const MISTRAL_SMALL_MODEL_ID = "mistral-small-latest" as const;
 export const MISTRAL_CODESTRAL_MODEL_ID = "codestral-latest" as const;
+
 export const GEMINI_1_5_PRO_LATEST_MODEL_ID = "gemini-1.5-pro-latest" as const;
 export const GEMINI_1_5_FLASH_LATEST_MODEL_ID =
   "gemini-1.5-flash-latest" as const;
+export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
+export const GEMINI_2_FLASH_LITE_MODEL_ID = "gemini-2.0-flash-lite" as const;
+
+// These Gemini models are preview (AKA experimental) models and have a very small rate limit
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_ID = "gemini-2.5-pro-exp-03-25";
+
+// These Gemini preview models are deprecated (either replaced by a GA model or not making it to GA)
 export const GEMINI_2_FLASH_PREVIEW_MODEL_ID = "gemini-2.0-flash-exp" as const;
 export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-thinking-exp-01-21" as const;
-export const GEMINI_2_FLASH_MODEL_ID = "gemini-2.0-flash" as const;
 export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID =
   "gemini-2.0-flash-lite-preview-02-05" as const;
 export const GEMINI_2_PRO_PREVIEW_MODEL_ID =
   "gemini-2.0-pro-exp-02-05" as const;
+
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID =
   "meta-llama/Llama-3.3-70B-Instruct-Turbo" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
@@ -172,11 +180,13 @@ export const MODEL_IDS = [
   MISTRAL_CODESTRAL_MODEL_ID,
   GEMINI_1_5_PRO_LATEST_MODEL_ID,
   GEMINI_1_5_FLASH_LATEST_MODEL_ID,
-  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
-  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_LITE_MODEL_ID,
   GEMINI_2_FLASH_MODEL_ID,
   GEMINI_2_FLASH_LITE_PREVIEW_MODEL_ID,
+  GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
   GEMINI_2_PRO_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+  GEMINI_2_FLASH_PREVIEW_MODEL_ID,
   TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_ID,
   TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID,
   TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_ID,
@@ -705,41 +715,6 @@ export const GEMINI_FLASH_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
 };
 
-export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "google_ai_studio",
-  modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
-  displayName: "Gemini Flash 2.0",
-  contextSize: 1_000_000,
-  recommendedTopK: 64,
-  recommendedExhaustiveTopK: 128,
-  largeModel: true,
-  description:
-    "Google's lightweight, fast and cost-efficient model (1m context).",
-  shortDescription: "Google's cost-effective model (preview).",
-  isLegacy: false,
-  generationTokensCount: 2048,
-  supportsVision: true,
-  featureFlag: "google_ai_studio_experimental_models_feature",
-};
-
-export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "google_ai_studio",
-    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
-    displayName: "Gemini Flash 2.0 Thinking",
-    contextSize: 32_000,
-    recommendedTopK: 64,
-    recommendedExhaustiveTopK: 128,
-    largeModel: true,
-    description:
-      "Google's lightweight model optimized for reasoning (1m context).",
-    shortDescription: "Google's reasoning-focused model (preview).",
-    isLegacy: false,
-    generationTokensCount: 2048,
-    supportsVision: true,
-    featureFlag: "google_ai_studio_experimental_models_feature",
-  };
-
 export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_FLASH_MODEL_ID,
@@ -755,6 +730,39 @@ export const GEMINI_2_FLASH_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
 };
 
+export const GEMINI_2_FLASH_LITE_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_LITE_MODEL_ID,
+  displayName: "Gemini Flash 2.0 Lite",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Google's lightweight large context model (1m context).",
+  shortDescription: "Google's lightweight model.",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+};
+
+// Current Preview model
+export const GEMINI_2_5_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_5_PRO_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.5 Pro Preview",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description: "Google's powerful large context model (1m context).",
+  shortDescription: "Google's powerful model (preview).",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
+
+// DEPRECATED -- Replaced by GA model
 export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "google_ai_studio",
@@ -772,6 +780,25 @@ export const GEMINI_2_FLASH_LITE_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
     featureFlag: "google_ai_studio_experimental_models_feature",
   };
 
+// DEPRECATED -- Replaced by GA model
+export const GEMINI_2_FLASH_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "google_ai_studio",
+  modelId: GEMINI_2_FLASH_PREVIEW_MODEL_ID,
+  displayName: "Gemini Flash 2.0",
+  contextSize: 1_000_000,
+  recommendedTopK: 64,
+  recommendedExhaustiveTopK: 128,
+  largeModel: true,
+  description:
+    "Google's lightweight, fast and cost-efficient model (1m context).",
+  shortDescription: "Google's cost-effective model (preview).",
+  isLegacy: false,
+  generationTokensCount: 2048,
+  supportsVision: true,
+  featureFlag: "google_ai_studio_experimental_models_feature",
+};
+
+// DEPRECATED -- Not making it to GA
 export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "google_ai_studio",
   modelId: GEMINI_2_PRO_PREVIEW_MODEL_ID,
@@ -787,6 +814,25 @@ export const GEMINI_2_PRO_PREVIEW_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   featureFlag: "google_ai_studio_experimental_models_feature",
 };
+
+// DEPRECATED -- Not making it to GA
+export const GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "google_ai_studio",
+    modelId: GEMINI_2_FLASH_THINKING_PREVIEW_MODEL_ID,
+    displayName: "Gemini Flash 2.0 Thinking",
+    contextSize: 32_000,
+    recommendedTopK: 64,
+    recommendedExhaustiveTopK: 128,
+    largeModel: true,
+    description:
+      "Google's lightweight model optimized for reasoning (1m context).",
+    shortDescription: "Google's reasoning-focused model (preview).",
+    isLegacy: false,
+    generationTokensCount: 2048,
+    supportsVision: true,
+    featureFlag: "google_ai_studio_experimental_models_feature",
+  };
 
 export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigurationType =
   {

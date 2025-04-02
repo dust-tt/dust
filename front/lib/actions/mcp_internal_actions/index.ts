@@ -1,16 +1,16 @@
 import type { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import type { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
+import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import dataSourceUtilsServer from "@app/lib/actions/mcp_internal_actions/data_source_utils";
 import helloWorldServer from "@app/lib/actions/mcp_internal_actions/helloworld";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getResourceNameAndIdFromSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
+import type { ModelId, Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 
-const INTERNAL_MCP_SERVERS: Record<
+export const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
   {
     id: number;
@@ -30,26 +30,23 @@ const INTERNAL_MCP_SERVERS: Record<
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
 
-export const getInternalMCPServerSId = (
-  auth: Authenticator,
+const getInternalMCPServerNameAndWorkspaceId = (
+  sId: string
+): Result<
   {
-    internalMCPServerName,
-  }: { internalMCPServerName: InternalMCPServerNameType }
-): string =>
-  makeSId("internal_mcp_server", {
-    id: INTERNAL_MCP_SERVERS[internalMCPServerName].id,
-    workspaceId: auth.getNonNullableWorkspace().id,
-  });
-
-const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
+    name: InternalMCPServerNameType;
+    workspaceId: ModelId;
+  },
+  Error
+> => {
   const sIdParts = getResourceNameAndIdFromSId(sId);
 
   if (!sIdParts) {
-    throw new Error(`Invalid internal MCPServer sId: ${sId}`);
+    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
   }
 
   if (sIdParts.resourceName !== "internal_mcp_server") {
-    throw new Error(`Invalid internal MCPServer sId: ${sId}`);
+    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
   }
 
   // Swap keys and values.
@@ -58,10 +55,38 @@ const getInternalMCPServerName = (sId: string): InternalMCPServerNameType => {
   );
 
   if (!details) {
-    throw new Error(`Invalid internal MCPServer sId: ${sId}`);
+    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
   }
 
-  return details[0] as InternalMCPServerNameType;
+  if (!isInternalMCPServerName(details[0])) {
+    return new Err(new Error(`Invalid internal MCPServer sId: ${sId}`));
+  }
+
+  const name: InternalMCPServerNameType = details[0];
+
+  return new Ok({
+    name,
+    workspaceId: sIdParts.workspaceId,
+  });
+};
+
+const isInternalMCPServerName = (
+  name: string
+): name is InternalMCPServerNameType =>
+  AVAILABLE_INTERNAL_MCPSERVER_NAMES.includes(
+    name as InternalMCPServerNameType
+  );
+
+export const isValidInternalMCPServerId = (
+  auth: Authenticator,
+  sId: string
+): boolean => {
+  const r = getInternalMCPServerNameAndWorkspaceId(sId);
+  if (r.isOk()) {
+    return r.value.workspaceId === auth.getNonNullableWorkspace().id;
+  }
+
+  return false;
 };
 
 export const connectToInternalMCPServer = async (
@@ -69,16 +94,19 @@ export const connectToInternalMCPServer = async (
   transport: InMemoryTransport,
   auth: Authenticator
 ): Promise<McpServer> => {
-  const internalMCPServerName = getInternalMCPServerName(mcpServerId);
+  let internalMCPServerName: InternalMCPServerNameType;
+
+  const r = getInternalMCPServerNameAndWorkspaceId(mcpServerId);
+  if (r.isOk()) {
+    internalMCPServerName = r.value.name;
+  } else {
+    throw new MCPServerNotFoundError(
+      `Internal MCPServer not found for id ${mcpServerId}`
+    );
+  }
 
   const { createServer } = INTERNAL_MCP_SERVERS[internalMCPServerName];
   const server = createServer(auth, mcpServerId);
-
-  if (!server) {
-    throw new Error(
-      `Internal MCPServer not found for id ${internalMCPServerName}`
-    );
-  }
 
   await server.connect(transport);
 

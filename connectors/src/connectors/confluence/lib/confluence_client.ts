@@ -333,6 +333,20 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
+        const rateLimitHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          if (key.toLowerCase().startsWith("x-ratelimit")) {
+            rateLimitHeaders[key] = value;
+          }
+        });
+
+        logger.info(
+          {
+            rateLimitHeaders,
+            endpoint,
+          },
+          "[Confluence] Headers relative to the rate limit"
+        );
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);

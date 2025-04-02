@@ -73,7 +73,7 @@ export const InputBarContainer = ({
     []
   );
 
-  const isAttachedFromDataSourceActivated: boolean = true;
+  const isAttachedFromDataSourceActivated: boolean = false;
 
   const { editor, editorService } = useCustomEditor({
     suggestions,
