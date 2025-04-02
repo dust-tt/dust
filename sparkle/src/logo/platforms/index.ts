@@ -19,6 +19,7 @@ export { default as GoogleSlideLogo } from "./GoogleSlide";
 export { default as GoogleSpreadsheetLogo } from "./GoogleSpreadsheet";
 export { default as Gpt3Logo } from "./Gpt3";
 export { default as Gpt4Logo } from "./Gpt4";
+export { default as HubspotLogo } from "./Hubspot";
 export { default as HuggingFaceLogo } from "./HuggingFace";
 export { default as IntercomLogo } from "./Intercom";
 export { default as MicrosoftLogo } from "./Microsoft";

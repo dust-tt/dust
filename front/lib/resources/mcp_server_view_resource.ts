@@ -10,11 +10,11 @@ import { Op } from "sequelize";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -294,6 +294,30 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return remoteMCPServer;
   }
 
+  async getInternalMCPServer(
+    auth: Authenticator
+  ): Promise<InternalMCPServerInMemoryResource> {
+    if (this.serverType !== "internal") {
+      throw new Error("This MCP server view is not an internal server view");
+    }
+
+    if (!this.internalMCPServerId) {
+      throw new Error("This MCP server view is missing an internal server ID");
+    }
+
+    const internalMCPServer = await InternalMCPServerInMemoryResource.fetchById(
+      auth,
+      this.internalMCPServerId
+    );
+    if (!internalMCPServer) {
+      throw new Error(
+        "This MCP server view is referencing a non-existent internal server"
+      );
+    }
+
+    return internalMCPServer;
+  }
+
   get sId(): string {
     return MCPServerViewResource.modelIdToSId({
       id: this.id,
@@ -339,9 +363,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
   // Serialization.
   async toJSON(auth: Authenticator): Promise<MCPServerViewType> {
-    const server = await getMCPServerMetadataLocally(auth, {
-      mcpServerId: this.mcpServerId,
-    });
+    let server: MCPServerType;
+    if (this.serverType === "remote") {
+      const mcpServer = await this.getRemoteMCPServer(auth);
+      server = mcpServer.toJSON();
+    } else {
+      const mcpServer = await this.getInternalMCPServer(auth);
+      server = await mcpServer.toJSON(auth);
+    }
+
     return {
       id: this.sId,
       createdAt: this.createdAt,

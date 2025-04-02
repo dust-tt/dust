@@ -15,6 +15,7 @@ import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import {
   useCreateInternalMCPServer,
   useMCPServers,
@@ -36,11 +37,17 @@ export const AddActionMenu = ({
     filter: "internal",
   });
   const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
-  const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   const systemSpace = useMemo(() => {
     return spaces.find((space) => space.kind === "system");
   }, [spaces]);
+
+  const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: systemSpace,
+    disabled: true,
+  });
 
   return (
     <DropdownMenu modal={false}>
@@ -66,7 +73,8 @@ export const AddActionMenu = ({
                 if (!systemSpace) {
                   throw new Error("System space not found");
                 }
-                await createInternalMCPServer(mcpServer.id);
+                await createInternalMCPServer(mcpServer.name);
+                await mutateMCPServerViews();
               }}
             />
           ))}

@@ -124,12 +124,12 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
   });
 
   const createInternalMCPServer = async (
-    internalMCPServerId: string
+    name: string
   ): Promise<CreateMCPServerResponseBody> => {
     const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ internalMCPServerId, serverType: "internal" }),
+      body: JSON.stringify({ name, serverType: "internal" }),
     });
 
     if (!response.ok) {

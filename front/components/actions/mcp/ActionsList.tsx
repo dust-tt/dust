@@ -1,3 +1,4 @@
+import { removeNulls } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -8,7 +9,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React from "react";
+import React, { useMemo } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
@@ -27,12 +28,14 @@ import {
 import {
   useDeleteMCPServer,
   useMCPServerConnections,
+  useMCPServers,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type RowData = {
   serverView: MCPServerViewType;
+  spaces: SpaceType[];
   onClick: () => void;
   actions: MenuItem[];
 };
@@ -53,15 +56,24 @@ export const AdminActionsList = ({
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
   const { deleteServer } = useDeleteMCPServer(owner);
-  const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
+
+  const systemSpace = useMemo(() => {
+    return spaces.find((space) => space.kind === "system");
+  }, [spaces]);
+
   const availableSpaces = (spaces ?? []).filter((s) => s.kind !== "system");
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
   });
-  const { serverViews, isMCPServerViewsLoading } = useMCPServerViews({
+  const { mcpServers, mutateMCPServers } = useMCPServers({
     owner,
-    space: systemSpace,
+    filter: "all",
   });
+  const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =
+    useMCPServerViews({
+      owner,
+      space: systemSpace,
+    });
 
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
     useMCPConnectionManagement({ owner });
@@ -104,7 +116,7 @@ export const AdminActionsList = ({
 
     columns.push({
       id: "spaces",
-      accessorKey: "serverView.server.spaces",
+      accessorKey: "spaces",
       meta: {
         className: "w-48",
       },
@@ -115,27 +127,20 @@ export const AdminActionsList = ({
           </div>
         );
       },
-      cell: (info: CellContext<RowData, SpaceType[]>) => (
-        <DataTable.BasicCellContent
-          className="justify-end"
-          label={
-            info.getValue().length > 0
-              ? info
-                  .getValue()
-                  .map((v) => v.name)
-                  .join(", ")
-              : "-"
-          }
-          tooltip={
-            info.getValue().length > 0
-              ? info
-                  .getValue()
-                  .map((v) => v.name)
-                  .join(", ")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, SpaceType[]>) => {
+        const spaces = info
+          .getValue()
+          .filter((v) => v.kind !== "system")
+          .map((v) => v.name);
+
+        return (
+          <DataTable.BasicCellContent
+            className="justify-end"
+            label={spaces.length > 0 ? spaces.join(", ") : "-"}
+            tooltip={spaces.length > 0 ? spaces.join(", ") : "-"}
+          />
+        );
+      },
     });
 
     columns.push({
@@ -212,54 +217,76 @@ export const AdminActionsList = ({
 
   const rows: RowData[] = serverViews.map((serverView) => {
     const { serverType } = getServerTypeAndIdFromSId(serverView.server.id);
-    const viewSpaces = serverView.server.spaces ?? [];
-    const spaces = Object.groupBy(availableSpaces, ({ sId }) =>
-      viewSpaces.find((s) => s.sId === sId) ? "included" : "available"
+
+    const linkedServerViews = mcpServers.find(
+      (s) => s.id === serverView.server.id
+    )?.views;
+
+    const linkedSpaces = removeNulls(
+      linkedServerViews?.map((v) => spaces.find((s) => s.sId === v.spaceId)) ||
+        []
     );
+
+    const groupedSpaces = Object.groupBy(availableSpaces, ({ sId }) =>
+      linkedSpaces.find((s) => s.sId === sId) ? "included" : "available"
+    );
+
     return {
       serverView,
+      spaces: linkedSpaces,
       onClick: () => {
         setShowDetails(serverView.server);
       },
       actions: [
         {
-          disabled: !spaces.available || spaces.available.length === 0,
+          disabled:
+            !groupedSpaces.available || groupedSpaces.available.length === 0,
           kind: "submenu",
           label: "Add to space",
-          items: (spaces.available || []).map((s) => ({
+          items: (groupedSpaces.available || []).map((s) => ({
             id: s.sId,
             name: s.name,
           })),
-          onSelect: (spaceId) => {
+          onSelect: async (spaceId) => {
             const space = availableSpaces.find((s) => s.sId === spaceId);
             if (!space) {
               throw new Error("Space not found");
             }
-            void addToSpace(serverView.server, space);
+            await addToSpace(serverView.server, space);
+            await mutateMCPServers();
           },
         },
         {
-          disabled: !spaces.included || spaces.included.length === 0,
+          disabled:
+            !groupedSpaces.included || groupedSpaces.included.length === 0,
           kind: "submenu",
           label: "Remove from space",
-          items: (spaces.included || []).map((s) => ({
+          items: (groupedSpaces.included || []).map((s) => ({
             id: s.sId,
             name: s.name,
           })),
-          onSelect: (spaceId) => {
+          onSelect: async (spaceId) => {
             const space = availableSpaces.find((s) => s.sId === spaceId);
             if (!space) {
               throw new Error("Space not found");
             }
-            void removeFromSpace(serverView, space);
+
+            const viewToDelete = linkedServerViews?.find(
+              (v) => v.spaceId === spaceId
+            );
+            if (viewToDelete) {
+              await removeFromSpace(viewToDelete, space);
+              await mutateMCPServers();
+            }
           },
         },
         {
           disabled: availableSpaces.length === 0,
           kind: "item",
           label: serverType === "internal" ? "Disable" : "Delete",
-          onSelect: () => {
-            void deleteServer(serverView.server.id);
+          onSelect: async () => {
+            await deleteServer(serverView.server.id);
+            await mutateMCPServerViews();
           },
         },
       ],

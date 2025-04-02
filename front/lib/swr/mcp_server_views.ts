@@ -1,7 +1,6 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
-import { useSWRConfig } from "swr";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
@@ -42,7 +41,6 @@ export function useMCPServerViews({
 
 export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutate: globalMutate } = useSWRConfig();
 
   const createView = useCallback(
     async (
@@ -70,8 +68,6 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
           description:
             "Your actions have been added to the space successfully.",
         });
-
-        await globalMutate(getMCPServerViewsKey(owner, space));
       } else {
         sendNotification({
           type: "error",
@@ -82,7 +78,7 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
       return response.json();
     },
-    [owner.sId, sendNotification, globalMutate, owner]
+    [sendNotification, owner]
   );
 
   return { addToSpace: createView };
@@ -90,41 +86,41 @@ export function useAddMCPServerToSpace(owner: LightWorkspaceType) {
 
 export function useRemoveMCPServerViewFromSpace(owner: LightWorkspaceType) {
   const sendNotification = useSendNotification();
-  const { mutate: globalMutate } = useSWRConfig();
 
-  const deleteView = async (
-    serverView: MCPServerViewType,
-    space: SpaceType
-  ): Promise<DeleteMCPServerResponseBody> => {
-    const response = await fetch(
-      `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.id}`,
-      {
-        method: "DELETE",
+  const deleteView = useCallback(
+    async (
+      serverView: MCPServerViewType,
+      space: SpaceType
+    ): Promise<DeleteMCPServerResponseBody> => {
+      const response = await fetch(
+        `/api/w/${owner.sId}/spaces/${space.sId}/mcp_views/${serverView.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (response.ok) {
+        sendNotification({
+          type: "success",
+          title:
+            space.kind === "system"
+              ? "Action removed from workspace"
+              : "Action removed from space",
+          description:
+            "Your actions have been removed from the space successfully.",
+        });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to remove action",
+          description: `Could not remove actions from the space ${space.name}. Please try again.`,
+        });
       }
-    );
 
-    if (response.ok) {
-      sendNotification({
-        type: "success",
-        title:
-          space.kind === "system"
-            ? "Action removed from workspace"
-            : "Action removed from space",
-        description:
-          "Your actions have been removed from the space successfully.",
-      });
-
-      await globalMutate(getMCPServerViewsKey(owner, space));
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to remove action",
-        description: `Could not remove actions from the space ${space.name}. Please try again.`,
-      });
-    }
-
-    return response.json();
-  };
+      return response.json();
+    },
+    [sendNotification, owner]
+  );
 
   return { removeFromSpace: deleteView };
 }

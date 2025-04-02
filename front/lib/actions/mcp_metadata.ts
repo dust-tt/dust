@@ -18,17 +18,13 @@ import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { AllowedIconType } from "@app/lib/actions/mcp_icons";
 import { isAllowedIconType } from "@app/lib/actions/mcp_icons";
-import {
-  connectToInternalMCPServer,
-  getInternalMCPServerSId,
-} from "@app/lib/actions/mcp_internal_actions";
-import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
+import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { OAuthProvider, OAuthUseCase, SpaceType } from "@app/types";
+import type { OAuthProvider, OAuthUseCase } from "@app/types";
 import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
@@ -42,7 +38,6 @@ export type MCPServerType = {
   name: string;
   version: string;
   description: string;
-  spaces?: SpaceType[];
   icon: AllowedIconType;
   authorization?: AuthorizationInfo;
   tools: MCPToolType[];
@@ -55,18 +50,16 @@ export type AuthorizationInfo = {
   use_case: OAuthUseCase;
 };
 
-async function getAccessTokenForMCPServer(
+async function getAccessTokenForRemoteMCPServer(
   auth: Authenticator,
-  mcpServerId: string
+  remoteMCPServer: RemoteMCPServerResource
 ) {
-  const metadata = await getMCPServerMetadataLocally(auth, {
-    mcpServerId: mcpServerId,
-  });
+  const metadata = remoteMCPServer.toJSON();
 
   if (metadata.authorization) {
     const connection = await MCPServerConnectionResource.findByMCPServer({
       auth,
-      mcpServerId: mcpServerId,
+      mcpServerId: metadata.id,
     });
     if (connection.isOk()) {
       const token = await getOAuthConnectionAccessToken({
@@ -115,11 +108,6 @@ export const connectToMCPServer = async (
           break;
 
         case "remote":
-          const accessToken = await getAccessTokenForMCPServer(
-            auth,
-            params.mcpServerId
-          );
-
           const remoteMCPServer = await RemoteMCPServerResource.fetchById(
             auth,
             params.mcpServerId
@@ -130,6 +118,11 @@ export const connectToMCPServer = async (
               `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
             );
           }
+
+          const accessToken = await getAccessTokenForRemoteMCPServer(
+            auth,
+            remoteMCPServer
+          );
 
           const url = new URL(remoteMCPServer.url);
           const sseTransport = new SSEClientTransport(url, {
@@ -161,7 +154,7 @@ export const connectToMCPServer = async (
   return mcpClient;
 };
 
-function extractMetadataFromServerVersion(
+export function extractMetadataFromServerVersion(
   r: Implementation | undefined
 ): MCPServerDefinitionType {
   if (r) {
@@ -191,7 +184,9 @@ function extractMetadataFromServerVersion(
   };
 }
 
-function extractMetadataFromTools(tools: ListToolsResult): MCPToolType[] {
+export function extractMetadataFromTools(
+  tools: ListToolsResult
+): MCPToolType[] {
   return tools.tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
     const ajv = new Ajv();
@@ -232,97 +227,4 @@ export async function fetchRemoteServerMetaDataByURL(
   } finally {
     await mcpClient.close();
   }
-}
-
-/**
- * Get the metadata of the MCP server.
- *
- * This function is safe to call even if the server is remote as it will not connect to the server and use the cached metadata.
- */
-export async function getMCPServerMetadataLocally(
-  auth: Authenticator,
-  {
-    mcpServerId,
-    remoteMCPServer,
-  }: {
-    mcpServerId: string;
-    remoteMCPServer?: RemoteMCPServerResource;
-  }
-): Promise<MCPServerType> {
-  const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
-  switch (serverType) {
-    case "internal":
-      // For internal servers, we can connect to the server directly as it's an in-memory communication in the same process.
-      const mcpClient = await connectToMCPServer(auth, {
-        type: "mcpServerId",
-        mcpServerId,
-      });
-
-      const r = mcpClient.getServerVersion();
-      const tools = await mcpClient.listTools();
-      await mcpClient.close();
-
-      return {
-        id: mcpServerId,
-        ...extractMetadataFromServerVersion(r),
-        // TODO(mcp): add spaces
-        // spaces: withSpaces
-        //   ? (
-        //       await MCPServerViewResource.listByMCPServer(auth, mcpServerId)
-        //     ).map((v) => v.space.toJSON())
-        //   : undefined,
-        tools: extractMetadataFromTools(tools),
-      };
-
-    case "remote":
-      // TODO(mcp): add a background job to update the metadata by calling updateRemoteMCPServerMetadata.
-
-      let server: RemoteMCPServerResource | null = null;
-      if (!remoteMCPServer) {
-        server = await RemoteMCPServerResource.fetchById(auth, mcpServerId);
-      } else {
-        server = remoteMCPServer;
-      }
-
-      if (!server) {
-        throw new MCPServerNotFoundError(
-          `Remote MCP server with remoteMCPServerId ${id} not found for remote server type.`
-        );
-      }
-      if (server.id !== id) {
-        throw new Error(
-          `Remote MCP server id do not match ${id} !== ${server.id}`
-        );
-      }
-      return {
-        ...server.toJSON(),
-        // TODO(mcp): add spaces
-        // spaces: withSpaces
-        //   ? (
-        //       await MCPServerViewResource.listByMCPServer(auth, mcpServerId)
-        //     ).map((v) => v.space.toJSON())
-        //   : undefined,
-      };
-
-    default:
-      assertNever(serverType);
-  }
-}
-
-export async function getAllMCPServersMetadataLocally(
-  auth: Authenticator
-): Promise<MCPServerType[]> {
-  const mcpServers = await Promise.all(
-    AVAILABLE_INTERNAL_MCPSERVER_NAMES.map(async (internalMCPServerName) => {
-      const mcpServerId = getInternalMCPServerSId(auth, {
-        internalMCPServerName,
-      });
-      const metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId,
-      });
-      return metadata;
-    })
-  );
-
-  return mcpServers;
 }
