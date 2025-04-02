@@ -52,7 +52,13 @@ function generateConnectorRelativeMimeTypes<
   );
 }
 
+// Mime type that represents a datasource.
+export const DATA_SOURCE_MIME_TYPE = "application/vnd.dust.datasource" as const;
+
+type DataSourceMimeType = typeof DATA_SOURCE_MIME_TYPE;
+
 export const CONTENT_NODE_MIME_TYPES = {
+  GENERIC: { DATA_SOURCE: DATA_SOURCE_MIME_TYPE },
   CONFLUENCE: generateConnectorRelativeMimeTypes({
     provider: "confluence",
     resourceTypes: ["SPACE", "PAGE"],
@@ -153,9 +159,9 @@ export const INTERNAL_MIME_TYPES = {
   ...TOOL_INPUT_MIME_TYPES,
 };
 
-export const INTERNAL_MIME_TYPES_VALUES = Object.values(CONTENT_NODE_MIME_TYPES).flatMap(
-  (value) => Object.values(value).map((v) => v)
-);
+export const INTERNAL_MIME_TYPES_VALUES = Object.values(
+  CONTENT_NODE_MIME_TYPES
+).flatMap((value) => Object.values(value).map((v) => v));
 
 export type BigQueryMimeType =
   (typeof INTERNAL_MIME_TYPES.BIGQUERY)[keyof typeof INTERNAL_MIME_TYPES.BIGQUERY];
@@ -212,7 +218,8 @@ export type DustMimeType =
   | WebcrawlerMimeType
   | ZendeskMimeType
   | SalesforceMimeType
-  | GongMimeType;
+  | GongMimeType
+  | DataSourceMimeType;
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
   return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
