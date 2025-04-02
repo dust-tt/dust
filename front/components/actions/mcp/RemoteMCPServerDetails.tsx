@@ -7,18 +7,18 @@ import {
   SheetTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useState, useEffect, useReducer } from "react";
+import { useEffect, useReducer,useState } from "react";
 
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
+import type { MCPFormAction,MCPFormState } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import type { WorkspaceType } from "@app/types";
-import { 
+import {
   useCreateRemoteMCPServer,
-  useUpdateRemoteMCPServer,
-  useSyncRemoteMCPServer,
   useRemoteMCPServer,
+  useSyncRemoteMCPServer,
+  useUpdateRemoteMCPServer,
 } from "@app/lib/swr/mcp_servers";
-import { MCPFormState, MCPFormAction } from "@app/lib/actions/mcp";
+import type { WorkspaceType } from "@app/types";
 import { validateUrl } from "@app/types";
 
 function getInitialFormState(): MCPFormState {
@@ -31,7 +31,10 @@ function getInitialFormState(): MCPFormState {
   };
 }
 
-function validateFormState(state: MCPFormState): { isValid: boolean; errors: MCPFormState["errors"] } {
+function validateFormState(state: MCPFormState): {
+  isValid: boolean;
+  errors: MCPFormState["errors"];
+} {
   const urlValidation = validateUrl(state.url);
   const errors: MCPFormState["errors"] = {
     url: !urlValidation.valid
@@ -61,7 +64,9 @@ export function RemoteMCPServerDetails({
   const [isSaving, setIsSaving] = useState(false);
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isSynchronized, setIsSynchronized] = useState(false);
-  const [sharedSecret, setSharedSecret] = useState<string | undefined>(undefined);
+  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
+    undefined
+  );
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
   const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer?.id || "");
@@ -109,7 +114,7 @@ export function RemoteMCPServerDetails({
       setIsSynchronized(false);
       return;
     }
-    
+
     if (server) {
       // For existing servers, populate the form with server data
       dispatch({ type: "SET_FIELD", field: "name", value: server.name });
@@ -119,16 +124,16 @@ export function RemoteMCPServerDetails({
         value: server.description,
       });
       dispatch({ type: "SET_FIELD", field: "tools", value: server.tools });
-      
+
       // Remote MCP Server specific fields
-      if ('url' in server) {
+      if ("url" in server) {
         dispatch({ type: "SET_FIELD", field: "url", value: server.url });
       }
-      
-      if ('sharedSecret' in server) {
+
+      if ("sharedSecret" in server) {
         setSharedSecret(server.sharedSecret);
       }
-      
+
       setIsSynchronized(true);
     } else if (mcpServer && !isServerLoading) {
       // For servers without additional data yet
@@ -160,7 +165,7 @@ export function RemoteMCPServerDetails({
           description: formState.description,
           tools: formState.tools,
         });
-        
+
         sendNotification({
           title: "MCP server updated",
           type: "success",
@@ -207,7 +212,11 @@ export function RemoteMCPServerDetails({
       }
 
       if (result.success) {
-        dispatch({ type: "SET_FIELD", field: "name", value: result.server.name });
+        dispatch({
+          type: "SET_FIELD",
+          field: "name",
+          value: result.server.name,
+        });
         dispatch({
           type: "SET_FIELD",
           field: "description",
@@ -241,7 +250,7 @@ export function RemoteMCPServerDetails({
   };
 
   const isNewServer = mcpServer?.id === "new";
-  
+
   return (
     <Sheet open={!!mcpServer} onOpenChange={onClose}>
       <SheetContent size="xl">
@@ -286,4 +295,4 @@ export function RemoteMCPServerDetails({
       </SheetContent>
     </Sheet>
   );
-} 
+}

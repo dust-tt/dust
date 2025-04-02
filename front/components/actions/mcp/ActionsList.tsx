@@ -8,7 +8,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React, { useState } from "react";
+import React from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
@@ -249,7 +249,7 @@ export const AdminActionsList = ({
         onSelect: () => {
           setShowDetails(serverView.server);
         },
-      }
+      },
     ],
   }));
   const columns = getTableColumns();
@@ -272,11 +272,7 @@ export const AdminActionsList = ({
           <Spinner />
         </div>
       ) : (
-        <DataTable 
-          data={rows} 
-          columns={columns} 
-          className="pb-4"
-        />
+        <DataTable data={rows} columns={columns} className="pb-4" />
       )}
     </div>
   );

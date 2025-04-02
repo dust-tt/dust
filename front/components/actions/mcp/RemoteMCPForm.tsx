@@ -1,4 +1,3 @@
-import { MCPFormAction, MCPFormState } from "@app/lib/actions/mcp";
 import {
   Button,
   EyeIcon,
@@ -11,6 +10,8 @@ import {
 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
 import { useEffect, useState } from "react";
+
+import type { MCPFormAction, MCPFormState } from "@app/lib/actions/mcp";
 
 interface RemoteMCPFormProps {
   state: MCPFormState;
