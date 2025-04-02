@@ -1,4 +1,4 @@
-import type { DustMimeType } from "@dust-tt/client";
+import type { ConnectorProvider, DustMimeType } from "@dust-tt/client";
 
 import type { MessageType, MessageVisibility } from "./assistant/conversation";
 import type { ContentNodeType } from "./core/content_node";
@@ -24,7 +24,7 @@ export type ContentFragmentNodeData = {
   nodeId: string;
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
-  provider: string;
+  provider: ConnectorProvider | null;
   spaceName: string;
 };
 

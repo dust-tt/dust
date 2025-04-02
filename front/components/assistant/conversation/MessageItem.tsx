@@ -122,13 +122,12 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               if (contentFragment.contentNodeData) {
                 const { provider, nodeType } = contentFragment.contentNodeData;
                 const logo = getConnectorProviderLogoWithFallback({
-                  provider: provider as ConnectorProvider,
+                  provider,
                 });
 
                 // For websites or folders, show just the provider logo
-                const isWebsiteOrFolder = ["webcrawler", "folder"].includes(
-                  provider
-                );
+                const isWebsiteOrFolder =
+                  provider === "webcrawler" || provider === null;
                 if (isWebsiteOrFolder) {
                   visual = <Icon visual={logo} size="sm" />;
                 } else {
@@ -172,7 +171,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     <Icon visual={FolderIcon} />
                     <p>{contentFragment.contentNodeData.spaceName}</p>
                   </div>
-                  <div className="text-element-600 text-sm">
+                  <div className="text-sm text-element-600">
                     {contentFragment.sourceUrl || ""}
                   </div>
                 </div>

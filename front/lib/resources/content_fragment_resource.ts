@@ -284,7 +284,12 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
 
     // Add contentNodeData
     let contentNodeData: ContentFragmentNodeData | null = null;
-    if (nodeId && this.nodeDataSourceViewId && nodeType) {
+    if (
+      nodeId &&
+      nodeDataSourceViewId &&
+      nodeType &&
+      this.nodeDataSourceViewId
+    ) {
       const dsView = await DataSourceViewModel.findByPk(
         this.nodeDataSourceViewId,
         {
@@ -294,26 +299,30 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
               model: DataSourceModel,
               as: "dataSourceForView",
               attributes: ["connectorProvider"],
-              include: [
-                {
-                  model: SpaceModel,
-                  attributes: ["name"],
-                },
-              ],
+            },
+            {
+              model: SpaceModel,
+              as: "space",
+              foreignKey: "vaultId",
+              attributes: ["name"],
             },
           ],
         }
       );
 
-      if (dsView?.dataSourceForView?.space) {
-        contentNodeData = {
-          nodeId,
-          nodeDataSourceViewId: String(nodeDataSourceViewId),
-          nodeType,
-          provider: dsView.dataSourceForView.connectorProvider || "core",
-          spaceName: dsView.dataSourceForView.space.name,
-        };
+      if (!dsView) {
+        throw new Error(
+          `Content fragment node data not found for node id ${nodeId} and node data source view id ${nodeDataSourceViewId}`
+        );
       }
+
+      contentNodeData = {
+        nodeId,
+        nodeDataSourceViewId,
+        nodeType,
+        provider: dsView.dataSourceForView.connectorProvider,
+        spaceName: dsView.space.name,
+      };
     }
     return {
       id: message.id,
