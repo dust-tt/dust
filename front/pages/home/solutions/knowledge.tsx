@@ -41,7 +41,7 @@ export async function getServerSideProps() {
 }
 
 const GRID_SECTION_CLASSES = classNames(
-  "flex flex-col gap-8",
+  "flex flex-col gap-16",
   "col-span-12",
   "lg:col-span-12 lg:col-start-1",
   "xl:col-span-12 xl:col-start-1",
@@ -51,11 +51,13 @@ const GRID_SECTION_CLASSES = classNames(
 export default function Knowledge() {
   return (
     <>
-      <div className="container flex w-full flex-col gap-0 px-2 py-2 pb-12">
+      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
         <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
             <BenefitsSection benefits={Benefits} />
+          </div>
+          <div className={classNames(GRID_SECTION_CLASSES, "mt-16")}>
             <MetricSection {...Metrics} />
           </div>
           <div className={GRID_SECTION_CLASSES}>
@@ -66,6 +68,8 @@ export default function Knowledge() {
           </div>
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
+          </div>
+          <div className={GRID_SECTION_CLASSES}>
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}

@@ -1,20 +1,19 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
 
+import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { H1, P } from "@app/components/home/ContentComponents";
 import TrustedBy from "@app/components/home/TrustedBy";
 
 const VideoPlayer = () => {
   return (
-    <div className="relative w-full rounded-2xl pt-[56.20%]">
-      <iframe
-        src="https://fast.wistia.net/embed/iframe/v90n8beuh9?web_component=true&seo=true"
-        title="Dust demo"
-        allow="fullscreen"
-        frameBorder="0"
-        className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
-      ></iframe>
-    </div>
+    <DemoVideoSection
+      demoVideo={{
+        videoUrl: "https://fast.wistia.net/embed/iframe/v90n8beuh9",
+        autoPlay: false,
+        showCaptions: false,
+      }}
+    />
   );
 };
 

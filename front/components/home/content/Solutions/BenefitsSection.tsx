@@ -32,14 +32,14 @@ interface BenefitsSectionProps {
 
 export function BenefitsSection({ benefits }: BenefitsSectionProps) {
   return (
-    <section className="w-full pt-24">
+    <section className="mt-16 w-full">
       {benefits.sectionTitle && (
-        <div className="mb-6">
+        <div className="mb-8">
           <H2>{benefits.sectionTitle}</H2>
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-x-4 gap-y-8 lg:grid-cols-3 lg:gap-8">
         {benefits.items.map((benefit, index) => (
           <ImgBlock
             key={index}

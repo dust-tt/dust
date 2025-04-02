@@ -161,8 +161,8 @@ export const Quote: QuoteProps = {
 
 export const DemoVideo: DemoVideoProps = {
   sectionTitle: "Watch Dust in motion",
-  videoUrl:
-    "https://fast.wistia.net/embed/iframe/r0dwaexoez?seo=true&videoFoam=true&captions=on",
+  videoUrl: "https://fast.wistia.net/embed/iframe/r0dwaexoez",
+  showCaptions: true,
 };
 
 export const Stories: CustomerStory[] = [

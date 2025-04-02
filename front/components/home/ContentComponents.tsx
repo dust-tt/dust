@@ -65,8 +65,11 @@ const createHeadingComponent = (Tag: TagName) => {
     mono = false,
   }) => {
     const baseClasses = mono
-      ? hClasses[Tag].replace(/heading-/g, "heading-mono-")
-      : hClasses[Tag];
+      ? classNames(
+          hClasses[Tag].replace(/heading-/g, "heading-mono-"),
+          "font-mono"
+        )
+      : classNames(hClasses[Tag], "font-sans");
     return <Tag className={classNames(className, baseClasses)}>{children}</Tag>;
   };
   Component.displayName = Tag.toUpperCase();
@@ -80,7 +83,7 @@ export const H4 = createHeadingComponent("h4");
 export const H5 = createHeadingComponent("h5");
 
 export const Span = ({ children, className = "" }: ContentProps) => (
-  <span className={classNames(className)}>{children}</span>
+  <span className={classNames(className, "font-sans")}>{children}</span>
 );
 
 const pClasses = {
@@ -116,17 +119,23 @@ export const P = ({
 }: PProps) => {
   if (dotCSS) {
     return (
-      <div className={classNames("flex gap-2 lg:gap-3", className)}>
+      <div
+        className={classNames("flex gap-2 lg:gap-3", className, "font-sans")}
+      >
         <Icon
           visual={shapeClasses[shape]}
           className={classNames("mt-0.5 shrink-0", dotCSS)}
           size="md"
         />
-        <p className={classNames(pClasses[size])}>{children}</p>
+        <p className={classNames(pClasses[size], "font-sans")}>{children}</p>
       </div>
     );
   } else {
-    return <p className={classNames(pClasses[size], className)}>{children}</p>;
+    return (
+      <p className={classNames(pClasses[size], className, "font-sans")}>
+        {children}
+      </p>
+    );
   }
 };
 
@@ -158,7 +167,8 @@ export const A = ({
         className={classNames(
           className,
           "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
-          aClasses[variant]
+          aClasses[variant],
+          "font-sans"
         )}
         href={href}
       >
@@ -171,7 +181,8 @@ export const A = ({
         className={classNames(
           className,
           "cursor-pointer font-semibold transition-all duration-300 ease-out hover:underline hover:underline-offset-4",
-          aClasses[variant]
+          aClasses[variant],
+          "font-sans"
         )}
       >
         {children}
@@ -181,5 +192,7 @@ export const A = ({
 };
 
 export const Strong = ({ children, className = "" }: ContentProps) => (
-  <strong className={classNames(className, "font-semibold")}>{children}</strong>
+  <strong className={classNames(className, "font-sans font-semibold")}>
+    {children}
+  </strong>
 );

@@ -18,7 +18,7 @@ export function CapabilitySection() {
         </P>
       </div>
 
-      <div className="grid grid-cols-1 gap-16 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <ImgBlock
           title={<>Build agents with custom instructions and tools</>}
           content={

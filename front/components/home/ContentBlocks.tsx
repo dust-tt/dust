@@ -53,7 +53,7 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
       <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
         <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
-      <div className="flex flex-col gap-3 px-4 pb-6 pt-4">
+      <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
         <H3 className="text-foreground" mono>
           {title}
         </H3>
@@ -223,12 +223,12 @@ export const MetricSection = ({
   const colors = getColorClasses(color);
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="flex flex-col gap-y-8 lg:flex-row lg:justify-center lg:gap-8">
       {metrics.map((metric, index) => (
-        <div key={index} className="w-full">
+        <div key={index} className="flex-1 lg:flex-1">
           <div
             className={classNames(
-              "flex min-h-[180px] w-full flex-col items-start justify-between p-8",
+              "flex min-h-[180px] w-full flex-col items-start justify-between gap-6 p-8",
               colors.bg
             )}
           >
@@ -256,7 +256,7 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col items-center justify-center lg:col-span-10 lg:col-start-2">
+  <div className="col-span-12 mt-16 flex flex-col items-center justify-center lg:col-span-10 lg:col-start-2">
     <div
       className={cn(
         "flex max-w-[500px] flex-col items-center p-4 text-center italic text-foreground",
@@ -266,13 +266,13 @@ export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
       &ldquo; {quote} &rdquo;
     </div>
     <div className="align-center flex justify-center">
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center gap-4">
         <Image
           src={logo}
-          width={200}
-          height={48}
+          width={160}
+          height={40}
           alt="Company Logo"
-          className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
+          className="h-auto w-[120px] object-contain xs:w-[140px] sm:w-[160px]"
         />
         <div className="flex flex-col">
           <P
