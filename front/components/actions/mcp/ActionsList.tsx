@@ -65,15 +65,20 @@ export const AdminActionsList = ({
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
   });
-  const { mcpServers, mutateMCPServers } = useMCPServers({
+  const { mcpServers, mutateMCPServers, isMCPServersLoading } = useMCPServers({
     owner,
     filter: "all",
   });
-  const { serverViews, isMCPServerViewsLoading, mutateMCPServerViews } =
-    useMCPServerViews({
-      owner,
-      space: systemSpace,
-    });
+
+  const serverViews = useMemo(
+    () =>
+      removeNulls(
+        mcpServers
+          .map((s) => s.views?.filter((v) => v.spaceId === systemSpace?.sId))
+          .flat()
+      ),
+    [mcpServers, systemSpace]
+  );
 
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
     useMCPConnectionManagement({ owner });
@@ -286,7 +291,7 @@ export const AdminActionsList = ({
           label: serverType === "internal" ? "Disable" : "Delete",
           onSelect: async () => {
             await deleteServer(serverView.server.id);
-            await mutateMCPServerViews();
+            await mutateMCPServers();
           },
         },
       ],
@@ -306,7 +311,7 @@ export const AdminActionsList = ({
         />
       </div>
 
-      {isConnectionsLoading || isMCPServerViewsLoading ? (
+      {isConnectionsLoading || isMCPServersLoading ? (
         <div className="mt-16 flex justify-center">
           <Spinner />
         </div>
