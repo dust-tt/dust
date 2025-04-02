@@ -264,12 +264,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
   }
 
+  static async updateAttributes(
+    auth: Authenticator,
+    sId: string,
+    blob: Partial<
+      Omit<InferAttributes<ConversationModel>, "workspace" | "workspaceId">
+    >,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    const conversation = await ConversationResource.fetchWithId(auth, sId);
+    if (conversation == null) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+
+    await conversation.updateAttributes(blob, transaction);
+    return new Ok(undefined);
+  }
+
   async updateAttributes(
     blob: Partial<
-      Pick<InferAttributes<ConversationModel>, "title" | "visibility">
-    >
+      Omit<InferAttributes<ConversationModel>, "workspace" | "workspaceId">
+    >,
+    transaction?: Transaction
   ): Promise<[affectedCount: number]> {
-    return this.update(blob);
+    return this.update(blob, transaction);
   }
 
   async delete(

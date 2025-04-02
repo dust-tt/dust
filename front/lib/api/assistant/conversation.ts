@@ -25,7 +25,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
-  ConversationModel,
   ConversationParticipant,
   Mention,
   Message,
@@ -1037,17 +1036,9 @@ export async function* postUserMessage(
       );
     } else {
       const title = titleRes.value;
-      await ConversationModel.update(
-        {
-          title,
-        },
-        {
-          where: {
-            id: conversation.id,
-          },
-        }
-      );
-
+      await ConversationResource.updateAttributes(auth, conversation.sId, {
+        title,
+      });
       yield {
         type: "conversation_title",
         created: Date.now(),
@@ -2142,15 +2133,12 @@ export async function updateConversationRequestedGroupIds(
     return req;
   });
 
-  await ConversationModel.update(
+  await ConversationResource.updateAttributes(
+    auth,
+    conversation.sId,
     {
       requestedGroupIds: updatedRequirements,
     },
-    {
-      where: {
-        id: conversation.id,
-      },
-      transaction: t,
-    }
+    t
   );
 }
