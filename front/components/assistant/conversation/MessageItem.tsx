@@ -23,7 +23,6 @@ import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type {
-  ConnectorProvider,
   MessageWithContentFragmentsType,
   UserType,
   WorkspaceType,
