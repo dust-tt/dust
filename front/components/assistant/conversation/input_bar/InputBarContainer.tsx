@@ -192,6 +192,7 @@ const InputBarContainer = ({
     editorService,
     spacesMap,
     nodeOrUrlCandidate,
+    sendNotification,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
