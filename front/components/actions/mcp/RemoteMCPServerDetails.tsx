@@ -7,20 +7,19 @@ import {
   SheetTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useState } from "react";
+import { useState, useEffect, useReducer } from "react";
 
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
-import {
-  useCreateRemoteMCPServer,
-  useMCPServer,
-  useRemoteMCPServer,
-  useSyncRemoteMCPServer,
-  useUpdateRemoteMCPServer,
-} from "@app/lib/swr/mcp_servers";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { WorkspaceType } from "@app/types";
-import { validateUrl } from "@app/types";
+import { 
+  useCreateRemoteMCPServer,
+  useUpdateRemoteMCPServer,
+  useSyncRemoteMCPServer,
+  useRemoteMCPServer,
+} from "@app/lib/swr/mcp_servers";
 import { MCPFormState, MCPFormAction } from "@app/lib/actions/mcp";
-import { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
+import { validateUrl } from "@app/types";
 
 function getInitialFormState(): MCPFormState {
   return {
@@ -32,12 +31,7 @@ function getInitialFormState(): MCPFormState {
   };
 }
 
-type ValidationResult = {
-  isValid: boolean;
-  errors: MCPFormState["errors"];
-};
-
-function validateFormState(state: MCPFormState): ValidationResult {
+function validateFormState(state: MCPFormState): { isValid: boolean; errors: MCPFormState["errors"] } {
   const urlValidation = validateUrl(state.url);
   const errors: MCPFormState["errors"] = {
     url: !urlValidation.valid
@@ -48,39 +42,34 @@ function validateFormState(state: MCPFormState): ValidationResult {
   return { isValid: urlValidation.valid && !!state.name, errors };
 }
 
-export interface RemoteMCPModalProps {
-  serverId?: string;
-  isOpen: boolean;
-  onClose: () => void;
+type RemoteMCPServerDetailsProps = {
   owner: WorkspaceType;
-  onSave: () => Promise<void>;
-}
+  onClose: () => void;
+  mcpServer: MCPServerType | null;
+  onSave?: () => Promise<void>;
+  mutateServers?: () => void;
+};
 
-export default function RemoteMCPModal({
-  serverId,
-  isOpen,
-  onClose,
+export function RemoteMCPServerDetails({
   owner,
-  onSave,
-}: RemoteMCPModalProps) {
+  onClose,
+  mcpServer,
+  onSave = async () => {},
+  mutateServers,
+}: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isSynchronized, setIsSynchronized] = useState(false);
-  const [sharedSecret, setSharedSecret] = useState<string | undefined>(
-    undefined
-  );
-  const [mcpServerId, setMcpServerId] = useState<string | undefined>(undefined);
-
-  const { server, isServerLoading, mutateServer } = useRemoteMCPServer({
-    owner,
-    serverId: serverId || "",
-    disabled: !serverId,
-  });
+  const [sharedSecret, setSharedSecret] = useState<string | undefined>(undefined);
 
   const { createWithUrlSync } = useCreateRemoteMCPServer(owner);
-  const { updateServer } = useUpdateRemoteMCPServer(owner, serverId || "");
-  const { syncServer } = useSyncRemoteMCPServer(owner, serverId || "");
+  const { updateServer } = useUpdateRemoteMCPServer(owner, mcpServer?.id || "");
+  const { syncServer } = useSyncRemoteMCPServer(owner, mcpServer?.id || "");
+  const { server, isServerLoading } = useRemoteMCPServer({
+    owner,
+    serverId: mcpServer?.id || "",
+  });
 
   const formReducer = (
     state: MCPFormState,
@@ -112,8 +101,17 @@ export default function RemoteMCPModal({
 
   const [formState, dispatch] = useReducer(formReducer, getInitialFormState());
 
+  // Initialize form with server data if provided
   useEffect(() => {
+    if (mcpServer?.id === "new") {
+      // For new servers, we reset the form
+      dispatch({ type: "RESET" });
+      setIsSynchronized(false);
+      return;
+    }
+    
     if (server) {
+      // For existing servers, populate the form with server data
       dispatch({ type: "SET_FIELD", field: "name", value: server.name });
       dispatch({
         type: "SET_FIELD",
@@ -121,16 +119,29 @@ export default function RemoteMCPModal({
         value: server.description,
       });
       dispatch({ type: "SET_FIELD", field: "tools", value: server.tools });
-      dispatch({ type: "SET_FIELD", field: "url", value: server.url });
-
-      if (server.sharedSecret) {
+      
+      // Remote MCP Server specific fields
+      if ('url' in server) {
+        dispatch({ type: "SET_FIELD", field: "url", value: server.url });
+      }
+      
+      if ('sharedSecret' in server) {
         setSharedSecret(server.sharedSecret);
       }
-
+      
       setIsSynchronized(true);
-      setMcpServerId(server.id);
+    } else if (mcpServer && !isServerLoading) {
+      // For servers without additional data yet
+      dispatch({ type: "SET_FIELD", field: "name", value: mcpServer.name });
+      dispatch({
+        type: "SET_FIELD",
+        field: "description",
+        value: mcpServer.description,
+      });
+      dispatch({ type: "SET_FIELD", field: "tools", value: mcpServer.tools });
+      setIsSynchronized(mcpServer.id !== "new");
     }
-  }, [server]);
+  }, [mcpServer, server, isServerLoading]);
 
   const handleSubmit = async () => {
     dispatch({ type: "VALIDATE" });
@@ -142,45 +153,31 @@ export default function RemoteMCPModal({
 
     setIsSaving(true);
     try {
-      const serverIdToUse = serverId || mcpServerId;
-
-      if (serverIdToUse) {
+      if (mcpServer && mcpServer.id !== "new") {
         await updateServer({
           name: formState.name,
           url: formState.url,
           description: formState.description,
           tools: formState.tools,
         });
-
-        if (serverId) {
-          await mutateServer();
-        }
-
+        
         sendNotification({
-          title: "MCP updated",
+          title: "MCP server updated",
           type: "success",
-          description: "The MCP has been successfully updated.",
+          description: "The MCP server has been successfully updated.",
         });
-      } else {
-        sendNotification({
-          title: "Error saving MCP",
-          type: "error",
-          description: "Missing MCP server ID. Please try synchronizing again.",
-        });
-        setIsSaving(false);
-        return;
       }
 
       onClose();
       dispatch({ type: "RESET" });
       setIsSynchronized(false);
       setSharedSecret(undefined);
-      setMcpServerId(undefined);
 
+      mutateServers && mutateServers();
       await onSave();
     } catch (err) {
       sendNotification({
-        title: "Error updating MCP",
+        title: "Error updating MCP server",
         type: "error",
         description: err instanceof Error ? err.message : "An error occurred",
       });
@@ -201,10 +198,9 @@ export default function RemoteMCPModal({
 
     setIsSynchronizing(true);
     try {
-      const serverIdToUse = serverId || mcpServerId;
-      let result: SyncMCPServerResponseBody;
+      let result;
 
-      if (serverIdToUse) {
+      if (mcpServer && mcpServer.id !== "new") {
         result = await syncServer();
       } else {
         result = await createWithUrlSync(formState.url);
@@ -223,10 +219,7 @@ export default function RemoteMCPModal({
           value: result.server.tools,
         });
 
-        setMcpServerId(result.server.id);
-
         setIsSynchronized(true);
-
         sendNotification({
           title: "Success",
           type: "success",
@@ -247,28 +240,23 @@ export default function RemoteMCPModal({
     }
   };
 
+  const isNewServer = mcpServer?.id === "new";
+  
   return (
-    <Sheet
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose();
-        }
-      }}
-    >
+    <Sheet open={!!mcpServer} onOpenChange={onClose}>
       <SheetContent size="xl">
         <SheetHeader>
           <SheetTitle>
-            {serverId ? "Edit MCP Server" : "Create MCP Server"}
+            {isNewServer ? "Create MCP Server" : "Edit MCP Server"}
           </SheetTitle>
         </SheetHeader>
-        <SheetContainer>
+        <SheetContainer className="flex flex-col gap-5 pt-6 text-sm text-foreground dark:text-foreground-night">
           <RemoteMCPForm
             state={formState}
             dispatch={dispatch}
             isConfigurationLoading={isServerLoading}
             onSynchronize={handleSynchronize}
-            isSynchronized={isSynchronized || !!serverId}
+            isSynchronized={isSynchronized}
             sharedSecret={sharedSecret}
             isSynchronizing={isSynchronizing}
           />
@@ -283,7 +271,7 @@ export default function RemoteMCPModal({
             label: "Save",
             onClick: async (event: Event) => {
               event.preventDefault();
-              if (isSynchronized || serverId) {
+              if (isSynchronized || (mcpServer && mcpServer.id !== "new")) {
                 await handleSubmit();
               } else {
                 await handleSynchronize();
@@ -292,10 +280,10 @@ export default function RemoteMCPModal({
             disabled:
               isSaving ||
               isSynchronizing ||
-              (!isSynchronized && !serverId),
+              (!isSynchronized && (!mcpServer || mcpServer.id === "new")),
           }}
         />
       </SheetContent>
     </Sheet>
   );
-}
+} 

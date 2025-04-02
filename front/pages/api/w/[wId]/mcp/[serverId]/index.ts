@@ -18,7 +18,7 @@ export type GetRemoteMCPServerResponseBody = {
   server: MCPServerType & {
     url: string;
     lastSyncAt: Date | null;
-    sharedSecret: string;  
+    sharedSecret: string;
   };
 };
 

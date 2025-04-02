@@ -3,10 +3,12 @@ import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
 import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
+import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
@@ -53,11 +55,21 @@ export default function AdminActions({
       owner={owner}
       subNavigation={subNavigationAdmin({ owner, current: "actions" })}
     >
-      <InternalMCPServerDetails
-        owner={owner}
-        mcpServer={serverType === "internal" ? showDetails : null}
-        onClose={() => setShowDetails(null)}
-      />
+      {serverType === "internal" && (
+        <InternalMCPServerDetails
+          owner={owner}
+          mcpServer={showDetails}
+          onClose={() => setShowDetails(null)}
+        />
+      )}
+
+      {serverType === "remote" && (
+        <RemoteMCPServerDetails
+          owner={owner}
+          mcpServer={showDetails}
+          onClose={() => setShowDetails(null)}
+        />
+      )}
 
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
@@ -66,7 +78,18 @@ export default function AdminActions({
           description="Actions let you connect tools and automate tasks. Find all available actions here and set up new ones."
         />
         <Page.Vertical align="stretch" gap="md">
-          <AdminActionsList owner={owner} setShowDetails={setShowDetails} />
+          <AdminActionsList 
+            owner={owner} 
+            setShowDetails={setShowDetails} 
+            openRemoteMCPModal={() => setShowDetails({ 
+              id: "new", 
+              name: "", 
+              version: "", 
+              description: "", 
+              icon: DEFAULT_MCP_SERVER_ICON, 
+              tools: [] 
+            })} 
+          />
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />

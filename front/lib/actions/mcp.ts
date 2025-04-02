@@ -121,7 +121,6 @@ export type MCPFormAction =
     }
   | { type: "VALIDATE" };
 
-
 export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;

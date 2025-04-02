@@ -92,6 +92,25 @@ export function useRemoteMCPServer({
   };
 }
 
+/**
+ * Hook to get the URL of a remote MCP server
+ */
+export function useGetMCPServerUrl(
+  owner: LightWorkspaceType,
+  serverId?: string
+) {
+  const { server, isServerLoading } = useRemoteMCPServer({
+    disabled: !serverId,
+    owner,
+    serverId: serverId || "",
+  });
+
+  return {
+    serverUrl: server?.url || "",
+    isServerUrlLoading: isServerLoading,
+  };
+}
+
 export function useMCPServers({
   owner,
   filter,
