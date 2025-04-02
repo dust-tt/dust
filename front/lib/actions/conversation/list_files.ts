@@ -37,7 +37,7 @@ export type ConversationFileType = BaseConversationAttachmentType & {
 
 export type ConversationContentNodeType = BaseConversationAttachmentType & {
   contentFragmentId: string;
-  contentNodeId: string;
+  nodeId: string;
   nodeDataSourceViewId: string;
   nodeType: ContentNodeType;
 };
@@ -61,9 +61,9 @@ export function isConversationContentNodeType(
 export function isContentFragmentDataSourceNode(
   attachment: ConversationContentNodeType | ContentFragmentInputWithContentNode
 ): attachment is ConversationContentNodeType & {
-  contentNodeId: typeof DATA_SOURCE_NODE_ID;
+  nodeId: typeof DATA_SOURCE_NODE_ID;
 } {
-  return attachment.contentNodeId === DATA_SOURCE_NODE_ID;
+  return attachment.nodeId === DATA_SOURCE_NODE_ID;
 }
 
 // If updating this function, make sure to update `contentFragmentId` when we render the conversation

@@ -128,7 +128,7 @@ export function listFiles(
             ...baseAttachment,
             nodeDataSourceViewId: m.nodeDataSourceViewId,
             contentFragmentId: m.contentFragmentId,
-            contentNodeId: m.nodeId,
+            nodeId: m.nodeId,
             nodeType: m.nodeType,
           });
         }

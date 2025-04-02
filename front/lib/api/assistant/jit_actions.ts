@@ -173,7 +173,7 @@ async function getJITActions(
             .nodeDataSourceViewId,
           filter: {
             parents: {
-              in: [(f as ConversationContentNodeType).contentNodeId],
+              in: [(f as ConversationContentNodeType).nodeId],
               not: [],
             },
             tags: null,
@@ -214,7 +214,7 @@ async function getJITActions(
             parents: isContentFragmentDataSourceNode(folder)
               ? null
               : {
-                  in: [folder.contentNodeId],
+                  in: [folder.nodeId],
                   not: [],
                 },
             tags: null,
