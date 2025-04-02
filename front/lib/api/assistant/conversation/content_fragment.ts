@@ -24,6 +24,7 @@ import type {
 } from "@app/types";
 import {
   CoreAPI,
+  DATA_SOURCE_NODE_ID,
   Err,
   extensionsForContentType,
   isContentFragmentInputWithContentNode,
@@ -146,7 +147,7 @@ export async function getContentFragmentBlob(
       coreContentNode = {
         data_source_id: dsView.dataSource.dustAPIDataSourceId,
         data_source_internal_id: "unavailable",
-        node_id: dsView.dataSource.dustAPIDataSourceId,
+        node_id: DATA_SOURCE_NODE_ID,
         node_type: "folder",
         title: dsView.dataSource.name,
         mime_type: DATA_SOURCE_MIME_TYPE,
@@ -172,13 +173,17 @@ export async function getContentFragmentBlob(
       });
       if (searchRes.isErr()) {
         return new Err(
-          new Error("Content node not found for content fragment input")
+          new Error(
+            `Content node not found for content fragment node id: ${cf.nodeId}`
+          )
         );
       }
       [coreContentNode] = searchRes.value.nodes;
       if (!coreContentNode) {
         return new Err(
-          new Error("Content node not found for content fragment input")
+          new Error(
+            `Content node not found for content fragment node id: ${cf.nodeId}`
+          )
         );
       }
     }
