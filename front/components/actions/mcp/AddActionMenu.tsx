@@ -70,9 +70,6 @@ export const AddActionMenu = ({
               label={mcpServer.name}
               icon={MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]}
               onClick={async () => {
-                if (!systemSpace) {
-                  throw new Error("System space not found");
-                }
                 await createInternalMCPServer(mcpServer.name);
                 await mutateMCPServerViews();
               }}

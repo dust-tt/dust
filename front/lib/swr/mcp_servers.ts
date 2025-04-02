@@ -50,8 +50,8 @@ export function useMCPServer({
 
   return {
     server: data?.servers || null,
-    isServerMCPLoading: !error && !data,
-    isServerMCPError: !!error,
+    isMCPServerLoading: !error && !data && !disabled,
+    isMCPServerError: !!error,
     mutateMCPServer: mutate,
   };
 }
