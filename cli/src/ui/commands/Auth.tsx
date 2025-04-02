@@ -45,7 +45,8 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const auth0Domain = process.env.AUTH0_CLIENT_DOMAIN || "";
   const clientId = process.env.AUTH0_CLIENT_ID || "";
   const audience = process.env.DUST_API_AUDIENCE || "";
-  const scope = "openid profile email offline_access read:user_profile";
+  const scope =
+    "offline_access read:user_profile read:conversation create:conversation update:conversation read:agent read:file create:file delete:file";
 
   const startDeviceFlow = async () => {
     // First check if we already have valid tokens, skip this if force flag is true
