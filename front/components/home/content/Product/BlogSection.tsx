@@ -104,7 +104,7 @@ export function BlogSection({ className = "" }: BlogSectionProps) {
           {blogPosts.map((post, index) => (
             <CarouselItem
               key={index}
-              className="basis-full pl-4 sm:basis-1/2 lg:basis-1/3"
+              className="basis-full pl-8 sm:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={post.title}

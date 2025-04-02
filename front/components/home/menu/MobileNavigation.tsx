@@ -30,16 +30,16 @@ export function MobileNavigation() {
         </SheetTrigger>
         <SheetContent
           side="left"
-          className="rounded-br-xl rounded-tr-xl border border-slate-300 bg-white py-0"
+          className="border border-slate-300 bg-white py-0"
         >
           <SheetHeader
-            className="border-b border-b-slate-200 bg-white"
+            className="border-b border-b-slate-100 bg-white"
             hideButton
           >
             <SheetTitle className="flex w-full items-center justify-between">
               <DustLogo className="h-6 w-24" />
               <Button
-                size="md"
+                size="sm"
                 variant="outline"
                 icon={XMarkIcon}
                 onClick={() => {

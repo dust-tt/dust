@@ -223,12 +223,12 @@ export const MetricSection = ({
   const colors = getColorClasses(color);
 
   return (
-    <div className="flex flex-col gap-y-8 lg:flex-row lg:justify-center lg:gap-8">
+    <div className="flex flex-col gap-y-8 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 lg:flex lg:flex-row lg:justify-center lg:gap-8">
       {metrics.map((metric, index) => (
-        <div key={index} className="flex-1 lg:flex-1">
+        <div key={index} className="h-full flex-1 lg:flex-1">
           <div
             className={classNames(
-              "flex min-h-[180px] w-full flex-col items-start justify-between gap-6 p-8",
+              "flex h-full min-h-[180px] w-full flex-col items-start justify-between gap-6 p-8",
               colors.bg
             )}
           >
