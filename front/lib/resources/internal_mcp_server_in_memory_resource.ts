@@ -103,33 +103,34 @@ export class InternalMCPServerInMemoryResource {
     return new InternalMCPServerInMemoryResource(server.internalMCPServerId);
   }
 
-  static async listByWorkspace(auth: Authenticator, includeAll = false) {
+  static listAvailableInternalMCPServers(auth: Authenticator) {
+    const ids = AVAILABLE_INTERNAL_MCPSERVER_NAMES.map((name) =>
+      InternalMCPServerInMemoryResource.nameToSId({
+        name,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    );
+
+    return ids.map((id) => new InternalMCPServerInMemoryResource(id));
+  }
+
+  static async listByWorkspace(auth: Authenticator) {
     // In case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    const servers = includeAll
-      ? AVAILABLE_INTERNAL_MCPSERVER_NAMES.map((name) =>
-          InternalMCPServerInMemoryResource.nameToSId({
-            name,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          })
-        )
-      : removeNulls(
-          (
-            await MCPServerView.findAll({
-              attributes: ["internalMCPServerId"],
-              where: {
-                serverType: "internal",
-                internalMCPServerId: {
-                  [Op.not]: null,
-                },
-                workspaceId: auth.getNonNullableWorkspace().id,
-                vaultId: systemSpace.id,
-              },
-            })
-          ).map((server) => server.internalMCPServerId)
-        );
-    return servers.map(
+    const servers = await MCPServerView.findAll({
+      attributes: ["internalMCPServerId"],
+      where: {
+        serverType: "internal",
+        internalMCPServerId: {
+          [Op.not]: null,
+        },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: systemSpace.id,
+      },
+    });
+
+    return removeNulls(servers.map((server) => server.internalMCPServerId)).map(
       (internalMCPServerId) =>
         new InternalMCPServerInMemoryResource(internalMCPServerId)
     );

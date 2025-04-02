@@ -22,7 +22,6 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import {
   useAddMCPServerToSpace,
-  useMCPServerViews,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_server_views";
 import {

@@ -17,8 +17,8 @@ import {
 } from "@app/lib/actions/mcp_icons";
 import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import {
+  useAvailableMCPServers,
   useCreateInternalMCPServer,
-  useMCPServers,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types";
@@ -32,15 +32,15 @@ export const AddActionMenu = ({
   owner,
   enabledMCPServers,
 }: AddActionMenuProps) => {
-  const { mcpServers } = useMCPServers({
-    owner,
-    filter: "internal",
-  });
   const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
 
   const systemSpace = useMemo(() => {
     return spaces.find((space) => space.kind === "system");
   }, [spaces]);
+
+  const { availableMCPServers } = useAvailableMCPServers({
+    owner,
+  });
 
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
   const { mutateMCPServerViews } = useMCPServerViews({
@@ -62,7 +62,7 @@ export const AddActionMenu = ({
       <DropdownMenuContent>
         <DropdownMenuLabel label="Default actions" />
 
-        {mcpServers
+        {availableMCPServers
           .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
           .map((mcpServer) => (
             <DropdownMenuItem

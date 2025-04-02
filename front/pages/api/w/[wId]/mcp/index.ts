@@ -53,7 +53,7 @@ const PostQueryParamsSchema = t.union([
 async function getMCPServers(auth: Authenticator, filter: AllowedFilter) {
   switch (filter) {
     case "internal": {
-      return InternalMCPServerInMemoryResource.listByWorkspace(auth, true);
+      return InternalMCPServerInMemoryResource.listByWorkspace(auth);
     }
 
     case "remote": {
@@ -63,7 +63,7 @@ async function getMCPServers(auth: Authenticator, filter: AllowedFilter) {
     case "all":
       const remoteMCPs = await RemoteMCPServerResource.listByWorkspace(auth);
       const internalMCPs =
-        await InternalMCPServerInMemoryResource.listByWorkspace(auth, true);
+        await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
       return [...remoteMCPs, ...internalMCPs];
   }

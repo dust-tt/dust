@@ -56,6 +56,26 @@ export function useMCPServer({
   };
 }
 
+export function useAvailableMCPServers({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+
+  const url = `/api/w/${owner.sId}/mcp/available`;
+
+  const { data, error } = useSWRWithDefaults(url, configFetcher);
+
+  const availableMCPServers = useMemo(() => (data ? data.servers : []), [data]);
+
+  return {
+    availableMCPServers,
+    isAvailableMCPServersLoading: !error && !data,
+    isAvailableMCPServersError: error,
+  };
+}
+
 export function useMCPServers({
   owner,
   filter,
