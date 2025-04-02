@@ -5,6 +5,7 @@ import type { ContentNodeType } from "./core/content_node";
 import type { DataSourceViewContentNode } from "./data_source_view";
 import type { SupportedFileContentType } from "./files";
 import type { ModelId } from "./shared/model_id";
+
 export type ContentFragmentContextType = {
   username: string | null;
   fullName: string | null;
@@ -18,6 +19,14 @@ export type SupportedContentFragmentType =
   | SupportedFileContentType
   | DustMimeType
   | "dust-application/slack"; // Legacy
+
+export type ContentFragmentNodeData = {
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+  provider: string;
+  spaceName: string;
+};
 
 export type ContentFragmentType = {
   id: ModelId;
@@ -40,6 +49,7 @@ export type ContentFragmentType = {
   context: ContentFragmentContextType;
   contentFragmentId: string;
   contentFragmentVersion: ContentFragmentVersion;
+  contentNodeData: ContentFragmentNodeData | null;
 };
 
 export type UploadedContentFragment = {
