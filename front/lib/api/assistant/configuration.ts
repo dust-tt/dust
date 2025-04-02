@@ -1,6 +1,11 @@
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
-import { Op, Sequelize, UniqueConstraintError } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
@@ -541,6 +546,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       temperature: agent.temperature,
     };
 
+    if (agent.responseFormat) {
+      model.responseFormat = agent.responseFormat;
+    }
+
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
     }
@@ -848,6 +857,7 @@ export async function createAgentConfiguration(
             authorId: user.id,
             templateId: template?.id,
             requestedGroupIds,
+            responseFormat: model.responseFormat,
           },
           {
             transaction: t,
@@ -874,6 +884,7 @@ export async function createAgentConfiguration(
         providerId: agent.providerId,
         modelId: agent.modelId,
         temperature: agent.temperature,
+        responseFormat: agent.responseFormat,
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
@@ -896,6 +907,12 @@ export async function createAgentConfiguration(
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       return new Err(new Error("An agent with this name already exists."));
+    }
+    if (error instanceof ValidationError) {
+      return new Err(new Error(error.message));
+    }
+    if (error instanceof SyntaxError) {
+      return new Err(new Error(error.message));
     }
     throw error;
   }
