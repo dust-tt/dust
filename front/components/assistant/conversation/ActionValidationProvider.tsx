@@ -7,7 +7,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback,useEffect, useState } from "react";
 import sanitizeHtml from "sanitize-html";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
@@ -86,31 +86,7 @@ export function ActionValidationProvider({
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (currentValidation) {
-      setIsDialogOpen(true);
-    }
-  }, [currentValidation]);
-
-  useEffect(() => {
-    if (!isDialogOpen && currentValidation && !isProcessing) {
-      void handleSubmit(false);
-    }
-  }, [isDialogOpen]);
-
-  useEffect(() => {
-    if (
-      !isProcessing &&
-      validationQueue.length > 0 &&
-      !currentValidation &&
-      !isDialogOpen
-    ) {
-      removeFromQueue();
-      setErrorMessage(null);
-    }
-  }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
-
-  const sendCurrentValidation = async (approved: boolean) => {
+  const sendCurrentValidation = useCallback(async (approved: boolean) => {
     if (!currentValidation) {
       return;
     }
@@ -139,14 +115,38 @@ export function ActionValidationProvider({
       );
       return;
     }
-  };
+  }, [currentValidation]);
 
-  const handleSubmit = async (approved: boolean) => {
+  const handleSubmit = useCallback(async (approved: boolean) => {
     void sendCurrentValidation(approved);
     setIsProcessing(false);
     setIsDialogOpen(false);
     clearCurrentValidation();
-  };
+  }, [sendCurrentValidation, clearCurrentValidation]);
+
+  useEffect(() => {
+    if (currentValidation) {
+      setIsDialogOpen(true);
+    }
+  }, [currentValidation]);
+
+  useEffect(() => {
+    if (!isDialogOpen && currentValidation && !isProcessing) {
+      void handleSubmit(false);
+    }
+  }, [isDialogOpen, currentValidation, isProcessing, handleSubmit]);
+
+  useEffect(() => {
+    if (
+      !isProcessing &&
+      validationQueue.length > 0 &&
+      !currentValidation &&
+      !isDialogOpen
+    ) {
+      removeFromQueue();
+      setErrorMessage(null);
+    }
+  }, [isProcessing, validationQueue, currentValidation, isDialogOpen, removeFromQueue]);
 
   const showValidationDialog = (props: {
     workspaceId: string;

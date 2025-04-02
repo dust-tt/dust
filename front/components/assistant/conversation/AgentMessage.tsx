@@ -337,7 +337,7 @@ export function AgentMessage({
       default:
         assertNever(event);
     }
-  }, []);
+  }, [conversationId, message.sId, owner.sId, showValidationDialog]);
 
   useEventSource(
     buildEventSourceURL,
