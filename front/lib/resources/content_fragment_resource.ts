@@ -23,6 +23,7 @@ import {
 import logger from "@app/logger/logger";
 import type {
   ContentFragmentMessageTypeModel,
+  ContentFragmentNodeData,
   ContentFragmentType,
   ContentFragmentVersion,
   ContentNodeType,
@@ -34,6 +35,9 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { CoreAPI, Err, isSupportedImageContentType, Ok } from "@app/types";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -275,8 +279,36 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           workspaceId: owner.id,
         })
       : null;
+
     const nodeType: ContentNodeType | null = this.nodeType || null;
 
+    // Add contentNodeData
+    let contentNodeData: ContentFragmentNodeData | null = null;
+    if (nodeId && this.nodeDataSourceViewId && nodeType) {
+      // Fetch the data source view directly
+      const dsView = await DataSourceViewModel.findByPk(
+        this.nodeDataSourceViewId,
+        {
+          include: [
+            {
+              model: DataSourceModel,
+              as: "dataSourceForView",
+              include: [SpaceModel],
+            },
+          ],
+        }
+      );
+
+      if (dsView?.dataSourceForView?.space) {
+        contentNodeData = {
+          nodeId,
+          nodeDataSourceViewId: String(nodeDataSourceViewId),
+          nodeType,
+          provider: dsView.dataSourceForView.connectorProvider || "core",
+          spaceName: dsView.dataSourceForView.space.name,
+        };
+      }
+    }
     return {
       id: message.id,
       fileId: fileStringId,
@@ -303,17 +335,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
       contentFragmentId: this.sId,
       contentFragmentVersion: this.version,
-      contentNodeData: message.contentFragment
-        ? {
-            nodeId: message.contentFragment.nodeType,
-            nodeDataSourceViewId: message.contentFragment.nodeDataSourceViewId,
-            provider:
-              message.contentFragment.nodeDataSourceView?.dataSourceForView
-                .connectorProvider,
-            spaceName: message.contentFragment.nodeDataSourceView?.space,
-            nodeType: message.contentFragment.nodeType,
-          }
-        : null,
+      contentNodeData,
     };
   }
 }

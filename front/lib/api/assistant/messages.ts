@@ -40,9 +40,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import { ConversationError, Err, Ok, removeNulls } from "@app/types";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 
 async function batchRenderUserMessages(
   messages: Message[]
@@ -386,25 +383,6 @@ async function fetchMessagesForPage(
         model: ContentFragmentModel,
         as: "contentFragment",
         required: false,
-        include: [
-          {
-            model: DataSourceViewModel,
-            required: false,
-            include: [
-              {
-                model: DataSourceModel,
-                as: "dataSourceForView",
-                required: false,
-                include: [
-                  {
-                    model: SpaceModel,
-                    required: false,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
       },
     ],
   });
