@@ -1,4 +1,5 @@
 import assert from "assert";
+import { randomBytes } from "crypto";
 import type {
   Attributes,
   CreationAttributes,
@@ -35,7 +36,10 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
+    blob: Omit<
+      CreationAttributes<RemoteMCPServer>,
+      "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
+    >,
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -45,7 +49,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       "The user is not authorized to create an MCP server"
     );
 
-    const server = await RemoteMCPServer.create(blob, { transaction });
+    const sharedSecret = randomBytes(32).toString("hex");
+
+    const server = await RemoteMCPServer.create(
+      { ...blob, sharedSecret, lastSyncAt: new Date() },
+      { transaction }
+    );
 
     // Immediately create a view for the server in the system space.
     await MCPServerView.create(

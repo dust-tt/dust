@@ -6,14 +6,11 @@ import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_interna
 import dataSourceUtilsServer from "@app/lib/actions/mcp_internal_actions/data_source_utils";
 import helloWorldServer from "@app/lib/actions/mcp_internal_actions/helloworld";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getResourceNameAndIdFromSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-const INTERNAL_MCP_SERVERS: Record<
+export const INTERNAL_MCP_SERVERS: Record<
   InternalMCPServerNameType,
   {
     id: number;
@@ -32,17 +29,6 @@ const INTERNAL_MCP_SERVERS: Record<
 
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCPSERVER_NAMES)[number];
-
-export const getInternalMCPServerSId = (
-  auth: Authenticator,
-  {
-    internalMCPServerName,
-  }: { internalMCPServerName: InternalMCPServerNameType }
-): string =>
-  makeSId("internal_mcp_server", {
-    id: INTERNAL_MCP_SERVERS[internalMCPServerName].id,
-    workspaceId: auth.getNonNullableWorkspace().id,
-  });
 
 const getInternalMCPServerNameAndWorkspaceId = (
   sId: string
