@@ -51,23 +51,9 @@ export const CommandPaletteProvider: React.FC<{
   const [commands, setCommands] = useState<Command[]>([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Register a single command
-  const registerCommand = useCallback((command: Command) => {
-    setCommands((prevCommands) => {
-      // Check if command with same ID already exists
-      const index = prevCommands.findIndex((c) => c.id === command.id);
-      if (index >= 0) {
-        // Replace existing command
-        const newCommands = [...prevCommands];
-        newCommands[index] = command;
-        return newCommands;
-      }
-      // Add new command
-      return [...prevCommands, command];
-    });
-  }, []);
-
-  // Register multiple commands at once
+  /**
+   * Register multiple commands at once
+   */
   const registerCommands = useCallback((newCommands: Command[]) => {
     setCommands((prevCommands) => {
       const commandMap = new Map(prevCommands.map((c) => [c.id, c]));
@@ -81,7 +67,16 @@ export const CommandPaletteProvider: React.FC<{
     });
   }, []);
 
-  // Unregister a command by ID
+  /**
+   * Register a single command
+   */
+  const registerCommand = useCallback((command: Command) => {
+    registerCommands([command]);
+  }, []);
+
+  /**
+   * Unregister a command by ID
+   */
   const unregisterCommand = useCallback((commandId: string) => {
     setCommands((prevCommands) =>
       prevCommands.filter((c) => c.id !== commandId)
@@ -95,14 +90,18 @@ export const CommandPaletteProvider: React.FC<{
     );
   }, []);
 
-  // Unregister commands by entity ID
+  /**
+   * Unregister commands by entity ID
+   */
   const unregisterCommandsByEntityId = useCallback((entityId: string) => {
     setCommands((prevCommands) =>
       prevCommands.filter((c) => c.entityId !== entityId)
     );
   }, []);
 
-  // Handle keyboard shortcut
+  /**
+   *  Cmd + K opens the palette
+   */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "k") {

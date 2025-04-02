@@ -16,11 +16,11 @@ import { cn } from "@sparkle/lib/utils";
 import { useCommandPalette } from "../hooks/useCommandPalette";
 
 export function CommandPalette() {
+  const inputRef = useRef<HTMLInputElement>(null);
   const { commands, isOpen, setOpen, closeCommandPalette } =
     useCommandPalette();
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus the input when the palette opens
+  // Focus input on open
   useEffect(() => {
     if (isOpen) {
       // Use a small timeout to ensure the dialog is fully rendered before focusing
@@ -53,7 +53,7 @@ export function CommandPalette() {
     groupedCommands[category].sort((a, b) => {
       const priorityA = a.priority ?? 0;
       const priorityB = b.priority ?? 0;
-      return priorityA - priorityB; // Lower priority first
+      return priorityA - priorityB; // 0 is highest priority
     });
   });
 
@@ -107,19 +107,24 @@ export function CommandPalette() {
                     </SamsCommandItem>
                   );
 
-                  return command?.tooltip ||
-                    (command?.disabled && command?.disabledTooltip) ? (
+                  const withTooltip =
+                    command?.tooltip ||
+                    (command?.disabled && command?.disabledTooltip);
+
+                  if (!withTooltip) {
+                    return commandContent;
+                  }
+
+                  const tooltipContent = command?.disabled
+                    ? command?.disabledTooltip
+                    : command?.tooltip;
+
+                  return (
                     <Tooltip
                       trigger={<div className="s-w-full">{commandContent}</div>}
-                      label={
-                        command?.disabled
-                          ? command?.disabledTooltip
-                          : command?.tooltip
-                      }
+                      label={tooltipContent}
                       tooltipTriggerAsChild
                     />
-                  ) : (
-                    commandContent
                   );
                 }
               )}
