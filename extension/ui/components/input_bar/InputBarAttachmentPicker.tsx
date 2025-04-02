@@ -119,6 +119,7 @@ export const InputBarAttachmentsPicker = ({
       <DropdownMenuContent
         className="min-w-64 max-w-96"
         side="bottom"
+        align="end"
         onInteractOutside={() => setIsOpen(false)}
       >
         <Input

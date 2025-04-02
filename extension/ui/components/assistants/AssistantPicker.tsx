@@ -63,7 +63,7 @@ export function AssistantPicker({
           />
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-[300px]">
+      <DropdownMenuContent className="min-w-[300px]" align="end" side="bottom">
         <DropdownMenuSearchbar
           ref={searchbarRef}
           placeholder="Search"
