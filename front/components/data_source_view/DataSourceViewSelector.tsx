@@ -24,7 +24,6 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -54,6 +53,7 @@ import {
   MIN_SEARCH_QUERY_SIZE,
   removeNulls,
 } from "@app/types";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 

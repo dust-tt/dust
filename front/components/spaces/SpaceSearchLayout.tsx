@@ -22,7 +22,6 @@ import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationF
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
@@ -39,6 +38,7 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
 const DEFAULT_VIEW_TYPE = "all";
 
