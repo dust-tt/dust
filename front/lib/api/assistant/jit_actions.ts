@@ -13,8 +13,8 @@ import type {
   ConversationContentNodeType,
 } from "@app/lib/actions/conversation/list_files";
 import {
+  isContentFragmentDataSourceNode,
   isConversationContentNodeType,
-  isConversationDataSourceNode,
   isConversationFileType,
   makeConversationListFilesAction,
 } from "@app/lib/actions/conversation/list_files";
@@ -211,7 +211,7 @@ async function getJITActions(
           dataSourceViewId: folder.nodeDataSourceViewId,
           filter: {
             // Do not filter on parent if the folder is a data source node.
-            parents: isConversationDataSourceNode(folder)
+            parents: isContentFragmentDataSourceNode(folder)
               ? null
               : {
                   in: [folder.contentNodeId],

@@ -1,6 +1,7 @@
-import type { DustMimeType} from "@dust-tt/client";
+import type { DustMimeType } from "@dust-tt/client";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
+import { isContentFragmentDataSourceNode } from "@app/lib/actions/conversation/list_files";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
@@ -139,8 +140,7 @@ export async function getContentFragmentBlob(
 
     let coreContentNode: CoreAPIContentNode | null = null;
 
-    // This means the content node is actually the full data source.
-    if (cf.nodeId === dsView.dataSource.dustAPIDataSourceId) {
+    if (isContentFragmentDataSourceNode(cf)) {
       // Follows CoreContentNode.from_es_data_source_document, see
       // core/src/data_sources/node.rs
       coreContentNode = {
