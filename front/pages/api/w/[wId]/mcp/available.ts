@@ -4,7 +4,6 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -24,17 +23,11 @@ async function handler(
     case "GET": {
       return res.status(200).json({
         success: true,
-        servers: await concurrentExecutor(
-          InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
+        servers: (
+          await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
             auth
-          ),
-          (r) => {
-            return r.toJSON(auth);
-          },
-          {
-            concurrency: 10,
-          }
-        ),
+          )
+        ).map((r) => r.toJSON()),
       });
     }
 

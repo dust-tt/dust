@@ -77,7 +77,7 @@ async function handler(
             });
           }
 
-          return res.status(200).json({ server: await server.toJSON(auth) });
+          return res.status(200).json({ server: server.toJSON() });
         }
         case "remote": {
           const server = await RemoteMCPServerResource.fetchById(

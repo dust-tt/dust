@@ -99,7 +99,7 @@ async function handler(
         servers: await concurrentExecutor(
           await getMCPServers(auth, r.right.filter),
           async (r) => {
-            const server = await r.toJSON(auth);
+            const server = r.toJSON();
             const views = (
               await MCPServerViewResource.listByMCPServer(auth, server.id)
             ).map((v) => ({
@@ -218,7 +218,7 @@ async function handler(
 
         return res.status(201).json({
           success: true,
-          server: await newInternalMCPServer.toJSON(auth),
+          server: newInternalMCPServer.toJSON(),
         });
       }
     }
