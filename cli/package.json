@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A command-line interface for interacting with Dust.",
   "type": "module",
   "main": "dist/index.js",
@@ -36,7 +36,8 @@
     "meow": "^13.2.0",
     "node-fetch": "^3.3.2",
     "open": "^10.1.0",
-    "react": "^18.3.1"
+    "react": "^18.3.1",
+    "update-notifier": "^7.3.1"
   },
   "engines": {
     "node": ">=21.2.0"
@@ -44,6 +45,7 @@
   "devDependencies": {
     "@types/node": "^22.13.16",
     "@types/react": "^19.0.12",
+    "@types/update-notifier": "^6.0.8",
     "dotenv-flow": "^4.1.0",
     "eslint": "^9.23.0",
     "eslint-plugin-react": "^7.37.4",
