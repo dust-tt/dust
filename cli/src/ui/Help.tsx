@@ -24,6 +24,12 @@ const Help = () => {
           <Text bold>logout</Text> Log out and clear saved tokens
         </Text>
       </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>agents-mcp</Text> Select agents and start a stdio MCP
+          server
+        </Text>
+      </Box>
       <Box marginTop={1}>
         <Text>Options:</Text>
       </Box>

@@ -27,6 +27,8 @@ dust <command> [options]
   - `dust status`
 - **`logout`**: Log out from your Dust account.
   - `dust logout`
+- **`agents-mcp`**: Select Dust agents and launch a stdio MCP (Multi-Connection Protocol) server to interact with them.
+  - `dust agents-mcp`
 - **`help`**: Display help information.
   - `dust help`
 

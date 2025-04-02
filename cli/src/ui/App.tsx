@@ -4,6 +4,7 @@ import type { Result } from "meow";
 import Auth from "./commands/Auth.js";
 import Status from "./commands/Status.js";
 import Logout from "./commands/Logout.js";
+import AgentsMCP from "./commands/AgentsMCP.js";
 import Help from "./Help.js";
 
 interface AppProps {
@@ -43,6 +44,8 @@ const App: FC<AppProps> = ({ cli }) => {
       return <Status />;
     case "logout":
       return <Logout />;
+    case "agents-mcp":
+      return <AgentsMCP />;
     case "help":
       return <Help />;
     default:
