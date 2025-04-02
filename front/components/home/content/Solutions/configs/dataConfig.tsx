@@ -114,6 +114,7 @@ export const Metrics: MetricProps = {
       description: <> saved weekly per rep for selling</>,
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

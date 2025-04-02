@@ -115,6 +115,7 @@ export const Metrics: MetricProps = {
       description: <> saved per incident</>,
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

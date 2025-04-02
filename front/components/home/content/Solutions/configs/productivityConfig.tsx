@@ -114,6 +114,7 @@ export const Metrics: MetricProps = {
       description: <>weekly active users at Alan</>,
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

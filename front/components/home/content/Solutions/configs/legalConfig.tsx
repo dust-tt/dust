@@ -114,6 +114,7 @@ export const Metrics: MetricProps = {
       description: <>first level legal answers deflected</>,
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

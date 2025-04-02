@@ -126,6 +126,7 @@ export const Metrics: MetricProps = {
       ),
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

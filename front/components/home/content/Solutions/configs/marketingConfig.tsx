@@ -115,6 +115,7 @@ export const Metrics: MetricProps = {
       description: <> brand-compliant copy generation</>,
     },
   ],
+  color: "golden",
 };
 
 export const UseCases: UseCaseProps = {

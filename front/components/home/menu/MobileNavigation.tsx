@@ -26,7 +26,7 @@ export function MobileNavigation() {
     <div className="flex xl:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <IconButton size="md" icon={MenuIcon} className="text-slate-100" />
+          <IconButton size="md" icon={MenuIcon} className="text-gray-900" />
         </SheetTrigger>
         <SheetContent
           side="left"

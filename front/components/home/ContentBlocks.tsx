@@ -191,27 +191,27 @@ interface MetricComponentProps {
   color?: "blue" | "green" | "rose" | "golden";
 }
 
-const getColorClasses = (color: MetricComponentProps["color"] = "green") => {
+const getColorClasses = (color: MetricComponentProps["color"] = "golden") => {
   switch (color) {
     case "blue":
       return {
-        bg: "bg-green-100",
-        text: "text-green-700",
+        bg: "bg-brand-electric-blue/10",
+        text: "text-brand-electric-blue",
       };
     case "green":
       return {
         bg: "bg-green-100",
-        text: "text-green-700",
+        text: "text-green-600",
       };
     case "rose":
       return {
-        bg: "bg-green-100",
-        text: "text-green-700",
+        bg: "bg-brand-red-rose/10",
+        text: "text-brand-red-rose",
       };
     case "golden":
       return {
-        bg: "bg-green-100",
-        text: "text-green-700",
+        bg: "bg-golden-100",
+        text: "text-golden-600",
       };
   }
 };
@@ -228,17 +228,29 @@ export const MetricSection = ({
         <div key={index} className="h-full flex-1 lg:flex-1">
           <div
             className={classNames(
-              "flex h-full min-h-[180px] w-full flex-col items-start justify-between gap-6 p-8",
+              "flex h-[220px] w-[220px] flex-col items-center justify-center rounded-full",
+              "mx-auto",
               colors.bg
             )}
           >
             {metric.logo && (
-              <Image alt="alan" src={metric.logo} width={200} height={100} />
+              <Image
+                alt="alan"
+                src={metric.logo}
+                width={100}
+                height={50}
+                className="mb-3"
+              />
             )}
-            <H2 className={colors.text}>
+            <H2
+              className={classNames(
+                "text-center text-5xl font-medium",
+                colors.text
+              )}
+            >
               <span>{metric.value}</span>
             </H2>
-            <P size="md" className="text-foreground">
+            <P size="sm" className="mt-3 px-6 text-center text-foreground">
               {metric.description}
             </P>
           </div>
