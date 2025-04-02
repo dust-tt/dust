@@ -48,60 +48,65 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const scope = "openid profile email offline_access read:user_profile";
 
   const startDeviceFlow = async () => {
-    try {
-      // First check if we already have valid tokens, skip this if force flag is true
-      if (!force) {
-        const hasValidToken = await TokenStorage.hasValidAccessToken();
-        if (hasValidToken) {
-          const accessToken = await TokenStorage.getAccessToken();
-          const refreshToken = await TokenStorage.getRefreshToken();
+    // First check if we already have valid tokens, skip this if force flag is true
+    if (!force) {
+      const hasValidToken = await TokenStorage.hasValidAccessToken();
+      if (hasValidToken) {
+        const accessToken = await TokenStorage.getAccessToken();
+        const refreshToken = await TokenStorage.getRefreshToken();
 
-          if (accessToken && refreshToken) {
-            setIsLoading(false);
-            setShowWorkspaceSelector(true);
-            return;
-          }
+        if (accessToken && refreshToken) {
+          setIsLoading(false);
+          setShowWorkspaceSelector(true);
+          return;
         }
       }
-
-      // If force is true, clear any existing tokens first
-      if (force) {
-        await TokenStorage.clearTokens();
-        resetDustClient();
-      }
-
-      setIsLoading(true);
-
-      const response = await fetch(`https://${auth0Domain}/oauth/device/code`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          audience,
-          scope,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to start device flow: ${errorData}`);
-      }
-
-      const data = (await response.json()) as DeviceCodeResponse;
-      setDeviceCode(data);
-      setIsLoading(false);
-
-      // Open the verification URI in the user's browser
-      await open(data.verification_uri_complete);
-
-      // Start polling for the token
-      startPolling(data);
-    } catch (err) {
-      setIsLoading(false);
-      setError(err instanceof Error ? err.message : String(err));
     }
+
+    // If force is true, clear any existing tokens first
+    if (force) {
+      await TokenStorage.clearTokens();
+      resetDustClient();
+    }
+
+    setIsLoading(true);
+
+    const response = await (async () => {
+      try {
+        return await fetch(`https://${auth0Domain}/oauth/device/code`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            client_id: clientId,
+            audience,
+            scope,
+          }),
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        return null;
+      }
+    })();
+
+    if (!response || !response.ok) {
+      const errorData = await response?.text();
+      if (errorData) {
+        setError(errorData);
+      }
+      return;
+    }
+
+    const data = (await response.json()) as DeviceCodeResponse;
+    setDeviceCode(data);
+    setIsLoading(false);
+
+    // Open the verification URI in the user's browser
+    await open(data.verification_uri_complete);
+
+    // Start polling for the token
+    startPolling(data);
   };
 
   const startPolling = (deviceCodeData: DeviceCodeResponse) => {
@@ -171,22 +176,24 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   };
 
   const handleWorkspaceSelectionComplete = async () => {
-    try {
-      setShowWorkspaceSelector(false);
-      // Get user info
-      const dustClient = await getDustClient();
-      if (!dustClient) {
-        throw new Error("Failed to get Dust client");
-      }
-      const userInfoRes = await dustClient.me();
-      if (!userInfoRes.isOk()) {
-        throw new Error("Failed to get user info");
-      }
-      setUserInfo(userInfoRes.value);
-      setAuthComplete(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    setShowWorkspaceSelector(false);
+    // Get user info
+    const dustClient = await getDustClient();
+    if (!dustClient) {
+      setError(
+        "Failed to get Dust client. Try authenticating again using `dust auth`."
+      );
+      return;
     }
+    const userInfoRes = await dustClient.me();
+    if (!userInfoRes.isOk()) {
+      setError(
+        "Failed to get user info. Try authenticating again using `dust auth`."
+      );
+      return;
+    }
+    setUserInfo(userInfoRes.value);
+    setAuthComplete(true);
   };
 
   useEffect(() => {
