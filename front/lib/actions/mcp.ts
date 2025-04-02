@@ -319,7 +319,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             output: [
               {
                 type: "text",
-                text: `The action validation timed out. Using this action is hence forbidden for this message.`,
+                text:
+                  "The action validation timed out. Using this action is hence forbidden for" +
+                  "this message.",
               },
             ],
             functionCallId,
@@ -347,7 +349,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           "Action execution rejected by user"
         );
 
-        // We yield a tool success, with a message that the action was rejected
+        // Yield a tool success, with a message that the action was rejected.
         yield {
           type: "tool_success",
           created: Date.now(),
@@ -359,7 +361,9 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
             output: [
               {
                 type: "text",
-                text: `The user rejected this specific action execution. Using this action is hence forbidden for this message.`,
+                text:
+                  "The user rejected this specific action execution. Using this action is hence" +
+                  "forbidden for this message.",
               },
             ],
             functionCallId,
@@ -434,16 +438,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const content = r.value;
 
-    await Promise.all(
-      content.map(async (i) => {
-        // Check if content is of a supported type.
-
-        await AgentMCPActionOutputItem.create({
-          workspaceId: owner.id,
-          agentMCPActionId: action.id,
-          content: i,
-        });
-      })
+    await AgentMCPActionOutputItem.bulkCreate(
+      content.map((c) => ({
+        workspaceId: owner.id,
+        agentMCPActionId: action.id,
+        content: c,
+      }))
     );
 
     yield {
