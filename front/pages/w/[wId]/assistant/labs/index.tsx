@@ -3,16 +3,13 @@ import {
   Button,
   Cog6ToothIcon,
   ContextItem,
+  HubspotLogo,
   Icon,
-  NotionLogo,
   Page,
-  Spinner,
   TestTubeIcon,
-  useSendNotification,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
-import { useState } from "react";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -21,12 +18,8 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
-import { useSpaces } from "@app/lib/swr/spaces";
 import type {
   DataSourceViewType,
-  ModelId,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
@@ -80,78 +73,8 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function LabsTranscriptsIndex({
   owner,
   subscription,
-  dataSourcesViews,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const {
-    transcriptsConfiguration,
-    isTranscriptsConfigurationLoading,
-    mutateTranscriptsConfiguration,
-  } = useLabsTranscriptsConfiguration({ workspaceId: owner.sId });
-  const [isDeleteProviderDialogOpened, setIsDeleteProviderDialogOpened] =
-    useState(false);
-
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-  });
-  const { agentConfigurations } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    sort: "priority",
-  });
-
-  const sendNotification = useSendNotification();
-
   const router = useRouter();
-
-  const handleDisconnectProvider = async (
-    transcriptConfigurationId: ModelId | null
-  ) => {
-    if (!transcriptConfigurationId) {
-      return;
-    }
-
-    const response = await fetch(
-      `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
-      {
-        method: "DELETE",
-      }
-    );
-
-    if (!response.ok) {
-      sendNotification({
-        type: "error",
-        title: "Failed to disconnect provider",
-        description:
-          "Could not disconnect from your transcripts provider. Please try again.",
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Provider disconnected",
-        description:
-          "Your transcripts provider has been disconnected successfully.",
-      });
-
-      await mutateTranscriptsConfiguration();
-    }
-
-    return response;
-  };
-
-  if (isTranscriptsConfigurationLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Spinner />
-      </div>
-    );
-  }
 
   return (
     <ConversationsNavigationProvider>
@@ -163,15 +86,15 @@ export default function LabsTranscriptsIndex({
       >
         <Page>
           <Page.Header
-            title="Dust Labs"
+            title="Beta features"
             icon={TestTubeIcon}
-            description="Expect some bumps and changes. Feedback welcome!"
+            description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
           />
           <Page.Layout direction="vertical">
             <ContextItem.List>
               <ContextItem.SectionHeader
-                title="Exploratory features"
-                description="Features that are still in beta and may change or be removed."
+                title="Features"
+                description="All features presented here are in beta and may change or be removed."
               />
               <ContextItem
                 title="Meeting Transcripts Processing"
@@ -195,14 +118,14 @@ export default function LabsTranscriptsIndex({
               </ContextItem>
 
               <ContextItem.SectionHeader
-                title="Experimental connections"
-                description="Connections that are being tested and may require some manual steps."
+                title="Connections"
+                description="These connections are being tested and may require some manual steps."
               />
               {/* hubspot connection */}
               <ContextItem
                 title="Hubspot"
                 action={<Button variant="outline" label="Connect" size="sm" />}
-                visual={<Icon visual={NotionLogo} />}
+                visual={<Icon visual={HubspotLogo} />}
               >
                 <ContextItem.Description description="Import your Hubspot account summaries into Dust." />
               </ContextItem>
