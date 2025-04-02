@@ -7,13 +7,13 @@ import {
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { WorkspaceType } from "@app/types";
 
 type ActionDetailsProps = {
   owner: WorkspaceType;
   onClose: () => void;
-  mcpServer: MCPServerMetadata | null;
+  mcpServer: MCPServerType | null;
 };
 
 export function InternalMCPServerDetails({

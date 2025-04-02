@@ -1,7 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_actions";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   useCreateMCPServerConnection,
   useDeleteMCPServerConnection,
