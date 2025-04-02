@@ -25,8 +25,7 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types";
+import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
   name: string;
