@@ -84,7 +84,7 @@ export function ZendeskConfigView({
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             If activated, Dust will also sync the unresolved tickets.
             <br /> Be aware that this may significantly increase the number of
             synced tickets, potentially negatively affecting the response

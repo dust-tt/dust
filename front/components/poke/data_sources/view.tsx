@@ -116,7 +116,7 @@ export function ViewDataSourceTable({
                     <Link
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=connectorId%3D%22${dataSource.connectorId}%22`}
                       target="_blank"
-                      className="text-sm text-action-400"
+                      className="text-sm text-highlight-400"
                     >
                       Temporal
                     </Link>{" "}
@@ -124,7 +124,7 @@ export function ViewDataSourceTable({
                     <Link
                       href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%40data_source_internal_id%3A${coreDataSource.data_source_internal_id}%20&agg_m=count&agg_m_source=base&agg_t=count&cols=host%2Cservice&fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&stream_sort=desc&view=spans&viz=stream`}
                       target="_blank"
-                      className="text-sm text-action-400"
+                      className="text-sm text-highlight-400"
                     >
                       Datadog(Qdrant)
                     </Link>

@@ -44,7 +44,7 @@ const AssistantDetailsPage = ({
     <div className="max-w-4xl">
       <h3 className="text-xl font-bold">
         Assistant of workspace:{" "}
-        <a href={`/poke/${workspace.sId}`} className="text-action-500">
+        <a href={`/poke/${workspace.sId}`} className="text-highlight-500">
           {workspace.name}
         </a>
       </h3>
@@ -58,27 +58,27 @@ const AssistantDetailsPage = ({
             >
               <ContextItem.Description>
                 <div className="flex flex-col gap-2">
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Created At:</div>
                     <div>{`${a.versionCreatedAt}`}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Scope:</div>
                     <div>{a.scope}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">versionAuthorId:</div>
                     <div>{a.versionAuthorId}</div>
                   </div>
-                  <div className="ml-4 pt-2 text-sm text-element-700">
+                  <div className="ml-4 pt-2 text-sm text-muted-foreground">
                     <div className="font-bold">Description:</div>
                     <div>{a.description}</div>
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     <div className="font-bold">Instructions:</div>
                     <TextArea placeholder="" value={a.instructions ?? ""} />
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     <div className="font-bold">
                       Model:{" "}
                       {SUPPORTED_MODEL_CONFIGS.find(
@@ -92,7 +92,7 @@ const AssistantDetailsPage = ({
                       defaultInspectDepth={0}
                     />
                   </div>
-                  <div className="ml-4 text-sm text-element-700">
+                  <div className="ml-4 text-sm text-muted-foreground">
                     {a.actions.map((action, index) => (
                       <div key={index}>
                         <div className="font-bold">

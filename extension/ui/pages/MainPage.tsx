@@ -71,7 +71,7 @@ export const MainPage = ({
       />
       <div className="flex items-start justify-between">
         <div className="fixed bottom-0 right-0 z-10 p-2 text-sm element">
-          <p className="text-sm font-normal text-element-700 dark:text-element-700-night">
+          <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             {shortcut}
           </p>
         </div>
