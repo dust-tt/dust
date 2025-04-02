@@ -33,9 +33,7 @@ describe("GET /api/w/[wId]/mcp/[serverId]", () => {
   itInTransaction("should return server details", async (t) => {
     const { req, res, workspace } = await setupTest(t);
 
-    const server = await RemoteMCPServerFactory.create(workspace, {
-      sharedSecret: "secret123",
-    });
+    const server = await RemoteMCPServerFactory.create(workspace);
     req.query.serverId = server.sId;
 
     await handler(req, res);

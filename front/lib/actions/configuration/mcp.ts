@@ -3,11 +3,11 @@ import { Op } from "sequelize";
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { Workspace } from "@app/lib/models/workspace";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import type { ModelId } from "@app/types";
@@ -85,9 +85,7 @@ export async function fetchMCPServerActionConfigurations(
       const remoteMCPServer = await mcpServerView.getRemoteMCPServer(auth);
 
       // Note: this won't attempt to connect to remote servers and will use the cached metadata.
-      metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId: remoteMCPServer.sId,
-      });
+      metadata = remoteMCPServer.toJSON();
     } else if (mcpServerView.serverType === "internal") {
       if (!mcpServerView.internalMCPServerId) {
         throw new Error(
@@ -95,9 +93,19 @@ export async function fetchMCPServerActionConfigurations(
         );
       }
 
-      metadata = await getMCPServerMetadataLocally(auth, {
-        mcpServerId: mcpServerView.internalMCPServerId,
-      });
+      const internalMCPServer =
+        await InternalMCPServerInMemoryResource.fetchById(
+          auth,
+          mcpServerView.internalMCPServerId
+        );
+
+      if (!internalMCPServer) {
+        throw new Error(
+          `Internal MCP server with ID ${mcpServerView.internalMCPServerId} not found.`
+        );
+      }
+
+      metadata = await internalMCPServer.toJSON(auth);
     } else {
       assertNever(mcpServerView.serverType);
     }
