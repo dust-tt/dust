@@ -1,4 +1,5 @@
 export { AnimatedText } from "./AnimatedText";
+export { AppCommandPalette } from "./AppCommandPalette";
 export { AspectRatio } from "./AspectRatio";
 export {
   AssistantCard,

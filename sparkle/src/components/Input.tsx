@@ -19,6 +19,7 @@ export interface InputProps
   isError?: boolean;
   className?: string;
   label?: string;
+  isInCommandPalette?: boolean;
 }
 
 const INPUT_STATES = ["error", "disabled", "default"];
@@ -91,6 +92,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       label,
       isError,
       disabled,
+      isInCommandPalette,
       ...props
     },
     ref
@@ -102,7 +104,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className="s-flex s-flex-col s-gap-1">
+      <div
+        className={cn(
+          "s-flex s-flex-col s-gap-1",
+          isInCommandPalette && "s-w-full"
+        )}
+      >
         {label && (
           <Label htmlFor={props.name} className="s-mb-1">
             {label}

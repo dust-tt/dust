@@ -117,6 +117,7 @@
     "@tanstack/react-table": "^8.13.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "emoji-mart": "^5.5.2",
     "lottie-react": "^2.4.0",
     "lottie-web": "^5.12.2",
