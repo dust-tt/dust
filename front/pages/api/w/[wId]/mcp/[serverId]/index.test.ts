@@ -103,7 +103,7 @@ describe("DELETE /api/w/[wId]/mcp/[serverId]", () => {
     expect(responseData).toHaveProperty("deleted", true);
 
     const deletedServer = await RemoteMCPServerResource.fetchById(
-      { workspace: () => workspace } as any,
+      { getNonNullableWorkspace: () => workspace } as any,
       server.sId
     );
 
