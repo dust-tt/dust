@@ -76,6 +76,8 @@ export function RemoteMCPServerDetails({
     serverId: mcpServer?.id || "",
   });
 
+  const isNewServer = mcpServer && mcpServer?.id === "new";
+
   const formReducer = (
     state: MCPFormState,
     action: MCPFormAction
@@ -108,8 +110,7 @@ export function RemoteMCPServerDetails({
 
   // Initialize form with server data if provided
   useEffect(() => {
-    if (mcpServer?.id === "new") {
-      // For new servers, we reset the form
+    if (isNewServer) {
       dispatch({ type: "RESET" });
       setIsSynchronized(false);
       return;
@@ -124,27 +125,10 @@ export function RemoteMCPServerDetails({
         value: server.description,
       });
       dispatch({ type: "SET_FIELD", field: "tools", value: server.tools });
+      dispatch({ type: "SET_FIELD", field: "url", value: server.url });
 
-      // Remote MCP Server specific fields
-      if ("url" in server) {
-        dispatch({ type: "SET_FIELD", field: "url", value: server.url });
-      }
-
-      if ("sharedSecret" in server) {
-        setSharedSecret(server.sharedSecret);
-      }
-
+      setSharedSecret(server.sharedSecret);
       setIsSynchronized(true);
-    } else if (mcpServer && !isServerLoading) {
-      // For servers without additional data yet
-      dispatch({ type: "SET_FIELD", field: "name", value: mcpServer.name });
-      dispatch({
-        type: "SET_FIELD",
-        field: "description",
-        value: mcpServer.description,
-      });
-      dispatch({ type: "SET_FIELD", field: "tools", value: mcpServer.tools });
-      setIsSynchronized(mcpServer.id !== "new");
     }
   }, [mcpServer, server, isServerLoading]);
 
@@ -158,7 +142,7 @@ export function RemoteMCPServerDetails({
 
     setIsSaving(true);
     try {
-      if (mcpServer && mcpServer.id !== "new") {
+      if (mcpServer && !isNewServer) {
         await updateServer({
           name: formState.name,
           url: formState.url,
@@ -249,8 +233,6 @@ export function RemoteMCPServerDetails({
     }
   };
 
-  const isNewServer = mcpServer?.id === "new";
-
   return (
     <Sheet open={!!mcpServer} onOpenChange={onClose}>
       <SheetContent size="xl">
@@ -280,7 +262,7 @@ export function RemoteMCPServerDetails({
             label: "Save",
             onClick: async (event: Event) => {
               event.preventDefault();
-              if (isSynchronized || (mcpServer && mcpServer.id !== "new")) {
+              if (isSynchronized || isNewServer) {
                 await handleSubmit();
               } else {
                 await handleSynchronize();
@@ -289,7 +271,7 @@ export function RemoteMCPServerDetails({
             disabled:
               isSaving ||
               isSynchronizing ||
-              (!isSynchronized && (!mcpServer || mcpServer.id === "new")),
+              (!isSynchronized && (!mcpServer || isNewServer)),
           }}
         />
       </SheetContent>

@@ -12,6 +12,8 @@ import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
+import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -49,6 +51,26 @@ export default function AdminActions({
   const serverType =
     showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
 
+  const { spaces } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: false,
+  });
+  const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
+
+  const { mutateMCPServerViews } = useMCPServerViews({
+    owner,
+    space: systemSpace,
+  });
+
+  const EMPTY_MCP_SERVER = {
+    id: "new",
+    name: "",
+    version: "",
+    description: "",
+    icon: DEFAULT_MCP_SERVER_ICON,
+    tools: [],
+  } as MCPServerType;
+
   return (
     <AppLayout
       subscription={subscription}
@@ -67,7 +89,10 @@ export default function AdminActions({
         <RemoteMCPServerDetails
           owner={owner}
           mcpServer={showDetails}
-          onClose={() => setShowDetails(null)}
+          onClose={() => {
+            setShowDetails(null)
+            mutateMCPServerViews()
+          }}
         />
       )}
 
@@ -82,15 +107,9 @@ export default function AdminActions({
             owner={owner}
             setShowDetails={setShowDetails}
             openRemoteMCPModal={() =>
-              setShowDetails({
-                id: "new",
-                name: "",
-                version: "",
-                description: "",
-                icon: DEFAULT_MCP_SERVER_ICON,
-                tools: [],
-              })
+              setShowDetails(EMPTY_MCP_SERVER)
             }
+            spaces={spaces}
           />
         </Page.Vertical>
       </Page.Vertical>

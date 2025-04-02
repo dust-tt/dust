@@ -37,17 +37,15 @@ type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setShowDetails: (mcpServer: MCPServerType) => void;
   openRemoteMCPModal: () => void;
+  spaces: SpaceType[];
 };
 
 export const AdminActionsList = ({
   owner,
   setShowDetails,
   openRemoteMCPModal,
+  spaces,
 }: AdminActionsListProps) => {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
   const { addToSpace } = useAddMCPServerToSpace(owner);
 
   const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
