@@ -41,7 +41,7 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { Err, md5, Ok } from "@app/types";
+import { Err, isSupportingResponseFormat, md5, Ok } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
@@ -203,19 +203,19 @@ export function InstructionScreen({
           class: classNames(
             "overflow-auto min-h-60 h-full border rounded-xl p-2",
             "transition-all duration-200 ",
-            "bg-structure-50 dark:bg-structure-50-night",
+            "bg-muted-background dark:bg-muted-background-night",
             displayError
               ? "border-warning-500 dark:border-warning-500-night"
-              : "border-structure-200 dark:border-structure-200-night",
+              : "border-border dark:border-border-night",
             displayError
               ? "focus:ring-warning-500 dark:focus:ring-warning-500-night"
-              : "focus:ring-action-300 dark:focus:ring-action-300-night",
+              : "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
             displayError
               ? "focus:outline-warning-500 dark:focus:outline-warning-500-night"
-              : "focus:outline-action-200 dark:focus:outline-action-200-night",
+              : "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
             displayError
               ? "focus:border-warning-500 dark:focus:border-warning-500-night"
-              : "focus:border-action-300 dark:focus:border-action-300-night"
+              : "focus:border-highlight-300 dark:focus:border-highlight-300-night"
           ),
         },
       },
@@ -237,7 +237,7 @@ export function InstructionScreen({
         <div className="flex flex-col gap-2">
           <Page.Header title="Instructions" />
           <Page.P>
-            <span className="text-sm text-element-700 dark:text-element-700-night">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Command or guideline you provide to your agent to direct its
               responses.
             </span>
@@ -290,7 +290,14 @@ export function InstructionScreen({
               setEdited(true);
               setBuilderState((state) => ({
                 ...state,
-                generationSettings,
+                generationSettings: {
+                  ...generationSettings,
+                  responseFormat: isSupportingResponseFormat(
+                    generationSettings.modelSettings.modelId
+                  )
+                    ? generationSettings.responseFormat
+                    : undefined,
+                },
               }));
             }}
             models={models}
@@ -565,7 +572,7 @@ function Suggestions({
           <div
             className={classNames(
               "absolute bottom-0 left-0 top-8 w-8 border-l bg-gradient-to-l transition-opacity duration-700 ease-out",
-              "border-structure-200/80 dark:border-structure-200-night/80",
+              "border-primary-200/80 dark:border-primary-200-night/80",
               "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showLeftGradients ? "opacity-100" : "opacity-0"
             )}
@@ -573,7 +580,7 @@ function Suggestions({
           <div
             className={classNames(
               "absolute bottom-0 right-0 top-8 w-8 border-r bg-gradient-to-r transition-opacity duration-700 ease-out",
-              "border-structure-200/80 dark:border-structure-200-night/80",
+              "border-primary-200/80 dark:border-primary-200-night/80",
               "from-white/0 to-white/70 dark:from-black/0 dark:to-black/70",
               showRightGradients ? "opacity-100" : "opacity-0"
             )}

@@ -291,6 +291,7 @@ export async function submitAssistantBuilderForm({
         temperature: builderState.generationSettings.temperature,
         reasoningEffort:
           builderState.generationSettings.modelSettings.reasoningEffort,
+        responseFormat: builderState.generationSettings.responseFormat,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,

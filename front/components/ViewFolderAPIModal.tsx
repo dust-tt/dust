@@ -3,6 +3,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 import {
   Button,
   ClipboardIcon,
+  Hoverable,
   Page,
   Sheet,
   SheetContainer,
@@ -11,7 +12,6 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useState } from "react";
 
 import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
@@ -91,19 +91,21 @@ export function ViewFolderAPIModal({
         <SheetContainer>
           <div className="flex flex-col gap-6">
             <Page.P>
-              <div className="rounded-lg bg-structure-50 p-4 shadow-sm">
+              <div className="rounded-lg bg-muted-background p-4 shadow-sm dark:bg-muted-background-night">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-element-700">Space ID:</span>
-                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
+                    <span className="text-sm text-muted-foreground">
+                      Space ID:
+                    </span>
+                    <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">
                       {space.sId}
                     </code>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-element-700">
+                    <span className="text-sm text-muted-foreground">
                       Data Source ID:
                     </span>
-                    <code className="rounded bg-white px-2 py-1 font-mono text-sm font-bold text-element-900 shadow-sm">
+                    <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">
                       {dataSource.sId}
                     </code>
                   </div>
@@ -186,12 +188,12 @@ export function ViewFolderAPIModal({
               <Page.P>
                 <div className="pb-2">
                   {owner.role === "admin" ? (
-                    <Link
+                    <Hoverable
                       href={`/w/${owner.sId}/developers/api-keys`}
-                      className="py-1 font-bold text-action-600"
+                      variant="highlight"
                     >
                       Manage workspace API keys
-                    </Link>
+                    </Hoverable>
                   ) : (
                     <span>API keys are managed by workspace admins.</span>
                   )}
@@ -210,12 +212,12 @@ export function ViewFolderAPIModal({
               <Page.P>
                 For a detailed documentation of the Data source API, please
                 refer to the{" "}
-                <Link
+                <Hoverable
                   href={"https://docs.dust.tt/reference/"}
-                  className="py-1 font-bold text-action-600"
+                  variant="highlight"
                 >
                   API Reference
-                </Link>
+                </Hoverable>
               </Page.P>
             </div>
           </div>

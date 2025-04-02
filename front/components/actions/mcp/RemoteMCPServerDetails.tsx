@@ -80,6 +80,10 @@ export function RemoteMCPServerDetails({
     mcpServer?.id || null
   );
 
+  useEffect(() => {
+    console.log(open);
+  }, [open]);
+
   // Store the current serverId in a ref so we can use it to decide whether to create a new hook
   const currentServerIdRef = useRef<string | null>(serverId);
 
@@ -94,10 +98,9 @@ export function RemoteMCPServerDetails({
   const { syncServer } = useSyncRemoteMCPServer(owner, serverId || "");
 
   // Only fetch the server data if we don't already have it from the mcpServer prop
-  const { server, isServerLoading, mutateServer } = useRemoteMCPServer({
+  const { server, isServerLoading, mutateMCPServer } = useRemoteMCPServer({
     owner,
     serverId: serverId || "",
-    disabled: !!mcpServer, // Disable the API call if we already have the server data
   });
 
   const formReducer = (
@@ -188,7 +191,7 @@ export function RemoteMCPServerDetails({
           tools: formState.tools,
         });
 
-        await mutateServer();
+        await mutateMCPServer();
 
         sendNotification({
           title: "MCP server updated",

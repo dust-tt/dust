@@ -90,7 +90,7 @@ export default function Code({
                 onChange={(e) => handleCodeChange(e.target.value)}
                 padding={15}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 12,
                   fontFamily:

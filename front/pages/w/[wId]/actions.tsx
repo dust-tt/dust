@@ -1,18 +1,20 @@
 import { CommandLineIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
 import { RemoteMCPServerDetails } from "@app/components/actions/mcp/RemoteMCPServerDetails";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { useMCPServers } from "@app/lib/swr/mcp_servers";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -49,23 +51,18 @@ export default function AdminActions({
   const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
   const [isRemoteCreationModalOpened, setRemoteCreationModalOpened] =
     useState(false);
-  const serverType =
-    showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
+  const serverType = showDetails
+    ? getServerTypeAndIdFromSId(showDetails.id).serverType
+    : isRemoteCreationModalOpened ? "remote" : null;
 
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: false,
-  });
-  const systemSpace = (spaces ?? []).find((space) => space.kind === "system");
-
-  const { mutateMCPServerViews } = useMCPServerViews({
+  const { mutateMCPServers } = useMCPServers({
     owner,
-    space: systemSpace,
+    filter: "all",
   });
 
   const closePanel = () => {
     setShowDetails(null);
-    void mutateMCPServerViews();
+    void mutateMCPServers();
     setRemoteCreationModalOpened(false);
   };
 
@@ -89,7 +86,7 @@ export default function AdminActions({
           mcpServer={showDetails}
           onClose={closePanel}
           open={isRemoteCreationModalOpened}
-          mutateServers={mutateMCPServerViews}
+          mutateServers={mutateMCPServers}
         />
       )}
 
@@ -106,7 +103,6 @@ export default function AdminActions({
             openRemoteMCPCreationModal={() =>
               setRemoteCreationModalOpened(true)
             }
-            spaces={spaces}
           />
         </Page.Vertical>
       </Page.Vertical>

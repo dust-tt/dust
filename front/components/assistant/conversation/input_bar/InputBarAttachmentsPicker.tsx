@@ -91,10 +91,6 @@ export const InputBarAttachmentsPicker = ({
     searchSourceUrls: true,
   });
 
-  const attachedNodeIds = useMemo(() => {
-    return attachedNodes.map((node) => node.internalId);
-  }, [attachedNodes]);
-
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
     [spaces]
@@ -190,7 +186,12 @@ export const InputBarAttachmentsPicker = ({
                       provider:
                         item.dataSourceView.dataSource.connectorProvider,
                     })}
-                    disabled={attachedNodeIds.includes(item.internalId)}
+                    disabled={attachedNodes.some(
+                      (attachedNode) =>
+                        attachedNode.internalId === item.internalId &&
+                        attachedNode.dataSourceView.dataSource.sId ===
+                          item.dataSourceView.dataSource.sId
+                    )}
                     description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
                     onClick={() => {
                       setSearch("");
@@ -200,7 +201,7 @@ export const InputBarAttachmentsPicker = ({
                   />
                 ))}
                 {unfoldedNodes.length === 0 && !showLoader && (
-                  <div className="flex items-center justify-center py-4 text-sm text-element-700">
+                  <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No results found
                   </div>
                 )}

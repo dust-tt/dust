@@ -309,7 +309,10 @@ export const Field: React.FC<FieldProps> = ({
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classes = classNames(classes, "italic text-element-600");
+        classes = classNames(
+          classes,
+          "italic text-muted-foreground dark:text-muted-foreground-night"
+        );
       }
     }
     if (typeof x === "number") {

@@ -1,4 +1,8 @@
-import { CONTENT_NODE_MIME_TYPES } from "@dust-tt/client";
+import {
+  CONTENT_NODE_MIME_TYPES,
+  isDustMimeType,
+  isIncludableInternalMimeType,
+} from "@dust-tt/client";
 
 import type {
   BaseConversationAttachmentType,
@@ -25,18 +29,35 @@ function isConversationIncludableFileContentType(
   if (isSupportedImageContentType(contentType)) {
     return false;
   }
-  // TODO(attach-ds): Filter out content Types that are folders
+  if (isDustMimeType(contentType)) {
+    return isIncludableInternalMimeType(contentType);
+  }
   return true;
 }
 
 function isQueryableContentType(
   contentType: SupportedContentFragmentType
 ): boolean {
-  // For now we only allow querying tabular files.
-  if (isSupportedDelimitedTextContentType(contentType)) {
+  // For now we only allow querying tabular files and multi-sheet spreadsheets
+  // from connections.
+  if (
+    isSupportedDelimitedTextContentType(contentType) ||
+    isMultiSheetSpreadsheetContentType(contentType)
+  ) {
     return true;
   }
   return false;
+}
+
+export function isMultiSheetSpreadsheetContentType(
+  contentType: SupportedContentFragmentType
+): contentType is
+  | typeof CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET
+  | typeof CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET {
+  return (
+    contentType === CONTENT_NODE_MIME_TYPES.MICROSOFT.SPREADSHEET ||
+    contentType === CONTENT_NODE_MIME_TYPES.GOOGLE_DRIVE.SPREADSHEET
+  );
 }
 
 function isSearchableContentType(
@@ -83,6 +104,7 @@ export function listFiles(
           (isQueryableContentType(m.contentType) || m.nodeType === "table");
         const isContentNodeTable = isContentNodeAttachment(m) && isQueryable;
         const isIncludable =
+          m.nodeType !== "folder" &&
           isConversationIncludableFileContentType(m.contentType) &&
           // Tables from knowledge are not materialized as raw content. As such, they cannot be
           // included.
@@ -121,7 +143,7 @@ export function listFiles(
             ...baseAttachment,
             nodeDataSourceViewId: m.nodeDataSourceViewId,
             contentFragmentId: m.contentFragmentId,
-            contentNodeId: m.nodeId,
+            nodeId: m.nodeId,
             nodeType: m.nodeType,
           });
         }

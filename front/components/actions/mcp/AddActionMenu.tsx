@@ -9,21 +9,16 @@ import {
   DropdownMenuTrigger,
   PlusIcon,
 } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
 } from "@app/lib/actions/mcp_icons";
-import { useAddMCPServerToSpace } from "@app/lib/swr/mcp_server_views";
-import { useMCPServers } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { ConnectorProvider, WorkspaceType } from "@app/types";
-
-export type DataSourceIntegration = {
-  connectorProvider: ConnectorProvider;
-  setupWithSuffix: string | null;
-};
+import {
+  useAvailableMCPServers,
+  useCreateInternalMCPServer,
+} from "@app/lib/swr/mcp_servers";
+import type { WorkspaceType } from "@app/types";
 
 type AddActionMenuProps = {
   owner: WorkspaceType;
@@ -36,16 +31,11 @@ export const AddActionMenu = ({
   enabledMCPServers,
   createRemoteMCP,
 }: AddActionMenuProps) => {
-  const { mcpServers } = useMCPServers({
+  const { availableMCPServers } = useAvailableMCPServers({
     owner,
-    filter: "internal",
   });
-  const { spaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
-  const { addToSpace } = useAddMCPServerToSpace(owner);
 
-  const systemSpace = useMemo(() => {
-    return spaces.find((space) => space.kind === "system");
-  }, [spaces]);
+  const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
 
   return (
     <DropdownMenu modal={false}>
@@ -60,7 +50,7 @@ export const AddActionMenu = ({
       <DropdownMenuContent>
         <DropdownMenuLabel label="Default actions" />
 
-        {mcpServers
+        {availableMCPServers
           .filter((mcpServer) => !enabledMCPServers.includes(mcpServer.id))
           .map((mcpServer) => (
             <DropdownMenuItem
@@ -68,10 +58,7 @@ export const AddActionMenu = ({
               label={mcpServer.name}
               icon={MCP_SERVER_ICONS[mcpServer.icon || DEFAULT_MCP_SERVER_ICON]}
               onClick={async () => {
-                if (!systemSpace) {
-                  throw new Error("System space not found");
-                }
-                await addToSpace(mcpServer, systemSpace);
+                await createInternalMCPServer(mcpServer.name);
               }}
             />
           ))}

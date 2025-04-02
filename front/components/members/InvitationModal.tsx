@@ -228,7 +228,7 @@ export function InviteEmailModal({
                   />
                 </div>
               </div>
-              <div className="text-element-700 dark:text-element-700-night">
+              <div className="text-muted-foreground dark:text-muted-foreground-night">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>

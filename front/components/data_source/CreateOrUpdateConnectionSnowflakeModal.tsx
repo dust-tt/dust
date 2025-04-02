@@ -238,10 +238,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
               {connectorProviderConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-element-800">
+                  <div className="grow text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
                     Limitations
                   </div>
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     {connectorProviderConfiguration.limitations}
                   </div>
                 </div>

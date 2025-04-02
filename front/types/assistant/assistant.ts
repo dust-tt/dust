@@ -253,6 +253,9 @@ export type ModelConfigurationType = {
   // Only used for O-series OpenAI models.
   reasoningEffort?: AgentReasoningEffort;
 
+  // Denotes model is able to take a response format request parameter
+  supportsResponseFormat?: boolean;
+
   featureFlag?: WhitelistableFeature;
   customAssistantFeatureFlag?: WhitelistableFeature;
 };
@@ -277,6 +280,7 @@ export const GPT_3_5_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: false,
+  supportsResponseFormat: false,
 };
 
 export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
@@ -293,6 +297,7 @@ export const GPT_4_TURBO_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: false,
 };
 export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -307,6 +312,7 @@ export const GPT_4O_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: true,
 };
 export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -321,6 +327,7 @@ export const GPT_4O_20240806_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: true,
 };
 export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -336,6 +343,7 @@ export const GPT_4O_MINI_MODEL_CONFIG: ModelConfigurationType = {
   toolUseMetaPrompt: LEGACY_OPEN_AI_TOOL_USE_META_PROMPT,
   generationTokensCount: 2048,
   supportsVision: true,
+  supportsResponseFormat: false,
 };
 export const O1_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -353,6 +361,7 @@ export const O1_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: true,
   featureFlag: "openai_o1_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
 export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -372,6 +381,7 @@ export const O1_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   featureFlag: "openai_o1_high_reasoning_feature",
   customAssistantFeatureFlag:
     "openai_o1_high_reasoning_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
 export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -389,6 +399,7 @@ export const O1_MINI_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   featureFlag: "openai_o1_mini_feature",
   customAssistantFeatureFlag: "openai_o1_custom_assistants_feature",
+  supportsResponseFormat: false,
 };
 export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -404,6 +415,7 @@ export const O3_MINI_MODEL_CONFIG: ModelConfigurationType = {
   isLegacy: false,
   generationTokensCount: 2048,
   supportsVision: false,
+  supportsResponseFormat: true,
 };
 export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "openai",
@@ -420,6 +432,7 @@ export const O3_MINI_HIGH_REASONING_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 2048,
   supportsVision: false,
   reasoningEffort: "high",
+  supportsResponseFormat: true,
 };
 
 const ANTHROPIC_DELIMITERS_CONFIGURATION = {
@@ -1044,6 +1057,13 @@ export function isSupportedModel(model: unknown): model is SupportedModel {
       m.modelId === maybeSupportedModel.modelId &&
       m.providerId === maybeSupportedModel.providerId
   );
+}
+
+export function isSupportingResponseFormat(modelId: ModelIdType) {
+  const model = SUPPORTED_MODEL_CONFIGS.find(
+    (config) => config.modelId === modelId
+  );
+  return model?.supportsResponseFormat;
 }
 
 /**

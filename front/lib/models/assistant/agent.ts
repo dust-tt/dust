@@ -35,6 +35,7 @@ export class AgentConfiguration extends WorkspaceAwareModel<AgentConfiguration> 
   declare modelId: ModelIdType;
   declare temperature: number;
   declare reasoningEffort: AgentReasoningEffort | null;
+  declare responseFormat?: string;
 
   declare pictureUrl: string;
 
@@ -112,6 +113,35 @@ AgentConfiguration.init(
     reasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    responseFormat: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: null,
+      set(value) {
+        if (!value) {
+          this.setDataValue("responseFormat", undefined);
+          return;
+        }
+        // If it's already a string, parse it first
+        const parsed = typeof value === "string" ? JSON.parse(value) : value;
+        // Store the parsed object directly
+        this.setDataValue("responseFormat", parsed);
+      },
+      validate: {
+        isValidJSON(value: string) {
+          if (value) {
+            if (typeof value !== "object") {
+              throw new Error("Response format is not a JSON object");
+            }
+            try {
+              JSON.parse(JSON.stringify(value));
+            } catch (e) {
+              throw new Error("Response format is invalid JSON");
+            }
+          }
+        },
+      },
     },
     maxStepsPerRun: {
       type: DataTypes.INTEGER,

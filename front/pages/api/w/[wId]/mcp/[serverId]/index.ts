@@ -153,23 +153,22 @@ async function handler(
     case "DELETE": {
       const { serverType } = getServerTypeAndIdFromSId(serverId);
 
-      if (serverType == "internal") {
-        // TODO(mcp) delete the internal MCP server
-      } else {
-        const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+      const server =
+        serverType == "remote"
+          ? await RemoteMCPServerResource.fetchById(auth, serverId)
+          : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
 
-        if (!server) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_not_found",
-              message: "Remote MCP Server not found",
-            },
-          });
-        }
-
-        await server.delete(auth);
+      if (!server) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "data_source_not_found",
+            message: "Remote MCP Server not found",
+          },
+        });
       }
+
+      await server.delete(auth);
 
       return res.status(200).json({
         deleted: true,

@@ -2,9 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { DataSourceConfigurationInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 
-const serverInfo: Omit<MCPServerType, "tools" | "id"> = {
+const serverInfo: MCPServerDefinitionType = {
   name: "data-source-utils",
   version: "1.0.0",
   description:

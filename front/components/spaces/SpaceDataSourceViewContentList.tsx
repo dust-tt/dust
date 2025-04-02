@@ -563,7 +563,7 @@ export const SpaceDataSourceViewContentList = ({
         connector &&
         !parentId &&
         space.kind === "system" && (
-          <div className="flex flex-col items-center gap-2 text-sm text-element-700">
+          <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
             {isEmpty && <div>Connection ready. Select the data to sync.</div>}
 
             <ConnectorPermissionsModal
