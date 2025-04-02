@@ -790,6 +790,7 @@ type TablesQueryActionPublicType = z.infer<typeof TablesQueryActionTypeSchema>;
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "usage_data_api"
   | "okta_enterprise_connection"
+  | "labs_features"
   | "labs_transcripts"
   | "labs_trackers"
   | "document_tracker"

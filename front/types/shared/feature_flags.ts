@@ -1,6 +1,7 @@
 export const WHITELISTABLE_FEATURES = [
   "usage_data_api",
   "okta_enterprise_connection",
+  "labs_features",
   "labs_transcripts",
   "document_tracker",
   "openai_o1_feature",

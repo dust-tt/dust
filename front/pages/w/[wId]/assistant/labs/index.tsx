@@ -125,7 +125,7 @@ export default function LabsTranscriptsIndex({
               <ContextItem
                 title="Hubspot"
                 action={<Button variant="outline" label="Connect" size="sm" />}
-                visual={<Icon visual={HubspotLogo} />}
+                visual={<ContextItem.Visual visual={HubspotLogo} />}
               >
                 <ContextItem.Description description="Import your Hubspot account summaries into Dust." />
               </ContextItem>

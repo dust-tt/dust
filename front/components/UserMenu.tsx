@@ -22,7 +22,7 @@ import {
   UserIcon,
 } from "@dust-tt/sparkle";
 import { useSendNotification } from "@dust-tt/sparkle";
-import { BugIcon } from "lucide-react";
+import { BugIcon, TestTubeIcon } from "lucide-react";
 import { useRouter } from "next/router";
 import { useMemo } from "react";
 
@@ -95,6 +95,13 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenuLabel label="Beta" />
+            {featureFlags.includes("labs_features") && (
+              <DropdownMenuItem
+                label="Beta features"
+                icon={TestTubeIcon}
+                href={`/w/${owner.sId}/assistant/labs`}
+              />
+            )}
             {featureFlags.includes("labs_transcripts") && (
               <DropdownMenuItem
                 label="Meeting transcripts"
