@@ -303,6 +303,17 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
       contentFragmentId: this.sId,
       contentFragmentVersion: this.version,
+      contentNodeData: message.contentFragment
+        ? {
+            nodeId: message.contentFragment.nodeType,
+            nodeDataSourceViewId: message.contentFragment.nodeDataSourceViewId,
+            provider:
+              message.contentFragment.nodeDataSourceView?.dataSourceForView
+                .connectorProvider,
+            spaceName: message.contentFragment.nodeDataSourceView?.space,
+            nodeType: message.contentFragment.nodeType,
+          }
+        : null,
     };
   }
 }
