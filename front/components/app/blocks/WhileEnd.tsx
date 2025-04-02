@@ -106,7 +106,7 @@ export function While({
             <div className="w-full leading-4">
               <div
                 className={classNames(
-                  "border bg-slate-100",
+                  "border bg-muted-background",
                   "border-slate-100"
                 )}
               >

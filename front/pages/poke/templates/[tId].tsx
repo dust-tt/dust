@@ -388,7 +388,7 @@ function SelectField({
                 </PokeSelectTrigger>
               </PokeFormControl>
               <PokeSelectContent>
-                <div className="bg-slate-100 dark:bg-slate-100-night">
+                <div className="bg-muted-background dark:bg-muted-background-night">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
                       {option.display ?? option.value}
