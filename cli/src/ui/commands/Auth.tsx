@@ -8,6 +8,7 @@ import TokenStorage from "../../utils/tokenStorage.js";
 import { getDustClient, resetDustClient } from "../../utils/dustClient.js";
 import WorkspaceSelector from "../components/WorkspaceSelector.js";
 import { MeResponseType } from "@dust-tt/client";
+import { normalizeError } from "../../utils/errors.js";
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -86,7 +87,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
           }),
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(normalizeError(err).message);
         return null;
       }
     })();
@@ -169,7 +170,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
         }
       } catch (err) {
         setIsPolling(false);
-        setError(err instanceof Error ? err.message : String(err));
+        setError(normalizeError(err).message);
       }
     };
 
@@ -227,7 +228,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
           <Text color="green">
             <Spinner type="dots" />
           </Text>
-          <Text> Waiting for you to authorize...</Text>
+          <Text>Waiting for you to authorize...</Text>
         </Box>
         <Box marginTop={1}>
           <Text>Please enter code: </Text>

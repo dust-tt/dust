@@ -2,6 +2,7 @@ import React, { FC, useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import AuthService from "../../utils/authService.js";
+import { normalizeError } from "../../utils/errors.js";
 
 const Logout: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -16,7 +17,7 @@ const Logout: FC = () => {
         setIsComplete(true);
         setIsLoading(false);
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(normalizeError(err).message);
         setIsLoading(false);
       }
     };
@@ -30,7 +31,7 @@ const Logout: FC = () => {
         <Text color="green">
           <Spinner type="dots" />
         </Text>
-        <Text> Logging out...</Text>
+        <Text>Logging out...</Text>
       </Box>
     );
   }
