@@ -172,7 +172,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                     <Icon visual={FolderIcon} />
                     <p>{contentFragment.contentNodeData.spaceName}</p>
                   </div>
-                  <div className="text-sm text-element-600">
+                  <div className="text-element-600 text-sm">
                     {contentFragment.sourceUrl || ""}
                   </div>
                 </div>

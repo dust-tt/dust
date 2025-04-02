@@ -108,7 +108,13 @@ export function ActionValidationProvider({
       removeFromQueue();
       setErrorMessage(null);
     }
-  }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
+  }, [
+    isProcessing,
+    validationQueue,
+    currentValidation,
+    isDialogOpen,
+    removeFromQueue,
+  ]);
 
   const sendCurrentValidation = async (approved: boolean) => {
     if (!currentValidation) {
