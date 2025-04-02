@@ -23,7 +23,6 @@ import {
   useMCPServerViews,
 } from "@app/lib/swr/mcp_server_views";
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
 
 type RowData = {
@@ -36,14 +35,14 @@ type RowData = {
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setShowDetails: (mcpServer: MCPServerType) => void;
-  openRemoteMCPModal: () => void;
+  openRemoteMCPCreationModal: () => void;
   spaces: SpaceType[];
 };
 
 export const AdminActionsList = ({
   owner,
   setShowDetails,
-  openRemoteMCPModal,
+  openRemoteMCPCreationModal,
   spaces,
 }: AdminActionsListProps) => {
   const { addToSpace } = useAddMCPServerToSpace(owner);
@@ -261,7 +260,7 @@ export const AdminActionsList = ({
           enabledMCPServers={serverViews.map(
             (serverView) => serverView.server.id
           )}
-          createRemoteMCP={openRemoteMCPModal}
+          createRemoteMCP={openRemoteMCPCreationModal}
         />
       </div>
 
