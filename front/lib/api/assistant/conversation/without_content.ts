@@ -5,7 +5,7 @@ import {
   getConversationRequestedGroupIdsFromModel,
 } from "@app/lib/api/assistant/conversation/auth";
 import type { Authenticator } from "@app/lib/auth";
-import { Conversation } from "@app/lib/models/assistant/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import { ConversationError } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -20,10 +20,9 @@ export async function getConversationWithoutContent(
 ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await Conversation.findOne({
+  const conversation = await ConversationResource.fetchOne(auth, {
     where: {
       sId: conversationId,
-      workspaceId: owner.id,
       ...(options?.includeDeleted
         ? {}
         : { visibility: { [Op.ne]: "deleted" } }),

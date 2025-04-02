@@ -16,7 +16,6 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   AgentMessageFeedback,
-  Conversation,
   ConversationParticipant,
   Mention,
   Message,
@@ -24,6 +23,7 @@ import {
   UserMessage,
 } from "@app/lib/models/assistant/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { RetrievalDocumentResource } from "@app/lib/resources/retrieval_document_resource";
 import type { ConversationWithoutContentType, ModelId } from "@app/types";
@@ -232,10 +232,8 @@ export async function destroyConversation(
 
   await destroyConversationDataSource(auth, { conversation });
 
-  const c = await Conversation.findOne({
-    where: { id: conversation.id },
-  });
+  const c = await ConversationResource.fetchWithId(auth, conversation.sId);
   if (c) {
-    await c.destroy();
+    await c.delete(auth);
   }
 }

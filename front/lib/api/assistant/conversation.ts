@@ -38,6 +38,7 @@ import {
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -132,9 +133,8 @@ export async function createConversation(
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await Conversation.create({
+  const conversation = await ConversationResource.makeNew(auth, {
     sId: generateRandomModelSId(),
-    workspaceId: owner.id,
     title: title,
     visibility: visibility,
     requestedGroupIds: [],
@@ -168,12 +168,9 @@ export async function updateConversation(
     visibility: ConversationVisibility;
   }
 ): Promise<Result<ConversationType, ConversationError>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const conversation = await Conversation.findOne({
+  const conversation = await ConversationResource.fetchOne(auth, {
     where: {
       sId: conversationId,
-      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -182,7 +179,7 @@ export async function updateConversation(
     throw new Error(`Conversation ${conversationId} not found`);
   }
 
-  await conversation.update({
+  await conversation.updateAttributes({
     title: title,
     visibility: visibility,
   });
@@ -204,12 +201,9 @@ export async function deleteConversation(
     destroy?: boolean;
   }
 ): Promise<Result<{ success: true }, ConversationError>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const conversation = await Conversation.findOne({
+  const conversation = await ConversationResource.fetchOne(auth, {
     where: {
       sId: conversationId,
-      workspaceId: owner.id,
       visibility: { [Op.ne]: "deleted" },
     },
   });
@@ -223,9 +217,9 @@ export async function deleteConversation(
   }
 
   if (destroy) {
-    await conversation.destroy();
+    await conversation.delete(auth);
   } else {
-    await conversation.update({
+    await conversation.updateAttributes({
       visibility: "deleted",
     });
   }
@@ -269,7 +263,7 @@ export async function getUserConversations(
     participations,
     "conversationId"
   );
-  const conversationUpdated = (c: Conversation) => {
+  const conversationUpdated = (c: ConversationResource) => {
     const participations = participationsByConversationId[c.id];
     if (!participations) {
       return undefined;
@@ -278,10 +272,9 @@ export async function getUserConversations(
   };
 
   const conversations = (
-    await Conversation.findAll({
+    await ConversationResource.listAll(auth, {
       where: {
         id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
-        workspaceId: owner.id,
         visibility: { [Op.in]: includedConversationVisibilities },
       },
     })
@@ -364,10 +357,9 @@ export async function getConversation(
 ): Promise<Result<ConversationType, ConversationError>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const conversation = await Conversation.findOne({
+  const conversation = await ConversationResource.fetchOne(auth, {
     where: {
       sId: conversationId,
-      workspaceId: owner.id,
       ...(includeDeleted ? {} : { visibility: { [Op.ne]: "deleted" } }),
     },
   });
