@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   cn,
@@ -38,7 +39,6 @@ import type {
   SpaceType,
 } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
 const DEFAULT_VIEW_TYPE = "all";
 

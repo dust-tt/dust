@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -53,7 +54,6 @@ import {
   MIN_SEARCH_QUERY_SIZE,
   removeNulls,
 } from "@app/types";
-import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 

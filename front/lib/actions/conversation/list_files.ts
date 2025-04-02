@@ -8,16 +8,17 @@ import {
 } from "@app/lib/actions/constants";
 import type { ExtractActionBlob } from "@app/lib/actions/types";
 import { BaseAction } from "@app/lib/actions/types";
-import {
-  DATA_SOURCE_NODE_ID,
-  type AgentMessageType,
-  type ContentFragmentVersion,
-  type ContentNodeType,
-  type FunctionCallType,
-  type FunctionMessageTypeModel,
-  type ModelId,
-  type SupportedContentFragmentType,
+import type {
+  AgentMessageType,
+  ContentFragmentInputWithContentNode,
+  ContentFragmentVersion,
+  ContentNodeType,
+  FunctionCallType,
+  FunctionMessageTypeModel,
+  ModelId,
+  SupportedContentFragmentType,
 } from "@app/types";
+import { DATA_SOURCE_NODE_ID } from "@app/types";
 
 export type BaseConversationAttachmentType = {
   title: string;
@@ -57,12 +58,12 @@ export function isConversationContentNodeType(
   return "contentFragmentId" in attachment;
 }
 
-export function isConversationDataSourceNode(
-  attachment: ConversationContentNodeType
+export function isContentFragmentDataSourceNode(
+  attachment: ConversationContentNodeType | ContentFragmentInputWithContentNode
 ): attachment is ConversationContentNodeType & {
-  contentFragmentId: typeof DATA_SOURCE_NODE_ID;
+  contentNodeId: typeof DATA_SOURCE_NODE_ID;
 } {
-  return attachment.contentFragmentId === DATA_SOURCE_NODE_ID;
+  return attachment.contentNodeId === DATA_SOURCE_NODE_ID;
 }
 
 // If updating this function, make sure to update `contentFragmentId` when we render the conversation
