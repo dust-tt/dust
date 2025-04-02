@@ -285,12 +285,10 @@ export const AdminActionsList = ({
           },
         },
         {
-          disabled: availableSpaces.length === 0,
           kind: "item",
           label: serverType === "internal" ? "Disable" : "Delete",
           onSelect: async () => {
             await deleteServer(serverView.server.id);
-            await mutateMCPServers();
           },
         },
       ],
