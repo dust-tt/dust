@@ -67,7 +67,7 @@ export function ActionTablesQuery({
         viewType="table"
       />
 
-      <div className="text-sm text-element-700">
+      <div className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
         The agent will generate a SQL query from your request, execute it on the
         tables selected and use the results to generate an answer. Learn more
         about this feature in the{" "}
@@ -75,7 +75,7 @@ export function ActionTablesQuery({
           onClick={() => {
             window.open("https://docs.dust.tt/docs/table-queries", "_blank");
           }}
-          className="cursor-pointer font-bold text-action-500"
+          variant="highlight"
         >
           documentation
         </Hoverable>

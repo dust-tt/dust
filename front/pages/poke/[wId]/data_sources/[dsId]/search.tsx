@@ -134,7 +134,7 @@ export default function DataSourceView({
               autoComplete="off"
               name="search_query"
               id="search_query"
-              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-action-500 focus:ring-action-500"
+              className="block w-full min-w-0 flex-1 rounded-md border-gray-300 text-sm focus:border-highlight-500 focus:ring-highlight-500"
               onKeyDown={(e) => {
                 if (e.key == "Enter") {
                   setSearchQuery(e.currentTarget.value);
@@ -155,7 +155,7 @@ export default function DataSourceView({
                   <div className="mx-2 py-4">
                     <div className="grid grid-cols-5 items-center justify-between">
                       <div className="col-span-4">
-                        <div className="truncate text-base font-bold text-action-600">
+                        <div className="truncate text-base font-bold text-highlight-600">
                           <div className="flex">
                             <div
                               onClick={() =>

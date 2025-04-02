@@ -159,7 +159,7 @@ export default function WorkspaceAssistants({
   }, [assistantSearch]);
 
   const disabledTablineClass =
-    "!border-element-500 !text-element-500 !cursor-default";
+    "!border-primary-500 !text-primary-500 !cursor-default";
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 

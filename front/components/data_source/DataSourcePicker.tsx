@@ -1,5 +1,6 @@
 import {
   Button,
+  Hoverable,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -101,7 +102,11 @@ export default function DataSourcePicker({
     if (linksDisabled) {
       return <div>{children}</div>;
     }
-    return <Link href={href}>{children}</Link>;
+    return (
+      <Hoverable variant="highlight" className="copy-sm" href={href}>
+        {children}
+      </Hoverable>
+    );
   };
 
   useEffect(() => {
@@ -121,7 +126,7 @@ export default function DataSourcePicker({
         {readOnly ? (
           selectedDataSourceView ? (
             <MaybeLink href={getEditLink(selectedDataSourceView)}>
-              <div className="max-w-20 mr-1 truncate text-sm font-bold text-action-500">
+              <div className="max-w-20 mr-1 truncate">
                 {selectedDataSourceView.dataSource.name}
               </div>
             </MaybeLink>
@@ -135,16 +140,18 @@ export default function DataSourcePicker({
                 <div
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                    readOnly ? "text-gray-300" : "text-gray-700",
+                    readOnly
+                      ? "text-gray-400 dark:text-gray-400-night"
+                      : "text-muted-foreground dark:text-muted-foreground-night",
                     "focus:outline-none focus:ring-0"
                   )}
                 >
                   <MaybeLink href={getEditLink(selectedDataSourceView)}>
-                    <div className="mr-1 max-w-xs truncate text-sm font-bold text-action-500">
+                    <div className="mr-1 max-w-xs truncate">
                       {selectedDataSourceView.dataSource.name}
                     </div>
                   </MaybeLink>
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-gray-700" />
+                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground dark:text-muted-foreground-night" />
                 </div>
               ) : spaceDataSourceViews && spaceDataSourceViews.length > 0 ? (
                 <Button
@@ -157,7 +164,9 @@ export default function DataSourcePicker({
                 <Link
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
-                    readOnly ? "text-gray-300" : "text-gray-700"
+                    readOnly
+                      ? "text-gray-400 dark:text-gray-400-night"
+                      : "text-muted-foreground dark:text-muted-foreground-night"
                   )}
                 >
                   Create DataSource
@@ -195,7 +204,7 @@ export default function DataSourcePicker({
                     </div>
                   ))}
                   {filteredDataSourceViews.length === 0 && (
-                    <span className="block px-4 py-2 text-sm text-gray-700">
+                    <span className="block px-4 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       No datasources found
                     </span>
                   )}

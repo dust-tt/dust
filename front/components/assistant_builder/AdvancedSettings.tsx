@@ -107,7 +107,7 @@ export function AdvancedSettings({
             <div
               className={classNames(
                 "w-full grow text-sm font-bold",
-                "text-element-800 dark:text-element-800-night"
+                "text-muted-foreground dark:text-muted-foreground-night"
               )}
             >
               Model selection
@@ -155,7 +155,7 @@ export function AdvancedSettings({
             <div
               className={classNames(
                 "w-full grow text-sm font-bold",
-                "text-element-800 dark:text-element-800-night"
+                "text-muted-foreground dark:text-muted-foreground-night"
               )}
             >
               Creativity level

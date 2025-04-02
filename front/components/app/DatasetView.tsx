@@ -622,7 +622,7 @@ export default function DatasetView({
                         ) : null}
                       </div>
                     </div>
-                    <div className="bg-slate-100 dark:bg-slate-100-night sm:col-span-7">
+                    <div className="bg-muted-background dark:bg-muted-background-night sm:col-span-7">
                       {readOnly ? (
                         <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
@@ -650,7 +650,7 @@ export default function DatasetView({
                         </div>
                       )}
                     </div>
-                    <div className="bg-slate-100 dark:bg-slate-100-night sm:col-span-10">
+                    <div className="bg-muted-background dark:bg-muted-background-night sm:col-span-10">
                       <TextareaAutosize
                         minRows={1}
                         className={classNames(
@@ -718,7 +718,7 @@ export default function DatasetView({
                         </div>
                         <div
                           className={classNames(
-                            "col-span-7 inline-grid resize-none space-y-0 border bg-slate-100 px-0 py-0 font-mono text-[13px] dark:bg-slate-100-night",
+                            "col-span-7 inline-grid resize-none space-y-0 border bg-muted-background px-0 py-0 font-mono text-[13px] dark:bg-muted-background-night",
                             d[k] === "" ||
                               !datasetTypes[datasetKeys.indexOf(k)] ||
                               isTypeValidForDataset(
@@ -745,7 +745,7 @@ export default function DatasetView({
                                 handleValueChange(i, k, e.target.value);
                               }}
                               padding={4}
-                              className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                               style={{
                                 fontSize: 13,
                                 fontFamily:

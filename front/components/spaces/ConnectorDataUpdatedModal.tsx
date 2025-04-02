@@ -69,7 +69,7 @@ export const ConnectorDataUpdatedModal = ({
           <p>
             See{" "}
             <Hoverable
-              className="cursor-pointer font-bold text-action-500"
+              variant="highlight"
               onClick={() => {
                 window.open("https://docs.dust.tt/docs/data", "_blank");
               }}

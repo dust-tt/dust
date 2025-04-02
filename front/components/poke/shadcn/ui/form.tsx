@@ -177,7 +177,7 @@ const FormInput = React.forwardRef<
       ref={ref}
       className={cn(
         "border-2 border-border-dark dark:border-border-dark-night",
-        "bg-white dark:bg-structure-50-night",
+        "bg-white dark:bg-muted-background-night",
         className
       )}
       value={value}
@@ -198,7 +198,7 @@ const FormTextArea = React.forwardRef<
       <TextArea
         className={cn(
           "border-2 border-border-dark dark:border-border-dark-night",
-          "bg-white dark:bg-structure-50-night",
+          "bg-white dark:bg-muted-background-night",
           className
         )}
         value={value ?? undefined}

@@ -227,7 +227,7 @@ function PlatformHelpLink({
       : "https://learn.microsoft.com/en-us/entra/identity-platform/";
 
   return (
-    <div className="flex flex-row items-center space-x-2 text-element-700">
+    <div className="flex flex-row items-center space-x-2 text-muted-foreground dark:text-muted-foreground-night">
       <span>{hint}</span>
       <IconButton
         icon={ExternalLinkIcon}

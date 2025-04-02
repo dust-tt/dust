@@ -83,7 +83,7 @@ export default function DataSourceViewDocumentModal({
               )}
               {!isDocumentLoading && isDocumentError && (
                 <div className="flex flex-col gap-2 py-8">
-                  <span className="text-sm text-element-700">
+                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     This document has no raw content available
                     <ul className="list-disc pl-4">
                       <li>
@@ -103,10 +103,10 @@ export default function DataSourceViewDocumentModal({
               )}
               {!isDocumentLoading && document && (
                 <>
-                  <div className="mb-4 mt-8 text-sm text-foreground dark:text-foreground-night">
+                  <div className="copy-sm mb-4 mt-8 text-foreground dark:text-foreground-night">
                     Content of the document:
                   </div>
-                  <pre className="whitespace-pre-wrap bg-structure-100 py-8 pl-4 pr-2 text-sm text-element-800 dark:bg-structure-100-night dark:text-element-800-night">
+                  <pre className="whitespace-pre-wrap bg-background py-8 pl-4 pr-2 text-sm text-muted-foreground dark:bg-background-night dark:text-muted-foreground-night">
                     {text}
                   </pre>
                 </>
