@@ -144,6 +144,7 @@ export default function EditAssistant({
               reasoningEffort: agentConfiguration.model.reasoningEffort,
             },
             temperature: agentConfiguration.model.temperature,
+            responseFormat: agentConfiguration.model.responseFormat,
           },
           actions,
           visualizationEnabled: agentConfiguration.visualizationEnabled,
