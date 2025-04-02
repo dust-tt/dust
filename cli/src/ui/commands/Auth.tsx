@@ -1,4 +1,4 @@
-import React, { FC, useEffect, useState } from "react";
+import React, { FC, useCallback, useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import fetch from "node-fetch";
@@ -176,7 +176,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
     setTimeout(pollForToken, pollInterval * 1000);
   };
 
-  const handleWorkspaceSelectionComplete = async () => {
+  const handleWorkspaceSelectionComplete = useCallback(async () => {
     setShowWorkspaceSelector(false);
     // Get user info
     const dustClient = await getDustClient();
@@ -195,7 +195,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
     }
     setUserInfo(userInfoRes.value);
     setAuthComplete(true);
-  };
+  }, []);
 
   useEffect(() => {
     startDeviceFlow();

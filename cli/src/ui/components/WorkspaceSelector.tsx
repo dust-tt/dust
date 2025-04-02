@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect } from "react";
+import React, { FC, useState, useEffect, useCallback } from "react";
 import { Box, Text } from "ink";
 import Spinner from "ink-spinner";
 import SelectInput from "ink-select-input";
@@ -76,14 +76,14 @@ const WorkspaceSelector: FC<WorkspaceSelectorProps> = ({ onComplete }) => {
     fetchWorkspaces();
   }, []);
 
-  const handleSelect = async (item: any) => {
+  const handleSelect = useCallback(async (item: any) => {
     const extendedItem = item as ExtendedItem;
     await TokenStorage.saveWorkspaceId(
       extendedItem.value,
       extendedItem.workspace.name
     );
     onComplete?.();
-  };
+  }, []);
 
   if (isLoading) {
     return (
