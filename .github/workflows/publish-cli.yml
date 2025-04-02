@@ -1,0 +1,27 @@
+name: Publish CLI
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: publish_cli
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # This ensures the workflow only runs on main branch
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 21.2.0
+          cache: "npm"
+          cache-dependency-path: ./cli/package-lock.json
+          registry-url: "https://registry.npmjs.org"
+
+      - working-directory: cli
+        run: npm ci && npm run build:prod && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
