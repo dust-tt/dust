@@ -1,6 +1,6 @@
 import { CommandLineIcon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDetails";
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
@@ -11,10 +11,8 @@ import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { useMCPServerViews } from "@app/lib/swr/mcp_server_views";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { useMCPServers } from "@app/lib/swr/mcp_servers";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   owner: WorkspaceType;
@@ -53,7 +51,9 @@ export default function AdminActions({
     useState(false);
   const serverType = showDetails
     ? getServerTypeAndIdFromSId(showDetails.id).serverType
-    : isRemoteCreationModalOpened ? "remote" : null;
+    : isRemoteCreationModalOpened
+      ? "remote"
+      : null;
 
   const { mutateMCPServers } = useMCPServers({
     owner,

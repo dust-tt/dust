@@ -7,7 +7,7 @@ import {
   SheetTitle,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useEffect, useReducer, useRef,useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import type { MCPFormAction, MCPFormState } from "@app/lib/actions/mcp";
