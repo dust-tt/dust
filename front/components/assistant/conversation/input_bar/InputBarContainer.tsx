@@ -1,6 +1,5 @@
 import {
   ArrowUpIcon,
-  AttachmentIcon,
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
@@ -29,7 +28,6 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -78,7 +76,6 @@ const InputBarContainer = ({
   attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
