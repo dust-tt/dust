@@ -11,7 +11,7 @@ import { literal, Op, Sequelize } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
-  ConversationParticipant,
+  ConversationParticipantModel,
   Mention,
   Message,
   UserMessage,
@@ -293,7 +293,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
 
-    const participations = await ConversationParticipant.findAll({
+    const participations = await ConversationParticipantModel.findAll({
       attributes: ["userId", "updatedAt", "conversationId"],
       where: {
         userId: user.id,
@@ -382,7 +382,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     await frontSequelize.transaction(async (t) => {
-      const participant = await ConversationParticipant.findOne({
+      const participant = await ConversationParticipantModel.findOne({
         where: {
           conversationId: conversation.id,
           userId: user.id,
@@ -400,7 +400,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           { transaction: t }
         );
       } else {
-        await ConversationParticipant.create(
+        await ConversationParticipantModel.create(
           {
             conversationId: conversation.id,
             action: "posted",
@@ -429,7 +429,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
-      await ConversationParticipant.destroy({
+      await ConversationParticipantModel.destroy({
         where: { conversationId: this.id },
       });
       await ConversationResource.model.destroy({

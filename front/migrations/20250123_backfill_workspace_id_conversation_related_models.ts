@@ -4,7 +4,7 @@ import { Op } from "sequelize";
 import {
   AgentMessage,
   ConversationModel,
-  ConversationParticipant,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
@@ -24,7 +24,7 @@ type TableConfig = {
 
 const TABLES: TableConfig[] = [
   {
-    model: ConversationParticipant,
+    model: ConversationParticipantModel,
     include: (workspaceId: number) => [
       {
         model: ConversationModel,

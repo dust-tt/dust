@@ -50,7 +50,7 @@ import {
   AgentMessage,
   AgentMessageFeedback,
   ConversationModel,
-  ConversationParticipant,
+  ConversationParticipantModel,
   Mention,
   Message,
   MessageReaction,
@@ -128,7 +128,7 @@ async function main() {
   await GroupSpaceModel.sync({ alter: true });
 
   await ConversationModel.sync({ alter: true });
-  await ConversationParticipant.sync({ alter: true });
+  await ConversationParticipantModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });

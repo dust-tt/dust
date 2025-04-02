@@ -83,7 +83,7 @@ ConversationModel.init(
   }
 );
 
-export class ConversationParticipant extends WorkspaceAwareModel<ConversationParticipant> {
+export class ConversationParticipantModel extends WorkspaceAwareModel<ConversationParticipantModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -95,7 +95,7 @@ export class ConversationParticipant extends WorkspaceAwareModel<ConversationPar
   declare conversation?: NonAttribute<ConversationModel>;
   declare user?: NonAttribute<UserModel>;
 }
-ConversationParticipant.init(
+ConversationParticipantModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -134,18 +134,18 @@ ConversationParticipant.init(
     ],
   }
 );
-ConversationModel.hasMany(ConversationParticipant, {
+ConversationModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "conversationId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(ConversationModel, {
+ConversationParticipantModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
-UserModel.hasMany(ConversationParticipant, {
+UserModel.hasMany(ConversationParticipantModel, {
   foreignKey: { name: "userId", allowNull: false },
   onDelete: "RESTRICT",
 });
-ConversationParticipant.belongsTo(UserModel, {
+ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
