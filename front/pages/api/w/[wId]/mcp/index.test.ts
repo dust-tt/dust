@@ -110,7 +110,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "URL is required",
+        message: "Invalid request body",
       },
     });
   });
@@ -126,7 +126,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
         url: existingUrl,
       });
 
-      req.body = { url: existingUrl };
+      req.body = { url: existingUrl, serverType: "remote" };
 
       await handler(req, res);
 

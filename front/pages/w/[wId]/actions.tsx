@@ -6,6 +6,7 @@ import { InternalMCPServerDetails } from "@app/components/actions/mcp/ActionDeta
 import { AdminActionsList } from "@app/components/actions/mcp/ActionsList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppLayout from "@app/components/sparkle/AppLayout";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
@@ -44,8 +45,9 @@ export default function AdminActions({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showDetails, setShowDetails] = useState<MCPServerType | null>(null);
-  const serverType =
-    showDetails && showDetails.id.startsWith("ims_") ? "internal" : "remote";
+  const serverType = showDetails
+    ? getServerTypeAndIdFromSId(showDetails.id).serverType
+    : null;
 
   return (
     <AppLayout
