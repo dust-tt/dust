@@ -1,3 +1,4 @@
+import _ from "lodash";
 import type {
   CreationAttributes,
   InferAttributes,
@@ -10,6 +11,7 @@ import { literal, Op, Sequelize } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
+  ConversationParticipant,
   Mention,
   Message,
   UserMessage,
@@ -18,15 +20,17 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type {
   ConversationType,
+  ConversationVisibility,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
   Result,
   WorkspaceType,
 } from "@app/types";
-import { ConversationError } from "@app/types";
+import { ConversationError, removeNulls } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
+import { frontSequelize } from "./storage";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -281,6 +285,134 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  static async getUserConversations(
+    auth: Authenticator,
+    includeDeleted?: boolean,
+    includeTest?: boolean
+  ): Promise<ConversationWithoutContentType[]> {
+    const owner = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const participations = await ConversationParticipant.findAll({
+      attributes: ["userId", "updatedAt", "conversationId"],
+      where: {
+        userId: user.id,
+        action: "posted",
+      },
+      order: [["updatedAt", "DESC"]],
+    });
+
+    const includedConversationVisibilities: ConversationVisibility[] = [
+      "unlisted",
+      "workspace",
+    ];
+
+    if (includeDeleted) {
+      includedConversationVisibilities.push("deleted");
+    }
+    if (includeTest) {
+      includedConversationVisibilities.push("test");
+    }
+
+    const participationsByConversationId = _.groupBy(
+      participations,
+      "conversationId"
+    );
+    const conversationUpdated = (c: ConversationResource) => {
+      const participations = participationsByConversationId[c.id];
+      if (!participations) {
+        return undefined;
+      }
+      return _.sortBy(
+        participations,
+        "updatedAt",
+        "desc"
+      )[0].updatedAt.getTime();
+    };
+
+    const conversations = (
+      await ConversationResource.listAll(auth, {
+        where: {
+          id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
+          visibility: { [Op.in]: includedConversationVisibilities },
+        },
+      })
+    ).map(
+      (c) =>
+        ({
+          id: c.id,
+          created: c.createdAt.getTime(),
+          updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
+          sId: c.sId,
+          owner,
+          title: c.title,
+          visibility: c.visibility,
+          requestedGroupIds:
+            ConversationResource.getConversationRequestedGroupIdsFromModel(
+              owner,
+              c
+            ),
+          // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
+          groupIds: [],
+        }) satisfies ConversationWithoutContentType
+    );
+
+    const conversationById = _.keyBy(conversations, "id");
+
+    return removeNulls(
+      participations.map((p) => {
+        const conv: ConversationWithoutContentType | null =
+          conversationById[p.conversationId];
+        if (!conv) {
+          // Deleted / test conversations.
+          return null;
+        }
+        return conv;
+      })
+    );
+  }
+
+  static async upsertParticipation(
+    auth: Authenticator,
+    conversation: ConversationType
+  ) {
+    const user = auth.user();
+    if (!user) {
+      return;
+    }
+
+    await frontSequelize.transaction(async (t) => {
+      const participant = await ConversationParticipant.findOne({
+        where: {
+          conversationId: conversation.id,
+          userId: user.id,
+        },
+        transaction: t,
+      });
+
+      if (participant) {
+        participant.changed("updatedAt", true);
+        await participant.update(
+          {
+            action: "posted",
+            updatedAt: new Date(),
+          },
+          { transaction: t }
+        );
+      } else {
+        await ConversationParticipant.create(
+          {
+            conversationId: conversation.id,
+            action: "posted",
+            userId: user.id,
+            workspaceId: conversation.owner.id,
+          },
+          { transaction: t }
+        );
+      }
+    });
+  }
+
   async updateAttributes(
     blob: Partial<
       Omit<InferAttributes<ConversationModel>, "workspace" | "workspaceId">
@@ -297,6 +429,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const owner = auth.getNonNullableWorkspace();
 
     try {
+      await ConversationParticipant.destroy({
+        where: { conversationId: this.id },
+      });
       await ConversationResource.model.destroy({
         where: {
           workspaceId: owner.id,

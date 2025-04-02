@@ -9,7 +9,6 @@ import { fromError } from "zod-validation-error";
 import {
   createConversation,
   getConversation,
-  getUserConversations,
   postNewContentFragment,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -17,6 +16,7 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { postUserMessageWithPubSub } from "@app/lib/api/assistant/pubsub";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   ContentFragmentType,
@@ -317,7 +317,8 @@ async function handler(
           },
         });
       }
-      const conversations = await getUserConversations(auth);
+      const conversations =
+        await ConversationResource.getUserConversations(auth);
       res.status(200).json({ conversations });
       return;
 

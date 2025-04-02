@@ -25,7 +25,6 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
 import {
   AgentMessage,
-  ConversationParticipant,
   Mention,
   Message,
   UserMessage,
@@ -220,134 +219,6 @@ export async function deleteConversation(
     });
   }
   return new Ok({ success: true });
-}
-
-/**
- * Conversation Rendering
- */
-
-export async function getUserConversations(
-  auth: Authenticator,
-  includeDeleted?: boolean,
-  includeTest?: boolean
-): Promise<ConversationWithoutContentType[]> {
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.getNonNullableUser();
-
-  const participations = await ConversationParticipant.findAll({
-    attributes: ["userId", "updatedAt", "conversationId"],
-    where: {
-      userId: user.id,
-      action: "posted",
-    },
-    order: [["updatedAt", "DESC"]],
-  });
-
-  const includedConversationVisibilities: ConversationVisibility[] = [
-    "unlisted",
-    "workspace",
-  ];
-
-  if (includeDeleted) {
-    includedConversationVisibilities.push("deleted");
-  }
-  if (includeTest) {
-    includedConversationVisibilities.push("test");
-  }
-
-  const participationsByConversationId = _.groupBy(
-    participations,
-    "conversationId"
-  );
-  const conversationUpdated = (c: ConversationResource) => {
-    const participations = participationsByConversationId[c.id];
-    if (!participations) {
-      return undefined;
-    }
-    return _.sortBy(participations, "updatedAt", "desc")[0].updatedAt.getTime();
-  };
-
-  const conversations = (
-    await ConversationResource.listAll(auth, {
-      where: {
-        id: { [Op.in]: _.uniq(participations.map((p) => p.conversationId)) },
-        visibility: { [Op.in]: includedConversationVisibilities },
-      },
-    })
-  ).map(
-    (c) =>
-      ({
-        id: c.id,
-        created: c.createdAt.getTime(),
-        updated: conversationUpdated(c) ?? c.updatedAt.getTime(),
-        sId: c.sId,
-        owner,
-        title: c.title,
-        visibility: c.visibility,
-        requestedGroupIds:
-          ConversationResource.getConversationRequestedGroupIdsFromModel(
-            owner,
-            c
-          ),
-        // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-        groupIds: [],
-      }) satisfies ConversationWithoutContentType
-  );
-
-  const conversationById = _.keyBy(conversations, "id");
-
-  return removeNulls(
-    participations.map((p) => {
-      const conv: ConversationWithoutContentType | null =
-        conversationById[p.conversationId];
-      if (!conv) {
-        // Deleted / test conversations.
-        return null;
-      }
-      return conv;
-    })
-  );
-}
-
-async function createOrUpdateParticipation({
-  user,
-  conversation,
-}: {
-  user: UserResource | null;
-  conversation: ConversationType;
-}) {
-  if (user) {
-    await frontSequelize.transaction(async (t) => {
-      const participant = await ConversationParticipant.findOne({
-        where: {
-          conversationId: conversation.id,
-          userId: user.id,
-        },
-        transaction: t,
-      });
-
-      if (participant) {
-        participant.changed("updatedAt", true);
-        await participant.update(
-          {
-            action: "posted",
-            updatedAt: new Date(),
-          },
-          { transaction: t }
-        );
-      } else {
-        await ConversationParticipant.create(
-          {
-            conversationId: conversation.id,
-            action: "posted",
-            userId: user.id,
-            workspaceId: conversation.owner.id,
-          },
-          { transaction: t }
-        );
-      }
-    });
-  }
 }
 
 export async function getConversation(
@@ -741,7 +612,7 @@ export async function* postUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user, conversation }),
+    ConversationResource.upsertParticipation(auth, conversation),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);
@@ -1190,7 +1061,7 @@ export async function* editUserMessage(
         return getLightAgentConfiguration(auth, mention.configurationId);
       })
     ),
-    createOrUpdateParticipation({ user, conversation }),
+    ConversationResource.upsertParticipation(auth, conversation),
   ]);
 
   const agentConfigurations = removeNulls(results[0]);

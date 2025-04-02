@@ -15,7 +15,6 @@ import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_con
 import {
   AgentMessage,
   AgentMessageFeedback,
-  ConversationParticipant,
   Mention,
   Message,
   MessageReaction,
@@ -225,10 +224,6 @@ export async function destroyConversation(
 
     await destroyMessageRelatedResources(messageIds);
   }
-
-  await ConversationParticipant.destroy({
-    where: { conversationId: conversation.id },
-  });
 
   await destroyConversationDataSource(auth, { conversation });
 
