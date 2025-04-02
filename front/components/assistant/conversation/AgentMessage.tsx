@@ -215,129 +215,132 @@ export function AgentMessage({
 
   const { showValidationDialog } = useContext(ActionValidationContext);
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data:
-        | AgentErrorEvent
-        | AgentActionSpecificEvent
-        | AgentActionSuccessEvent
-        | GenerationTokensEvent
-        | AgentGenerationCancelledEvent
-        | AgentMessageSuccessEvent;
-    } = JSON.parse(eventStr);
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data:
+          | AgentErrorEvent
+          | AgentActionSpecificEvent
+          | AgentActionSuccessEvent
+          | GenerationTokensEvent
+          | AgentGenerationCancelledEvent
+          | AgentMessageSuccessEvent;
+      } = JSON.parse(eventStr);
 
-    const updateMessageWithAction = (
-      m: AgentMessageType,
-      action: AgentActionType
-    ): AgentMessageType => {
-      return {
-        ...m,
-        actions: m.actions
-          ? [...m.actions.filter((a) => a.id !== action.id), action]
-          : [action],
+      const updateMessageWithAction = (
+        m: AgentMessageType,
+        action: AgentActionType
+      ): AgentMessageType => {
+        return {
+          ...m,
+          actions: m.actions
+            ? [...m.actions.filter((a) => a.id !== action.id), action]
+            : [action],
+        };
       };
-    };
 
-    const event = eventPayload.data;
-    switch (event.type) {
-      case "agent_action_success":
-        setStreamedAgentMessage((m) => {
-          return { ...updateMessageWithAction(m, event.action) };
-        });
-        setLastAgentStateClassification("thinking");
-        break;
+      const event = eventPayload.data;
+      switch (event.type) {
+        case "agent_action_success":
+          setStreamedAgentMessage((m) => {
+            return { ...updateMessageWithAction(m, event.action) };
+          });
+          setLastAgentStateClassification("thinking");
+          break;
 
-      case "tool_approve_execution":
-        // Show the validation dialog when this event is received
-        showValidationDialog({
-          workspaceId: owner.sId,
-          messageId: message.sId,
-          conversationId: conversationId,
-          action: event.action,
-          inputs: event.inputs,
-          hash: event.hash,
-        });
-        break;
+        case "tool_approve_execution":
+          // Show the validation dialog when this event is received
+          showValidationDialog({
+            workspaceId: owner.sId,
+            messageId: message.sId,
+            conversationId: conversationId,
+            action: event.action,
+            inputs: event.inputs,
+            hash: event.hash,
+          });
+          break;
 
-      case "browse_params":
-      case "conversation_include_file_params":
-      case "dust_app_run_block":
-      case "dust_app_run_params":
-      case "process_params":
-      case "reasoning_started":
-      case "reasoning_thinking":
-      case "reasoning_tokens":
-      case "retrieval_params":
-      case "search_labels_params":
-      case "tables_query_model_output":
-      case "tables_query_output":
-      case "tables_query_started":
-      case "websearch_params":
-      case "tool_params":
-        setStreamedAgentMessage((m) => {
-          return updateMessageWithAction(m, event.action);
-        });
-        setLastAgentStateClassification("acting");
-        break;
-      case "agent_error":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "failed", error: event.error };
-        });
-        setLastAgentStateClassification("done");
-        break;
+        case "browse_params":
+        case "conversation_include_file_params":
+        case "dust_app_run_block":
+        case "dust_app_run_params":
+        case "process_params":
+        case "reasoning_started":
+        case "reasoning_thinking":
+        case "reasoning_tokens":
+        case "retrieval_params":
+        case "search_labels_params":
+        case "tables_query_model_output":
+        case "tables_query_output":
+        case "tables_query_started":
+        case "websearch_params":
+        case "tool_params":
+          setStreamedAgentMessage((m) => {
+            return updateMessageWithAction(m, event.action);
+          });
+          setLastAgentStateClassification("acting");
+          break;
+        case "agent_error":
+          setStreamedAgentMessage((m) => {
+            return { ...m, status: "failed", error: event.error };
+          });
+          setLastAgentStateClassification("done");
+          break;
 
-      case "agent_generation_cancelled":
-        setStreamedAgentMessage((m) => {
-          return { ...m, status: "cancelled" };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      case "agent_message_success": {
-        setStreamedAgentMessage((m) => {
-          return {
-            ...m,
-            ...event.message,
-          };
-        });
-        setLastAgentStateClassification("done");
-        break;
-      }
-
-      case "generation_tokens": {
-        switch (event.classification) {
-          case "closing_delimiter":
-            break;
-          case "opening_delimiter":
-            break;
-          case "tokens":
-            setLastTokenClassification("tokens");
-            setStreamedAgentMessage((m) => {
-              const previousContent = m.content || "";
-              return { ...m, content: previousContent + event.text };
-            });
-            break;
-          case "chain_of_thought":
-            setLastTokenClassification("chain_of_thought");
-            setStreamedAgentMessage((m) => {
-              const currentChainOfThought = m.chainOfThought ?? "";
-              return {
-                ...m,
-                chainOfThought: currentChainOfThought + event.text,
-              };
-            });
-            break;
-          default:
-            assertNever(event);
+        case "agent_generation_cancelled":
+          setStreamedAgentMessage((m) => {
+            return { ...m, status: "cancelled" };
+          });
+          setLastAgentStateClassification("done");
+          break;
+        case "agent_message_success": {
+          setStreamedAgentMessage((m) => {
+            return {
+              ...m,
+              ...event.message,
+            };
+          });
+          setLastAgentStateClassification("done");
+          break;
         }
-        setLastAgentStateClassification("thinking");
-        break;
-      }
 
-      default:
-        assertNever(event);
-    }
-  }, [conversationId, message.sId, owner.sId, showValidationDialog]);
+        case "generation_tokens": {
+          switch (event.classification) {
+            case "closing_delimiter":
+              break;
+            case "opening_delimiter":
+              break;
+            case "tokens":
+              setLastTokenClassification("tokens");
+              setStreamedAgentMessage((m) => {
+                const previousContent = m.content || "";
+                return { ...m, content: previousContent + event.text };
+              });
+              break;
+            case "chain_of_thought":
+              setLastTokenClassification("chain_of_thought");
+              setStreamedAgentMessage((m) => {
+                const currentChainOfThought = m.chainOfThought ?? "";
+                return {
+                  ...m,
+                  chainOfThought: currentChainOfThought + event.text,
+                };
+              });
+              break;
+            default:
+              assertNever(event);
+          }
+          setLastAgentStateClassification("thinking");
+          break;
+        }
+
+        default:
+          assertNever(event);
+      }
+    },
+    [conversationId, message.sId, owner.sId, showValidationDialog]
+  );
 
   useEventSource(
     buildEventSourceURL,
