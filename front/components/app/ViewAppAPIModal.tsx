@@ -117,8 +117,7 @@ export function ViewAppAPIModal({
               <Page.P>
                 <ul className="text-gray-500">
                   <li>
-                    spaceId:{" "}
-                    <span className="font-bold">{app.space.sId}</span>{" "}
+                    spaceId: <span className="font-bold">{app.space.sId}</span>{" "}
                   </li>
                   <li>
                     appId: <span className="font-bold">{app.sId}</span>
