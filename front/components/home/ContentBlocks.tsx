@@ -218,7 +218,7 @@ export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
         </H1>
 
         <div className="flex flex-col items-center">
-          <P size="lg" className="max-w-[400px] text-black dark:text-slate-50">
+          <P size="lg" className="max-w-[400px] text-black">
             {metric.description}
           </P>
         </div>

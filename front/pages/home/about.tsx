@@ -282,13 +282,17 @@ const Person = ({ handle }: { handle: string }) => {
               <Icon
                 size="xs"
                 visual={LinkedinIcon}
-                className="text-slate-400"
+                className="text-primary-400"
               />
             </a>
           )}
           {person.github && (
             <a href={person.github} target="_blank">
-              <Icon size="xs" visual={GithubIcon} className="text-slate-400" />
+              <Icon
+                size="xs"
+                visual={GithubIcon}
+                className="text-primary-400"
+              />
             </a>
           )}
         </div>
