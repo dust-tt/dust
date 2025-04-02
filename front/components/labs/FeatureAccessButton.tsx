@@ -1,44 +1,36 @@
 import { Button, Cog6ToothIcon } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 
+import { RequestFeatureAccessModal } from "@app/components/labs/RequestFeatureAccessModal";
+import type { WorkspaceType } from "@app/types";
 interface FeatureAccessButtonProps {
-  featureFlag: boolean;
-  workspaceId: string;
+  accessible: boolean;
   featureName: string;
   managePath: string;
+  owner: WorkspaceType;
 }
 
 export function FeatureAccessButton({
-  featureFlag,
-  workspaceId,
+  accessible,
   featureName,
   managePath,
+  owner,
 }: FeatureAccessButtonProps) {
   const router = useRouter();
 
-  return featureFlag ? (
-    <Button
-      variant="outline"
-      label="Manage"
-      size="sm"
-      icon={Cog6ToothIcon}
-      onClick={() => router.push(managePath)}
-    />
-  ) : (
-    <Button
-      variant="outline"
-      label="Request access"
-      size="sm"
-      onClick={() =>
-        window.open(
-          `mailto:support@dust.tt?subject=${encodeURIComponent(
-            `Labs feature access request: ${featureName}`
-          )}&body=${encodeURIComponent(
-            `Please enable labs ${featureName.toLowerCase()} access for workspace id: ${workspaceId}`
-          )}`,
-          "_blank"
-        )
-      }
-    />
+  return (
+    <>
+      {accessible ? (
+        <Button
+          variant="outline"
+          label="Manage"
+          size="sm"
+          icon={Cog6ToothIcon}
+          onClick={() => router.push(managePath)}
+        />
+      ) : (
+        <RequestFeatureAccessModal owner={owner} featureName={featureName} />
+      )}
+    </>
   );
 }

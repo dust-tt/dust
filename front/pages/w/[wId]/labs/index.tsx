@@ -15,6 +15,7 @@ import { useRouter } from "next/router";
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
+import { RequestFeatureAccessModal } from "@app/components/labs/RequestFeatureAccessModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
@@ -55,8 +56,6 @@ export default function LabsTranscriptsIndex({
   subscription,
   featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
   return (
     <ConversationsNavigationProvider>
       <AppLayout
@@ -81,10 +80,10 @@ export default function LabsTranscriptsIndex({
                 title="Meeting Transcripts Processing"
                 action={
                   <FeatureAccessButton
-                    featureFlag={featureFlags.includes("labs_transcripts")}
-                    workspaceId={owner.sId}
-                    featureName="Transcripts"
+                    accessible={featureFlags.includes("labs_transcripts")}
+                    featureName="Meeting Transcripts Processing"
                     managePath={`/w/${owner.sId}/labs/transcripts`}
+                    owner={owner}
                   />
                 }
                 visual={<Icon visual={EyeIcon} />}
@@ -99,10 +98,10 @@ export default function LabsTranscriptsIndex({
                 title="Document Tracker"
                 action={
                   <FeatureAccessButton
-                    featureFlag={featureFlags.includes("labs_trackers")}
-                    workspaceId={owner.sId}
-                    featureName="Tracker"
+                    accessible={featureFlags.includes("labs_trackers")}
+                    featureName="Document Tracker"
                     managePath={`/w/${owner.sId}/labs/trackers`}
+                    owner={owner}
                   />
                 }
                 visual={<Icon visual={BookOpenIcon} />}
@@ -114,13 +113,22 @@ export default function LabsTranscriptsIndex({
                 title="Connections"
                 description="These connections are being tested and may require some manual steps."
               />
-              {/* hubspot connection */}
+
               <ContextItem
                 title="Hubspot"
-                action={<Button variant="outline" label="Connect" size="sm" />}
+                action={
+                  <FeatureAccessButton
+                    accessible={featureFlags.includes(
+                      "labs_connection_hubspot"
+                    )}
+                    featureName="Hubspot connection"
+                    managePath={`/w/${owner.sId}/labs/connections/hubspot`}
+                    owner={owner}
+                  />
+                }
                 visual={<ContextItem.Visual visual={HubspotLogo} />}
               >
-                <ContextItem.Description description="Import your Hubspot account summaries into Dust." />
+                <ContextItem.Description description="Import your Hubspot data into Dust." />
               </ContextItem>
             </ContextItem.List>
           </Page.Layout>
