@@ -183,16 +183,14 @@ impl Provider for MicrosoftConnectionProvider {
             .as_u64()
             .ok_or_else(|| anyhow!("Missing `expires_in` in response from Microsoft"))?;
 
-        let refresh_token = raw_json["refresh_token"]
-            .as_str()
-            .ok_or_else(|| anyhow!("Missing `refresh_token` in response from Microsoft"))?;
+        let refresh_token = raw_json["refresh_token"].as_str();
 
         Ok(RefreshResult {
             access_token: access_token.to_string(),
             access_token_expiry: Some(
                 utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000,
             ),
-            refresh_token: Some(refresh_token.to_string()),
+            refresh_token: refresh_token.map(|s| s.to_string()),
             raw_json,
         })
     }
