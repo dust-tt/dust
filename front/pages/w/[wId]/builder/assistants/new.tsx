@@ -17,6 +17,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration";
 import { generateMockAgentConfigurationFromTemplate } from "@app/lib/api/assistant/templates";
 import config from "@app/lib/api/config";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { MCPServerViewType } from "@app/lib/resources/mcp_server_view_resource";
 import { useAssistantTemplate } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationType,
@@ -46,6 +47,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   spaces: SpaceType[];
   dataSourceViews: DataSourceViewType[];
   dustApps: AppType[];
+  mcpServerViews: MCPServerViewType[];
   actions: AssistantBuilderInitialState["actions"];
   agentConfiguration:
     | AgentConfigurationType
@@ -64,7 +66,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const { spaces, dataSourceViews, dustApps } =
+  const { spaces, dataSourceViews, dustApps, mcpServerViews } =
     await getAccessibleSourcesAndApps(auth);
 
   const flow: BuilderFlow = BUILDER_FLOWS.includes(
@@ -115,6 +117,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       })
     : [];
 
+  const mcpServerViewsJSON = await Promise.all(
+    mcpServerViews.map((v) => v.toJSON(auth))
+  );
+
   return {
     props: {
       actions,
@@ -122,6 +128,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       baseUrl: config.getClientFacingUrl(),
       dataSourceViews: dataSourceViews.map((v) => v.toJSON()),
       dustApps: dustApps.map((a) => a.toJSON()),
+      mcpServerViews: mcpServerViewsJSON,
       flow,
       owner,
       plan,
@@ -139,6 +146,7 @@ export default function CreateAssistant({
   spaces,
   dataSourceViews,
   dustApps,
+  mcpServerViews,
   flow,
   owner,
   plan,
@@ -160,6 +168,7 @@ export default function CreateAssistant({
       spaces={spaces}
       dustApps={dustApps}
       dataSourceViews={dataSourceViews}
+      mcpServerViews={mcpServerViews}
     >
       <AssistantBuilder
         owner={owner}

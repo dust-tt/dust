@@ -163,7 +163,7 @@ export function ActionDustAppRun({
                       appsInSpace,
                       (a) => !a.description || a.description.length === 0,
                       "name"
-                    ).map((app) => {
+                    ).map((app, idx, arr) => {
                       const disabled =
                         !app.description || app.description.length === 0;
                       return (
@@ -220,7 +220,7 @@ export function ActionDustAppRun({
                               </div>
                             )}
                           </RadioGroupCustomItem>
-                          <Separator />
+                          {idx !== arr.length - 1 && <Separator />}
                         </React.Fragment>
                       );
                     })}
