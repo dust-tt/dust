@@ -10,6 +10,8 @@ import type {
 } from "@app/pages/api/w/[wId]/mcp";
 import type {
   DeleteMCPServerResponseBody,
+  GetMCPServerResponseBody,
+  GetRemoteMCPServerResponseBody,
   PatchMCPServerResponseBody,
 } from "@app/pages/api/w/[wId]/mcp/[serverId]";
 import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
@@ -31,7 +33,7 @@ export function useMCPServer({
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const serverFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+  const serverFetcher: Fetcher<GetMCPServerResponseBody> = fetcher;
 
   const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
 
@@ -49,7 +51,41 @@ export function useMCPServer({
   }
 
   return {
-    server: data?.servers || null,
+    server: data?.server || null,
+    isServerLoading: !error && !data,
+    isServerError: !!error,
+    mutateServer: mutate,
+  };
+}
+
+export function useRemoteMCPServer({
+  disabled,
+  owner,
+  serverId,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+  serverId: string;
+}) {
+  const serverFetcher: Fetcher<GetRemoteMCPServerResponseBody> = fetcher;
+
+  const url = serverId ? `/api/w/${owner.sId}/mcp/${serverId}` : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, serverFetcher, {
+    disabled,
+  });
+
+  if (!serverId) {
+    return {
+      server: null,
+      isServerLoading: false,
+      isServerError: true,
+      mutateServer: () => {},
+    };
+  }
+
+  return {
+    server: data?.server || null,
     isServerLoading: !error && !data,
     isServerError: !!error,
     mutateServer: mutate,
@@ -74,6 +110,8 @@ export function useMCPServers({
   });
 
   const mcpServers = useMemo(() => (data ? data.servers : []), [data]);
+
+  console.log(mcpServers);
 
   return {
     mcpServers,
@@ -127,7 +165,7 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
   const createWithUrlSync = async (
     url: string
   ): Promise<CreateMCPServerResponseBody> => {
-    const response = await fetch(`/api/w/${owner.sId}/mcp/`, {
+    const response = await fetch(`/api/w/${owner.sId}/mcp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url }),

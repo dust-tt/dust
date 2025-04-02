@@ -8,10 +8,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import React from "react";
+import React, { useState } from "react";
 
 import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
+import { useRemoteMCPModal } from "@app/hooks/useRemoteMCPModal";
 import {
   DEFAULT_MCP_SERVER_ICON,
   MCP_SERVER_ICONS,
@@ -25,6 +26,7 @@ import {
 import { useMCPServerConnections } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType, SpaceType } from "@app/types";
+import RemoteMCPModal from "@app/components/actions/mcp/RemoteMCPModal";
 
 type RowData = {
   serverView: MCPServerViewType;
@@ -60,6 +62,15 @@ export const AdminActionsList = ({
 
   const { createAndSaveMCPServerConnection, deleteMCPServerConnection } =
     useMCPConnectionManagement({ owner });
+
+  const {
+    isModalOpen,
+    selectedServerId,
+    setSelectedServerId,
+    isEditMode,
+    openModal,
+    closeModal
+  } = useRemoteMCPModal();
 
   const getTableColumns = (): ColumnDef<RowData>[] => {
     const columns: ColumnDef<RowData, any>[] = [];
@@ -209,6 +220,8 @@ export const AdminActionsList = ({
     spaces: [],
     onClick: () => {
       setShowDetails(serverView.server);
+      setSelectedServerId(serverView.server.id);
+      openModal();
     },
     moreActions: [
       {
@@ -254,8 +267,21 @@ export const AdminActionsList = ({
           enabledMCPServers={serverViews.map(
             (serverView) => serverView.server.id
           )}
+          createRemoteMCP={() => {
+            openModal();
+          }}
         />
       </div>
+
+      {(isModalOpen || isEditMode) && (
+        <RemoteMCPModal
+          owner={owner}
+          isOpen={isModalOpen || isEditMode}
+          onClose={closeModal}
+          serverId={selectedServerId || undefined}
+          onSave={() => new Promise(resolve => {})}
+        />
+      )}
 
       {isConnectionsLoading || isMCPServerViewsLoading ? (
         <div className="mt-16 flex justify-center">
