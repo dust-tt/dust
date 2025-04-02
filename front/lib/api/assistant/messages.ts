@@ -39,8 +39,7 @@ import type {
   Result,
   UserMessageType,
 } from "@app/types";
-import { ConversationError } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
+import { ConversationError, Err, Ok, removeNulls } from "@app/types";
 
 async function batchRenderUserMessages(
   messages: Message[]
@@ -387,6 +386,7 @@ async function fetchMessagesForPage(
       },
     ],
   });
+
   return {
     hasMore,
     messages,
