@@ -1,15 +1,12 @@
-import { randomBytes } from "crypto";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import {
-  fetchRemoteServerMetaDataByURL,
-  getAllMCPServersMetadataLocally,
-} from "@app/lib/actions/mcp_metadata";
+import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -65,10 +62,11 @@ async function handler(
 
       switch (r.right.filter) {
         case "internal": {
-          const mcpServers = await getAllMCPServersMetadataLocally(auth);
+          const internalMCPs =
+            await InternalMCPServerInMemoryResource.listByWorkspace(auth);
           return res.status(200).json({
             success: true,
-            servers: mcpServers,
+            servers: await Promise.all(internalMCPs.map((r) => r.toJSON(auth))),
           });
         }
 
@@ -84,11 +82,15 @@ async function handler(
         case "all":
           const remoteMCPs =
             await RemoteMCPServerResource.listByWorkspace(auth);
-          const internalMCPs = await getAllMCPServersMetadataLocally(auth);
+          const internalMCPs =
+            await InternalMCPServerInMemoryResource.listByWorkspace(auth);
 
           return res.status(200).json({
             success: true,
-            servers: [...remoteMCPs.map((r) => r.toJSON()), ...internalMCPs],
+            servers: [
+              ...remoteMCPs.map((r) => r.toJSON()),
+              ...(await Promise.all(internalMCPs.map((r) => r.toJSON(auth)))),
+            ],
           });
       }
       break;
@@ -119,7 +121,6 @@ async function handler(
       }
 
       const metadata = await fetchRemoteServerMetaDataByURL(auth, url);
-      const sharedSecret = randomBytes(32).toString("hex");
 
       const newRemoteMCPServer = await RemoteMCPServerResource.makeNew(auth, {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -127,8 +128,6 @@ async function handler(
         url: url,
         description: metadata.description,
         cachedTools: metadata.tools,
-        lastSyncAt: new Date(),
-        sharedSecret,
       });
 
       return res.status(201).json({

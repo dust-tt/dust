@@ -1,14 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { assertNever } from "@app/types";
 
 export type GetMCPServerResponseBody = {
   server: MCPServerType;
@@ -58,25 +58,50 @@ async function handler(
   }
 
   switch (req.method) {
-    case "GET":
-      try {
-        const metadata = await getMCPServerMetadataLocally(auth, {
-          mcpServerId: serverId,
-        });
+    case "GET": {
+      const { serverType, id } = getServerTypeAndIdFromSId(serverId);
+      switch (serverType) {
+        case "internal": {
+          const server = await InternalMCPServerInMemoryResource.fetchById(
+            auth,
+            serverId
+          );
 
-        return res.status(200).json({ server: metadata });
-      } catch (e) {
-        if (e instanceof MCPServerNotFoundError) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "data_source_not_found",
-              message: "Remote MCP Server not found",
-            },
-          });
+          if (!server) {
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "data_source_not_found",
+                message: "Internal MCP Server not found",
+              },
+            });
+          }
+
+          return res.status(200).json({ server: await server.toJSON(auth) });
         }
-        throw e;
+        case "remote": {
+          const server = await RemoteMCPServerResource.fetchById(
+            auth,
+            serverId
+          );
+
+          if (!server || server.id !== id) {
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "data_source_not_found",
+                message: "Remote MCP Server not found",
+              },
+            });
+          }
+
+          return res.status(200).json({ server: server.toJSON() });
+        }
+        default:
+          assertNever(serverType);
       }
+      break;
+    }
     case "PATCH": {
       // Note, we can only patch remote MCP servers
       const server = await RemoteMCPServerResource.fetchById(auth, serverId);
