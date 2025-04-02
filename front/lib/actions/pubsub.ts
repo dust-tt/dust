@@ -1,7 +1,10 @@
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { createCallbackPromise } from "@app/lib/utils";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+
+export const MCP_EVENT_TIMEOUT = 3 * 60 * 1000; // 3 minutes.
 
 export async function* getMCPEvents({
   actionId,
@@ -39,14 +42,9 @@ export async function* getMCPEvents({
 
   try {
     while (true) {
-      const timeoutPromise = new Promise<"timeout">((resolve) => {
-        setTimeout(() => {
-          resolve("timeout");
-        }, 180000); // 3 minutes
-      });
       const rawEvent = await Promise.race([
         callbackPromise.promise,
-        timeoutPromise,
+        await setTimeoutAsync(MCP_EVENT_TIMEOUT),
       ]);
 
       if (rawEvent === "timeout") {
