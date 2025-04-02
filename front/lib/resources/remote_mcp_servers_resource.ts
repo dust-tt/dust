@@ -69,11 +69,15 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<RemoteMCPServer>
+    {
+      where,
+      ...options
+    }: ResourceFindOptions<RemoteMCPServer>
   ) {
     const servers = await RemoteMCPServer.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...where,
       },
       ...options,
     });
