@@ -285,15 +285,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     // Add contentNodeData
     let contentNodeData: ContentFragmentNodeData | null = null;
     if (nodeId && this.nodeDataSourceViewId && nodeType) {
-      // Fetch the data source view directly
       const dsView = await DataSourceViewModel.findByPk(
         this.nodeDataSourceViewId,
         {
+          attributes: [],
           include: [
             {
               model: DataSourceModel,
               as: "dataSourceForView",
-              include: [SpaceModel],
+              attributes: ["connectorProvider"],
+              include: [
+                {
+                  model: SpaceModel,
+                  attributes: ["name"],
+                },
+              ],
             },
           ],
         }
