@@ -18,13 +18,13 @@ async function setupTest(
     method,
   });
 
-  const space = await SpaceFactory.system(workspace, t);
+  // Create a system space to hold the Remote MCP servers
+  await SpaceFactory.system(workspace, t);
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
-  req.query.spaceId = space.sId;
 
-  return { req, res, workspace, space };
+  return { req, res, workspace };
 }
 
 vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
@@ -39,12 +39,14 @@ vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {
   };
 });
 
-describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
+describe("GET /api/w/[wId]/mcp/", () => {
   itInTransaction("should return a list of servers", async (t) => {
-    const { req, res, workspace, space } = await setupTest(t);
+    const { req, res, workspace } = await setupTest(t);
+
+    req.query.filter = "remote";
 
     // Create two test servers
-    await RemoteMCPServerFactory.create(workspace, space, {
+    await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server 1",
       url: "https://test-server-1.example.com",
       tools: [
@@ -56,7 +58,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
       ],
     });
 
-    await RemoteMCPServerFactory.create(workspace, space, {
+    await RemoteMCPServerFactory.create(workspace, {
       name: "Test Server 2",
       url: "https://test-server-2.example.com",
       tools: [
@@ -82,6 +84,8 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
     async (t) => {
       const { req, res } = await setupTest(t);
 
+      req.query.filter = "remote";
+
       await handler(req, res);
 
       expect(res._getStatusCode()).toBe(200);
@@ -94,7 +98,7 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   );
 });
 
-describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
+describe("POST /api/w/[wId]/mcp/", () => {
   itInTransaction("should return 400 when URL is missing", async (t) => {
     const { req, res } = await setupTest(t, "admin", "POST");
 
@@ -114,14 +118,10 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   itInTransaction(
     "should return 400 when server with URL already exists",
     async (t) => {
-      const { req, res, workspace, space } = await setupTest(
-        t,
-        "admin",
-        "POST"
-      );
+      const { req, res, workspace } = await setupTest(t, "admin", "POST");
 
       const existingUrl = "https://existing-server.example.com";
-      await RemoteMCPServerFactory.create(workspace, space, {
+      await RemoteMCPServerFactory.create(workspace, {
         name: "Existing Server",
         url: existingUrl,
       });
@@ -141,7 +141,7 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
   );
 });
 
-describe("Method Support /api/w/[wId]/spaces/[spaceId]/mcp/remote", () => {
+describe("Method Support /api/w/[wId]/mcp", () => {
   itInTransaction("only supports GET and POST methods", async (t) => {
     for (const method of ["DELETE", "PUT", "PATCH"] as const) {
       const { req, res } = await setupTest(t, "admin", method);

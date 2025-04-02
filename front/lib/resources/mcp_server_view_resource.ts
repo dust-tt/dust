@@ -7,6 +7,10 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
+import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -18,7 +22,8 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result, UserType } from "@app/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import type { ModelId, Result } from "@app/types";
 import { assertNever, Err, Ok, removeNulls } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -44,16 +49,25 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     auth: Authenticator,
     blob: Omit<
       CreationAttributes<MCPServerView>,
-      "editedAt" | "editedByUserId" | "vaultId"
+      "editedAt" | "editedByUserId" | "vaultId" | "workspaceId"
     >,
     space: SpaceResource,
-    editedByUser?: UserType | null,
+    editedByUser?: UserResource | null,
     transaction?: Transaction
   ) {
     assert(auth.isAdmin(), "Only the admin can create an MCP server view");
+
+    if (blob.internalMCPServerId) {
+      assert(
+        isValidInternalMCPServerId(auth, blob.internalMCPServerId),
+        "Invalid internal MCP server ID"
+      );
+    }
+
     const server = await MCPServerView.create(
       {
         ...blob,
+        workspaceId: auth.getNonNullableWorkspace().id,
         editedByUserId: editedByUser?.id ?? null,
         editedAt: new Date(),
         vaultId: space.id,
@@ -61,6 +75,33 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       { transaction }
     );
     return new this(MCPServerViewResource.model, server.get(), space);
+  }
+
+  public static async create(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      space,
+      transaction,
+    }: {
+      mcpServerId: string;
+      space: SpaceResource;
+      transaction?: Transaction;
+    }
+  ) {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
+    return this.makeNew(
+      auth,
+      {
+        serverType,
+        internalMCPServerId: serverType === "internal" ? mcpServerId : null,
+        remoteMCPServerId: serverType === "remote" ? id : null,
+      },
+      space,
+      auth.user(),
+      transaction
+    );
   }
 
   // Fetching.
@@ -150,33 +191,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return views ?? [];
   }
 
-  static async listByWorkspace({
-    auth,
-  }: {
-    auth: Authenticator;
-  }): Promise<MCPServerViewResource[]> {
+  static async listByWorkspace(
+    auth: Authenticator
+  ): Promise<MCPServerViewResource[]> {
     return this.baseFetch(auth);
   }
 
-  // Deletion.
-
-  async delete(
+  static async listBySpace(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    assert(auth.isAdmin(), "Only the admin can delete an MCP server view");
-
-    try {
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(err as Error);
-    }
+    space: SpaceResource
+  ): Promise<MCPServerViewResource[]> {
+    return this.baseFetch(auth, { where: { vaultId: space.id } });
   }
 
   // Deletion.
@@ -185,6 +210,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
+    assert(auth.isAdmin(), "Only the admin can delete an MCP server view");
+    assert(
+      auth.getNonNullableWorkspace().id === this.workspaceId,
+      "Can only delete MCP server views for the current workspace"
+    );
+
     const deletedCount = await MCPServerView.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -291,21 +322,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   }
 
   // Serialization.
-  toJSON(): MCPServerViewType {
+  async toJSON(auth: Authenticator): Promise<MCPServerViewType> {
+    const server = await getMCPServerMetadataLocally(auth, {
+      mcpServerId: this.mcpServerId,
+    });
     return {
-      sId: this.sId,
+      id: this.sId,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
-      mcpServerId: this.mcpServerId,
       spaceId: this.space.sId,
+      server,
     };
   }
 }
 
 export interface MCPServerViewType {
-  sId: string;
+  id: string;
   createdAt: Date;
   updatedAt: Date;
-  mcpServerId: string;
   spaceId: string | null;
+  server: MCPServerType;
 }

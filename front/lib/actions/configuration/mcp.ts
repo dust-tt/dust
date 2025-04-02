@@ -2,8 +2,8 @@ import { Op } from "sequelize";
 
 import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_actions";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
+import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
@@ -80,7 +80,7 @@ export async function fetchMCPServerActionConfigurations(
       );
     }
 
-    let metadata: MCPServerMetadata | null = null;
+    let metadata: MCPServerType | null = null;
     if (mcpServerView.serverType === "remote") {
       const remoteMCPServer = await mcpServerView.getRemoteMCPServer(auth);
 

@@ -83,33 +83,35 @@ MCPServerView.init(
     ],
     hooks: {
       beforeValidate: (config: MCPServerView) => {
-        switch (config.serverType) {
-          case "internal":
-            if (!config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is required for serverType internal"
-              );
-            }
-            if (config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is not allowed for serverType internal"
-              );
-            }
-            break;
-          case "remote":
-            if (!config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is required for serverType remote"
-              );
-            }
-            if (config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is not allowed for serverType remote"
-              );
-            }
-            break;
-          default:
-            assertNever(config.serverType);
+        if (config.serverType) {
+          switch (config.serverType) {
+            case "internal":
+              if (!config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is required for serverType internal"
+                );
+              }
+              if (config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is not allowed for serverType internal"
+                );
+              }
+              break;
+            case "remote":
+              if (!config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is required for serverType remote"
+                );
+              }
+              if (config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is not allowed for serverType remote"
+                );
+              }
+              break;
+            default:
+              assertNever(config.serverType);
+          }
         }
       },
     },
