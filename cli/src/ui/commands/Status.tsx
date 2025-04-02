@@ -1,14 +1,15 @@
 import React, { FC, useEffect, useState } from "react";
 import { Box, Text, Newline } from "ink";
 import Spinner from "ink-spinner";
-import { UserType, WorkspaceType } from "@dust-tt/client";
+import { MeResponseType, WorkspaceType } from "@dust-tt/client";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
-import { ExtendedUserType } from "../../types.js";
 
 const Status: FC = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [apiUserInfo, setApiUserInfo] = useState<ExtendedUserType | null>(null);
+  const [apiUserInfo, setApiUserInfo] = useState<MeResponseType["user"] | null>(
+    null
+  );
   const [selectedWorkspace, setSelectedWorkspace] =
     useState<WorkspaceType | null>(null);
   const [error, setError] = useState<string | null>(null);

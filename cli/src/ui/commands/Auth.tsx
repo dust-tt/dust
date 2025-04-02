@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import TokenStorage from "../../utils/tokenStorage.js";
 import { getDustClient, resetDustClient } from "../../utils/dustClient.js";
 import WorkspaceSelector from "../components/WorkspaceSelector.js";
-import { ExtendedUserType } from "../../types.js";
+import { MeResponseType } from "@dust-tt/client";
 
 interface DeviceCodeResponse {
   device_code: string;
@@ -40,7 +40,7 @@ const Auth: FC<AuthProps> = ({ force = false }) => {
   const [isPolling, setIsPolling] = useState(false);
   const [showWorkspaceSelector, setShowWorkspaceSelector] = useState(false);
   const [authComplete, setAuthComplete] = useState(false);
-  const [userInfo, setUserInfo] = useState<ExtendedUserType | null>(null);
+  const [userInfo, setUserInfo] = useState<MeResponseType["user"] | null>(null);
 
   const auth0Domain = process.env.AUTH0_CLIENT_DOMAIN || "";
   const clientId = process.env.AUTH0_CLIENT_ID || "";
