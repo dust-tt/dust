@@ -137,7 +137,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
-  static async fetchMentionsByConfiguration(
+  static async listMentionsByConfiguration(
     auth: Authenticator,
     {
       agentConfiguration,

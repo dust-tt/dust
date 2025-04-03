@@ -290,7 +290,7 @@ export async function getAgentUsers(
   agentConfiguration: LightAgentConfigurationType,
   rankingUsageDays: number = RANKING_USAGE_DAYS
 ): Promise<UsersUsageCount[]> {
-  const mentions = await ConversationResource.fetchMentionsByConfiguration(
+  const mentions = await ConversationResource.listMentionsByConfiguration(
     auth,
     {
       agentConfiguration,
