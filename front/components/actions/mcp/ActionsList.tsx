@@ -4,11 +4,14 @@ import {
   classNames,
   CloudArrowLeftRightIcon,
   DataTable,
+  IconButton,
   SearchInput,
   SliderToggle,
   Spinner,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { Cross } from "lucide-react";
 import React, { useMemo, useState } from "react";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
@@ -75,7 +78,20 @@ const ActionCell = ({
       </DataTable.CellContent>
     );
   } else {
-    return <DataTable.CellContent>remote</DataTable.CellContent>;
+    return (
+      <DataTable.CellContent>
+        <IconButton
+          variant="outline"
+          icon={XMarkIcon}
+          onClick={async (e) => {
+            e.stopPropagation();
+
+            await deleteServer(mcpServer.id);
+          }}
+          size="sm"
+        />
+      </DataTable.CellContent>
+    );
   }
 };
 
