@@ -35,7 +35,7 @@ export const MainPage = ({
           <div className="flex flex-col gap-2">
             {user.workspaces.length > 1 && (
               <div className="flex flex-row items-center gap-2">
-                <p className="text-sm text-slate-500 dark:text-slate-500-night">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Workspace:
                 </p>
                 <DropdownMenu>

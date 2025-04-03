@@ -205,7 +205,7 @@ export function ActionRetrievalExhaustive({
           className={classNames(
             "text-sm font-semibold",
             timeFrameDisabled
-              ? "text-slate-400 dark:text-slate-400-night"
+              ? "text-muted-foreground dark:text-muted-foreground-night"
               : "text-foreground dark:text-foreground-night"
           )}
         >

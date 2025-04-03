@@ -64,7 +64,7 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "dark:s-text-slate-50",
+    "dark:s-text-primary-50",
     "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "s-border focus-visible:s-ring",

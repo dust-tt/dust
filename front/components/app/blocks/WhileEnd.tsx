@@ -107,7 +107,7 @@ export function While({
               <div
                 className={classNames(
                   "border bg-muted-background",
-                  "border-slate-100"
+                  "border-border"
                 )}
               >
                 <CodeEditor
