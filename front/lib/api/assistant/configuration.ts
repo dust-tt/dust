@@ -984,10 +984,7 @@ export async function createAgentActionConfiguration(
   action: UnsavedAgentActionConfigurationType,
   agentConfiguration: LightAgentConfigurationType
 ): Promise<Result<AgentActionConfigurationType, Error>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+  const owner = auth.getNonNullableWorkspace();
 
   switch (action.type) {
     case "retrieval_configuration": {
