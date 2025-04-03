@@ -30,7 +30,6 @@ import { Err, Ok } from "@app/types";
 
 import { GroupResource } from "./group_resource";
 import { frontSequelize } from "./storage";
-import { getResourceIdFromSId } from "./string_ids";
 import type { ResourceFindOptions } from "./types";
 
 export type FetchConversationOptions = {
@@ -87,12 +86,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
     const { where } = ConversationResource.getOptions(options);
 
-    const conversationModelIds = removeNulls(
-      sIds.map((id) => getResourceIdFromSId(id))
-    );
     const conversations = await ConversationResource.model.findAll({
       where: {
-        sId: conversationModelIds,
+        sId: sIds,
         workspaceId: workspace.id,
         ...where,
       },
