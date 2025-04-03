@@ -11,6 +11,7 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
+import { makeSId } from "@app/lib/resources/string_ids";
 
 /**
  * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
@@ -244,30 +245,35 @@ function injectValueForMimeType({
   path: string[];
   schema: JSONSchema;
   actionConfiguration: MCPToolConfigurationType;
-}): boolean {
+}) {
   // Check if this property has a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
   for (const mimeType of Object.values(INTERNAL_MIME_TYPES.CONFIGURATION)) {
     if (hasPropertyMatchingMimeType(schema, mimeType)) {
       // We found a matching mimeType, augment the inputs
       switch (mimeType) {
-        case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
+        case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE: {
           setValueAtPath(
             inputs,
             path,
-            // TODO(mcp): give sqids here.
             actionConfiguration.dataSourceConfigurations?.map((config) => ({
-              uri: `data_source_configuration://dust/w/${config.workspaceId}/data_source_configurations/${config.id}`,
+              // TODO: create a Resource for AgentDataSourceConfiguration and move the makeSId to a method in it.
+              uri: `data_source_configuration://dust/w/${config.workspaceId}/data_source_configurations/${makeSId(
+                "data_source_configuration",
+                {
+                  id: config.id,
+                  workspaceId: config.workspaceId,
+                }
+              )}`,
               mimeType,
             })) || []
           );
-          return true;
+          break;
+        }
         default:
           assertNever(mimeType);
       }
     }
   }
-
-  return false; // No matching MIME type found
 }
 
 /**
