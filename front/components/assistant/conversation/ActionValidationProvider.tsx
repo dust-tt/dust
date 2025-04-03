@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -44,28 +45,34 @@ function useValidationQueue() {
     useState<PendingValidationRequestType | null>(null);
 
   const addToQueue = (props: PendingValidationRequestType) => {
-    setValidationQueue((prevQueue) => [...prevQueue, props]);
+    setCurrentValidation((current) => {
+      if (current === null) {
+        return props;
+      }
+
+      setValidationQueue((prevQueue) => [...prevQueue, props]);
+      return current;
+    });
   };
 
-  const removeFromQueue = () => {
+  const takeNextFromQueue = () => {
     if (validationQueue.length > 0) {
       const nextValidation = validationQueue[0];
       const newQueue = validationQueue.slice(1);
       setValidationQueue(newQueue);
       setCurrentValidation(nextValidation);
+      return nextValidation;
+    } else {
+      setCurrentValidation(null);
+      return null;
     }
-  };
-
-  const clearCurrentValidation = () => {
-    setCurrentValidation(null);
   };
 
   return {
     validationQueue,
     currentValidation,
     addToQueue,
-    removeFromQueue,
-    clearCurrentValidation,
+    takeNextFromQueue,
   };
 }
 
@@ -74,13 +81,8 @@ export function ActionValidationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const {
-    validationQueue,
-    currentValidation,
-    addToQueue,
-    removeFromQueue,
-    clearCurrentValidation,
-  } = useValidationQueue();
+  const { validationQueue, currentValidation, addToQueue, takeNextFromQueue } =
+    useValidationQueue();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -124,10 +126,12 @@ export function ActionValidationProvider({
     async (approved: boolean) => {
       void sendCurrentValidation(approved);
       setIsProcessing(false);
-      setIsDialogOpen(false);
-      clearCurrentValidation();
+      const foundItem = takeNextFromQueue();
+      if (!foundItem) {
+        setIsDialogOpen(false);
+      }
     },
-    [sendCurrentValidation, clearCurrentValidation]
+    [sendCurrentValidation, takeNextFromQueue]
   );
 
   useEffect(() => {
@@ -135,30 +139,6 @@ export function ActionValidationProvider({
       setIsDialogOpen(true);
     }
   }, [currentValidation]);
-
-  useEffect(() => {
-    if (!isDialogOpen && currentValidation && !isProcessing) {
-      void handleSubmit(false);
-    }
-  }, [isDialogOpen, currentValidation, isProcessing, handleSubmit]);
-
-  useEffect(() => {
-    if (
-      !isProcessing &&
-      validationQueue.length > 0 &&
-      !currentValidation &&
-      !isDialogOpen
-    ) {
-      removeFromQueue();
-      setErrorMessage(null);
-    }
-  }, [
-    isProcessing,
-    validationQueue,
-    currentValidation,
-    isDialogOpen,
-    removeFromQueue,
-  ]);
 
   const showValidationDialog = (props: {
     workspaceId: string;
@@ -180,7 +160,9 @@ export function ActionValidationProvider({
         open={isDialogOpen}
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
-            setIsDialogOpen(false);
+            if (currentValidation) {
+              void handleSubmit(false);
+            }
           }
         }}
       >
@@ -218,32 +200,34 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Decline",
-              variant: "outline",
-              onClick: () => handleSubmit(false),
-              disabled: isProcessing,
-              children: isProcessing && (
+          <DialogFooter>
+            <Button
+              label="Decline"
+              variant="outline"
+              onClick={() => handleSubmit(false)}
+              disabled={isProcessing}
+            >
+              {isProcessing && (
                 <div className="flex items-center">
                   <span className="mr-2">Declining</span>
                   <Spinner size="xs" variant="dark" />
                 </div>
-              ),
-            }}
-            rightButtonProps={{
-              label: "Approve",
-              variant: "primary",
-              onClick: () => handleSubmit(true),
-              disabled: isProcessing,
-              children: isProcessing && (
+              )}
+            </Button>
+            <Button
+              label="Approve"
+              variant="primary"
+              onClick={() => handleSubmit(true)}
+              disabled={isProcessing}
+            >
+              {isProcessing && (
                 <div className="flex items-center">
                   <span className="mr-2">Approving</span>
                   <Spinner size="xs" variant="light" />
                 </div>
-              ),
-            }}
-          />
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </ActionValidationContext.Provider>
