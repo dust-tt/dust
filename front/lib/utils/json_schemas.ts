@@ -6,12 +6,23 @@ import type {
 /**
  * Type guard to check if a value is a JSONSchema object
  */
-export function isJSONSchema(
+export function isJSONSchemaObject(
   value: JSONSchema | JSONSchemaDefinition | JSONSchemaDefinition[] | boolean
 ): value is JSONSchema {
   return value !== null && typeof value === "object";
 }
 
+export function schemasAreEqual(
+  schemaA: JSONSchema,
+  schemaB: JSONSchema
+): boolean {
+  return (
+    schemaA.type === schemaB.type &&
+    schemaA.items === schemaB.items &&
+    schemaA.properties === schemaB.properties &&
+    schemaA.required === schemaB.required
+  );
+}
 /**
  * Recursively checks if a schema contains a specific sub-schema anywhere in its structure.
  * This function handles nested objects and arrays.
@@ -27,7 +38,7 @@ export function containsSubSchema(
     return true;
   }
 
-  if (!isJSONSchema(inputSchema)) {
+  if (!isJSONSchemaObject(inputSchema)) {
     return false;
   }
 
@@ -35,7 +46,7 @@ export function containsSubSchema(
   for (const value of Object.values(inputSchema)) {
     if (
       value === targetSubSchema ||
-      (isJSONSchema(value) && containsSubSchema(value, targetSubSchema))
+      (isJSONSchemaObject(value) && containsSubSchema(value, targetSubSchema))
     ) {
       return true;
     }
@@ -45,7 +56,7 @@ export function containsSubSchema(
   if (inputSchema.properties) {
     for (const propSchema of Object.values(inputSchema.properties)) {
       if (
-        isJSONSchema(propSchema) &&
+        isJSONSchemaObject(propSchema) &&
         containsSubSchema(propSchema, targetSubSchema)
       ) {
         return true;
@@ -55,7 +66,7 @@ export function containsSubSchema(
 
   // Check items in array schemas
   if (inputSchema.type === "array" && inputSchema.items) {
-    if (isJSONSchema(inputSchema.items)) {
+    if (isJSONSchemaObject(inputSchema.items)) {
       // Single schema for all items
       if (containsSubSchema(inputSchema.items, targetSubSchema)) {
         return true;
@@ -63,7 +74,10 @@ export function containsSubSchema(
     } else if (Array.isArray(inputSchema.items)) {
       // Array of schemas for tuple validation
       for (const item of inputSchema.items) {
-        if (isJSONSchema(item) && containsSubSchema(item, targetSubSchema)) {
+        if (
+          isJSONSchemaObject(item) &&
+          containsSubSchema(item, targetSubSchema)
+        ) {
           return true;
         }
       }
@@ -99,7 +113,7 @@ export function findSchemaAtPath(
     if (currentSchema.properties && segment in currentSchema.properties) {
       const propSchema: JSONSchemaDefinition =
         currentSchema.properties[segment];
-      if (isJSONSchema(propSchema)) {
+      if (isJSONSchemaObject(propSchema)) {
         currentSchema = propSchema;
       } else {
         return null; // Not a valid schema

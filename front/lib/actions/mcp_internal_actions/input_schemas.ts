@@ -13,7 +13,8 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import {
   containsSubSchema,
   findSchemaAtPath,
-  isJSONSchema,
+  isJSONSchemaObject,
+  schemasAreEqual,
   setValueAtPath,
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
@@ -100,23 +101,23 @@ export function serverRequiresInternalConfiguration({
  * This function handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
-  const filteredSchema = { ...inputSchema };
+  const resultingSchema = { ...inputSchema };
 
   // Filter properties
-  if (filteredSchema.properties) {
+  if (inputSchema.properties) {
     const filteredProperties: JSONSchema["properties"] = {};
     const removedRequiredProps: string[] = [];
 
-    for (const [key, value] of Object.entries(filteredSchema.properties)) {
+    for (const [key, property] of Object.entries(inputSchema.properties)) {
       let shouldInclude = true;
 
-      if (isJSONSchema(value)) {
-        // Check if this property has a matching mimeType
+      if (isJSONSchemaObject(property)) {
+        // Check if this property has a matching mimeType.
         for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
-          if (containsSubSchema(value, schema)) {
+          if (schemasAreEqual(property, schema)) {
             shouldInclude = false;
-            // Track removed properties that were required
-            if (filteredSchema.required?.includes(key)) {
+            // Track removed properties that were in the required array.
+            if (resultingSchema.required?.includes(key)) {
               removedRequiredProps.push(key);
             }
             break;
@@ -125,33 +126,33 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
         if (shouldInclude) {
           // Recursively filter nested properties
-          filteredProperties[key] = hideInternalConfiguration(value);
+          filteredProperties[key] = hideInternalConfiguration(property);
         }
-      } else if (value !== null && value !== undefined) {
+      } else {
         // Keep non-object values as is
-        filteredProperties[key] = value;
+        filteredProperties[key] = property;
       }
     }
 
-    filteredSchema.properties = filteredProperties;
+    resultingSchema.properties = filteredProperties;
 
     // Update required properties if any were removed
-    if (removedRequiredProps.length > 0 && filteredSchema.required) {
-      filteredSchema.required = filteredSchema.required.filter(
+    if (removedRequiredProps.length > 0 && resultingSchema.required) {
+      resultingSchema.required = resultingSchema.required.filter(
         (prop) => !removedRequiredProps.includes(prop)
       );
     }
   }
 
   // Filter array items
-  if (filteredSchema.type === "array" && filteredSchema.items) {
-    if (isJSONSchema(filteredSchema.items)) {
+  if (resultingSchema.type === "array" && resultingSchema.items) {
+    if (isJSONSchemaObject(resultingSchema.items)) {
       // Single schema for all items
-      filteredSchema.items = hideInternalConfiguration(filteredSchema.items);
-    } else if (Array.isArray(filteredSchema.items)) {
+      resultingSchema.items = hideInternalConfiguration(resultingSchema.items);
+    } else if (Array.isArray(resultingSchema.items)) {
       // Array of schemas for tuple validation
-      filteredSchema.items = filteredSchema.items.map((item) =>
-        isJSONSchema(item) ? hideInternalConfiguration(item) : item
+      resultingSchema.items = resultingSchema.items.map((item) =>
+        isJSONSchemaObject(item) ? hideInternalConfiguration(item) : item
       );
     }
   }
@@ -159,7 +160,7 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
   // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
   // since we entirely hide the configuration from the agent.
 
-  return filteredSchema;
+  return resultingSchema;
 }
 
 /**
