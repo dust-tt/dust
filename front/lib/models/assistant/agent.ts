@@ -118,24 +118,14 @@ AgentConfiguration.init(
       type: DataTypes.JSONB,
       allowNull: true,
       defaultValue: null,
-      set(value) {
-        if (!value) {
-          this.setDataValue("responseFormat", undefined);
-          return;
-        }
-        // If it's already a string, parse it first
-        const parsed = typeof value === "string" ? JSON.parse(value) : value;
-        // Store the parsed object directly
-        this.setDataValue("responseFormat", parsed);
-      },
       validate: {
         isValidJSON(value: string) {
           if (value) {
-            if (typeof value !== "object") {
-              throw new Error("Response format is not a JSON object");
-            }
             try {
-              JSON.parse(JSON.stringify(value));
+              const parsed = JSON.parse(value);
+              if (parsed && typeof parsed !== "object") {
+                throw new Error("Response format is invalid JSON");
+              }
             } catch (e) {
               throw new Error("Response format is invalid JSON");
             }
