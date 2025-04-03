@@ -33,6 +33,7 @@ async function fetchAgentDataSourceConfiguration(
     );
   }
 
+  // It's safe to do this because the inputs are already checked against the zod schema here.
   const [, , dataSourceConfigId] = match;
   const sIdParts = getResourceNameAndIdFromSId(dataSourceConfigId);
   if (!sIdParts) {
