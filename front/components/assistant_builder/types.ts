@@ -217,6 +217,7 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   };
   actions: Array<AssistantBuilderActionConfigurationWithId>;
   maxStepsPerRun: number | null;
@@ -233,6 +234,7 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;

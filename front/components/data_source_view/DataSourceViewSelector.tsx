@@ -1,3 +1,4 @@
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
   CloudArrowLeftRightIcon,
@@ -24,7 +25,6 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import { orderDatasourceViewByImportance } from "@app/lib/connectors";
 import {
-  DATA_SOURCE_MIME_TYPE,
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";

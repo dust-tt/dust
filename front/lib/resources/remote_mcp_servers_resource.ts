@@ -7,6 +7,11 @@ import type {
   Transaction,
 } from "sequelize";
 
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_ICON,
+  DEFAULT_MCP_ACTION_VERSION,
+} from "@app/lib/actions/constants";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
@@ -221,21 +226,22 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   toJSON(): MCPServerType & {
     // Remote MCP Server specifics
     url: string;
-    lastSyncAt: Date | null;
+    lastSyncAt: number | null;
     sharedSecret: string;
   } {
     return {
       id: this.sId,
       name: this.name,
-      description: this.description || "",
+      description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       tools: this.cachedTools,
-      // TODO(mcp) remove this once we have a real version & icon
-      version: "0.0.1",
-      icon: "rocket",
+      // TODO(mcp) for @adrsimon remove this once we have a real version & icon & authorization cached
+      version: DEFAULT_MCP_ACTION_VERSION,
+      icon: DEFAULT_MCP_ACTION_ICON,
+      authorization: null,
 
       // Remote MCP Server specifics
       url: this.url,
-      lastSyncAt: this.lastSyncAt,
+      lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       sharedSecret: this.sharedSecret,
     };
   }

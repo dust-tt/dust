@@ -1,5 +1,7 @@
 import type { DustMimeType } from "@dust-tt/client";
+import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 
+import { isContentFragmentDataSourceNode } from "@app/lib/actions/conversation/list_files";
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
@@ -15,12 +17,14 @@ import type {
   ContentFragmentInputWithFileIdType,
   ContentFragmentInputWithInlinedContent,
   ContentNodeType,
+  CoreAPIContentNode,
   ModelId,
   Result,
   SupportedFileContentType,
 } from "@app/types";
 import {
   CoreAPI,
+  DATA_SOURCE_NODE_ID,
   Err,
   extensionsForContentType,
   isContentFragmentInputWithContentNode,
@@ -135,31 +139,53 @@ export async function getContentFragmentBlob(
       );
     }
 
-    const searchFilter = getSearchFilterFromDataSourceViews(
-      auth.getNonNullableWorkspace(),
-      [dsView],
-      {
-        excludedNodeMimeTypes: [],
-        includeDataSources: false,
-        viewType: "all",
-        nodeIds: [cf.nodeId],
-      }
-    );
+    let coreContentNode: CoreAPIContentNode | null = null;
 
-    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-    const searchRes = await coreAPI.searchNodes({
-      filter: searchFilter,
-    });
-    if (searchRes.isErr()) {
-      return new Err(
-        new Error("Content node not found for content fragment input")
+    if (isContentFragmentDataSourceNode(cf)) {
+      // Follows CoreContentNode.from_es_data_source_document, see
+      // core/src/data_sources/node.rs
+      coreContentNode = {
+        data_source_id: dsView.dataSource.dustAPIDataSourceId,
+        data_source_internal_id: "unavailable",
+        node_id: DATA_SOURCE_NODE_ID,
+        node_type: "folder",
+        title: dsView.dataSource.name,
+        mime_type: DATA_SOURCE_MIME_TYPE,
+        parents: [],
+        children_count: 1,
+        timestamp: dsView.dataSource.createdAt.getTime(),
+      };
+    } else {
+      const searchFilter = getSearchFilterFromDataSourceViews(
+        auth.getNonNullableWorkspace(),
+        [dsView],
+        {
+          excludedNodeMimeTypes: [],
+          includeDataSources: true,
+          viewType: "all",
+          nodeIds: [cf.nodeId],
+        }
       );
-    }
-    const [coreContentNode] = searchRes.value.nodes;
-    if (!coreContentNode) {
-      return new Err(
-        new Error("Content node not found for content fragment input")
-      );
+
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const searchRes = await coreAPI.searchNodes({
+        filter: searchFilter,
+      });
+      if (searchRes.isErr()) {
+        return new Err(
+          new Error(
+            `Content node not found for content fragment node id: ${cf.nodeId}`
+          )
+        );
+      }
+      [coreContentNode] = searchRes.value.nodes;
+      if (!coreContentNode) {
+        return new Err(
+          new Error(
+            `Content node not found for content fragment node id: ${cf.nodeId}`
+          )
+        );
+      }
     }
     const contentNode = getContentNodeFromCoreNode(coreContentNode, "all");
 

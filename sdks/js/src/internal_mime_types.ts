@@ -147,6 +147,34 @@ export const CONTENT_NODE_MIME_TYPES = {
   }),
 };
 
+export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
+  CONFLUENCE: [CONTENT_NODE_MIME_TYPES.CONFLUENCE.PAGE],
+  GITHUB: [
+    CONTENT_NODE_MIME_TYPES.GITHUB.ISSUE,
+    CONTENT_NODE_MIME_TYPES.GITHUB.DISCUSSION,
+  ],
+  GOOGLE_DRIVE: [],
+  INTERCOM: [
+    CONTENT_NODE_MIME_TYPES.INTERCOM.CONVERSATION,
+    CONTENT_NODE_MIME_TYPES.INTERCOM.ARTICLE,
+  ],
+  MICROSOFT: [],
+  NOTION: [CONTENT_NODE_MIME_TYPES.NOTION.PAGE],
+  SLACK: [
+    CONTENT_NODE_MIME_TYPES.SLACK.THREAD,
+    CONTENT_NODE_MIME_TYPES.SLACK.MESSAGES,
+  ],
+  SNOWFLAKE: [],
+  WEBCRAWLER: [],
+  ZENDESK: [
+    CONTENT_NODE_MIME_TYPES.ZENDESK.TICKET,
+    CONTENT_NODE_MIME_TYPES.ZENDESK.ARTICLE,
+  ],
+  BIGQUERY: [],
+  SALESFORCE: [],
+  GONG: [],
+};
+
 const TOOL_INPUT_MIME_TYPES = {
   // If we get other similar mime types we'll add an util function just like above.
   CONFIGURATION: {
@@ -161,6 +189,10 @@ export const INTERNAL_MIME_TYPES = {
 
 export const INTERNAL_MIME_TYPES_VALUES = Object.values(
   CONTENT_NODE_MIME_TYPES
+).flatMap((value) => Object.values(value).map((v) => v));
+
+export const INCLUDABLE_INTERNAL_MIME_TYPES_VALUES = Object.values(
+  INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES
 ).flatMap((value) => Object.values(value).map((v) => v));
 
 export type BigQueryMimeType =
@@ -205,6 +237,9 @@ export type GongMimeType =
 export type InternalConfigurationMimeType =
   (typeof INTERNAL_MIME_TYPES.CONFIGURATION)[keyof typeof INTERNAL_MIME_TYPES.CONFIGURATION];
 
+export type IncludableInternalMimeType =
+  (typeof INCLUDABLE_INTERNAL_MIME_TYPES_VALUES)[number];
+
 export type DustMimeType =
   | BigQueryMimeType
   | ConfluenceMimeType
@@ -223,4 +258,10 @@ export type DustMimeType =
 
 export function isDustMimeType(mimeType: string): mimeType is DustMimeType {
   return (INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
+}
+
+export function isIncludableInternalMimeType(
+  mimeType: string
+): mimeType is IncludableInternalMimeType {
+  return (INCLUDABLE_INTERNAL_MIME_TYPES_VALUES as string[]).includes(mimeType);
 }

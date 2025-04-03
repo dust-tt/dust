@@ -809,7 +809,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_feature"
   | "advanced_notion_management"
   | "search_knowledge_builder"
-  | "attach_from_datasources"
   | "force_gdrive_labels_scope"
   | "claude_3_7_reasoning"
   | "mcp_actions"
@@ -1288,7 +1287,6 @@ const MCPApproveExecutionEventSchema = z.object({
   messageId: z.string(),
   action: MCPActionTypeSchema,
   inputs: z.record(z.any()),
-  hash: z.string(),
 });
 
 const AgentErrorEventSchema = z.object({

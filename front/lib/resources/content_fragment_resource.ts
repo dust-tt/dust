@@ -15,6 +15,9 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
+import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
+import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   generateRandomModelSId,
@@ -23,6 +26,7 @@ import {
 import logger from "@app/logger/logger";
 import type {
   ContentFragmentMessageTypeModel,
+  ContentFragmentNodeData,
   ContentFragmentType,
   ContentFragmentVersion,
   ContentNodeType,
@@ -275,8 +279,51 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           workspaceId: owner.id,
         })
       : null;
+
     const nodeType: ContentNodeType | null = this.nodeType || null;
 
+    // Add contentNodeData
+    let contentNodeData: ContentFragmentNodeData | null = null;
+    if (
+      nodeId &&
+      nodeDataSourceViewId &&
+      nodeType &&
+      this.nodeDataSourceViewId
+    ) {
+      const dsView = await DataSourceViewModel.findByPk(
+        this.nodeDataSourceViewId,
+        {
+          attributes: [],
+          include: [
+            {
+              model: DataSourceModel,
+              as: "dataSourceForView",
+              attributes: ["connectorProvider"],
+            },
+            {
+              model: SpaceModel,
+              as: "space",
+              foreignKey: "vaultId",
+              attributes: ["name"],
+            },
+          ],
+        }
+      );
+
+      if (!dsView) {
+        throw new Error(
+          `Content fragment node data not found for node id ${nodeId} and node data source view id ${nodeDataSourceViewId}`
+        );
+      }
+
+      contentNodeData = {
+        nodeId,
+        nodeDataSourceViewId,
+        nodeType,
+        provider: dsView.dataSourceForView.connectorProvider,
+        spaceName: dsView.space.name,
+      };
+    }
     return {
       id: message.id,
       fileId: fileStringId,
@@ -303,6 +350,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       },
       contentFragmentId: this.sId,
       contentFragmentVersion: this.version,
+      contentNodeData,
     };
   }
 }

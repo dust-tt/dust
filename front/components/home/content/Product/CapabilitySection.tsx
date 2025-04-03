@@ -7,16 +7,18 @@ import { classNames } from "@app/lib/utils";
 export function CapabilitySection() {
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <H2 from="from-amber-200" to="to-amber-400">
-          Tailor AI agents to your team needs
+      <div className="mb-8">
+        <H2>
+          Tailor AI agents
+          <br />
+          to your team needs
         </H2>
-        <P size="lg">
+        <P size="lg" className="text-muted-foreground">
           Anyone on your&nbsp;team can create personalized&nbsp;agents.
         </P>
       </div>
 
-      <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 md:gap-24">
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
         <ImgBlock
           title={<>Build agents with custom instructions and tools</>}
           content={
@@ -75,8 +77,8 @@ export function CapabilitySection() {
           title={<>Leverage the best models on the market.</>}
           content={
             <>
-              “Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
-              model to ensure your agents stay smartest.”
+              "Choose OpenAI, Anthropic, Gemini, Mistral, or any cutting-edge
+              model to ensure your agents stay smartest."
             </>
           }
         >

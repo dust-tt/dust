@@ -4,8 +4,7 @@ export interface pageSettingsProps {
   uptitle: string;
   title: React.ReactNode;
   description: React.ReactNode;
-  from: string;
-  to: string;
+  accentColor: string;
   bulletPoints: string[];
   image: string;
 }
@@ -14,6 +13,7 @@ export interface HeroProps {
   uptitle: string;
   title: React.ReactNode;
   description: React.ReactNode;
+  accentColor?: string;
   visuals: {
     src: string;
     alt: string;

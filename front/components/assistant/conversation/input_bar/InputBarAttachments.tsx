@@ -88,13 +88,12 @@ export function InputBarAttachments({
           provider: node.dataSourceView.dataSource.connectorProvider,
         });
 
-        const nodeId = node.internalId ?? `node-${node.internalId}`;
         const spaceName =
           nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
         return {
           type: "node",
-          id: nodeId,
+          id: `${node.dataSourceView.dataSource.sId}-${node.internalId}`,
           url: node.sourceUrl,
           title: node.title,
           spaceName,

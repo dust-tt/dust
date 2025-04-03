@@ -70,7 +70,7 @@ const getInternalMCPServerNameAndWorkspaceId = (
   });
 };
 
-const isInternalMCPServerName = (
+export const isInternalMCPServerName = (
   name: string
 ): name is InternalMCPServerNameType =>
   AVAILABLE_INTERNAL_MCPSERVER_NAMES.includes(

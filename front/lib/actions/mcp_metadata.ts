@@ -1,10 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type {
-  Implementation,
-  ListToolsResult,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -25,8 +22,7 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { OAuthProvider, OAuthUseCase } from "@app/types";
-import { assertNever } from "@app/types";
-import { getOAuthConnectionAccessToken } from "@app/types";
+import { assertNever, getOAuthConnectionAccessToken } from "@app/types";
 
 export type MCPToolType = {
   name: string;
@@ -40,9 +36,11 @@ export type MCPServerType = {
   version: string;
   description: string;
   icon: AllowedIconType;
-  authorization?: AuthorizationInfo;
+  authorization: AuthorizationInfo | null;
   tools: MCPToolType[];
 };
+
+export type MCPServerDefinitionType = Omit<MCPServerType, "tools" | "id">;
 
 export type AuthorizationInfo = {
   provider: OAuthProvider;
@@ -155,7 +153,7 @@ export const connectToMCPServer = async (
 
 export function extractMetadataFromServerVersion(
   r: Implementation | undefined
-): Omit<MCPServerType, "tools" | "id"> {
+): MCPServerDefinitionType {
   if (r) {
     return {
       name: r.name ?? DEFAULT_MCP_ACTION_NAME,
@@ -163,7 +161,7 @@ export function extractMetadataFromServerVersion(
       authorization:
         "authorization" in r && typeof r.authorization === "object"
           ? (r.authorization as AuthorizationInfo)
-          : undefined,
+          : null,
       description:
         "description" in r && typeof r.description === "string" && r.description
           ? r.description
@@ -180,13 +178,12 @@ export function extractMetadataFromServerVersion(
     version: DEFAULT_MCP_ACTION_VERSION,
     description: DEFAULT_MCP_ACTION_DESCRIPTION,
     icon: DEFAULT_MCP_ACTION_ICON,
+    authorization: null,
   };
 }
 
-export function extractMetadataFromTools(
-  tools: ListToolsResult
-): MCPToolType[] {
-  return tools.tools.map((tool) => {
+export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
+  return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
     const ajv = new Ajv();
 
@@ -217,7 +214,7 @@ export async function fetchRemoteServerMetaDataByURL(
     const metadata = extractMetadataFromServerVersion(serverVersion);
 
     const toolsResult = await mcpClient.listTools();
-    const serverTools = extractMetadataFromTools(toolsResult);
+    const serverTools = extractMetadataFromTools(toolsResult.tools);
 
     return {
       ...metadata,

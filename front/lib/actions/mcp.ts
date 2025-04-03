@@ -14,7 +14,6 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
-import { hashMCPInputParams } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
@@ -59,7 +58,6 @@ type MCPApproveExecutionEvent = {
   messageId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
-  hash: string;
 };
 
 type MCPParamsEvent = {
@@ -88,6 +86,38 @@ type MCPErrorEvent = {
     message: string;
   };
 };
+
+export type MCPFormState = {
+  url: string;
+  name: string;
+  description: string;
+  tools: { name: string; description: string }[];
+  errors?: {
+    url?: string;
+    name?: string;
+    description?: string;
+  };
+};
+
+export type MCPFormAction =
+  | {
+      [K in keyof Omit<MCPFormState, "errors">]: {
+        type: "SET_FIELD";
+        field: K;
+        value: MCPFormState[K];
+      };
+    }[keyof Omit<MCPFormState, "errors">]
+  | {
+      type: "SET_ERROR";
+      field: keyof MCPFormState["errors"];
+      value: string | undefined;
+    }
+  | {
+      type: "RESET";
+      config?: null;
+      name?: string;
+    }
+  | { type: "VALIDATE" };
 
 export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
 
@@ -244,8 +274,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       action: mcpAction,
     };
 
-    const hash = hashMCPInputParams(rawInputs);
-
     yield {
       type: "tool_approve_execution",
       created: Date.now(),
@@ -253,7 +281,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       messageId: agentMessage.sId,
       action: mcpAction,
       inputs: rawInputs,
-      hash,
     };
 
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
@@ -278,17 +305,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       for await (const event of actionEventGenerator) {
         const { data } = event;
 
-        if (
-          data.type === "action_approved" &&
-          data.actionId === mcpAction.id &&
-          data.paramsHash === hash
-        ) {
+        if (data.type === "action_approved" && data.actionId === mcpAction.id) {
           status = "approved";
           break;
         } else if (
           data.type === "action_rejected" &&
-          data.actionId === mcpAction.id &&
-          data.paramsHash === hash
+          data.actionId === mcpAction.id
         ) {
           status = "rejected";
           break;

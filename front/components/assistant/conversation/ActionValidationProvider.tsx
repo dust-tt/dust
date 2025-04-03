@@ -1,4 +1,5 @@
 import {
+  Button,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -7,19 +8,18 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { createContext, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 import sanitizeHtml from "sanitize-html";
 
 import type { MCPActionType } from "@app/lib/actions/mcp";
 
 type ActionValidationContextType = {
-  showValidationDialog: (props: {
+  showValidationDialog: (validationRequest: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hash: string;
   }) => void;
 };
 
@@ -30,7 +30,6 @@ export type PendingValidationRequestType = {
   conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
-  hash: string;
 };
 
 export const ActionValidationContext =
@@ -43,29 +42,38 @@ function useValidationQueue() {
   const [currentValidation, setCurrentValidation] =
     useState<PendingValidationRequestType | null>(null);
 
-  const addToQueue = (props: PendingValidationRequestType) => {
-    setValidationQueue((prevQueue) => [...prevQueue, props]);
+  // Queue stores the pending validation requests
+  // The current validation request is the one being processed
+  // The queue does not stores the current validation request
+  const addToQueue = (validationRequest: PendingValidationRequestType) => {
+    setCurrentValidation((current) => {
+      if (current === null) {
+        return validationRequest;
+      }
+
+      setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
+      return current;
+    });
   };
 
-  const removeFromQueue = () => {
+  const takeNextFromQueue = () => {
     if (validationQueue.length > 0) {
       const nextValidation = validationQueue[0];
       const newQueue = validationQueue.slice(1);
       setValidationQueue(newQueue);
       setCurrentValidation(nextValidation);
+      return nextValidation;
+    } else {
+      setCurrentValidation(null);
+      return null;
     }
-  };
-
-  const clearCurrentValidation = () => {
-    setCurrentValidation(null);
   };
 
   return {
     validationQueue,
     currentValidation,
     addToQueue,
-    removeFromQueue,
-    clearCurrentValidation,
+    takeNextFromQueue,
   };
 }
 
@@ -74,17 +82,57 @@ export function ActionValidationProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const {
-    validationQueue,
-    currentValidation,
-    addToQueue,
-    removeFromQueue,
-    clearCurrentValidation,
-  } = useValidationQueue();
+  const { validationQueue, currentValidation, addToQueue, takeNextFromQueue } =
+    useValidationQueue();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const sendCurrentValidation = useCallback(
+    async (approved: boolean) => {
+      if (!currentValidation) {
+        return;
+      }
+
+      setErrorMessage(null);
+      setIsProcessing(true);
+
+      const response = await fetch(
+        `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            actionId: currentValidation.action.id,
+            approved,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        setErrorMessage(
+          `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
+        );
+        return;
+      }
+    },
+    [currentValidation]
+  );
+
+  const handleSubmit = useCallback(
+    async (approved: boolean) => {
+      void sendCurrentValidation(approved);
+      setIsProcessing(false);
+      const foundItem = takeNextFromQueue();
+      if (!foundItem) {
+        setIsDialogOpen(false);
+      }
+    },
+    [sendCurrentValidation, takeNextFromQueue]
+  );
 
   useEffect(() => {
     if (currentValidation) {
@@ -92,71 +140,14 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  useEffect(() => {
-    if (!isDialogOpen && currentValidation && !isProcessing) {
-      void handleSubmit(false);
-    }
-  }, [isDialogOpen]);
-
-  useEffect(() => {
-    if (
-      !isProcessing &&
-      validationQueue.length > 0 &&
-      !currentValidation &&
-      !isDialogOpen
-    ) {
-      removeFromQueue();
-      setErrorMessage(null);
-    }
-  }, [isProcessing, validationQueue, currentValidation, isDialogOpen]);
-
-  const sendCurrentValidation = async (approved: boolean) => {
-    if (!currentValidation) {
-      return;
-    }
-
-    setErrorMessage(null);
-    setIsProcessing(true);
-
-    const response = await fetch(
-      `/api/w/${currentValidation.workspaceId}/assistant/conversations/${currentValidation.conversationId}/messages/${currentValidation.messageId}/validate-action`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          actionId: currentValidation.action.id,
-          approved,
-          paramsHash: currentValidation.hash,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      setErrorMessage(
-        `Failed to ${approved ? "approve" : "reject"} action. Please try again.`
-      );
-      return;
-    }
-  };
-
-  const handleSubmit = async (approved: boolean) => {
-    void sendCurrentValidation(approved);
-    setIsProcessing(false);
-    setIsDialogOpen(false);
-    clearCurrentValidation();
-  };
-
-  const showValidationDialog = (props: {
+  const showValidationDialog = (validationRequest: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hash: string;
   }) => {
-    addToQueue(props);
+    addToQueue(validationRequest);
     setErrorMessage(null);
   };
 
@@ -168,7 +159,9 @@ export function ActionValidationProvider({
         open={isDialogOpen}
         onOpenChange={(open) => {
           if (open === false && !isProcessing) {
-            setIsDialogOpen(false);
+            if (currentValidation) {
+              void handleSubmit(false);
+            }
           }
         }}
       >
@@ -206,32 +199,34 @@ export function ActionValidationProvider({
               )}
             </div>
           </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Decline",
-              variant: "outline",
-              onClick: () => handleSubmit(false),
-              disabled: isProcessing,
-              children: isProcessing && (
+          <DialogFooter>
+            <Button
+              label="Decline"
+              variant="outline"
+              onClick={() => handleSubmit(false)}
+              disabled={isProcessing}
+            >
+              {isProcessing && (
                 <div className="flex items-center">
                   <span className="mr-2">Declining</span>
                   <Spinner size="xs" variant="dark" />
                 </div>
-              ),
-            }}
-            rightButtonProps={{
-              label: "Approve",
-              variant: "primary",
-              onClick: () => handleSubmit(true),
-              disabled: isProcessing,
-              children: isProcessing && (
+              )}
+            </Button>
+            <Button
+              label="Approve"
+              variant="primary"
+              onClick={() => handleSubmit(true)}
+              disabled={isProcessing}
+            >
+              {isProcessing && (
                 <div className="flex items-center">
                   <span className="mr-2">Approving</span>
                   <Spinner size="xs" variant="light" />
                 </div>
-              ),
-            }}
-          />
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </ActionValidationContext.Provider>

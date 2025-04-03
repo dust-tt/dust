@@ -27,8 +27,6 @@ export interface QuoteProps {
 interface CustomerStoriesSectionProps {
   title?: string;
   stories: CustomerStory[];
-  fromColor?: string;
-  toColor?: string;
 }
 
 export const defaultCustomerStories: CustomerStory[] = [
@@ -58,17 +56,13 @@ export const defaultCustomerStories: CustomerStory[] = [
 export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
   title = "Customer stories",
   stories = defaultCustomerStories,
-  fromColor = "from-sky-200",
-  toColor = "to-sky-500",
 }) => (
   <Grid gap="gap-8">
-    <div className="col-span-11 sm:col-span-12">
+    <div className="col-span-11 mt-16 sm:col-span-12">
       <Carousel className="w-full">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between">
           <div>
-            <H2 from={fromColor} to={toColor}>
-              {title}
-            </H2>
+            <H2>{title}</H2>
           </div>
           <div className="flex gap-4">
             <CarouselPrevious />
@@ -76,16 +70,17 @@ export const CustomerStoriesSection: FC<CustomerStoriesSectionProps> = ({
           </div>
         </div>
 
-        <CarouselContent>
+        <CarouselContent className="-ml-8">
           {stories.map((story, index) => (
             <CarouselItem
               key={index}
-              className="basis-full md:basis-1/2 lg:basis-1/3"
+              className="basis-full pl-8 md:basis-1/2 lg:basis-1/3"
             >
               <BlogBlock
                 title={story.title}
                 content={story.content}
                 href={story.href}
+                className="h-full"
               >
                 <img src={story.src} alt={story.title} />
               </BlogBlock>
