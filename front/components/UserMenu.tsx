@@ -1,8 +1,6 @@
 import {
   Avatar,
-  BookOpenIcon,
   ChevronDownIcon,
-  CloudArrowLeftRightIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,7 +11,6 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
   Icon,
   LightbulbIcon,
   LightModeIcon,
