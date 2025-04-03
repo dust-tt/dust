@@ -245,34 +245,33 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: conversation.owner.sId,
     });
 
+    const actionBaseParams = {
+      agentMessageId: agentMessage.agentMessageId,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      generatedFiles: [],
+      mcpServerConfigurationId: `${actionConfiguration.id}`,
+      params: rawInputs,
+      step,
+    };
+
     // Create the action object in the database and yield an event for
     // the generation of the params. We store the action here as the params have been generated, if
     // an error occurs later on, the error will be stored on the parent agent message.
     const action = await AgentMCPAction.create({
-      mcpServerConfigurationId: `${actionConfiguration.id}`,
-      params: rawInputs,
-      functionCallId,
-      functionCallName: actionConfiguration.name,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
+      ...actionBaseParams,
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
     });
 
     const mcpAction = new MCPActionType({
-      id: action.id,
-      params: rawInputs,
-      output: null,
-      functionCallId,
-      functionCallName: actionConfiguration.name,
-      agentMessageId: agentMessage.agentMessageId,
-      step,
-      mcpServerConfigurationId: `${actionConfiguration.id}`,
+      ...actionBaseParams,
       executionState: "pending",
+      id: action.id,
       isError: false,
+      output: null,
       type: "tool_action",
-      generatedFiles: [],
     });
 
     yield {
@@ -327,25 +326,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           action: new MCPActionType({
+            ...actionBaseParams,
+            executionState: "denied",
             id: action.id,
-            params: rawInputs,
+            isError: false,
             output: [
               {
                 type: "text",
                 text:
-                  "The action validation timed out. Using this action is hence forbidden for" +
-                  "this message.",
+                  "The action validation timed out. " +
+                  "Using this action is hence forbidden for this message.",
               },
             ],
-            functionCallId,
-            functionCallName: actionConfiguration.name,
-            agentMessageId: agentMessage.agentMessageId,
-            step,
-            mcpServerConfigurationId: `${actionConfiguration.id}`,
-            executionState: "denied",
-            isError: false,
             type: "tool_action",
-            generatedFiles: [],
           }),
         };
         return;
@@ -361,25 +354,19 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
           configurationId: agentConfiguration.sId,
           messageId: agentMessage.sId,
           action: new MCPActionType({
+            ...actionBaseParams,
+            executionState: "denied",
             id: action.id,
-            params: rawInputs,
+            isError: false,
             output: [
               {
                 type: "text",
                 text:
-                  "The user rejected this specific action execution. Using this action is hence" +
-                  "forbidden for this message.",
+                  "The user rejected this specific action execution. " +
+                  "Using this action is hence forbidden for this message.",
               },
             ],
-            functionCallId,
-            functionCallName: actionConfiguration.name,
-            agentMessageId: agentMessage.agentMessageId,
-            step,
-            mcpServerConfigurationId: `${actionConfiguration.id}`,
-            executionState: "denied",
-            isError: false,
             type: "tool_action",
-            generatedFiles: [],
           }),
         };
         return;
@@ -454,18 +441,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
       action: new MCPActionType({
-        id: action.id,
-        params: rawInputs,
-        output: content,
-        functionCallId,
-        functionCallName: actionConfiguration.name,
-        agentMessageId: agentMessage.agentMessageId,
-        step,
-        mcpServerConfigurationId: `${actionConfiguration.id}`,
+        ...actionBaseParams,
         executionState: "allowed_explicitely",
+        id: action.id,
         isError: false,
+        output: content,
         type: "tool_action",
-        generatedFiles: [],
       }),
     };
   }
