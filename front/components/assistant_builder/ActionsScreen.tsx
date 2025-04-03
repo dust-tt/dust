@@ -74,7 +74,6 @@ import { isLegacyAssistantBuilderConfiguration } from "@app/components/assistant
 import type {
   AssistantBuilderActionConfiguration,
   AssistantBuilderActionConfigurationWithId,
-  AssistantBuilderMCPServerConfiguration,
   AssistantBuilderPendingAction,
   AssistantBuilderProcessConfiguration,
   AssistantBuilderReasoningConfiguration,
@@ -186,7 +185,7 @@ export default function ActionsScreen({
   enableReasoningTool,
   reasoningModels,
 }: ActionScreenProps) {
-  const { spaces } = useContext(AssistantBuilderContext);
+  const { spaces, mcpServerViews } = useContext(AssistantBuilderContext);
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -238,6 +237,13 @@ export default function ActionsScreen({
               addActionToSpace(config.dataSourceView.spaceId);
             });
           }
+          if (action.configuration.mcpServerViewId) {
+            addActionToSpace(
+              mcpServerViews.find(
+                (v) => v.id === action.configuration.mcpServerViewId
+              )?.spaceId
+            );
+          }
           break;
 
         case "WEB_NAVIGATION":
@@ -249,7 +255,7 @@ export default function ActionsScreen({
       }
       return acc;
     }, {});
-  }, [configurableActions]);
+  }, [configurableActions, mcpServerViews]);
 
   const nonGlobalSpacessUsedInActions = useMemo(() => {
     const nonGlobalSpaces = spaces.filter((s) => s.kind !== "global");
@@ -366,12 +372,12 @@ export default function ActionsScreen({
         setEdited={setEdited}
       />
 
-      <div className="flex flex-col gap-8 text-sm text-element-700">
+      <div className="flex flex-col gap-8 text-sm text-muted-foreground dark:text-muted-foreground-night">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Page.Header title="Tools & Data sources" />
             <Page.P>
-              <span className="text-sm text-element-700">
+              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Configure the tools that your agent is able to use, such as{" "}
                 <span className="font-bold">searching</span> in your Data
                 Sources or <span className="font-bold">navigating</span> the
@@ -609,7 +615,7 @@ function NewActionModal({
 
   const descriptionValid = (newAction?.description?.trim() ?? "").length > 0;
 
-  const onCloseLocal = () => {
+  const onCloseLocal = useCallback(() => {
     onClose();
     setTimeout(() => {
       setNewAction(null);
@@ -617,32 +623,63 @@ function NewActionModal({
       setShowInvalidActionDescError(null);
       setShowInvalidActionError(null);
     }, 500);
-  };
+  }, [onClose]);
 
-  const onModalSave = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (
-      newAction &&
-      !titleError &&
-      descriptionValid &&
-      !hasActionError(newAction)
-    ) {
-      newAction.name = newAction.name.trim();
-      newAction.description = newAction.description.trim();
-      onSave(newAction);
-      onCloseLocal();
-    } else {
-      if (titleError) {
-        setShowInvalidActionNameError(titleError);
+  const onModalSave = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      if (
+        newAction &&
+        !titleError &&
+        descriptionValid &&
+        !hasActionError(newAction)
+      ) {
+        newAction.name = newAction.name.trim();
+        newAction.description = newAction.description.trim();
+        onSave(newAction);
+        onCloseLocal();
+      } else {
+        if (titleError) {
+          setShowInvalidActionNameError(titleError);
+        }
+        if (!descriptionValid) {
+          setShowInvalidActionDescError("Description cannot be empty.");
+        }
+        if (newAction) {
+          setShowInvalidActionError(hasActionError(newAction));
+        }
       }
-      if (!descriptionValid) {
-        setShowInvalidActionDescError("Description cannot be empty.");
-      }
-      if (newAction) {
-        setShowInvalidActionError(hasActionError(newAction));
-      }
-    }
-  };
+    },
+    [newAction, onCloseLocal, onSave, titleError, descriptionValid]
+  );
+
+  const updateAction = useCallback(
+    ({
+      actionName,
+      actionDescription,
+      getNewActionConfig,
+    }: {
+      actionName: string;
+      actionDescription: string;
+      getNewActionConfig: (
+        old: AssistantBuilderActionConfiguration["configuration"]
+      ) => AssistantBuilderActionConfiguration["configuration"];
+    }) => {
+      setNewAction((prev) => {
+        if (!prev) {
+          return null;
+        }
+        return {
+          ...prev,
+          configuration: getNewActionConfig(prev.configuration) as any,
+          description: actionDescription,
+          name: actionName,
+        };
+      });
+      setShowInvalidActionError(null);
+    },
+    []
+  );
 
   return (
     <Sheet
@@ -666,21 +703,7 @@ function NewActionModal({
               <ActionEditor
                 action={newAction}
                 spacesUsedInActions={spacesUsedInActions}
-                updateAction={({
-                  actionName,
-                  actionDescription,
-                  getNewActionConfig,
-                }) => {
-                  setNewAction({
-                    ...newAction,
-                    configuration: getNewActionConfig(
-                      newAction.configuration
-                    ) as any,
-                    description: actionDescription,
-                    name: actionName,
-                  });
-                  setShowInvalidActionError(null);
-                }}
+                updateAction={updateAction}
                 owner={owner}
                 setEdited={setEdited}
                 builderState={builderState}
@@ -879,16 +902,9 @@ function ActionConfigEditor({
       return (
         <ActionMCP
           owner={owner}
-          actionConfiguration={action.configuration}
+          action={action}
           allowedSpaces={allowedSpaces}
-          updateAction={(setNewAction) => {
-            updateAction({
-              actionName: action.name,
-              actionDescription: action.description,
-              getNewActionConfig: (old) =>
-                setNewAction(old as AssistantBuilderMCPServerConfiguration),
-            });
-          }}
+          updateAction={updateAction}
           setEdited={setEdited}
         />
       );
@@ -1003,7 +1019,7 @@ function ActionEditor({
               content={
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col items-end gap-2">
-                    <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+                    <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                       Name of the tool
                     </div>
                   </div>
@@ -1061,17 +1077,17 @@ function ActionEditor({
         <div className="flex flex-col gap-4 pt-8">
           {isDataSourceAction ? (
             <div className="flex flex-col gap-2">
-              <div className="font-semibold text-element-800 dark:text-element-800-night">
+              <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                 What's the data?
               </div>
-              <div className="text-sm text-element-600">
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Provide a brief description (maximum 800 characters) of the data
                 content and context to help the agent determine when to utilize
                 it effectively.
               </div>
             </div>
           ) : (
-            <div className="font-semibold text-element-800 dark:text-element-800-night">
+            <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
               What is this tool about?
             </div>
           )}
@@ -1140,10 +1156,10 @@ function AdvancedSettings({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col items-start justify-start">
-              <div className="w-full grow text-sm font-bold text-element-800 dark:text-element-800-night">
+              <div className="w-full grow text-sm font-bold text-muted-foreground dark:text-muted-foreground-night">
                 Max steps per run
               </div>
-              <div className="w-full grow text-sm text-element-600 dark:text-element-600-night">
+              <div className="w-full grow text-sm text-muted-foreground dark:text-muted-foreground-night">
                 up to {MAX_STEPS_USE_PER_RUN_LIMIT}
               </div>
             </div>
@@ -1168,7 +1184,7 @@ function AdvancedSettings({
             />
             {(reasoningModels?.length ?? 0) > 1 && setReasoningModel && (
               <div className="flex flex-col gap-2">
-                <div className="font-semibold text-element-800 dark:text-element-800-night">
+                <div className="font-semibold text-muted-foreground dark:text-muted-foreground-night">
                   Reasoning model
                 </div>
                 <DropdownMenu>
@@ -1308,7 +1324,7 @@ function Capabilities({
           <div className="flex text-sm font-semibold text-foreground dark:text-foreground-night">
             {name}
           </div>
-          <div className="text-sm text-element-700">{description}</div>
+          <div className="text-sm text-muted-foreground">{description}</div>
         </div>
       </div>
     );

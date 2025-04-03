@@ -258,7 +258,7 @@ export default function Database({
               }}
               padding={3}
               minHeight={80}
-              className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
               style={{
                 fontSize: 13,
                 fontFamily:

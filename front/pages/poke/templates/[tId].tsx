@@ -388,7 +388,7 @@ function SelectField({
                 </PokeSelectTrigger>
               </PokeFormControl>
               <PokeSelectContent>
-                <div className="bg-slate-100 dark:bg-slate-100-night">
+                <div className="bg-muted-background dark:bg-muted-background-night">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
                       {option.display ?? option.value}
@@ -426,7 +426,7 @@ function PreviewDialog({ form }: { form: any }) {
       <DialogTrigger asChild>
         <Button variant="secondary" label="✨ Preview Template Card" />
       </DialogTrigger>
-      <DialogContent className="bg-structure-50 dark:bg-structure-50-night dark:text-white sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 dark:bg-primary-50-night dark:text-white sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Preview</DialogTitle>
         </DialogHeader>
@@ -576,8 +576,8 @@ function TemplatesPage({
 
   if (isSubmitting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-structure-50 dark:bg-structure-50-night">
-        <div className="text-structure-900">Creating/Updating template...</div>
+      <div className="flex min-h-screen items-center justify-center bg-primary-50 dark:bg-primary-50-night">
+        <div className="text-primary-900">Creating/Updating template...</div>
       </div>
     );
   }
@@ -624,7 +624,7 @@ function TemplatesPage({
                       }}
                       labelledBy="Select"
                       hasSelectAll={false}
-                      className="dark:bg-structure-50-night dark:text-white [&_.dropdown-content]:dark:bg-structure-50-night [&_.dropdown-content]:dark:text-white [&_.dropdown-heading]:dark:bg-structure-50-night [&_.dropdown-heading]:dark:text-white [&_.select-item]:hover:bg-structure-100 [&_.select-item]:dark:hover:bg-structure-100-night [&_.select-panel]:dark:bg-structure-50-night [&_.select-panel]:dark:text-white"
+                      className="dark:bg-primary-50-night dark:text-white [&_.dropdown-content]:dark:bg-primary-50-night [&_.dropdown-content]:dark:text-white [&_.dropdown-heading]:dark:bg-primary-50-night [&_.dropdown-heading]:dark:text-white [&_.select-item]:hover:bg-primary-100 [&_.select-item]:dark:hover:bg-primary-100-night [&_.select-panel]:dark:bg-primary-50-night [&_.select-panel]:dark:text-white"
                       ItemRenderer={({
                         checked,
                         option,

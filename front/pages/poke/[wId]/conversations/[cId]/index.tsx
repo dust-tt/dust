@@ -65,7 +65,7 @@ export const getServerSideProps = withSuperUserAuthRequirements<{
 
 const UserMessageView = ({ message }: { message: UserMessageType }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
+    <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
       {message.user && (
         <div className="font-bold">
           [user] @{message.user.username} (fullName={message.user.fullName}{" "}
@@ -73,7 +73,9 @@ const UserMessageView = ({ message }: { message: UserMessageType }) => {
           {message.user.email})
         </div>
       )}
-      <div className="text-element-600">version={message.version}</div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        version={message.version}
+      </div>
       <div>{message.content}</div>
     </div>
   );
@@ -89,20 +91,20 @@ const AgentMessageView = ({
   workspaceId: string;
 }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
+    <div className="ml-4 pt-2 text-sm text-muted-foreground">
       <div className="font-bold">
         [agent] @{message.configuration.name} {"(sId="}
         <a
           href={`/poke/${workspaceId}/assistants/${message.configuration.sId}`}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           {message.configuration.sId}
         </a>
         {")"}
       </div>
 
-      <div className="text-element-600">
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
         version={message.version}
         {message.runIds && (
           <>
@@ -112,7 +114,7 @@ const AgentMessageView = ({
                 key={`runId-${i}`}
                 href={`/w/${multiActionsApp.app.workspaceId}/spaces/${multiActionsApp.app.appSpaceId}/apps/${multiActionsApp.app.appId}/runs/${runId}`}
                 target="_blank"
-                className="text-action-500"
+                className="text-highlight-500"
               >
                 {runId.substring(0, 8)}{" "}
               </a>
@@ -122,7 +124,10 @@ const AgentMessageView = ({
       </div>
       {message.actions.map((a, i) => {
         return (
-          <div key={`action-${i}`} className="pl-2 text-element-600">
+          <div
+            key={`action-${i}`}
+            className="pl-2 text-muted-foreground dark:text-muted-foreground-night"
+          >
             action: step={a.step} type={a.type}{" "}
             {a.runId && (
               <>
@@ -131,7 +136,7 @@ const AgentMessageView = ({
                   key={`runId-${i}`}
                   href={`/w/${a.appWorkspaceId}/spaces/${a.appSpaceId}/apps/${a.appId}/runs/${a.runId}`}
                   target="_blank"
-                  className="text-action-500"
+                  className="text-highlight-500"
                 >
                   {a.runId.substring(0, 8)}{" "}
                 </a>
@@ -150,15 +155,19 @@ const AgentMessageView = ({
 
 const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
   return (
-    <div className="ml-4 pt-2 text-sm text-element-700">
+    <div className="ml-4 pt-2 text-sm text-muted-foreground">
       <div className="font-bold">[content_fragment] {message.title}</div>
-      <div className="text-element-600">version={message.version}</div>
-      <div className="text-element-600">textBytes={message.textBytes}</div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        version={message.version}
+      </div>
+      <div className="text-muted-foreground dark:text-muted-foreground-night">
+        textBytes={message.textBytes}
+      </div>
       {message.sourceUrl && (
         <a
           href={message.sourceUrl ?? ""}
           target="_blank"
-          className="text-action-500"
+          className="text-highlight-500"
         >
           [sourceUrl]
         </a>
@@ -166,7 +175,7 @@ const ContentFragmentView = ({ message }: { message: ContentFragmentType }) => {
       <a
         href={message.textUrl ?? ""}
         target="_blank"
-        className="text-action-500"
+        className="text-highlight-500"
       >
         [textUrl]
       </a>
@@ -189,7 +198,7 @@ const ConversationPage = ({
         <div className="max-w-4xl">
           <h3 className="text-xl font-bold">
             Conversation of workspace:{" "}
-            <a href={`/poke/${workspaceId}`} className="text-action-500">
+            <a href={`/poke/${workspaceId}`} className="text-highlight-500">
               {workspace.name}
             </a>
           </h3>

@@ -14,7 +14,7 @@ export function makeColumnsForTrackers(
       cell: ({ row }) => (
         <Link
           href={`/poke/${owner.sId}/trackers/${row.original.sId}`}
-          className="text-action-500 hover:text-action-300"
+          className="text-highlight-500 hover:text-highlight-300"
         >
           {row.original.name}
         </Link>

@@ -368,7 +368,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             Created {key.creator ? `by ${key.creator} ` : ""}
@@ -380,7 +380,7 @@ export function APIKeys({
                           <p
                             className={classNames(
                               "front-normal text-xs",
-                              "text-element-700 dark:text-element-700-night"
+                              "text-muted-foreground dark:text-muted-foreground-night"
                             )}
                           >
                             {key.lastUsedAt ? (

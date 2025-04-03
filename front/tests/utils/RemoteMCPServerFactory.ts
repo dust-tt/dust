@@ -13,7 +13,6 @@ export class RemoteMCPServerFactory {
       url?: string;
       description?: string;
       tools?: MCPToolType[];
-      sharedSecret?: string;
     } = {}
   ) {
     const name = options.name || "Test Server";
@@ -22,9 +21,6 @@ export class RemoteMCPServerFactory {
     const tools: MCPToolType[] = options.tools || [
       { name: "tool", description: "Tool description", inputSchema: undefined },
     ];
-    const sharedSecret =
-      options.sharedSecret || `secret-${faker.string.alphanumeric(8)}`;
-
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     return RemoteMCPServerResource.makeNew(auth, {
@@ -33,8 +29,6 @@ export class RemoteMCPServerFactory {
       url,
       description,
       cachedTools: tools,
-      lastSyncAt: new Date(),
-      sharedSecret,
     });
   }
 }

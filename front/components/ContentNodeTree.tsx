@@ -365,7 +365,7 @@ function ContentNodeTreeChildren({
       )}
       <div className="overflow-y-auto p-1">
         {isRoundedBackground ? (
-          <div className="rounded-xl border bg-structure-50 p-4 dark:bg-structure-50-night">
+          <div className="rounded-xl border bg-muted-background p-4 dark:bg-muted-background-night">
             {tree}
           </div>
         ) : (

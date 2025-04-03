@@ -1,4 +1,5 @@
 import assert from "assert";
+import { randomBytes } from "crypto";
 import type {
   Attributes,
   CreationAttributes,
@@ -6,6 +7,11 @@ import type {
   Transaction,
 } from "sequelize";
 
+import {
+  DEFAULT_MCP_ACTION_DESCRIPTION,
+  DEFAULT_MCP_ACTION_ICON,
+  DEFAULT_MCP_ACTION_VERSION,
+} from "@app/lib/actions/constants";
 import type { MCPServerType, MCPToolType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
@@ -35,7 +41,10 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<RemoteMCPServer>, "spaceId" | "sId">,
+    blob: Omit<
+      CreationAttributes<RemoteMCPServer>,
+      "spaceId" | "sId" | "sharedSecret" | "lastSyncAt"
+    >,
     transaction?: Transaction
   ) {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -45,7 +54,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
       "The user is not authorized to create an MCP server"
     );
 
-    const server = await RemoteMCPServer.create(blob, { transaction });
+    const sharedSecret = randomBytes(32).toString("hex");
+
+    const server = await RemoteMCPServer.create(
+      { ...blob, sharedSecret, lastSyncAt: new Date() },
+      { transaction }
+    );
 
     // Immediately create a view for the server in the system space.
     await MCPServerView.create(
@@ -218,11 +232,12 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
     return {
       id: this.sId,
       name: this.name,
-      description: this.description || "",
+      description: this.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
       tools: this.cachedTools,
-      // TODO(mcp) remove this once we have a real version & icon
-      version: "0.0.1",
-      icon: "rocket",
+      // TODO(mcp) for @adrsimon remove this once we have a real version & icon & authorization cached
+      version: DEFAULT_MCP_ACTION_VERSION,
+      icon: DEFAULT_MCP_ACTION_ICON,
+      authorization: null,
 
       // Remote MCP Server specifics
       url: this.url,

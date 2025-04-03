@@ -76,7 +76,7 @@ export function GithubCodeEnableView({
         }
       >
         <ContextItem.Description>
-          <div className="text-element-700">
+          <div className="text-muted-foreground dark:text-muted-foreground-night">
             Your GitHub repositories code is synced with Dust every 8h.
           </div>
         </ContextItem.Description>

@@ -10,11 +10,11 @@ import { Op } from "sequelize";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { isValidInternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
-import { getMCPServerMetadataLocally } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -35,6 +35,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   static model: ModelStatic<MCPServerView> = MCPServerView;
   readonly editedByUser?: Attributes<UserModel>;
 
+  private remoteMCPServer?: RemoteMCPServerResource;
+  private internalMCPServer?: InternalMCPServerInMemoryResource;
+
   constructor(
     model: ModelStatic<MCPServerView>,
     blob: Attributes<MCPServerView>,
@@ -45,6 +48,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
 
     this.editedByUser = editedByUser;
   }
+
+  private async init(auth: Authenticator) {
+    this.remoteMCPServer =
+      (this.remoteMCPServerId &&
+        (await RemoteMCPServerResource.findByPk(
+          auth,
+          this.remoteMCPServerId
+        ))) ||
+      undefined;
+    this.internalMCPServer =
+      (this.internalMCPServerId &&
+        (await InternalMCPServerInMemoryResource.fetchById(
+          auth,
+          this.internalMCPServerId
+        ))) ||
+      undefined;
+  }
+
   private static async makeNew(
     auth: Authenticator,
     blob: Omit<
@@ -74,7 +95,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       },
       { transaction }
     );
-    return new this(MCPServerViewResource.model, server.get(), space);
+
+    const res = new this(MCPServerViewResource.model, server.get(), space);
+
+    await res.init(auth);
+
+    return res;
   }
 
   public static async create(
@@ -120,6 +146,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       ],
     });
 
+    for (const view of views) {
+      await view.init(auth);
+    }
     return views;
   }
 
@@ -197,11 +226,36 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return this.baseFetch(auth);
   }
 
+  static async listBySpaces(auth: Authenticator, spaces: SpaceResource[]) {
+    return this.baseFetch(auth, {
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        vaultId: spaces.map((s) => s.id),
+      },
+    });
+  }
+
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource
   ): Promise<MCPServerViewResource[]> {
-    return this.baseFetch(auth, { where: { vaultId: space.id } });
+    return this.listBySpaces(auth, [space]);
+  }
+
+  static async listByMCPServer(
+    auth: Authenticator,
+    mcpServerId: string
+  ): Promise<MCPServerViewResource[]> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+    if (serverType === "internal") {
+      return this.baseFetch(auth, {
+        where: { serverType: "internal", internalMCPServerId: mcpServerId },
+      });
+    } else {
+      return this.baseFetch(auth, {
+        where: { serverType: "remote", remoteMCPServerId: id },
+      });
+    }
   }
 
   // Deletion.
@@ -254,9 +308,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
     return new Ok(deletedCount);
   }
 
-  async getRemoteMCPServer(
-    auth: Authenticator
-  ): Promise<RemoteMCPServerResource> {
+  getRemoteMCPServer(): RemoteMCPServerResource {
     if (this.serverType !== "remote") {
       throw new Error("This MCP server view is not a remote server view");
     }
@@ -265,17 +317,31 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
       throw new Error("This MCP server view is missing a remote server ID");
     }
 
-    const remoteMCPServer = await RemoteMCPServerResource.findByPk(
-      auth,
-      this.remoteMCPServerId
-    );
-    if (!remoteMCPServer) {
+    if (!this.remoteMCPServer) {
       throw new Error(
         "This MCP server view is referencing a non-existent remote server"
       );
     }
 
-    return remoteMCPServer;
+    return this.remoteMCPServer;
+  }
+
+  getInternalMCPServer(): InternalMCPServerInMemoryResource {
+    if (this.serverType !== "internal") {
+      throw new Error("This MCP server view is not an internal server view");
+    }
+
+    if (!this.internalMCPServerId) {
+      throw new Error("This MCP server view is missing an internal server ID");
+    }
+
+    if (!this.internalMCPServer) {
+      throw new Error(
+        "This MCP server view is referencing a non-existent internal server"
+      );
+    }
+
+    return this.internalMCPServer;
   }
 
   get sId(): string {
@@ -322,24 +388,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerView> {
   }
 
   // Serialization.
-  async toJSON(auth: Authenticator): Promise<MCPServerViewType> {
-    const server = await getMCPServerMetadataLocally(auth, {
-      mcpServerId: this.mcpServerId,
-    });
+  toJSON(): MCPServerViewType {
     return {
       id: this.sId,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
+      createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
       spaceId: this.space.sId,
-      server,
+      server:
+        this.serverType === "remote"
+          ? this.getRemoteMCPServer().toJSON()
+          : this.getInternalMCPServer().toJSON(),
     };
   }
 }
 
 export interface MCPServerViewType {
   id: string;
-  createdAt: Date;
-  updatedAt: Date;
-  spaceId: string | null;
+  createdAt: number;
+  updatedAt: number;
+  spaceId: string;
   server: MCPServerType;
 }

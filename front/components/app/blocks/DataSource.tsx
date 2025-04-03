@@ -264,7 +264,7 @@ export default function DataSource({
                 onChange={(e) => handleQueryChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                 style={{
                   fontSize: 13,
                   fontFamily:
@@ -291,7 +291,7 @@ export default function DataSource({
                     onChange={(e) => handleFilterCodeChange(e.target.value)}
                     padding={15}
                     minHeight={80}
-                    className="rounded-lg bg-slate-100 dark:bg-slate-100-night"
+                    className="rounded-lg bg-muted-background dark:bg-muted-background-night"
                     style={{
                       fontSize: 12,
                       fontFamily:

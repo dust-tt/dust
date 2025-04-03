@@ -136,7 +136,7 @@ export function PluginForm({ disabled, manifest, onSubmit }: PluginFormProps) {
                             </PokeSelectTrigger>
                           </PokeFormControl>
                           <PokeSelectContent>
-                            <div className="bg-slate-100 dark:bg-slate-100-night">
+                            <div className="bg-muted-background dark:bg-muted-background-night">
                               {arg.values.map((option) => (
                                 <PokeSelectItem key={option} value={option}>
                                   {option}

@@ -19,7 +19,6 @@ export const WHITELISTABLE_FEATURES = [
   "deepseek_r1_global_agent_feature",
   "salesforce_feature",
   "advanced_notion_management",
-  "attach_from_datasources",
   "force_gdrive_labels_scope",
   "claude_3_7_reasoning",
   "mcp_actions",

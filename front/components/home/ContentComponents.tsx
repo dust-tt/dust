@@ -96,8 +96,8 @@ export const Span = ({ children, className = "" }: ContentProps) => (
 
 const pClasses = {
   xxs: "font-objektiv text-xs text-muted-foreground md:text-sm leading-relaxed",
-  xs: "font-objektiv text-sm text-slate-400 md:text-base leading-relaxed",
-  sm: "font-objektiv text-base text-slate-400 md:text-lg leading-relaxed",
+  xs: "font-objektiv text-sm text-primary-400 md:text-base leading-relaxed",
+  sm: "font-objektiv text-base text-primary-400 md:text-lg leading-relaxed",
   md: "font-objektiv text-lg md:text-lg text-primary-400 lg:text-xl leading-relaxed",
   lg: "font-objektiv text-lg md:text-xl text-primary-400 lg:text-2xl drop-shadow leading-relaxed",
 };
@@ -142,9 +142,12 @@ export const P = ({
 };
 
 const aClasses = {
-  primary: "text-action-400 hover:text-action-400 active:text-action-600",
-  secondary: "text-slate-200 hover:text-slate-100 active:text-muted-foreground",
-  tertiary: "text-slate-400 hover:text-slate-100 active:text-muted-foreground",
+  primary:
+    "text-highlight-400 hover:text-highlight-400 active:text-highlight-600",
+  secondary:
+    "text-primary-200 hover:text-primary-100 active:text-muted-foreground",
+  tertiary:
+    "text-primary-400 hover:text-primary-100 active:text-muted-foreground",
 };
 
 interface AProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
