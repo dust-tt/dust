@@ -70,7 +70,9 @@ export function RemoteMCPServerDetails({
   mutateServers,
 }: RemoteMCPServerDetailsProps) {
   const sendNotification = useSendNotification();
-  const [serverState, setServerState] = useState<"idle" | "saving" | "synchronizing" | "synchronized">("idle");
+  const [serverState, setServerState] = useState<
+    "idle" | "saving" | "synchronizing" | "synchronized"
+  >("idle");
   const [sharedSecret, setSharedSecret] = useState<string | undefined>(
     undefined
   );
