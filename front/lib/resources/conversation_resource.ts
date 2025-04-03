@@ -4,7 +4,6 @@ import type {
   InferAttributes,
   ModelStatic,
   Transaction,
-  WhereOptions,
 } from "sequelize";
 import { literal, Op, Sequelize } from "sequelize";
 
@@ -116,16 +115,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAll(
     auth: Authenticator,
-    options?: FetchConversationOptions,
-    {
-      where,
-    }: {
-      where?: WhereOptions<
-        InferAttributes<ConversationModel, { omit: "workspaceId" }>
-      >;
-    } = {}
+    options?: FetchConversationOptions
   ): Promise<ConversationResource[]> {
     const workspace = auth.getNonNullableWorkspace();
+    const { where } = ConversationResource.getOptions(options);
     const conversations = await ConversationResource.model.findAll({
       where: {
         workspaceId: workspace.id,
