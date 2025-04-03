@@ -3,7 +3,7 @@ import { cva } from "class-variance-authority";
 import Link from "next/link";
 import React from "react";
 
-import { H3, P } from "@app/components/home/ContentComponents";
+import { H3 } from "@app/components/home/ContentComponents";
 
 interface FunctionCardProps {
   title: string;
