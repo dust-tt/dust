@@ -101,7 +101,7 @@ export type UnsavedMCPServerConfigurationType = Omit<
   MCPServerConfigurationType,
   "id" | "sId" | "dataSourceConfigurations"
 > & {
-  dataSources: DataSourceConfiguration[];
+  dataSources: DataSourceConfiguration[] | null;
 };
 /**
  * Type representing all action configuration types except MCP server configuration.
