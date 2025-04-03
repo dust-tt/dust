@@ -98,7 +98,6 @@ export function AttachmentCitation({
 
   return (
     <Tooltip
-      tooltipTriggerAsChild
       trigger={
         <Citation
           className={className}
