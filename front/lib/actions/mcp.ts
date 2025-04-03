@@ -235,10 +235,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveExecutionEvent,
     void
   > {
-    const owner = auth.workspace();
-    if (!owner) {
-      throw new Error("Unexpected unauthenticated call to `run`");
-    }
+    const owner = auth.getNonNullableWorkspace();
 
     const { actionConfiguration } = this;
 
