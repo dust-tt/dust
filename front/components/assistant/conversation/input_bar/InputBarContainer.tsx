@@ -25,7 +25,7 @@ import { InputBarAttachmentsPicker } from "@app/components/assistant/conversatio
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
-import { isNodeCandidate, isUrlCandidate } from "@app/lib/connectors";
+import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
@@ -152,6 +152,8 @@ const InputBarContainer = ({
       const nodes = nodesWithViews.filter(
         (node) =>
           isNodeCandidate(nodeOrUrlCandidate) ||
+          // For nodes whose lookup is done on URL, since search was done also
+          // on title, we ensure the match was on the URL.
           node.sourceUrl === nodeOrUrlCandidate?.url
       );
 
