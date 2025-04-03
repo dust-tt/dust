@@ -66,7 +66,7 @@ async function fetchAgentDataSourceConfiguration(
   return new Ok(agentDataSourceConfiguration);
 }
 
-const createServer = (): McpServer => {
+function createServer(): McpServer {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -107,6 +107,6 @@ const createServer = (): McpServer => {
   );
 
   return server;
-};
+}
 
 export default createServer;
