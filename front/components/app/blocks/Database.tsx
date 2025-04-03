@@ -152,7 +152,7 @@ export function TablesManager({
                 <Button
                   onClick={() => removeTable(index)}
                   className={classNames(
-                    "text-slate-400 dark:text-slate-400",
+                    "text-muted-foreground dark:text-muted-foreground-night",
                     "hover:text-muted-foreground dark:hover:text-muted-foreground"
                   )}
                   icon={XMarkIcon}

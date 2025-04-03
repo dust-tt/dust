@@ -126,7 +126,7 @@ export const NavigationSidebar = React.forwardRef<
                                     <div
                                       className={classNames(
                                         "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                        "text-slate-400 dark:text-slate-400-night"
+                                        "text-muted-foreground dark:text-muted-foreground-night"
                                       )}
                                     >
                                       {menu.subMenuLabel}

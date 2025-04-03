@@ -62,7 +62,7 @@ export function MobileNavigation() {
                       {item.title}
                     </MobileLink>
                   ) : (
-                    <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-slate-600 no-underline outline-none">
+                    <div className="block select-none py-2 text-xs font-medium uppercase leading-none text-primary-600 no-underline outline-none">
                       {item.title}
                     </div>
                   )}
@@ -79,7 +79,7 @@ export function MobileNavigation() {
                             {item.title}
                           </MobileLink>
                         ) : (
-                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-slate-600 no-underline outline-none">
+                          <div className="block select-none py-2 pt-4 text-xs font-medium uppercase leading-none text-primary-600 no-underline outline-none">
                             {item.title}
                           </div>
                         )}
