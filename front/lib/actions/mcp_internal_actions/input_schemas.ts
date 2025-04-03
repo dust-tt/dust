@@ -57,7 +57,6 @@ function generateConfiguredInput({
     case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE:
       return (
         actionConfiguration.dataSourceConfigurations?.map((config) => ({
-          // TODO: create a Resource for AgentDataSourceConfiguration and move the makeSId to a method in it.
           uri: `data_source_configuration://dust/w/${owner.sId}/data_source_configurations/${makeSId(
             "data_source_configuration",
             {
