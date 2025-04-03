@@ -15,14 +15,19 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useRef, useState } from "react";
 
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
+import type { DataSourceContentNode } from "@app/lib/api/search";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
+import {
+  useSpaces,
+  useSpacesSearchWithInfiniteScroll,
+} from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
@@ -32,6 +37,18 @@ interface InputBarAttachmentsPickerProps {
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   isLoading?: boolean;
   attachedNodes: DataSourceViewContentNode[];
+}
+
+const PAGE_SIZE = 25;
+
+function getUnfoldedNodes(resultNodes: DataSourceContentNode[]) {
+  return resultNodes.flatMap((node) => {
+    const { dataSourceViews, ...rest } = node;
+    return dataSourceViews.map((view) => ({
+      ...rest,
+      dataSourceView: view,
+    }));
+  });
 }
 
 export const InputBarAttachmentsPicker = ({
@@ -56,34 +73,31 @@ export const InputBarAttachmentsPicker = ({
   });
 
   const { spaces, isSpacesLoading } = useSpaces({ workspaceId: owner.sId });
-  const { searchResultNodes, isSearchLoading } = useSpacesSearch({
+
+  const {
+    searchResultNodes,
+    isSearchLoading,
+    isSearchValidating,
+    hasMore,
+    nextPage,
+  } = useSpacesSearchWithInfiniteScroll({
     includeDataSources: true,
     owner,
     search: searchQuery,
     viewType: "all",
+    pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
     spaceIds: spaces.map((s) => s.sId),
     searchSourceUrls: true,
   });
-
-  const attachedNodeIds = useMemo(() => {
-    return attachedNodes.map((node) => node.internalId);
-  }, [attachedNodes]);
 
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces.map((space) => [space.sId, space.name])),
     [spaces]
   );
 
-  const unfoldedNodes: DataSourceViewContentNode[] = useMemo(
-    () =>
-      searchResultNodes.flatMap((node) => {
-        const { dataSourceViews, ...rest } = node;
-        return dataSourceViews.map((view) => ({
-          ...rest,
-          dataSourceView: view,
-        }));
-      }),
+  const unfoldedNodes = useMemo(
+    () => getUnfoldedNodes(searchResultNodes),
     [searchResultNodes]
   );
 
@@ -92,6 +106,8 @@ export const InputBarAttachmentsPicker = ({
       element.focus();
     }
   };
+
+  const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
 
   return (
     <DropdownMenu
@@ -152,49 +168,54 @@ export const InputBarAttachmentsPicker = ({
             }
           }}
         />
-
         {searchQuery && (
           <>
             <DropdownMenuSeparator />
             <ScrollArea className="flex max-h-96 flex-col" hideScrollBar>
-              <div className="pt-0" ref={itemsContainerRef}>
-                {unfoldedNodes.length > 0 ? (
-                  unfoldedNodes.map((item, index) => (
-                    <DropdownMenuItem
-                      key={index}
-                      label={item.title}
-                      icon={() =>
-                        getVisualForDataSourceViewContentNode(item)({
-                          className: "min-w-4",
-                        })
-                      }
-                      extraIcon={getConnectorProviderLogoWithFallback({
-                        provider:
-                          item.dataSourceView.dataSource.connectorProvider,
-                      })}
-                      disabled={
-                        attachedNodeIds.includes(item.internalId) ||
-                        // TODO(attach-ds): remove this condition
-                        item.type === "folder"
-                      }
-                      description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
-                      onClick={() => {
-                        setSearch("");
-                        onNodeSelect(item);
-                        setIsOpen(false);
-                      }}
-                    />
-                  ))
-                ) : isSearchLoading || isDebouncing ? (
-                  <div className="flex justify-center py-4">
-                    <Spinner variant="dark" size="sm" />
-                  </div>
-                ) : (
-                  <div className="p-2 text-sm text-gray-500">
+              <div ref={itemsContainerRef}>
+                {unfoldedNodes.map((item, index) => (
+                  <DropdownMenuItem
+                    key={index}
+                    label={item.title}
+                    icon={() =>
+                      getVisualForDataSourceViewContentNode(item)({
+                        className: "min-w-4",
+                      })
+                    }
+                    extraIcon={getConnectorProviderLogoWithFallback({
+                      provider:
+                        item.dataSourceView.dataSource.connectorProvider,
+                    })}
+                    disabled={attachedNodes.some(
+                      (attachedNode) =>
+                        attachedNode.internalId === item.internalId &&
+                        attachedNode.dataSourceView.dataSource.sId ===
+                          item.dataSourceView.dataSource.sId
+                    )}
+                    description={`${spacesMap[item.dataSourceView.spaceId]} - ${getLocationForDataSourceViewContentNode(item)}`}
+                    onClick={() => {
+                      setSearch("");
+                      onNodeSelect(item);
+                      setIsOpen(false);
+                    }}
+                  />
+                ))}
+                {unfoldedNodes.length === 0 && !showLoader && (
+                  <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     No results found
                   </div>
                 )}
               </div>
+              <InfiniteScroll
+                nextPage={nextPage}
+                hasMore={hasMore}
+                showLoader={showLoader}
+                loader={
+                  <div className="flex justify-center py-4">
+                    <Spinner variant="dark" size="sm" />
+                  </div>
+                }
+              />
               <ScrollBar className="py-0" />
             </ScrollArea>
           </>

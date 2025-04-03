@@ -8,7 +8,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
@@ -132,24 +132,19 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
 
   static async findByMCPServer({
     auth,
-    remoteMCPServerId,
-    internalMCPServerId,
-  }:
-    | {
-        auth: Authenticator;
-        internalMCPServerId: undefined;
-        remoteMCPServerId: ModelId;
-      }
-    | {
-        auth: Authenticator;
-        internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
-        remoteMCPServerId: undefined;
-      }): Promise<Result<MCPServerConnectionResource, DustError>> {
+    mcpServerId,
+  }: {
+    auth: Authenticator;
+    mcpServerId: string;
+  }): Promise<Result<MCPServerConnectionResource, DustError>> {
+    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
+
     const connections = await this.baseFetch(auth, {
       where: {
-        ...(remoteMCPServerId
-          ? { remoteMCPServerId, serverType: "remote" }
-          : { internalMCPServerId, serverType: "internal" }),
+        serverType,
+        ...(serverType === "remote"
+          ? { remoteMCPServerId: id }
+          : { internalMCPServerId: mcpServerId }),
       },
     });
 

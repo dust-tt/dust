@@ -132,14 +132,7 @@ const ReasoningActionConfigurationSchema = t.type({
 
 const MCPServerActionConfigurationSchema = t.type({
   type: t.literal("mcp_server_configuration"),
-  serverType: t.union([t.literal("internal"), t.literal("remote")]),
-  internalMCPServerId: t.union([
-    // TODO(mcp): find a correct way to reuse AVAILABLE_INTERNAL_MCPSERVER_IDS here.
-    t.literal("helloworld"),
-    t.literal("data-source-utils"),
-    t.null,
-  ]),
-  remoteMCPServerId: t.union([t.string, t.null]),
+  mcpServerViewId: t.string,
 
   dataSources: t.union([
     t.null,
@@ -218,6 +211,7 @@ const ModelConfigurationSchema = t.intersection([
   t.partial({
     reasoningEffort: ReasoningEffortCodec,
   }),
+  t.partial({ responseFormat: t.string }),
 ]);
 const IsSupportedModelSchema = new t.Type<SupportedModel>(
   "SupportedModel",

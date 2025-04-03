@@ -44,6 +44,16 @@ const NotificationExample = () => {
         }
         label="Show Error"
       />
+      <Button
+        onClick={() =>
+          sendNotification({
+            title: "Info",
+            description: "Some information",
+            type: "info",
+          })
+        }
+        label="Show Info"
+      />
     </div>
   );
 };

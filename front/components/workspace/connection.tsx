@@ -198,11 +198,11 @@ export function EnterpriseConnectionDetails({
         <Popup
           show={showNoVerifiedDomainPopup}
           chipLabel="Domain Verification Required"
-          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at team@dust.tt for assistance."
+          description="Single Sign-On (SSO) is not available because your domain isn't verified yet. Contact us at support@dust.tt for assistance."
           buttonLabel="Get Help"
           buttonClick={() => {
             window.location.href =
-              "mailto:team@dust.tt?subject=Help with Domain Verification for SSO";
+              "mailto:support@dust.tt?subject=Help with Domain Verification for SSO";
           }}
           className="absolute bottom-8 right-8"
           onClose={() => setShowNoVerifiedDomainPopup(false)}
@@ -227,7 +227,7 @@ function PlatformHelpLink({
       : "https://learn.microsoft.com/en-us/entra/identity-platform/";
 
   return (
-    <div className="flex flex-row items-center space-x-2 text-element-700">
+    <div className="flex flex-row items-center space-x-2 text-muted-foreground dark:text-muted-foreground-night">
       <span>{hint}</span>
       <IconButton
         icon={ExternalLinkIcon}

@@ -1,16 +1,13 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
-import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
+import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessage } from "@app/lib/models/assistant/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { assertNever } from "@app/types";
 
 export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPServerConfiguration> {
   declare createdAt: CreationOptional<Date>;
@@ -20,13 +17,7 @@ export class AgentMCPServerConfiguration extends WorkspaceAwareModel<AgentMCPSer
 
   declare sId: string;
 
-  declare serverType: "internal" | "remote";
-
-  declare internalMCPServerId:
-    | MCPServerConfigurationType["internalMCPServerId"]
-    | null;
-
-  declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
+  declare mcpServerViewId: ForeignKey<MCPServerView["id"]>;
 }
 
 AgentMCPServerConfiguration.init(
@@ -45,25 +36,11 @@ AgentMCPServerConfiguration.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    serverType: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        isIn: [["internal", "remote"]],
-      },
-    },
-    internalMCPServerId: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      validate: {
-        isIn: [AVAILABLE_INTERNAL_MCPSERVER_IDS],
-      },
-    },
-    remoteMCPServerId: {
+    mcpServerViewId: {
       type: DataTypes.BIGINT,
-      allowNull: true,
+      allowNull: false,
       references: {
-        model: RemoteMCPServer,
+        model: MCPServerView,
         key: "id",
       },
     },
@@ -82,38 +59,6 @@ AgentMCPServerConfiguration.init(
         concurrently: true,
       },
     ],
-    hooks: {
-      beforeValidate: (config: AgentMCPServerConfiguration) => {
-        switch (config.serverType) {
-          case "internal":
-            if (!config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is required for serverType internal"
-              );
-            }
-            if (config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is not allowed for serverType internal"
-              );
-            }
-            break;
-          case "remote":
-            if (!config.remoteMCPServerId) {
-              throw new Error(
-                "remoteMCPServerId is required for serverType remote"
-              );
-            }
-            if (config.internalMCPServerId) {
-              throw new Error(
-                "internalMCPServerId is not allowed for serverType remote"
-              );
-            }
-            break;
-          default:
-            assertNever(config.serverType);
-        }
-      },
-    },
   }
 );
 
@@ -124,22 +69,18 @@ AgentMCPServerConfiguration.belongsTo(AgentConfiguration, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
 });
 
-RemoteMCPServer.hasMany(AgentMCPServerConfiguration, {
-  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+MCPServerView.hasMany(AgentMCPServerConfiguration, {
+  foreignKey: { name: "mcpServerViewId", allowNull: false },
   onDelete: "RESTRICT",
 });
-AgentMCPServerConfiguration.belongsTo(RemoteMCPServer, {
-  foreignKey: { name: "remoteMCPServerId", allowNull: true },
+AgentMCPServerConfiguration.belongsTo(MCPServerView, {
+  foreignKey: { name: "mcpServerViewId", allowNull: false },
 });
 
 export class AgentMCPAction extends WorkspaceAwareModel<AgentMCPAction> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare serverType: MCPServerConfigurationType["serverType"];
-  declare internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
-  declare remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
-  // TODO(mcp): With client actions, we will likely add a way to reference an object representing the client-side server.
   declare mcpServerConfigurationId: string;
 
   declare params: Record<string, unknown>;

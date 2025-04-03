@@ -1,6 +1,11 @@
-import { Button, DustLogoSquare, LoginIcon, Page } from "@dust-tt/sparkle";
+import {
+  Button,
+  DustLogoSquare,
+  Hoverable,
+  LoginIcon,
+  Page,
+} from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
@@ -182,13 +187,13 @@ export default function Join({
             Dust is a platform giving you access to the best AI agents. It's
             easy to use and it's a great place for teams to collaborate. Learn
             more about Dust on{" "}
-            <Link
+            <Hoverable
               href="https://dust.tt"
-              className="cursor-pointer text-sm font-bold text-action-500"
+              variant="highlight"
               target="_blank"
             >
               our website
-            </Link>
+            </Hoverable>
             .
           </p>
         </div>
@@ -205,13 +210,13 @@ export default function Join({
         <div className="flex flex-col gap-3 pb-20">
           <p>
             By signing-up, you accept Dust's{" "}
-            <Link
+            <Hoverable
               href="https://dust.tt/terms"
-              className="cursor-pointer text-sm font-bold text-action-500"
+              variant="highlight"
               target="_blank"
             >
               terms and conditions
-            </Link>
+            </Hoverable>
             .
           </p>
         </div>

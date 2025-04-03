@@ -1,18 +1,19 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { MCPServerMetadata } from "@app/lib/actions/mcp_actions";
 import { DataSourceConfigurationInputSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { MCPServerDefinitionType } from "@app/lib/actions/mcp_metadata";
 
-const serverInfo: Omit<MCPServerMetadata, "tools"> = {
+const serverInfo: MCPServerDefinitionType = {
   name: "data-source-utils",
   version: "1.0.0",
   description:
     "Demo server showing a basic interaction with a data source configuration.",
   icon: "command",
+  authorization: null,
 };
 
-export const createServer = (): McpServer => {
+const createServer = (): McpServer => {
   const server = new McpServer(serverInfo);
 
   server.tool(
@@ -37,3 +38,5 @@ export const createServer = (): McpServer => {
 
   return server;
 };
+
+export default createServer;

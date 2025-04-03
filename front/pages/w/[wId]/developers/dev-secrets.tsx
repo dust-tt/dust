@@ -269,7 +269,7 @@ export default function SecretsPage({
                       </div>
                       <div className="flex-none">→</div>
                       <div className="flex-grow overflow-hidden">
-                        <p className="truncate font-mono text-sm text-element-700 dark:text-element-700-night">
+                        <p className="truncate font-mono text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {secret.value}
                         </p>
                       </div>

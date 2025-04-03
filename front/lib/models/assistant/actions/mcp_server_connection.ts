@@ -1,12 +1,11 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { RemoteMCPServer } from "@app/lib/models/assistant/actions/remote_mcp_server";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { assertNever } from "@app/types";
 
 export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection> {
   declare createdAt: CreationOptional<Date>;
@@ -19,9 +18,7 @@ export class MCPServerConnection extends WorkspaceAwareModel<MCPServerConnection
 
   declare serverType: "internal" | "remote";
 
-  declare internalMCPServerId:
-    | MCPServerConfigurationType["internalMCPServerId"]
-    | null;
+  declare internalMCPServerId: string | null;
 
   declare remoteMCPServerId: ForeignKey<RemoteMCPServer["id"]> | null;
 
@@ -58,9 +55,6 @@ MCPServerConnection.init(
     internalMCPServerId: {
       type: DataTypes.STRING,
       allowNull: true,
-      validate: {
-        isIn: [AVAILABLE_INTERNAL_MCPSERVER_IDS],
-      },
     },
     remoteMCPServerId: {
       type: DataTypes.BIGINT,
@@ -84,6 +78,40 @@ MCPServerConnection.init(
         concurrently: true,
       },
     ],
+    hooks: {
+      beforeValidate: (config: MCPServerConnection) => {
+        if (config.serverType) {
+          switch (config.serverType) {
+            case "internal":
+              if (!config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is required for serverType internal"
+                );
+              }
+              if (config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is not allowed for serverType internal"
+                );
+              }
+              break;
+            case "remote":
+              if (!config.remoteMCPServerId) {
+                throw new Error(
+                  "remoteMCPServerId is required for serverType remote"
+                );
+              }
+              if (config.internalMCPServerId) {
+                throw new Error(
+                  "internalMCPServerId is not allowed for serverType remote"
+                );
+              }
+              break;
+            default:
+              assertNever(config.serverType);
+          }
+        }
+      },
+    },
   }
 );
 

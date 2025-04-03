@@ -397,7 +397,7 @@ const DataSourcePage = ({
     <>
       <h3 className="text-xl font-bold">
         Data Source: {dataSource.name} of workspace:{" "}
-        <a href={`/poke/${owner.sId}`} className="text-action-500">
+        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </a>
       </h3>
@@ -603,7 +603,9 @@ const DataSourcePage = ({
                           <ContextItem.Visual
                             visual={({ className }) =>
                               DocumentTextIcon({
-                                className: className + " text-element-600",
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
                               })
                             }
                           />
@@ -622,7 +624,7 @@ const DataSourcePage = ({
                         }
                       >
                         <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
+                          <div className="pt-2 text-sm text-muted-foreground">
                             {Math.floor(d.text_size / 1024)} kb,{" "}
                             {timeAgoFrom(d.timestamp)} ago
                           </div>
@@ -690,14 +692,16 @@ const DataSourcePage = ({
                           <ContextItem.Visual
                             visual={({ className }) =>
                               TableIcon({
-                                className: className + " text-element-600",
+                                className:
+                                  className +
+                                  " text-muted-foreground dark:text-muted-foreground-night",
                               })
                             }
                           />
                         }
                       >
                         <ContextItem.Description>
-                          <div className="pt-2 text-sm text-element-700">
+                          <div className="pt-2 text-sm text-muted-foreground">
                             {timeAgoFrom(t.timestamp)} ago
                           </div>
                         </ContextItem.Description>
@@ -1131,7 +1135,7 @@ function ZendeskTicketCheck({
               />
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-element-700">
+              <div className="ml-4 pt-2 text-xs text-muted-foreground">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
@@ -1284,7 +1288,7 @@ function SlackWhitelistBot({
         <Link
           href={`https://metabase.dust.tt/question/637-whitelisted-bots-given-connector?connectorId=${connectorId}`}
           target="_blank"
-          className="text-sm text-action-400"
+          className="text-sm text-highlight-400"
         >
           list of whitelisted bots for this workspace
         </Link>

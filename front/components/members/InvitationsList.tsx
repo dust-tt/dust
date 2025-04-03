@@ -100,17 +100,17 @@ export function InvitationsList({
             <div
               className={classNames(
                 "flex animate-pulse cursor-pointer items-center justify-center gap-3 border-t py-2 text-xs sm:text-sm",
-                "border-structure-200 bg-structure-50 dark:border-structure-200-night dark:bg-structure-50-night"
+                "border-border-dark bg-background dark:border-border-dark-night dark:bg-background-night"
               )}
             >
               <div className="hidden sm:block">
                 <Avatar size="xs" />
               </div>
-              <div className="flex grow flex-col gap-1 sm:flex-row sm:gap-3">
-                <div className="font-medium text-foreground dark:text-foreground-night">
+              <div className="copy-base flex grow flex-col gap-1 sm:flex-row sm:gap-3">
+                <div className="font-semibold text-foreground dark:text-foreground-night">
                   Loading...
                 </div>
-                <div className="grow font-normal text-element-700 dark:text-element-700-night"></div>
+                <div className="grow text-muted-foreground dark:text-muted-foreground-night"></div>
               </div>
               <div>
                 <Chip size="xs" color="slate">

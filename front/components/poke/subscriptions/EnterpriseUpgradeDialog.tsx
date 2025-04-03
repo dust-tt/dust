@@ -99,7 +99,7 @@ export default function EnterpriseUpgradeDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
-      <DialogContent className="bg-structure-50 sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>

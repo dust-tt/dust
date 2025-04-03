@@ -1,12 +1,52 @@
 import { getWeekBoundaries } from "@app/shared/lib/utils";
 import type { ConnectorProvider } from "@dust-tt/client";
 
-interface Provider {
+type BaseProvider = {
   matcher: (url: URL) => boolean;
-  extractor: (url: URL) => string | null;
+};
+
+export type UrlCandidate = { url: string | null; provider: ConnectorProvider };
+export type NodeCandidate = {
+  node: string | null;
+  provider: ConnectorProvider;
+};
+
+export function isUrlCandidate(
+  candidate: UrlCandidate | NodeCandidate | null
+): candidate is UrlCandidate {
+  return candidate !== null && "url" in candidate;
 }
 
+export function isNodeCandidate(
+  candidate: UrlCandidate | NodeCandidate | null
+): candidate is NodeCandidate {
+  return candidate !== null && "node" in candidate;
+}
+
+type ProviderWithNormalizer = BaseProvider & {
+  urlNormalizer: (url: URL) => UrlCandidate;
+  extractor?: never;
+};
+
+type ProviderWithExtractor = BaseProvider & {
+  extractor: (url: URL) => NodeCandidate;
+  urlNormalizer?: never;
+};
+
+type Provider = ProviderWithExtractor | ProviderWithNormalizer;
+
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
+  confluence: {
+    matcher: (url: URL): boolean => {
+      return (
+        url.hostname.endsWith("atlassian.net") &&
+        url.pathname.startsWith("/wiki")
+      );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString(), provider: "confluence" };
+    },
+  },
   google_drive: {
     matcher: (url: URL): boolean => {
       return (
@@ -14,28 +54,35 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
         url.hostname.includes("docs.google.com")
       );
     },
-    extractor: (url: URL): string | null => {
+    extractor: (url: URL): NodeCandidate => {
       // Extract from /d/ID format (common in all Google Drive URLs)
       const driveMatch = url.pathname.match(/\/d\/([^/]+)/);
       if (driveMatch && driveMatch[1]) {
-        return `gdrive-${driveMatch[1]}`;
+        return { node: `gdrive-${driveMatch[1]}`, provider: "google_drive" };
       }
 
       // Extract from URL parameters (some older Drive formats)
       const idParam = url.searchParams.get("id");
       if (idParam) {
-        return `gdrive-${idParam}`;
+        return { node: `gdrive-${idParam}`, provider: "google_drive" };
       }
 
-      return null;
+      return { node: null, provider: "google_drive" };
     },
   },
-
+  github: {
+    matcher: (url: URL): boolean => {
+      return url.hostname.endsWith("github.com");
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString(), provider: "github" };
+    },
+  },
   notion: {
     matcher: (url: URL): boolean => {
       return url.hostname.includes("notion.so");
     },
-    extractor: (url: URL): string | null => {
+    extractor: (url: URL): NodeCandidate => {
       // Get the last part of the path, which contains the ID
       const pathParts = url.pathname.split("/");
       const lastPart = pathParts[pathParts.length - 1];
@@ -58,11 +105,11 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
             candidate.slice(16, 20) +
             "-" +
             candidate.slice(20);
-          return id;
+          return { node: id, provider: "notion" };
         }
       }
 
-      return null;
+      return { node: null, provider: "notion" };
     },
   },
   slack: {
@@ -75,14 +122,54 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
           url.pathname.includes("/client/"))
       );
     },
-    extractor: (url: URL): string | null => {
+    extractor: (url: URL): NodeCandidate => {
       // Try each type of extraction in order
-      return (
-        extractChannelNodeId(url) ||
-        extractThreadNodeId(url) ||
+      const node =
         extractMessageNodeId(url) ||
-        null
+        extractThreadNodeId(url) ||
+        extractChannelNodeId(url);
+      return node
+        ? { node, provider: "slack" }
+        : { node: null, provider: "slack" };
+    },
+  },
+  gong: {
+    matcher: (url: URL): boolean => {
+      return (
+        url.hostname.endsWith("app.gong.io") &&
+        url.pathname === "/call" &&
+        url.searchParams.has("id")
       );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      return { url: url.toString(), provider: "gong" };
+    },
+  },
+  zendesk: {
+    matcher: (url: URL): boolean => {
+      return url.hostname.endsWith("zendesk.com");
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}`, provider: "zendesk" };
+    },
+  },
+  intercom: {
+    matcher: (url: URL): boolean => {
+      return (
+        (url.hostname.includes("intercom.com") &&
+          url.hostname.startsWith("app")) ||
+        // custom help center domains (websiteTurnedOn is true)
+        url.hostname.startsWith("help")
+      );
+    },
+    urlNormalizer: (url: URL): UrlCandidate => {
+      const path = url.pathname.endsWith("/")
+        ? url.pathname.slice(0, -1)
+        : url.pathname;
+      return { url: `${url.origin}${path}`, provider: "intercom" };
     },
   },
 };
@@ -153,17 +240,21 @@ function extractMessageNodeId(url: URL): string | null {
   return `slack-${channelId}-messages-${startDateStr}-${endDateStr}`;
 }
 
-// Extracts a nodeId from a given url
-export function nodeIdFromUrl(url: string): string | null {
+export function nodeCandidateFromUrl(
+  url: string
+): UrlCandidate | NodeCandidate | null {
   try {
     const urlObj = new URL(url);
 
     for (const provider of Object.values(providers)) {
       if (provider.matcher(urlObj)) {
-        return provider.extractor(urlObj);
+        if (provider.extractor) {
+          return provider.extractor(urlObj);
+        } else {
+          return provider.urlNormalizer(urlObj);
+        }
       }
     }
-
     return null;
   } catch (error) {
     console.error("Error parsing URL:", error);

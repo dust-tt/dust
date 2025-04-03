@@ -45,7 +45,6 @@ import type {
   WithConnector,
   WorkspaceType,
 } from "@app/types";
-import { validateUrl } from "@app/types";
 import {
   assertNever,
   ConnectorsAPI,
@@ -58,6 +57,7 @@ import {
   isDataSourceNameValid,
   Ok,
   sectionFullText,
+  validateUrl,
 } from "@app/types";
 
 export async function getDataSources(
@@ -634,7 +634,6 @@ export async function upsertTable({
     });
   }
 
-  const titleEmpty = params.title.trim().length === 0;
   // Enforce a max size on the title: since these will be synced in ES we don't support arbitrarily large titles.
   if (params.title && params.title.length > MAX_NODE_TITLE_LENGTH) {
     return new Err({
@@ -683,7 +682,7 @@ export async function upsertTable({
     standardizedSourceUrl = standardized;
   }
 
-  const title = titleEmpty ? UNTITLED_TITLE : params.title;
+  const title = params.title.trim() || name.trim() || UNTITLED_TITLE;
 
   if (async) {
     if (fileId) {

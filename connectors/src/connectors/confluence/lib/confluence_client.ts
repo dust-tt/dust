@@ -1,11 +1,13 @@
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
+import type { Response } from "undici";
+import { fetch as undiciFetch, ProxyAgent } from "undici";
 
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
-import { ConfluenceClientError } from "@connectors/types";
+import { ConfluenceClientError, EnvironmentConfig } from "@connectors/types";
 
 const CatchAllCodec = t.record(t.string, t.unknown); // Catch-all for unknown properties.
 
@@ -228,13 +230,31 @@ export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
   private readonly legacyRestApiBaseUrl: string;
+  private readonly proxyAgent: ProxyAgent | undefined;
 
   constructor(
     private readonly authToken: string,
-    { cloudId }: { cloudId?: string } = {}
+    {
+      cloudId,
+      useProxy = false,
+    }: {
+      cloudId?: string;
+      useProxy?: boolean;
+    } = {}
   ) {
     this.restApiBaseUrl = `/ex/confluence/${cloudId}/wiki/api/v2`;
     this.legacyRestApiBaseUrl = `/ex/confluence/${cloudId}/wiki/rest/api`;
+    this.proxyAgent = useProxy
+      ? new ProxyAgent(
+          `http://${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_NAME"
+          )}:${EnvironmentConfig.getEnvVariable(
+            "PROXY_USER_PASSWORD"
+          )}@${EnvironmentConfig.getEnvVariable(
+            "PROXY_HOST"
+          )}:${EnvironmentConfig.getEnvVariable("PROXY_PORT")}`
+        )
+      : undefined;
   }
 
   private async request<T>(
@@ -244,13 +264,14 @@ export class ConfluenceClient {
   ): Promise<T> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${this.authToken}`,
             "Content-Type": "application/json",
           },
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [
@@ -312,6 +333,20 @@ export class ConfluenceClient {
           "provider:confluence",
           "status:rate_limited",
         ]);
+        const rateLimitHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+          if (key.toLowerCase().startsWith("x-ratelimit")) {
+            rateLimitHeaders[key] = value;
+          }
+        });
+
+        logger.info(
+          {
+            rateLimitHeaders,
+            endpoint,
+          },
+          "[Confluence] Headers relative to the rate limit"
+        );
 
         if (retryCount < MAX_RATE_LIMIT_RETRY_COUNT) {
           const delayMs = getRetryAfterDuration(response);
@@ -380,7 +415,7 @@ export class ConfluenceClient {
   ): Promise<T | undefined> {
     const response = await (async () => {
       try {
-        return await fetch(`${this.apiUrl}${endpoint}`, {
+        return await undiciFetch(`${this.apiUrl}${endpoint}`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${this.authToken}`,
@@ -389,6 +424,7 @@ export class ConfluenceClient {
           body: JSON.stringify(data),
           // Timeout after 30 seconds.
           signal: AbortSignal.timeout(30000),
+          dispatcher: this.proxyAgent,
         });
       } catch (e) {
         statsDClient.increment("external.api.calls", 1, [

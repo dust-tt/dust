@@ -1,8 +1,7 @@
 import { useSendNotification } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_actions";
-import type { InternalMCPServerId } from "@app/lib/actions/mcp_internal_actions";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import {
   useCreateMCPServerConnection,
   useDeleteMCPServerConnection,
@@ -22,10 +21,10 @@ export const useMCPConnectionManagement = ({
   const createAndSaveMCPServerConnection = useCallback(
     async ({
       authorizationInfo,
-      serverId,
+      mcpServerId,
     }: {
       authorizationInfo: AuthorizationInfo;
-      serverId: InternalMCPServerId;
+      mcpServerId: string;
     }) => {
       const cRes = await setupOAuthConnection({
         dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
@@ -45,7 +44,7 @@ export const useMCPConnectionManagement = ({
       }
       return createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        internalMCPServerId: serverId,
+        mcpServerId,
       });
     },
     [owner, sendNotification, createMCPServerConnection]

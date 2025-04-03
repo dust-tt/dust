@@ -37,7 +37,9 @@ import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfiguration } from "@app/lib/models/assistant/agent";
 import { AgentMessageContent } from "@app/lib/models/assistant/agent_message_content";
+import type { KillSwitchType } from "@app/lib/poke/types";
 import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
+import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentActionsEvent,
@@ -79,11 +81,11 @@ export async function* runAgent(
   | AgentMessageSuccessEvent,
   void
 > {
-  const fullConfiguration = await getAgentConfiguration(
-    auth,
-    configuration.sId,
-    "full"
-  );
+  const [fullConfiguration, killSwitches] = await Promise.all([
+    getAgentConfiguration(auth, configuration.sId, "full"),
+    KillSwitchResource.listEnabledKillSwitches(),
+  ]);
+
   if (!fullConfiguration) {
     throw new Error(
       `Unreachable: could not find detailed configuration for agent ${configuration.sId}`
@@ -100,7 +102,8 @@ export async function* runAgent(
     fullConfiguration,
     conversation,
     userMessage,
-    agentMessage
+    agentMessage,
+    killSwitches
   );
 
   for await (const event of stream) {
@@ -113,7 +116,8 @@ async function* runMultiActionsAgentLoop(
   configuration: AgentConfigurationType,
   conversation: ConversationType,
   userMessage: UserMessageType,
-  agentMessage: AgentMessageType
+  agentMessage: AgentMessageType,
+  killSwitches: KillSwitchType[]
 ): AsyncGenerator<
   | AgentErrorEvent
   | AgentActionSpecificEvent
@@ -203,6 +207,7 @@ async function* runMultiActionsAgentLoop(
                 stepActionIndex: index,
                 stepActions: event.actions.map((a) => a.action),
                 citationsRefsOffset,
+                killSwitches,
               });
             }
           );
@@ -517,6 +522,11 @@ async function* runMultiActionsAgent(
   runConfig.MODEL.temperature = agentConfiguration.model.temperature;
   if (agentConfiguration.model.reasoningEffort) {
     runConfig.MODEL.reasoning_effort = agentConfiguration.model.reasoningEffort;
+  }
+  if (agentConfiguration.model.responseFormat) {
+    runConfig.MODEL.response_format = JSON.parse(
+      agentConfiguration.model.responseFormat
+    );
   }
   const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
   if (anthropicBetaFlags) {
@@ -834,6 +844,7 @@ async function* runAction(
     stepActionIndex,
     stepActions,
     citationsRefsOffset,
+    killSwitches,
   }: {
     configuration: AgentConfigurationType;
     actionConfiguration: ActionConfigurationType;
@@ -847,6 +858,7 @@ async function* runAction(
     stepActionIndex: number;
     stepActions: ActionConfigurationType[];
     citationsRefsOffset: number;
+    killSwitches: KillSwitchType[];
   }
 ): AsyncGenerator<
   AgentActionSpecificEvent | AgentErrorEvent | AgentActionSuccessEvent,
@@ -855,6 +867,20 @@ async function* runAction(
   const now = Date.now();
 
   if (isRetrievalConfiguration(actionConfiguration)) {
+    if (killSwitches.includes("retrieval_action")) {
+      yield {
+        type: "agent_error",
+        created: now,
+        configurationId: configuration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "retrieval_action_disabled",
+          message: "Retrieval action is temporarily disabled",
+        },
+      };
+      return;
+    }
+
     const eventStream = getRunnerForActionConfiguration(
       actionConfiguration
     ).run(
@@ -1365,6 +1391,10 @@ async function* runAction(
           // We stitch the action into the agent message. The conversation is expected to include
           // the agentMessage object, updating this object will update the conversation as well.
           agentMessage.actions.push(event.action);
+          break;
+
+        case "tool_approve_execution":
+          yield event;
           break;
 
         default:

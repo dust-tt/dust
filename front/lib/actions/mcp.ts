@@ -1,6 +1,6 @@
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
 import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
+import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
@@ -14,11 +14,13 @@ import type {
   AgentActionSpecification,
   InputSchemaType,
 } from "@app/lib/actions/types/agent";
+import { hashMCPInputParams } from "@app/lib/actions/utils";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
 } from "@app/lib/models/assistant/actions/mcp";
+import logger from "@app/logger/logger";
 import type {
   FunctionCallType,
   FunctionMessageTypeModel,
@@ -27,25 +29,11 @@ import type {
 } from "@app/types";
 import { Ok } from "@app/types";
 
-export function validateInternalMCPServerId(
-  serverId: string
-): serverId is InternalMCPServerIdType {
-  return AVAILABLE_INTERNAL_MCPSERVER_IDS.some(
-    (validServerId) => validServerId === serverId
-  );
-}
-
-export type InternalMCPServerIdType =
-  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
-
 export type MCPServerConfigurationType = {
   id: ModelId;
   sId: string;
 
-  //TODO(mcp): handle hosted and client
-  serverType: "internal" | "remote";
-  internalMCPServerId: InternalMCPServerIdType | null;
-  remoteMCPServerId: string | null; // Hold the sId of the remote MCP server.
+  mcpServerViewId: string; // Hold the sId of the MCP server view.
 
   type: "mcp_server_configuration";
 
@@ -62,6 +50,16 @@ export type MCPToolConfigurationType = Omit<
 > & {
   type: "mcp_configuration";
   inputSchema: InputSchemaType;
+};
+
+type MCPApproveExecutionEvent = {
+  type: "tool_approve_execution";
+  created: number;
+  configurationId: string;
+  messageId: string;
+  action: MCPActionType;
+  inputs: Record<string, unknown>;
+  hash: string;
 };
 
 type MCPParamsEvent = {
@@ -91,7 +89,39 @@ type MCPErrorEvent = {
   };
 };
 
-export type MCPActionRunningEvents = MCPParamsEvent;
+export type MCPFormState = {
+  url: string;
+  name: string;
+  description: string;
+  tools: { name: string; description: string }[];
+  errors?: {
+    url?: string;
+    name?: string;
+    description?: string;
+  };
+};
+
+export type MCPFormAction =
+  | {
+      [K in keyof Omit<MCPFormState, "errors">]: {
+        type: "SET_FIELD";
+        field: K;
+        value: MCPFormState[K];
+      };
+    }[keyof Omit<MCPFormState, "errors">]
+  | {
+      type: "SET_ERROR";
+      field: keyof MCPFormState["errors"];
+      value: string | undefined;
+    }
+  | {
+      type: "RESET";
+      config?: null;
+      name?: string;
+    }
+  | { type: "VALIDATE" };
+
+export type MCPActionRunningEvents = MCPParamsEvent | MCPApproveExecutionEvent;
 
 type MCPActionBlob = ExtractActionBlob<MCPActionType>;
 
@@ -103,11 +133,7 @@ export class MCPActionType extends BaseAction {
     | "allowed_explicitely"
     | "allowed_implicitely"
     | "denied" = "pending";
-  readonly serverType: MCPServerConfigurationType["serverType"] = "internal";
-  readonly internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"] =
-    null;
-  readonly remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"] =
-    null;
+
   readonly mcpServerConfigurationId: string;
   readonly params: Record<string, unknown>; // Hold the inputs for the action.
   readonly output: MCPToolResultContent[] | null;
@@ -195,12 +221,16 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     auth: Authenticator,
     {
       agentConfiguration,
+      conversation,
       agentMessage,
       rawInputs,
       functionCallId,
       step,
     }: BaseActionRunParams
-  ): AsyncGenerator<MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent, void> {
+  ): AsyncGenerator<
+    MCPParamsEvent | MCPSuccessEvent | MCPErrorEvent | MCPApproveExecutionEvent,
+    void
+  > {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error("Unexpected unauthenticated call to `run`");
@@ -221,9 +251,21 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       workspaceId: owner.id,
       isError: false,
       executionState: "pending",
-      serverType: actionConfiguration.serverType,
-      internalMCPServerId: actionConfiguration.internalMCPServerId,
-      remoteMCPServerId: actionConfiguration.remoteMCPServerId,
+    });
+
+    const mcpAction = new MCPActionType({
+      id: action.id,
+      params: rawInputs,
+      output: null,
+      functionCallId,
+      functionCallName: actionConfiguration.name,
+      agentMessageId: agentMessage.agentMessageId,
+      step,
+      mcpServerConfigurationId: `${actionConfiguration.id}`,
+      executionState: "pending",
+      isError: false,
+      type: "tool_action",
+      generatedFiles: [],
     });
 
     yield {
@@ -231,28 +273,179 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      action: new MCPActionType({
-        id: action.id,
-        params: rawInputs,
-        output: null,
-        functionCallId,
-        functionCallName: actionConfiguration.name,
-        agentMessageId: agentMessage.agentMessageId,
-        step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
-        mcpServerConfigurationId: `${actionConfiguration.id}`,
-        executionState: "pending",
-        isError: false,
-        type: "tool_action",
-        generatedFiles: [],
-      }),
+      action: mcpAction,
     };
+
+    const hash = hashMCPInputParams(rawInputs);
+
+    yield {
+      type: "tool_approve_execution",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      action: mcpAction,
+      inputs: rawInputs,
+      hash,
+    };
+
     // TODO(mcp): this is where we put back the preconfigured inputs (datasources, auth token, etc) from the agent configuration if any.
 
+    try {
+      const actionEventGenerator = getMCPEvents({
+        actionId: mcpAction.id,
+      });
+
+      let status = "none";
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: mcpAction.id,
+        },
+        "Waiting for action validation"
+      );
+
+      // Start listening for action events
+      for await (const event of actionEventGenerator) {
+        const { data } = event;
+
+        if (
+          data.type === "action_approved" &&
+          data.actionId === mcpAction.id &&
+          data.paramsHash === hash
+        ) {
+          status = "approved";
+          break;
+        } else if (
+          data.type === "action_rejected" &&
+          data.actionId === mcpAction.id &&
+          data.paramsHash === hash
+        ) {
+          status = "rejected";
+          break;
+        }
+      }
+
+      // The action timed-out, status was not updated
+      if (status === "none") {
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: mcpAction.id,
+          },
+          "Action validation timed out"
+        );
+
+        // We yield a tool success, with a message that the action timed out
+        yield {
+          type: "tool_success",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: new MCPActionType({
+            id: action.id,
+            params: rawInputs,
+            output: [
+              {
+                type: "text",
+                text:
+                  "The action validation timed out. Using this action is hence forbidden for" +
+                  "this message.",
+              },
+            ],
+            functionCallId,
+            functionCallName: actionConfiguration.name,
+            agentMessageId: agentMessage.agentMessageId,
+            step,
+            mcpServerConfigurationId: `${actionConfiguration.id}`,
+            executionState: "denied",
+            isError: false,
+            type: "tool_action",
+            generatedFiles: [],
+          }),
+        };
+        return;
+      }
+
+      if (status === "rejected") {
+        logger.info(
+          {
+            workspaceId: conversation.owner.sId,
+            conversationId: conversation.sId,
+            messageId: agentMessage.sId,
+            actionId: actionConfiguration.id,
+          },
+          "Action execution rejected by user"
+        );
+
+        // Yield a tool success, with a message that the action was rejected.
+        yield {
+          type: "tool_success",
+          created: Date.now(),
+          configurationId: agentConfiguration.sId,
+          messageId: agentMessage.sId,
+          action: new MCPActionType({
+            id: action.id,
+            params: rawInputs,
+            output: [
+              {
+                type: "text",
+                text:
+                  "The user rejected this specific action execution. Using this action is hence" +
+                  "forbidden for this message.",
+              },
+            ],
+            functionCallId,
+            functionCallName: actionConfiguration.name,
+            agentMessageId: agentMessage.agentMessageId,
+            step,
+            mcpServerConfigurationId: `${actionConfiguration.id}`,
+            executionState: "denied",
+            isError: false,
+            type: "tool_action",
+            generatedFiles: [],
+          }),
+        };
+        return;
+      }
+
+      logger.info(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+          actionId: actionConfiguration.id,
+        },
+        "Proceeding with action execution after validation"
+      );
+    } catch (error) {
+      logger.error(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          error,
+        },
+        "Error checking action validation status"
+      );
+
+      yield {
+        type: "tool_error",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        error: {
+          code: "tool_error",
+          message: `Error checking action validation status: ${JSON.stringify(error)}`,
+        },
+      };
+      return;
+    }
+
     // TODO(mcp): listen to sse events to provide live feedback to the user
-    const r = await tryCallMCPTool({
+    const r = await tryCallMCPTool(auth, {
       owner,
       actionConfiguration,
       rawInputs,
@@ -277,16 +470,12 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
 
     const content = r.value;
 
-    await Promise.all(
-      content.map(async (i) => {
-        // Check if content is of a supported type.
-
-        await AgentMCPActionOutputItem.create({
-          workspaceId: owner.id,
-          agentMCPActionId: action.id,
-          content: i,
-        });
-      })
+    await AgentMCPActionOutputItem.bulkCreate(
+      content.map((c) => ({
+        workspaceId: owner.id,
+        agentMCPActionId: action.id,
+        content: c,
+      }))
     );
 
     yield {
@@ -302,9 +491,6 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         functionCallName: actionConfiguration.name,
         agentMessageId: agentMessage.agentMessageId,
         step,
-        serverType: actionConfiguration.serverType,
-        internalMCPServerId: actionConfiguration.internalMCPServerId,
-        remoteMCPServerId: actionConfiguration.remoteMCPServerId,
         mcpServerConfigurationId: `${actionConfiguration.id}`,
         executionState: "allowed_explicitely",
         isError: false,
@@ -348,9 +534,6 @@ export async function mcpActionTypesFromAgentMessageIds(
       functionCallName: action.functionCallName,
       agentMessageId: action.agentMessageId,
       step: action.step,
-      serverType: action.serverType,
-      internalMCPServerId: action.internalMCPServerId,
-      remoteMCPServerId: action.remoteMCPServerId,
       mcpServerConfigurationId: action.mcpServerConfigurationId,
       executionState: action.executionState,
       isError: action.isError,

@@ -166,7 +166,7 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-structure-100 bg-white p-4 shadow-xl",
+        "z-30 flex w-64 flex-col gap-3 rounded-xl border border-border bg-white p-4 shadow-xl",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         className || ""

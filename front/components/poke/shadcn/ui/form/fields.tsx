@@ -50,7 +50,7 @@ export function SelectField<T extends FieldValues>({
                 </PokeSelectTrigger>
               </PokeFormControl>
               <PokeSelectContent>
-                <div className="bg-slate-100">
+                <div className="bg-muted-background">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
                       {option.display ? option.display : option.value}

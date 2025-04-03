@@ -1,6 +1,11 @@
 import assert from "assert";
 import type { Order, Transaction } from "sequelize";
-import { Op, Sequelize, UniqueConstraintError } from "sequelize";
+import {
+  Op,
+  Sequelize,
+  UniqueConstraintError,
+  ValidationError,
+} from "sequelize";
 
 import { fetchBrowseActionConfigurations } from "@app/lib/actions/configuration/browse";
 import { fetchDustAppRunActionConfigurations } from "@app/lib/actions/configuration/dust_app_run";
@@ -49,6 +54,7 @@ import {
 } from "@app/lib/models/assistant/agent";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -540,6 +546,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
       temperature: agent.temperature,
     };
 
+    if (agent.responseFormat) {
+      model.responseFormat = agent.responseFormat;
+    }
+
     if (agent.reasoningEffort) {
       model.reasoningEffort = agent.reasoningEffort;
     }
@@ -847,6 +857,7 @@ export async function createAgentConfiguration(
             authorId: user.id,
             templateId: template?.id,
             requestedGroupIds,
+            responseFormat: model.responseFormat,
           },
           {
             transaction: t,
@@ -873,6 +884,7 @@ export async function createAgentConfiguration(
         providerId: agent.providerId,
         modelId: agent.modelId,
         temperature: agent.temperature,
+        responseFormat: agent.responseFormat,
       },
       pictureUrl: agent.pictureUrl,
       status: agent.status,
@@ -895,6 +907,12 @@ export async function createAgentConfiguration(
   } catch (error) {
     if (error instanceof UniqueConstraintError) {
       return new Err(new Error("An agent with this name already exists."));
+    }
+    if (error instanceof ValidationError) {
+      return new Err(new Error(error.message));
+    }
+    if (error instanceof SyntaxError) {
+      return new Err(new Error(error.message));
     }
     throw error;
   }
@@ -1167,13 +1185,20 @@ export async function createAgentActionConfiguration(
     }
     case "mcp_server_configuration": {
       return frontSequelize.transaction(async (t) => {
+        const mcpServerView = await MCPServerViewResource.fetchById(
+          auth,
+          action.mcpServerViewId
+        );
+        if (mcpServerView.isErr()) {
+          return new Err(mcpServerView.error);
+        }
+
         const mcpConfig = await AgentMCPServerConfiguration.create(
           {
             sId: generateRandomModelSId(),
             agentConfigurationId: agentConfiguration.id,
             workspaceId: owner.id,
-            serverType: action.serverType,
-            internalMCPServerId: action.internalMCPServerId,
+            mcpServerViewId: mcpServerView.value.id,
           },
           { transaction: t }
         );
@@ -1193,9 +1218,7 @@ export async function createAgentActionConfiguration(
           type: "mcp_server_configuration",
           name: action.name,
           description: action.description,
-          serverType: action.serverType,
-          internalMCPServerId: action.internalMCPServerId,
-          remoteMCPServerId: action.remoteMCPServerId,
+          mcpServerViewId: action.mcpServerViewId,
           dataSources: action.dataSources,
         });
       });

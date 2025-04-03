@@ -187,9 +187,7 @@ export async function submitAssistantBuilderForm({
             type: "mcp_server_configuration",
             name: a.name,
             description: a.description,
-            serverType: a.configuration.serverType,
-            internalMCPServerId: a.configuration.internalMCPServerId,
-            remoteMCPServerId: a.configuration.remoteMCPServerId,
+            mcpServerViewId: a.configuration.mcpServerViewId,
             dataSources: a.configuration.dataSourceConfigurations
               ? processDataSourceViewSelectionConfigurations({
                   owner,
@@ -293,6 +291,7 @@ export async function submitAssistantBuilderForm({
         temperature: builderState.generationSettings.temperature,
         reasoningEffort:
           builderState.generationSettings.modelSettings.reasoningEffort,
+        responseFormat: builderState.generationSettings.responseFormat,
       },
       maxStepsPerRun,
       visualizationEnabled: builderState.visualizationEnabled,

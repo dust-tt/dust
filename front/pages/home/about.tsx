@@ -227,6 +227,41 @@ const PEOPLE: Record<
     github: "https://github.com/adrsimon",
     linkedIn: "https://www.linkedin.com/in/adrsimon/",
   },
+  stephen: {
+    name: "Stephen Bronnec",
+    title: "Acceleration Engineer",
+    image: "https://avatars.githubusercontent.com/u/11921176?v=4",
+    github: "https://github.com/FlagBenett",
+    linkedIn: "https://www.linkedin.com/in/stephen-bronnec-3033a02b/",
+  },
+  ykmsd: {
+    name: "Yuka Masuda",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/3702771?v=4",
+    github: "https://github.com/ykmsd",
+    linkedIn: "https://www.linkedin.com/in/ykmsd/",
+  },
+  victor: {
+    name: "Victor Pery",
+    title: "Account Executive",
+    image: "https://avatars.githubusercontent.com/u/205647687?v=4",
+    github: "https://github.com/victorpery",
+    linkedIn: "https://www.linkedin.com/in/victor-pery/",
+  },
+  wendy: {
+    name: "Wendy Zhao",
+    title: "Customer Education",
+    image: "https://avatars.githubusercontent.com/u/205610550?v=4",
+    github: "https://github.com/atrwendy",
+    linkedIn: "https://www.linkedin.com/in/wendyzhao07/",
+  },
+  max: {
+    name: "Maxime Cattet",
+    title: "Software Engineer",
+    image: "https://avatars.githubusercontent.com/u/1371886?v=4",
+    github: "https://github.com/johnoppenheimer",
+    linkedIn: "https://www.linkedin.com/in/maximecattet",
+  },
 };
 
 const Person = ({ handle }: { handle: string }) => {

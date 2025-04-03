@@ -14,7 +14,6 @@ import {
   DEFAULT_TABLES_QUERY_ACTION_NAME,
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { ProcessSchemaPropertyType } from "@app/lib/actions/process";
 import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type {
@@ -127,10 +126,7 @@ export type AssistantBuilderReasoningConfiguration = {
 
 // MCP configuration
 export type AssistantBuilderMCPServerConfiguration = {
-  serverType: MCPServerConfigurationType["serverType"];
-  internalMCPServerId: MCPServerConfigurationType["internalMCPServerId"];
-  remoteMCPServerId: MCPServerConfigurationType["remoteMCPServerId"];
-
+  mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
 };
 
@@ -221,6 +217,7 @@ export type AssistantBuilderState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   };
   actions: Array<AssistantBuilderActionConfigurationWithId>;
   maxStepsPerRun: number | null;
@@ -237,6 +234,7 @@ export type AssistantBuilderInitialState = {
   generationSettings: {
     modelSettings: SupportedModel;
     temperature: number;
+    responseFormat?: string;
   } | null;
   actions: Array<AssistantBuilderActionConfiguration>;
   maxStepsPerRun: number | null;
@@ -365,9 +363,7 @@ export function getDefaultMCPServerActionConfiguration(): AssistantBuilderAction
   return {
     type: "MCP",
     configuration: {
-      serverType: "internal",
-      internalMCPServerId: null,
-      remoteMCPServerId: null,
+      mcpServerViewId: "not-a-valid-sId",
       dataSourceConfigurations: null,
     },
     name: DEFAULT_MCP_ACTION_NAME,

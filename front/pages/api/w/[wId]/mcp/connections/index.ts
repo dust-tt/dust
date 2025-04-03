@@ -3,39 +3,34 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { AVAILABLE_INTERNAL_MCPSERVER_IDS } from "@app/lib/actions/constants";
+import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { ioTsEnum } from "@app/types";
 
-export type AvailableInternalMcpServerId =
-  (typeof AVAILABLE_INTERNAL_MCPSERVER_IDS)[number];
+const PostConnectionBodySchema = t.type({
+  connectionId: t.string,
+  mcpServerId: t.string,
+});
+export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
-export const PostConnectionBodySchema = t.union([
-  t.type({
-    connectionId: t.string,
-    internalMCPServerId: ioTsEnum<AvailableInternalMcpServerId>(
-      AVAILABLE_INTERNAL_MCPSERVER_IDS
-    ),
-    remoteMCPServerId: t.undefined,
-  }),
-  t.type({
-    connectionId: t.string,
-    remoteMCPServerId: t.number,
-    internalMCPServerId: t.undefined,
-  }),
-]);
+export type PostConnectionResponseBody = {
+  success: boolean;
+  connection: MCPServerConnectionType;
+};
+
+export type GetConnectionsResponseBody = {
+  connections: MCPServerConnectionType[];
+};
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | { success: boolean; connection: MCPServerConnectionType }
-      | { connections: MCPServerConnectionType[] }
+      PostConnectionResponseBody | GetConnectionsResponseBody
     >
   >,
   auth: Authenticator
@@ -63,17 +58,18 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, internalMCPServerId, remoteMCPServerId } =
-        validatedBody;
+      const { connectionId, mcpServerId } = validatedBody;
+
+      const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
 
       const connectionResource = await MCPServerConnectionResource.makeNew(
         auth,
         {
           connectionId,
           connectionType: "workspace",
-          serverType: internalMCPServerId ? "internal" : "remote",
-          internalMCPServerId,
-          remoteMCPServerId,
+          serverType,
+          internalMCPServerId: serverType === "internal" ? mcpServerId : null,
+          remoteMCPServerId: serverType === "remote" ? id : null,
         }
       );
 

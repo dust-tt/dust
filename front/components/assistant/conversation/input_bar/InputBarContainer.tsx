@@ -1,9 +1,9 @@
 import {
   ArrowUpIcon,
-  AttachmentIcon,
   Button,
   FullscreenExitIcon,
   FullscreenIcon,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import React, {
@@ -28,7 +28,6 @@ import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { getSpaceAccessPriority } from "@app/lib/spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentMention,
@@ -77,11 +76,11 @@ const InputBarContainer = ({
   attachedNodes,
 }: InputBarContainerProps) => {
   const suggestions = useAssistantSuggestions(agentConfigurations, owner);
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const [isExpanded, setIsExpanded] = useState(false);
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
+
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
@@ -94,19 +93,12 @@ const InputBarContainer = ({
     []
   );
 
-  // TODO: remove once attach from datasources is released
-  const isAttachedFromDataSourceActivated = featureFlags.includes(
-    "attach_from_datasources"
-  );
-
   const { editor, editorService } = useCustomEditor({
     suggestions,
     onEnterKeyDown,
     resetEditorContainerSize,
     disableAutoFocus,
-    ...(isAttachedFromDataSourceActivated && {
-      onUrlDetected: handleUrlDetected,
-    }),
+    onUrlDetected: handleUrlDetected,
   });
 
   useUrlHandler(editor, selectedNode, nodeOrUrlCandidate);
@@ -117,6 +109,8 @@ const InputBarContainer = ({
     [spaces]
   );
 
+  const sendNotification = useSendNotification();
+
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
       ? {
@@ -125,10 +119,7 @@ const InputBarContainer = ({
           includeDataSources: true,
           owner,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
       : {
@@ -138,10 +129,7 @@ const InputBarContainer = ({
           includeDataSources: true,
           owner,
           viewType: "all",
-          disabled:
-            isSpacesLoading ||
-            !nodeOrUrlCandidate ||
-            !isAttachedFromDataSourceActivated,
+          disabled: isSpacesLoading || !nodeOrUrlCandidate,
           spaceIds: spaces.map((s) => s.sId),
         }
   );
@@ -174,6 +162,11 @@ const InputBarContainer = ({
       // FIXME: This causes reset to early and it requires pasting the url twice.
       setNodeOrUrlCandidate(null);
     } else {
+      sendNotification({
+        title: "No match for URL",
+        description: `Pasted URL does not match any content in knowledge. ${nodeOrUrlCandidate?.provider === "microsoft" ? "(Microsoft URLs are not supported)" : ""}`,
+        type: "info",
+      });
       setNodeOrUrlCandidate(null);
     }
   }, [
@@ -183,6 +176,7 @@ const InputBarContainer = ({
     editorService,
     spacesMap,
     nodeOrUrlCandidate,
+    sendNotification,
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from
@@ -256,28 +250,16 @@ const InputBarContainer = ({
                 type="file"
                 multiple={true}
               />
-              {featureFlags.includes("attach_from_datasources") ? (
-                <InputBarAttachmentsPicker
-                  fileUploaderService={fileUploaderService}
-                  owner={owner}
-                  isLoading={false}
-                  onNodeSelect={
-                    onNodeSelect ||
-                    ((node) => console.log(`Selected ${node.title}`))
-                  }
-                  attachedNodes={attachedNodes}
-                />
-              ) : (
-                <Button
-                  variant="ghost-secondary"
-                  icon={AttachmentIcon}
-                  size="xs"
-                  tooltip={`Add a document to the conversation (${getSupportedFileExtensions().join(", ")}).`}
-                  onClick={() => {
-                    fileInputRef.current?.click();
-                  }}
-                />
-              )}
+              <InputBarAttachmentsPicker
+                fileUploaderService={fileUploaderService}
+                owner={owner}
+                isLoading={false}
+                onNodeSelect={
+                  onNodeSelect ||
+                  ((node) => console.log(`Selected ${node.title}`))
+                }
+                attachedNodes={attachedNodes}
+              />
             </>
           )}
           {(actions.includes("assistants-list") ||

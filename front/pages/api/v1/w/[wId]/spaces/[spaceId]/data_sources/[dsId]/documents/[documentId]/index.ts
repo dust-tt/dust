@@ -382,19 +382,6 @@ async function handler(
         });
       }
 
-      // TODO(content-node): get rid of this once the use of timestamp columns in core has been rationalized
-      if (!auth.isSystemKey() && r.data.timestamp) {
-        logger.info(
-          {
-            workspaceId: owner.id,
-            dataSourceId: dataSource.sId,
-            timestamp: r.data.timestamp,
-            currentDate: Date.now(),
-          },
-          "[ContentNode] User-set timestamp."
-        );
-      }
-
       let sourceUrl: string | null = null;
       if (r.data.source_url) {
         const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =

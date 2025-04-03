@@ -2,6 +2,7 @@ import {
   BookOpenIcon,
   Button,
   CloudArrowLeftRightIcon,
+  Hoverable,
   Page,
   Sheet,
   SheetContainer,
@@ -9,7 +10,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -73,27 +73,27 @@ export function CreateConnectionOAuthModal({
                 "google_drive" && (
                 <>
                   <div className="flex flex-col gap-y-2">
-                    <div className="grow text-sm font-medium text-element-800">
-                      Disclosure
+                    <div className="copy-sm grow text-muted-foreground dark:text-muted-foreground-night">
+                      <strong>Disclosure</strong>
                     </div>
-                    <div className="text-sm font-normal text-element-700">
+                    <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                       Dust's use of information received from the Google APIs
                       will adhere to{" "}
-                      <Link
-                        className="text-action-500"
+                      <Hoverable
+                        variant="highlight"
                         href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes"
                       >
                         Google API Services User Data Policy
-                      </Link>
+                      </Hoverable>
                       , including the Limited Use requirements.
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-y-2">
-                    <div className="grow text-sm font-medium text-element-800">
+                    <div className="copy-sm grow font-medium text-muted-foreground dark:text-muted-foreground-night">
                       Notice on data processing
                     </div>
-                    <div className="text-sm font-normal text-element-700">
+                    <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                       By connecting Google Drive, you acknowledge and agree that
                       within your Google Drive, the data contained in the files
                       and folders that you choose to synchronize with Dust will
@@ -110,10 +110,10 @@ export function CreateConnectionOAuthModal({
 
               {connectorProviderConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-element-800">
+                  <div className="copy-sm grow font-medium text-muted-foreground dark:text-muted-foreground-night">
                     Limitations
                   </div>
-                  <div className="text-sm font-normal text-element-700">
+                  <div className="copy-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
                     {connectorProviderConfiguration.limitations}
                   </div>
                 </div>
