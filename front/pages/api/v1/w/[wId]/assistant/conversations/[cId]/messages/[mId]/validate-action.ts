@@ -4,22 +4,19 @@ import { z } from "zod";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { publishEvent } from "@app/lib/api/assistant/pubsub";
-import { withPublicAPIAuthentication, withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import {
+  withPublicAPIAuthentication,
+  withSessionAuthenticationForWorkspace,
+} from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-const ValidateActionSchema = z.object({
-  actionId: z.number(),
-  approved: z.boolean(),
-  paramsHash: z.any(),
-});
-
-type ValidateActionResponse = {
-  success: boolean;
-};
-
+import {
+  getActionChannel,
+  ValidateActionResponse,
+  ValidateActionSchema,
+} from "@app/lib/api/assistant/conversation/validate_actions";
 
 /**
  * @ignoreswagger
@@ -74,10 +71,10 @@ async function handler(
     return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  const { actionId, approved, paramsHash } = parseResult.data;
+  const { actionId, approved } = parseResult.data;
 
   try {
-    const actionChannel = `action-${actionId}`;
+    const actionChannel = getActionChannel(actionId);
     const eventType = approved ? "action_approved" : "action_rejected";
 
     logger.info(
@@ -100,7 +97,6 @@ async function handler(
         created: Date.now(),
         actionId: actionId,
         messageId: mId,
-        paramsHash: paramsHash,
       }),
     });
 

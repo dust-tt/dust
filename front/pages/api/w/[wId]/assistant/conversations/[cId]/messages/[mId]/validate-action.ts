@@ -9,15 +9,11 @@ import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-
-const ValidateActionSchema = z.object({
-  actionId: z.number(),
-  approved: z.boolean(),
-});
-
-type ValidateActionResponse = {
-  success: boolean;
-};
+import {
+  getActionChannel,
+  ValidateActionResponse,
+  ValidateActionSchema,
+} from "@app/lib/api/assistant/conversation/validate_actions";
 
 /**
  * API endpoint to validate or reject agent actions that require user approval
@@ -65,6 +61,7 @@ async function handler(
   }
 
   const conversationRes = await getConversation(auth, cId);
+
   if (conversationRes.isErr()) {
     return apiErrorForConversation(req, res, conversationRes.error);
   }
@@ -72,7 +69,7 @@ async function handler(
   const { actionId, approved } = parseResult.data;
 
   try {
-    const actionChannel = `action-${actionId}`;
+    const actionChannel = getActionChannel(actionId);
     const eventType = approved ? "action_approved" : "action_rejected";
 
     logger.info(
