@@ -41,9 +41,9 @@ export default function DataSourceViewDocumentModal({
     if (!document) {
       return { title: defaultTitle, text: undefined };
     }
-if (document.title) {
-   return { title: document.title, text: document.text }
-  }
+    if (document.title) {
+      return { title: document.title, text: document.text };
+    }
     const titleTag = document.tags.find((tag: string) =>
       tag.startsWith("title:")
     );
