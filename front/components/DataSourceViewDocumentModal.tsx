@@ -36,16 +36,20 @@ export default function DataSourceViewDocumentModal({
     });
 
   const { title, text } = useMemo(() => {
-    if (!document) {
-      return { title: params.documentId.value ?? undefined, text: undefined };
-    }
+    const defaultTitle = params.documentId.value ?? undefined;
 
+    if (!document) {
+      return { title: defaultTitle, text: undefined };
+    }
+    if (document.title) {
+      return { title: document.title, text: document.text };
+    }
     const titleTag = document.tags.find((tag: string) =>
       tag.startsWith("title:")
     );
 
     return {
-      title: titleTag ? titleTag.split("title:")[1] : undefined,
+      title: titleTag ? titleTag.split("title:")[1] : defaultTitle,
       text: document.text,
     };
   }, [document, params.documentId.value]);
