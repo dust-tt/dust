@@ -37,19 +37,18 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     id: "trackers",
     label: "Document Tracker",
     featureFlag: "labs_trackers",
-    visibleWithoutAccess: false,
+    visibleWithoutAccess: true,
     icon: BookOpenIcon,
     description:
       "Document monitoring made simple - receive alerts when documents are out of date.",
   },
 ];
-
 const LABS_CONNECTIONS: LabsConnectionItemType[] = [
   {
     id: "hubspot",
     label: "Hubspot",
     featureFlag: "labs_connection_hubspot",
-    visibleWithoutAccess: true,
+    visibleWithoutAccess: false,
     logo: HubspotLogo,
     description: "Import your Hubspot data into Dust.",
   },
@@ -103,6 +102,8 @@ export default function LabsTranscriptsIndex({
   featureFlags,
   isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const visibleConnections = getVisibleConnections(featureFlags);
+  const visibleFeatures = getVisibleFeatures(featureFlags);
   return (
     <ConversationsNavigationProvider>
       <AppLayout
@@ -113,7 +114,7 @@ export default function LabsTranscriptsIndex({
       >
         <Page>
           <Page.Header
-            title="Beta features"
+            title="Exploratory features"
             icon={TestTubeIcon}
             description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
           />
@@ -124,7 +125,7 @@ export default function LabsTranscriptsIndex({
                 description="All features presented here are in beta and may change or be removed."
               />
 
-              {getVisibleFeatures(featureFlags).map((item) => (
+              {visibleFeatures.map((item) => (
                 <ContextItem
                   key={item.id}
                   title={item.label}
@@ -142,14 +143,14 @@ export default function LabsTranscriptsIndex({
                 </ContextItem>
               ))}
 
-              {isAdmin && (
+              {isAdmin && visibleConnections.length > 0 && (
                 <>
                   <ContextItem.SectionHeader
                     title="Connections"
                     description="These connections are being tested and may require some manual steps."
                   />
 
-                  {getVisibleConnections(featureFlags).map((item) => (
+                  {visibleConnections.map((item) => (
                     <ContextItem
                       key={item.id}
                       title={item.label}

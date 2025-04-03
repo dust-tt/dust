@@ -95,34 +95,11 @@ export function UserMenu({
         {hasBetaAccess && (
           <>
             <DropdownMenuLabel label="Beta" />
-            {featureFlags.includes("labs_features") && (
-              <DropdownMenuItem
-                label="Beta features"
-                icon={TestTubeIcon}
-                href={`/w/${owner.sId}/labs`}
-              />
-            )}
-            {featureFlags.includes("labs_transcripts") && (
-              <DropdownMenuItem
-                label="Meeting transcripts"
-                icon={BookOpenIcon}
-                href={`/w/${owner.sId}/labs/transcripts`}
-              />
-            )}
-            {featureFlags.includes("labs_trackers") && (
-              <DropdownMenuItem
-                label="Trackers"
-                icon={EyeIcon}
-                href={`/w/${owner.sId}/labs/trackers`}
-              />
-            )}
-            {featureFlags.includes("labs_github_actions") && (
-              <DropdownMenuItem
-                label="Platform Actions"
-                icon={CloudArrowLeftRightIcon}
-                href={`/w/${owner.sId}/labs/platform_actions`}
-              />
-            )}
+            <DropdownMenuItem
+              label="Exploratory features"
+              icon={TestTubeIcon}
+              href={`/w/${owner.sId}/labs`}
+            />
           </>
         )}
 
