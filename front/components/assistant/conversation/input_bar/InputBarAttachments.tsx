@@ -74,10 +74,10 @@ export function InputBarAttachments({
           <Icon visual={logo} size="sm" />
         ) : (
           <>
+            <Icon visual={logo} size="sm" />
             {getVisualForDataSourceViewContentNode(node)({
               className: "h-5 w-5",
             })}
-            <Icon visual={logo} size="sm" />
           </>
         );
 

@@ -149,6 +149,7 @@ export function contentFragmentToAttachmentCitation(
         <Icon visual={logo} size="sm" />
       ) : (
         <>
+          <Icon visual={logo} size="sm" />
           <Icon
             visual={
               nodeType === "table"
@@ -157,9 +158,8 @@ export function contentFragmentToAttachmentCitation(
                   ? FolderIcon
                   : DocumentIcon
             }
-            className="h-5 w-5"
+            size="sm"
           />
-          <Icon visual={logo} size="sm" />
         </>
       );
 
@@ -179,7 +179,7 @@ export function contentFragmentToAttachmentCitation(
     id: contentFragment.sId,
     title: contentFragment.title,
     sourceUrl: contentFragment.sourceUrl,
-    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} />,
+    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="sm" />,
   };
 }
 
@@ -193,9 +193,7 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       preview: attachment.preview,
       isUploading: attachment.isUploading,
-      visual: attachment.preview || (
-        <Icon visual={attachment.preview ? ImageIcon : DocumentIcon} />
-      ),
+      visual: <Icon visual={attachment.preview ? ImageIcon : DocumentIcon} />,
       sourceUrl: null,
     };
   } else {
