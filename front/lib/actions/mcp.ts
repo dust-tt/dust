@@ -29,7 +29,7 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Ok } from "@app/types";
+import { normalizeError, Ok } from "@app/types";
 
 export type MCPServerConfigurationType = {
   id: ModelId;
@@ -463,7 +463,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
         messageId: agentMessage.sId,
         error: {
           code: "tool_error",
-          message: `Error calling tool ${actionConfiguration.name}: ${JSON.stringify(rawInputs)} => ${JSON.stringify(r.error.message)}`,
+          message: `Error calling tool ${actionConfiguration.name}: ${JSON.stringify(rawInputs)} => ${JSON.stringify(normalizeError(r.error.message))}`,
         },
       };
       return;
