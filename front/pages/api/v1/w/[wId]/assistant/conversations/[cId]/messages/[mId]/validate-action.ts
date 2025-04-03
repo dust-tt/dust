@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getConversation } from "@app/lib/api/assistant/conversation";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { publishEvent } from "@app/lib/api/assistant/pubsub";
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withPublicAPIAuthentication, withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -13,15 +13,20 @@ import type { WithAPIErrorResponse } from "@app/types";
 const ValidateActionSchema = z.object({
   actionId: z.number(),
   approved: z.boolean(),
+  paramsHash: z.any(),
 });
 
 type ValidateActionResponse = {
   success: boolean;
 };
 
+
 /**
- * API endpoint to validate or reject agent actions that require user approval
+ * @ignoreswagger
+ * Not documented yet. MCP specific endpoint.
+ * TODO(mcp): Add swagger documentation once mcp is public
  */
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<ValidateActionResponse>>,
@@ -69,7 +74,7 @@ async function handler(
     return apiErrorForConversation(req, res, conversationRes.error);
   }
 
-  const { actionId, approved } = parseResult.data;
+  const { actionId, approved, paramsHash } = parseResult.data;
 
   try {
     const actionChannel = `action-${actionId}`;
@@ -95,6 +100,7 @@ async function handler(
         created: Date.now(),
         actionId: actionId,
         messageId: mId,
+        paramsHash: paramsHash,
       }),
     });
 
@@ -131,4 +137,7 @@ async function handler(
   }
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withPublicAPIAuthentication(handler, {
+  isStreaming: true,
+  requiredScopes: { POST: "update:conversation" },
+});
