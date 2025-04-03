@@ -44,7 +44,7 @@ export async function* getMCPEvents({
     while (true) {
       const rawEvent = await Promise.race([
         callbackPromise.promise,
-        await setTimeoutAsync(MCP_EVENT_TIMEOUT),
+        setTimeoutAsync(MCP_EVENT_TIMEOUT),
       ]);
 
       if (rawEvent === "timeout") {
