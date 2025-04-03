@@ -7,6 +7,7 @@ import {
   Hover3D,
   LoginIcon,
 } from "@dust-tt/sparkle";
+import localFont from "next/font/local";
 import Head from "next/head";
 import Link from "next/link";
 import Script from "next/script";
@@ -242,6 +243,34 @@ const Header = () => {
     <Head>
       <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="shortcut icon" href="/static/favicon.png" />
+      {/* <link
+        rel="preload"
+        href="/static/fonts/Geist-Regular.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-Medium.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-SemiBold.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <link
+        rel="preload"
+        href="/static/fonts/Geist-Bold.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      /> */}
 
       <meta name="apple-mobile-web-app-title" content="Dust" />
       <link rel="apple-touch-icon" href="/static/AppIcon.png" />

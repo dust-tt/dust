@@ -259,6 +259,11 @@ module.exports = {
       ],
     },
     extend: {
+      fontFamily: {
+        sans: ['var(--font-geist)'],
+        mono: ['var(--font-geist-mono)'],
+        objektiv: ['var(--font-geist)'],
+      },
       borderRadius: {
         "4xl": "2rem",
       },
