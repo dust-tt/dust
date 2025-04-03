@@ -42,11 +42,13 @@ type RowData = {
 type AdminActionsListProps = {
   owner: LightWorkspaceType;
   setShowDetails: (mcpServer: MCPServerType) => void;
+  openRemoteMCPCreationModal: () => void;
 };
 
 export const AdminActionsList = ({
   owner,
   setShowDetails,
+  openRemoteMCPCreationModal,
 }: AdminActionsListProps) => {
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -286,6 +288,13 @@ export const AdminActionsList = ({
         },
         {
           kind: "item",
+          label: "Edit",
+          onSelect: () => {
+            setShowDetails(serverView.server);
+          },
+        },
+        {
+          kind: "item",
           label: serverType === "internal" ? "Disable" : "Delete",
           onSelect: async () => {
             await deleteServer(serverView.server.id);
@@ -305,6 +314,7 @@ export const AdminActionsList = ({
           enabledMCPServers={serverViews.map(
             (serverView) => serverView.server.id
           )}
+          createRemoteMCP={openRemoteMCPCreationModal}
         />
       </div>
 

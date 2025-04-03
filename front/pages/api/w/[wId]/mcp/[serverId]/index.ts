@@ -14,6 +14,14 @@ export type GetMCPServerResponseBody = {
   server: MCPServerType;
 };
 
+export type GetRemoteMCPServerResponseBody = {
+  server: MCPServerType & {
+    url: string;
+    lastSyncAt: Date | null;
+    sharedSecret: string;
+  };
+};
+
 export type PatchMCPServerResponseBody = {
   success: boolean;
   server: MCPServerType;

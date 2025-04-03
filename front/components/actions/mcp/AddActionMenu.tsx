@@ -23,11 +23,13 @@ import type { WorkspaceType } from "@app/types";
 type AddActionMenuProps = {
   owner: WorkspaceType;
   enabledMCPServers: string[];
+  createRemoteMCP: () => void;
 };
 
 export const AddActionMenu = ({
   owner,
   enabledMCPServers,
+  createRemoteMCP,
 }: AddActionMenuProps) => {
   const { availableMCPServers } = useAvailableMCPServers({
     owner,
@@ -64,6 +66,7 @@ export const AddActionMenu = ({
         <DropdownMenuItem
           icon={CloudArrowLeftRightIcon}
           label="Add Remote MCP Server"
+          onClick={createRemoteMCP}
         />
       </DropdownMenuContent>
     </DropdownMenu>
