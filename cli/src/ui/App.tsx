@@ -60,9 +60,9 @@ const App: FC<AppProps> = ({ cli }) => {
       return (
         <Box flexDirection="column">
           <Text color="red">Unknown command: {command}</Text>
-          <Text>Run </Text>
-          <Text color="green">dust help</Text>
-          <Text> to see available commands.</Text>
+          <Box marginTop={1}>
+            <Help />
+          </Box>
         </Box>
       );
   }
