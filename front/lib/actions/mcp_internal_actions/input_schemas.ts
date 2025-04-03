@@ -42,6 +42,10 @@ export type ConfigurableToolInputType = z.infer<
   (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
 >;
 
+/**
+ * Mapping between the mime types we used to identify a configurable resource
+ * and the JSON schema resulting from the Zod schema defined above.
+ */
 const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
     key,
@@ -49,6 +53,10 @@ const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   ])
 ) as Record<InternalConfigurationMimeType, JSONSchema>;
 
+/**
+ * Defines how we fill the actual inputs of the tool for each mime type.
+ * TODO(mcp): typing too weak here, testing the inference is hard before we have more INTERNAL_MIME_TYPES.CONFIGURATION.
+ */
 function generateConfiguredInput({
   actionConfiguration,
   owner,
