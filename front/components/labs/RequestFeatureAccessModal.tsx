@@ -66,7 +66,7 @@ export function RequestFeatureAccessModal({
           <div className="flex flex-col gap-4 p-4">
             <div className="flex flex-col gap-2">
               <div className="flex flex-col gap-2">
-                <p className="mb-2 text-sm text-element-700">
+                <p className="text-element-700 mb-2 text-sm">
                   {`This feature is currently in beta. If you'd like to request access, please fill out the form below.`}
                 </p>
               </div>
