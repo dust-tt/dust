@@ -18,7 +18,6 @@ export async function* getMCPEvents({
       created: number;
       actionId: number;
       messageId?: string;
-      paramsHash?: string;
     };
   },
   void

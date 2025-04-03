@@ -226,7 +226,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
   toJSON(): MCPServerType & {
     // Remote MCP Server specifics
     url: string;
-    lastSyncAt: Date | null;
+    lastSyncAt: number | null;
     sharedSecret: string;
   } {
     return {
@@ -241,7 +241,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServer> {
 
       // Remote MCP Server specifics
       url: this.url,
-      lastSyncAt: this.lastSyncAt,
+      lastSyncAt: this.lastSyncAt?.getTime() ?? null,
       sharedSecret: this.sharedSecret,
     };
   }
