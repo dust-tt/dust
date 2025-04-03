@@ -40,7 +40,7 @@ export const ConfigurableToolInputSchemas: Record<
 const ConfigurableToolInputJSONSchemas = Object.fromEntries(
   Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
     key,
-    zodToJsonSchema(schema).definitions as JSONSchema,
+    zodToJsonSchema(schema),
   ])
 ) as Record<InternalConfigurationMimeType, JSONSchema>;
 
