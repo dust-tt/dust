@@ -2,8 +2,13 @@ import { assert } from "console";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions";
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  isDefaultInternalMCPServer,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
@@ -13,10 +18,9 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerView } from "@app/lib/models/assistant/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ModelId } from "@app/types";
 import { removeNulls } from "@app/types";
 
 export class InternalMCPServerInMemoryResource {
@@ -26,6 +30,7 @@ export class InternalMCPServerInMemoryResource {
   private metadata: Omit<MCPServerType, "id"> = {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
+    isDefault: false,
   };
 
   constructor(id: string) {
@@ -40,11 +45,16 @@ export class InternalMCPServerInMemoryResource {
       mcpServerId: id,
     });
 
+    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
+
     server.metadata = {
-      ...extractMetadataFromServerVersion(mcpClient.getServerVersion()),
+      ...md,
       tools: extractMetadataFromTools(
         (await mcpClient.listTools()).tools
       ) as any,
+      isDefault: isInternalMCPServerName(md.name)
+        ? isDefaultInternalMCPServer(md.name)
+        : false,
     };
 
     await mcpClient.close();
@@ -66,7 +76,7 @@ export class InternalMCPServerInMemoryResource {
 
     const server = await InternalMCPServerInMemoryResource.init(
       auth,
-      InternalMCPServerInMemoryResource.nameToSId({
+      internalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
@@ -87,20 +97,22 @@ export class InternalMCPServerInMemoryResource {
     return server;
   }
 
-  static nameToSId({
-    name,
-    workspaceId,
-  }: {
-    name: InternalMCPServerNameType;
-    workspaceId: ModelId;
-  }): string {
-    return makeSId("internal_mcp_server", {
-      id: INTERNAL_MCP_SERVERS[name].id,
-      workspaceId,
-    });
-  }
-
   async delete(auth: Authenticator) {
+    const mcpServerViews = await MCPServerView.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
+
+    await Promise.all(
+      mcpServerViews.map(async (mcpServerView) => {
+        await destroyMCPServerViewDependencies(auth, {
+          mcpServerViewId: mcpServerView.id,
+        });
+      })
+    );
+
     await MCPServerView.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -134,12 +146,24 @@ export class InternalMCPServerInMemoryResource {
   }
 
   static async listAvailableInternalMCPServers(auth: Authenticator) {
-    const ids = AVAILABLE_INTERNAL_MCPSERVER_NAMES.map((name) =>
-      InternalMCPServerInMemoryResource.nameToSId({
+    // Hide servers with flags that are not enabled for the workspace.
+    const names: InternalMCPServerNameType[] = [];
+
+    for (const name of AVAILABLE_INTERNAL_MCPSERVER_NAMES) {
+      const isEnabled = await isEnabledForWorkspace(auth, name);
+
+      if (isEnabled) {
+        names.push(name);
+      }
+    }
+
+    const ids = names.map((name) =>
+      internalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
       })
     );
+
     return concurrentExecutor(
       ids,
       (id) => InternalMCPServerInMemoryResource.init(auth, id),
@@ -168,6 +192,7 @@ export class InternalMCPServerInMemoryResource {
     return concurrentExecutor(
       removeNulls(servers.map((server) => server.internalMCPServerId)),
       async (internalMCPServerId) =>
+        // This does not create them in the workspace, only in memory, we need to call "makeNew" to create them in the workspace.
         InternalMCPServerInMemoryResource.init(auth, internalMCPServerId),
       {
         concurrency: 10,
