@@ -19,17 +19,16 @@ import {
 } from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
+export const DATA_SOURCE_CONFIGURATION_URI_PATTERN =
+  /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/;
+
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
 export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
     z.object({
-      uri: z
-        .string()
-        .regex(
-          /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/
-        ),
+      uri: z.string().regex(DATA_SOURCE_CONFIGURATION_URI_PATTERN),
       mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
     })
   ),
