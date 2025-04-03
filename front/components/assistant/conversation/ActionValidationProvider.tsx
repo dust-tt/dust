@@ -20,7 +20,6 @@ type ActionValidationContextType = {
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hash: string;
   }) => void;
 };
 
@@ -31,7 +30,6 @@ export type PendingValidationRequestType = {
   conversationId: string;
   action: MCPActionType;
   inputs: Record<string, unknown>;
-  hash: string;
 };
 
 export const ActionValidationContext =
@@ -110,7 +108,6 @@ export function ActionValidationProvider({
           body: JSON.stringify({
             actionId: currentValidation.action.id,
             approved,
-            paramsHash: currentValidation.hash,
           }),
         }
       );
@@ -149,7 +146,6 @@ export function ActionValidationProvider({
     conversationId: string;
     action: MCPActionType;
     inputs: Record<string, unknown>;
-    hash: string;
   }) => {
     addToQueue(validationRequest);
     setErrorMessage(null);
