@@ -117,9 +117,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       })
     : [];
 
-  const mcpServerViewsJSON = await Promise.all(
-    mcpServerViews.map((v) => v.toJSON(auth))
-  );
+  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   return {
     props: {
