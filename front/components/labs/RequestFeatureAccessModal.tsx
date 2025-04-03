@@ -9,9 +9,11 @@ import {
   SheetTitle,
   SheetTrigger,
   TextArea,
+  useSendNotification,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { sendRequestFeatureAccessEmail } from "@app/lib/email";
 import type { LightWorkspaceType } from "@app/types";
 
 interface RequestFeatureAccessModal {
@@ -24,11 +26,32 @@ export function RequestFeatureAccessModal({
   featureName,
 }: RequestFeatureAccessModal) {
   const [message, setMessage] = useState("");
+  const sendNotification = useSendNotification();
 
   const onClose = () => {
     setMessage("");
   };
 
+  const onSave = async () => {
+    try {
+      await sendRequestFeatureAccessEmail({
+        emailMessage: message,
+        featureName,
+        owner,
+      });
+      sendNotification({
+        type: "success",
+        title: "Email sent!",
+        description: `Your request was sent to the Dust support team. We'll get back to you as soon as possible.`,
+      });
+    } catch (e) {
+      sendNotification({
+        type: "error",
+        title: "Error sending email",
+        description: "An unexpected error occurred while sending email.",
+      });
+    }
+  };
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -63,7 +86,7 @@ export function RequestFeatureAccessModal({
           }}
           rightButtonProps={{
             label: "Send",
-            onClick: () => alert(owner.sId),
+            onClick: onSave,
             disabled: message.length === 0,
           }}
         />
