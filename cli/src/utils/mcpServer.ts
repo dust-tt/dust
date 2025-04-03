@@ -107,71 +107,82 @@ export async function startMcpServer(
           toolDescription,
           { userInput: z.string().describe("The user input to the agent.") },
           async ({ userInput }: { userInput: string }) => {
-            try {
-              const convRes = await dustClient.createConversation({
-                title: `MCP CLI (${toolName}) - ${new Date().toISOString()}`,
-                visibility: "unlisted",
-                message: {
-                  content: userInput,
-                  mentions: [{ configurationId: agent.sId }],
-                  context: {
-                    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                    username: "mcp_cli_user",
-                    fullName: user.fullName,
-                    email: user.email,
-                    profilePictureUrl: user.image,
-                    origin: "api",
-                  },
+            const convRes = await dustClient.createConversation({
+              title: `MCP CLI (${toolName}) - ${new Date().toISOString()}`,
+              visibility: "unlisted",
+              message: {
+                content: userInput,
+                mentions: [{ configurationId: agent.sId }],
+                context: {
+                  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                  username: user.username,
+                  fullName: user.fullName,
+                  email: user.email,
+                  profilePictureUrl: user.image,
+                  origin: "api",
                 },
-                contentFragment: undefined,
-              });
+              },
+              contentFragment: undefined,
+            });
 
-              if (convRes.isErr()) {
-                throw new Error(
-                  `Failed to create conversation: ${convRes.error.message}`
-                );
-              }
+            if (convRes.isErr()) {
+              const errorMessage = `Failed to create conversation: ${convRes.error.message}`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            }
 
-              const { conversation, message: createdUserMessage } =
-                convRes.value;
-              const streamRes = await dustClient.streamAgentAnswerEvents({
-                conversation: conversation,
-                userMessageId: createdUserMessage.sId,
-              });
+            const { conversation, message: createdUserMessage } = convRes.value;
+            const streamRes = await dustClient.streamAgentAnswerEvents({
+              conversation: conversation,
+              userMessageId: createdUserMessage.sId,
+            });
 
-              if (streamRes.isErr()) {
-                throw new Error(
-                  `Failed to stream agent answer: ${streamRes.error.message}`
-                );
-              }
+            if (streamRes.isErr()) {
+              const errorMessage = `Failed to stream agent answer: ${streamRes.error.message}`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+              return {
+                content: [{ type: "text", text: errorMessage }],
+                isError: true,
+              };
+            }
 
-              let finalContent = "";
+            let finalContent = "";
+            try {
               for await (const event of streamRes.value.eventStream) {
                 if (event.type === "generation_tokens") {
                   finalContent += event.text;
                 } else if (event.type === "agent_error") {
-                  throw new Error(`Agent error: ${event.error.message}`);
+                  const errorMessage = `Agent error: ${event.error.message}`;
+                  console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+                  return {
+                    content: [{ type: "text", text: errorMessage }],
+                    isError: true,
+                  };
                 } else if (event.type === "user_message_error") {
-                  throw new Error(`User message error: ${event.error.message}`);
+                  const errorMessage = `User message error: ${event.error.message}`;
+                  console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
+                  return {
+                    content: [{ type: "text", text: errorMessage }],
+                    isError: true,
+                  };
                 }
               }
-
-              console.error(
-                `[MCP Tool Success ${toolName}] Execution finished.`
-              );
-              return { content: [{ type: "text", text: finalContent.trim() }] };
-            } catch (error) {
-              console.error(`[MCP Tool Error ${toolName}]`, error);
+            } catch (streamError) {
+              const errorMessage = `Error processing agent stream: ${
+                normalizeError(streamError).message
+              }`;
+              console.error(`[MCP Tool Error ${toolName}] ${errorMessage}`);
               return {
-                content: [
-                  {
-                    type: "text",
-                    text: `Error: ${normalizeError(error).message}`,
-                  },
-                ],
+                content: [{ type: "text", text: errorMessage }],
                 isError: true,
               };
             }
+
+            console.error(`[MCP Tool Success ${toolName}] Execution finished.`);
+            return { content: [{ type: "text", text: finalContent.trim() }] };
           }
         );
       }
