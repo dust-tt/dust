@@ -1,7 +1,5 @@
 import {
   BookOpenIcon,
-  Button,
-  Cog6ToothIcon,
   ContextItem,
   EyeIcon,
   HubspotLogo,
@@ -10,20 +8,49 @@ import {
   TestTubeIcon,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 
 import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
 import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
-import { RequestFeatureAccessModal } from "@app/components/labs/RequestFeatureAccessModal";
 import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import type {
+  LabsConnectionItemType,
+  LabsFeatureItemType,
   SubscriptionType,
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
+
+const LABS_FEATURES: LabsFeatureItemType[] = [
+  {
+    id: "transcripts",
+    label: "Meeting Transcripts Processing",
+    featureFlag: "labs_transcripts",
+    icon: EyeIcon,
+    description:
+      "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
+  },
+  {
+    id: "trackers",
+    label: "Document Tracker",
+    featureFlag: "labs_trackers",
+    icon: BookOpenIcon,
+    description:
+      "Document monitoring made simple - receive alerts when documents are out of date.",
+  },
+];
+
+const LABS_CONNECTIONS: LabsConnectionItemType[] = [
+  {
+    id: "hubspot",
+    label: "Hubspot",
+    featureFlag: "labs_connection_hubspot",
+    logo: HubspotLogo,
+    description: "Import your Hubspot data into Dust.",
+  },
+];
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
@@ -76,60 +103,47 @@ export default function LabsTranscriptsIndex({
                 title="Features"
                 description="All features presented here are in beta and may change or be removed."
               />
-              <ContextItem
-                title="Meeting Transcripts Processing"
-                action={
-                  <FeatureAccessButton
-                    accessible={featureFlags.includes("labs_transcripts")}
-                    featureName="Meeting Transcripts Processing"
-                    managePath={`/w/${owner.sId}/labs/transcripts`}
-                    owner={owner}
-                  />
-                }
-                visual={<Icon visual={EyeIcon} />}
-              >
-                <ContextItem.Description
-                  description="Receive meeting minutes processed by email automatically and
-                  store them in a Dust Folder."
-                />
-              </ContextItem>
 
-              <ContextItem
-                title="Document Tracker"
-                action={
-                  <FeatureAccessButton
-                    accessible={featureFlags.includes("labs_trackers")}
-                    featureName="Document Tracker"
-                    managePath={`/w/${owner.sId}/labs/trackers`}
-                    owner={owner}
-                  />
-                }
-                visual={<Icon visual={BookOpenIcon} />}
-              >
-                <ContextItem.Description description="Document monitoring made simple - receive alerts when documents are out of date." />
-              </ContextItem>
+              {LABS_FEATURES.map((item) => (
+                <ContextItem
+                  key={item.id}
+                  title={item.label}
+                  action={
+                    <FeatureAccessButton
+                      accessible={featureFlags.includes(item.featureFlag)}
+                      featureName={item.label}
+                      managePath={`/w/${owner.sId}/labs/${item.id}`}
+                      owner={owner}
+                    />
+                  }
+                  visual={<Icon visual={item.icon} />}
+                >
+                  <ContextItem.Description description={item.description} />
+                </ContextItem>
+              ))}
 
               <ContextItem.SectionHeader
                 title="Connections"
                 description="These connections are being tested and may require some manual steps."
               />
 
-              <ContextItem
-                title="Hubspot"
-                action={
-                  <FeatureAccessButton
-                    accessible={featureFlags.includes(
-                      "labs_connection_hubspot"
-                    )}
-                    featureName="Hubspot connection"
-                    managePath={`/w/${owner.sId}/labs/connections/hubspot`}
-                    owner={owner}
-                  />
-                }
-                visual={<ContextItem.Visual visual={HubspotLogo} />}
-              >
-                <ContextItem.Description description="Import your Hubspot data into Dust." />
-              </ContextItem>
+              {LABS_CONNECTIONS.map((item) => (
+                <ContextItem
+                  key={item.id}
+                  title={item.label}
+                  action={
+                    <FeatureAccessButton
+                      accessible={featureFlags.includes(item.featureFlag)}
+                      featureName={`${item.label} connection`}
+                      managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
+                      owner={owner}
+                    />
+                  }
+                  visual={<ContextItem.Visual visual={item.logo} />}
+                >
+                  <ContextItem.Description description={item.description} />
+                </ContextItem>
+              ))}
             </ContextItem.List>
           </Page.Layout>
         </Page>

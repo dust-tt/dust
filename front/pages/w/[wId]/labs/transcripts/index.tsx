@@ -18,7 +18,6 @@ import AppLayout from "@app/components/sparkle/AppLayout";
 import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -35,7 +34,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   dataSourcesViews: DataSourceViewType[];
-  hasDefaultStorageConfiguration: boolean;
   featureFlags: WhitelistableFeature[];
 }>(async (_context, auth) => {
   const owner = auth.workspace();
@@ -45,12 +43,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   const dataSourcesViews = (
     await DataSourceViewResource.listByWorkspace(auth)
   ).map((dsv) => dsv.toJSON());
-
-  const defaultStorageConfiguration =
-    await LabsTranscriptsConfigurationResource.fetchDefaultConfigurationForWorkspace(
-      auth.getNonNullableWorkspace()
-    );
-  const hasDefaultStorageConfiguration = !!defaultStorageConfiguration?.id;
 
   if (!owner || !subscription || !user) {
     return {
@@ -70,7 +62,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       dataSourcesViews,
-      hasDefaultStorageConfiguration,
       featureFlags,
     },
   };
@@ -80,6 +71,7 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   dataSourcesViews,
+  featureFlags,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const {
     transcriptsConfiguration,
@@ -170,7 +162,9 @@ export default function LabsTranscriptsIndex({
         pageTitle="Dust - Transcripts processing"
         navChildren={<AssistantSidebarMenu owner={owner} />}
       >
-        <Breadcrumbs items={items} />
+        {featureFlags.includes("labs_features") && (
+          <Breadcrumbs items={items} />
+        )}
         <DeleteProviderDialog
           isOpen={isDeleteProviderDialogOpened}
           onClose={() => setIsDeleteProviderDialogOpened(false)}

@@ -9,12 +9,9 @@ import {
   SheetTitle,
   SheetTrigger,
   TextArea,
-  useSendNotification,
 } from "@dust-tt/sparkle";
-import * as _ from "lodash";
 import { useState } from "react";
 
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LightWorkspaceType } from "@app/types";
 
 interface RequestFeatureAccessModal {
@@ -26,10 +23,7 @@ export function RequestFeatureAccessModal({
   owner,
   featureName,
 }: RequestFeatureAccessModal) {
-  const { isDark } = useTheme();
-
   const [message, setMessage] = useState("");
-  const sendNotification = useSendNotification();
 
   const onClose = () => {
     setMessage("");
