@@ -1,4 +1,3 @@
-import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { assert } from "console";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -6,10 +5,7 @@ import { Op } from "sequelize";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions";
 import { AVAILABLE_INTERNAL_MCPSERVER_NAMES } from "@app/lib/actions/mcp_internal_actions/constants";
-import type {
-  MCPServerDefinitionType,
-  MCPServerType,
-} from "@app/lib/actions/mcp_metadata";
+import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import {
   connectToMCPServer,
   extractMetadataFromServerVersion,
@@ -27,9 +23,10 @@ export class InternalMCPServerInMemoryResource {
   // SID of the internal MCP server, scoped to a workspace.
   readonly id: string;
 
-  private metadata: MCPServerDefinitionType =
-    extractMetadataFromServerVersion(undefined);
-  private tools: Tool[] = [];
+  private metadata: Omit<MCPServerType, "id"> = {
+    ...extractMetadataFromServerVersion(undefined),
+    tools: [],
+  };
 
   constructor(id: string) {
     this.id = id;
@@ -43,10 +40,12 @@ export class InternalMCPServerInMemoryResource {
       mcpServerId: id,
     });
 
-    server.metadata = extractMetadataFromServerVersion(
-      mcpClient.getServerVersion()
-    );
-    server.tools = (await mcpClient.listTools()).tools;
+    server.metadata = {
+      ...extractMetadataFromServerVersion(mcpClient.getServerVersion()),
+      tools: extractMetadataFromTools(
+        (await mcpClient.listTools()).tools
+      ) as any,
+    };
 
     await mcpClient.close();
 
@@ -180,7 +179,6 @@ export class InternalMCPServerInMemoryResource {
   toJSON(): MCPServerType {
     return {
       id: this.id,
-      tools: extractMetadataFromTools(this.tools) as any,
       ...this.metadata,
     };
   }
