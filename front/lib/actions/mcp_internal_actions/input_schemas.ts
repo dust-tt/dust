@@ -71,9 +71,7 @@ export function serverRequiresInternalConfiguration({
  * Recursively filters out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION.
  * This function handles nested objects and arrays.
  */
-export function filterInternalConfiguration(
-  inputSchema: JSONSchema
-): JSONSchema {
+export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
   // Base case: if not an object or null, return as is
   if (!isJSONSchema(inputSchema)) {
     return inputSchema;
@@ -105,7 +103,7 @@ export function filterInternalConfiguration(
 
         if (shouldInclude) {
           // Recursively filter nested properties
-          filteredProperties[key] = filterInternalConfiguration(value);
+          filteredProperties[key] = hideInternalConfiguration(value);
         }
       } else if (value !== null && value !== undefined) {
         // Keep non-object values as is
@@ -127,11 +125,11 @@ export function filterInternalConfiguration(
   if (filteredSchema.type === "array" && filteredSchema.items) {
     if (isJSONSchema(filteredSchema.items)) {
       // Single schema for all items
-      filteredSchema.items = filterInternalConfiguration(filteredSchema.items);
+      filteredSchema.items = hideInternalConfiguration(filteredSchema.items);
     } else if (Array.isArray(filteredSchema.items)) {
       // Array of schemas for tuple validation
       filteredSchema.items = filteredSchema.items.map((item) =>
-        isJSONSchema(item) ? filterInternalConfiguration(item) : item
+        isJSONSchema(item) ? hideInternalConfiguration(item) : item
       );
     }
   }

@@ -4,7 +4,7 @@ import type { MCPToolResultContent } from "@app/lib/actions/mcp_actions";
 import { tryCallMCPTool } from "@app/lib/actions/mcp_actions";
 import {
   augmentInputsWithConfiguration,
-  filterInternalConfiguration,
+  hideInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
 import type {
@@ -209,7 +209,7 @@ export class MCPConfigurationServerRunner extends BaseActionConfigurationServerR
     }
 
     // Filter out properties from the inputSchema that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
-    const filteredInputSchema = filterInternalConfiguration(
+    const filteredInputSchema = hideInternalConfiguration(
       this.actionConfiguration.inputSchema
     );
 
