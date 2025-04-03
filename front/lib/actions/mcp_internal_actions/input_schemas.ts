@@ -1,57 +1,48 @@
 import type { InternalConfigurationMimeType } from "@dust-tt/client";
 import { assertNever, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Ajv } from "ajv";
-import type {
-  JSONSchema7 as JSONSchema,
-  JSONSchema7Definition as JSONSchemaDefinition,
-} from "json-schema";
+import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { ActionConfigurationType } from "@app/lib/actions/types/agent";
 import { isMCPActionConfiguration } from "@app/lib/actions/types/guards";
 import { makeSId } from "@app/lib/resources/string_ids";
+import {
+  containsSubSchema,
+  findSchemaAtPath,
+  isJSONSchema,
+  setValueAtPath,
+} from "@app/lib/utils/json_schemas";
 import type { WorkspaceType } from "@app/types";
 
-export const DataSourceConfigurationInputSchema = z.array(
-  z.object({
-    uri: z
-      .string()
-      .regex(
-        /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/
-      ),
-    mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
-  })
-);
-
 /**
- * Recursively checks if any property or nested property of an object has a mimeType matching the target value.
+ * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
-function hasPropertyMatchingMimeType(
-  obj: Record<string, any>,
-  mimeType: InternalConfigurationMimeType
-): boolean {
-  // Null check first to prevent errors
-  if (obj === null || obj === undefined) {
-    return false;
-  }
+export const ConfigurableToolInputSchemas: Record<
+  InternalConfigurationMimeType,
+  z.ZodSchema
+> = {
+  [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
+    z.object({
+      uri: z
+        .string()
+        .regex(
+          /^data_source_configuration:\/\/dust\/w\/(\w+)\/data_source_configurations\/(\w+)$/
+        ),
+      mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
+    })
+  ),
+} as const;
 
-  for (const [key, value] of Object.entries(obj)) {
-    if (key === "mimeType" && value.const === mimeType) {
-      return true;
-    }
-
-    // Recursively check nested objects, but avoid null values
-    if (value !== null && typeof value === "object") {
-      if (hasPropertyMatchingMimeType(value, mimeType)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
+const ConfigurableToolInputJSONSchemas = Object.fromEntries(
+  Object.entries(ConfigurableToolInputSchemas).map(([key, schema]) => [
+    key,
+    zodToJsonSchema(schema).definitions as JSONSchema,
+  ])
+) as Record<InternalConfigurationMimeType, JSONSchema>;
 
 /**
  * Checks if a server requires internal configuration by examining if any tool's inputSchema
@@ -73,7 +64,10 @@ export function serverRequiresInternalConfiguration({
       return false;
     }
 
-    return hasPropertyMatchingMimeType(tool.inputSchema, mimeType);
+    return containsSubSchema(
+      tool.inputSchema,
+      ConfigurableToolInputJSONSchemas[mimeType]
+    );
   });
 }
 
@@ -98,15 +92,12 @@ export function filterInternalConfiguration(
     const removedRequiredProps: string[] = [];
 
     for (const [key, value] of Object.entries(filteredSchema.properties)) {
-      // Skip properties that have a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
       let shouldInclude = true;
 
       if (isJSONSchema(value)) {
         // Check if this property has a matching mimeType
-        for (const mimeType of Object.values(
-          INTERNAL_MIME_TYPES.CONFIGURATION
-        )) {
-          if (hasPropertyMatchingMimeType(value, mimeType)) {
+        for (const schema of Object.values(ConfigurableToolInputJSONSchemas)) {
+          if (containsSubSchema(value, schema)) {
             shouldInclude = false;
             // Track removed properties that were required
             if (filteredSchema.required?.includes(key)) {
@@ -147,100 +138,12 @@ export function filterInternalConfiguration(
         isJSONSchema(item) ? filterInternalConfiguration(item) : item
       );
     }
-
-    // Handle additionalItems
-    if (
-      filteredSchema.additionalItems &&
-      isJSONSchema(filteredSchema.additionalItems)
-    ) {
-      filteredSchema.additionalItems = filterInternalConfiguration(
-        filteredSchema.additionalItems
-      );
-    }
   }
 
-  // Filter allOf, anyOf, oneOf
-  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
-    if (Array.isArray(filteredSchema[key])) {
-      filteredSchema[key] = filteredSchema[key]!.map((schema) =>
-        isJSONSchema(schema) ? filterInternalConfiguration(schema) : schema
-      );
-    }
-  }
-
-  // Filter not
-  if (filteredSchema.not && isJSONSchema(filteredSchema.not)) {
-    filteredSchema.not = filterInternalConfiguration(filteredSchema.not);
-  }
+  // Note: we don't handle anyOf, allOf, oneOf yet as we cannot disambiguate whether to inject the configuration
+  // since we entirely hide the configuration from the agent.
 
   return filteredSchema;
-}
-
-/**
- * Sets a value at a specific path in a nested object structure.
- * Assumes that intermediate objects already exist.
- */
-function setValueAtPath<T>(
-  obj: Record<string, unknown>,
-  path: string[],
-  value: T
-): void {
-  if (path.length === 0) {
-    return;
-  }
-
-  let current: Record<string, unknown> = obj;
-  for (let i = 0; i < path.length - 1; i++) {
-    const key = path[i];
-    current = current[key] as Record<string, unknown>;
-  }
-
-  current[path[path.length - 1]] = value;
-}
-
-/**
- * Type guard to check if a value is a JSONSchema object
- */
-function isJSONSchema(
-  value: JSONSchema | JSONSchemaDefinition | JSONSchemaDefinition[] | boolean
-): value is JSONSchema {
-  return value !== null && typeof value === "object";
-}
-
-/**
- * Finds the schema for a property at a specific path in a JSON schema.
- * Handles both object properties and array items.
- */
-function findSchemaAtPath(
-  schema: JSONSchema,
-  path: string[]
-): JSONSchema | null {
-  if (!path.length) {
-    return schema;
-  }
-
-  let currentSchema: JSONSchema | null = schema;
-
-  for (const segment of path) {
-    if (!currentSchema) {
-      return null;
-    }
-
-    // Navigate through object properties
-    if (currentSchema.properties && segment in currentSchema.properties) {
-      const propSchema: JSONSchemaDefinition =
-        currentSchema.properties[segment];
-      if (isJSONSchema(propSchema)) {
-        currentSchema = propSchema;
-      } else {
-        return null; // Not a valid schema
-      }
-    } else {
-      return null; // Path doesn't exist in the schema
-    }
-  }
-
-  return currentSchema;
 }
 
 /**
@@ -262,7 +165,7 @@ function injectValueForMimeType({
 }) {
   // Check if this property has a mimeType matching any value in INTERNAL_MIME_TYPES.CONFIGURATION
   for (const mimeType of Object.values(INTERNAL_MIME_TYPES.CONFIGURATION)) {
-    if (hasPropertyMatchingMimeType(schema, mimeType)) {
+    if (containsSubSchema(schema, ConfigurableToolInputJSONSchemas[mimeType])) {
       // We found a matching mimeType, augment the inputs
       switch (mimeType) {
         case INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE: {
@@ -317,29 +220,23 @@ export function augmentInputsWithConfiguration({
 
   const inputs = rawInputs;
 
-  // Use Ajv to validate and get errors
   const ajv = new Ajv({ allErrors: true });
   const validate = ajv.compile(inputSchema);
   const isValid = validate(inputs);
 
   if (!isValid && validate.errors) {
     for (const error of validate.errors) {
-      // Only process required property errors
       if (error.keyword !== "required" || !error.params.missingProperty) {
         continue;
       }
 
       const missingProp = error.params.missingProperty;
 
-      // The instancePath gives us the path to the parent object that's missing the property
       const parentPath = error.instancePath
         ? error.instancePath.split("/").filter(Boolean)
         : [];
 
-      // Combine the parent path with missing property to get the full path
       const fullPath = [...parentPath, missingProp];
-
-      // Find the schema for this property
       const propSchema = findSchemaAtPath(inputSchema, fullPath);
 
       // If we found a schema and it has a matching MIME type, inject the value
