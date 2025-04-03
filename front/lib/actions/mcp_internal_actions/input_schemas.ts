@@ -22,10 +22,7 @@ import type { WorkspaceType } from "@app/types";
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
  */
-export const ConfigurableToolInputSchemas: Record<
-  InternalConfigurationMimeType,
-  z.ZodSchema
-> = {
+export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE]: z.array(
     z.object({
       uri: z
@@ -36,7 +33,9 @@ export const ConfigurableToolInputSchemas: Record<
       mimeType: z.literal(INTERNAL_MIME_TYPES.CONFIGURATION.DATA_SOURCE),
     })
   ),
-} as const;
+  // We use a satisfies here to ensure that all the InternalConfigurationMimeType are covered whilst preserving the type
+  // inference in tools definitions (server.tool is templated).
+} as const satisfies Record<InternalConfigurationMimeType, z.ZodSchema>;
 
 export type ConfigurableToolInputType = z.infer<
   (typeof ConfigurableToolInputSchemas)[InternalConfigurationMimeType]
