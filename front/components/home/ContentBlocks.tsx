@@ -1,6 +1,5 @@
-import { ArrowRightSIcon, Button, RocketIcon } from "@dust-tt/sparkle";
+import { Button, cn, RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import React from "react";
 
@@ -14,8 +13,6 @@ import {
   Strong,
 } from "@app/components/home/ContentComponents";
 import { classNames } from "@app/lib/utils";
-
-import type { ROIProps } from "./content/Solutions/configs/utils";
 
 interface ImgBlockProps {
   children?: React.ReactNode;
@@ -33,22 +30,33 @@ export const ImgBlock: React.FC<ImgBlockProps> = ({
   const renderContent = () => {
     if (Array.isArray(content)) {
       return content.map((item, index) => (
-        <P key={index} size="md">
+        <P key={index} size="md" className="text-muted-foreground">
           {item}
         </P>
       ));
     } else {
-      return <P size="md">{content}</P>;
+      return (
+        <P size="md" className="text-muted-foreground">
+          {content}
+        </P>
+      );
     }
   };
 
   return (
-    <div className={classNames("flex flex-col gap-2", className)}>
-      <div className="ml-[10%] pr-[20%] lg:m-0 lg:pr-[28%]">
-        {children ? children : null}
+    <div
+      className={classNames(
+        "flex flex-col gap-2 overflow-hidden bg-muted-background",
+        className
+      )}
+    >
+      <div className="flex aspect-video items-center justify-center bg-primary-800 p-4">
+        <div className="max-w-[400px]">{children ? children : null}</div>
       </div>
-      <div className="flex flex-col px-0 py-6">
-        <H3 className="text-white">{title}</H3>
+      <div className="flex flex-col gap-3 px-6 pb-6 pt-4">
+        <H3 className="text-foreground" mono>
+          {title}
+        </H3>
         {renderContent()}
       </div>
     </div>
@@ -76,13 +84,13 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
       target="_blank"
       className={classNames(
         className,
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl bg-slate-200 drop-shadow-xl",
+        "flex h-full w-full flex-col overflow-hidden bg-muted-background",
         "group transition duration-300 ease-out",
-        "hover:bg-white"
+        "hover:bg-primary-100"
       )}
     >
       {children ? (
-        <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+        <div className="relative aspect-[16/9] w-full overflow-hidden">
           {React.Children.map(children, (child) => {
             if (
               React.isValidElement<React.ImgHTMLAttributes<HTMLImageElement>>(
@@ -94,8 +102,7 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
                 className: classNames(
                   "absolute h-full w-full object-cover",
                   "brightness-100 transition duration-300 ease-out",
-                  "group-hover:brightness-110",
-                  "border border-slate-900/10 rounded-t-2xl"
+                  "group-hover:brightness-110"
                 ),
               });
             }
@@ -103,15 +110,12 @@ export const BlogBlock: React.FC<BlogBlockProps> = ({
           })}
         </div>
       ) : null}
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col p-8">
         <div className="flex flex-col gap-2">
-          <H5 className="line-clamp-2 text-foreground dark:text-foreground-night">
+          <H5 className="line-clamp-2 text-foreground" mono>
             {title}
           </H5>
-          <P
-            size="xs"
-            className="line-clamp-3 text-foreground dark:text-foreground-night"
-          >
+          <P size="sm" className="line-clamp-3 text-muted-foreground">
             {content}
           </P>
         </div>
@@ -124,8 +128,6 @@ interface HeaderContentBlockProps {
   title: ReactNode;
   subtitle?: ReactNode;
   uptitle?: string;
-  from: string;
-  to: string;
   hasCTA?: boolean;
 }
 
@@ -133,8 +135,6 @@ export const HeaderContentBlock = ({
   title,
   subtitle,
   uptitle,
-  from,
-  to,
   hasCTA = true,
 }: HeaderContentBlockProps) => (
   <Grid>
@@ -149,18 +149,13 @@ export const HeaderContentBlock = ({
       )}
     >
       {uptitle && (
-        <P
-          size="lg"
-          className="text-muted-foreground dark:text-muted-foreground-night"
-        >
+        <P size="lg" className="text-brand-hunter-green">
           {uptitle}
         </P>
       )}
-      <H1 from={from} to={to}>
-        {title}
-      </H1>
+      <H1>{title}</H1>
       {subtitle && (
-        <P size="lg" className="text-white dark:text-black">
+        <P size="lg" className="text-foreground">
           {subtitle}
         </P>
       )}
@@ -193,39 +188,77 @@ interface MetricComponentProps {
     description: ReactNode;
     logo?: string;
   }[];
-  from: string;
-  to: string;
+  color?: "blue" | "green" | "rose" | "golden";
 }
 
-export const MetricSection = ({ metrics, from, to }: MetricComponentProps) => (
-  <div
-    className={classNames(
-      "grid w-full grid-cols-1 gap-8 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-2",
-      metrics.length === 2
-        ? "lg:grid-cols-2"
-        : metrics.length === 3
-          ? "lg:grid-cols-3"
-          : "lg:grid-cols-4"
-    )}
-  >
-    {metrics.map((metric, index) => (
-      <div key={index} className="flex flex-col items-center text-center">
-        {metric.logo && (
-          <Image alt="alan" src={metric.logo} width={200} height={100} />
-        )}
-        <H1 from={from} to={to} className="mt-0">
-          {metric.value}
-        </H1>
+const getColorClasses = (color: MetricComponentProps["color"] = "golden") => {
+  switch (color) {
+    case "blue":
+      return {
+        bg: "bg-brand-electric-blue/10",
+        text: "text-brand-electric-blue",
+      };
+    case "green":
+      return {
+        bg: "bg-green-100",
+        text: "text-green-600",
+      };
+    case "rose":
+      return {
+        bg: "bg-brand-red-rose/10",
+        text: "text-brand-red-rose",
+      };
+    case "golden":
+      return {
+        bg: "bg-golden-100",
+        text: "text-golden-600",
+      };
+  }
+};
 
-        <div className="flex flex-col items-center">
-          <P size="lg" className="max-w-[400px] text-black dark:text-slate-50">
-            {metric.description}
-          </P>
+export const MetricSection = ({
+  metrics,
+  color = "golden",
+}: MetricComponentProps) => {
+  const colors = getColorClasses(color);
+
+  return (
+    <div className="flex flex-col gap-y-8 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-8 lg:flex lg:flex-row lg:justify-center lg:gap-8">
+      {metrics.map((metric, index) => (
+        <div key={index} className="h-full flex-1 lg:flex-1">
+          <div
+            className={classNames(
+              "flex h-[220px] w-[220px] flex-col items-center justify-center rounded-full",
+              "mx-auto",
+              colors.bg
+            )}
+          >
+            {metric.logo && (
+              <Image
+                alt="alan"
+                src={metric.logo}
+                width={100}
+                height={50}
+                className="mb-3"
+              />
+            )}
+            <H2
+              className={classNames(
+                "text-center text-5xl font-medium",
+                colors.text
+              )}
+            >
+              <span>{metric.value}</span>
+            </H2>
+            <P size="sm" className="mt-3 px-6 text-center text-foreground">
+              {metric.description}
+            </P>
+          </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 interface QuoteProps {
   quote: string;
@@ -235,202 +268,71 @@ interface QuoteProps {
 }
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => (
-  <div className="col-span-12 flex flex-col rounded-4xl pb-2 pt-4 lg:col-span-10 lg:col-start-2">
-    <div className="flex justify-center">
-      <div className="flex items-center justify-center">
+  <div className="col-span-12 my-16 flex flex-col items-center justify-center md:my-12 lg:col-span-10 lg:col-start-2 lg:my-8">
+    <div
+      className={cn(
+        "flex max-w-[500px] flex-col items-center p-4 text-center font-sans italic text-foreground",
+        "copy-base xs:copy-lg sm:copy-xl md:copy-xl lg:copy-2xl"
+      )}
+    >
+      &ldquo; {quote} &rdquo;
+    </div>
+    <div className="align-center flex justify-center">
+      <div className="flex items-center justify-center gap-4">
         <Image
           src={logo}
-          width={200}
-          height={48}
+          width={160}
+          height={40}
           alt="Company Logo"
-          className="h-auto w-[140px] xs:w-[160px] sm:w-[200px]"
+          className="h-auto w-[120px] object-contain xs:w-[140px] sm:w-[160px]"
         />
-        <P
-          size="sm"
-          className="text-sm text-primary-400 xs:text-left xs:text-base sm:text-lg md:text-lg"
-        >
-          <Strong>
-            <span className="text-pink-300">{name}</span>
-          </Strong>
-          <br /> {title}
-        </P>
+        <div className="flex flex-col">
+          <P
+            size="md"
+            className={cn(
+              "text-foreground",
+              "xs:copy-left copy-base sm:copy-lg md:copy-xl"
+            )}
+          >
+            <Strong>{name}</Strong>
+          </P>
+          <P
+            size="sm"
+            className={cn(
+              "-mt-1 italic text-muted-foreground",
+              "xs:copy-left copy-sm xs:copy-base sm:copy-lg md:copy-lg"
+            )}
+          >
+            {title}
+          </P>
+        </div>
       </div>
-    </div>
-    <div className="flex flex-col items-center rounded-4xl p-4 text-center font-objektiv text-base italic text-white xs:text-lg sm:text-xl md:text-xl lg:text-2xl">
-      &ldquo; {quote} &rdquo;
     </div>
   </div>
 );
 
-interface CarousselContentBlockProps {
-  title: ReactNode;
-  from: string;
-  to: string;
-  border: string;
-  href: string;
-  bulletPoints: string[];
-  image: string;
-  quote?: QuoteProps;
-  roi?: ROIProps;
-}
-
-export const CarousselContentBlock = ({
+export function ContentBlock({
   title,
-  from,
-  to,
-  border,
-  href,
-  bulletPoints,
+  description,
   image,
-  quote,
-  roi,
-}: CarousselContentBlockProps) => {
+  imageAlt,
+}: {
+  title: string;
+  description: string;
+  image: string;
+  imageAlt: string;
+}) {
   return (
-    <div
-      className={classNames(
-        "flex flex-col rounded-3xl border bg-gradient-to-br py-6 md:h-full lg:py-7",
-        from,
-        to,
-        border
-      )}
-    >
-      <div className="flex flex-col gap-8 px-4 sm:px-6 md:px-8 lg:h-full lg:flex-row lg:gap-12">
-        <div className="flex flex-col lg:h-full lg:w-1/2">
-          <div className="mb-2 lg:mb-4">
-            <H2 className="mb-4 text-slate-900">{title}</H2>
-
-            {bulletPoints && (
-              <ul className="flex list-none flex-col gap-3">
-                {bulletPoints.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 pt-1">
-                      <ArrowRightSIcon className="h-4 w-4 flex-shrink-0 text-slate-900" />
-                    </div>
-                    <P
-                      size="md"
-                      className="text-sm text-slate-800 md:text-base"
-                    >
-                      {feature}
-                    </P>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {/* Mobile-only image - between bullet points and quote */}
-          <div className="my-6 lg:hidden">
-            <div className="flex items-center justify-center">
-              <div className="w-full max-w-md">
-                <Image
-                  src={image}
-                  alt={title as string}
-                  width={1200}
-                  height={630}
-                  className="h-auto w-full"
-                />
-              </div>
-            </div>
-          </div>
-          {/* Quote and ROI section */}
-          <div className="mt-2 flex w-full flex-col gap-4 lg:mt-6 lg:flex-grow">
-            {" "}
-            {/* flex-grow only on lg */}
-            {quote && (
-              <>
-                <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
-                  <P
-                    size="sm"
-                    className="w-full text-xs italic text-slate-800 md:text-sm"
-                  >
-                    "{quote?.quote}"
-                  </P>
-                  <div className="flex items-center gap-3">
-                    {quote.logo ? (
-                      <div className="flex h-10 w-20 overflow-hidden rounded-full bg-slate-950 shadow-md">
-                        <Image
-                          src={quote.logo}
-                          height={40}
-                          width={120}
-                          alt={`${quote.name} logo`}
-                          className="h-10 w-auto rounded-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex h-10 w-10 overflow-hidden rounded-full bg-blue-500 shadow-md">
-                        <div className="flex h-full w-full items-center justify-center text-white">
-                          {quote.name.charAt(0)}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <P
-                        size="sm"
-                        className="text-xs font-bold text-slate-800 md:text-sm"
-                      >
-                        {quote.name}
-                      </P>
-                      <P size="xs" className="text-xs text-slate-700">
-                        {quote.title}
-                      </P>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-            {roi && (
-              <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-white/80 to-white/40 p-4 shadow-sm backdrop-blur-sm">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-24 overflow-hidden rounded-full bg-slate-950 shadow-md">
-                    <Image
-                      src={roi.logo}
-                      height={48}
-                      width={120}
-                      alt={`${roi.subtitle} logo`}
-                      className="h-12 w-auto object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <H2 className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-4xl font-bold text-slate-900 text-transparent">
-                      {roi.number}
-                    </H2>
-                    <P
-                      size="md"
-                      className="text-sm font-medium text-slate-800 md:text-base"
-                    >
-                      {roi.subtitle}
-                    </P>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          {/* Button */}
-          <div className="mt-4">
-            {" "}
-            {/* mt-auto only on lg */}
-            <Link href={href} shallow={true}>
-              <Button
-                label={`Learn more →`}
-                variant="outline"
-                size="md"
-                className="bg-white/80 hover:bg-white"
-              />
-            </Link>
-          </div>
-        </div>
-        {/* Desktop-only image - right column */}
-        <div className="hidden items-center justify-center lg:flex lg:w-3/5">
-          <div className="w-full max-w-md lg:max-w-2xl">
-            <Image
-              src={image}
-              alt={title as string}
-              width={1200}
-              height={630}
-              className="h-auto w-full"
-            />
-          </div>
-        </div>
-      </div>
+    <div className="flex flex-col gap-4">
+      <Image
+        src={image}
+        alt={imageAlt}
+        width={1200}
+        height={630}
+        className="w-full"
+      />
+      <H2>{title}</H2>
+      <P>{description}</P>
     </div>
   );
-};
+}

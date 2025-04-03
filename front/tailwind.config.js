@@ -163,7 +163,6 @@ module.exports = {
     fontFamily: {
       sans: ["Geist", "sans-serif"],
       mono: ["Geist Mono", "monospace"],
-      objektiv: ["Geist", "sans-serif"],
     },
     fontSize: {
       xs: [
@@ -890,6 +889,12 @@ module.exports = {
           fontSize: theme("fontSize.xl[0]"),
           lineHeight: theme("fontSize.xl[1].lineHeight"),
           letterSpacing: theme("fontSize.xl[1].letterSpacing"),
+          fontWeight: "400",
+        },
+        ".copy-2xl": {
+          fontSize: theme("fontSize.2xl[0]"),
+          lineHeight: theme("fontSize.2xl[1].lineHeight"),
+          letterSpacing: theme("fontSize.2xl[1].letterSpacing"),
           fontWeight: "400",
         },
       });
