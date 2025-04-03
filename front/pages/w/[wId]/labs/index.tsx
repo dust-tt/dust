@@ -56,6 +56,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
   featureFlags: WhitelistableFeature[];
+  isAdmin: boolean;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -74,6 +75,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
       owner,
       subscription,
       featureFlags,
+      isAdmin: auth.isAdmin(),
     },
   };
 });
@@ -82,6 +84,7 @@ export default function LabsTranscriptsIndex({
   owner,
   subscription,
   featureFlags,
+  isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <ConversationsNavigationProvider>
@@ -122,28 +125,32 @@ export default function LabsTranscriptsIndex({
                 </ContextItem>
               ))}
 
-              <ContextItem.SectionHeader
-                title="Connections"
-                description="These connections are being tested and may require some manual steps."
-              />
+              {isAdmin && (
+                <>
+                  <ContextItem.SectionHeader
+                    title="Connections"
+                    description="These connections are being tested and may require some manual steps."
+                  />
 
-              {LABS_CONNECTIONS.map((item) => (
-                <ContextItem
-                  key={item.id}
-                  title={item.label}
-                  action={
-                    <FeatureAccessButton
-                      accessible={featureFlags.includes(item.featureFlag)}
-                      featureName={`${item.label} connection`}
-                      managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
-                      owner={owner}
-                    />
-                  }
-                  visual={<ContextItem.Visual visual={item.logo} />}
-                >
-                  <ContextItem.Description description={item.description} />
-                </ContextItem>
-              ))}
+                  {LABS_CONNECTIONS.map((item) => (
+                    <ContextItem
+                      key={item.id}
+                      title={item.label}
+                      action={
+                        <FeatureAccessButton
+                          accessible={featureFlags.includes(item.featureFlag)}
+                          featureName={`${item.label} connection`}
+                          managePath={`/w/${owner.sId}/labs/connections/${item.id}`}
+                          owner={owner}
+                        />
+                      }
+                      visual={<ContextItem.Visual visual={item.logo} />}
+                    >
+                      <ContextItem.Description description={item.description} />
+                    </ContextItem>
+                  ))}
+                </>
+              )}
             </ContextItem.List>
           </Page.Layout>
         </Page>
