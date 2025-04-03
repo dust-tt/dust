@@ -72,12 +72,6 @@ export function serverRequiresInternalConfiguration({
  * This function handles nested objects and arrays.
  */
 export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
-  // Base case: if not an object or null, return as is
-  if (!isJSONSchema(inputSchema)) {
-    return inputSchema;
-  }
-
-  // Create a deep copy to avoid modifying the original
   const filteredSchema = { ...inputSchema };
 
   // Filter properties
@@ -142,7 +136,6 @@ export function hideInternalConfiguration(inputSchema: JSONSchema): JSONSchema {
 
 /**
  * Injects a value into the inputs based on the MIME type of a property schema.
- * Returns true if a value was injected, false otherwise.
  */
 function injectValueForMimeType({
   owner,
