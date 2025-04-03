@@ -31,6 +31,16 @@ const cli = meow({
     help: {
       type: "boolean",
     },
+    port: {
+      type: "number",
+      shortFlag: "p",
+      description: "Specify the port for the MCP server",
+    },
+    sId: {
+      type: "string",
+      isMultiple: true,
+      description: "Specify agent sId(s) to use directly (can be repeated)",
+    },
   },
 });
 

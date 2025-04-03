@@ -21,6 +21,14 @@ interface AppProps {
       type: "boolean";
       shortFlag: "h";
     };
+    port: {
+      type: "number";
+      shortFlag: "p";
+    };
+    sId: {
+      type: "string";
+      isMultiple: true;
+    };
   }>;
 }
 
@@ -45,7 +53,7 @@ const App: FC<AppProps> = ({ cli }) => {
     case "logout":
       return <Logout />;
     case "agents-mcp":
-      return <AgentsMCP />;
+      return <AgentsMCP port={flags.port} sId={flags.sId} />;
     case "help":
       return <Help />;
     default:
