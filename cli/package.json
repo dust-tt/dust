@@ -46,7 +46,7 @@
     "zod": "^3.24.2"
   },
   "engines": {
-    "node": ">=21.2.0"
+    "node": ">=20.17.0"
   },
   "devDependencies": {
     "@types/clipboardy": "^2.0.4",
