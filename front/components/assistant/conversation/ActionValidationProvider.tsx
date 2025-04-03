@@ -14,7 +14,7 @@ import sanitizeHtml from "sanitize-html";
 import type { MCPActionType } from "@app/lib/actions/mcp";
 
 type ActionValidationContextType = {
-  showValidationDialog: (props: {
+  showValidationDialog: (validationRequest: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
@@ -44,13 +44,16 @@ function useValidationQueue() {
   const [currentValidation, setCurrentValidation] =
     useState<PendingValidationRequestType | null>(null);
 
-  const addToQueue = (props: PendingValidationRequestType) => {
+  // Queue stores the pending validation requests
+  // The current validation request is the one being processed
+  // The queue does not stores the current validation request
+  const addToQueue = (validationRequest: PendingValidationRequestType) => {
     setCurrentValidation((current) => {
       if (current === null) {
-        return props;
+        return validationRequest;
       }
 
-      setValidationQueue((prevQueue) => [...prevQueue, props]);
+      setValidationQueue((prevQueue) => [...prevQueue, validationRequest]);
       return current;
     });
   };
@@ -140,7 +143,7 @@ export function ActionValidationProvider({
     }
   }, [currentValidation]);
 
-  const showValidationDialog = (props: {
+  const showValidationDialog = (validationRequest: {
     workspaceId: string;
     messageId: string;
     conversationId: string;
@@ -148,7 +151,7 @@ export function ActionValidationProvider({
     inputs: Record<string, unknown>;
     hash: string;
   }) => {
-    addToQueue(props);
+    addToQueue(validationRequest);
     setErrorMessage(null);
   };
 
