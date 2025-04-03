@@ -135,9 +135,6 @@ export type LightAgentConfigurationType = {
   // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
   requestedGroupIds: string[][];
 
-  // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-  groupIds?: string[];
-
   reasoningEffort?: AgentReasoningEffort;
 };
 

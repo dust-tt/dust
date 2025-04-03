@@ -46,6 +46,7 @@ async function updateAgentsForWorkspace(
 
   // no need to update agents that already have groupIds
   const agents = allAgents.filter(
+    // @ts-expect-error `groupIds` was removed
     (agent) => !agent.groupIds || agent.groupIds.length === 0
   );
 
@@ -105,6 +106,7 @@ async function updateAgent(
 
   if (execute) {
     await AgentConfiguration.update(
+      // @ts-expect-error `groupIds` was removed
       { groupIds },
       { where: { sId: agent.sId } }
     );

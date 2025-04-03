@@ -146,8 +146,6 @@ export async function createConversation(
         owner,
         conversation
       ),
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
   };
 }
 
@@ -303,8 +301,6 @@ export async function getConversation(
         owner,
         conversation
       ),
-    // TODO(2025-01-15) `groupId` clean-up. Remove once Chrome extension uses optional.
-    groupIds: [],
   });
 }
 
