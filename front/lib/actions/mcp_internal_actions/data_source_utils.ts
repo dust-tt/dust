@@ -54,17 +54,6 @@ async function fetchAgentDataSourceConfiguration(
       include: [{ model: DataSourceModel, as: "dataSource", required: true }],
     });
 
-  if (
-    agentDataSourceConfiguration &&
-    agentDataSourceConfiguration.workspaceId !== sIdParts.workspaceId
-  ) {
-    return new Err(
-      new Error(
-        `Data source configuration ${dataSourceConfigId} does not belong to workspace ${sIdParts.workspaceId}`
-      )
-    );
-  }
-
   return new Ok(agentDataSourceConfiguration);
 }
 
