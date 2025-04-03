@@ -1,6 +1,4 @@
-import { Button, Label, Page } from "@dust-tt/sparkle";
-import { Spinner } from "@dust-tt/sparkle";
-import { Cog6ToothIcon } from "@heroicons/react/20/solid";
+import { Button, Label, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
 
 import { useMCPConnectionManagement } from "@app/hooks/useMCPConnectionManagement";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
@@ -49,7 +47,7 @@ export const AuthorizationInfo = ({
           <Button
             variant="warning"
             disabled={isConnectionsLoading}
-            icon={Cog6ToothIcon}
+            icon={LockIcon}
             label={"Disconnect"}
             size="sm"
             onClick={() => {
@@ -68,7 +66,7 @@ export const AuthorizationInfo = ({
           <Button
             variant="outline"
             disabled={isConnectionsLoading}
-            icon={Cog6ToothIcon}
+            icon={LockIcon}
             label={"Connect"}
             size="sm"
             onClick={() => {

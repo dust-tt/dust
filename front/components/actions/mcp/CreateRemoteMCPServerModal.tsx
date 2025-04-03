@@ -56,6 +56,7 @@ export function CreateRemoteMCPServerModal({
     setIsCreating(true);
     try {
       const result = await createWithUrlSync(url);
+      await mutateMCPServers();
 
       if (result.success) {
         sendNotification({
@@ -78,9 +79,7 @@ export function CreateRemoteMCPServerModal({
       setIsCreating(false);
       setError(null);
       setUrl("");
-      void mutateMCPServers();
     }
-    console.log("handleSynchronize");
   };
 
   return (

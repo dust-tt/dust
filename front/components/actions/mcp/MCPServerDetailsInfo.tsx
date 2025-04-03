@@ -120,10 +120,8 @@ export function MCPServerDetailsInfo({
       {serverType === "remote" && (
         <>
           <RemoteMCPForm
-            isSynchronized
             state={formState}
             dispatch={dispatch}
-            isConfigurationLoading={false}
             onSynchronize={handleSynchronize}
             sharedSecret={sharedSecret}
             isSynchronizing={serverState === "synchronizing"}
