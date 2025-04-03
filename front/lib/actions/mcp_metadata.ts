@@ -1,10 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import type {
-  Implementation,
-  ListToolsResult,
-} from "@modelcontextprotocol/sdk/types.js";
+import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
 import { Ajv } from "ajv";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
@@ -184,10 +181,8 @@ export function extractMetadataFromServerVersion(
   };
 }
 
-export function extractMetadataFromTools(
-  tools: ListToolsResult
-): MCPToolType[] {
-  return tools.tools.map((tool) => {
+export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
+  return tools.map((tool) => {
     let inputSchema: JSONSchema | undefined;
     const ajv = new Ajv();
 
@@ -218,7 +213,7 @@ export async function fetchRemoteServerMetaDataByURL(
     const metadata = extractMetadataFromServerVersion(serverVersion);
 
     const toolsResult = await mcpClient.listTools();
-    const serverTools = extractMetadataFromTools(toolsResult);
+    const serverTools = extractMetadataFromTools(toolsResult.tools);
 
     return {
       ...metadata,
