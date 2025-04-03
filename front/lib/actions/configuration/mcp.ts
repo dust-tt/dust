@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 
-import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { MCPServerType } from "@app/lib/actions/mcp_metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -34,13 +33,14 @@ export async function fetchMCPServerActionConfigurations(
   }
 
   // Find the associated data sources configurations.
-  const dataSourceConfigurations = await AgentDataSourceConfiguration.findAll({
-    where: {
-      mcpServerConfigurationId: {
-        [Op.in]: mcpServerConfigurations.map((r) => r.id),
+  const allDataSourceConfigurations =
+    await AgentDataSourceConfiguration.findAll({
+      where: {
+        mcpServerConfigurationId: {
+          [Op.in]: mcpServerConfigurations.map((r) => r.id),
+        },
       },
-    },
-  });
+    });
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -50,8 +50,8 @@ export async function fetchMCPServerActionConfigurations(
   for (const config of mcpServerConfigurations) {
     const { agentConfigurationId, sId, id, mcpServerViewId } = config;
 
-    const dataSourceConfiguration =
-      dataSourceConfigurations.filter(
+    const dataSourceConfigurations =
+      allDataSourceConfigurations.filter(
         (ds) => ds.mcpServerConfigurationId === config.id
       ) ?? [];
 
@@ -109,7 +109,7 @@ export async function fetchMCPServerActionConfigurations(
         name: metadata.name,
         description: metadata.description,
         mcpServerViewId: mcpServerView.sId,
-        dataSources: dataSourceConfiguration.map(getDataSource),
+        dataSourceConfigurations,
       });
     }
   }

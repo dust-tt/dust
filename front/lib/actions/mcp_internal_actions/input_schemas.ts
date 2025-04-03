@@ -255,7 +255,7 @@ function injectValueForMimeType({
             inputs,
             path,
             // TODO(mcp): give sqids here.
-            actionConfiguration.dataSources?.map((config) => ({
+            actionConfiguration.dataSourceConfigurations?.map((config) => ({
               uri: `data_source_configuration://dust/w/${config.workspaceId}/data_source_configurations/${config.id}`,
               mimeType,
             })) || []

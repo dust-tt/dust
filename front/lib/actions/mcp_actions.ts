@@ -74,7 +74,7 @@ function makeMCPConfigurations({
       name: tool.name,
       description: tool.description ?? null,
       inputSchema: tool.inputSchema || { type: "object", properties: {} },
-      dataSources: config.dataSources,
+      dataSourceConfigurations: config.dataSourceConfigurations,
     };
   });
 }

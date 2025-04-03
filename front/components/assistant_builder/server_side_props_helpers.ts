@@ -10,6 +10,7 @@ import {
   getDefaultWebsearchActionConfiguration,
 } from "@app/components/assistant_builder/types";
 import { REASONING_MODEL_CONFIGS } from "@app/components/providers/types";
+import { getDataSource } from "@app/lib/actions/configuration/retrieval";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { DustAppRunConfigurationType } from "@app/lib/actions/dust_app_run";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
@@ -242,12 +243,16 @@ async function getMCPServerActionConfiguration(
   builderAction.description =
     action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION;
 
-  builderAction.configuration.dataSourceConfigurations = action.dataSources
-    ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources },
-        dataSourceViews
-      )
-    : null;
+  builderAction.configuration.dataSourceConfigurations =
+    action.dataSourceConfigurations
+      ? await renderDataSourcesConfigurations(
+          {
+            ...action,
+            dataSources: action.dataSourceConfigurations.map(getDataSource),
+          },
+          dataSourceViews
+        )
+      : null;
 
   return builderAction;
 }

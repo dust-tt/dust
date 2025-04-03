@@ -7,7 +7,6 @@ import {
   filterInternalConfiguration,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getMCPEvents } from "@app/lib/actions/pubsub";
-import type { DataSourceConfiguration } from "@app/lib/actions/retrieval";
 import type {
   BaseActionRunParams,
   ExtractActionBlob,
@@ -18,6 +17,7 @@ import {
 } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
 import {
   AgentMCPAction,
   AgentMCPActionOutputItem,
@@ -42,7 +42,7 @@ export type MCPServerConfigurationType = {
   name: string;
   description: string | null;
 
-  dataSources: DataSourceConfiguration[] | null;
+  dataSourceConfigurations: AgentDataSourceConfiguration[] | null;
   // TODO(mcp): add other kind of configurations here such as table query.
 };
 
