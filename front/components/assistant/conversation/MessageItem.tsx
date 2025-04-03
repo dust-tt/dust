@@ -1,27 +1,16 @@
-import {
-  Citation,
-  CitationDescription,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  DocumentIcon,
-  FolderIcon,
-  Icon,
-  ImageIcon,
-  SlackLogo,
-  TableIcon,
-  Tooltip,
-  useSendNotification,
-} from "@dust-tt/sparkle";
+import { useSendNotification } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
+import {
+  AttachmentCitation,
+  contentFragmentToAttachmentCitation,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import type {
   MessageWithContentFragmentsType,
   UserType,
@@ -117,99 +106,13 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       case "user_message":
         const citations = message.contenFragments
           ? message.contenFragments.map((contentFragment) => {
-              let visual;
-              if (contentFragment.contentNodeData) {
-                const { provider, nodeType } = contentFragment.contentNodeData;
-                const logo = getConnectorProviderLogoWithFallback({
-                  provider,
-                });
-
-                // For websites or folders, show just the provider logo
-                const isWebsiteOrFolder =
-                  provider === "webcrawler" || provider === null;
-                if (isWebsiteOrFolder) {
-                  visual = <Icon visual={logo} size="sm" />;
-                } else {
-                  // For other types, show both node type icon and provider logo
-                  const nodeIcon =
-                    nodeType === "table"
-                      ? TableIcon
-                      : nodeType === "folder"
-                        ? FolderIcon
-                        : DocumentIcon;
-
-                  visual = (
-                    <>
-                      <Icon visual={nodeIcon} className="h-5 w-5" />
-                      <Icon visual={logo} size="sm" />
-                    </>
-                  );
-                }
-              } else {
-                // For file attachments
-                const isImageType =
-                  contentFragment.contentType.startsWith("image/");
-                visual = (
-                  <Icon visual={isImageType ? ImageIcon : DocumentIcon} />
-                );
-
-                if (
-                  [
-                    "dust-application/slack",
-                    "text/vnd.dust.attachment.slack.thread",
-                  ].includes(contentFragment.contentType)
-                ) {
-                  visual = <Icon visual={SlackLogo} />;
-                }
-              }
-
-              const tooltipContent = contentFragment.contentNodeData ? (
-                <div className="flex flex-col gap-1">
-                  <div className="font-bold">{contentFragment.title}</div>
-                  <div className="flex gap-1 pt-1 text-sm">
-                    <Icon visual={FolderIcon} />
-                    <p>{contentFragment.contentNodeData.spaceName}</p>
-                  </div>
-                  <div className="text-element-600 text-sm">
-                    {contentFragment.sourceUrl || ""}
-                  </div>
-                </div>
-              ) : (
-                contentFragment.title
-              );
+              const attachmentCitation =
+                contentFragmentToAttachmentCitation(contentFragment);
 
               return (
-                <Tooltip
-                  key={contentFragment.sId}
-                  tooltipTriggerAsChild
-                  trigger={
-                    <Citation
-                      className="w-40"
-                      href={contentFragment.sourceUrl ?? undefined}
-                    >
-                      {contentFragment.sourceUrl &&
-                        !contentFragment.contentNodeData && (
-                          <CitationImage imgSrc={contentFragment.sourceUrl} />
-                        )}
-
-                      <CitationIcons>{visual}</CitationIcons>
-
-                      <CitationTitle className="truncate text-ellipsis">
-                        {contentFragment.title}
-                      </CitationTitle>
-
-                      {contentFragment.contentNodeData && (
-                        <CitationDescription className="truncate text-ellipsis">
-                          <div className="flex items-center gap-1">
-                            <span>
-                              {contentFragment.contentNodeData.spaceName}
-                            </span>
-                          </div>
-                        </CitationDescription>
-                      )}
-                    </Citation>
-                  }
-                  label={tooltipContent}
+                <AttachmentCitation
+                  key={attachmentCitation.id}
+                  attachmentCitation={attachmentCitation}
                 />
               );
             })

@@ -1,48 +1,23 @@
-import {
-  Citation,
-  CitationClose,
-  CitationDescription,
-  CitationIcons,
-  CitationImage,
-  CitationTitle,
-  DocumentIcon,
-  Icon,
-  ImageIcon,
-  Tooltip,
-} from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import { isFolder, isWebsite } from "@dust-tt/client";
+import { Icon } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
+import type {
+  Attachment,
+  FileAttachment,
+  NodeAttachment,
+} from "@app/components/assistant/conversation/AttachmentCitation";
+import {
+  AttachmentCitation,
+  attachmentToAttachmentCitation,
+} from "@app/components/assistant/conversation/AttachmentCitation";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/types";
-
-type FileAttachment = {
-  type: "file";
-  id: string;
-  title: string;
-  preview?: string;
-  isUploading: boolean;
-  onRemove: () => void;
-};
-
-type NodeAttachment = {
-  type: "node";
-  id: string;
-  title: string;
-  spaceName: string;
-  spaceIcon: React.ComponentType;
-  visual: React.ReactNode;
-  path: string;
-  onRemove: () => void;
-  url: string | null;
-};
-
-type Attachment = FileAttachment | NodeAttachment;
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
@@ -68,6 +43,7 @@ export function InputBarAttachments({
   files,
   nodes,
 }: InputBarAttachmentsProps) {
+  // Convert file blobs to FileAttachment objects
   const fileAttachments: FileAttachment[] = useMemo(() => {
     return (
       files?.service.fileBlobs.map((blob) => ({
@@ -81,6 +57,7 @@ export function InputBarAttachments({
     );
   }, [files?.service]);
 
+  // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
     return (
       nodes?.items.map((node) => {
@@ -91,25 +68,28 @@ export function InputBarAttachments({
         const spaceName =
           nodes.spacesMap[node.dataSourceView.spaceId].name ?? "Unknown Space";
         const { dataSource } = node.dataSourceView;
+
+        const isWebsiteOrFolder = isWebsite(dataSource) || isFolder(dataSource);
+        const visual = isWebsiteOrFolder ? (
+          <Icon visual={logo} size="sm" />
+        ) : (
+          <>
+            {getVisualForDataSourceViewContentNode(node)({
+              className: "h-5 w-5",
+            })}
+            <Icon visual={logo} size="sm" />
+          </>
+        );
+
         return {
           type: "node",
           id: `${node.dataSourceView.dataSource.sId}-${node.internalId}`,
-          url: node.sourceUrl,
           title: node.title,
+          url: node.sourceUrl,
           spaceName,
           spaceIcon: nodes.spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
-          visual:
-            isWebsite(dataSource) || isFolder(dataSource) ? (
-              <Icon visual={logo} size="sm" />
-            ) : (
-              <>
-                {getVisualForDataSourceViewContentNode(node)({
-                  className: "h-5 w-5",
-                })}
-                <Icon visual={logo} size="sm" />
-              </>
-            ),
+          visual,
           onRemove: () => nodes.onRemove(node),
         };
       }) || []
@@ -125,69 +105,12 @@ export function InputBarAttachments({
   return (
     <div className="mr-3 flex gap-2 overflow-auto border-b border-separator pb-3 pt-3">
       {allAttachments.map((attachment) => {
-        const isFile = attachment.type === "file";
-
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (
-          <Tooltip
-            key={`${attachment.type}-${attachment.id}`}
-            tooltipTriggerAsChild
-            trigger={
-              <Citation
-                className="w-40"
-                href={!isFile && attachment.url ? attachment.url : undefined}
-                isLoading={attachment.type === "file" && attachment.isUploading}
-                action={
-                  <CitationClose
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      attachment.onRemove();
-                    }}
-                  />
-                }
-              >
-                {isFile && attachment.preview && (
-                  <CitationImage imgSrc={attachment.preview} />
-                )}
-
-                <CitationIcons>
-                  {isFile ? (
-                    <Icon
-                      visual={attachment.preview ? ImageIcon : DocumentIcon}
-                    />
-                  ) : (
-                    attachment.visual
-                  )}
-                </CitationIcons>
-
-                <CitationTitle className="truncate text-ellipsis">
-                  {attachment.title}
-                </CitationTitle>
-
-                {!isFile && (
-                  <CitationDescription className="truncate text-ellipsis">
-                    <div className="flex items-center gap-1">
-                      <span>{attachment.spaceName}</span>
-                    </div>
-                  </CitationDescription>
-                )}
-              </Citation>
-            }
-            label={
-              attachment.type === "file" ? (
-                attachment.title
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <div className="font-bold">{attachment.title}</div>
-                  <div className="flex gap-1 pt-1 text-sm">
-                    <Icon visual={attachment.spaceIcon} />
-                    <p>{attachment.spaceName}</p>
-                  </div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {attachment.path}
-                  </div>
-                </div>
-              )
-            }
+          <AttachmentCitation
+            key={attachmentCitation.id}
+            attachmentCitation={attachmentCitation}
+            onRemove={attachment.onRemove}
           />
         );
       })}
